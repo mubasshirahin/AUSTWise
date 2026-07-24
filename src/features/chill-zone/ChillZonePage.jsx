@@ -1,15 +1,17 @@
 import { useState } from 'react';
-import { Coffee, LayoutGrid, MessageCircleQuestion, Brain, Gamepad2 } from 'lucide-react';
+import { Coffee, LayoutGrid, MessageCircleQuestion, Brain, Gamepad2, Film } from 'lucide-react';
 import GliderTabs from '../../components/GliderTabs';
 import OrganizingArea from './tabs/OrganizingArea';
 import RumourOrReal from './tabs/RumourOrReal';
 import Trivia from './tabs/Trivia';
 import GamingZone from './tabs/GamingZone';
+import MediaTracker from './tabs/MediaTracker';
 import './ChillZonePage.css';
 import '../../components/PageHero.css';
 
 const TABS = [
   { id: 'organizing',  label: 'Organizing Area',  icon: LayoutGrid,             color: 'blue',   desc: 'Plan & organize'  },
+  { id: 'media',       label: 'Media Tracker',    icon: Film,                   color: 'cyan',   desc: 'Movies & more'    },
   { id: 'rumour',      label: 'Rumour or Real',   icon: MessageCircleQuestion,  color: 'rose',   desc: 'Fact or fiction'  },
   { id: 'trivia',      label: 'Trivia',           icon: Brain,                  color: 'purple', desc: 'Test your brain'  },
   { id: 'gaming',      label: 'Gaming Zone',      icon: Gamepad2,               color: 'emerald',desc: 'Mini games'       },
@@ -30,6 +32,7 @@ export default function ChillZonePage() {
   const renderTab = () => {
     switch (activeTab) {
       case 'organizing': return <OrganizingArea />;
+      case 'media':      return <MediaTracker />;
       case 'rumour':     return <RumourOrReal />;
       case 'trivia':     return <Trivia />;
       case 'gaming':     return <GamingZone />;
