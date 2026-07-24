@@ -7,6 +7,7 @@ import CoursePoll from './CoursePoll';
 import PrerequisiteTree from './PrerequisiteTree';
 import GliderTabs from '../../components/GliderTabs';
 import './AnalyticsPage.css';
+import '../../components/PageHero.css';
 
 const TAB_KEY = 'analyticsActiveTab';
 
@@ -46,17 +47,17 @@ export default function AnalyticsPage() {
 
   return (
     <div className="analytics-page animate-fadeIn">
-      <header className="grade-hero">
-        <div className="grade-hero-content">
-          <div className="grade-hero-title-row">
-            <div className="grade-hero-icon">
-              <FlaskConical size={18} strokeWidth={2.5} />
+      <header className="page-hero">
+        <div className="page-hero-content">
+          <div className="page-hero-title-row">
+            <div className="page-hero-icon">
+              <FlaskConical size={24} />
             </div>
             <div>
-              <h1 className="grade-hero-title">
-                <span className="grade-hero-name">Grade Lab</span>
+              <h1 className="page-hero-title">
+                <span className="page-hero-title-highlight">Grade Lab</span>
               </h1>
-              <p className="grade-hero-subtitle">{heroSubtitle}</p>
+              <p className="page-hero-subtitle">{heroSubtitle}</p>
             </div>
           </div>
         </div>

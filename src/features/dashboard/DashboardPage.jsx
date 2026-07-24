@@ -143,7 +143,7 @@ function StudyStreak() {
         title="Click to see leaderboard"
       >
         <div className="streak-flame" style={{ color: getStreakColor() }}>
-          <Flame size={18} />
+          <Flame size={22} />
         </div>
         <div className="streak-info">
           <span className="streak-count" style={{ color: getStreakColor() }}>{displayStreak}</span>

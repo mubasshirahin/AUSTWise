@@ -449,7 +449,7 @@ export default function AdminPanelPage() {
             <Shield size={24} />
           </div>
           <div>
-            <h1 style={{ fontSize: 'var(--fs-xl)', fontWeight: 'var(--fw-bold)', margin: 0 }}>Admin Control Panel</h1>
+            <h1 style={{ fontSize: 'var(--fs-xl)', fontWeight: 'var(--fw-bold)', margin: 0 }}>Admin Panel</h1>
             <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>Manage announcements, live metrics, and campus assets</p>
           </div>
         </div>

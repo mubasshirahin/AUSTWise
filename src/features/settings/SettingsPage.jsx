@@ -10,6 +10,7 @@ import GliderTabs from '../../components/GliderTabs';
 import { useNotifications } from '../../hooks/useNotifications';
 import { submitRoleApplication, getApplicationsByUserId, getUserApplicationStatus, checkSlotVacancy, getSlotVacancyMap, resignFromRole, deleteAccountById } from '../../utils/authStorage';
 import './SettingsPage.css';
+import '../../components/PageHero.css';
 
 const departments = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'];
 const juniorBatchByDepartment = {
@@ -138,10 +139,10 @@ export default function SettingsPage() {
   }, [setSearchParams]);
 
   const settingsTabs = [
-    { id: 'profile', label: 'Student Profile', icon: User, desc: 'Identity & academic info', color: 'blue' },
-    { id: 'theme', label: 'Display & Theme', icon: Settings, desc: 'Themes & appearance', color: 'purple' },
-    { id: 'notifications', label: 'Notifications', icon: Bell, desc: 'Alerts & reminders', color: 'amber' },
-    { id: 'about', label: 'About Us', icon: Info, desc: 'About AUSTWise', color: 'emerald' },
+    { id: 'profile', label: 'Identity', icon: User, desc: 'Identity & academic info', color: 'blue' },
+    { id: 'theme', label: 'UI', icon: Settings, desc: 'Themes & appearance', color: 'purple' },
+    { id: 'notifications', label: 'Notify Me', icon: Bell, desc: 'Alerts & reminders', color: 'amber' },
+    { id: 'about', label: 'Credentials', icon: Info, desc: 'Developer credentials & info', color: 'emerald' },
     ...(isAuthenticated ? [{ id: 'roleApplication', label: 'Apply for CR/SR', icon: GraduationCap, desc: 'Leadership roles', color: 'rose' }] : []),
     ...(isAuthenticated && user?.role === 'admin' ? [{ id: 'invite', label: 'Invite Member', icon: Send, desc: 'Send invites', color: 'cyan' }] : []),
   ];
@@ -596,36 +597,29 @@ export default function SettingsPage() {
 
   return (
     <div className="settings-page animate-fadeIn">
-      <header className="settings-hero">
-        <div className="settings-hero-bg" aria-hidden="true">
-          <div className="settings-hero-grid" />
-          <div className="settings-hero-orb settings-hero-orb-1" />
-          <div className="settings-hero-orb settings-hero-orb-2" />
-          <div className="settings-hero-orb settings-hero-orb-3" />
-          <div className="settings-hero-shimmer" />
-        </div>
-        <div className="settings-hero-content">
-          <div className="settings-hero-title-row">
-            <div className="settings-hero-icon">
-              <Settings size={18} strokeWidth={2.5} />
+      <header className="page-hero">
+        <div className="page-hero-content">
+          <div className="page-hero-title-row">
+            <div className="page-hero-icon">
+              <Settings size={24} />
             </div>
             <div>
-              <h1 className="settings-hero-title">
-                <span className="settings-hero-name">Settings</span>
+              <h1 className="page-hero-title">
+                <span className="page-hero-title-highlight">Settings</span>
               </h1>
-              <p className="settings-hero-subtitle">
+              <p className="page-hero-subtitle">
                 Manage your profile, choose a theme, configure notifications, and more.
               </p>
             </div>
+            {isAuthenticated && (
+              <div className="settings-hero-status-row">
+                <span className="settings-hero-status-dot" />
+                <span className="settings-hero-status-text">
+                  {profilePercent === 100 ? 'Profile complete' : `Profile ${profilePercent}% complete`}
+                </span>
+              </div>
+            )}
           </div>
-          {isAuthenticated && (
-            <div className="settings-hero-status-row">
-              <span className="settings-hero-status-dot" />
-              <span className="settings-hero-status-text">
-                {profilePercent === 100 ? 'Profile complete' : `Profile ${profilePercent}% complete`}
-              </span>
-            </div>
-          )}
         </div>
       </header>
 
@@ -641,7 +635,7 @@ export default function SettingsPage() {
             <div className="animate-fadeIn">
               <div className="profile-panel-header">
                 <div>
-                  <h3>Student Profile</h3>
+                  <h3>Identity</h3>
                   <p>Update your identity and academic info together.</p>
                 </div>
                 <div className="profile-save-actions">

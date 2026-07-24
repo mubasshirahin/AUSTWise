@@ -1,26 +1,21 @@
 import { Banknote, CreditCard, Receipt } from 'lucide-react';
 import './AustBharaPage.css';
+import '../../components/PageHero.css';
 
 export default function AustBharaPage() {
   return (
     <div className="aust-bhara-page animate-fadeIn">
-      <header className="ab-hero">
-        <div className="ab-hero-bg" aria-hidden="true">
-          <div className="ab-hero-grid" />
-          <div className="ab-hero-orb ab-hero-orb-1" />
-          <div className="ab-hero-orb ab-hero-orb-2" />
-          <div className="ab-hero-shimmer" />
-        </div>
-        <div className="ab-hero-content">
-          <div className="ab-hero-title-row">
-            <div className="ab-hero-icon">
-              <Banknote size={18} strokeWidth={2.5} />
+      <header className="page-hero">
+        <div className="page-hero-content">
+          <div className="page-hero-title-row">
+            <div className="page-hero-icon">
+              <Banknote size={24} />
             </div>
             <div>
-              <h1 className="ab-hero-title">
-                <span className="ab-hero-name">Aust Bhara</span>
+              <h1 className="page-hero-title">
+                <span className="page-hero-title-highlight">Bhara Koto</span>
               </h1>
-              <p className="ab-hero-subtitle">
+              <p className="page-hero-subtitle">
                 Track your semester fees, tuition, and all AUST-related payments in one place.
               </p>
             </div>

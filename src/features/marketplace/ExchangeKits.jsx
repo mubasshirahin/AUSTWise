@@ -152,7 +152,7 @@ export default function ExchangeKits() {
             <ShoppingCart size={18} />
           </div>
           <div>
-            <h2 className="section-title" style={{ fontSize: 'var(--fs-lg)', margin: 0 }}>Exchange Kits & Books</h2>
+            <h2 className="section-title" style={{ fontSize: 'var(--fs-lg)', margin: 0 }}>AW Market</h2>
             <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>Peer-to-peer listings from AUST students</p>
           </div>
         </div>

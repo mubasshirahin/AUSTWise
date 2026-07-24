@@ -1,4 +1,11 @@
-.mt-page { max-width: 840px; margin: 0 auto; padding-bottom: var(--sp-10); }
+.mt-page {
+  --page-hero-icon-bg: var(--accent-emerald-glow);
+  --page-hero-icon-color: var(--accent-emerald);
+  --page-hero-gradient-start: var(--accent-emerald);
+  max-width: 840px;
+  margin: 0 auto;
+  padding-bottom: var(--sp-10);
+}
 .mt-hero { position: relative; border-radius: var(--radius-xl); border: 1px solid var(--border-primary); background: var(--bg-card); overflow: hidden; box-shadow: 0 1px 0 0 rgba(255,255,255,0.04) inset, var(--shadow-md); animation: mtHeroIn 0.55s cubic-bezier(0.4,0,0.2,1) both; margin-bottom: var(--sp-5); transition: border-color 0.3s ease, box-shadow 0.3s ease; }
 .mt-hero:hover { border-color: color-mix(in srgb, var(--accent-emerald) 30%, var(--border-primary)); box-shadow: 0 1px 0 0 rgba(255,255,255,0.06) inset, 0 0 0 1px color-mix(in srgb, var(--accent-emerald) 10%, transparent), 0 8px 40px -8px color-mix(in srgb, var(--accent-emerald) 12%, transparent), var(--shadow-lg); }
 @keyframes mtHeroIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }

@@ -42,7 +42,7 @@ export default function MarketplaceMasthead() {
         <span className="mp-masthead-dot" aria-hidden="true">&bull;</span>
         <span>AUST Edition</span>
         <span className="mp-masthead-dot" aria-hidden="true">&bull;</span>
-        <span>Trade, To-Let, Lost &amp; Found, Mentors</span>
+        <span>Trade, ToLet Mama, Lost &amp; Found, Mentors</span>
       </div>
 
       {/* Breaking-news crawl. Track is duplicated so the loop is seamless;

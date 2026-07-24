@@ -11,21 +11,21 @@ export default function NavPomodoro() {
         onClick={() => pomSwitch('focus')}
         title="Focus (25 min)"
       >
-        <Brain size={11} />
+        <Brain size={15} />
       </button>
       <span className="nav-pom-time">{formatPomTime(pomTime)}</span>
       <button className="nav-pom-ctrl" onClick={pomToggle} title={pomRunning ? 'Pause' : 'Start'}>
-        {pomRunning ? <Pause size={11} /> : <Play size={11} />}
+        {pomRunning ? <Pause size={15} /> : <Play size={15} />}
       </button>
-      <button className="nav-pom-ctrl nav-pom-reset" onClick={pomReset} title="Reset">
-        <RotateCcw size={10} />
+      <button className="nav-pom-ctrl" onClick={pomReset} title="Reset">
+        <RotateCcw size={14} />
       </button>
       <button
         className={`nav-pom-mode ${pomMode === 'break' ? 'nav-pom-mode-active' : ''}`}
         onClick={() => pomSwitch('break')}
         title="Break (5 min)"
       >
-        <Coffee size={11} />
+        <Coffee size={15} />
       </button>
     </div>
   );

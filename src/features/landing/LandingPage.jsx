@@ -108,7 +108,7 @@ const features = [
     description: 'The ultimate AUST marketplace — exchange used textbooks, find bachelor/rental listings near campus, report lost items, and request mentorship from senior students.',
     benefits: [
       'Exchange kits — buy & sell used textbooks and academic equipment',
-      'AUST To-Let — find bachelor rentals & shared apartments near campus',
+      'ToLet Mama — find bachelor rentals & shared apartments near campus',
       'Lost & Found — report lost items and help others find theirs',
       'Mentor requests — connect with seniors for academic guidance',
       'All free — no listing fees, no commission, no charges',
@@ -820,7 +820,7 @@ const mockScreens = [
     elements: [
       // Mini tabs
       { type: 'mini-tabs', tabs: ['Floors', 'Faculty', 'Library', 'Canteen'], active: 0 },
-      // Floor finder - key locations
+      // Floor map - key locations
       { type: 'label', text: 'Ground Floor · Key Locations' },
       { type: 'status', label: 'M.H Khan Auditorium', status: 'G-01', statusColor: 'var(--accent-amber)' },
       { type: 'status', label: 'Canteen', status: 'G-06', statusColor: 'var(--accent-cyan)' },
@@ -853,8 +853,8 @@ const mockScreens = [
     icon: ShoppingBag,
     elements: [
       // Tab bar
-      { type: 'mini-tabs', tabs: ['Exchange', 'To-Let', 'Lost', 'Mentors'], active: 0 },
-      { type: 'label', text: 'Exchange Kits' },
+      { type: 'mini-tabs', tabs: ['Exchange', 'ToLet Mama', 'Lost', 'Mentors'], active: 0 },
+      { type: 'label', text: 'AW Market' },
       // Listing cards
       { type: 'listing', title: 'Data Structure Book', desc: 'Good condition · CSE 2101', price: 'Tk 350', color: 'var(--accent-blue)' },
       { type: 'listing', title: 'Scientific Calculator', desc: 'Casio fx-991EX · barely used', price: 'Tk 800', color: 'var(--accent-purple)' },
@@ -863,7 +863,7 @@ const mockScreens = [
   },
   {
     id: 'messages',
-    title: 'Messages',
+    title: 'ConnectBox',
     color: 'var(--accent-orange)',
     glow: 'var(--accent-orange-glow)',
     icon: MessageSquare,

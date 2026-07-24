@@ -412,57 +412,55 @@ export default function WeeklyPlanner() {
     }
   };
 
-  return (
-    <div className="glass-card-static weekly-planner animate-fadeInUp">      <div className="dash-header-three mb-4">
+   return (
+     <div className="glass-card-static weekly-planner animate-fadeInUp">      <div className="dash-header-three mb-4">
 
-        {/* Middle: ⬇️ Export + 🌙 Toggle */}
-        <div className="dash-header-center">
-          {/* ⬇️ Export Dropdown */}
-          <div className="export-dropdown" ref={exportRef}>
-            <button className="btn btn-secondary btn-sm" onClick={() => setShowExportMenu(!showExportMenu)} aria-label="Export schedule" aria-haspopup="true">
-              <FileDown size={14} /> Export <ChevronDown size={12} />
-            </button>
-            {showExportMenu && (
-              <div className="export-menu">
-                <button className="export-menu-item" onClick={() => { downloadSchedulePDF(); setShowExportMenu(false); }}>
-                  <FileDown size={14} /> Export as PDF
-                </button>
-                <button className="export-menu-item" onClick={() => { downloadScheduleImage(); setShowExportMenu(false); }}>
-                  <FileDown size={14} /> Export as Image
-                </button>
-              </div>
-            )}
-          </div>
+       {/* Left: Export Dropdown */}
+       <div className="dash-header-left">
+         <div className="export-dropdown" ref={exportRef}>
+           <button className="btn btn-secondary btn-sm" onClick={() => setShowExportMenu(!showExportMenu)} aria-label="Export schedule" aria-haspopup="true">
+             <FileDown size={14} /> Export <ChevronDown size={12} />
+           </button>
+           {showExportMenu && (
+             <div className="export-menu">
+               <button className="export-menu-item" onClick={() => { downloadSchedulePDF(); setShowExportMenu(false); }}>
+                 <FileDown size={14} /> Export as PDF
+               </button>
+               <button className="export-menu-item" onClick={() => { downloadScheduleImage(); setShowExportMenu(false); }}>
+                 <FileDown size={14} /> Export as Image
+               </button>
+             </div>
+           )}
+         </div>
+       </div>
 
-          {/* 🌙 Ramadan Toggle Switch */}
-          <div
-            className="ramadan-toggle"
-            onClick={() => setRamadanMode(!ramadanMode)}
-            title={ramadanMode ? 'Switch to normal schedule' : 'Switch to Ramadan schedule'}
-          >
-            <div className={`ramadan-toggle-track${ramadanMode ? ' active' : ''}`}>
-              {ramadanMode ? (
-                <span className="ramadan-toggle-moon">🌙</span>
-              ) : (
-                <div className="ramadan-toggle-thumb" />
-              )}
-            </div>
-          </div>
-        </div>
+       {/* Middle: 🌙 Ramadan Toggle Switch */}
+       <div className="dash-header-center">
+         <div className="ramadan-toggle" onClick={() => setRamadanMode(!ramadanMode)} title={ramadanMode ? 'Switch to normal schedule' : 'Switch to Ramadan schedule'}>
+           <span className="ramadan-toggle-label">Ramadan</span>
+           <div className={`ramadan-toggle-track${ramadanMode ? ' active' : ''}`}>
+             {ramadanMode ? (
+               <span className="ramadan-toggle-icon">🕌</span>
+             ) : (
+               <div className="ramadan-toggle-thumb" />
+             )}
+           </div>
+         </div>
+       </div>
 
-        {/* Right: 🔄 Reset + Load Routine */}
-        <div className="dash-header-right">
-          {/* 🔄 Icon-only Reset */}
-          <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setConfirmReset(true)} title="Reset schedule">
-            <RotateCcw size={14} />
-          </button>
+       {/* Right: 🔄 Reset + Load Routine */}
+       <div className="dash-header-right">
+         {/* 🔄 Icon-only Reset */}
+         <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setConfirmReset(true)} title="Reset schedule">
+           <RotateCcw size={14} />
+         </button>
 
-          {/* Load Routine — the primary action */}
-          <button className="btn btn-primary btn-sm" onClick={openLoadModal}>
-            <Download size={14} /> Load Routine
-          </button>
-        </div>
-      </div>
+         {/* Load Routine — the primary action */}
+         <button className="btn btn-primary btn-sm" onClick={openLoadModal}>
+           <Download size={14} /> Load Routine
+         </button>
+       </div>
+     </div>
 
       <div className="weekly-table-wrap">
         <table className="weekly-table">
@@ -547,13 +545,13 @@ export default function WeeklyPlanner() {
                                   )}
                                   <span style={{ fontSize: '7px', fontWeight: 'var(--fw-bold)', color: 'var(--accent-amber)', whiteSpace: 'nowrap' }}>Week 1</span>
                                 </div>
-                                <div style={{ fontWeight: 'var(--fw-medium)', color: 'var(--text-primary)', fontSize: '9px', lineHeight: 1.3, textAlign: 'center' }}>
+                                <div style={{ fontWeight: 'var(--fw-medium)', color: 'var(--text-primary)', fontSize: '9px', lineHeight: '1.35', textAlign: 'center' }}>
                                   {firstCls.name.split('(')[0].trim()}
                                 </div>
-                                <div style={{ color: 'var(--text-tertiary)', fontSize: '8px', textAlign: 'center' }}>
+                                <div className="weekly-room" style={{ color: 'var(--text-tertiary)', fontSize: '8px', lineHeight: '1.35' }}>
                                   {firstCls.room}
                                 </div>
-                                <div style={{ color: 'var(--text-tertiary)', fontSize: '7px', textAlign: 'center' }}>
+                                <div className="weekly-teacher" style={{ color: 'var(--text-tertiary)', fontSize: '8px', lineHeight: '1.35', opacity: 0.8 }}>
                                   {firstCls.teacher}
                                 </div>
                               </div>
@@ -581,15 +579,15 @@ export default function WeeklyPlanner() {
                                     )}
                                     <span style={{ fontSize: '7px', fontWeight: 'var(--fw-bold)', color: 'var(--accent-amber)', whiteSpace: 'nowrap' }}>Week 2</span>
                                   </div>
-                                  <div style={{ fontWeight: 'var(--fw-medium)', color: 'var(--text-primary)', fontSize: '9px', lineHeight: 1.3, textAlign: 'center' }}>
-                                    {secondCls.name.split('(')[0].trim()}
-                                  </div>
-                                  <div style={{ color: 'var(--text-tertiary)', fontSize: '8px', textAlign: 'center' }}>
-                                    {secondCls.room}
-                                  </div>
-                                  <div style={{ color: 'var(--text-tertiary)', fontSize: '7px', textAlign: 'center' }}>
-                                    {secondCls.teacher}
-                                  </div>
+                                   <div style={{ fontWeight: 'var(--fw-medium)', color: 'var(--text-primary)', fontSize: '9px', lineHeight: '1.35', textAlign: 'center' }}>
+                                     {secondCls.name.split('(')[0].trim()}
+                                   </div>
+                                   <div className="weekly-room" style={{ color: 'var(--text-tertiary)', fontSize: '8px', lineHeight: '1.35' }}>
+                                     {secondCls.room}
+                                   </div>
+                                   <div className="weekly-teacher" style={{ color: 'var(--text-tertiary)', fontSize: '8px', lineHeight: '1.35', opacity: 0.8 }}>
+                                     {secondCls.teacher}
+                                   </div>
                                 </div>
                               </div>
                               ) : (
@@ -666,15 +664,15 @@ export default function WeeklyPlanner() {
                                   </span>
                                 )}
                               </div>
-                              <div className="weekly-course-name" style={{ fontWeight: 'var(--fw-medium)', color: 'var(--text-primary)' }}>
-                                {cls.name.split('(')[0].trim()}
-                              </div>
-                              <div className="weekly-room" style={{ color: 'var(--text-tertiary)' }}>
-                                {cls.room}
-                              </div>
-                              <div style={{ color: 'var(--text-tertiary)', fontSize: '8px' }}>
-                                {cls.teacher}
-                              </div>
+                               <div className="weekly-course-name" style={{ fontWeight: 'var(--fw-medium)', color: 'var(--text-primary)', lineHeight: '1.35' }}>
+                                 {cls.name.split('(')[0].trim()}
+                               </div>
+                               <div className="weekly-room" style={{ color: 'var(--text-tertiary)', lineHeight: '1.35' }}>
+                                 {cls.room}
+                               </div>
+                               <div className="weekly-teacher" style={{ color: 'var(--text-tertiary)', fontSize: '8px', lineHeight: '1.35', opacity: 0.8 }}>
+                                 {cls.teacher}
+                               </div>
                             </div>
                           </td>
                         );
@@ -716,9 +714,9 @@ export default function WeeklyPlanner() {
                                       </span>
                                     )}
                                   </span>
-                                  <div style={{ color: 'var(--text-tertiary)', fontSize: '8px' }}>
-                                    {cls.teacher}
-                                  </div>
+                                   <div className="weekly-teacher" style={{ color: 'var(--text-tertiary)', fontSize: '8px', lineHeight: '1.35', opacity: 0.8 }}>
+                                     {cls.teacher}
+                                   </div>
                                 </div>
                               );
                             })}

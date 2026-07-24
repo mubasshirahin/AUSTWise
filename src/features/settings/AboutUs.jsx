@@ -219,7 +219,8 @@ export default function AboutUs() {
           </div>
 
           {/* Typed greeting */}
-          <h1 className="about-greeting">
+          {/* Style options: about-greeting | about-greeting--solid | about-greeting--gold */}
+          <h1 className="about-greeting about-greeting--gold">
             {typedText}<span className="about-cursor">|</span>
           </h1>
 

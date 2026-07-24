@@ -161,7 +161,7 @@ export default function ToLetListings() {
             <Home size={18} />
           </div>
           <div>
-            <h2 className="section-title" style={{ fontSize: 'var(--fs-lg)', margin: 0 }}>AUST To-Let Services</h2>
+            <h2 className="section-title" style={{ fontSize: 'var(--fs-lg)', margin: 0 }}>ToLet Mama</h2>
             <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>Student-posted seats, rooms, and flats near campus</p>
           </div>
         </div>

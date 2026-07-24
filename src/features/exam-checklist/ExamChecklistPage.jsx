@@ -4,6 +4,7 @@ import {
   Package, ArrowUpDown
 } from 'lucide-react';
 import './ExamChecklistPage.css';
+import '../../components/PageHero.css';
 
 const DEFAULT_ITEMS = [
   { id: 'admit', label: 'Admit Card / Hall Ticket', icon: '🎫' },
@@ -119,23 +120,17 @@ export default function ExamChecklistPage() {
   return (
     <div className="exam-checklist-page animate-fadeIn">
       {/* ── Hero ── */}
-      <header className="ec-hero">
-        <div className="ec-hero-bg" aria-hidden="true">
-          <div className="ec-hero-grid" />
-          <div className="ec-hero-orb ec-hero-orb-1" />
-          <div className="ec-hero-orb ec-hero-orb-2" />
-          <div className="ec-hero-shimmer" />
-        </div>
-        <div className="ec-hero-content">
-          <div className="ec-hero-title-row">
-            <div className="ec-hero-icon">
-              <ClipboardCheck size={18} strokeWidth={2.5} />
+      <header className="page-hero">
+        <div className="page-hero-content">
+          <div className="page-hero-title-row">
+            <div className="page-hero-icon">
+              <ClipboardCheck size={24} />
             </div>
             <div>
-              <h1 className="ec-hero-title">
-                <span className="ec-hero-name">Exam Equipment Checklist</span>
+              <h1 className="page-hero-title">
+                <span className="page-hero-title-highlight">Exam Checklist</span>
               </h1>
-              <p className="ec-hero-subtitle">
+              <p className="page-hero-subtitle">
                 Never forget a single item on exam day — tick off everything you need.
               </p>
             </div>

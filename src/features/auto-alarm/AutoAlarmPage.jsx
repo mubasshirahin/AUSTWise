@@ -1,26 +1,21 @@
 import { AlarmClock, BellRing, CalendarClock } from 'lucide-react';
 import './AutoAlarmPage.css';
+import '../../components/PageHero.css';
 
 export default function AutoAlarmPage() {
   return (
     <div className="aa-page animate-fadeIn">
-      <header className="aa-hero">
-        <div className="aa-hero-bg" aria-hidden="true">
-          <div className="aa-hero-grid" />
-          <div className="aa-hero-orb aa-hero-orb-1" />
-          <div className="aa-hero-orb aa-hero-orb-2" />
-          <div className="aa-hero-shimmer" />
-        </div>
-        <div className="aa-hero-content">
-          <div className="aa-hero-title-row">
-            <div className="aa-hero-icon">
-              <AlarmClock size={18} strokeWidth={2.5} />
+      <header className="page-hero">
+        <div className="page-hero-content">
+          <div className="page-hero-title-row">
+            <div className="page-hero-icon">
+              <AlarmClock size={24} />
             </div>
             <div>
-              <h1 className="aa-hero-title">
-                <span className="aa-hero-name">Auto Alarm Setter</span>
+              <h1 className="page-hero-title">
+                <span className="page-hero-title-highlight">Auto Alarm</span>
               </h1>
-              <p className="aa-hero-subtitle">
+              <p className="page-hero-subtitle">
                 Automatically set alarms based on your class routine — never miss a lecture again.
               </p>
             </div>

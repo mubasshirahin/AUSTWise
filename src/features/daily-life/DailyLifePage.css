@@ -1,0 +1,53 @@
+/* ═══════════════════════════════════════════════════════════════
+   DAILY LIFE HUB
+   ═══════════════════════════════════════════════════════════════ */
+
+.daily-life-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-bottom: var(--sp-10);
+
+  --page-hero-icon-bg:        var(--accent-amber-glow);
+  --page-hero-icon-color:     var(--accent-amber);
+  --page-hero-gradient-start: var(--accent-amber);
+}
+
+/* ── GliderTabs variant ── */
+.glider-tabs-dailylife .glider-tabs-glider {
+  background: linear-gradient(
+    135deg,
+    var(--bg-card) 0%,
+    color-mix(in srgb, var(--accent-amber) 10%, var(--bg-card)) 100%
+  );
+  box-shadow:
+    var(--shadow-md),
+    0 0 0 1px color-mix(in srgb, var(--accent-amber) 18%, transparent);
+}
+
+.glider-tabs-dailylife .glider-tab.active .glider-tab-icon {
+  background: linear-gradient(135deg, var(--accent-amber), var(--accent-emerald));
+}
+
+/* ── Tab content ── */
+.daily-life-tab-content {
+  animation: dlFadeIn 0.22s ease both;
+}
+
+/* Hide the nested page-hero of sub-pages */
+.daily-life-tab-content .page-hero {
+  display: none;
+}
+
+/* Suppress double fade from sub-page wrappers */
+.daily-life-tab-content .animate-fadeIn {
+  animation: none;
+}
+
+@keyframes dlFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}

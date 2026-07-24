@@ -5,6 +5,9 @@
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
+  --page-hero-icon-bg: var(--accent-amber-glow);
+  --page-hero-icon-color: var(--accent-amber);
+  --page-hero-gradient-start: var(--accent-amber);
 }
 
 /* ─── Hero: Shell ─── */

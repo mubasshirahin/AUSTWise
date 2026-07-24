@@ -3,6 +3,9 @@
    ═══════════════════════════════════════════════════════════════ */
 
 .exam-checklist-page {
+  --page-hero-icon-bg: var(--accent-emerald-glow);
+  --page-hero-icon-color: var(--accent-emerald);
+  --page-hero-gradient-start: var(--accent-emerald);
   max-width: 840px;
   margin: 0 auto;
   padding-bottom: var(--sp-10);

@@ -10,6 +10,7 @@ import { loadVaultSelection, saveVaultSelection } from './vaultSelectionStorage'
 import './VaultPage.css';
 import './VaultBatchSelector.css';
 import './Notebook.css';
+import '../../components/PageHero.css';
 
 function getSelectionStep(department, yearSem, batch) {
   if (!department) return 'dept';
@@ -204,25 +205,17 @@ export default function VaultPage() {
 
   return (
     <div className="vault-page animate-fadeIn">
-      <header className="vault-hero">
-        <div className="vault-hero-bg" aria-hidden="true">
-          <div className="vault-hero-grid" />
-          <div className="vault-hero-orb vault-hero-orb-1" />
-          <div className="vault-hero-orb vault-hero-orb-2" />
-          <div className="vault-hero-orb vault-hero-orb-3" />
-          <div className="vault-hero-shimmer" />
-        </div>
-
-        <div className="vault-hero-content">
-          <div className="vault-hero-title-row">
-            <div className="vault-hero-icon">
-              <Archive size={18} strokeWidth={2.5} />
+      <header className="page-hero">
+        <div className="page-hero-content">
+          <div className="page-hero-title-row">
+            <div className="page-hero-icon">
+              <Archive size={24} />
             </div>
             <div>
-              <h1 className="vault-hero-title">
-                <span className="vault-hero-name">Resource Vault</span>
+              <h1 className="page-hero-title">
+                <span className="page-hero-title-highlight">Vault</span>
               </h1>
-              <p className="vault-hero-subtitle">
+              <p className="page-hero-subtitle">
                 {vaultTab === 'carbon-vault'
                   ? 'Monitor your semester resource emissions'
                   : (isReady

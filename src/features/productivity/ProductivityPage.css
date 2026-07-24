@@ -1,0 +1,56 @@
+/* ═══════════════════════════════════════════════════════════════
+   PRODUCTIVITY HUB
+   ═══════════════════════════════════════════════════════════════ */
+
+.productivity-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-bottom: var(--sp-10);
+
+  /* Page-hero accent */
+  --page-hero-icon-bg:        var(--accent-purple-glow);
+  --page-hero-icon-color:     var(--accent-purple);
+  --page-hero-gradient-start: var(--accent-purple);
+}
+
+/* ── GliderTabs variant override ── */
+.glider-tabs-productivity .glider-tabs-glider {
+  background: linear-gradient(
+    135deg,
+    var(--bg-card) 0%,
+    color-mix(in srgb, var(--accent-purple) 10%, var(--bg-card)) 100%
+  );
+  box-shadow:
+    var(--shadow-md),
+    0 0 0 1px color-mix(in srgb, var(--accent-purple) 18%, transparent);
+}
+
+.glider-tabs-productivity .glider-tab.active .glider-tab-icon {
+  background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+}
+
+/* ── Tab content wrapper ── */
+/* Sub-pages rendered inside tabs should NOT show their own hero headers */
+.productivity-tab-content {
+  animation: ptFadeIn 0.22s ease both;
+}
+
+/* Strip the top page-hero margin/padding that sub-pages add
+   since we already have our own hero */
+.productivity-tab-content .animate-fadeIn {
+  animation: none; /* avoid double fade */
+}
+
+/* Hide the nested page-hero inside sub-pages so only our hub header shows */
+.productivity-tab-content .page-hero {
+  display: none;
+}
+
+@keyframes ptFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}

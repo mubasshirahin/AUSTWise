@@ -1,17 +1,24 @@
 import React, { useState } from 'react';
-import { Map, MapPin, Users, Library, UtensilsCrossed } from 'lucide-react';
+import { Map, MapPin, Users, Library, UtensilsCrossed, Bus, Banknote, DoorOpen } from 'lucide-react';
 import InteractiveMap from './InteractiveMap';
 import FacultyStatus from './FacultyStatus';
 import LibraryPulse from './LibraryPulse';
 import CanteenMenu from './CanteenMenu';
+import BusTracker from './BusTracker';
+import AustBharaPage from '../aust-bhara/AustBharaPage';
+import EmptyClassroomPage from '../empty-classroom/EmptyClassroomPage';
 import GliderTabs from '../../components/GliderTabs';
 import './CampusPage.css';
+import '../../components/PageHero.css';
 
 const campusTabs = [
-  { id: 'map',     label: 'Floor Finder',     icon: MapPin,          color: 'cyan',    desc: '' },
+  { id: 'map',     label: 'Floor Map',        icon: MapPin,          color: 'cyan',    desc: '' },
   { id: 'faculty', label: 'Faculty Status',   icon: Users,           color: 'amber',   desc: 'Office hours' },
   { id: 'library', label: 'Library Pulse',    icon: Library,         color: 'emerald', desc: 'Occupancy' },
   { id: 'canteen', label: 'Canteen Menu',     icon: UtensilsCrossed, color: 'rose',    desc: "Today's menu" },
+  { id: 'bus',     label: 'Bus Tracker',      icon: Bus,             color: 'indigo',  desc: 'Shuttle routes' },
+  { id: 'bhara',     label: 'Bhara Koto',       icon: Banknote,        color: 'amber',   desc: 'Fee tracker' },
+  { id: 'classroom', label: 'Free Rooms',   icon: DoorOpen,         color: 'violet',  desc: 'Find available rooms' },
 ];
 
 const CAMPUS_TAB_KEY = 'aust-campus-active-tab';
@@ -32,30 +39,26 @@ export default function CampusPage() {
       case 'faculty': return <FacultyStatus />;
       case 'library': return <LibraryPulse />;
       case 'canteen': return <CanteenMenu />;
+      case 'bus': return <BusTracker />;
+      case 'bhara': return <AustBharaPage />;
+      case 'classroom': return <EmptyClassroomPage />;
       default: return <InteractiveMap />;
     }
   };
 
   return (
     <div className="campus-page animate-fadeIn">
-      <header className="campus-hero">
-        <div className="campus-hero-bg" aria-hidden="true">
-          <div className="campus-hero-grid" />
-          <div className="campus-hero-orb campus-hero-orb-1" />
-          <div className="campus-hero-orb campus-hero-orb-2" />
-          <div className="campus-hero-orb campus-hero-orb-3" />
-          <div className="campus-hero-shimmer" />
-        </div>
-        <div className="campus-hero-content">
-          <div className="campus-hero-title-row">
-            <div className="campus-hero-icon">
-              <Map size={18} strokeWidth={2.5} />
+      <header className="page-hero">
+        <div className="page-hero-content">
+          <div className="page-hero-title-row">
+            <div className="page-hero-icon">
+              <Map size={24} />
             </div>
             <div>
-              <h1 className="campus-hero-title">
-                <span className="campus-hero-name">Campus Hub</span>
+              <h1 className="page-hero-title">
+                <span className="page-hero-title-highlight">InsideAUST</span>
               </h1>
-              <p className="campus-hero-subtitle">
+              <p className="page-hero-subtitle">
                 Navigate buildings, review faculty office hours, and check live canteen/library occupancy.
               </p>
             </div>

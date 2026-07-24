@@ -1,21 +1,20 @@
 import { useState } from 'react';
-import { ShoppingBag, Home, Search, UserPlus } from 'lucide-react';
+import { ShoppingBag, Home, Search } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import ExchangeKits from './ExchangeKits';
 import ToLetListings from './ToLetListings';
 import LostAndFound from './LostAndFound';
-import MentorRequests from './MentorRequests';
 import GliderTabs from '../../components/GliderTabs';
 import MarketplaceMasthead from './MarketplaceMasthead';
 import './MarketplacePage.css';
+import '../../components/PageHero.css';
 
 const MARKETPLACE_TAB_KEY = 'aust-marketplace-active-tab';
 
 const marketplaceTabs = [
-  { id: 'exchange', label: 'Exchange Kits', icon: ShoppingBag, color: 'amber', desc: 'Trade books & equipment' },
-  { id: 'tolet', label: 'AUST To-Let', icon: Home, color: 'purple', desc: 'Bachelor sharing hosts' },
+  { id: 'exchange', label: 'AW Market', icon: ShoppingBag, color: 'amber', desc: 'Trade books & equipment' },
+  { id: 'tolet', label: 'ToLet Mama', icon: Home, color: 'purple', desc: 'Bachelor sharing hosts' },
   { id: 'lost', label: 'Lost & Found', icon: Search, color: 'emerald', desc: 'Locate lost products' },
-  { id: 'mentorRequests', label: 'Mentor Requests', icon: UserPlus, color: 'blue', desc: 'Connect study buddies' },
 ];
 
 export default function MarketplacePage() {
@@ -35,7 +34,6 @@ export default function MarketplacePage() {
       case 'exchange': return <ExchangeKits />;
       case 'tolet': return <ToLetListings />;
       case 'lost': return <LostAndFound />;
-      case 'mentorRequests': return <MentorRequests />;
       default: return <ExchangeKits />;
     }
   };
@@ -47,23 +45,17 @@ export default function MarketplacePage() {
       ) : (
         <>
           {/* ─── Dashboard-style Hero Header ─── */}
-          <header className="marketplace-hero">
-            <div className="marketplace-hero-bg" aria-hidden="true">
-              <div className="marketplace-hero-grid" />
-              <div className="marketplace-hero-orb marketplace-hero-orb-1" />
-              <div className="marketplace-hero-orb marketplace-hero-orb-2" />
-              <div className="marketplace-hero-shimmer" />
-            </div>
-            <div className="marketplace-hero-content">
-              <div className="marketplace-hero-title-row">
-                <div className="marketplace-hero-icon">
-                  <ShoppingBag size={18} strokeWidth={2.5} />
+          <header className="page-hero">
+            <div className="page-hero-content">
+              <div className="page-hero-title-row">
+                <div className="page-hero-icon">
+                  <ShoppingBag size={24} />
                 </div>
                 <div>
-                  <h1 className="marketplace-hero-title">
-                    Campus <span className="marketplace-hero-name">Market</span>
+                  <h1 className="page-hero-title">
+                    <span className="page-hero-title-highlight">Marketplace</span>
                   </h1>
-                  <p className="marketplace-hero-subtitle">
+                  <p className="page-hero-subtitle">
                     Trade student equipment/books, find bachelor sharing hosts, locate lost products, and connect study buddies.
                   </p>
                 </div>

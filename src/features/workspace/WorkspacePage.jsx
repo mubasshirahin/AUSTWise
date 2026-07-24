@@ -8,6 +8,7 @@ import {
   File, Image, Video, Link, Clipboard, Megaphone,
 } from 'lucide-react';
 import './WorkspacePage.css';
+import '../../components/PageHero.css';
 
 // ─── Google Classroom OAuth Configuration ───
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
@@ -793,22 +794,17 @@ export default function WorkspacePage() {
   return (
     <div className="workspace-page animate-fadeIn">
       {/* Hero Header */}
-      <header className="workspace-hero">
-        <div className="workspace-hero-bg" aria-hidden="true">
-          <div className="workspace-hero-grid" />
-          <div className="workspace-hero-orb workspace-hero-orb-1" />
-          <div className="workspace-hero-orb workspace-hero-orb-2" />
-        </div>
-        <div className="workspace-hero-content">
-          <div className="workspace-hero-title-row">
-            <div className="workspace-hero-icon">
+      <header className="page-hero">
+        <div className="page-hero-content">
+          <div className="page-hero-title-row">
+            <div className="page-hero-icon">
               <ExternalLink size={24} />
             </div>
             <div>
-              <h1 className="workspace-hero-title">
-                <span className="workspace-hero-title-highlight">Workspace</span>
+              <h1 className="page-hero-title">
+                <span className="page-hero-title-highlight">Workspace</span>
               </h1>
-              <p className="workspace-hero-subtitle">
+              <p className="page-hero-subtitle">
                 Connect multiple Google Classroom accounts and choose which courses to track.
               </p>
             </div>

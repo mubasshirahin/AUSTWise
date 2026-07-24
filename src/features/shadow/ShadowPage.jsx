@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Moon, Eye, Star, Shield, Send, User, Timer, MessageSquare, MessageCircle,
-  Loader2, AlertTriangle, Wifi, WifiOff,
+  Loader2, AlertTriangle, Wifi, WifiOff, Zap,
 } from 'lucide-react';
 import CourseReview from '../analytics/CourseReview';
 import StoryFeed from '../community/StoryFeed';
+import BuzzPage from '../austeddit/AustedditPage';
 import GliderTabs from '../../components/GliderTabs';
 import './ShadowPage.css';
+import '../../components/PageHero.css';
 
 const SHADOW_DURATION = 10 * 60; // 10 minutes in seconds
 
@@ -249,24 +251,17 @@ export default function ShadowPage() {
   return (
     <div className="shadow-page animate-fadeIn">
       {/* ── Hero ── */}
-      <header className="shadow-hero">
-        <div className="shadow-hero-bg" aria-hidden="true">
-          <div className="shadow-hero-grid" />
-          <div className="shadow-hero-orb shadow-hero-orb-1" />
-          <div className="shadow-hero-orb shadow-hero-orb-2" />
-          <div className="shadow-hero-orb shadow-hero-orb-3" />
-          <div className="shadow-hero-shimmer" />
-        </div>
-        <div className="shadow-hero-content">
-          <div className="shadow-hero-title-row">
-            <div className="shadow-hero-icon">
-              <Moon size={18} strokeWidth={2.5} />
+      <header className="page-hero">
+        <div className="page-hero-content">
+          <div className="page-hero-title-row">
+            <div className="page-hero-icon">
+              <Moon size={24} />
             </div>
             <div>
-              <h1 className="shadow-hero-title">
-                <span className="shadow-hero-title-highlight">Shadow</span>
+              <h1 className="page-hero-title">
+                <span className="page-hero-title-highlight">Shadow</span>
               </h1>
-              <p className="shadow-hero-subtitle">
+              <p className="page-hero-subtitle">
                 Anonymous confessions, course reviews, and 10-minute anonymous chats — no login required.
               </p>
             </div>
@@ -303,9 +298,10 @@ export default function ShadowPage() {
       {/* ── Glider Tabs ── */}
       <GliderTabs
         tabs={[
-          { id: 'feed', label: 'Confessions Feed', desc: 'Anonymous posts', color: 'amber', icon: MessageCircle },
-          { id: 'reviews', label: 'Course Reviews', desc: 'Anonymous feedback', color: 'purple', icon: Star },
-          { id: 'chat', label: 'Shadow Chat', desc: '10-min anonymous match', color: 'rose', icon: MessageSquare },
+          { id: 'feed',    label: 'Confessions Feed', desc: 'Anonymous posts',        color: 'amber',  icon: MessageCircle },
+          { id: 'reviews', label: 'Course Reviews',   desc: 'Anonymous feedback',     color: 'purple', icon: Star          },
+          { id: 'chat',    label: 'Shadow Chat',      desc: '10-min anonymous match', color: 'rose',   icon: MessageSquare },
+          { id: 'buzz',    label: 'Buzz',             desc: 'AUST forum',             color: 'cyan',   icon: Zap           },
         ]}
         activeTab={activeTab}
         onChange={setActiveTab}
@@ -314,7 +310,9 @@ export default function ShadowPage() {
 
       {/* ── Tab Content ── */}
       <div className="shadow-content-area">
-        {activeTab === 'reviews' ? (
+        {activeTab === 'buzz' ? (
+          <BuzzPage />
+        ) : activeTab === 'reviews' ? (
           <>
             <div className="section-header">
               <h2 className="section-title">

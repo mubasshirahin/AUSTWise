@@ -6,6 +6,7 @@ import {
   Clock, CheckCircle, Plus, Minus, Maximize2
 } from 'lucide-react';
 import './StudyRoomPage.css';
+import '../../components/PageHero.css';
 
 const TIMER_MODES = [
   { id: 'pomodoro', label: 'Focus', duration: 25 * 60, icon: Brain, color: 'var(--accent-rose)' },
@@ -143,23 +144,17 @@ export default function StudyRoomPage() {
   return (
     <div className="study-room-page animate-fadeIn">
       {/* ── Hero ── */}
-      <header className="sr-hero">
-        <div className="sr-hero-bg" aria-hidden="true">
-          <div className="sr-hero-grid" />
-          <div className="sr-hero-orb sr-hero-orb-1" />
-          <div className="sr-hero-orb sr-hero-orb-2" />
-          <div className="sr-hero-shimmer" />
-        </div>
-        <div className="sr-hero-content">
-          <div className="sr-hero-title-row">
-            <div className="sr-hero-icon">
-              <School size={18} strokeWidth={2.5} />
+      <header className="page-hero">
+        <div className="page-hero-content">
+          <div className="page-hero-title-row">
+            <div className="page-hero-icon">
+              <School size={24} />
             </div>
             <div>
-              <h1 className="sr-hero-title">
-                <span className="sr-hero-name">Study Room</span>
+              <h1 className="page-hero-title">
+                <span className="page-hero-title-highlight">Study Room</span>
               </h1>
-              <p className="sr-hero-subtitle">
+              <p className="page-hero-subtitle">
                 Your focused study sanctuary — timer, ambient sounds, and tips to boost productivity.
               </p>
             </div>

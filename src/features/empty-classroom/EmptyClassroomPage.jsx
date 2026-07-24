@@ -1,26 +1,21 @@
 import { DoorOpen, Search, MapPin } from 'lucide-react';
 import './EmptyClassroomPage.css';
+import '../../components/PageHero.css';
 
 export default function EmptyClassroomPage() {
   return (
     <div className="ecf-page animate-fadeIn">
-      <header className="ecf-hero">
-        <div className="ecf-hero-bg" aria-hidden="true">
-          <div className="ecf-hero-grid" />
-          <div className="ecf-hero-orb ecf-hero-orb-1" />
-          <div className="ecf-hero-orb ecf-hero-orb-2" />
-          <div className="ecf-hero-shimmer" />
-        </div>
-        <div className="ecf-hero-content">
-          <div className="ecf-hero-title-row">
-            <div className="ecf-hero-icon">
-              <DoorOpen size={18} strokeWidth={2.5} />
+      <header className="page-hero">
+        <div className="page-hero-content">
+          <div className="page-hero-title-row">
+            <div className="page-hero-icon">
+              <DoorOpen size={24} />
             </div>
             <div>
-              <h1 className="ecf-hero-title">
-                <span className="ecf-hero-name">Empty Classroom Finder</span>
+              <h1 className="page-hero-title">
+                <span className="page-hero-title-highlight">Free Rooms</span>
               </h1>
-              <p className="ecf-hero-subtitle">
+              <p className="page-hero-subtitle">
                 Find available classrooms for self-study, group work, or extra practice.
               </p>
             </div>

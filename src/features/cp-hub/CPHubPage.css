@@ -6,6 +6,9 @@
   max-width: 840px;
   margin: 0 auto;
   padding-bottom: var(--sp-10);
+  --page-hero-icon-bg: var(--accent-cyan-glow);
+  --page-hero-icon-color: var(--accent-cyan);
+  --page-hero-gradient-start: var(--accent-cyan);
 }
 
 /* ─── Hero ─── */

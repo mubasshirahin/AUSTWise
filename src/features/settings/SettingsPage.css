@@ -1,4 +1,7 @@
 .settings-page {
+  --page-hero-icon-bg: var(--accent-purple-glow);
+  --page-hero-icon-color: var(--accent-purple);
+  --page-hero-gradient-start: var(--accent-purple);
   display: flex;
   flex-direction: column;
   gap: var(--sp-5);
@@ -197,6 +200,8 @@
   display: flex;
   align-items: center;
   gap: var(--sp-2);
+  margin-left: auto;
+  align-self: center;
   animation: fadeInUp 0.5s cubic-bezier(0.4,0,0.2,1) 0.28s both;
 }
 

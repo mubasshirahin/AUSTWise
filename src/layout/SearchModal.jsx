@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, BookOpen, GraduationCap, Library, Users, ShoppingBag, Settings, LayoutDashboard, FileText, X, Map, ScrollText } from 'lucide-react';
+import { Search, BookOpen, GraduationCap, Library, Users, ShoppingBag, Settings, LayoutDashboard, FileText, X, Map, ScrollText, Home } from 'lucide-react';
 import './SearchModal.css';
 
 const searchItems = [
@@ -8,10 +8,10 @@ const searchItems = [
   { label: 'Routine Templates', path: '/templates', icon: FileText, keywords: 'templates routine schedule' },
   { label: 'Grade Lab', path: '/analytics', icon: GraduationCap, keywords: 'analytics grades cgpa' },
   { label: 'Resource Vault', path: '/vault', icon: Library, keywords: 'vault resources notes questions' },
-  { label: 'Campus', path: '/campus', icon: BookOpen, keywords: 'campus map canteen library seat' },
+  { label: 'InsideAUST', path: '/campus', icon: BookOpen, keywords: 'campus map canteen library seat insideaust' },
   { label: 'Community', path: '/community', icon: Users, keywords: 'community alumni clubs stories' },
   { label: 'Marketplace', path: '/marketplace', icon: ShoppingBag, keywords: 'marketplace buy sell exchange mentor' },
-  { label: 'Career Roadmaps', path: '/career-roadmaps', icon: Map, keywords: 'career roadmaps skills paths' },
+  { label: 'Daily Life', path: '/daily-life', icon: Home, keywords: 'daily life meals transport schedule mess meal' },
   { label: 'Cheatsheets', path: '/cheatsheets', icon: ScrollText, keywords: 'cheatsheets formulas quick reference' },
   { label: 'Settings', path: '/settings', icon: Settings, keywords: 'settings profile theme notifications' },
 ];

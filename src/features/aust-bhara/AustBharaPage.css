@@ -1,4 +1,4 @@
-.aust-bhara-page { max-width: 1100px; margin: 0 auto; padding: var(--sp-4); }
+.aust-bhara-page { max-width: 1100px; margin: 0 auto; padding: var(--sp-4); --page-hero-icon-bg: var(--accent-emerald-glow); --page-hero-icon-color: var(--accent-emerald); --page-hero-gradient-start: var(--accent-emerald); }
 .ab-hero { position: relative; border-radius: var(--radius-xl); border: 1px solid var(--border-primary); background: var(--bg-card); overflow: hidden; box-shadow: 0 1px 0 0 rgba(255,255,255,0.04) inset, var(--shadow-md); animation: gradeHeroIn 0.55s cubic-bezier(0.4, 0, 0.2, 1) both; transition: border-color 0.3s ease, box-shadow 0.3s ease; }
 .ab-hero:hover { border-color: color-mix(in srgb, var(--accent-emerald) 30%, var(--border-primary)); box-shadow: 0 1px 0 0 rgba(255,255,255,0.06) inset, 0 0 0 1px color-mix(in srgb, var(--accent-emerald) 10%, transparent), 0 8px 40px -8px color-mix(in srgb, var(--accent-emerald) 12%, transparent), var(--shadow-lg); }
 .ab-hero-bg { position: absolute; inset: 0; pointer-events: none; }

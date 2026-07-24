@@ -1,26 +1,21 @@
 import { Award, BadgeCheck, Download } from 'lucide-react';
 import './CertificatePage.css';
+import '../../components/PageHero.css';
 
 export default function CertificatePage() {
   return (
     <div className="cert-page animate-fadeIn">
-      <header className="cert-hero">
-        <div className="cert-hero-bg" aria-hidden="true">
-          <div className="cert-hero-grid" />
-          <div className="cert-hero-orb cert-hero-orb-1" />
-          <div className="cert-hero-orb cert-hero-orb-2" />
-          <div className="cert-hero-shimmer" />
-        </div>
-        <div className="cert-hero-content">
-          <div className="cert-hero-title-row">
-            <div className="cert-hero-icon">
-              <Award size={18} strokeWidth={2.5} />
+      <header className="page-hero">
+        <div className="page-hero-content">
+          <div className="page-hero-title-row">
+            <div className="page-hero-icon">
+              <Award size={24} />
             </div>
             <div>
-              <h1 className="cert-hero-title">
-                <span className="cert-hero-name">Certificate</span>
+              <h1 className="page-hero-title">
+                <span className="page-hero-title-highlight">Certificate</span>
               </h1>
-              <p className="cert-hero-subtitle">
+              <p className="page-hero-subtitle">
                 Generate, manage, and download your academic and extracurricular certificates.
               </p>
             </div>

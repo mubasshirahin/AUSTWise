@@ -149,7 +149,7 @@ export default function ProPage() {
             <Sparkles size={12} />
             <span>Unlock Premium Features</span>
           </div>            <h1>
-            Go <span>AUSTWise Pro</span>
+            Go <span>See Plans</span>
           </h1>
           <p>
             Three tiers, one goal — your academic edge. Node gets you started, Helix unlocks the

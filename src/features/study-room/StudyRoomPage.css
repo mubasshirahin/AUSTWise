@@ -3,6 +3,9 @@
    ═══════════════════════════════════════════════════════════════ */
 
 .study-room-page {
+  --page-hero-icon-bg: var(--accent-purple-glow);
+  --page-hero-icon-color: var(--accent-purple);
+  --page-hero-gradient-start: var(--accent-purple);
   max-width: 1024px;
   margin: 0 auto;
   padding-bottom: var(--sp-10);

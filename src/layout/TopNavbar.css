@@ -1044,12 +1044,12 @@
 }
 
 .nav-pom-mode {
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   border: none;
   background: transparent;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1079,12 +1079,12 @@
 }
 
 .nav-pom-ctrl {
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   border: none;
   background: transparent;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1095,14 +1095,6 @@
 .nav-pom-ctrl:hover {
   color: var(--text-primary);
   background: var(--bg-tertiary);
-}
-
-.nav-pom-reset {
-  opacity: 0.5;
-}
-
-.nav-pom-reset:hover {
-  opacity: 1;
 }
 
 @media (max-width: 768px) {

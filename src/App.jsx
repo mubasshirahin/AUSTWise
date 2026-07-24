@@ -28,7 +28,6 @@ const RoutineTemplatesPage = lazy(() => import('./features/dashboard/RoutineTemp
 const TranscriptTemplatesPage = lazy(() => import('./features/dashboard/TranscriptTemplatesPage'));
 const AnalyticsPage = lazy(() => import('./features/analytics/AnalyticsPage'));
 const VaultPage = lazy(() => import('./features/vault/VaultPage'));
-const CareerRoadmapsPage = lazy(() => import('./features/vault/CareerRoadmapsPage'));
 const CheatsheetsPage = lazy(() => import('./features/vault/CheatsheetsPage'));
 const CampusPage = lazy(() => import('./features/campus/CampusPage'));
 const CommunityPage = lazy(() => import('./features/community/CommunityPage'));
@@ -43,16 +42,17 @@ const ZenStudyRoom = lazy(() => import('./features/study-room/ZenStudyRoom'));
 const ExamChecklistPage = lazy(() => import('./features/exam-checklist/ExamChecklistPage'));
 const CPHubPage = lazy(() => import('./features/cp-hub/CPHubPage'));
 const MoneyTrackerPage = lazy(() => import('./features/money-tracker/MoneyTrackerPage'));
-const MessMealTrackerPage = lazy(() => import('./features/mess-meal/MessMealTrackerPage'));
-const AustBharaPage = lazy(() => import('./features/aust-bhara/AustBharaPage'));
+
 const CoverPageGeneratorPage = lazy(() => import('./features/cover-page-generator/CoverPageGeneratorPage'));
-const EmptyClassroomPage = lazy(() => import('./features/empty-classroom/EmptyClassroomPage'));
+const ChillZonePage = lazy(() => import('./features/chill-zone/ChillZonePage'));
 const RoastCVPage = lazy(() => import('./features/roast-cv/RoastCVPage'));
 const CertificatePage = lazy(() => import('./features/certificate/CertificatePage'));
 const AutoAlarmPage = lazy(() => import('./features/auto-alarm/AutoAlarmPage'));
 const AustedditPage = lazy(() => import('./features/austeddit/AustedditPage'));
 const ShadowPage = lazy(() => import('./features/shadow/ShadowPage'));
 const ProPage = lazy(() => import('./features/pro/ProPage'));
+const ProductivityPage = lazy(() => import('./features/productivity/ProductivityPage'));
+const DailyLifePage = lazy(() => import('./features/daily-life/DailyLifePage'));
 
 import './App.css';
 
@@ -100,7 +100,6 @@ function AppContent() {
                 <Route path="/admin/transcript-templates" element={<TranscriptTemplatesPage />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
                 <Route path="/vault" element={<VaultPage />} />
-                <Route path="/career-roadmaps" element={<CareerRoadmapsPage />} />
                 <Route path="/cheatsheets" element={<CheatsheetsPage />} />
                 <Route path="/campus" element={<CampusPage />} />
                 <Route path="/community" element={<CommunityPage />} />
@@ -120,16 +119,19 @@ function AppContent() {
                 <Route path="/exam-checklist" element={<ExamChecklistPage />} />
                 <Route path="/cp-hub" element={<CPHubPage />} />
                 <Route path="/money-tracker" element={<MoneyTrackerPage />} />
-                <Route path="/mess-meal" element={<MessMealTrackerPage />} />
-                <Route path="/aust-bhara" element={<AustBharaPage />} />
+
+                <Route path="/aust-bhara" element={<Navigate to="/campus" replace />} />
                 <Route path="/cover-page-generator" element={<CoverPageGeneratorPage />} />
-                <Route path="/empty-classroom" element={<EmptyClassroomPage />} />
+                <Route path="/empty-classroom" element={<Navigate to="/campus" replace />} />
+                <Route path="/chill-zone" element={<ChillZonePage />} />
                 <Route path="/roast-cv" element={<RoastCVPage />} />
                 <Route path="/certificate" element={<CertificatePage />} />
                 <Route path="/auto-alarm" element={<AutoAlarmPage />} />
                 <Route path="/austeddit" element={<AustedditPage />} />
                 <Route path="/shadow" element={<ShadowPage />} />
+                <Route path="/daily-life" element={<DailyLifePage />} />
                 <Route path="/pro" element={<ProPage />} />
+                <Route path="/productivity" element={<ProductivityPage />} />
                 <Route path="/login" element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>
@@ -151,30 +153,29 @@ function AppShell() {
     '/templates': 'Routine Templates',
     '/analytics': 'Grade Lab',
     '/vault': 'Vault',
-    '/career-roadmaps': 'Career Roadmaps',
     '/cheatsheets': 'Cheat Sheets',
-    '/campus': 'Campus',
+    '/campus': 'InsideAUST',
     '/community': 'Community',
     '/marketplace': 'Marketplace',
     '/settings': 'Settings',
-    '/messages': 'Messages',
+    '/messages': 'ConnectBox',
     '/admin': 'Admin Panel',
     '/terminal': 'Terminal',
     '/shadow': 'Shadow',
     '/workspace': 'Workspace',
     '/zen': 'Zen Study Room',
-    '/study-room': 'Study Room',
+    '/study-room': 'Study Time',
     '/exam-checklist': 'Exam Checklist',
-    '/cp-hub': 'CP Hub',
-    '/money-tracker': 'Money Tracker',
-    '/mess-meal': 'Mess Meal Tracker',
-    '/aust-bhara': 'Aust Bhara',
+    '/cp-hub': 'Code Pulse',
+    '/money-tracker': 'TiyaHodeJargoi',
+
     '/cover-page-generator': 'Cover Page Generator',
-    '/empty-classroom': 'Empty Classroom',
+    '/chill-zone': 'DownTime',
     '/roast-cv': 'Roast CV',
     '/certificate': 'Certificate',
-    '/auto-alarm': 'Auto Alarm',
+    '/auto-alarm': 'WakeMeUp',
     '/austeddit': 'Austeddit',
+    '/daily-life': 'Daily Life',
   };
   const pageName = Object.entries(pageTitles).find(([path]) => location.pathname.startsWith(path))?.[1] || 'Dashboard';
   useEffect(() => { document.title = `AUSTWise — ${pageName}`; }, [location.pathname]);

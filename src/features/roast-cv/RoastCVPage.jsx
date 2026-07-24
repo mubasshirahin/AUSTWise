@@ -1,26 +1,21 @@
 import { Flame, FileBadge, Sparkles } from 'lucide-react';
 import './RoastCVPage.css';
+import '../../components/PageHero.css';
 
 export default function RoastCVPage() {
   return (
     <div className="roastcv-page animate-fadeIn">
-      <header className="roastcv-hero">
-        <div className="roastcv-hero-bg" aria-hidden="true">
-          <div className="roastcv-hero-grid" />
-          <div className="roastcv-hero-orb roastcv-hero-orb-1" />
-          <div className="roastcv-hero-orb roastcv-hero-orb-2" />
-          <div className="roastcv-hero-shimmer" />
-        </div>
-        <div className="roastcv-hero-content">
-          <div className="roastcv-hero-title-row">
-            <div className="roastcv-hero-icon">
-              <Flame size={18} strokeWidth={2.5} />
+      <header className="page-hero">
+        <div className="page-hero-content">
+          <div className="page-hero-title-row">
+            <div className="page-hero-icon">
+              <Flame size={24} />
             </div>
             <div>
-              <h1 className="roastcv-hero-title">
-                <span className="roastcv-hero-name">Roast CV</span>
+              <h1 className="page-hero-title">
+                <span className="page-hero-title-highlight">Roast CV</span>
               </h1>
-              <p className="roastcv-hero-subtitle">
+              <p className="page-hero-subtitle">
                 Upload your CV and get brutally honest, AI-powered feedback to land your dream job.
               </p>
             </div>

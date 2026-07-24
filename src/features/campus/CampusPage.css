@@ -5,6 +5,9 @@
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
+  --page-hero-icon-bg: var(--accent-cyan-glow);
+  --page-hero-icon-color: var(--accent-cyan);
+  --page-hero-gradient-start: var(--accent-cyan);
 }
 
 /* ─── Hero Header (VaultPage-style) ─── */
@@ -150,7 +153,7 @@
   animation: fadeInUp 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
-/* ─── Floor Finder Root ─── */
+/* ─── Floor Map Root ─── */
 .interactive-map-root {
   display: flex;
   flex-direction: column;

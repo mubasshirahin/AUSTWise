@@ -9,6 +9,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-5);
+  --page-hero-icon-bg: var(--accent-blue-glow);
+  --page-hero-icon-color: var(--accent-blue);
+  --page-hero-gradient-start: var(--accent-blue);
 }
 
 /* ─── Hero Header (matches Dashboard / Messages premium pattern) ─── */

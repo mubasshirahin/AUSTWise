@@ -1,26 +1,21 @@
 import { NotebookPen, FileText, Printer } from 'lucide-react';
 import './CoverPageGeneratorPage.css';
+import '../../components/PageHero.css';
 
 export default function CoverPageGeneratorPage() {
   return (
     <div className="cpgen-page animate-fadeIn">
-      <header className="cpgen-hero">
-        <div className="cpgen-hero-bg" aria-hidden="true">
-          <div className="cpgen-hero-grid" />
-          <div className="cpgen-hero-orb cpgen-hero-orb-1" />
-          <div className="cpgen-hero-orb cpgen-hero-orb-2" />
-          <div className="cpgen-hero-shimmer" />
-        </div>
-        <div className="cpgen-hero-content">
-          <div className="cpgen-hero-title-row">
-            <div className="cpgen-hero-icon">
-              <NotebookPen size={18} strokeWidth={2.5} />
+      <header className="page-hero">
+        <div className="page-hero-content">
+          <div className="page-hero-title-row">
+            <div className="page-hero-icon">
+              <NotebookPen size={24} />
             </div>
             <div>
-              <h1 className="cpgen-hero-title">
-                <span className="cpgen-hero-name">Cover Page Generator</span>
+              <h1 className="page-hero-title">
+                <span className="page-hero-title-highlight">Cover Page Generator</span>
               </h1>
-              <p className="cpgen-hero-subtitle">
+              <p className="page-hero-subtitle">
                 Generate professional assignment and lab report cover pages in seconds.
               </p>
             </div>

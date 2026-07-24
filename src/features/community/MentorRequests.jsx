@@ -11,7 +11,7 @@ import {
   getBatchNoFromUser,
 } from '../../utils/marketplaceStorage';
 import { sendMessage } from '../../utils/messageStorage';
-import ConfirmDialog from './ConfirmDialog';
+import ConfirmDialog from '../marketplace/ConfirmDialog';
 
 const defaultForm = {
   topic: '',
@@ -154,7 +154,7 @@ export default function MentorRequests() {
       ) : (
         <div className="mentor-request-grid">
           {requests.map((req) => (
-            <div key={req.id} className="mp-card">
+            <div key={req.id} className="glass-card-static" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div className="flex justify-between items-start flex-wrap gap-3">
                   <div className="flex gap-3 items-start">
                     <div className="avatar sm" style={{ width: '36px', height: '36px' }}>

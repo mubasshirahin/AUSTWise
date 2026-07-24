@@ -1,6 +1,7 @@
 import { Code2, ExternalLink, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import './CPHubPage.css';
+import '../../components/PageHero.css';
 
 const PLATFORMS = [
   { name: 'Codeforces', url: 'https://codeforces.com', color: '#1f8acb', desc: 'Contests & problem solving' },
@@ -19,23 +20,17 @@ export default function CPHubPage() {
   return (
     <div className="cp-hub-page animate-fadeIn">
       {/* ── Hero ── */}
-      <header className="cp-hero">
-        <div className="cp-hero-bg" aria-hidden="true">
-          <div className="cp-hero-grid" />
-          <div className="cp-hero-orb cp-hero-orb-1" />
-          <div className="cp-hero-orb cp-hero-orb-2" />
-          <div className="cp-hero-shimmer" />
-        </div>
-        <div className="cp-hero-content">
-          <div className="cp-hero-title-row">
-            <div className="cp-hero-icon">
-              <Code2 size={18} strokeWidth={2.5} />
+      <header className="page-hero">
+        <div className="page-hero-content">
+          <div className="page-hero-title-row">
+            <div className="page-hero-icon">
+              <Code2 size={24} />
             </div>
             <div>
-              <h1 className="cp-hero-title">
-                <span className="cp-hero-name">CP Hub</span>
+              <h1 className="page-hero-title">
+                <span className="page-hero-title-highlight">Code Pulse</span>
               </h1>
-              <p className="cp-hero-subtitle">
+              <p className="page-hero-subtitle">
                 Your competitive programming launchpad — jump into contests, track progress, and level up.
               </p>
             </div>

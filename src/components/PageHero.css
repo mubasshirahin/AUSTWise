@@ -1,0 +1,64 @@
+/* ─── Shared Page Hero (Community-style) ─── */
+.page-hero {
+  position: relative;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-primary);
+  background: var(--bg-card);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  animation: pageHeroIn 0.55s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes pageHeroIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.page-hero-content {
+  position: relative;
+  padding: var(--sp-6) var(--sp-6) var(--sp-5);
+  z-index: 1;
+}
+
+.page-hero-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-4);
+}
+
+.page-hero-icon {
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--page-hero-icon-bg, var(--accent-amber-glow));
+  color: var(--page-hero-icon-color, var(--accent-amber));
+}
+
+.page-hero-title {
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  margin: 0 0 6px;
+  animation: fadeInUp 0.5s ease 0.15s both;
+}
+
+.page-hero-title-highlight {
+  background: linear-gradient(135deg, var(--page-hero-gradient-start, var(--accent-amber)), #f59e0b, var(--accent-purple));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.page-hero-subtitle {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  margin: 0;
+  max-width: 520px;
+  line-height: 1.5;
+  animation: fadeInUp 0.5s ease 0.2s both;
+}

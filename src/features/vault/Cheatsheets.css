@@ -4,6 +4,9 @@
 
 /* ── Page wrapper ── */
 .csh-page {
+  --page-hero-icon-bg: var(--accent-amber-glow);
+  --page-hero-icon-color: var(--accent-amber);
+  --page-hero-gradient-start: var(--accent-amber);
   display: flex;
   flex-direction: column;
   gap: var(--sp-8);

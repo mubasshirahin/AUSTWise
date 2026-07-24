@@ -36,11 +36,13 @@
 .study-streak-widget {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
+  gap: 10px;
+  padding: 12px 20px;
   background: var(--bg-input);
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base), transform var(--transition-base);
 }
 
 .streak-flame {
@@ -53,16 +55,34 @@
 .study-streak-widget.streak-updated {
   animation: streakPop 0.5s ease;
 }
-.study-streak-widget {
-  cursor: pointer;
-  transition: border-color var(--transition-base), box-shadow var(--transition-base);
-}
+
 .study-streak-widget:hover {
   border-color: var(--accent-amber);
-  box-shadow: 0 0 12px rgba(247, 147, 26, 0.15);
+  box-shadow: 0 0 16px rgba(247, 147, 26, 0.2);
+  transform: translateY(-1px);
 }
 
-/* ─── Leaderboard Modal ─── */
+.streak-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.streak-count {
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-amber);
+}
+
+.streak-label {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.01em;
+}
 .leaderboard-overlay {
   z-index: 100000 !important;
 }
@@ -313,10 +333,10 @@
   --hero-orb-color-2: rgba(245, 158, 11, 0.10);
 }
 .dash-hero[data-period="night"] {
-  --hero-accent-a: var(--accent-indigo, #818cf8);
-  --hero-accent-b: var(--accent-purple, #a78bfa);
-  --hero-orb-color: rgba(129, 140, 248, 0.14);
-  --hero-orb-color-2: rgba(167, 139, 250, 0.08);
+  --hero-accent-a: var(--accent-orange, #f97316);
+  --hero-accent-b: var(--accent-amber, #fbbf24);
+  --hero-orb-color: rgba(249, 115, 22, 0.14);
+  --hero-orb-color-2: rgba(251, 191, 36, 0.10);
 }
 
 /* ─── Hero: Background layer ─── */
@@ -429,10 +449,16 @@
   color: var(--hero-accent-a, var(--accent-blue));
   flex-shrink: 0;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  margin-top: 1px;
+}
+
+.dash-hero-period-icon svg {
+  display: block;
 }
 
 .dash-hero:hover .dash-hero-period-icon {
   transform: rotate(-6deg) scale(1.08);
+  margin-top: 0;
 }
 
 .dash-hero-date-label {
@@ -538,7 +564,8 @@
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  flex-shrink: 0;
+  flex: 1;
+  justify-content: flex-end;
 }
 .mb-8 {
   margin-bottom: var(--sp-8, 32px);
@@ -1113,7 +1140,19 @@
 .ramadan-toggle {
   display: inline-flex;
   align-items: center;
+  gap: 8px;
   cursor: pointer;
+  user-select: none;
+}
+.ramadan-toggle-label {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+  transition: color var(--transition-base);
+}
+.ramadan-toggle:hover .ramadan-toggle-label {
+  color: var(--text-primary);
 }
 .ramadan-toggle-track {
   width: 44px;
@@ -1128,12 +1167,13 @@
   transition: all var(--transition-base);
 }
 .ramadan-toggle-track.active {
-  background: var(--accent-blue-glow);
-  border-color: var(--accent-blue);
+  background: linear-gradient(135deg, rgba(6, 78, 59, 0.25), rgba(6, 78, 59, 0.15));
+  border-color: rgba(6, 78, 59, 0.6);
 }
-.ramadan-toggle-moon {
-  font-size: 14px;
+.ramadan-toggle-icon {
+  font-size: 13px;
   line-height: 1;
+  filter: drop-shadow(0 0 4px rgba(6, 78, 59, 0.5));
 }
 .ramadan-toggle-thumb {
   width: 16px;
@@ -1144,7 +1184,7 @@
 }
 .ramadan-toggle-track.active .ramadan-toggle-thumb {
   transform: translateX(10px);
-  background: var(--accent-blue);
+  background: rgba(6, 78, 59, 0.8);
 }
 
 /* ─── Attendance Widget ─── */
@@ -1344,13 +1384,13 @@
 
 .weekly-course-code {
   font-size: clamp(8px, 0.75vw, 11px);
-  line-height: 1.2;
+  line-height: 1.35;
   font-weight: var(--fw-bold);
 }
 
 .weekly-course-name {
   font-size: clamp(6px, 0.62vw, 9px);
-  line-height: 1.2;
+  line-height: 1.35;
   margin: 2px 0;
   white-space: normal;
   overflow-wrap: anywhere;
@@ -1359,9 +1399,17 @@
 
 .weekly-room {
   font-size: clamp(5px, 0.55vw, 8px);
-  line-height: 1.2;
+  line-height: 1.35;
   overflow-wrap: anywhere;
   color: var(--text-tertiary);
+}
+
+.weekly-teacher {
+  font-size: clamp(5px, 0.55vw, 8px);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  color: var(--text-tertiary);
+  opacity: 0.8;
 }
 
 /* ─── Routine Edit Modal ─── */
@@ -2518,22 +2566,14 @@
 .quick-stat-card.quick-stat-purple { --stat-accent: var(--accent-purple); }
 .quick-stat-card.quick-stat-rose { --stat-accent: var(--accent-rose); }
 
-/* ─── 2. Hero Section: Animated Gradient Text ─── */
+/* ─── 2. Hero Section: Solid Gold Name ─── */
 .dash-hero-title .dash-hero-name {
-  position: relative;
-  background: linear-gradient(
-    135deg,
-    var(--accent-blue) 0%,
-    var(--accent-amber) 25%,
-    var(--accent-purple) 50%,
-    var(--accent-cyan) 75%,
-    var(--accent-blue) 100%
-  );
-  background-size: 300% 300%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: gradientTextShift 6s ease infinite;
+  color: var(--accent-amber, #fbbf24);
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+  -webkit-text-fill-color: var(--accent-amber, #fbbf24);
+  animation: none;
 }
 
 @keyframes gradientTextShift {
@@ -3081,13 +3121,19 @@
 /* ── Study streak widget refinement ── */
 .study-streak-widget {
   border-radius: var(--radius-lg);
-  padding: 8px 14px;
-  gap: 8px;
+  padding: 12px 20px;
+  gap: 10px;
 }
 .streak-count {
-  font-size: var(--fs-base);
+  font-size: var(--fs-xl);
   font-weight: var(--fw-bold);
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
+  color: var(--accent-amber);
+}
+.streak-label {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  font-weight: var(--fw-medium);
 }
 

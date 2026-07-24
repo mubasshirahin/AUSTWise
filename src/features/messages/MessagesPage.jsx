@@ -25,6 +25,7 @@ import useWebSocket from '../../hooks/useWebSocket';
 import useMessageNotifications from '../../hooks/useMessageNotifications';
 import { getAccountById } from '../../utils/authStorage';
 import './MessagesPage.css';
+import '../../components/PageHero.css';
 
 /* ─── Emoji Reactions ─── */
 const REACTION_EMOJIS = getDefaultReactions();
@@ -997,23 +998,17 @@ export default function MessagesPage() {
   if (!currentUserId) {
     return (
       <div className="messages-page-wrapper animate-fadeIn">
-        <header className="messages-hero">
-          <div className="messages-hero-bg" aria-hidden="true">
-            <div className="messages-hero-grid" />
-            <div className="messages-hero-orb messages-hero-orb-1" />
-            <div className="messages-hero-orb messages-hero-orb-2" />
-            <div className="messages-hero-shimmer" />
-          </div>
-          <div className="messages-hero-content">
-            <div className="messages-hero-title-row">
-              <div className="messages-hero-icon">
-                <Mail size={18} strokeWidth={2.5} />
+        <header className="page-hero">
+          <div className="page-hero-content">
+            <div className="page-hero-title-row">
+              <div className="page-hero-icon">
+                <Mail size={24} />
               </div>
               <div>
-                <h1 className="messages-hero-title">
-                  <span className="messages-hero-name">Messages</span>
+                <h1 className="page-hero-title">
+                  <span className="page-hero-title-highlight">Messages</span>
                 </h1>
-                <p className="messages-hero-subtitle">
+                <p className="page-hero-subtitle">
                   Chat with alumni, classmates, and mentors — stay connected with the AUST community.
                 </p>
               </div>
@@ -1037,23 +1032,17 @@ export default function MessagesPage() {
 
   return (
     <div className="messages-page-wrapper animate-fadeIn">
-      <header className="messages-hero">
-        <div className="messages-hero-bg" aria-hidden="true">
-          <div className="messages-hero-grid" />
-          <div className="messages-hero-orb messages-hero-orb-1" />
-          <div className="messages-hero-orb messages-hero-orb-2" />
-          <div className="messages-hero-shimmer" />
-        </div>
-        <div className="messages-hero-content">
-          <div className="messages-hero-title-row">
-            <div className="messages-hero-icon">
-              <Mail size={18} strokeWidth={2.5} />
+      <header className="page-hero">
+        <div className="page-hero-content">
+          <div className="page-hero-title-row">
+            <div className="page-hero-icon">
+              <Mail size={24} />
             </div>
             <div>
-              <h1 className="messages-hero-title">
-                <span className="messages-hero-name">Messages</span>
+              <h1 className="page-hero-title">
+                <span className="page-hero-title-highlight">Messages</span>
               </h1>
-              <p className="messages-hero-subtitle">
+              <p className="page-hero-subtitle">
                 Chat with alumni, classmates, and mentors — stay connected with the AUST community.
               </p>
             </div>
