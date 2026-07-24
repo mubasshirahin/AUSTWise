@@ -13,63 +13,17 @@
    keep the design system organized.
    ════════════════════════════════════════════════════════════════════════════ */
 
-/* ─── Ambient grid background + glow orbs ─── */
+/* ─── Ambient grid background ─── */
 [data-theme="dark"] body {
   background-color: var(--bg-primary);
   background-image:
     /* Precise grid pattern — subtle, low-opacity */
     linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    /* Warm ambient glow — top-center amber */
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(245, 158, 11, 0.06), transparent 60%),
-    /* Cool ambient glow — bottom-right light blue */
-    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(34, 211, 238, 0.04), transparent 50%);
-  background-size:
-    48px 48px,
-    48px 48px,
-    100% 100%,
-    100% 100%;
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 48px 48px, 48px 48px;
   background-attachment: fixed;
-  background-repeat: repeat, repeat, no-repeat, no-repeat;
+  background-repeat: repeat, repeat;
 }
-
-/* ─── Ambient orbs — fixed, behind content, soft blur ─── */
-[data-theme="dark"] body::before,
-[data-theme="dark"] body::after {
-  content: '';
-  position: fixed;
-  border-radius: 9999px;
-  pointer-events: none;
-  z-index: 0;
-  filter: blur(120px);
-}
-
-[data-theme="dark"] body::before {
-  top: -200px;
-  right: -100px;
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(245, 158, 11, 0.10), transparent 70%);
-  animation: darkOrbFloat 12s ease-in-out infinite alternate;
-}
-
-[data-theme="dark"] body::after {
-  bottom: -200px;
-  left: -100px;
-  width: 480px;
-  height: 480px;
-  background: radial-gradient(circle, rgba(34, 211, 238, 0.07), transparent 70%);
-  animation: darkOrbFloat 16s ease-in-out infinite alternate-reverse;
-}
-
-@keyframes darkOrbFloat {
-  0% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(20px, -15px) scale(1.08); }
-  100% { transform: translate(-10px, 10px) scale(0.95); }
-}
-
-/* Keep app chrome above the ambience */
-[data-theme="dark"] #root { position: relative; z-index: 1; }
 
 /* ─── Glass Card — glowing edge on hover ─── */
 [data-theme="dark"] .glass-card {
@@ -376,11 +330,6 @@
 @media (prefers-reduced-motion: reduce) {
   [data-theme="dark"] .glass-card:hover {
     transform: none;
-  }
-
-  [data-theme="dark"] body::before,
-  [data-theme="dark"] body::after {
-    animation: none;
   }
 
   [data-theme="dark"] .btn-primary:hover {

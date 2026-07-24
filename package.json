@@ -22,6 +22,8 @@
     "markmap-view": "^0.18.12",
     "mermaid": "^11.16.0",
     "mssql": "^12.7.0",
+    "pdf-parse": "^2.4.5",
+    "pdfjs": "^2.5.4",
     "pdfjs-dist": "^6.1.200",
     "react": "^19.2.7",
     "react-chartjs-2": "^5.3.1",

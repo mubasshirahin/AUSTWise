@@ -1,0 +1,48 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   FloatingBackground — Ambient animated background for authenticated pages
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ─── Container — fixed, fills viewport behind everything ─── */
+.floating-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* ─── Grid overlay ─── */
+.floating-bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+  background-size: 80px 80px;
+  mask-image: radial-gradient(ellipse 50% 40% at 50% 30%, black 30%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse 50% 40% at 50% 30%, black 30%, transparent 70%);
+}
+
+
+
+/* ─── Particle canvas ─── */
+.floating-bg-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* ─── Respect reduced motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  .floating-bg-canvas {
+    display: none;
+  }
+}
+
+/* ─── Hide on very small screens for performance ─── */
+@media (max-width: 480px) {
+  .floating-bg-canvas {
+    display: none;
+  }
+}

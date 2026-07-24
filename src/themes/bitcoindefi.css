@@ -200,7 +200,7 @@
   -webkit-mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
 }
 
-/* ─── Base / Body — True Void with grid texture + ambient orbs ─── */
+/* ─── Base / Body — True Void with grid texture ─── */
 [data-theme="bitcoindefi"] body {
   font-family: var(--font-body);
   background-color: var(--btc-void);
@@ -209,37 +209,6 @@
     linear-gradient(to bottom, var(--btc-grid-color) 1px, transparent 1px);
   background-size: 50px 50px;
   background-attachment: fixed;
-}
-
-/* Ambient orange glow orbs — massive blurred light behind the UI */
-[data-theme="bitcoindefi"] body::before,
-[data-theme="bitcoindefi"] body::after {
-  content: '';
-  position: fixed;
-  border-radius: 9999px;
-  pointer-events: none;
-  z-index: 0;
-  filter: blur(120px);
-}
-[data-theme="bitcoindefi"] body::before {
-  top: -200px;
-  left: 50%;
-  width: 500px;
-  height: 500px;
-  transform: translateX(-50%);
-  background: radial-gradient(circle, rgba(247, 147, 26, 0.12), transparent 70%);
-}
-[data-theme="bitcoindefi"] body::after {
-  bottom: -240px;
-  right: -140px;
-  width: 560px;
-  height: 560px;
-  background: radial-gradient(circle, rgba(234, 88, 12, 0.08), transparent 70%);
-}
-
-[data-theme="bitcoindefi"] #root {
-  position: relative;
-  z-index: 1;
 }
 
 /* ─── Typography ─── */

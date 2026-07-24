@@ -1927,11 +1927,9 @@ select.input {
   letter-spacing: 0.01em;
   background-color: var(--bg-primary);
   background-image:
-    radial-gradient(circle at 15% 0%, rgba(0, 255, 136, 0.05), transparent 42%),
-    radial-gradient(circle at 85% 100%, rgba(255, 0, 255, 0.045), transparent 45%),
     linear-gradient(rgba(0, 255, 136, 0.022) 1px, transparent 1px),
     linear-gradient(90deg, rgba(0, 255, 136, 0.022) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 50px 50px, 50px 50px;
+  background-size: 50px 50px, 50px 50px;
   background-attachment: fixed;
 }
 

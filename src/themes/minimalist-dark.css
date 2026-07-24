@@ -116,44 +116,13 @@
    Pure CSS on the shared component classes: no component/DOM changes required.
    ════════════════════════════════════════════════════════════════════════════ */
 
-/* ─── The room: deep slate + top amber ambience + fine noise ─── */
+/* ─── The room: deep slate + fine noise ─── */
 [data-theme="midnight"] body {
   background-color: var(--bg-primary);
   background-image:
-    radial-gradient(ellipse 90% 55% at 50% -8%, rgba(245, 158, 11, 0.06), transparent 60%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
-  background-attachment: fixed, fixed;
+  background-attachment: fixed;
 }
-
-/* Ambient orbs — massive blurred amber light bleeding through the dark.
-   Fixed + pointer-events:none so they sit behind everything and never interfere.
-   Sized down on small screens for GPU cost, but always present. */
-[data-theme="midnight"] body::before,
-[data-theme="midnight"] body::after {
-  content: '';
-  position: fixed;
-  border-radius: 9999px;
-  pointer-events: none;
-  z-index: 0;
-  filter: blur(120px);
-}
-[data-theme="midnight"] body::before {
-  top: -180px;
-  left: 50%;
-  width: 460px;
-  height: 460px;
-  transform: translateX(-50%);
-  background: radial-gradient(circle, rgba(245, 158, 11, 0.14), transparent 70%);
-}
-[data-theme="midnight"] body::after {
-  bottom: -220px;
-  right: -120px;
-  width: 520px;
-  height: 520px;
-  background: radial-gradient(circle, rgba(245, 158, 11, 0.08), transparent 70%);
-}
-/* Keep app chrome above the ambience */
-[data-theme="midnight"] #root { position: relative; z-index: 1; }
 
 /* ─── Typography: geometric display + mono labels ─── */
 [data-theme="midnight"] .page-title,

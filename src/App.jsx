@@ -22,6 +22,7 @@ import PricingPage from './pages/PricingPage';
 import AboutUsPage from './pages/AboutUsPage';
 import NotificationRunner from './components/NotificationRunner';
 import QuotePopup from './features/dashboard/QuotePopup';
+import FloatingBackground from './components/FloatingBackground';
 
 const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage'));
 const RoutineTemplatesPage = lazy(() => import('./features/dashboard/RoutineTemplatesPage'));
@@ -85,6 +86,7 @@ function AppContent() {
       <QuotePopup />
       <NotificationRunner />
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+      <FloatingBackground />
       <div className="app-layout">
         <Sidebar
           collapsed={sidebarCollapsed}

@@ -11,8 +11,9 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useInAppNotifications } from '../hooks/useInAppNotifications';
-import logoSilver from '../assets/logo-silver.png';
-import logoRed from '../assets/logo-red.png';
+// import logoSilver from '../assets/logo-silver.png';
+// import logoRed from '../assets/logo-red.png';
+import logoNew from '../assets/logo-new.png';
 import './TopNavbar.css';
 
 // ─── Helpers ───
@@ -71,9 +72,6 @@ export default function TopNavbar({ onMenuClick, onSearchOpen }) {
   const [avatarError, setAvatarError] = useState(false);
   const handleAvatarError = useCallback(() => setAvatarError(true), []);
   useEffect(() => { setAvatarError(false); }, [user?.avatar]);
-  const [logoVariant, setLogoVariant] = useState(
-    () => localStorage.getItem('logoVariant') || 'silver'
-  );
   const [logoClicked, setLogoClicked] = useState(false);
   const logoClickTimes = useRef([]);
   const easterEggTimer = useRef(null);
@@ -96,11 +94,6 @@ export default function TopNavbar({ onMenuClick, onSearchOpen }) {
     setLogoClicked(true);
     setTimeout(() => setLogoClicked(false), 600);
     checkEasterEgg();
-    setLogoVariant((prev) => {
-      const next = prev === 'silver' ? 'red' : 'silver';
-      localStorage.setItem('logoVariant', next);
-      return next;
-    });
   };
   const themeSwitcherRef = useRef(null);
   const notifRef = useRef(null);
@@ -156,11 +149,11 @@ export default function TopNavbar({ onMenuClick, onSearchOpen }) {
               type="button"
               className={`topbar-logo-icon ${logoClicked ? 'clicked' : ''}`}
               onClick={toggleLogo}
-              title="Click to switch logo | Click 3x for Nexus Terminal"
-              aria-label="Toggle logo color"
+               title="Click 3x for Nexus Terminal"
+               aria-label="AUSTWise logo"
             >
               <img
-                src={logoVariant === 'silver' ? logoSilver : logoRed}
+                src={logoNew}
                 alt="AUSTWise logo"
                 className="topbar-logo-img"
               />
@@ -169,6 +162,8 @@ export default function TopNavbar({ onMenuClick, onSearchOpen }) {
               <i></i><i></i><i></i><i></i>
             </div>
           </div>
+
+          {/* 
           <div className="logo-text">
             <div className="logo-wordmark">
               <span className="wm-ust">
@@ -183,6 +178,7 @@ export default function TopNavbar({ onMenuClick, onSearchOpen }) {
               </span>
             </div>
           </div>
+          */}
         </div>
         <button className="topbar-menu-btn hide-desktop" onClick={onMenuClick}>
           <Menu size={20} />
