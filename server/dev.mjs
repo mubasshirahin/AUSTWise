@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import http from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer as createViteServer } from 'vite';
@@ -37,7 +37,7 @@ import {
 } from './libraryDB.mjs';
 import { initializeDatabase, resetDatabase, query, sql } from './db.mjs';
 import { handleOAuthRequest } from './socialOAuth.mjs';
-import { handleAuthRoute } from './auth.mjs';
+import { handleAuthRoute, readTokenCookie } from './auth.mjs';
 import { requireRole } from './middleware.mjs';
 import {
   listMarketplace,
@@ -69,6 +69,16 @@ import {
   upsertCourse,
   deleteCourse,
 } from './prisma.js';
+import {
+  ensureUploadsDir,
+  saveNote,
+  listNotes,
+  getNoteById,
+  deleteNoteById,
+  ALLOWED_TYPES as NOTE_ALLOWED_TYPES,
+  MAX_SIZE_BYTES as NOTE_MAX_SIZE,
+  UPLOADS_DIR,
+} from './vaultNotesDB.mjs';
 import { createWSServer, broadcastToAll } from './wsServer.mjs';
 
 // Helper function to answer callback query
@@ -1816,6 +1826,130 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, { success: true });
     } catch (error) {
       sendJson(res, 404, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // Vault Notes — file upload / download for lecture notes
+
+  // Upload a note file (base64-encoded in JSON body to avoid multipart)
+  if (req.url === '/api/vault/notes/upload' && req.method === 'POST') {
+    try {
+      const body = await readJsonBody(req);
+      if (!body.fileData || !body.fileName) {
+        sendJson(res, 400, { success: false, error: 'fileData (base64) and fileName are required.' });
+        return;
+      }
+
+      // Decode base64 data URL or raw base64
+      let base64Data = body.fileData;
+      let mimeType = body.mimeType || 'application/octet-stream';
+      if (base64Data.startsWith('data:')) {
+        const match = base64Data.match(/^data:([^;]+);base64,(.+)$/);
+        if (match) {
+          mimeType = match[1];
+          base64Data = match[2];
+        }
+      }
+
+      // Validate file type
+      if (!NOTE_ALLOWED_TYPES.includes(mimeType)) {
+        sendJson(res, 400, { success: false, error: `File type "${mimeType}" not allowed. Accepted: pdf, png, jpg, docx.` });
+        return;
+      }
+
+      // Decode and check size
+      const buffer = Buffer.from(base64Data, 'base64');
+      if (buffer.length > NOTE_MAX_SIZE) {
+        sendJson(res, 413, { success: false, error: `File too large (${(buffer.length / (1024*1024)).toFixed(1)}MB). Max 15MB.` });
+        return;
+      }
+
+      await ensureUploadsDir();
+      const safeName = Date.now() + '-' + body.fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const filePath = path.join(UPLOADS_DIR, safeName);
+      await writeFile(filePath, buffer);
+
+      // Read auth from cookie for uploader info
+      const authPayload = readTokenCookie(req);
+      const record = await saveNote({
+        originalName: body.fileName,
+        filename: safeName,
+        uploader: authPayload?.id || 'anonymous',
+        uploaderName: authPayload?.name || body.uploaderName || 'Anonymous',
+        course: body.course || '',
+        department: body.department || '',
+        semester: body.semester || '',
+        size: buffer.length,
+        mimeType,
+      });
+
+      sendJson(res, 201, { success: true, note: record });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Upload failed.' });
+    }
+    return;
+  }
+
+  // List notes for a course/department/semester
+  if (req.url.startsWith('/api/vault/notes') && req.method === 'GET' && !req.url.includes('/download/')) {
+    try {
+      const url = new URL(req.url, `http://${req.headers.host}`);
+      const notes = await listNotes({
+        course: url.searchParams.get('course') || undefined,
+        department: url.searchParams.get('department') || undefined,
+        semester: url.searchParams.get('semester') || undefined,
+      });
+      sendJson(res, 200, { success: true, notes });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  // Download a note file
+  if (req.url.startsWith('/api/vault/notes/download/') && req.method === 'GET') {
+    try {
+      const id = new URL(req.url, `http://${req.headers.host}`).pathname.split('/').pop();
+      const note = await getNoteById(id);
+      if (!note) {
+        sendJson(res, 404, { success: false, error: 'Note not found.' });
+        return;
+      }
+      const filePath = path.join(UPLOADS_DIR, note.filename);
+      try {
+        const data = await readFile(filePath);
+        res.writeHead(200, {
+          'Content-Type': note.mimeType || 'application/octet-stream',
+          'Content-Length': data.length,
+          'Content-Disposition': `attachment; filename="${encodeURIComponent(note.originalName)}"`,
+          'Access-Control-Allow-Origin': '*',
+        });
+        res.end(data);
+      } catch {
+        sendJson(res, 404, { success: false, error: 'File not found on disk.' });
+      }
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  // Delete a note (own upload or admin)
+  if (req.url.startsWith('/api/vault/notes/') && req.method === 'DELETE') {
+    try {
+      const id = new URL(req.url, `http://${req.headers.host}`).pathname.split('/').pop();
+      const authPayload = readTokenCookie(req);
+      const isAdmin = authPayload && (authPayload.role === 'admin' || authPayload.role === 'moderator');
+      const result = await deleteNoteById(id, authPayload?.id || 'anonymous', isAdmin);
+      if (result.deleted) {
+        sendJson(res, 200, { success: true });
+      } else {
+        sendJson(res, 403, { success: false, error: result.error });
+      }
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message });
     }
     return;
   }

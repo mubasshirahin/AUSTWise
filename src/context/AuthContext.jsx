@@ -57,20 +57,40 @@ export function AuthProvider({ children }) {
 
   // On mount: try restoring session from server
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
         const data = await api('/api/auth/me');
+        if (cancelled) return;
         if (data.success && data.user) {
           const hydrated = hydrateUser(data.user);
           setSessionUser(hydrated);
           localStorage.setItem(userStorageKey, JSON.stringify(hydrated));
+        } else {
+          // Server says not authenticated — clear stale cache
+          localStorage.removeItem(userStorageKey);
         }
-      } catch {
-        // Not logged in or server unreachable — remain guest
+      } catch (err) {
+        // Server unreachable — fall back to cached user so the
+        // user doesn't get kicked to the landing page on every
+        // server restart / HMR cycle.
+        if (cancelled) return;
+        console.warn('[Auth] /api/auth/me failed, trying localStorage fallback:', err.message);
+        try {
+          const cached = localStorage.getItem(userStorageKey);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed && parsed.id && parsed.id !== 'guest') {
+              const hydrated = hydrateUser(parsed);
+              setSessionUser(hydrated);
+            }
+          }
+        } catch { /* ignore corrupt cache */ }
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     })();
+    return () => { cancelled = true; };
   }, []);
 
   const login = async (email, password) => {

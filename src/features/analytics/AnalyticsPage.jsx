@@ -14,7 +14,7 @@ const TAB_KEY = 'analyticsActiveTab';
 const gradeLabTabs = [
   { id: 'cgpagraph', label: 'CGPA Bol', icon: TrendingUp, color: 'blue', desc: 'Grade trends' },
   { id: 'semestertracker', label: 'Semester View', icon: Layers, color: 'purple', desc: 'Per-semester' },
-  { id: 'heatmap', label: 'Dept Heatmap', icon: Grid3x3, color: 'rose', desc: 'Topic density' },
+  { id: 'heatmap', label: 'Dept Heatmap', icon: Grid3x3, color: 'rose', desc: 'Avg CGPA' },
   { id: 'bestworst', label: 'Best & Worst', icon: Trophy, color: 'emerald', desc: 'Course poll' },
   { id: 'prereqs', label: 'Prerequisites', icon: GitBranch, color: 'purple', desc: 'Course flow map' },
 ];
