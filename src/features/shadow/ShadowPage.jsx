@@ -250,6 +250,7 @@ export default function ShadowPage() {
 
   return (
     <div className="shadow-page animate-fadeIn">
+
       {/* ── Hero ── */}
       <header className="page-hero">
         <div className="page-hero-content">
@@ -305,7 +306,7 @@ export default function ShadowPage() {
         ]}
         activeTab={activeTab}
         onChange={setActiveTab}
-        variant="shadow"
+        variant="dashboard"
       />
 
       {/* ── Tab Content ── */}

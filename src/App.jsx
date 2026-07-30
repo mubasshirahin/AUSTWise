@@ -80,6 +80,7 @@ function ProtectedAdminRoute({ children }) {
 function AppContent() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const location = useLocation();
 
   return (
     <RoutineProvider>
@@ -94,8 +95,13 @@ function AppContent() {
         />
         <div className={`main-content ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
           <TopNavbar onMenuClick={() => setSidebarCollapsed(!sidebarCollapsed)} onSearchOpen={setIsSearchOpen} />
-          <div className="page-wrapper">
-            <Suspense fallback={<div className="page-loading">Loading...</div>}>
+          <div className="page-wrapper" key={location.pathname}>
+            <Suspense fallback={
+              <div className="page-loading">
+                <div className="page-loading-spinner" />
+                <span>Loading…</span>
+              </div>
+            }>
               <Routes>
                 <Route path="/" element={<AdminRoute />} />
                 <Route path="/templates" element={<RoutineTemplatesPage />} />

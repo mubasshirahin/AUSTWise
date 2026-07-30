@@ -7,9 +7,9 @@ import {
   LayoutDashboard, CalendarDays, BarChart3, BookOpen, MapPin, Users, ShoppingBag, Settings, MessageSquare,
   LogIn, Shield, Eye, Megaphone, Utensils,
   Library, FileText, FolderOpen, FileSpreadsheet, Map,
-  ChevronLeft, ChevronRight, Moon, Crown, ClipboardCheck,
+  ChevronLeft, ChevronRight, Crown, ClipboardCheck,
   UtensilsCrossed, NotebookPen, Coffee,
-  DollarSign, AlarmClock, Zap, Home
+  DollarSign, AlarmClock, Zap, Home, Moon
 } from 'lucide-react';
 import './Sidebar.css';
 

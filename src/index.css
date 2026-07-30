@@ -652,6 +652,29 @@ img {
   animation: fadeInUp 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
+/* ─── Route-level loading state ─── */
+.page-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-4);
+  min-height: 55vh;
+  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.02em;
+}
+
+.page-loading-spinner {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--border-primary);
+  border-top-color: var(--accent-blue);
+  animation: spin 0.7s linear infinite;
+}
+
 /* ─── Glass Card Component ─── */
 .glass-card {
   background: var(--bg-card);
@@ -2136,6 +2159,8 @@ select.input {
   .cyber-glitch::before { clip-path: none; }
   .cyber-glitch::after  { clip-path: none; }
   .blink-cursor::after { animation: none; }
+  .page-wrapper { animation: none; }
+  .page-loading-spinner { animation-duration: 1.4s; }
 }
 
 /* ════════════════════════════════════════════════════════════════════════════

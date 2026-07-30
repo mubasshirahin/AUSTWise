@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MessageSquare, Send, Lightbulb, Smile, Heart, Flame } from 'lucide-react';
+import { getShadowIdentity } from '../../utils/shadowName';
 
 const STORAGE_KEY = 'austwise_posts';
 const REACTIONS_KEY = 'austwise_reactions';
@@ -89,6 +90,7 @@ export default function StoryFeed() {
       id: Date.now() + Math.random(),
       content: newPostContent.trim(),
       category: selectedCategory,
+      author: getShadowIdentity().nickname,
       reactions: { laugh: 0, heart: 0, fire: 0 },
       timestamp: Date.now(),
       time: 'Just now',
@@ -212,6 +214,7 @@ export default function StoryFeed() {
                 >
                   <meta.Icon size={12} /> {post.category}
                 </span>
+                <span className="story-feed-post-author">{post.author || 'Anonymous'}</span>
                 <span className="story-feed-post-time">{post.time}</span>
               </div>
 

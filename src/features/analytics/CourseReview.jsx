@@ -415,7 +415,10 @@ export default function CourseReview() {
                       >
                         <p style={{ fontSize: '12px', color: 'var(--text-primary)', lineHeight: '1.4' }}>&ldquo;{comment.text}&rdquo;</p>
                         <div className="flex justify-between items-center mt-2" style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>
-                          <span>Posted {comment.date}</span>
+                          <span>
+                            <b style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", color: 'var(--accent-purple, #a855f7)' }}>{comment.author || 'Anonymous'}</b>
+                            {' · '}Posted {comment.date}
+                          </span>
                           <button
                             type="button"
                             className="flex items-center gap-1 btn-ghost"

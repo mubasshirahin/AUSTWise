@@ -466,6 +466,16 @@
   white-space: nowrap;
 }
 
+.story-feed-post-author {
+  margin-left: auto;
+  margin-right: 10px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent-purple, #a855f7);
+  white-space: nowrap;
+}
+
 .story-feed-post-content {
   font-size: var(--fs-sm);
   color: var(--text-primary);

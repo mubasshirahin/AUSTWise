@@ -3,6 +3,8 @@ const contributorKey = 'aust-course-review-contributor-id';
 const upvotesKey = 'aust-course-review-upvotes';
 const semesterResultsKey = 'aust-helper-semester-results-v2';
 
+import { getShadowIdentity } from './shadowName';
+
 const roundOne = (value) => Number(value.toFixed(1));
 
 export function getContributorId() {
@@ -92,6 +94,7 @@ export function buildCourseReviewList() {
       group.comments.push({
         id: entry.comment.id,
         text: entry.comment.text.trim(),
+        author: entry.comment.author || 'Anonymous',
         date: formatReviewDate(entry.comment.createdAt || entry.createdAt),
         upvotes: entry.comment.upvotes || 0,
         createdAt: entry.comment.createdAt || entry.createdAt,
@@ -177,6 +180,7 @@ export function addCourseReview({ course, name, faculty, rating, difficulty, wor
       ? {
           id: crypto.randomUUID(),
           text: commentText.trim(),
+          author: getShadowIdentity().nickname,
           upvotes: 0,
           createdAt,
         }
@@ -212,6 +216,7 @@ export function addCommentToCourse(courseId, commentText) {
     comment: {
       id: crypto.randomUUID(),
       text,
+      author: getShadowIdentity().nickname,
       upvotes: 0,
       createdAt,
     },
