@@ -34,9 +34,13 @@ dist-ssr
 # Compiled binaries
 *.exe
 
+# Log files
+server.log
+
 # Code assistant metadata
 .mimocode/
 .commandcode/
+.claude/
 
 # Telegram user database (contains sensitive bot tokens)
 .telegram_users.json
