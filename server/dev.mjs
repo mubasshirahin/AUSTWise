@@ -257,10 +257,76 @@ const vite = useViteMiddleware
     })
   : null;
 
+// ── Feature availability flags (checked at startup) ──
+const FEATURES = {
+  openai:   !!process.env.OPENAI_API_KEY,
+  telegram: !!process.env.TELEGRAM_BOT_TOKEN,
+  gemini:   !!process.env.GEMINI_API_KEY,
+  googleApi: !!process.env.VITE_GOOGLE_API_KEY,
+  db:       false,   // set to true after successful SQL Server connection
+  dbConfig: false,   // set to true if DB_* vars are all present
+};
+
+// Check DB credential env vars
+const dbVarMap = { DB_SERVER: 'Server', DB_DATABASE: 'Database', DB_USER: 'User', DB_PASSWORD: 'Password' };
+const missingDbVars = Object.entries(dbVarMap).filter(([k]) => !process.env[k]).map(([, label]) => label);
+FEATURES.dbConfig = missingDbVars.length === 0;
+
+function validateEnv() {
+  const warnings = [];
+
+  if (!FEATURES.openai) {
+    warnings.push('⚠️  OPENAI_API_KEY not set — routine image extraction (/api/extract-routine) will return 503');
+  }
+  if (!FEATURES.telegram) {
+    warnings.push('⚠️  TELEGRAM_BOT_TOKEN not set — Telegram notifications, broadcasts & webhook will return 503');
+  }
+  if (!FEATURES.gemini) {
+    warnings.push('⚠️  GEMINI_API_KEY not set — AI chat proxy (/api/gemini/chat) will return an error');
+  }
+  if (!FEATURES.googleApi) {
+    warnings.push('⚠️  VITE_GOOGLE_API_KEY not set — YouTube search & PDF proxy will return an error');
+  }
+  if (!FEATURES.dbConfig) {
+    warnings.push(`⚠️  Missing DB credentials (${missingDbVars.join(', ')}) — all database features will be unavailable`);
+  }
+  if (!FEATURES.db && FEATURES.dbConfig) {
+    warnings.push('⚠️  SQL Server connection failed — all database features will be unavailable');
+  }
+
+  // Social OAuth checks (non-critical — just info)
+  if (!process.env.GITHUB_CLIENT_ID)    warnings.push('ℹ️  GITHUB_CLIENT_ID not set — GitHub OAuth login disabled');
+  if (!process.env.DISCORD_CLIENT_ID)   warnings.push('ℹ️  DISCORD_CLIENT_ID not set — Discord OAuth login disabled');
+  if (!process.env.SPOTIFY_CLIENT_ID)   warnings.push('ℹ️  SPOTIFY_CLIENT_ID not set — Spotify OAuth login disabled');
+  if (!process.env.FACEBOOK_CLIENT_ID)  warnings.push('ℹ️  FACEBOOK_CLIENT_ID not set — Facebook OAuth login disabled');
+  if (!process.env.STEAM_API_KEY)       warnings.push('ℹ️  STEAM_API_KEY not set — Steam OAuth login disabled');
+
+  if (warnings.length > 0) {
+    console.warn('\n🔧 Environment check:\n  ' + warnings.join('\n  ') + '\n');
+  } else {
+    console.log('✅ Environment check: all required variables present.');
+  }
+}
+
+// Guard helpers — return true if the feature is available, otherwise send 503
+function requireFeature(feature, res, label) {
+  if (!FEATURES[feature]) {
+    sendJson(res, 503, { error: `Service unavailable: ${label || feature} is not configured.` });
+    return false;
+  }
+  return true;
+}
+
 // Auto-create database & tables on startup
-initializeDatabase().catch(err => {
+initializeDatabase().then(() => {
+  FEATURES.db = true;
+  console.log('✅ SQL Server connected & tables ready');
+}).catch(err => {
   console.warn('⚠️  SQL Server init failed:', err.message);
   console.warn('   Server will still start, but DB features won\'t work.');
+}).finally(() => {
+  // validateEnv runs after DB init attempt so FEATURES.db reflects reality
+  validateEnv();
 });
 
 const server = http.createServer(async (req, res) => {
@@ -276,6 +342,7 @@ const server = http.createServer(async (req, res) => {
   // Extract routine from image (rate-limited — OpenAI-backed endpoint)
   if (req.url === '/api/extract-routine' && req.method === 'POST') {
     if (!extractRoutineRateLimiter(req, res)) return;
+    if (!requireFeature('openai', res, 'OPENAI_API_KEY')) return;
     try {
       const { imageDataUrl } = await readJsonBody(req);
       const result = await extractRoutineFromImage(imageDataUrl);
@@ -292,6 +359,7 @@ const server = http.createServer(async (req, res) => {
 
   // Test Telegram notification
   if (req.url === '/api/telegram/test' && req.method === 'POST') {
+    if (!requireFeature('telegram', res, 'TELEGRAM_BOT_TOKEN')) return;
     try {
       const { routine, chatId } = await readJsonBody(req);
       
@@ -315,6 +383,7 @@ const server = http.createServer(async (req, res) => {
 
   // Register user for Telegram notifications (only Chat ID needed)
   if (req.url === '/api/telegram/register' && req.method === 'POST') {
+    if (!requireFeature('telegram', res, 'TELEGRAM_BOT_TOKEN')) return;
     try {
       const { chatId, routine } = await readJsonBody(req);
       
@@ -527,6 +596,7 @@ const server = http.createServer(async (req, res) => {
 
   // Send notifications to all users (admin endpoint - for testing)
   if (req.url === '/api/telegram/broadcast' && req.method === 'POST') {
+    if (!requireFeature('telegram', res, 'TELEGRAM_BOT_TOKEN')) return;
     const auth = requireRole('admin', 'moderator')(req, res);
     if (!auth) return;
     try {
@@ -543,6 +613,7 @@ const server = http.createServer(async (req, res) => {
 
   // Test 9 PM Attendance notification
   if (req.url === '/api/telegram/test-attendance' && req.method === 'POST') {
+    if (!requireFeature('telegram', res, 'TELEGRAM_BOT_TOKEN')) return;
     try {
       const { routine, chatId } = await readJsonBody(req);
       
@@ -566,6 +637,7 @@ const server = http.createServer(async (req, res) => {
 
   // Handle attendance callback from Telegram bot (webhook)
   if (req.url === '/api/telegram/attendance-callback' && req.method === 'POST') {
+    if (!requireFeature('telegram', res, 'TELEGRAM_BOT_TOKEN')) return;
     try {
       const { callbackQueryId, chatId, callbackData, messageId } = await readJsonBody(req);
       
@@ -933,6 +1005,7 @@ const server = http.createServer(async (req, res) => {
 
   // Create a new invitation (admin only)
   if (req.url === '/api/invites' && req.method === 'POST') {
+    if (!requireFeature('db', res, 'Database connection')) return;
     const auth = requireRole('admin', 'moderator')(req, res);
     if (!auth) return;
     try {
@@ -1008,6 +1081,7 @@ const server = http.createServer(async (req, res) => {
 
   // List invitations with pagination (admin only)
   if (req.url.startsWith('/api/invites') && req.method === 'GET') {
+    if (!requireFeature('db', res, 'Database connection')) return;
     const auth = requireRole('admin', 'moderator')(req, res);
     if (!auth) return;
     try {
@@ -1150,6 +1224,7 @@ const server = http.createServer(async (req, res) => {
 
   // Admin: full database reset
   if (req.url === '/api/admin/reset' && req.method === 'POST') {
+    if (!requireFeature('db', res, 'Database connection')) return;
     const auth = requireRole('admin', 'moderator')(req, res);
     if (!auth) return;
     try {
@@ -1407,6 +1482,7 @@ const server = http.createServer(async (req, res) => {
 
   // ── Marketplace ──
   if (req.url === '/api/marketplace' && req.method === 'GET') {
+    if (!requireFeature('db', res, 'Database connection')) return;
     try {
       const url = new URL(req.url, `http://${req.headers.host}`);
       const type = url.searchParams.get('type') || 'EXCHANGE';
@@ -1419,6 +1495,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.url === '/api/marketplace' && req.method === 'POST') {
+    if (!requireFeature('db', res, 'Database connection')) return;
     try {
       const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
       if (!auth) return;
@@ -1433,6 +1510,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.url.startsWith('/api/marketplace/') && req.method === 'DELETE') {
+    if (!requireFeature('db', res, 'Database connection')) return;
     try {
       const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
       if (!auth) return;
@@ -1447,6 +1525,7 @@ const server = http.createServer(async (req, res) => {
 
   // ── Grades ──
   if (req.url === '/api/grades' && req.method === 'GET') {
+    if (!requireFeature('db', res, 'Database connection')) return;
     const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
     if (!auth) return;
     try {
@@ -1459,6 +1538,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.url === '/api/grades' && req.method === 'POST') {
+    if (!requireFeature('db', res, 'Database connection')) return;
     const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
     if (!auth) return;
     try {
@@ -1473,6 +1553,7 @@ const server = http.createServer(async (req, res) => {
 
   // ── Messages ──
   if (req.url === '/api/messages' && req.method === 'GET') {
+    if (!requireFeature('db', res, 'Database connection')) return;
     const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
     if (!auth) return;
     try {
@@ -1492,6 +1573,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.url === '/api/messages' && req.method === 'POST') {
+    if (!requireFeature('db', res, 'Database connection')) return;
     const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
     if (!auth) return;
     try {
@@ -1512,6 +1594,7 @@ const server = http.createServer(async (req, res) => {
 
   // ── Notices ──
   if (req.url === '/api/notices' && req.method === 'GET') {
+    if (!requireFeature('db', res, 'Database connection')) return;
     try {
       const notices = await listNotices();
       sendJson(res, 200, { success: true, notices });
@@ -1522,6 +1605,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.url === '/api/notices' && req.method === 'POST') {
+    if (!requireFeature('db', res, 'Database connection')) return;
     const auth = requireRole('admin', 'moderator')(req, res);
     if (!auth) return;
     try {
@@ -1535,6 +1619,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.url.startsWith('/api/notices/') && req.method === 'DELETE') {
+    if (!requireFeature('db', res, 'Database connection')) return;
     const auth = requireRole('admin', 'moderator')(req, res);
     if (!auth) return;
     try {
@@ -1549,6 +1634,7 @@ const server = http.createServer(async (req, res) => {
 
   // ── Canteen ──
   if (req.url === '/api/canteen' && req.method === 'GET') {
+    if (!requireFeature('db', res, 'Database connection')) return;
     try {
       const menu = await listCanteenMenu();
       sendJson(res, 200, { success: true, menu });
@@ -1559,6 +1645,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.url === '/api/canteen' && req.method === 'POST') {
+    if (!requireFeature('db', res, 'Database connection')) return;
     const auth = requireRole('admin', 'moderator')(req, res);
     if (!auth) return;
     try {
@@ -1572,6 +1659,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.url.startsWith('/api/canteen/') && req.method === 'DELETE') {
+    if (!requireFeature('db', res, 'Database connection')) return;
     const auth = requireRole('admin', 'moderator')(req, res);
     if (!auth) return;
     try {
@@ -1586,6 +1674,7 @@ const server = http.createServer(async (req, res) => {
 
   // ── Clubs ──
   if (req.url === '/api/clubs' && req.method === 'GET') {
+    if (!requireFeature('db', res, 'Database connection')) return;
     try {
       const clubs = await listClubs();
       sendJson(res, 200, { success: true, clubs });
@@ -1623,6 +1712,7 @@ const server = http.createServer(async (req, res) => {
 
   // ── Cheatsheets ──
   if (req.url === '/api/cheatsheets' && req.method === 'GET') {
+    if (!requireFeature('db', res, 'Database connection')) return;
     try {
       const sheets = await listCheatsheets();
       const parsed = sheets.map(s => ({ ...s, formulas: safeJsonParse(s.formulas, []) }));
@@ -1667,6 +1757,7 @@ const server = http.createServer(async (req, res) => {
 
   // ── Campus Locations ──
   if (req.url === '/api/campus-locations' && req.method === 'GET') {
+    if (!requireFeature('db', res, 'Database connection')) return;
     try {
       const locations = await listCampusLocations();
       // Group by floor for the frontend
@@ -1731,6 +1822,7 @@ const server = http.createServer(async (req, res) => {
 
   // ── Courses ──
   if (req.url.startsWith('/api/courses') && req.method === 'GET') {
+    if (!requireFeature('db', res, 'Database connection')) return;
     try {
       const url = new URL(req.url, `http://${req.headers.host}`);
       const dept = url.searchParams.get('department');
@@ -1830,6 +1922,7 @@ const server = http.createServer(async (req, res) => {
 createWSServer(server);
 
 server.listen(port, '0.0.0.0', () => {
+  validateEnv();
   console.log(`AUSTWise running at http://localhost:${port}`);
   console.log(`Mode: ${useViteMiddleware ? 'Vite middleware' : 'static dist (no HMR)'}`);
   console.log('');
