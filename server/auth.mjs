@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken';
 import {
   createUser, validateLogin, getUserById,
 } from './userStore.mjs';
+import { authRateLimiter } from './rateLimiter.mjs';
 
 const JWT_SECRET = process.env.JWT_SECRET || (() => {
   console.warn('⚠️  JWT_SECRET not set in .env — using insecure default. Set JWT_SECRET in production!');
@@ -45,6 +46,7 @@ export function readTokenCookie(req) {
 }
 
 async function handleSignup(req, res) {
+  if (!authRateLimiter(req, res)) return;
   const body = await readJsonBody(req);
   try {
     const user = await createUser(body);
@@ -57,6 +59,7 @@ async function handleSignup(req, res) {
 }
 
 async function handleLogin(req, res) {
+  if (!authRateLimiter(req, res)) return;
   const body = await readJsonBody(req);
   try {
     const user = await validateLogin(body.email, body.password);

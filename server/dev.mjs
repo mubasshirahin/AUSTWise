@@ -39,6 +39,7 @@ import { initializeDatabase, resetDatabase, query, sql } from './db.mjs';
 import { handleOAuthRequest } from './socialOAuth.mjs';
 import { handleAuthRoute } from './auth.mjs';
 import { requireRole } from './middleware.mjs';
+import { extractRoutineRateLimiter } from './rateLimiter.mjs';
 import { createWSServer, broadcastToAll } from './wsServer.mjs';
 
 // Helper function to answer callback query
@@ -238,8 +239,9 @@ const server = http.createServer(async (req, res) => {
   // Add CORS headers to all responses
   res.setHeader('Access-Control-Allow-Origin', '*');
 
-  // Extract routine from image
+  // Extract routine from image (rate-limited — OpenAI-backed endpoint)
   if (req.url === '/api/extract-routine' && req.method === 'POST') {
+    if (!extractRoutineRateLimiter(req, res)) return;
     try {
       const { imageDataUrl } = await readJsonBody(req);
       const result = await extractRoutineFromImage(imageDataUrl);
