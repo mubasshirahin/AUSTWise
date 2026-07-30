@@ -33,7 +33,7 @@ function clearAuthCookie(res) {
 }
 
 /** Read JWT from cookie and return payload or null */
-function readTokenCookie(req) {
+export function readTokenCookie(req) {
   const cookieHeader = req.headers.cookie || '';
   const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${COOKIE_NAME}=([^;]*)`));
   if (!match) return null;

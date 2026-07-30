@@ -38,6 +38,7 @@ import {
 import { initializeDatabase, resetDatabase, query, sql } from './db.mjs';
 import { handleOAuthRequest } from './socialOAuth.mjs';
 import { handleAuthRoute } from './auth.mjs';
+import { requireRole } from './middleware.mjs';
 import { createWSServer, broadcastToAll } from './wsServer.mjs';
 
 // Helper function to answer callback query
@@ -421,8 +422,10 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Toggle user notification status
+  // Toggle user notification status (admin only)
   if (req.url === '/api/telegram/toggle' && req.method === 'POST') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
     try {
       const { chatId } = await readJsonBody(req);
       
@@ -458,6 +461,8 @@ const server = http.createServer(async (req, res) => {
 
   // Get all registered users (admin endpoint)
   if (req.url === '/api/telegram/users' && req.method === 'GET') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
     try {
       const users = await getAllUsers();
       const stats = await getStats();
@@ -486,6 +491,8 @@ const server = http.createServer(async (req, res) => {
 
   // Send notifications to all users (admin endpoint - for testing)
   if (req.url === '/api/telegram/broadcast' && req.method === 'POST') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
     try {
       const result = await sendDailyNotifications();
       sendJson(res, 200, result);
@@ -609,8 +616,10 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Set Telegram webhook
+  // Set Telegram webhook (admin only)
   if (req.url === '/api/telegram/set-webhook' && req.method === 'POST') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
     try {
       const { webhookUrl } = await readJsonBody(req);
       const botToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -886,8 +895,10 @@ const server = http.createServer(async (req, res) => {
 
   // ========== Invitation Endpoints ==========
 
-  // Create a new invitation
+  // Create a new invitation (admin only)
   if (req.url === '/api/invites' && req.method === 'POST') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
     try {
       const { email, role, invitedBy } = await readJsonBody(req);
 
@@ -959,8 +970,10 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // List invitations with pagination
+  // List invitations with pagination (admin only)
   if (req.url.startsWith('/api/invites') && req.method === 'GET') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
     try {
       const url = new URL(req.url, `http://${req.headers.host}`);
       const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
@@ -1101,6 +1114,8 @@ const server = http.createServer(async (req, res) => {
 
   // Admin: full database reset
   if (req.url === '/api/admin/reset' && req.method === 'POST') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
     try {
       const body = await readJsonBody(req);
       if (body?.confirm !== 'RESET_ALL_DATA') {
