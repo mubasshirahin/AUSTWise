@@ -133,12 +133,29 @@ export function getInitials(name) {
   return initials || 'AU';
 }
 
+/**
+ * Legacy: auth is now server-side via JWT. These password helpers
+ * remain for backward compat but are no longer the primary mechanism.
+ */
 export function encodePassword(password) {
   return btoa(unescape(encodeURIComponent(password)));
 }
 
 export function verifyPassword(password, encoded) {
   return encodePassword(password) === encoded;
+}
+
+/**
+ * ⚠️ DEPRECATED — use server /api/auth/login instead.
+ * Kept for backward compatibility with existing code that
+ * still reads localStorage accounts.
+ */
+export function loginAccount(email, password) {
+  const account = getAccountByEmail(email);
+  if (!account || !verifyPassword(password, account.password)) {
+    throw new Error('Invalid email or password.');
+  }
+  return account;
 }
 
 function loadAccounts() {
@@ -159,7 +176,7 @@ function loadAccounts() {
         id: 'ADM-001',
         name: 'Prof. Dr. Md. Abdur Rahim',
         email: 'admin@aust.edu',
-        password: btoa('12345678'),
+        password: btoa(import.meta.env.VITE_ADMIN_DEFAULT_PASSWORD || 'changeme'),
         role: 'admin',
         department: 'Admin Department',
         designation: 'Registrar',
@@ -455,18 +472,9 @@ export function signupAccount(payload) {
   return account;
 }
 
-export function loginAccount(email, password) {
-  const account = getAccountByEmail(email);
-  if (!account || !verifyPassword(password, account.password)) {
-    throw new Error('Invalid email or password.');
-  }
-  return account;
-}
-
 /**
- * Login directly via an account object (skips password verification).
- * Used by social/OAuth login flows where identity is already verified
- * by the provider (Google, Facebook, etc.)
+ * ⚠️ DEPRECATED — use server /api/auth/login instead.
+ * Kept for backward compatibility.
  */
 export function loginByAccount(account) {
   if (!account || !account.id) {

@@ -66,11 +66,34 @@ function AdminRoute() {
   return <DashboardPage />;
 }
 
-// Protected Admin Route - only admin/moderator can access
+// Protected Admin Route - client check + server verification
 function ProtectedAdminRoute({ children }) {
   const { hasRole } = useAuth();
+  const [serverVerified, setServerVerified] = useState(null); // null=loading, true=ok, false=blocked
   const isAdmin = hasRole?.('admin') || hasRole?.('moderator');
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setServerVerified(false);
+      return;
+    }
+    // Double-check with server — the JWT is the source of truth
+    fetch('/api/auth/admin', { credentials: 'same-origin' })
+      .then(r => {
+        if (r.status === 200) setServerVerified(true);
+        else setServerVerified(false);
+      })
+      .catch(() => setServerVerified(false));
+  }, [isAdmin]);
+
   if (!isAdmin) {
+    return <Navigate to="/" replace />;
+  }
+  // Show nothing while server verification is pending
+  if (serverVerified === null) {
+    return <div className="page-loading"><div className="page-loading-spinner" /><span>Verifying…</span></div>;
+  }
+  if (serverVerified === false) {
     return <Navigate to="/" replace />;
   }
   return children;

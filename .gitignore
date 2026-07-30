@@ -28,6 +28,16 @@ dist-ssr
 .env.local
 .env.*.local
 
+# Browser profile artifacts (Chrome cookies, history, cache)
+.sixth/
+
+# Compiled binaries
+*.exe
+
+# Code assistant metadata
+.mimocode/
+.commandcode/
+
 # Telegram user database (contains sensitive bot tokens)
 .telegram_users.json
 

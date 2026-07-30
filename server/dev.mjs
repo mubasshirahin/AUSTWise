@@ -37,6 +37,7 @@ import {
 } from './libraryDB.mjs';
 import { initializeDatabase, resetDatabase, query, sql } from './db.mjs';
 import { handleOAuthRequest } from './socialOAuth.mjs';
+import { handleAuthRoute } from './auth.mjs';
 import { createWSServer, broadcastToAll } from './wsServer.mjs';
 
 // Helper function to answer callback query
@@ -1342,6 +1343,12 @@ const server = http.createServer(async (req, res) => {
       console.error('Gemini proxy error:', error.message);
       sendJson(res, 500, { success: false, error: error.message || 'Gemini proxy failed.' });
     }
+    return;
+  }
+
+  // ========== Auth Endpoints (JWT + HttpOnly cookie) ==========
+
+  if (await handleAuthRoute(req, res)) {
     return;
   }
 

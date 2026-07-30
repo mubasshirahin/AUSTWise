@@ -1,41 +1,50 @@
 const CREDENTIALS = {
   github: {
-    clientId: 'Ov23li8sG5GHPT9n985R',
-    clientSecret: '57091b5d79a9f165b7dd54e740a7be29f95ae986',
+    clientId: process.env.GITHUB_CLIENT_ID || '',
+    clientSecret: process.env.GITHUB_CLIENT_SECRET || '',
     authUrl: 'https://github.com/login/oauth/authorize',
     tokenUrl: 'https://github.com/login/oauth/access_token',
     apiUrl: 'https://api.github.com/user',
     scope: 'read:user',
   },
   discord: {
-    clientId: '1527304147534352425',
-    clientSecret: '01fmJ_v44zQLcur_yE-nVBIbtTo7cgA5',
+    clientId: process.env.DISCORD_CLIENT_ID || '',
+    clientSecret: process.env.DISCORD_CLIENT_SECRET || '',
     authUrl: 'https://discord.com/api/oauth2/authorize',
     tokenUrl: 'https://discord.com/api/oauth2/token',
     apiUrl: 'https://discord.com/api/users/@me',
     scope: 'identify',
   },
-spotify: {
-    clientId: '12ed6bf0dbfb45f195e5c31faf8e1ac2',
-    clientSecret: 'cdf57acb15ce41a0ba21a638f5068a34',
+  spotify: {
+    clientId: process.env.SPOTIFY_CLIENT_ID || '',
+    clientSecret: process.env.SPOTIFY_CLIENT_SECRET || '',
     authUrl: 'https://accounts.spotify.com/authorize',
     tokenUrl: 'https://accounts.spotify.com/api/token',
     apiUrl: 'https://api.spotify.com/v1/me',
     scope: 'user-read-email',
   },
   facebook: {
-    clientId: '1391466806220938',
-    clientSecret: '787cd0d4a43e049640824f048ae10862',
+    clientId: process.env.FACEBOOK_CLIENT_ID || '',
+    clientSecret: process.env.FACEBOOK_CLIENT_SECRET || '',
     authUrl: 'https://www.facebook.com/v22.0/dialog/oauth',
     tokenUrl: 'https://graph.facebook.com/v22.0/oauth/access_token',
     apiUrl: 'https://graph.facebook.com/me?fields=id,name,email,picture.type(large),link',
     scope: 'public_profile,email',
   },
   steam: {
-    apiKey: '9486606137779C95A4C42FD3824D43E4',
+    apiKey: process.env.STEAM_API_KEY || '',
   },
-
 };
+
+// Validate required OAuth credentials on startup
+for (const [provider, creds] of Object.entries(CREDENTIALS)) {
+  const missing = Object.entries(creds)
+    .filter(([k, v]) => k !== 'authUrl' && k !== 'tokenUrl' && k !== 'apiUrl' && k !== 'scope' && !v)
+    .map(([k]) => k);
+  if (missing.length) {
+    console.warn(`⚠️  OAuth [${provider}]: ${missing.join(', ')} not set in .env — ${provider} login will not work.`);
+  }
+}
 
 const CALLBACK_HTML = (provider, profile) => `<!DOCTYPE html>
 <html><body><script>
