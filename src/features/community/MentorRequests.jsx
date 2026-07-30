@@ -11,6 +11,7 @@ import {
   getBatchNoFromUser,
 } from '../../utils/marketplaceStorage';
 import { sendMessage } from '../../utils/messageStorage';
+import { sanitizeUserInput, MAX_TITLE_LENGTH, MAX_SHORT_TEXT_LENGTH } from '../../utils/sanitize';
 import ConfirmDialog from '../marketplace/ConfirmDialog';
 
 const defaultForm = {
@@ -37,7 +38,10 @@ export default function MentorRequests() {
 
     try {
       addMentorRequest({
-        ...form,
+        topic: sanitizeUserInput(form.topic, MAX_TITLE_LENGTH),
+        description: sanitizeUserInput(form.description, MAX_SHORT_TEXT_LENGTH),
+        contact: sanitizeUserInput(form.contact, MAX_TITLE_LENGTH),
+        requesterName: sanitizeUserInput(form.requesterName, MAX_TITLE_LENGTH),
         batch: getBatchNoFromUser(user),
         department: user?.department || '',
       });
@@ -122,20 +126,20 @@ export default function MentorRequests() {
           <div className="grid-2" style={{ gap: '10px' }}>
             <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               Your name
-              <input className="input" value={form.requesterName} onChange={(e) => setForm((c) => ({ ...c, requesterName: e.target.value }))} required />
+              <input className="input" value={form.requesterName} onChange={(e) => setForm((c) => ({ ...c, requesterName: e.target.value }))} maxLength={MAX_TITLE_LENGTH} required />
             </label>
             <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               Topic you need help with
-              <input className="input" value={form.topic} onChange={(e) => setForm((c) => ({ ...c, topic: e.target.value }))} placeholder="e.g., CP, Web Dev, ML, DBMS..." required />
+              <input className="input" value={form.topic} onChange={(e) => setForm((c) => ({ ...c, topic: e.target.value }))} maxLength={MAX_TITLE_LENGTH} placeholder="e.g., CP, Web Dev, ML, DBMS..." required />
             </label>
           </div>
           <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             Description (optional)
-            <textarea className="input" value={form.description} onChange={(e) => setForm((c) => ({ ...c, description: e.target.value }))} placeholder="Describe what you need help with..." rows={2} />
+            <textarea className="input" value={form.description} onChange={(e) => setForm((c) => ({ ...c, description: e.target.value }))} maxLength={MAX_SHORT_TEXT_LENGTH} placeholder="Describe what you need help with..." rows={2} />
           </label>
           <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             Your contact (for mentors to reach you)
-            <input className="input" value={form.contact} onChange={(e) => setForm((c) => ({ ...c, contact: e.target.value }))} placeholder="Phone / Telegram / Email" required />
+            <input className="input" value={form.contact} onChange={(e) => setForm((c) => ({ ...c, contact: e.target.value }))} maxLength={MAX_TITLE_LENGTH} placeholder="Phone / Telegram / Email" required />
           </label>
           <button type="submit" className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start' }}>
             Publish Request

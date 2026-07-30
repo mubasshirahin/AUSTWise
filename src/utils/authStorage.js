@@ -1,3 +1,7 @@
+// TODO: Swap localStorage for API calls — see MIGRATION.md Phase 3
+//   GET  /api/grades  → getSemesterResults()
+//   POST /api/grades  → saveSemesterResult()
+// Keep userStoragePrefixes helpers until phased out.
 const accountsKey = 'aust-auth-accounts-v1';
 const sessionKey = 'aust-auth-session-v1';
 const profileKey = 'aust-user-profile';

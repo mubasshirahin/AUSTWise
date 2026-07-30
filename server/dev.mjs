@@ -39,7 +39,27 @@ import { initializeDatabase, resetDatabase, query, sql } from './db.mjs';
 import { handleOAuthRequest } from './socialOAuth.mjs';
 import { handleAuthRoute } from './auth.mjs';
 import { requireRole } from './middleware.mjs';
-import { extractRoutineRateLimiter } from './rateLimiter.mjs';
+import {
+  listMarketplace,
+  addMarketplaceListing,
+  deleteMarketplaceListing,
+  saveMessage,
+  getConversations,
+  getThread,
+  deleteMessageById,
+  editMessageById,
+  getSemesterResults,
+  saveSemesterResult,
+  listNotices,
+  createNotice,
+  deleteNotice,
+  listCanteenMenu,
+  upsertCanteenItem,
+  deleteCanteenItem,
+  listClubs,
+  joinClub,
+  leaveClub,
+} from './prisma.js';
 import { createWSServer, broadcastToAll } from './wsServer.mjs';
 
 // Helper function to answer callback query
@@ -1369,7 +1389,226 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // ========== Social OAuth Endpoints ==========
+  // ========== PostgreSQL-backed REST API ==========
+
+  // ── Marketplace ──
+  if (req.url === '/api/marketplace' && req.method === 'GET') {
+    try {
+      const url = new URL(req.url, `http://${req.headers.host}`);
+      const type = url.searchParams.get('type') || 'EXCHANGE';
+      const items = await listMarketplace(type.toUpperCase());
+      sendJson(res, 200, { success: true, items });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  if (req.url === '/api/marketplace' && req.method === 'POST') {
+    try {
+      const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+      if (!auth) return;
+      const payload = await readJsonBody(req);
+      payload.contributorId = auth.id;
+      const item = await addMarketplaceListing(payload);
+      sendJson(res, 201, { success: true, item });
+    } catch (error) {
+      sendJson(res, 400, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  if (req.url.startsWith('/api/marketplace/') && req.method === 'DELETE') {
+    try {
+      const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+      if (!auth) return;
+      const id = new URL(req.url, `http://${req.headers.host}`).pathname.split('/').pop();
+      await deleteMarketplaceListing(id, auth.id, auth.role === 'admin' || auth.role === 'moderator');
+      sendJson(res, 200, { success: true });
+    } catch (error) {
+      sendJson(res, error.message === 'Forbidden' ? 403 : 404, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  // ── Grades ──
+  if (req.url === '/api/grades' && req.method === 'GET') {
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    try {
+      const results = await getSemesterResults(auth.id);
+      sendJson(res, 200, { success: true, results });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  if (req.url === '/api/grades' && req.method === 'POST') {
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    try {
+      const data = await readJsonBody(req);
+      const result = await saveSemesterResult(auth.id, data);
+      sendJson(res, 201, { success: true, result });
+    } catch (error) {
+      sendJson(res, 400, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  // ── Messages ──
+  if (req.url === '/api/messages' && req.method === 'GET') {
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    try {
+      const url = new URL(req.url, `http://${req.headers.host}`);
+      const peerId = url.searchParams.get('peer');
+      if (peerId) {
+        const thread = await getThread(auth.id, peerId);
+        sendJson(res, 200, { success: true, thread });
+      } else {
+        const convs = await getConversations(auth.id);
+        sendJson(res, 200, { success: true, conversations: convs });
+      }
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  if (req.url === '/api/messages' && req.method === 'POST') {
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    try {
+      const payload = await readJsonBody(req);
+      const convId = [auth.id, payload.toId].sort().join('|');
+      const msg = await saveMessage({
+        conversationId: convId,
+        fromId: auth.id,
+        toId: payload.toId,
+        text: payload.text,
+      });
+      sendJson(res, 201, { success: true, message: msg });
+    } catch (error) {
+      sendJson(res, 400, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  // ── Notices ──
+  if (req.url === '/api/notices' && req.method === 'GET') {
+    try {
+      const notices = await listNotices();
+      sendJson(res, 200, { success: true, notices });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  if (req.url === '/api/notices' && req.method === 'POST') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const payload = await readJsonBody(req);
+      const notice = await createNotice({ ...payload, postedBy: auth.id });
+      sendJson(res, 201, { success: true, notice });
+    } catch (error) {
+      sendJson(res, 400, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  if (req.url.startsWith('/api/notices/') && req.method === 'DELETE') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const id = new URL(req.url, `http://${req.headers.host}`).pathname.split('/').pop();
+      await deleteNotice(id);
+      sendJson(res, 200, { success: true });
+    } catch (error) {
+      sendJson(res, 404, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  // ── Canteen ──
+  if (req.url === '/api/canteen' && req.method === 'GET') {
+    try {
+      const menu = await listCanteenMenu();
+      sendJson(res, 200, { success: true, menu });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  if (req.url === '/api/canteen' && req.method === 'POST') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const payload = await readJsonBody(req);
+      const item = await upsertCanteenItem(payload);
+      sendJson(res, 201, { success: true, item });
+    } catch (error) {
+      sendJson(res, 400, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  if (req.url.startsWith('/api/canteen/') && req.method === 'DELETE') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const id = new URL(req.url, `http://${req.headers.host}`).pathname.split('/').pop();
+      await deleteCanteenItem(id);
+      sendJson(res, 200, { success: true });
+    } catch (error) {
+      sendJson(res, 404, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  // ── Clubs ──
+  if (req.url === '/api/clubs' && req.method === 'GET') {
+    try {
+      const clubs = await listClubs();
+      sendJson(res, 200, { success: true, clubs });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  if (req.url.startsWith('/api/clubs/') && req.url.endsWith('/join') && req.method === 'POST') {
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    try {
+      const clubId = new URL(req.url, `http://${req.headers.host}`).pathname.split('/')[3];
+      await joinClub(clubId, auth.id);
+      sendJson(res, 200, { success: true });
+    } catch (error) {
+      sendJson(res, 400, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  if (req.url.startsWith('/api/clubs/') && req.url.endsWith('/leave') && req.method === 'POST') {
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    try {
+      const clubId = new URL(req.url, `http://${req.headers.host}`).pathname.split('/')[3];
+      await leaveClub(clubId, auth.id);
+      sendJson(res, 200, { success: true });
+    } catch (error) {
+      sendJson(res, 400, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // Social OAuth Endpoints
 
   if (await handleOAuthRequest(req, res)) {
     return;

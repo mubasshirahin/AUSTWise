@@ -1,6 +1,13 @@
+// TODO: Swap localStorage for API calls — see MIGRATION.md Phase 3
+//   GET  /api/marketplace?type=EXCHANGE  → listExchangeItems()
+//   POST /api/marketplace                → addExchangeItem()
+//   DELETE /api/marketplace/:id          → deleteExchangeItem()
+// Keep function signatures identical so UI components don't change.
 const storageKey = 'aust-marketplace-v1';
 const contributorKey = 'aust-marketplace-contributor-id';
 const userStorageKey = 'aust-user-profile';
+
+import { sanitizeUserInput, MAX_SHORT_TEXT_LENGTH, MAX_TITLE_LENGTH } from './sanitize';
 
 const emptyStore = () => ({
   exchange: [],
@@ -110,9 +117,9 @@ export function listExchangeItems() {
 }
 
 export function addExchangeItem(payload) {
-  const title = String(payload.title || '').trim();
+  const title = sanitizeUserInput(String(payload.title || '').trim(), MAX_TITLE_LENGTH);
   const price = Number(payload.price);
-  const contact = String(payload.contact || '').trim();
+  const contact = sanitizeUserInput(String(payload.contact || '').trim(), MAX_TITLE_LENGTH);
 
   if (!title) throw new Error('Product title is required.');
   if (!Number.isFinite(price) || price < 0) throw new Error('Enter a valid price.');
@@ -142,10 +149,10 @@ export function listToLetListings() {
 }
 
 export function addToLetListing(payload) {
-  const title = String(payload.title || '').trim();
-  const location = String(payload.location || '').trim();
+  const title = sanitizeUserInput(String(payload.title || '').trim(), MAX_TITLE_LENGTH);
+  const location = sanitizeUserInput(String(payload.location || '').trim(), MAX_TITLE_LENGTH);
   const rent = Number(payload.rent);
-  const contact = String(payload.contact || '').trim();
+  const contact = sanitizeUserInput(String(payload.contact || '').trim(), MAX_TITLE_LENGTH);
 
   if (!title || !location) throw new Error('Title and location are required.');
   if (!Number.isFinite(rent) || rent < 0) throw new Error('Enter a valid monthly rent.');
@@ -162,10 +169,9 @@ export function addToLetListing(payload) {
     image: payload.image || '',
     available: true,
     contact,
-    owner: payload.owner || getSellerLabel(),
-    description: payload.description || '',
-    environment: payload.environment || 'Male',
-    utilities: payload.utilities || '',
+    owner: payload.owner || getSellerLabel(),      description: sanitizeUserInput(payload.description || '', MAX_SHORT_TEXT_LENGTH),
+      environment: payload.environment || 'Male',
+      utilities: sanitizeUserInput(payload.utilities || '', MAX_SHORT_TEXT_LENGTH),
   };
 
   store.tolet.unshift(entry);
@@ -189,10 +195,10 @@ export function listLostFoundItems() {
 }
 
 export function addLostFoundItem(payload) {
-  const title = String(payload.title || '').trim();
-  const location = String(payload.location || '').trim();
-  const description = String(payload.description || '').trim();
-  const contact = String(payload.contact || '').trim();
+  const title = sanitizeUserInput(String(payload.title || '').trim(), MAX_TITLE_LENGTH);
+  const location = sanitizeUserInput(String(payload.location || '').trim(), MAX_TITLE_LENGTH);
+  const description = sanitizeUserInput(String(payload.description || '').trim(), MAX_SHORT_TEXT_LENGTH);
+  const contact = sanitizeUserInput(String(payload.contact || '').trim(), MAX_TITLE_LENGTH);
   const type = payload.type === 'found' ? 'found' : 'lost';
 
   if (!title || !location || !description) {
@@ -356,9 +362,9 @@ export function listMentorRequests() {
 }
 
 export function addMentorRequest(payload) {
-  const topic = String(payload.topic || '').trim();
-  const description = String(payload.description || '').trim();
-  const contact = String(payload.contact || '').trim();
+  const topic = sanitizeUserInput(String(payload.topic || '').trim(), MAX_TITLE_LENGTH);
+  const description = sanitizeUserInput(String(payload.description || '').trim(), MAX_SHORT_TEXT_LENGTH);
+  const contact = sanitizeUserInput(String(payload.contact || '').trim(), MAX_TITLE_LENGTH);
 
   if (!topic) throw new Error('Topic is required (e.g., CP, Web Dev, ML).');
   if (!contact) throw new Error('Contact number is required.');
@@ -382,8 +388,8 @@ export function addMentorRequest(payload) {
 }
 
 export function addMentorResponse(requestId, payload) {
-  const message = String(payload.message || '').trim();
-  const contact = String(payload.contact || '').trim();
+  const message = sanitizeUserInput(String(payload.message || '').trim(), MAX_SHORT_TEXT_LENGTH);
+  const contact = sanitizeUserInput(String(payload.contact || '').trim(), MAX_TITLE_LENGTH);
   const responderName = String(payload.responderName || '').trim();
 
   if (!message) throw new Error('Response message is required.');

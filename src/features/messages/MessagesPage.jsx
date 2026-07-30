@@ -24,6 +24,7 @@ import {
 import useWebSocket from '../../hooks/useWebSocket';
 import useMessageNotifications from '../../hooks/useMessageNotifications';
 import { getAccountById } from '../../utils/authStorage';
+import { sanitizeUserInput, MAX_TEXT_LENGTH } from '../../utils/sanitize';
 import './MessagesPage.css';
 import '../../components/PageHero.css';
 
@@ -128,6 +129,19 @@ function TypingIndicator({ peerName }) {
       </div>
       <span className="typing-text">{peerName || 'Someone'} is typing...</span>
     </div>
+  );
+}
+
+/* ─── Highlighted Search Text (React-only, no innerHTML) ─── */
+function HighlightedText({ text, query }) {
+  if (!query.trim()) return text;
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const parts = text.split(new RegExp(`(${escaped})`, 'gi'));
+  if (parts.length === 1) return text;
+  return parts.map((part, i) =>
+    part.toLowerCase() === query.toLowerCase()
+      ? <mark key={i} className="chat-highlight">{part}</mark>
+      : part
   );
 }
 
@@ -276,7 +290,7 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
 
   const handleSend = (e) => {
     e.preventDefault();
-    const text = draft.trim();
+    const text = sanitizeUserInput(draft.trim(), MAX_TEXT_LENGTH);
     if (!text) return;
 
     const replyData = replyTarget ? {
@@ -302,7 +316,8 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
   };
 
   const handleInputChange = (e) => {
-    setDraft(e.target.value);
+    const val = e.target.value.slice(0, MAX_TEXT_LENGTH);
+    setDraft(val);
     if (wsReady && userId && peerId) {
       wsSendTyping(peerId, true);
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
@@ -349,7 +364,7 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
 
   /** Save an edited message */
   const saveEdit = (messageId) => {
-    const text = editDraft.trim();
+    const text = sanitizeUserInput(editDraft.trim(), MAX_TEXT_LENGTH);
     if (!text) return;
     const result = editMessage(messageId, text);
     if (!result) return;
@@ -394,26 +409,6 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
     if (searchResultIds.length === 0) return;
     const next = (activeResultIdx + direction + searchResultIds.length) % searchResultIds.length;
     setActiveResultIdx(next);
-  };
-
-  /** Highlight matching text in a message — HTML-escaped to prevent XSS */
-  const highlightText = (text, query) => {
-    if (!query.trim()) return text;
-    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    // HTML-escape the text first to prevent injected script/HTML from executing
-    const htmlSafe = text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#x27;');
-    const parts = htmlSafe.split(new RegExp(`(${escaped})`, 'gi'));
-    if (parts.length === 1) return htmlSafe;
-    return parts.map((part) =>
-      part.toLowerCase() === query.toLowerCase()
-        ? `<mark class="chat-highlight">${part}</mark>`
-        : part
-    ).join('');
   };
 
   /** Check if a message is the active search result */
@@ -588,11 +583,9 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
                 ) : (
                   /* Normal message bubble */
                   <div className={`chat-bubble ${isActiveResult(m.id) ? 'chat-bubble-active-search' : ''}`}>
-                    {chatSearchQuery.trim() ? (
-                      <p dangerouslySetInnerHTML={{ __html: highlightText(m.text, chatSearchQuery) }} />
-                    ) : (
-                      <p>{m.text}</p>
-                    )}
+                    <p>
+                      <HighlightedText text={m.text} query={chatSearchQuery} />
+                    </p>
                     {/* Quoted message preview */}
                     {m.replyTo && (
                       <div className="quoted-preview">
@@ -755,6 +748,7 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
       <form className="chat-input" onSubmit={handleSend}>
         <input
           type="text"
+          maxLength={MAX_TEXT_LENGTH}
           placeholder={replyTarget ? `Reply to ${replyTarget.fromName}...` : `Message ${peer?.name || ''}...`}
           value={draft}
           onChange={handleInputChange}

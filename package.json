@@ -12,6 +12,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@prisma/client": "^7.9.1",
     "bcryptjs": "^3.0.3",
     "chart.js": "^4.5.1",
     "d3": "^7.9.0",
@@ -27,6 +28,8 @@
     "pdf-parse": "^2.4.5",
     "pdfjs": "^2.5.4",
     "pdfjs-dist": "^6.1.200",
+    "pg": "^8.22.0",
+    "prisma": "^7.9.1",
     "react": "^19.2.7",
     "react-chartjs-2": "^5.3.1",
     "react-dom": "^19.2.7",

@@ -1,6 +1,10 @@
 /**
  * Canteen food feedback storage (localStorage).
  *
+ * TODO: Swap localStorage for API calls — see MIGRATION.md Phase 3
+ *   GET  /api/canteen → canteen menu + reviews/feedback
+ *   POST /api/canteen → submit review or complaint
+ *
  * Two kinds of feedback, both keyed by a food item's id:
  *   - reviews:    { id, foodId, rating (1-5), comment, contributorId, createdAt }
  *   - complaints: { id, foodId, text, contributorId, createdAt }

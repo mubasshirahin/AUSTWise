@@ -11,6 +11,7 @@ import {
   setToLetAvailability,
 } from '../../utils/marketplaceStorage';
 import ConfirmDialog from './ConfirmDialog';
+import { sanitizeUserInput, MAX_TITLE_LENGTH, MAX_SHORT_TEXT_LENGTH } from '../../utils/sanitize';
 
 const spaceTypes = ['Seat', 'Room', 'Flat', 'Hostel'];
 const amenityOptions = ['WiFi', 'Security', 'Attached Bath', 'Lift', 'Bua'];
@@ -103,7 +104,7 @@ export default function ToLetListings() {
     setMessage('');
 
     try {
-      addToLetListing({ ...form, owner: getSellerLabel(user) });
+      addToLetListing({ ...form, title: sanitizeUserInput(form.title, MAX_TITLE_LENGTH), location: sanitizeUserInput(form.location, MAX_TITLE_LENGTH), description: sanitizeUserInput(form.description, MAX_SHORT_TEXT_LENGTH), utilities: sanitizeUserInput(form.utilities, MAX_SHORT_TEXT_LENGTH), contact: sanitizeUserInput(form.contact, MAX_TITLE_LENGTH), owner: getSellerLabel(user) });
       setForm({ ...defaultForm, contact: form.contact });
       setPreviewUrl('');
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -179,7 +180,7 @@ export default function ToLetListings() {
         <form onSubmit={handleSubmit} className="glass-card" style={{ padding: '16px', marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             Listing title
-            <input className="input" value={form.title} onChange={(e) => setForm((c) => ({ ...c, title: e.target.value }))} required />
+            <input className="input" value={form.title} onChange={(e) => setForm((c) => ({ ...c, title: e.target.value }))} maxLength={MAX_TITLE_LENGTH} required />
           </label>
           <div className="grid-3" style={{ gap: '10px' }}>
             <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -188,7 +189,7 @@ export default function ToLetListings() {
             </label>
             <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               Location
-              <input className="input" value={form.location} onChange={(e) => setForm((c) => ({ ...c, location: e.target.value }))} placeholder="Tejgaon" required />
+              <input className="input" value={form.location} onChange={(e) => setForm((c) => ({ ...c, location: e.target.value }))} placeholder="Tejgaon" maxLength={MAX_TITLE_LENGTH} required />
             </label>
             <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               Type
@@ -208,11 +209,11 @@ export default function ToLetListings() {
           </div>
           <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             Description (optional)
-            <textarea className="input" value={form.description} onChange={(e) => setForm((c) => ({ ...c, description: e.target.value }))} placeholder="Describe the space, rules, who can stay..." rows={2} />
+            <textarea className="input" value={form.description} onChange={(e) => setForm((c) => ({ ...c, description: e.target.value }))} maxLength={MAX_SHORT_TEXT_LENGTH} placeholder="Describe the space, rules, who can stay..." rows={2} />
           </label>
           <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             Utilities (optional)
-            <textarea className="input" value={form.utilities} onChange={(e) => setForm((c) => ({ ...c, utilities: e.target.value }))} placeholder="e.g. Electricity, Water, Gas, Internet, Maid..." rows={2} />
+            <textarea className="input" value={form.utilities} onChange={(e) => setForm((c) => ({ ...c, utilities: e.target.value }))} maxLength={MAX_SHORT_TEXT_LENGTH} placeholder="e.g. Electricity, Water, Gas, Internet, Maid..." rows={2} />
           </label>
           <div>
             <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>Amenities</span>
@@ -263,7 +264,7 @@ export default function ToLetListings() {
             </label>
             <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               Contact
-              <input className="input" value={form.contact} onChange={(e) => setForm((c) => ({ ...c, contact: e.target.value }))} required />
+              <input className="input" value={form.contact} onChange={(e) => setForm((c) => ({ ...c, contact: e.target.value }))} maxLength={MAX_TITLE_LENGTH} required />
             </label>
           </div>
           {previewUrl && (

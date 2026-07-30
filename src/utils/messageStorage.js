@@ -1,4 +1,10 @@
+// TODO: Swap localStorage for API calls — see MIGRATION.md Phase 3
+//   GET  /api/messages        → getConversations()
+//   GET  /api/messages?peer=X → getThread()
+//   POST /api/messages        → sendMessage()
+// Keep function signatures identical so UI components don't change.
 import { getAccountById, getInitials } from './authStorage';
+import { sanitizeUserInput, MAX_TEXT_LENGTH } from './sanitize';
 
 const messagesKey = 'aust-messages-v1';
 
@@ -39,7 +45,7 @@ function resolvePeer(peerId) {
 }
 
 export function sendMessage(fromId, toId, text, replyTo) {
-  const clean = String(text || '').trim();
+  const clean = sanitizeUserInput(String(text || '').trim(), MAX_TEXT_LENGTH);
   if (!clean || !fromId || !toId || fromId === toId) return null;
 
   const message = {
@@ -147,7 +153,7 @@ export function deleteMessage(messageId) {
 
 /** Edit a message. Returns the updated message or null if not found/deleted. */
 export function editMessage(messageId, newText) {
-  const clean = String(newText || '').trim();
+  const clean = sanitizeUserInput(String(newText || '').trim(), MAX_TEXT_LENGTH);
   if (!clean) return null;
 
   const messages = loadMessages();

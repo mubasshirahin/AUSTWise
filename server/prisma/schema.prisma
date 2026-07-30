@@ -1,0 +1,380 @@
+// Prisma schema for AUST Student Helper
+// SQL Server 2022 provider — matches localStorage data shapes from src/utils/*.js
+// Run: npx prisma db push   (creates/updates tables without migration files)
+//
+// Notes for SQL Server:
+//  - Json type is unsupported → use String (NVARCHAR(MAX)) + JSON.parse/stringify in app
+//  - Multiple cascade paths to User would fail → Message.receiver uses NoAction
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "sqlserver"
+}
+
+// ─── Users & Auth ────────────────────────────────────────────────────────────
+
+model User {
+  id             String   @id
+  awid           String   @unique
+  email          String   @unique
+  name           String
+  passwordHash   String
+  role           String   @default("student")
+  department     String   @default("")
+  batch          String   @default("")
+  batchNo        String   @default("")
+  batchName      String   @default("")
+  designation    String   @default("")
+  company        String   @default("")
+  graduationYear String   @default("")
+  yearSemester   String   @default("")
+  section        String   @default("")
+  labSection     String   @default("")
+  semester       Int      @default(1)
+  avatar         String?
+  openForTalk    Boolean  @default(false)
+  bloodGroup     String   @default("")
+  facebook       String   @default("")
+  whatsapp       String   @default("")
+  linkedin       String   @default("")
+  discord        String   @default("")
+  linkedSocial   String   @default("{}")   // JSON string
+  linkedAccounts String   @default("[]")   // JSON string
+  cgpa           Float    @default(0)
+  creditsCompleted Int    @default(0)
+  totalCredits   Int      @default(160)
+  createdAt      DateTime @default(now())
+
+  routines          Routine[]
+  semesterResults   SemesterResult[]
+  questionPapers    QuestionPaper[]
+  listings          MarketplaceListing[]
+  mentorRequests    MentorRequest[]
+  messagesSent      Message[]            @relation("SentMessages")
+  messagesReceived  Message[]            @relation("ReceivedMessages")
+  notices           Notice[]
+  clubMemberships   ClubMembership[]
+  libraryCheckins   LibraryCheckin[]
+  canteenFeedback   CanteenFeedback[]
+  roleApplications  RoleApplication[]
+  reactionsSent     MessageReaction[]
+  invitationsCreated Invitation[]        @relation("InvitedBy")
+  transcriptTemplates TranscriptTemplate[]
+  routineTemplates    RoutineTemplate[]
+}
+
+// ─── Routine ─────────────────────────────────────────────────────────────────
+
+model Routine {
+  id         String   @id @default(uuid())
+  userId     String
+  weekDay    Int
+  timeSlot   String
+  courseCode String
+  room       String   @default("")
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction)
+
+  @@index([userId, weekDay])
+}
+
+// ─── Semester Results (Grades) ───────────────────────────────────────────────
+
+model SemesterResult {
+  id        String   @id @default(uuid())
+  userId    String
+  semester  String
+  courses   String   @default("[]")   // JSON string: [{ code, name, credit, grade, marks }]
+  cgpa      Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction)
+
+  @@unique([userId, semester])
+}
+
+// ─── Question Papers ─────────────────────────────────────────────────────────
+
+model QuestionPaper {
+  id              String   @id @default(uuid())
+  contributorId   String
+  contributorName String   @default("")
+  department      String   @default("")
+  yearSem         String   @default("")
+  course          String
+  name            String   @default("")
+  type            String
+  year            String   @default("")
+  semester        String   @default("")
+  paperNo         Int      @default(1)
+  solved          Boolean  @default(false)
+  fileName        String
+  fileType        String   @default("pdf")
+  fileData        Bytes?
+  uploadedAt      DateTime @default(now())
+
+  user User @relation(fields: [contributorId], references: [id], onDelete: NoAction)
+
+  @@index([course, type])
+  @@index([contributorId])
+}
+
+// ─── Marketplace ─────────────────────────────────────────────────────────────
+
+model MarketplaceListing {
+  id            String   @id @default(uuid())
+  contributorId String
+  listType      String
+  title         String
+  price         Float    @default(0)
+  condition     String   @default("")
+  category      String   @default("")
+  image         String   @default("")
+  seller        String   @default("")
+  contact       String   @default("")
+  location      String   @default("")
+  rent          Float    @default(0)
+  type          String   @default("")
+  amenities     String   @default("[]")   // JSON string
+  available     Boolean  @default(true)
+  owner         String   @default("")
+  description   String   @default("")
+  environment   String   @default("")
+  utilities     String   @default("")
+  status        String   @default("open")
+  reporter      String   @default("")
+  postedAt      DateTime @default(now())
+
+  user User @relation(fields: [contributorId], references: [id], onDelete: NoAction)
+
+  @@index([listType])
+  @@index([contributorId])
+}
+
+// ─── Mentor Requests ─────────────────────────────────────────────────────────
+
+model MentorRequest {
+  id            String   @id @default(uuid())
+  contributorId String
+  requesterName String   @default("")
+  batch         String   @default("")
+  department    String   @default("")
+  topic         String
+  description   String   @default("")
+  contact       String   @default("")
+  responses     String   @default("[]")   // JSON string
+  postedAt      DateTime @default(now())
+
+  user User @relation(fields: [contributorId], references: [id], onDelete: NoAction)
+
+  @@index([contributorId])
+}
+
+// ─── Messages ────────────────────────────────────────────────────────────────
+
+model Message {
+  id             String   @id @default(uuid())
+  conversationId String
+  fromId         String
+  toId           String
+  text           String
+  timestamp      DateTime @default(now())
+  read           Boolean  @default(false)
+  deleted        Boolean  @default(false)
+  edited         Boolean  @default(false)
+  editedAt       DateTime?
+  replyTo        String?           // JSON string: { messageId, text, fromId }
+
+  sender   User              @relation("SentMessages", fields: [fromId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  receiver User              @relation("ReceivedMessages", fields: [toId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  reactions MessageReaction[]
+
+  @@index([conversationId, timestamp])
+  @@index([fromId])
+  @@index([toId])
+}
+
+model MessageReaction {
+  id        String @id @default(uuid())
+  messageId String
+  userId    String
+  emoji     String
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  @@unique([messageId, userId, emoji])
+}
+
+// ─── Notices ─────────────────────────────────────────────────────────────────
+
+model Notice {
+  id        String   @id @default(uuid())
+  title     String
+  body      String
+  postedBy  String
+  postedAt  DateTime @default(now())
+  expiresAt DateTime?
+  pinned    Boolean  @default(false)
+
+  user User @relation(fields: [postedBy], references: [id], onDelete: NoAction)
+}
+
+// ─── Canteen ─────────────────────────────────────────────────────────────────
+
+model CanteenMenuItem {
+  id        String  @id @default(uuid())
+  day       String
+  mealType  String
+  name      String
+  price     Float   @default(0)
+  available Boolean @default(true)
+
+  feedback CanteenFeedback[]
+
+  @@index([day, mealType])
+}
+
+model CanteenFeedback {
+  id         String   @id @default(uuid())
+  userId     String
+  menuItemId String
+  rating     Int      @default(3)
+  comment    String   @default("")
+  createdAt  DateTime @default(now())
+
+  user     User            @relation(fields: [userId], references: [id], onDelete: NoAction)
+  menuItem CanteenMenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, menuItemId])
+}
+
+// ─── Library ─────────────────────────────────────────────────────────────────
+
+model LibraryCheckin {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  lat         Float
+  lng         Float
+  checkedInAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction)
+}
+
+// ─── Clubs ───────────────────────────────────────────────────────────────────
+
+model Club {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String   @default("")
+  category    String   @default("")
+  createdAt   DateTime @default(now())
+
+  members ClubMembership[]
+}
+
+model ClubMembership {
+  id     String @id @default(uuid())
+  clubId String
+  userId String
+  role   String @default("member")
+
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction)
+
+  @@unique([clubId, userId])
+}
+
+// ─── Invitations ─────────────────────────────────────────────────────────────
+
+model Invitation {
+  id         String    @id @default(uuid())
+  email      String
+  role       String
+  token      String    @unique
+  status     String    @default("pending")
+  invitedBy  String
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime?
+  acceptedAt DateTime?
+
+  inviter User @relation("InvitedBy", fields: [invitedBy], references: [id], onDelete: NoAction)
+
+  @@index([email])
+  @@index([token])
+}
+
+// ─── Role Applications (CR/SR) ───────────────────────────────────────────────
+
+model RoleApplication {
+  id               String    @id @default(uuid())
+  userId           String
+  appliedRole      String
+  department       String
+  semester         String
+  targetSection    String?
+  targetLabSection String?
+  statement        String    @default("")
+  status           String    @default("pending")
+  createdAt        DateTime  @default(now())
+  reviewedAt       DateTime?
+  reviewedBy       String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction)
+}
+
+// ─── Templates ───────────────────────────────────────────────────────────────
+
+model TranscriptTemplate {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String
+  data      String   @default("{}")   // JSON string
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction)
+}
+
+model RoutineTemplate {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String
+  schedule  String   @default("{}")   // JSON string
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction)
+}
+
+// ─── Telegram ────────────────────────────────────────────────────────────────
+
+model TelegramUser {
+  chatId    String   @id
+  routine   String?                 // JSON string
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  attendanceRecords TelegramAttendance[]
+}
+
+model TelegramAttendance {
+  id         String   @id @default(uuid())
+  chatId     String
+  courseCode String
+  attended   Boolean
+  recordDate DateTime @default(now())
+  timestamp  DateTime @default(now())
+
+  user TelegramUser @relation(fields: [chatId], references: [chatId], onDelete: Cascade)
+
+  @@unique([chatId, courseCode, recordDate])
+  @@index([chatId])
+}

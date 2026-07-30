@@ -11,6 +11,7 @@ import {
   listLostFoundItems,
 } from '../../utils/marketplaceStorage';
 import ConfirmDialog from './ConfirmDialog';
+import { sanitizeUserInput, MAX_TITLE_LENGTH, MAX_SHORT_TEXT_LENGTH } from '../../utils/sanitize';
 
 const defaultForm = {
   title: '',
@@ -87,7 +88,7 @@ export default function LostAndFound() {
     setMessage('');
 
     try {
-      addLostFoundItem({ ...form, reporter: getSellerLabel(user) });
+      addLostFoundItem({ ...form, title: sanitizeUserInput(form.title, MAX_TITLE_LENGTH), location: sanitizeUserInput(form.location, MAX_TITLE_LENGTH), description: sanitizeUserInput(form.description, MAX_SHORT_TEXT_LENGTH), contact: sanitizeUserInput(form.contact, MAX_TITLE_LENGTH), reporter: getSellerLabel(user) });
       setForm({ ...defaultForm });
       setPreviewUrl('');
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -160,7 +161,7 @@ export default function LostAndFound() {
           <div className="grid-2" style={{ gap: '10px' }}>
             <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               Item title
-              <input className="input" value={form.title} onChange={(e) => setForm((c) => ({ ...c, title: e.target.value }))} required />
+              <input className="input" value={form.title} onChange={(e) => setForm((c) => ({ ...c, title: e.target.value }))} maxLength={MAX_TITLE_LENGTH} required />
             </label>
             <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               Type
@@ -172,11 +173,11 @@ export default function LostAndFound() {
           </div>
           <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             Location
-            <input className="input" value={form.location} onChange={(e) => setForm((c) => ({ ...c, location: e.target.value }))} required />
+            <input className="input" value={form.location} onChange={(e) => setForm((c) => ({ ...c, location: e.target.value }))} maxLength={MAX_TITLE_LENGTH} required />
           </label>
           <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             Description
-            <textarea className="input" rows={3} value={form.description} onChange={(e) => setForm((c) => ({ ...c, description: e.target.value }))} required />
+            <textarea className="input" rows={3} value={form.description} onChange={(e) => setForm((c) => ({ ...c, description: e.target.value }))} maxLength={MAX_SHORT_TEXT_LENGTH} required />
           </label>
           <div className="grid-2" style={{ gap: '10px' }}>
             <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -211,7 +212,7 @@ export default function LostAndFound() {
             </label>
             <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               Contact
-              <input className="input" value={form.contact} onChange={(e) => setForm((c) => ({ ...c, contact: e.target.value }))} required />
+              <input className="input" value={form.contact} onChange={(e) => setForm((c) => ({ ...c, contact: e.target.value }))} maxLength={MAX_TITLE_LENGTH} required />
             </label>
           </div>
           {previewUrl && (

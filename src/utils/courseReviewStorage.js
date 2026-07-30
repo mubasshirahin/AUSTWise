@@ -1,9 +1,12 @@
+// TODO: Swap localStorage for API calls — see MIGRATION.md Phase 3
+//   Course reviews can be served from dedicated /api/reviews endpoints.
 const reviewsKey = 'aust-course-reviews-v2';
 const contributorKey = 'aust-course-review-contributor-id';
 const upvotesKey = 'aust-course-review-upvotes';
 const semesterResultsKey = 'aust-helper-semester-results-v2';
 
 import { getShadowIdentity } from './shadowName';
+import { sanitizeUserInput, MAX_TEXT_LENGTH } from './sanitize';
 
 const roundOne = (value) => Number(value.toFixed(1));
 
@@ -179,7 +182,7 @@ export function addCourseReview({ course, name, faculty, rating, difficulty, wor
     comment: commentText?.trim()
       ? {
           id: crypto.randomUUID(),
-          text: commentText.trim(),
+          text: sanitizeUserInput(commentText.trim(), MAX_TEXT_LENGTH),
           author: getShadowIdentity().nickname,
           upvotes: 0,
           createdAt,
@@ -195,7 +198,7 @@ export function addCourseReview({ course, name, faculty, rating, difficulty, wor
 }
 
 export function addCommentToCourse(courseId, commentText) {
-  const text = String(commentText || '').trim();
+  const text = sanitizeUserInput(String(commentText || '').trim(), MAX_TEXT_LENGTH);
   if (!text) throw new Error('Write a comment before submitting.');
 
   const entries = loadRawEntries();

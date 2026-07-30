@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Star, MessageSquare, ThumbsUp, ArrowUpDown, Send, Plus, X } from 'lucide-react';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
+import { sanitizeUserInput, MAX_TEXT_LENGTH, MAX_TITLE_LENGTH } from '../../utils/sanitize';
 import {
   addCommentToCourse,
   addCourseReview,
@@ -102,7 +103,7 @@ export default function CourseReview() {
     if (!selectedCourse || !newComment.trim()) return;
 
     try {
-      addCommentToCourse(selectedCourse.id, newComment);
+      addCommentToCourse(selectedCourse.id, sanitizeUserInput(newComment, MAX_TEXT_LENGTH));
       const nextReviews = refreshReviews();
       setNewComment('');
       setFormError('');
@@ -121,7 +122,12 @@ export default function CourseReview() {
     setFormMessage('');
 
     try {
-      const courseId = addCourseReview(reviewForm);
+      const courseId = addCourseReview({
+        ...reviewForm,
+        course: sanitizeUserInput(reviewForm.course, MAX_TITLE_LENGTH),
+        name: sanitizeUserInput(reviewForm.name, MAX_TITLE_LENGTH),
+        commentText: sanitizeUserInput(reviewForm.commentText, MAX_TEXT_LENGTH),
+      });
       const nextReviews = refreshReviews();
       setReviewForm(defaultReviewForm);
       setShowAddForm(false);
@@ -246,6 +252,7 @@ export default function CourseReview() {
                 className="input"
                 value={reviewForm.name}
                 onChange={(event) => setReviewForm((current) => ({ ...current, name: event.target.value }))}
+                maxLength={MAX_TITLE_LENGTH}
                 placeholder="Database Systems"
                 required
               />
@@ -277,6 +284,7 @@ export default function CourseReview() {
               rows={3}
               value={reviewForm.commentText}
               onChange={(event) => setReviewForm((current) => ({ ...current, commentText: event.target.value }))}
+              maxLength={MAX_TEXT_LENGTH}
               placeholder="Share your experience with this course..."
             />
           </label>
@@ -391,6 +399,7 @@ export default function CourseReview() {
                   className="input"
                   value={newComment}
                   onChange={(event) => setNewComment(event.target.value)}
+                  maxLength={MAX_TEXT_LENGTH}
                   placeholder="Write a quick review..."
                   style={{ fontSize: 'var(--fs-xs)' }}
                 />

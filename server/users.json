@@ -1,0 +1,33 @@
+[
+  {
+    "id": "ADM-001",
+    "name": "Prof. Dr. Md. Abdur Rahim",
+    "email": "admin@aust.edu",
+    "password": "$2b$10$2JX1Yj4np.3gSpXVOZdLAOx/H5C0vzdK2ag4Mp51U7NdTm9PDWqTS",
+    "role": "admin",
+    "department": "Admin Department",
+    "designation": "Registrar",
+    "company": "Ahsanullah University of Science and Technology",
+    "batch": "",
+    "batchNo": "",
+    "batchName": "",
+    "yearSemester": "",
+    "section": "",
+    "labSection": "",
+    "semester": 1,
+    "graduationYear": "",
+    "avatar": null,
+    "openForTalk": false,
+    "linkedSocial": {},
+    "linkedAccounts": [],
+    "cgpa": 0,
+    "creditsCompleted": 0,
+    "totalCredits": 160,
+    "bloodGroup": "",
+    "facebook": "",
+    "whatsapp": "",
+    "linkedin": "",
+    "discord": "",
+    "createdAt": "2026-07-30T14:04:50.481Z"
+  }
+]

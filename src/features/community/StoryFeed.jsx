@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MessageSquare, Send, Lightbulb, Smile, Heart, Flame } from 'lucide-react';
 import { getShadowIdentity } from '../../utils/shadowName';
+import { sanitizeUserInput, MAX_TEXT_LENGTH } from '../../utils/sanitize';
 
 const STORAGE_KEY = 'austwise_posts';
 const REACTIONS_KEY = 'austwise_reactions';
@@ -88,7 +89,7 @@ export default function StoryFeed() {
 
     const newPost = {
       id: Date.now() + Math.random(),
-      content: newPostContent.trim(),
+      content: sanitizeUserInput(newPostContent.trim(), MAX_TEXT_LENGTH),
       category: selectedCategory,
       author: getShadowIdentity().nickname,
       reactions: { laugh: 0, heart: 0, fire: 0 },
@@ -162,6 +163,7 @@ export default function StoryFeed() {
           value={newPostContent}
           onChange={(e) => setNewPostContent(e.target.value)}
           rows="3"
+          maxLength={MAX_TEXT_LENGTH}
           className="story-feed-textarea"
         />
         <div className="story-feed-form-footer">

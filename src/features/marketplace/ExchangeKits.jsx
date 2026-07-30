@@ -10,6 +10,7 @@ import {
   listExchangeItems,
 } from '../../utils/marketplaceStorage';
 import ConfirmDialog from './ConfirmDialog';
+import { sanitizeUserInput, MAX_TITLE_LENGTH } from '../../utils/sanitize';
 
 const categories = ['Books', 'Lab Equipment', 'Stationery', 'Electronics', 'Other'];
 const conditions = ['New', 'Like New', 'Good', 'Fair'];
@@ -97,7 +98,7 @@ export default function ExchangeKits() {
     setMessage('');
 
     try {
-      addExchangeItem({ ...form, seller: getSellerLabel(user) });
+      addExchangeItem({ ...form, title: sanitizeUserInput(form.title, MAX_TITLE_LENGTH), contact: sanitizeUserInput(form.contact, MAX_TITLE_LENGTH), seller: getSellerLabel(user) });
       setForm({ ...defaultForm });
       setPreviewUrl('');
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -179,7 +180,7 @@ export default function ExchangeKits() {
           <div className="grid-2" style={{ gap: '10px' }}>
             <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               Product title
-              <input className="input" value={form.title} onChange={(e) => setForm((c) => ({ ...c, title: e.target.value }))} required />
+              <input className="input" value={form.title} onChange={(e) => setForm((c) => ({ ...c, title: e.target.value }))} maxLength={MAX_TITLE_LENGTH} required />
             </label>
             <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               Price (৳)
@@ -238,7 +239,7 @@ export default function ExchangeKits() {
           )}
           <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             Contact (phone / WhatsApp)
-            <input className="input" value={form.contact} onChange={(e) => setForm((c) => ({ ...c, contact: e.target.value }))} placeholder="+880..." required />
+            <input className="input" value={form.contact} onChange={(e) => setForm((c) => ({ ...c, contact: e.target.value }))} maxLength={MAX_TITLE_LENGTH} placeholder="+880..." required />
           </label>
           <button type="submit" className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start' }}>Publish listing</button>
         </form>
