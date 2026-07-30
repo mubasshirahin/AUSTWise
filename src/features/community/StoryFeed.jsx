@@ -107,11 +107,12 @@ export default function StoryFeed() {
     const userSet = userReactions[visitorId] || [];
     const hasReacted = userSet.includes(key);
 
+    // Duplicate-vote protection: if already voted, do nothing
+    if (hasReacted) return;
+
     setUserReactions(prev => ({
       ...prev,
-      [visitorId]: hasReacted
-        ? userSet.filter(k => k !== key)
-        : [...userSet, key],
+      [visitorId]: [...userSet, key],
     }));
 
     setPosts(prev => prev.map(p => {
@@ -120,11 +121,32 @@ export default function StoryFeed() {
         ...p,
         reactions: {
           ...p.reactions,
-          [reactionType]: p.reactions[reactionType] + (hasReacted ? -1 : 1),
+          [reactionType]: p.reactions[reactionType] + 1,
         },
       };
     }));
   };
+
+  /*
+   * MANUAL TEST: Duplicate-reaction protection (Senior Secrets upvote)
+   * 1. Post a new story or find an existing one in the feed.
+   * 2. Click any reaction button (😂, ❤️, 🔥) — the count increments and the
+   *    button becomes disabled with a reduced-opacity, highlighted appearance.
+   * 3. Click the SAME reaction button again — no change occurs (handleReact
+   *    returns early because `${postId}-${reactionType}` already exists in
+   *    userReactions[visitorId]).
+   * 4. Click a DIFFERENT reaction on the same post — it increments normally
+   *    (different key).
+   * 5. Reload the page — the disabled state persists because userReactions is
+   *    persisted to localStorage under "austwise_reactions".
+   * 6. In DevTools → Application → Local Storage, inspect "austwise_reactions" —
+   *    each visitorId maps to an array of "${postId}-${reactionType}" strings.
+   *    No duplicate entries for the same post+reaction pair should exist.
+   *
+   * Expected: clicking the same reaction twice only increments the counter once.
+   * The button shows a "You already voted" tooltip and is visually disabled after
+   * the first click.
+   */
 
   return (
     <div className="glass-card-static story-feed-container animate-fadeInUp">
@@ -231,10 +253,14 @@ export default function StoryFeed() {
                         key={type}
                         onClick={() => handleReact(post.id, type)}
                         className="story-feed-reaction-btn"
+                        disabled={hasReacted}
+                        title={hasReacted ? 'You already voted' : `React with ${type}`}
                         style={{
                           background: hasReacted ? meta.color + '20' : undefined,
                           color: hasReacted ? meta.color : undefined,
                           fontWeight: hasReacted ? 600 : undefined,
+                          opacity: hasReacted ? 0.55 : 1,
+                          cursor: hasReacted ? 'default' : 'pointer',
                         }}
                       >
                         <IconComponent size={14} /> {post.reactions[type]}

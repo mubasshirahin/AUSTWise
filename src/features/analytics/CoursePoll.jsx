@@ -4,10 +4,10 @@ import CourseAutocomplete from '../../components/CourseAutocomplete';
 import {
   MAX_PICKS,
   saveMyBallot,
+  getMyBallot,
   getBestLeaderboard,
   getWorstLeaderboard,
   getTotalVoters,
-  clearAllPollData,
 } from '../../utils/coursePollStorage';
 
 function PickList({ title, icon, accent, picks, setPicks }) {
@@ -126,9 +126,37 @@ export default function CoursePoll() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    clearAllPollData();
-    setVoted(false);
+    // Check if this browser already submitted a ballot
+    const existing = getMyBallot();
+    if (existing) {
+      setVoted(true);
+      // Restore picks from existing ballot for display
+      const fillSlots = (picks) => {
+        const slots = Array.from({ length: MAX_PICKS }, () => ({ code: '', name: '' }));
+        (picks || []).forEach((p, i) => { if (i < MAX_PICKS) slots[i] = p; });
+        return slots;
+      };
+      setBest(fillSlots(existing.best));
+      setWorst(fillSlots(existing.worst));
+    }
   }, []);
+
+  /*
+   * MANUAL TEST: Duplicate-vote protection
+   * 1. Open the Course Poll page, pick some courses, and click "Submit My Picks".
+   * 2. Verify the leaderboard shows your vote counted (totalVoters increased by 1).
+   * 3. Reload the page — you should see the "Your vote has been recorded" view,
+   *    NOT the voting form. The submit button is not shown.
+   * 4. In DevTools → Application → Local Storage, find the key
+   *    "aust-course-poll-ballots-v1". Verify your ballot appears exactly once.
+   * 5. Manually delete just that ballot from localStorage, reload — the vote form
+   *    reappears (since no ballot belongs to this contributorId anymore).
+   *
+   * Expected: clicking vote twice (via page reloads or re-submit attempts) only
+   * counts once because saveMyBallot filters out the existing contributorId
+   * before pushing the new ballot, and getMyBallot() short-circuits the form on
+   * mount before any submit handler can fire.
+   */
 
   const bestBoard = useMemo(() => getBestLeaderboard(), [version]);
   const worstBoard = useMemo(() => getWorstLeaderboard(), [version]);
