@@ -323,3 +323,62 @@ export async function joinClub(clubId, userId, role = 'member') {
 export async function leaveClub(clubId, userId) {
   return prisma.clubMembership.deleteMany({ where: { clubId, userId } });
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Cheatsheets
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export async function listCheatsheets() {
+  return prisma.cheatsheet.findMany({ orderBy: { createdAt: 'desc' } });
+}
+
+export async function createCheatsheet(data) {
+  return prisma.cheatsheet.create({ data });
+}
+
+export async function deleteCheatsheet(id) {
+  return prisma.cheatsheet.delete({ where: { id } });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Campus Locations
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export async function listCampusLocations() {
+  return prisma.campusLocation.findMany({ orderBy: [{ floor: 'asc' }, { roomId: 'asc' }] });
+}
+
+export async function upsertCampusLocation(data) {
+  const existing = await prisma.campusLocation.findFirst({
+    where: { floor: data.floor, roomId: data.roomId },
+  });
+  if (existing) {
+    return prisma.campusLocation.update({ where: { id: existing.id }, data });
+  }
+  return prisma.campusLocation.create({ data });
+}
+
+export async function deleteCampusLocation(id) {
+  return prisma.campusLocation.delete({ where: { id } });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Courses
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export async function listCourses(department) {
+  const where = department ? { department } : {};
+  return prisma.course.findMany({ where, orderBy: { code: 'asc' } });
+}
+
+export async function upsertCourse(data) {
+  return prisma.course.upsert({
+    where: { code: data.code },
+    create: data,
+    update: { name: data.name, credit: data.credit, department: data.department },
+  });
+}
+
+export async function deleteCourse(code) {
+  return prisma.course.delete({ where: { code } });
+}

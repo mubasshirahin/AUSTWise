@@ -1,7 +1,33 @@
 // ─── Cheatsheet storage (admin-added sheets + per-user favorites) ───
+// Tries API first, falls back to localStorage + static seed data.
 import { cheatsheets as seedCheatsheets } from '../data/mockData';
 
 const SHEETS_KEY = 'aust-cheatsheets-v1';
+
+let _apiCache = null;
+let _apiFetchStarted = false;
+
+/** Fetch cheatsheets from API — runs once, caches result */
+async function fetchFromAPI() {
+  if (_apiFetchStarted) return;
+  _apiFetchStarted = true;
+  try {
+    const res = await fetch('/api/cheatsheets');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.success && Array.isArray(data.cheatsheets)) {
+      _apiCache = data.cheatsheets;
+      // Sync to localStorage so offline fallback stays current
+      const stored = loadStoredSheets();
+      const apiOnly = (_apiCache || []).filter(s => !stored.some(ls => ls.id === s.id));
+      if (apiOnly.length > 0) {
+        saveStoredSheets([...stored, ...apiOnly]);
+      }
+    }
+  } catch {
+    // API unavailable — localStorage fallback will be used
+  }
+}
 const FAVS_KEY_PREFIX = 'aust-cheatsheet-favs-';
 
 // ── Cheatsheets ──
@@ -9,6 +35,10 @@ export function getCheatsheets() {
   try {
     const raw = localStorage.getItem(SHEETS_KEY);
     const stored = raw ? JSON.parse(raw) : [];
+    // Use API data if available (most current), then stored, then seed
+    const apiSheets = _apiCache || [];
+    const merged = [...apiSheets, ...stored.filter(s => !apiSheets.some(a => a.id === s.id))];
+    if (merged.length > 0) return merged;
     return [...seedCheatsheets, ...(Array.isArray(stored) ? stored : [])];
   } catch {
     return [...seedCheatsheets];
@@ -63,6 +93,8 @@ export function getFavoriteIds(userId) {
     return new Set();
   }
 }
+
+export { fetchFromAPI };
 
 export function toggleFavorite(userId, sheetId) {
   const favs = getFavoriteIds(userId);

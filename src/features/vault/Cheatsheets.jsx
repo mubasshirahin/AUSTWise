@@ -12,6 +12,7 @@ import {
   deleteCheatsheet,
   getFavoriteIds,
   toggleFavorite,
+  fetchFromAPI as fetchCheatsheetsFromAPI,
 } from '../../utils/cheatsheetStorage';
 
 const categoryColors = {
@@ -110,6 +111,13 @@ export default function Cheatsheets({ vaultContext }) {
   useEffect(() => {
     setFavorites(getFavoriteIds(user?.id));
   }, [user?.id]);
+
+  // Fetch cheatsheets from API on mount
+  useEffect(() => {
+    fetchCheatsheetsFromAPI().then(() => {
+      setSheets(getCheatsheets());
+    });
+  }, []);
 
   const handleDelete = useCallback((sheetId) => {
     deleteCheatsheet(sheetId);

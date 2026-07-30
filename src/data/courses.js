@@ -773,11 +773,35 @@ export const AUST_COURSES = {
 };
 
 function getCourses(department = null) {
-  if (department && AUST_COURSES[department]) {
-    return AUST_COURSES[department];
+  const staticCourses = department && AUST_COURSES[department]
+    ? AUST_COURSES[department]
+    : Object.values(AUST_COURSES).flat();
+  // Merge API courses if available
+  if (!_apiCoursesMap) return staticCourses;
+  const apiCourses = [];
+  const seenCodes = new Set();
+  _apiCoursesMap.forEach((c) => {
+    if (!department || c.department === department) {
+      apiCourses.push(c);
+      seenCodes.add(c.code);
+    }
+  });
+  for (const sc of staticCourses) {
+    if (!seenCodes.has(sc.code)) apiCourses.push(sc);
   }
-  return Object.values(AUST_COURSES).flat();
+  return apiCourses;
 }
+
+// API cache — fetched once, falls back to static data
+let _apiCoursesMap = null;
+fetch('/api/courses')
+  .then(r => r.json())
+  .then(data => {
+    if (data.success && Array.isArray(data.courses)) {
+      _apiCoursesMap = new Map(data.courses.map(c => [c.code, c]));
+    }
+  })
+  .catch(() => {});
 
 export function searchCourses(query, department = null, limit = 10) {
   if (!query || query.trim() === '') return [];

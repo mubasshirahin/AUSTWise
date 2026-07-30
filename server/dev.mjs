@@ -59,6 +59,15 @@ import {
   listClubs,
   joinClub,
   leaveClub,
+  listCheatsheets,
+  createCheatsheet,
+  deleteCheatsheet,
+  listCampusLocations,
+  upsertCampusLocation,
+  deleteCampusLocation,
+  listCourses,
+  upsertCourse,
+  deleteCourse,
 } from './prisma.js';
 import { createWSServer, broadcastToAll } from './wsServer.mjs';
 
@@ -187,6 +196,11 @@ function readJsonBody(req) {
     });
     req.on('error', reject);
   });
+}
+
+function safeJsonParse(str, fallback) {
+  try { const v = JSON.parse(str); return v; }
+  catch { return fallback; }
 }
 
 function sendJson(res, status, payload) {
@@ -1603,6 +1617,158 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, { success: true });
     } catch (error) {
       sendJson(res, 400, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  // ── Cheatsheets ──
+  if (req.url === '/api/cheatsheets' && req.method === 'GET') {
+    try {
+      const sheets = await listCheatsheets();
+      const parsed = sheets.map(s => ({ ...s, formulas: safeJsonParse(s.formulas, []) }));
+      sendJson(res, 200, { success: true, cheatsheets: parsed });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  if (req.url === '/api/cheatsheets' && req.method === 'POST') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const payload = await readJsonBody(req);
+      const sheet = await createCheatsheet({
+        title: payload.title,
+        category: payload.category || 'General',
+        course: payload.course || '',
+        formulas: JSON.stringify(payload.formulas || []),
+        contributorId: auth.id,
+      });
+      sendJson(res, 201, { success: true, cheatsheet: { ...sheet, formulas: safeJsonParse(sheet.formulas, []) } });
+    } catch (error) {
+      sendJson(res, 400, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  if (req.url.startsWith('/api/cheatsheets/') && req.method === 'DELETE') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const id = new URL(req.url, `http://${req.headers.host}`).pathname.split('/').pop();
+      await deleteCheatsheet(id);
+      sendJson(res, 200, { success: true });
+    } catch (error) {
+      sendJson(res, 404, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  // ── Campus Locations ──
+  if (req.url === '/api/campus-locations' && req.method === 'GET') {
+    try {
+      const locations = await listCampusLocations();
+      // Group by floor for the frontend
+      const floorsMap = new Map();
+      for (const loc of locations) {
+        if (!floorsMap.has(loc.floor)) {
+          floorsMap.set(loc.floor, { floor: loc.floor, mapImage: loc.mapImage || '', rooms: [] });
+        }
+        const hotspotData = safeJsonParse(loc.hotspotData, {});
+        const room = { id: loc.roomId, name: loc.name, type: loc.type };
+        if (Array.isArray(hotspotData) && hotspotData.length > 0) {
+          room.hotspots = hotspotData;
+        } else if (hotspotData && Object.keys(hotspotData).length > 0) {
+          room.hotspot = hotspotData;
+        }
+        if (loc.x != null) room.x = loc.x;
+        if (loc.y != null) room.y = loc.y;
+        floorsMap.get(loc.floor).rooms.push(room);
+      }
+      const floors = [...floorsMap.values()];
+      sendJson(res, 200, { success: true, floors });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  if (req.url === '/api/campus-locations' && req.method === 'POST') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const payload = await readJsonBody(req);
+      const loc = await upsertCampusLocation({
+        floor: payload.floor,
+        roomId: payload.roomId,
+        name: payload.name,
+        type: payload.type,
+        hotspotData: JSON.stringify(payload.hotspotData || {}),
+        x: payload.x ?? null,
+        y: payload.y ?? null,
+        mapImage: payload.mapImage || '',
+      });
+      sendJson(res, 201, { success: true, location: loc });
+    } catch (error) {
+      sendJson(res, 400, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  if (req.url.startsWith('/api/campus-locations/') && req.method === 'DELETE') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const id = parseInt(new URL(req.url, `http://${req.headers.host}`).pathname.split('/').pop());
+      await deleteCampusLocation(id);
+      sendJson(res, 200, { success: true });
+    } catch (error) {
+      sendJson(res, 404, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  // ── Courses ──
+  if (req.url.startsWith('/api/courses') && req.method === 'GET') {
+    try {
+      const url = new URL(req.url, `http://${req.headers.host}`);
+      const dept = url.searchParams.get('department');
+      const courses = await listCourses(dept || undefined);
+      sendJson(res, 200, { success: true, courses });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  if (req.url === '/api/courses' && req.method === 'POST') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const payload = await readJsonBody(req);
+      const course = await upsertCourse({
+        code: payload.code,
+        name: payload.name,
+        credit: payload.credit || 0,
+        department: payload.department || '',
+      });
+      sendJson(res, 201, { success: true, course });
+    } catch (error) {
+      sendJson(res, 400, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  if (req.url.startsWith('/api/courses/') && req.method === 'DELETE') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const code = new URL(req.url, `http://${req.headers.host}`).pathname.split('/').pop();
+      await deleteCourse(code);
+      sendJson(res, 200, { success: true });
+    } catch (error) {
+      sendJson(res, 404, { success: false, error: error.message });
     }
     return;
   }

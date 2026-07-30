@@ -378,3 +378,46 @@ model TelegramAttendance {
   @@unique([chatId, courseCode, recordDate])
   @@index([chatId])
 }
+
+// ─── Cheatsheets ─────────────────────────────────────────────────────────────
+
+model Cheatsheet {
+  id            String   @id @default(uuid())
+  title         String
+  category      String   @default("General")
+  course        String   @default("")
+  formulas      String   @default("[]")   // JSON string array
+  contributorId String?
+  createdAt     DateTime @default(now())
+
+  @@index([category])
+  @@index([course])
+}
+
+// ─── Campus Locations ────────────────────────────────────────────────────────
+
+model CampusLocation {
+  id        Int    @id @default(autoincrement())
+  floor     String
+  roomId    String
+  name      String
+  type      String
+  hotspotData String @default("{}")   // JSON string: hotspot or hotspots[]
+  x         Float?
+  y         Float?
+  mapImage  String @default("")
+
+  @@index([floor])
+  @@index([roomId])
+}
+
+// ─── Course Catalog ──────────────────────────────────────────────────────────
+
+model Course {
+  code       String  @id
+  name       String
+  credit     Float   @default(0)
+  department String  @default("")
+
+  @@index([department])
+}

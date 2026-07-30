@@ -3,12 +3,23 @@ import {
   ZoomIn, Maximize2, Minimize2,
   MapPin, Compass, Move, RotateCcw,
 } from 'lucide-react';
-import { campusFloors } from '../../data/mockData';
+import { campusFloors as staticCampusFloors } from '../../data/mockData';
 import GliderTabs from '../../components/GliderTabs';
 import FirstFloorInteractivePlan from './FirstFloorInteractivePlan';
 import BuildingStructure from './BuildingStructure';
 
-const floorTabs = campusFloors.map((f) => ({
+// Attempt to fetch campus locations from API — falls back to static data
+let _campusApiPromise = null;
+function fetchCampusLocations() {
+  if (_campusApiPromise) return _campusApiPromise;
+  _campusApiPromise = fetch('/api/campus-locations')
+    .then(r => r.json())
+    .then(data => (data.success && Array.isArray(data.floors) ? data.floors : null))
+    .catch(() => null);
+  return _campusApiPromise;
+}
+
+const floorTabs = (staticCampusFloors).map((f) => ({
   id: f.floor,
   label: f.floor,
   icon: null,
@@ -657,8 +668,22 @@ function FloorShowcase({ floorData, selectedFloor }) {
 
 export default function InteractiveMap() {
   const [selectedFloor, setSelectedFloor] = useState('Ground');
+  const [campusFloors, setCampusFloors] = useState(null);
 
-  const currentFloorData = campusFloors.find((f) => f.floor === selectedFloor) || campusFloors[0];
+  useEffect(() => {
+    fetchCampusLocations().then((data) => {
+      if (data && data.length > 0) setCampusFloors(data);
+    });
+  }, []);
+
+  const allFloors = campusFloors || staticCampusFloors;
+  const floorTabs = allFloors.map((f) => ({
+    id: f.floor,
+    label: f.floor,
+    icon: null,
+    desc: '',
+  }));
+  const currentFloorData = allFloors.find((f) => f.floor === selectedFloor) || allFloors[0];
 
   return (
     <div className="interactive-map-root interactive-map-root-plan">

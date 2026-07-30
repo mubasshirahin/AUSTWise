@@ -23,6 +23,8 @@ export default function AdminPanelPage() {
     if (path === '/admin/cr-sr-directory') return 'representatives';
     if (path === '/admin/templates') return 'templates';
     if (path === '/admin/transcript-templates') return 'transcript-templates';
+    if (path === '/admin/cheatsheets') return 'cheatsheets';
+    if (path === '/admin/campus-map') return 'campus-map';
     return 'overview';
   };
   
@@ -44,7 +46,9 @@ export default function AdminPanelPage() {
       'applications': '/admin/applications',
       'representatives': '/admin/cr-sr-directory',
       'templates': '/admin/templates',
-      'transcript-templates': '/admin/transcript-templates'
+      'transcript-templates': '/admin/transcript-templates',
+      'cheatsheets': '/admin/cheatsheets',
+      'campus-map': '/admin/campus-map'
     };
     navigate(paths[tab] || '/admin');
   };
@@ -1908,6 +1912,183 @@ export default function AdminPanelPage() {
             </div>
           </div>
         )}
+
+        {/* CHEATSHEETS ADMIN PANEL */}
+        {activeTab === 'cheatsheets' && <AdminCheatsheetsPanel />}
+
+        {/* CAMPUS MAP ADMIN PANEL */}
+        {activeTab === 'campus-map' && <AdminCampusMapPanel />}
+      </div>
+    </div>
+  );
+}
+
+// ─── Admin Cheatsheets Panel ─────────────────────────────────────────────
+function AdminCheatsheetsPanel() {
+  const [sheets, setSheets] = useState([]);
+  const [title, setTitle] = useState('');
+  const [category, setCategory] = useState('');
+  const [course, setCourse] = useState('');
+  const [formulas, setFormulas] = useState('');
+  const [statusMsg, setStatusMsg] = useState('');
+
+  const loadData = () => {
+    fetch('/api/cheatsheets')
+      .then(r => r.json())
+      .then(d => { if (d.success) setSheets(d.cheatsheets || []); })
+      .catch(() => setStatusMsg('Failed to load cheatsheets'));
+  };
+
+  useEffect(() => { loadData(); }, []);
+
+  const handleAdd = async (e) => {
+    e.preventDefault();
+    const formulaList = formulas.split('\n').map(f => f.trim()).filter(Boolean);
+    if (!title.trim()) return;
+    try {
+      const res = await fetch('/api/cheatsheets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: title.trim(), category: category.trim() || 'General', course: course.trim(), formulas: formulaList }),
+      });
+      const d = await res.json();
+      if (d.success) {
+        setTitle(''); setCategory(''); setCourse(''); setFormulas('');
+        setStatusMsg('Added!');
+        loadData();
+      } else {
+        setStatusMsg('Error: ' + (d.error || 'Unknown'));
+      }
+    } catch { setStatusMsg('Request failed'); }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      const res = await fetch('/api/cheatsheets/' + encodeURIComponent(id), { method: 'DELETE' });
+      const d = await res.json();
+      if (d.success) { setStatusMsg('Deleted'); loadData(); }
+      else setStatusMsg('Error: ' + (d.error || 'Unknown'));
+    } catch { setStatusMsg('Delete failed'); }
+  };
+
+  return (
+    <div className="glass-card-static">
+      <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', marginBottom: '16px' }}>Manage Cheatsheets</h3>
+      {statusMsg && <p style={{ fontSize: '12px', color: 'var(--accent-cyan)', marginBottom: '8px' }}>{statusMsg}</p>}
+      <form onSubmit={handleAdd} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+        <div className="flex gap-2 flex-wrap">
+          <input className="input" placeholder="Title *" value={title} onChange={e => setTitle(e.target.value)} style={{ flex: 2, minWidth: '160px' }} required />
+          <input className="input" placeholder="Category" value={category} onChange={e => setCategory(e.target.value)} style={{ flex: 1, minWidth: '120px' }} />
+          <input className="input" placeholder="Course code" value={course} onChange={e => setCourse(e.target.value)} style={{ flex: 1, minWidth: '120px' }} />
+        </div>
+        <textarea className="input" placeholder="Formulas (one per line)" value={formulas} onChange={e => setFormulas(e.target.value)} rows={4} style={{ resize: 'vertical' }} />
+        <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start' }}><Plus size={14} /> Add</button>
+      </form>
+      <div style={{ borderTop: '1px solid var(--border-primary)', paddingTop: '12px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>{sheets.length} cheatsheets</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px', overflowY: 'auto' }}>
+          {sheets.map(s => (
+            <div key={s.id} className="flex justify-between items-center p-3" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-md)' }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <strong style={{ fontSize: '13px' }}>{s.title}</strong>
+                <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginLeft: '8px' }}>{s.category} {s.course && '· ' + s.course}</span>
+              </div>
+              <button className="btn btn-secondary btn-icon" onClick={() => handleDelete(s.id)} style={{ color: 'var(--accent-rose)', border: 'none', background: 'transparent', padding: '4px' }}>
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Admin Campus Map Panel ──────────────────────────────────────────────
+function AdminCampusMapPanel() {
+  const [locations, setLocations] = useState([]);
+  const [form, setForm] = useState({ floor: '', roomId: '', name: '', type: 'classroom', hotspotData: '', x: '', y: '' });
+  const [statusMsg, setStatusMsg] = useState('');
+
+  const loadData = () => {
+    fetch('/api/campus-locations')
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          const flat = [];
+          (d.floors || []).forEach(f => (f.rooms || []).forEach(r => flat.push({ ...r, floor: f.floor, mapImage: f.mapImage })));
+          setLocations(flat);
+        }
+      })
+      .catch(() => setStatusMsg('Failed to load'));
+  };
+
+  useEffect(() => { loadData(); }, []);
+
+  const handleAdd = async (e) => {
+    e.preventDefault();
+    if (!form.floor.trim() || !form.roomId.trim() || !form.name.trim()) return;
+    let hd = {};
+    try { hd = JSON.parse(form.hotspotData); } catch {}
+    const body = { floor: form.floor, roomId: form.roomId, name: form.name, type: form.type, hotspotData: hd, x: form.x ? Number(form.x) : null, y: form.y ? Number(form.y) : null };
+    try {
+      const res = await fetch('/api/campus-locations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const d = await res.json();
+      if (d.success) { setForm({ floor: '', roomId: '', name: '', type: 'classroom', hotspotData: '', x: '', y: '' }); setStatusMsg('Added!'); loadData(); }
+      else setStatusMsg('Error: ' + (d.error || 'Unknown'));
+    } catch { setStatusMsg('Request failed'); }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      const res = await fetch('/api/campus-locations/' + encodeURIComponent(id), { method: 'DELETE' });
+      if (res.ok) { setStatusMsg('Deleted'); loadData(); }
+      else setStatusMsg('Delete failed');
+    } catch { setStatusMsg('Delete failed'); }
+  };
+
+  return (
+    <div className="glass-card-static">
+      <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', marginBottom: '16px' }}>Manage Campus Map Locations</h3>
+      {statusMsg && <p style={{ fontSize: '12px', color: 'var(--accent-cyan)', marginBottom: '8px' }}>{statusMsg}</p>}
+      <form onSubmit={handleAdd} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+        <div className="flex gap-2 flex-wrap">
+          <input className="input" placeholder="Floor *" value={form.floor} onChange={e => setForm({ ...form, floor: e.target.value })} style={{ flex: 1, minWidth: '80px' }} required />
+          <input className="input" placeholder="Room ID *" value={form.roomId} onChange={e => setForm({ ...form, roomId: e.target.value })} style={{ flex: 1, minWidth: '100px' }} required />
+          <input className="input" placeholder="Name *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={{ flex: 2, minWidth: '140px' }} required />
+          <select className="input" value={form.type} onChange={e => setForm({ ...form, type: e.target.value })} style={{ flex: 1, minWidth: '100px' }}>
+            <option value="classroom">Classroom</option>
+            <option value="lab">Lab</option>
+            <option value="admin">Admin</option>
+            <option value="facility">Facility</option>
+            <option value="hall">Hall</option>
+            <option value="library">Library</option>
+            <option value="lift">Lift</option>
+            <option value="washroom">Washroom</option>
+          </select>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <input className="input" placeholder='Hotspot JSON e.g. {"left":10,"top":20,"width":15,"height":10}' value={form.hotspotData} onChange={e => setForm({ ...form, hotspotData: e.target.value })} style={{ flex: 3, minWidth: '200px', fontSize: '11px' }} />
+          <input className="input" type="number" placeholder="X %" value={form.x} onChange={e => setForm({ ...form, x: e.target.value })} style={{ flex: 0.5, minWidth: '60px' }} />
+          <input className="input" type="number" placeholder="Y %" value={form.y} onChange={e => setForm({ ...form, y: e.target.value })} style={{ flex: 0.5, minWidth: '60px' }} />
+        </div>
+        <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start' }}><Plus size={14} /> Add Location</button>
+      </form>
+      <div style={{ borderTop: '1px solid var(--border-primary)', paddingTop: '12px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>{locations.length} locations</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px', overflowY: 'auto' }}>
+          {locations.map(l => (
+            <div key={l.id || l.roomId} className="flex justify-between items-center p-3" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-md)' }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <strong style={{ fontSize: '13px' }}>{l.name}</strong>
+                <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginLeft: '8px' }}>{l.roomId} · Floor {l.floor} · {l.type}</span>
+              </div>
+              <button className="btn btn-secondary btn-icon" onClick={() => handleDelete(l.id)} style={{ color: 'var(--accent-rose)', border: 'none', background: 'transparent', padding: '4px' }}>
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
