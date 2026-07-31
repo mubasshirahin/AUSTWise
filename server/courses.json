@@ -1,0 +1,4394 @@
+[
+  {
+    "code": "HUM1107",
+    "name": "Critical Thinking and Communication",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "HUM1108",
+    "name": "English Language Sessional",
+    "credit": 0.75,
+    "department": "CSE"
+  },
+  {
+    "code": "MATH1115",
+    "name": "Mathematics-I",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "PHY1115",
+    "name": "Physics",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "PHY1116",
+    "name": "Physics Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CHEM1115",
+    "name": "Chemistry",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE1101",
+    "name": "Elementary Structured Programming",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE1102",
+    "name": "Elementary Structured Programming Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE1108",
+    "name": "Introduction to Computer Systems",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "MATH1219",
+    "name": "Mathematics-II",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "ME1211",
+    "name": "Basic Mechanical Engineering",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "ME1214",
+    "name": "Engineering Drawing",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "EEE1241",
+    "name": "Basic Electrical Engineering",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "EEE1242",
+    "name": "Basic Electrical Engineering Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE1200",
+    "name": "Software Development-I",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE1203",
+    "name": "Discrete Mathematics",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE1205",
+    "name": "Object Oriented Programming",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE1206",
+    "name": "Object Oriented Programming Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "HUM2109",
+    "name": "Society, Ethics and Technology",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "MATH2101",
+    "name": "Mathematics-III",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "EEE2141",
+    "name": "Electronic Devices and Circuits",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "EEE2142",
+    "name": "Electronic Devices and Circuits Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE2100",
+    "name": "Software Development-II",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE2103",
+    "name": "Data Structures",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE2104",
+    "name": "Data Structures Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE2105",
+    "name": "Digital Logic Design",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE2106",
+    "name": "Digital Logic Design Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "MATH2203",
+    "name": "Mathematics- IV",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE2200",
+    "name": "Software Development-III",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE2201",
+    "name": "Numerical Methods",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE2202",
+    "name": "Numerical Methods Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE2207",
+    "name": "Algorithms",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE2208",
+    "name": "Algorithms Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE2211",
+    "name": "Data Communication",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE2213",
+    "name": "Computer Architecture",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE2214",
+    "name": "Assembly Language Programming",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "HUM3115",
+    "name": "Economics and Accounting",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE3100",
+    "name": "Software Development-IV",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE3101",
+    "name": "Mathematical Analysis for Computer Science",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE3103",
+    "name": "Database",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE3104",
+    "name": "Database Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE3109",
+    "name": "Digital System Design",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE3110",
+    "name": "Digital System Design Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE3117",
+    "name": "Microprocessors and Microcontrollers",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE3118",
+    "name": "Microprocessors and Microcontrollers Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "HUM3207",
+    "name": "Industrial Law and Safety Management",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE3200",
+    "name": "Software Development-V",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE3201",
+    "name": "Introduction to Computer Networks",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE3202",
+    "name": "Introduction to Computer Networks Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE3207",
+    "name": "Introduction to Artificial Intelligence",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE3208",
+    "name": "Introduction to Artificial Intelligence Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE3213",
+    "name": "Operating System",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE3214",
+    "name": "Operating System Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE3223",
+    "name": "Information System Design and Software Engineering",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE3224",
+    "name": "Information System Design and Software Engineering Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "IPE4111",
+    "name": "Industrial Management",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4100",
+    "name": "Project and Thesis-I",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4113",
+    "name": "Pattern Recognition and Machine Learning",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4114",
+    "name": "Pattern Recognition and Machine Learning Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4129",
+    "name": "Formal Languages and Compilers",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4130",
+    "name": "Formal Languages and Compilers Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4203",
+    "name": "Computer Graphics",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4204",
+    "name": "Computer Graphics Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4250",
+    "name": "Project and Thesis-II",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4131",
+    "name": "Multimedia Computing",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4132",
+    "name": "Multimedia Computing Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4137",
+    "name": "Soft Computing",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4138",
+    "name": "Soft Computing Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4139",
+    "name": "Advanced Database Systems",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4140",
+    "name": "Advanced Database Systems Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4141",
+    "name": "Data Warehousing and Mining",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4142",
+    "name": "Data Warehousing and Mining Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4143",
+    "name": "Expert and Decision Support System",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4144",
+    "name": "Expert and Decision Support System Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4147",
+    "name": "Artificial Neural Networks",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4148",
+    "name": "Artificial Neural Networks Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4173",
+    "name": "Cyber Security",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4174",
+    "name": "Cyber Security Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4175",
+    "name": "Natural Language Processing",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4176",
+    "name": "Natural Language Processing Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4181",
+    "name": "Web Computing",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4182",
+    "name": "Web Computing Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4209",
+    "name": "Computer Vision",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4210",
+    "name": "Computer Vision Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4211",
+    "name": "Simulation of Products, Processes and Services",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4212",
+    "name": "Simulation of Products, Processes and Services Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4225",
+    "name": "Network Programming",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4226",
+    "name": "Network Programming Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4227",
+    "name": "Digital Image Processing",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4228",
+    "name": "Digital Image Processing Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4257",
+    "name": "Robotics",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4258",
+    "name": "Robotics Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4261",
+    "name": "Data Analytics",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4262",
+    "name": "Data Analytics Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4263",
+    "name": "Internet of Things",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4264",
+    "name": "Internet of Things Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4283",
+    "name": "Advanced Algorithms",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4284",
+    "name": "Advanced Algorithms Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4285",
+    "name": "High Performance Computing",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4286",
+    "name": "High Performance Computing Lab",
+    "credit": 1.5,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4215",
+    "name": "Advanced Computer Architecture",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4217",
+    "name": "VLSI Design",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4219",
+    "name": "Computational Geometry",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4221",
+    "name": "Graph Theory",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4223",
+    "name": "Computational Complexity Theory",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4233",
+    "name": "Advanced Microprocessor Architecture",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4235",
+    "name": "Advanced Data Communications and Wireless Networks",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4245",
+    "name": "Parallel Processing",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4255",
+    "name": "Telecommunication",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4265",
+    "name": "Bioinformatics",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "CSE4267",
+    "name": "Cloud Computing",
+    "credit": 3,
+    "department": "CSE"
+  },
+  {
+    "code": "EEE1101",
+    "name": "Electrical Circuits I",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE1102",
+    "name": "Electrical Circuits I Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE1109",
+    "name": "Programming Language",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE1110",
+    "name": "Programming Language Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "PHY1105",
+    "name": "Physics I",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "PHY1106",
+    "name": "Physics I Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "MATH1103",
+    "name": "Mathematics I",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "CHEM1107",
+    "name": "Chemistry",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "CHEM1108",
+    "name": "Chemistry Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE1201",
+    "name": "Electrical Circuits II",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE1202",
+    "name": "Electrical Circuits II Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE1203",
+    "name": "Electronics I",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE1204",
+    "name": "Electronics I Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "PHY1205",
+    "name": "Physics II",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "MATH1203",
+    "name": "Mathematics II",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "CE1252",
+    "name": "Engineering Drawing with CAD",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "MATH1213",
+    "name": "Mathematics III",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE2103",
+    "name": "Digital Circuit Design",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE2104",
+    "name": "Digital Circuit Design Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE2105",
+    "name": "Electrical Machineries",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE2106",
+    "name": "Electrical Machineries Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "ME2151",
+    "name": "Mechanical Engineering Fundamentals",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "ME2152",
+    "name": "Mechanical Engineering Fundamentals Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "MATH2103",
+    "name": "Mathematics IV",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "HUM2109",
+    "name": "Technical English",
+    "credit": 2,
+    "department": "EEE"
+  },
+  {
+    "code": "HUM2110",
+    "name": "Technical English Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE2203",
+    "name": "Electronics II",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE2204",
+    "name": "Electronics II Lab",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE2213",
+    "name": "Electrical Properties of Materials",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE2200",
+    "name": "Electrical Installations",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE2210",
+    "name": "Electronic Circuits and Systems Simulation Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE2226",
+    "name": "Numerical Methods for Engineering Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "HUM2201",
+    "name": "Bengali Language and Literature",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "MATH2203",
+    "name": "Mathematics V",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "HUM2209",
+    "name": "Accounting and Economics",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE3105",
+    "name": "Power Systems",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE3106",
+    "name": "Power Systems Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE3107",
+    "name": "Signals and Linear Systems",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE3109",
+    "name": "Microcontroller and Microprocessor",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE3110",
+    "name": "Microcontroller and Microprocessor Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE3100",
+    "name": "Fundamentals of Electrical Design",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE3117",
+    "name": "Engineering Electromagnetics",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "IPE3159",
+    "name": "Industrial Management",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE3203",
+    "name": "Solid State Devices",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE3207",
+    "name": "Communication Engineering",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE3208",
+    "name": "Communication Engineering Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "HUM3229",
+    "name": "Society, Ethics and Engineering Laws",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE3211",
+    "name": "Electrical and Electronics Instrumentation",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE3212",
+    "name": "Electrical and Electronics Instrumentation Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE3217",
+    "name": "Digital Signal Processing",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE3218",
+    "name": "Digital Signal Processing Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4000",
+    "name": "Senior Design Project (Semester 1)",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4105",
+    "name": "Control System I",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4106",
+    "name": "Control System I Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4107",
+    "name": "Advanced Communication Systems",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4108",
+    "name": "Advanced Communication Systems Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4000",
+    "name": "Senior Design Project (Semester 2)",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4202",
+    "name": "Seminar",
+    "credit": 1,
+    "department": "EEE"
+  },
+  {
+    "code": "HUM4201",
+    "name": "History of the Emergence of Independent Bangladesh",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "BUS4257",
+    "name": "Entrepreneurship Development for Engineers",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4531",
+    "name": "Electromechanical Devices",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4532",
+    "name": "Electromechanical Devices Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4511",
+    "name": "Power System Analysis",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4512",
+    "name": "Power System Analysis Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4551",
+    "name": "Power Plant Engineering",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4513",
+    "name": "High Voltage Engineering",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4514",
+    "name": "High Voltage Engineering Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4571",
+    "name": "Power System Protection",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4572",
+    "name": "Power System Protection Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4591",
+    "name": "PLC",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4592",
+    "name": "PLC Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4515",
+    "name": "Power System Operation and Control",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4533",
+    "name": "Power Electronics and Drives",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4534",
+    "name": "Power Electronics and Drives Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4593",
+    "name": "Control System II",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4553",
+    "name": "Renewable Energy and Smart Grid",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4555",
+    "name": "Nuclear Power Engineering",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4543",
+    "name": "Special Electrical Machines",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4311",
+    "name": "Processing and Fabrication Technology",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4331",
+    "name": "VLSI I",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4332",
+    "name": "VLSI I Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4333",
+    "name": "Analog Integrated Circuit",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4335",
+    "name": "VLSI II",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4336",
+    "name": "VLSI II Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4313",
+    "name": "Optoelectronics",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4314",
+    "name": "Optoelectronics Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4391",
+    "name": "Microcontroller Based Embedded Systems",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4392",
+    "name": "Microcontroller Based Embedded Systems Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4371",
+    "name": "Introduction to Biomedical Engineering",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4372",
+    "name": "Introduction to Biomedical Engineering Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4351",
+    "name": "Nano Electronics",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "CSE4393",
+    "name": "Computer Architecture",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4345",
+    "name": "Semiconductor Devices",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4317",
+    "name": "Introduction to MEMS Devices",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4395",
+    "name": "Robotics",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4396",
+    "name": "Robotics Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4715",
+    "name": "Advanced Digital Signal Processing",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4733",
+    "name": "Microwave Engineering",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4734",
+    "name": "Microwave Engineering Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4735",
+    "name": "Optical Fiber Communication",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4736",
+    "name": "Optical Fiber Communication Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4719",
+    "name": "Random Signals and Processes",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4725",
+    "name": "Digital Communication Systems",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4726",
+    "name": "Digital Communication Systems Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4729",
+    "name": "Wireless Communications",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4727",
+    "name": "Satellite Communication Engineering",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4728",
+    "name": "Satellite Communication Engineering Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4711",
+    "name": "Biomedical Signal Processing",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4712",
+    "name": "Biomedical Signal Processing Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4713",
+    "name": "Speech and Image Processing",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4714",
+    "name": "Speech and Image Processing Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "CSE4723",
+    "name": "Data Communication Networks",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "CSE4724",
+    "name": "Data Communication Networks Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4717",
+    "name": "Multimedia Communications",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4731",
+    "name": "Antenna and Wireless Propagation",
+    "credit": 3,
+    "department": "EEE"
+  },
+  {
+    "code": "EEE4732",
+    "name": "Antenna and Wireless Propagation Lab.",
+    "credit": 1.5,
+    "department": "EEE"
+  },
+  {
+    "code": "ME1121",
+    "name": "Introduction to Mechanical Engineering",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "CHEM1181",
+    "name": "Chemistry",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "MATH1181",
+    "name": "Differential Calculus, Integral Calculus, and Solid Geometry",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "PHY1181",
+    "name": "Waves and Oscillations, Optics, Modern Physics, and Nuclear Physics",
+    "credit": 4,
+    "department": "ME"
+  },
+  {
+    "code": "HUM1181",
+    "name": "Critical Thinking and Communication",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME1120",
+    "name": "Foundry and Welding Shops",
+    "credit": 0.75,
+    "department": "ME"
+  },
+  {
+    "code": "CHEM1182",
+    "name": "Chemistry Sessional",
+    "credit": 1.5,
+    "department": "ME"
+  },
+  {
+    "code": "PHY1182",
+    "name": "Physics Sessional",
+    "credit": 1.5,
+    "department": "ME"
+  },
+  {
+    "code": "HUM1182",
+    "name": "English Language Sessional",
+    "credit": 0.75,
+    "department": "ME"
+  },
+  {
+    "code": "CSE1287",
+    "name": "Computer Programming",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "EEE1287",
+    "name": "Basic Electrical Engineering",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "CHEM1281",
+    "name": "Environmental and Engineering Chemistry",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "MATH1281",
+    "name": "Vector Analysis, Matrix, and Complex Variable",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "HUM1281",
+    "name": "Economics and Accounting",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME1220",
+    "name": "Machine Shop Practice",
+    "credit": 1.5,
+    "department": "ME"
+  },
+  {
+    "code": "ME1222",
+    "name": "Mechanical Drawing-I",
+    "credit": 1.5,
+    "department": "ME"
+  },
+  {
+    "code": "CSE1288",
+    "name": "Computer Programming Sessional",
+    "credit": 1.5,
+    "department": "ME"
+  },
+  {
+    "code": "EEE1288",
+    "name": "Basic Electrical Engineering Sessional",
+    "credit": 1.5,
+    "department": "ME"
+  },
+  {
+    "code": "ME2121",
+    "name": "Basic Thermodynamics",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME2123",
+    "name": "Engineering Mechanics -I",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME2125",
+    "name": "Engineering Materials",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "EEE2187",
+    "name": "Electrical Machines",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "MATH2181",
+    "name": "Ordinary and Partial Differential Equation",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "HUM2181",
+    "name": "Bengali Language and Literature",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME2120",
+    "name": "Mechanical Drawing-II",
+    "credit": 1.5,
+    "department": "ME"
+  },
+  {
+    "code": "ME2122",
+    "name": "Basic Thermodynamics Sessional",
+    "credit": 0.75,
+    "department": "ME"
+  },
+  {
+    "code": "ME2126",
+    "name": "Engineering Materials Sessional",
+    "credit": 0.75,
+    "department": "ME"
+  },
+  {
+    "code": "EEE2188",
+    "name": "Electrical Machines Sessional",
+    "credit": 0.75,
+    "department": "ME"
+  },
+  {
+    "code": "ME2221",
+    "name": "Numerical Analysis",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME2223",
+    "name": "Engineering Mechanics -II",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME2225",
+    "name": "Mechanics of Materials",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "EEE2285",
+    "name": "Introduction to Analog and Digital Electronics",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "MATH2281",
+    "name": "Laplace and Fourier Transform",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "HUM2281",
+    "name": "History of the Emergence of Independent Bangladesh",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME2220",
+    "name": "Communication Seminar",
+    "credit": 0.75,
+    "department": "ME"
+  },
+  {
+    "code": "ME2222",
+    "name": "Numerical Analysis Sessional",
+    "credit": 0.75,
+    "department": "ME"
+  },
+  {
+    "code": "ME2226",
+    "name": "Mechanics of Materials Sessional",
+    "credit": 0.75,
+    "department": "ME"
+  },
+  {
+    "code": "EEE2286",
+    "name": "Analog and Digital Electronics Sessional",
+    "credit": 1.5,
+    "department": "ME"
+  },
+  {
+    "code": "ME3121",
+    "name": "Fluid Mechanics",
+    "credit": 4,
+    "department": "ME"
+  },
+  {
+    "code": "ME3125",
+    "name": "Mechanics of Machinery",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME3127",
+    "name": "Measurement and Instrumentation",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME3123",
+    "name": "Manufacturing Processes",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "IPE3181",
+    "name": "Statistics and Quality Control",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME3122",
+    "name": "Fluid Mechanics Sessional",
+    "credit": 1.5,
+    "department": "ME"
+  },
+  {
+    "code": "ME3124",
+    "name": "Manufacturing Processes Sessional",
+    "credit": 0.75,
+    "department": "ME"
+  },
+  {
+    "code": "ME3126",
+    "name": "Mechanics of Machinery Sessional",
+    "credit": 0.75,
+    "department": "ME"
+  },
+  {
+    "code": "ME3128",
+    "name": "Measurement and Instrumentation Sessional",
+    "credit": 1.5,
+    "department": "ME"
+  },
+  {
+    "code": "ME3225",
+    "name": "Machine Design",
+    "credit": 4,
+    "department": "ME"
+  },
+  {
+    "code": "ME3221",
+    "name": "Control Engineering",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME3223",
+    "name": "Heat and Mass Transfer",
+    "credit": 4,
+    "department": "ME"
+  },
+  {
+    "code": "ME3227",
+    "name": "Finite Element Analysis",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME3229",
+    "name": "Machine Tools",
+    "credit": 2,
+    "department": "ME"
+  },
+  {
+    "code": "ME3220",
+    "name": "Computer Aided Engineering Sessional",
+    "credit": 1.5,
+    "department": "ME"
+  },
+  {
+    "code": "ME3222",
+    "name": "Control Engineering Sessional",
+    "credit": 1.5,
+    "department": "ME"
+  },
+  {
+    "code": "ME3224",
+    "name": "Heat and Mass Transfer Sessional",
+    "credit": 1.5,
+    "department": "ME"
+  },
+  {
+    "code": "ME3226",
+    "name": "Machine Design Sessional",
+    "credit": 1.5,
+    "department": "ME"
+  },
+  {
+    "code": "ME3200",
+    "name": "Industrial Attachment",
+    "credit": 0.5,
+    "department": "ME"
+  },
+  {
+    "code": "ME4121",
+    "name": "Fluid Machinery",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4123",
+    "name": "Refrigeration and Building Mechanical System",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "HUM4181",
+    "name": "Sociology, Industrial Law, and Professional Ethics",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4122",
+    "name": "Fluid Machinery Sessional",
+    "credit": 0.75,
+    "department": "ME"
+  },
+  {
+    "code": "ME4000",
+    "name": "Final Year Design Project (Semester 1)",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4221",
+    "name": "Thermal Equipment Design",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4223",
+    "name": "Power Plant Engineering",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "IPE4281",
+    "name": "Industrial Management, Production Planning, and Control",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4224",
+    "name": "Applied Thermodynamics Sessional",
+    "credit": 1.5,
+    "department": "ME"
+  },
+  {
+    "code": "ME4000",
+    "name": "Final Year Design Project (Semester 2)",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4013",
+    "name": "Internal Combustion Engine",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4015",
+    "name": "Automobile Engineering",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4017",
+    "name": "Advanced Thermodynamics",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4023",
+    "name": "Fire protection in building",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4027",
+    "name": "Design of Fluid Machines",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4029",
+    "name": "Fluidics",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4031",
+    "name": "Aerodynamics",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4033",
+    "name": "Helicopter Aerodynamics",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4035",
+    "name": "Noise and Vibration",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4039",
+    "name": "Applied Statistics",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4041",
+    "name": "Bio-Engineering",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4043",
+    "name": "Stress Analysis of Flight Vehicle Structures",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4045",
+    "name": "Robotics",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4047",
+    "name": "Mechatronics",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4049",
+    "name": "Applied Engineering Mathematics",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4051",
+    "name": "Composite Materials",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4053",
+    "name": "Modern Machining Processes",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4055",
+    "name": "CAD, CAM and CNC Machines",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4057",
+    "name": "Plastics Process Technology",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4059",
+    "name": "Renewable Energy",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4061",
+    "name": "Combustion and Pollution",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4063",
+    "name": "Energy, Environment and Sustainability",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4065",
+    "name": "Petroleum Engineering",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "ME4067",
+    "name": "Nuclear Engineering",
+    "credit": 3,
+    "department": "ME"
+  },
+  {
+    "code": "CE1101",
+    "name": "Engg. Mechanics",
+    "credit": 4,
+    "department": "CE"
+  },
+  {
+    "code": "MATH1101",
+    "name": "Mathematics – I",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "PHY1101",
+    "name": "Physics – I",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "CHEM1101",
+    "name": "Chemistry – I",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "EEE1131",
+    "name": "Basic Electrical Technology",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "CE1100",
+    "name": "Civil Engg. Drawing",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "CHEM1102",
+    "name": "Chemistry Lab",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "SHOP1100",
+    "name": "Workshop Sessional",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "CE1201",
+    "name": "Surveying",
+    "credit": 4,
+    "department": "CE"
+  },
+  {
+    "code": "MATH1201",
+    "name": "Mathematics – II",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "HUM1201",
+    "name": "Economics",
+    "credit": 2,
+    "department": "CE"
+  },
+  {
+    "code": "HUM1203",
+    "name": "English",
+    "credit": 2,
+    "department": "CE"
+  },
+  {
+    "code": "CSE1231",
+    "name": "Num. Methods & Computer Prog.",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "CE1200",
+    "name": "Computer Aided Drafting",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "CE1202",
+    "name": "Practical Surveying",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "PHY1202",
+    "name": "Physics Lab",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "CSE1232",
+    "name": "Num. Methods & Comp. Prog. Lab",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "CE2101",
+    "name": "Engineering Materials",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "CE2111",
+    "name": "Mechanics of Solids – I",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "MATH2101",
+    "name": "Mathematics – III",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "HUM2101",
+    "name": "Accounting",
+    "credit": 2,
+    "department": "CE"
+  },
+  {
+    "code": "HUM2103",
+    "name": "History of the Emergence of Independent Bangladesh",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "CE2102",
+    "name": "Engineering Materials Sessional",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "CE2104",
+    "name": "Geographical Information Systems and Remote Sensing lab",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "CE2112",
+    "name": "Mechanics of Solids Sessional",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "HUM2102",
+    "name": "English language and Communication Skill Lab",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "CE2201",
+    "name": "Engineering Geology and Geomorphology",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "CE2211",
+    "name": "Mechanics of Solids - II",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "CE2271",
+    "name": "Mechanics of Fluids",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "MATH2201",
+    "name": "Mathematics – IV",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "HUM2201",
+    "name": "Society and Ethics",
+    "credit": 2,
+    "department": "CE"
+  },
+  {
+    "code": "CE2200",
+    "name": "Details of Construction",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "CE2202",
+    "name": "Quantity Surveying",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "CE2272",
+    "name": "Mechanics of Fluids Sessional",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "CE3111",
+    "name": "Structural Analysis and Design–I",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "CE3113",
+    "name": "Design of Concrete Structures–I",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "CE3131",
+    "name": "Environmental Engg. – I",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "CE3141",
+    "name": "Geotechnical Engg. – I: Principles of Soil Mechanics",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "CE3171",
+    "name": "Engineering Hydrology",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "CE3112",
+    "name": "Structural Analysis and Design Sessional–I",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "CE3132",
+    "name": "Environmental Engg. Sessional–I",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "CE3142",
+    "name": "Geotechnical Engg. Sessional–I",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "CE3211",
+    "name": "Structural Analysis and Design – II",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "CE3213",
+    "name": "Design of Concrete Structures – II",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "CE3231",
+    "name": "Environmental Engg. – II",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "CE3251",
+    "name": "Transportation Engineering-I: Transportation and Traffic Engineering",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "CE3271",
+    "name": "Open Channel Flow",
+    "credit": 4,
+    "department": "CE"
+  },
+  {
+    "code": "CE3212",
+    "name": "Design of Concrete Structures Sessional",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "CE3214",
+    "name": "Computer Aided Analysis and Design of Structures",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "CE3272",
+    "name": "Open Channel Flow Sessional",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "CE4000",
+    "name": "Thesis (4th Year, 1st Semester)",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "CE4060",
+    "name": "Capstone Project (4th Year, 1st Semester)",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "CE4103",
+    "name": "Professional Practices and Communication Skills",
+    "credit": 2,
+    "department": "CE"
+  },
+  {
+    "code": "CE4111",
+    "name": "Structural Analysis and Design – III",
+    "credit": 4,
+    "department": "CE"
+  },
+  {
+    "code": "CE4113",
+    "name": "Pre-stressed Concrete",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "CE4141",
+    "name": "Geotechnical Engg. – II: Foundation Engineering",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "CE4151",
+    "name": "Transportation engineering-II: Highway Design and Railway Engineering",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "CE4112",
+    "name": "Design of Concrete Structures Sessional–II",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "CE4152",
+    "name": "Transportation Engineering Sessional-I: Highway Materials and Traffic Engineering",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "CE4000",
+    "name": "Thesis (4th Year, 2nd Semester)",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "CE4060",
+    "name": "Capstone Project (4th Year, 2nd Semester)",
+    "credit": 2,
+    "department": "CE"
+  },
+  {
+    "code": "CE4201",
+    "name": "Project Planning and Construction Management",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "CE4211",
+    "name": "Design of Steel Structures",
+    "credit": 3,
+    "department": "CE"
+  },
+  {
+    "code": "CE4203",
+    "name": "Socio-economic Aspects of Development Projects (Optional)",
+    "credit": 2,
+    "department": "CE"
+  },
+  {
+    "code": "CE4205",
+    "name": "Business and Career Development (Optional)",
+    "credit": 2,
+    "department": "CE"
+  },
+  {
+    "code": "CE4202",
+    "name": "Architectural, Engineering and Planning Appreciation",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "CE4213",
+    "name": "Structural Analysis and Design – IV (Optional)",
+    "credit": 2,
+    "department": "CE"
+  },
+  {
+    "code": "CE4215",
+    "name": "Introduction to Finite Element Method (Optional)",
+    "credit": 2,
+    "department": "CE"
+  },
+  {
+    "code": "CE4217",
+    "name": "Introduction to Steel-Concrete Composite Structure (Optional)",
+    "credit": 2,
+    "department": "CE"
+  },
+  {
+    "code": "CE4212",
+    "name": "Pre-stressed Concrete Sessional (Optional)",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "CE4231",
+    "name": "Solid and Hazardous Waste Management (Optional)",
+    "credit": 2,
+    "department": "CE"
+  },
+  {
+    "code": "CE4233",
+    "name": "Environmental Pollution Management (Optional)",
+    "credit": 2,
+    "department": "CE"
+  },
+  {
+    "code": "CE4235",
+    "name": "Environmental and Sustainable Management (Optional)",
+    "credit": 2,
+    "department": "CE"
+  },
+  {
+    "code": "CE4232",
+    "name": "Environmental Engg. Sessional–II (Optional)",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "CE4241",
+    "name": "Earth Retaining Structures (Optional)",
+    "credit": 2,
+    "department": "CE"
+  },
+  {
+    "code": "CE4243",
+    "name": "Elementary Soil Dynamics (Optional)",
+    "credit": 2,
+    "department": "CE"
+  },
+  {
+    "code": "CE4242",
+    "name": "Geotechnical Engg. Sessional–II (Optional)",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "CE4251",
+    "name": "Transportation Engineering III: Urban Transportation Planning and Management (Optional)",
+    "credit": 2,
+    "department": "CE"
+  },
+  {
+    "code": "CE4253",
+    "name": "Transportation Engineering IV: Traffic Engineering Design and Management (Optional)",
+    "credit": 2,
+    "department": "CE"
+  },
+  {
+    "code": "CE4255",
+    "name": "Transportation Engineering V: Pavement Management, Drainage and Airport (Optional)",
+    "credit": 2,
+    "department": "CE"
+  },
+  {
+    "code": "CE4252",
+    "name": "Transportation Engineering Sessional-II: Pavement Design and Traffic studies (Optional)",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "CE4271",
+    "name": "Irrigation Engineering (Optional)",
+    "credit": 2,
+    "department": "CE"
+  },
+  {
+    "code": "CE4273",
+    "name": "Flood Management (Optional)",
+    "credit": 2,
+    "department": "CE"
+  },
+  {
+    "code": "CE4275",
+    "name": "Hydraulic Structure (Optional)",
+    "credit": 2,
+    "department": "CE"
+  },
+  {
+    "code": "CE4272",
+    "name": "Design of Hydraulic Structures Sessional (Optional)",
+    "credit": 1.5,
+    "department": "CE"
+  },
+  {
+    "code": "IPE1111",
+    "name": "Introduction to Industrial and Production Engineering",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "CHEM1171",
+    "name": "Chemistry",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "MATH1171",
+    "name": "Calculus and Solid Geometry",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "PHY1171",
+    "name": "Physics",
+    "credit": 4,
+    "department": "IPE"
+  },
+  {
+    "code": "HUM1175",
+    "name": "Communicative English",
+    "credit": 2,
+    "department": "IPE"
+  },
+  {
+    "code": "HUM1177",
+    "name": "Bengali Language and Literature",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE1110",
+    "name": "Foundry and Welding Shop",
+    "credit": 0.75,
+    "department": "IPE"
+  },
+  {
+    "code": "CHEM1172",
+    "name": "Chemistry Sessional",
+    "credit": 1.5,
+    "department": "IPE"
+  },
+  {
+    "code": "PHY1172",
+    "name": "Physics Sessional",
+    "credit": 1.5,
+    "department": "IPE"
+  },
+  {
+    "code": "HUM1176",
+    "name": "Communicative English Sessional",
+    "credit": 1.5,
+    "department": "IPE"
+  },
+  {
+    "code": "HUM1275",
+    "name": "Economics and Managerial Accounting",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE1211",
+    "name": "Engineering Materials",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "MATH1271",
+    "name": "Differential Equations, Linear Algebra and Numerical",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "EEE1277",
+    "name": "Introduction to Electrical Circuits and Machines",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "CSE1277",
+    "name": "Computer Programming and Algorithms",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "HUM1277",
+    "name": "History of the Emergence of Independent Bangladesh",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE1210",
+    "name": "Engineering Drawing Sessional",
+    "credit": 0.75,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE1212",
+    "name": "Engineering Materials Sessional",
+    "credit": 0.75,
+    "department": "IPE"
+  },
+  {
+    "code": "EEE1278",
+    "name": "Introduction to Electrical Circuits and Machines Sessional",
+    "credit": 0.75,
+    "department": "IPE"
+  },
+  {
+    "code": "CSE1278",
+    "name": "Computer Programming and Algorithms Sessional",
+    "credit": 1.5,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE2111",
+    "name": "Manufacturing Processes-I",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "HUM2115",
+    "name": "Engineering Economy",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "ME2177",
+    "name": "Engineering Mechanics and Strength of Materials",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "MATH2171",
+    "name": "Vector Analysis, Laplace and Fourier Transform",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "EEE2177",
+    "name": "Introduction to Analog and Digital Electronics",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE2110",
+    "name": "Computer Aided Design (CAD) Sessional",
+    "credit": 0.75,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE2112",
+    "name": "Manufacturing Processes-I Sessional",
+    "credit": 1.5,
+    "department": "IPE"
+  },
+  {
+    "code": "ME2178",
+    "name": "Engineering Mechanics and Strength of Materials Sessional",
+    "credit": 0.75,
+    "department": "IPE"
+  },
+  {
+    "code": "EEE2178",
+    "name": "Introduction to Analog and Digital Electronics Sessional",
+    "credit": 0.75,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE2211",
+    "name": "Manufacturing Processes-II",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE2213",
+    "name": "Ergonomics, Productivity and Safety Engineering",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE2215",
+    "name": "Measurement, Instrumentation and Control",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "MATH2211",
+    "name": "Probability and Statistics",
+    "credit": 4,
+    "department": "IPE"
+  },
+  {
+    "code": "ME2277",
+    "name": "Thermodynamics and Heat Transfer",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE2212",
+    "name": "Manufacturing Processes-II Sessional",
+    "credit": 1.5,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE2214",
+    "name": "Ergonomics, Productivity and Safety Engineering Sessional",
+    "credit": 1.5,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE2216",
+    "name": "Measurement, Instrumentation and Control Sessional",
+    "credit": 0.75,
+    "department": "IPE"
+  },
+  {
+    "code": "ME2278",
+    "name": "Thermodynamics and Heat Transfer Sessional",
+    "credit": 0.75,
+    "department": "IPE"
+  },
+  {
+    "code": "TE3177",
+    "name": "Textile Technology and Manufacturing",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "ME3177",
+    "name": "Fluid Mechanics and Machinery",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE3111",
+    "name": "Product Design and Development",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE3113",
+    "name": "Operations Research-I",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE3115",
+    "name": "Production Planning and Control",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "ME3178",
+    "name": "Fluid Mechanics and Machinery Sessional",
+    "credit": 0.75,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE3110",
+    "name": "Programming for Engineers Sessional",
+    "credit": 1.5,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE3112",
+    "name": "Product Design and Development Sessional",
+    "credit": 1.5,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE3114",
+    "name": "Operations Research-I Sessional",
+    "credit": 1.5,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE3211",
+    "name": "Computer Aided Manufacturing (CAM) and Robotics",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE3213",
+    "name": "Material Handling and Maintenance Engineering",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE3215",
+    "name": "Industrial Systems with Simulation",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE3217",
+    "name": "Operations Research-II",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE3219",
+    "name": "Supply Chain Management",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE3210",
+    "name": "Optimization Modelling and Methods Sessional",
+    "credit": 1.5,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE3212",
+    "name": "Computer Aided Manufacturing (CAM) and Robotics Sessional",
+    "credit": 0.75,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE3214",
+    "name": "Material Handling and Maintenance Engineering Sessional",
+    "credit": 1.5,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE3216",
+    "name": "Industrial Systems with Simulation Sessional",
+    "credit": 1.5,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE3200",
+    "name": "Industrial Attachment",
+    "credit": 0.5,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4111",
+    "name": "Machine Tools and Metal Cutting",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4113",
+    "name": "Quality Management and Control",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4115",
+    "name": "Operations and Project Management",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4000",
+    "name": "Final Year Design Project and Thesis (Semester 1)",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4110",
+    "name": "Machine Learning and Artificial Intelligence Sessional",
+    "credit": 1.5,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4112",
+    "name": "Machine Tools and Metal Cutting Sessional",
+    "credit": 1.5,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4114",
+    "name": "Quality Management and Control Sessional",
+    "credit": 1.5,
+    "department": "IPE"
+  },
+  {
+    "code": "HUM4275",
+    "name": "Sociology, Industrial Law and Engineering Ethics",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4211",
+    "name": "Computer Integrated Manufacturing (CIM)",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4213",
+    "name": "Industrial and Business Management",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4000",
+    "name": "Final Year Design Project and Thesis (Semester 2)",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4210",
+    "name": "Industrial and Business Communication Seminar",
+    "credit": 1.5,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4212",
+    "name": "Computer Integrated Manufacturing (CIM) Sessional",
+    "credit": 0.75,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4011",
+    "name": "Lean Application in Production and Service Industries",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4013",
+    "name": "Multi-Attribute Decision Analysis",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4015",
+    "name": "Decision and Risk Analysis in Engineering",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4021",
+    "name": "Marketing Management",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4023",
+    "name": "Data Analytics for Industrial Engineering",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4025",
+    "name": "Environment and Technology Management",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4031",
+    "name": "Additive Manufacturing and Composite Processing",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4033",
+    "name": "Advanced Measurement and Instrumentation in Manufacturing",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4035",
+    "name": "Micro and Nano Manufacturing Processes",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4041",
+    "name": "Emerging Trends in Manufacturing Technology",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4043",
+    "name": "Engineering Data Analysis",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4045",
+    "name": "Non-traditional Machining Processes",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4051",
+    "name": "Statistical Quality Control",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4053",
+    "name": "Facility, Location and Layout",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4055",
+    "name": "Organizational Behavior",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4061",
+    "name": "Logistics Distribution Planning and System",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4063",
+    "name": "Uncertainty Modelling for Industrial Engineering",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4065",
+    "name": "Metaheuristics and Evolutionary Algorithms",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4071",
+    "name": "Advanced Materials and Processes",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4073",
+    "name": "Intelligent Manufacturing",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4075",
+    "name": "Entrepreneurship Development and Micro Industries",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4081",
+    "name": "Sustainability and Green Manufacturing",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4083",
+    "name": "Metal Forming and Sheet Metalworking",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "IPE4085",
+    "name": "Process Dynamics and Adaptive Control",
+    "credit": 3,
+    "department": "IPE"
+  },
+  {
+    "code": "TE1101",
+    "name": "Textile Raw Materials I",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "HUM1101",
+    "name": "Bengali Language and Literature",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "HUM1163",
+    "name": "English Language",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "CHEM1167",
+    "name": "Chemistry I",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "CHEM1168",
+    "name": "Chemistry I Lab",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "PHY1169",
+    "name": "Physics I",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "PHY1160",
+    "name": "Physics I Lab",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "MATH1161",
+    "name": "Mathematics I",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "TE1203",
+    "name": "Polymer Science",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "ME1263",
+    "name": "Elements of Mechanical Engineering",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "IPE1264",
+    "name": "Workshop Practice",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "IPE1268",
+    "name": "Engineering Drawing",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "PHY1261",
+    "name": "Physics II",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "PHY1262",
+    "name": "Physics II Lab",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "CHEM1261",
+    "name": "Chemistry II",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "CHEM1262",
+    "name": "Chemistry II Lab",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "MATH1263",
+    "name": "Mathematics II",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "HUM2103",
+    "name": "History of the Emergence of Independent Bangladesh",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "TE2101",
+    "name": "Textile Raw Materials II",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "TE2103",
+    "name": "Yarn Manufacturing I",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "TE2104",
+    "name": "Yarn Manufacturing I Lab",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "TE2105",
+    "name": "Fabric Manufacturing I",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "TE2106",
+    "name": "Fabric Manufacturing I Lab",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "ME2163",
+    "name": "Mechanics of Materials",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "MATH2165",
+    "name": "Statistics",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "CSE2146",
+    "name": "Introduction to Computer Science",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "TE2207",
+    "name": "Wet Processing I",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "TE2208",
+    "name": "Wet Processing I Lab",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "TE2209",
+    "name": "Apparel Manufacturing I",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "TE2210",
+    "name": "Apparel Manufacturing I Lab",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "TE2211",
+    "name": "Textile Testing and Quality Control I",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "TE2212",
+    "name": "Textile Testing and Quality Control I Lab",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "EEE2261",
+    "name": "Elements of Electrical Engineering and Electronics",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "EEE2262",
+    "name": "Elements of Electrical Engineering and Electronics Lab",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "ME2263",
+    "name": "Elements of Theory of Machines and Machine Design",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "ME2264",
+    "name": "Elements of Mechanical Engineering Lab",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "TE3103",
+    "name": "Yarn Manufacturing II",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "TE3104",
+    "name": "Yarn Manufacturing II Lab",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "TE3105",
+    "name": "Fabric Manufacturing II",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "TE3106",
+    "name": "Fabric Manufacturing II Lab",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "TE3111",
+    "name": "Textile Testing and Quality Control II",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "TE3112",
+    "name": "Textile Testing and Quality Control II Lab",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "TE3113",
+    "name": "Fabric Structure and Design",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "TE3114",
+    "name": "Fabric Structure and Design Lab",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "TE3119",
+    "name": "Textile Physics",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "TE3207",
+    "name": "Wet Processing II",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "TE3208",
+    "name": "Wet Processing II Lab",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "TE3209",
+    "name": "Apparel Manufacturing II",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "TE3210",
+    "name": "Apparel Manufacturing II Lab",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "TE3211",
+    "name": "Sustainability in Textiles",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "TE3212",
+    "name": "Sustainability in Textiles Lab",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "TE3215",
+    "name": "Technical Textiles",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "IPE3263",
+    "name": "Industrial Management",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "CSE3264",
+    "name": "Basic Programming Techniques",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "TE4101",
+    "name": "Management and Maintenance of Textile Machinery",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "TE4103",
+    "name": "Yarn Manufacturing III (Elective)",
+    "credit": 4,
+    "department": "TE"
+  },
+  {
+    "code": "TE4104",
+    "name": "Yarn Manufacturing III Lab (Elective)",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "TE4105",
+    "name": "Fabric Manufacturing III (Elective)",
+    "credit": 4,
+    "department": "TE"
+  },
+  {
+    "code": "TE4106",
+    "name": "Fabric Manufacturing III Lab (Elective)",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "TE4107",
+    "name": "Wet Processing III (Elective)",
+    "credit": 4,
+    "department": "TE"
+  },
+  {
+    "code": "TE4108",
+    "name": "Wet Processing III Lab (Elective)",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "TE4109",
+    "name": "Apparel Manufacturing III (Elective)",
+    "credit": 4,
+    "department": "TE"
+  },
+  {
+    "code": "TE4110",
+    "name": "Apparel Manufacturing III Lab (Elective)",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "TE4111",
+    "name": "Water Management in Textile Industry (Elective)",
+    "credit": 4,
+    "department": "TE"
+  },
+  {
+    "code": "TE4112",
+    "name": "Water Management in Textile Industry Lab (Elective)",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "TE4113",
+    "name": "Special Yarn Production (Elective)",
+    "credit": 2,
+    "department": "TE"
+  },
+  {
+    "code": "TE4115",
+    "name": "Special Fabric Production (Elective)",
+    "credit": 2,
+    "department": "TE"
+  },
+  {
+    "code": "TE4117",
+    "name": "Special Wet Processing (Elective)",
+    "credit": 2,
+    "department": "TE"
+  },
+  {
+    "code": "TE4119",
+    "name": "Special Apparel Production (Elective)",
+    "credit": 2,
+    "department": "TE"
+  },
+  {
+    "code": "TE4121",
+    "name": "Special Sustainable Transition Tools in Textile Industry (Elective)",
+    "credit": 2,
+    "department": "TE"
+  },
+  {
+    "code": "IPE4163",
+    "name": "Production Planning and Control",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "HUM4163",
+    "name": "Sociology and Industrial Organizational Psychology",
+    "credit": 2,
+    "department": "TE"
+  },
+  {
+    "code": "TE4000",
+    "name": "Final Year Design Project (4th Year 1st Semester)",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "TE4211",
+    "name": "Textile Testing and Quality Control III",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "TE4223",
+    "name": "Yarn Manufacturing IV (Elective)",
+    "credit": 4,
+    "department": "TE"
+  },
+  {
+    "code": "TE4224",
+    "name": "Yarn Manufacturing IV Lab (Elective)",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "TE4225",
+    "name": "Fabric Manufacturing IV (Elective)",
+    "credit": 4,
+    "department": "TE"
+  },
+  {
+    "code": "TE4226",
+    "name": "Fabric Manufacturing IV Lab (Elective)",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "TE4227",
+    "name": "Wet Processing IV (Elective)",
+    "credit": 4,
+    "department": "TE"
+  },
+  {
+    "code": "TE4228",
+    "name": "Wet Processing IV Lab (Elective)",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "TE4229",
+    "name": "Apparel Manufacturing IV (Elective)",
+    "credit": 4,
+    "department": "TE"
+  },
+  {
+    "code": "TE4230",
+    "name": "Apparel Manufacturing IV Lab (Elective)",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "TE4240",
+    "name": "Resources and Their Nexus in Textile Industry (Elective)",
+    "credit": 4,
+    "department": "TE"
+  },
+  {
+    "code": "TE4241",
+    "name": "Resources and Their Nexus in Textile Industry Lab (Elective)",
+    "credit": 1.5,
+    "department": "TE"
+  },
+  {
+    "code": "TE4231",
+    "name": "Application of Computer in YM (Elective)",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "TE4233",
+    "name": "Application of Computer in FM (Elective)",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "TE4235",
+    "name": "Application of Computer in WP (Elective)",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "TE4237",
+    "name": "Application of Computer in AM (Elective)",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "TE4239",
+    "name": "Application of Computer for Sustainability in Textile Industry (Elective)",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "BUS4261",
+    "name": "Accounting and Marketing",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "TE4000",
+    "name": "Final Year Design Project (4th Year 2nd Semester)",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "TE4200",
+    "name": "Industrial Training",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "TE4250",
+    "name": "Comprehensive Viva",
+    "credit": 3,
+    "department": "TE"
+  },
+  {
+    "code": "ARC1103",
+    "name": "Theory Of Design I",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC1121",
+    "name": "Mathematics And Physics",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC1127",
+    "name": "Building Materials",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC1151",
+    "name": "English",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC1153",
+    "name": "Sociology For Architects",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC1102",
+    "name": "Architectural Graphics I",
+    "credit": 3,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC1104",
+    "name": "Design Studio I",
+    "credit": 4.5,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC1130",
+    "name": "Computer Applications 1",
+    "credit": 1.5,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC1203",
+    "name": "Theory Of Design II",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC1223",
+    "name": "Climate & Architecture 1",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC1227",
+    "name": "Finish Materials",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC1231",
+    "name": "Ecology",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC1255",
+    "name": "Psychology for Architects",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC1202",
+    "name": "Architectural Graphics II",
+    "credit": 3,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC1204",
+    "name": "Design Studio II",
+    "credit": 6,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC1230",
+    "name": "Computer Applications II",
+    "credit": 1.5,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC2101",
+    "name": "History Of Architecture-I",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC2123",
+    "name": "Climate & Architecture II",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC2125",
+    "name": "Architectural Lighting & Acoustics",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC2129",
+    "name": "Structure And Architecture I",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC2141",
+    "name": "Physical Planning I",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC2102",
+    "name": "Graphic Art",
+    "credit": 1.5,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC2104",
+    "name": "Design Studio III",
+    "credit": 7.5,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC2130",
+    "name": "Computer Applications III",
+    "credit": 1.5,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC2201",
+    "name": "History Of Architecture-II",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC2223",
+    "name": "Climate & Architecture III",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC2225",
+    "name": "Plumbing",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC2229",
+    "name": "Structure And Architecture II",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC2241",
+    "name": "Physical Planning II",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC2202",
+    "name": "Photography",
+    "credit": 1.5,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC2204",
+    "name": "Design Studio IV",
+    "credit": 7.5,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC2226",
+    "name": "Field Study I",
+    "credit": 1.5,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC3101",
+    "name": "History Of Architecture-III",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC3103",
+    "name": "Theory Of Design III",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC3125",
+    "name": "Electrical Equipments",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC3129",
+    "name": "Structure And Architecture III",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC3157",
+    "name": "Survey techniques",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC3104",
+    "name": "Design Studio V",
+    "credit": 7.5,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC3126",
+    "name": "Field Study II",
+    "credit": 1.5,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC3158",
+    "name": "Survey Practical",
+    "credit": 1.5,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC3201",
+    "name": "History Of Architecture-IV",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC3225",
+    "name": "Mechanical equipment",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC3229",
+    "name": "Structure And Architecture IV",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC3241",
+    "name": "Physical Planning III",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC3257",
+    "name": "Specification and Cost Estimating",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC3204",
+    "name": "Design Studio VI",
+    "credit": 7.5,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC3226",
+    "name": "Working Drawing I",
+    "credit": 3,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC4107",
+    "name": "Housing",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC4129",
+    "name": "Structure And Architecture V",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC4143",
+    "name": "Landscape Design",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC4145",
+    "name": "Health Facilities Planning & Design",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC4104",
+    "name": "Design Studio VII",
+    "credit": 9,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC4128",
+    "name": "Working Drawing II",
+    "credit": 1.5,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC4205",
+    "name": "Project Economics",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC4207",
+    "name": "Urban Infrastructure Planning",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC4229",
+    "name": "Structure And Architecture VI",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC4257",
+    "name": "Real Estate Finance and Investment",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC4204",
+    "name": "Design Studio VIII",
+    "credit": 9,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC4206",
+    "name": "Interior Design Studio",
+    "credit": 1.5,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC5109",
+    "name": "Art Appreciation",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC5125",
+    "name": "Advanced Acoustics & Noise control",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC5157",
+    "name": "Book keeping and Accounting",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC5104",
+    "name": "Design Studio IX",
+    "credit": 9,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC5160",
+    "name": "Seminar",
+    "credit": 1.5,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC5241",
+    "name": "Architectural Space & Forms",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC5257",
+    "name": "Professional Practice",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC5259",
+    "name": "Research Methodology & Report Writing",
+    "credit": 2,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC5204",
+    "name": "Design Studio X",
+    "credit": 10.5,
+    "department": "ARCH"
+  },
+  {
+    "code": "ARC5206",
+    "name": "Professional Training / Internship",
+    "credit": 7.5,
+    "department": "ARCH"
+  },
+  {
+    "code": "BBA111",
+    "name": "Introduction to Business",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA112",
+    "name": "Principles of Accounting",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA113",
+    "name": "Fundamentals of Mathematics",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA114",
+    "name": "English Fundamentals",
+    "credit": 4,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA115",
+    "name": "Introduction to Sociology & Psychology",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA121",
+    "name": "Principles of Management",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA122",
+    "name": "Basic Statistics",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA123",
+    "name": "Microeconomics",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA124",
+    "name": "Principles of Marketing",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA125",
+    "name": "Principles of Finance",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA211",
+    "name": "Advanced Accounting",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA212",
+    "name": "Business Communication",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA213",
+    "name": "Business Mathematics",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA214",
+    "name": "Macroeconomics",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA215",
+    "name": "Introduction to Computer in Business (Theory)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA216",
+    "name": "Introduction to Computer in Business (Practical)",
+    "credit": 1.5,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA221",
+    "name": "Marketing Management",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA222",
+    "name": "Quantitative Tools and Techniques for Business Decisions",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA223",
+    "name": "Financial Management",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA224",
+    "name": "Insurance and Risk Management",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA225",
+    "name": "Legal Aspects of Business",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA311",
+    "name": "Cost & Management Accounting",
+    "credit": 4,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA312",
+    "name": "Organizational Behaviour",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA313",
+    "name": "Operations Management",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA314",
+    "name": "Economic Profile of Bangladesh",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA315",
+    "name": "Money and Banking",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA321",
+    "name": "Taxation",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA322",
+    "name": "Fundamentals of Human Resource Management",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA323",
+    "name": "Consumer Behavior",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA324",
+    "name": "Fundamentals of Management Information System (Theory)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA325",
+    "name": "Entrepreneurship Development & Small Business Management",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA326",
+    "name": "Fundamentals of Management Information System (Practical)",
+    "credit": 1.5,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA411",
+    "name": "Supply Chain Management",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA412",
+    "name": "Project Management",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA413",
+    "name": "Export-Import Management",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA421",
+    "name": "Strategic Management",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA422",
+    "name": "Research Methodology in Business",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA423",
+    "name": "E-Business",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA599",
+    "name": "Internship/Project",
+    "credit": 4,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA511",
+    "name": "Brand Management (Marketing Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA512",
+    "name": "Marketing Research (Marketing Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA513",
+    "name": "Competitive Marketing (Marketing Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA514",
+    "name": "Tourism Marketing (Marketing Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA515",
+    "name": "Retail Management (Marketing Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA516",
+    "name": "International Marketing (Marketing Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA531",
+    "name": "Investment and Security Analysis (Finance Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA532",
+    "name": "Commercial Bank Management (Finance Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA533",
+    "name": "Financial Markets and Institutions (Finance Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA534",
+    "name": "Financial Analysis and Control (Finance Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA535",
+    "name": "Financial Planning (Finance Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA536",
+    "name": "Corporate Finance (Finance Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA521",
+    "name": "Material Management & Quality Control (Management Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA522",
+    "name": "Comparative Management (Management Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA523",
+    "name": "Management Thought (Management Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA524",
+    "name": "International Business (Management Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA525",
+    "name": "Career Planning and Development (HRM/Management Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA526",
+    "name": "Industrial Relations (HRM/Management Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA551",
+    "name": "Organizational Development (HRM Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA552",
+    "name": "International Human Resource Management (HRM Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA554",
+    "name": "Managerial Skills Development (HRM Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA556",
+    "name": "Human Resource Information Systems (HRM Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA541",
+    "name": "Introduction to Information and Network Technology (MIS Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA542",
+    "name": "Computer Programming for Business (MIS Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA543",
+    "name": "Information Security Management Systems (MIS Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA544",
+    "name": "Decision Support System (MIS Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA545",
+    "name": "Managing Information Resources (MIS Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA546",
+    "name": "Database Management System (MIS Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA581",
+    "name": "Accounting Theory (Accounting Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA582",
+    "name": "Auditing (Accounting Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA583",
+    "name": "Advanced Financial Accounting (Accounting Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA584",
+    "name": "Advanced Cost Accounting (Accounting Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA585",
+    "name": "Accounting Information Systems (Accounting Elective)",
+    "credit": 3,
+    "department": "BBA"
+  },
+  {
+    "code": "BBA586",
+    "name": "Managerial Accounting (Accounting Elective)",
+    "credit": 3,
+    "department": "BBA"
+  }
+]

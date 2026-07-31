@@ -91,7 +91,23 @@ function removeFromShadowQueue(ws) {
 }
 
 export function createWSServer(httpServer) {
-  const wss = new WebSocketServer({ server: httpServer });
+  // noServer: true — we handle upgrades manually so Vite HMR and app
+  // WebSocket connections can coexist on the same HTTP server.
+  const wss = new WebSocketServer({ noServer: true });
+
+  // Route upgrades: skip Vite HMR connections (identified by
+  // sec-websocket-protocol header), handle app connections here.
+  // The wss.on('connection', ...) handler below is already registered
+  // synchronously by this point, so re-emitting 'connection' routes
+  // the upgraded socket back into the existing handler.
+  httpServer.on('upgrade', (request, socket, head) => {
+    if (request.headers['sec-websocket-protocol'] === 'vite-hmr') {
+      return; // Vite handles its own HMR upgrades
+    }
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit('connection', ws, request);
+    });
+  });
 
   wss.on('connection', (ws, req) => {
     let currentUserId = null;

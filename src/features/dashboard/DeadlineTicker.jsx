@@ -141,9 +141,6 @@ export default function DeadlineTicker() {
           <div className="icon" style={{ backgroundColor: 'var(--accent-rose-glow)', color: 'var(--accent-rose)', padding: '6px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Timer size={18} />
           </div>
-          <div>
-            <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>Live countdown tracker</p>
-          </div>
         </div>
         <div className="flex items-center gap-2">
           {hasUrgent && (

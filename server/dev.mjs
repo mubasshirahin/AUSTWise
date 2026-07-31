@@ -260,9 +260,12 @@ function handleCorsPreflight(req, res) {
   res.end();
 }
 
+// Create HTTP server early so Vite can attach HMR to it
+const server = http.createServer();
+
 const vite = useViteMiddleware
   ? await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, hmr: { server } },
       appType: 'spa',
     })
   : null;
@@ -298,10 +301,7 @@ function validateEnv() {
     warnings.push('⚠️  VITE_GOOGLE_API_KEY not set — YouTube search & PDF proxy will return an error');
   }
   if (!FEATURES.dbConfig) {
-    warnings.push(`⚠️  Missing DB credentials (${missingDbVars.join(', ')}) — all database features will be unavailable`);
-  }
-  if (!FEATURES.db && FEATURES.dbConfig) {
-    warnings.push('⚠️  SQL Server connection failed — all database features will be unavailable');
+    warnings.push(`ℹ️  Missing DB credentials (${missingDbVars.join(', ')}) — falling back to local JSON database`);
   }
 
   // Social OAuth checks (non-critical — just info)
@@ -328,18 +328,24 @@ function requireFeature(feature, res, label) {
 }
 
 // Auto-create database & tables on startup
-initializeDatabase().then(() => {
+if (FEATURES.dbConfig) {
+  initializeDatabase().then(() => {
+    FEATURES.db = true;
+    console.log('✅ SQL Server connected & tables ready');
+  }).catch(err => {
+    console.warn('⚠️  SQL Server init failed:', err.message);
+    console.warn('ℹ️  Using local JSON file-based database fallback.');
+    FEATURES.db = true; // Enable database-backed features via JSON fallback
+  }).finally(() => {
+    validateEnv();
+  });
+} else {
+  console.log('ℹ️  SQL Server not configured. Using local JSON file-based database fallback.');
   FEATURES.db = true;
-  console.log('✅ SQL Server connected & tables ready');
-}).catch(err => {
-  console.warn('⚠️  SQL Server init failed:', err.message);
-  console.warn('   Server will still start, but DB features won\'t work.');
-}).finally(() => {
-  // validateEnv runs after DB init attempt so FEATURES.db reflects reality
   validateEnv();
-});
+}
 
-const server = http.createServer(async (req, res) => {
+server.on('request', async (req, res) => {
   // CORS preflight
   if (req.method === 'OPTIONS') {
     handleCorsPreflight(req, res);
@@ -2041,11 +2047,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (vite) {
-    // Don't route WebSocket upgrade requests through Vite — our custom WS server
-    // (wsServer.mjs) handles those via the http.Server 'upgrade' event.
-    if (req.headers['upgrade']?.toLowerCase() !== 'websocket') {
-      vite.middlewares(req, res);
-    }
+    vite.middlewares(req, res);
     return;
   }
 

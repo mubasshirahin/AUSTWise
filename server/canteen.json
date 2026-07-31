@@ -1,0 +1,58 @@
+[
+  {
+    "id": "cant-1",
+    "day": "Sunday",
+    "mealType": "lunch",
+    "name": "Chicken Khichuri",
+    "price": 90,
+    "available": true
+  },
+  {
+    "id": "cant-2",
+    "day": "Sunday",
+    "mealType": "snacks",
+    "name": "Samosa",
+    "price": 15,
+    "available": true
+  },
+  {
+    "id": "cant-3",
+    "day": "Monday",
+    "mealType": "lunch",
+    "name": "Beef Tehari",
+    "price": 100,
+    "available": true
+  },
+  {
+    "id": "cant-4",
+    "day": "Monday",
+    "mealType": "snacks",
+    "name": "Singara",
+    "price": 10,
+    "available": true
+  },
+  {
+    "id": "cant-5",
+    "day": "Tuesday",
+    "mealType": "lunch",
+    "name": "Fish Rice Curry",
+    "price": 80,
+    "available": true
+  },
+  {
+    "id": "cant-6",
+    "day": "Wednesday",
+    "mealType": "lunch",
+    "name": "Chicken Biryani",
+    "price": 110,
+    "available": true
+  },
+  {
+    "id": "cant-7",
+    "day": "Thursday",
+    "mealType": "lunch",
+    "name": "Egg Khichuri",
+    "price": 70,
+    "available": true
+  }
+]

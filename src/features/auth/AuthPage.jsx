@@ -284,7 +284,9 @@ export default function AuthPage() {
     if (gsiRenderedRef.current) return;
 
     const init = () => {
-      if (typeof google === 'undefined') return;
+      if (typeof google === 'undefined' || !google.accounts) return;
+      // Cancel any previous initialization to avoid "called multiple times" warning
+      google.accounts.id.cancel();
       google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
         ux_mode: 'popup',
@@ -296,7 +298,9 @@ export default function AuthPage() {
       });
     };
 
-    if (typeof window.google === 'undefined') {
+    // Avoid loading the GIS script twice (React StrictMode double-mount)
+    const existingScript = document.querySelector('script[src*="gsi/client"]');
+    if (!existingScript && typeof window.google === 'undefined') {
       const script = document.createElement('script');
       script.src = 'https://accounts.google.com/gsi/client';
       script.async = true;
@@ -313,7 +317,7 @@ export default function AuthPage() {
         }
       };
       document.head.appendChild(script);
-    } else {
+    } else if (typeof window.google !== 'undefined' && window.google.accounts) {
       init();
       gsiRenderedRef.current = true;
       if (googleBtnRef.current) {
