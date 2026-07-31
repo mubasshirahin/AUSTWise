@@ -5,6 +5,7 @@ import { canteenData, libraryData } from '../../data/mockData';
 import { getNotices, publishNotice, deleteNotice } from '../../utils/noticeStorage';
 import { getRoleLabel, getRoleBadgeClass, updateAccountProfile, getAccountById, getAllRoleApplications, reviewRoleApplication, getAccountById as getUserById, resetAllLocalData } from '../../utils/authStorage';
 import { loadTemplates, saveTemplates, addTemplate, updateTemplate, deleteTemplate, defaultTemplates } from '../../utils/routineTemplates';
+import { apiFetch } from '../../utils/api';
 import RoutineTemplatesPanel from './RoutineTemplatesPanel';
 import TranscriptTemplatesPanel from './TranscriptTemplatesPanel';
 import './AdminPanelPage.css';
@@ -384,7 +385,7 @@ export default function AdminPanelPage() {
     setShowResetConfirm(false);
 
     try {
-      const res = await fetch('/api/admin/reset', {
+      const res = await apiFetch('/api/admin/reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ confirm: 'RESET_ALL_DATA' }),
@@ -1924,7 +1925,7 @@ function AdminCheatsheetsPanel() {
   const [statusMsg, setStatusMsg] = useState('');
 
   const loadData = () => {
-    fetch('/api/cheatsheets')
+    apiFetch('/api/cheatsheets')
       .then(r => r.json())
       .then(d => { if (d.success) setSheets(d.cheatsheets || []); })
       .catch(() => setStatusMsg('Failed to load cheatsheets'));
@@ -1937,7 +1938,7 @@ function AdminCheatsheetsPanel() {
     const formulaList = formulas.split('\n').map(f => f.trim()).filter(Boolean);
     if (!title.trim()) return;
     try {
-      const res = await fetch('/api/cheatsheets', {
+      const res = await apiFetch('/api/cheatsheets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: title.trim(), category: category.trim() || 'General', course: course.trim(), formulas: formulaList }),
@@ -1955,7 +1956,7 @@ function AdminCheatsheetsPanel() {
 
   const handleDelete = async (id) => {
     try {
-      const res = await fetch('/api/cheatsheets/' + encodeURIComponent(id), { method: 'DELETE' });
+      const res = await apiFetch('/api/cheatsheets/' + encodeURIComponent(id), { method: 'DELETE' });
       const d = await res.json();
       if (d.success) { setStatusMsg('Deleted'); loadData(); }
       else setStatusMsg('Error: ' + (d.error || 'Unknown'));
@@ -2002,7 +2003,7 @@ function AdminCampusMapPanel() {
   const [statusMsg, setStatusMsg] = useState('');
 
   const loadData = () => {
-    fetch('/api/campus-locations')
+    apiFetch('/api/campus-locations')
       .then(r => r.json())
       .then(d => {
         if (d.success) {
@@ -2023,7 +2024,7 @@ function AdminCampusMapPanel() {
     try { hd = JSON.parse(form.hotspotData); } catch {}
     const body = { floor: form.floor, roomId: form.roomId, name: form.name, type: form.type, hotspotData: hd, x: form.x ? Number(form.x) : null, y: form.y ? Number(form.y) : null };
     try {
-      const res = await fetch('/api/campus-locations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const res = await apiFetch('/api/campus-locations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const d = await res.json();
       if (d.success) { setForm({ floor: '', roomId: '', name: '', type: 'classroom', hotspotData: '', x: '', y: '' }); setStatusMsg('Added!'); loadData(); }
       else setStatusMsg('Error: ' + (d.error || 'Unknown'));
@@ -2032,7 +2033,7 @@ function AdminCampusMapPanel() {
 
   const handleDelete = async (id) => {
     try {
-      const res = await fetch('/api/campus-locations/' + encodeURIComponent(id), { method: 'DELETE' });
+      const res = await apiFetch('/api/campus-locations/' + encodeURIComponent(id), { method: 'DELETE' });
       if (res.ok) { setStatusMsg('Deleted'); loadData(); }
       else setStatusMsg('Delete failed');
     } catch { setStatusMsg('Delete failed'); }

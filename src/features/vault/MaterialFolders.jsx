@@ -29,6 +29,7 @@ import {
 } from '../../utils/annotationsStorage';
 import { updateBatchDriveUrl } from '../../utils/vaultBatchStorage';
 import { useAuth } from '../../context/AuthContext';
+import { apiFetch } from '../../utils/api';
 import './MaterialFolders.css';
 
 // Use the Google API credential from env to access public Drive folders
@@ -167,7 +168,7 @@ function YouTubeSearch() {
     }
     suggestTimer.current = setTimeout(async () => {
       try {
-        const res = await fetch('/api/youtube/suggestions', {
+        const res = await apiFetch('/api/youtube/suggestions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ query: val.trim() }),
@@ -225,7 +226,7 @@ function YouTubeSearch() {
     setShowSuggestions(false);
     setSuggestions([]);
     try {
-      const res = await fetch('/api/youtube/search', {
+      const res = await apiFetch('/api/youtube/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: term }),
@@ -434,7 +435,7 @@ function PDFPreview({ fileId, annotMode }) {
         const pdfjs = await import('pdfjs-dist');
         pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
 
-        const res = await fetch(`/api/proxy/pdf?id=${fileId}`);
+        const res = await apiFetch(`/api/proxy/pdf?id=${fileId}`);
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
           throw new Error(errData.error || `Failed to fetch PDF (${res.status})`);
@@ -621,7 +622,7 @@ function GeminiChat() {
         parts: [{ text: msg.text }],
       }));
 
-      const res = await fetch('/api/gemini/chat', {
+      const res = await apiFetch('/api/gemini/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: geminiContents }),
@@ -1374,7 +1375,7 @@ function UploadLectureNotes({ vaultContext }) {
       if (course) params.set('course', course);
       if (department) params.set('department', department);
       if (yearSem) params.set('semester', String(yearSem));
-      const res = await fetch(`/api/vault/notes?${params}`);
+      const res = await apiFetch(`/api/vault/notes?${params}`);
       const data = await res.json();
       if (data.success) setNotes(data.notes);
     } catch { /* ignore */ }
@@ -1404,7 +1405,7 @@ function UploadLectureNotes({ vaultContext }) {
       setProgress(60);
 
       // Upload to server
-      const res = await fetch('/api/vault/notes/upload', {
+      const res = await apiFetch('/api/vault/notes/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1435,7 +1436,7 @@ function UploadLectureNotes({ vaultContext }) {
 
   const handleDelete = async (noteId) => {
     try {
-      const res = await fetch(`/api/vault/notes/${noteId}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/vault/notes/${noteId}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
         fetchNotes();

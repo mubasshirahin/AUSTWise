@@ -1,236 +1,218 @@
 /**
- * File-based user store — replaces client-side localStorage auth.
- * Passwords are hashed with bcrypt. Users persist in server/users.json.
+ * PostgreSQL-backed user store compatibility layer.
+ * Public function names are kept stable for the auth routes.
  */
-import { readFile, writeFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+
 import bcrypt from 'bcryptjs';
+import { randomBytes } from 'node:crypto';
+import {
+  prisma,
+  findUserByEmail,
+  findUserById,
+  createUserRecord,
+  updateUserRecord,
+  deleteUserRecord,
+} from './prisma.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DB_PATH = path.join(__dirname, 'users.json');
 const BCRYPT_ROUNDS = 10;
-
 const ALLOWED_DOMAINS = ['aust.edu', 'www.aust.edu'];
 const VALID_ROLES = ['student', 'faculty', 'alumni', 'admin', 'cr', 'sr', 'senior', 'moderator'];
 
-async function readUsers() {
-  try {
-    if (!existsSync(DB_PATH)) return [];
-    const raw = await readFile(DB_PATH, 'utf-8');
-    return JSON.parse(raw);
-  } catch { return []; }
-}
-
-async function writeUsers(users) {
-  await writeFile(DB_PATH, JSON.stringify(users, null, 2));
-}
-
-/** Seed a default admin account if no admin exists */
-export async function seedDefaultAdmin() {
-  const users = await readUsers();
-  if (users.some(u => u.role === 'admin')) return null;
-  const hash = await bcrypt.hash(
-    process.env.VITE_ADMIN_DEFAULT_PASSWORD || 'changeme',
-    BCRYPT_ROUNDS
-  );
-  const admin = {
-    id: 'ADM-001',
-    name: 'Prof. Dr. Md. Abdur Rahim',
-    email: 'admin@aust.edu',
-    password: hash,
-    role: 'admin',
-    department: 'Admin Department',
-    designation: 'Registrar',
-    company: 'Ahsanullah University of Science and Technology',
-    batch: '',
-    batchNo: '',
-    batchName: '',
-    yearSemester: '',
-    section: '',
-    labSection: '',
-    semester: 1,
-    graduationYear: '',
-    avatar: null,
-    openForTalk: false,
-    linkedSocial: {},
-    linkedAccounts: [],
-    cgpa: 0,
-    creditsCompleted: 0,
-    totalCredits: 160,
-    bloodGroup: '',
-    facebook: '',
-    whatsapp: '',
-    linkedin: '',
-    discord: '',
-    createdAt: new Date().toISOString(),
-  };
-  users.push(admin);
-  await writeUsers(users);
-  console.log('✅ Default admin account seeded (admin@aust.edu)');
-  return admin;
-}
-
-/** Hash password with bcrypt */
-export function hashPassword(plain) {
-  return bcrypt.hash(plain, BCRYPT_ROUNDS);
-}
-
-/** Compare plain password against hash */
-export function comparePassword(plain, hash) {
-  return bcrypt.compare(plain, hash);
-}
-
 function isValidAustEmail(email) {
   const normalized = email.toLowerCase().trim();
-  return ALLOWED_DOMAINS.some(d => normalized.endsWith(`@${d}`) || normalized.endsWith(`@www.${d}`));
+  return ALLOWED_DOMAINS.some(domain => normalized.endsWith(`@${domain}`));
 }
 
-function generateId(role) {
+function makeUserId(role) {
   const prefix = {
     student: 'STU', faculty: 'FAC', alumni: 'ALU', admin: 'ADM',
     cr: 'CR', sr: 'SR', senior: 'SNR', moderator: 'MOD',
   }[role] || 'USR';
-  const crypto = await_import_crypto();
-  // Synchronous random — use Date.now + Math.random for simplicity
-  const rnd = Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `${prefix}-${rnd}`;
+  return `${prefix}-${Date.now().toString(36).toUpperCase()}-${randomBytes(3).toString('hex').toUpperCase()}`;
 }
 
-// We import crypto lazily
-let _crypto;
-function await_import_crypto() {
-  // handled below
+function safeUser(user) {
+  if (!user) return null;
+  const { passwordHash: _passwordHash, password: _password, linkedSocial, linkedAccounts, ...safe } = user;
+  return {
+    ...safe,
+    linkedSocial: typeof linkedSocial === 'string' ? parseJson(linkedSocial, {}) : (linkedSocial || {}),
+    linkedAccounts: typeof linkedAccounts === 'string' ? parseJson(linkedAccounts, []) : (linkedAccounts || []),
+  };
 }
 
-/** Create a new user */
-export async function createUser(payload) {
+function parseJson(value, fallback) {
+  try { return JSON.parse(value); } catch { return fallback; }
+}
+
+function normalizeUserData(data) {
+  return {
+    id: data.id,
+    awid: data.awid,
+    email: data.email,
+    name: data.name,
+    passwordHash: data.passwordHash,
+    role: data.role,
+    department: data.department || '',
+    batch: data.batch || '',
+    batchNo: data.batchNo || '',
+    batchName: data.batchName || '',
+    designation: data.designation || '',
+    company: data.company || '',
+    graduationYear: data.graduationYear || '',
+    yearSemester: data.yearSemester || '',
+    section: data.section || '',
+    labSection: data.labSection || '',
+    semester: Number(data.semester) || 1,
+    avatar: data.avatar || null,
+    openForTalk: Boolean(data.openForTalk),
+    bloodGroup: data.bloodGroup || '',
+    facebook: data.facebook || '',
+    whatsapp: data.whatsapp || '',
+    linkedin: data.linkedin || '',
+    discord: data.discord || '',
+    linkedSocial: typeof data.linkedSocial === 'string' ? data.linkedSocial : JSON.stringify(data.linkedSocial || {}),
+    linkedAccounts: typeof data.linkedAccounts === 'string' ? data.linkedAccounts : JSON.stringify(data.linkedAccounts || []),
+    cgpa: Number(data.cgpa) || 0,
+    creditsCompleted: Number(data.creditsCompleted) || 0,
+    totalCredits: Number(data.totalCredits) || 160,
+  };
+}
+
+async function buildUser(payload, { invited = false } = {}) {
   const name = String(payload.name || '').trim();
   const email = String(payload.email || '').trim().toLowerCase();
   const password = String(payload.password || '');
   const role = VALID_ROLES.includes(payload.role) ? payload.role : 'student';
   const department = String(payload.department || '').trim();
+  const batchNo = String(payload.batchNo || '').trim();
+  const batch = String(payload.batch || batchNo).trim();
 
   if (!name) throw new Error('Full name is required.');
   if (!email || !email.includes('@')) throw new Error('Enter a valid email address.');
-  if (role !== 'alumni' && !isValidAustEmail(email)) {
+  if (!invited && role !== 'alumni' && !isValidAustEmail(email)) {
     throw new Error('Only AUST university email addresses (@aust.edu) are allowed for registration.');
   }
   if (password.length < 6) throw new Error('Password must be at least 6 characters.');
-  if (!department) throw new Error('Department is required.');
-
-  const users = await readUsers();
-  if (users.find(u => u.email === email)) {
-    throw new Error('An account with this email already exists.');
-  }
-
-  if ((role === 'student' || role === 'alumni') && !String(payload.batchNo || payload.batch || '').trim()) {
+  if (!invited && !department) throw new Error('Department is required.');
+  if (!invited && (role === 'student' || role === 'alumni') && !batch) {
     throw new Error('Batch is required for students and alumni.');
   }
-  if (role === 'faculty' && !String(payload.designation || '').trim()) {
+  if (!invited && role === 'faculty' && !String(payload.designation || '').trim()) {
     throw new Error('Designation is required for faculty accounts.');
   }
 
-  const hash = await hashPassword(password);
-  const batchNo = String(payload.batchNo || '').trim();
-  const rnd = Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 6).toUpperCase();
-  const prefix = { student: 'STU', faculty: 'FAC', alumni: 'ALU', admin: 'ADM', cr: 'CR', sr: 'SR', senior: 'SNR', moderator: 'MOD' }[role] || 'USR';
-  const id = `${prefix}-${rnd}`;
+  const existing = await findUserByEmail(email);
+  if (existing) throw new Error('An account with this email already exists.');
 
-  // Extract student ID from email prefix
-  const emailPrefix = email.split('@')[0] || '';
+  const yearSemester = String(payload.yearSemester || (invited ? '' : '1.1'));
+  const [year, term] = yearSemester.split('.').map(Number);
+  const semester = Number.isFinite(year) && Number.isFinite(term) && year > 0 && term > 0
+    ? (year - 1) * 2 + term
+    : 1;
 
-  const [yr, term] = (payload.yearSemester || '1.1').split('.').map(Number);
-  const semesterNum = (yr - 1) * 2 + (term || 1);
-
-  const user = {
-    id,
+  return normalizeUserData({
+    id: payload.id || makeUserId(role),
+    awid: payload.awid || email.split('@')[0] || makeUserId(role),
     email,
     name,
-    password: hash,
+    passwordHash: await bcrypt.hash(password, BCRYPT_ROUNDS),
     role,
     department,
-    batch: String(payload.batch || batchNo || '').trim(),
+    batch,
     batchNo,
-    batchName: String(payload.batchName || batchNo).trim(),
-    designation: String(payload.designation || '').trim(),
+    batchName: String(payload.batchName || batch).trim(),
+    designation: String(payload.designation || (invited ? 'Invited member' : '')).trim(),
     company: String(payload.company || '').trim(),
     graduationYear: String(payload.graduationYear || '').trim(),
-    yearSemester: payload.yearSemester || '1.1',
+    yearSemester,
     section: String(payload.section || '').trim(),
     labSection: String(payload.labSection || '').trim(),
-    semester: semesterNum,
+    semester,
     avatar: payload.avatar || null,
     openForTalk: false,
+    bloodGroup: String(payload.bloodGroup || '').trim(),
+    facebook: '',
+    whatsapp: '',
+    linkedin: '',
+    discord: '',
     linkedSocial: payload.linkedSocial || {},
     linkedAccounts: [],
     cgpa: 0,
     creditsCompleted: 0,
     totalCredits: 160,
-    bloodGroup: '',
-    facebook: '',
-    whatsapp: '',
-    linkedin: '',
-    discord: '',
-    createdAt: new Date().toISOString(),
-  };
-
-  users.push(user);
-  await writeUsers(users);
-  return user;
+  });
 }
 
-/** Validate credentials and return user (without password) if valid */
+/** Seed a default admin account after the database schema exists. */
+export async function seedDefaultAdmin() {
+  const existing = await prisma.user.findFirst({ where: { role: 'admin' } });
+  if (existing) return null;
+
+  const password = process.env.ADMIN_DEFAULT_PASSWORD || (process.env.NODE_ENV === 'production' ? null : 'changeme');
+  if (!password) throw new Error('ADMIN_DEFAULT_PASSWORD must be set in production before seeding the admin account.');
+  const admin = await buildUser({
+    id: 'ADM-001',
+    awid: 'admin',
+    name: 'Prof. Dr. Md. Abdur Rahim',
+    email: 'admin@aust.edu',
+    password,
+    role: 'admin',
+    department: 'Admin Department',
+    designation: 'Registrar',
+  }, { invited: true });
+
+  const created = await createUserRecord(admin);
+  console.log('✅ Default admin account seeded (admin@aust.edu)');
+  return safeUser(created);
+}
+
+export function hashPassword(plain) {
+  return bcrypt.hash(plain, BCRYPT_ROUNDS);
+}
+
+export function comparePassword(plain, hash) {
+  return bcrypt.compare(plain, hash);
+}
+
+export async function createUser(payload) {
+  const user = await buildUser(payload);
+  return safeUser(await createUserRecord(user));
+}
+
+export async function createInvitedUser(payload) {
+  const user = await buildUser(payload, { invited: true });
+  return safeUser(await createUserRecord(user));
+}
+
 export async function validateLogin(email, password) {
-  const normalized = String(email || '').trim().toLowerCase();
-  const users = await readUsers();
-  const user = users.find(u => u.email === normalized);
-  if (!user) throw new Error('Invalid email or password.');
-  const valid = await comparePassword(password, user.password);
-  if (!valid) throw new Error('Invalid email or password.');
-  const { password: _, ...safe } = user;
-  return safe;
-}
-
-/** Get user by ID (without password hash) */
-export async function getUserById(id) {
-  const users = await readUsers();
-  const user = users.find(u => u.id === id);
-  if (!user) return null;
-  const { password: _, ...safe } = user;
-  return safe;
-}
-
-/** Get all users (for admin views — without password hashes) */
-export async function getAllUsersSafe() {
-  const users = await readUsers();
-  return users.map(({ password: _, ...safe }) => safe);
-}
-
-/** Update a user profile */
-export async function updateUserProfile(id, patch) {
-  const users = await readUsers();
-  const idx = users.findIndex(u => u.id === id);
-  if (idx === -1) return null;
-  users[idx] = { ...users[idx], ...patch };
-  // Don't allow password overwrite via this method
-  if (patch.password) {
-    users[idx].password = await hashPassword(patch.password);
+  const user = await findUserByEmail(email);
+  if (!user || !(await comparePassword(password, user.passwordHash))) {
+    throw new Error('Invalid email or password.');
   }
-  await writeUsers(users);
-  const { password: _, ...safe } = users[idx];
-  return safe;
+  return safeUser(user);
 }
 
-/** Delete a user */
+export async function getUserById(id) {
+  return safeUser(await findUserById(id));
+}
+
+export async function getAllUsersSafe() {
+  const users = await prisma.user.findMany({ orderBy: { createdAt: 'desc' } });
+  return users.map(safeUser);
+}
+
+export async function updateUserProfile(id, patch) {
+  const data = { ...patch };
+  delete data.id;
+  delete data.email;
+  delete data.password;
+  if (data.linkedSocial && typeof data.linkedSocial !== 'string') data.linkedSocial = JSON.stringify(data.linkedSocial);
+  if (data.linkedAccounts && typeof data.linkedAccounts !== 'string') data.linkedAccounts = JSON.stringify(data.linkedAccounts);
+  if (patch.password) data.passwordHash = await hashPassword(patch.password);
+  return safeUser(await updateUserRecord(id, data));
+}
+
 export async function deleteUserById(id) {
-  const users = await readUsers();
-  const filtered = users.filter(u => u.id !== id);
-  if (filtered.length === users.length) return false;
-  await writeUsers(filtered);
-  return true;
+  return deleteUserRecord(id);
 }
-
-// Seed admin on first import
-seedDefaultAdmin().catch(() => {});

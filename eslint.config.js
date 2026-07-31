@@ -18,4 +18,11 @@ export default defineConfig([
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
   },
+  {
+    // Node/Express server code (server/, dev/, prisma.config.ts runs in Node)
+    files: ['server/**/*.{js,mjs}', 'dev/**/*.{js,mjs}', 'scripts/**/*.{js,cjs,mjs}'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
 ])

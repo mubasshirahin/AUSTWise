@@ -357,7 +357,7 @@ export async function registerUserForNotifications(chatId, routine) {
     };
   }
   
-  const user = registerUser(chatId, routine);
+  const user = await registerUser(chatId, routine);
   
   return {
     success: true,

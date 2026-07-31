@@ -12,38 +12,16 @@
 
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
-import { PrismaMssql } from '@prisma/adapter-mssql';
+import { PrismaPg } from '@prisma/adapter-pg';
 
-// Prisma 7 requires a driver adapter instead of `datasourceUrl`.
-function buildMssqlConfig() {
-  if (process.env.DATABASE_URL) {
-    return process.env.DATABASE_URL;
-  }
-  const useTrusted = process.env.DB_TRUSTED === 'true';
-  const config = {
-    server:   process.env.DB_SERVER   || 'localhost\\SQLEXPRESS',
-    database: process.env.DB_DATABASE || 'AUSTWise',
-    port:     Number(process.env.DB_PORT || 1433),
-    options: {
-      encrypt:                process.env.DB_ENCRYPT === 'true',
-      trustServerCertificate: true,
-      connectTimeout:         10000,
-      requestTimeout:         15000,
-    },
-  };
-  if (useTrusted) {
-    config.authentication = {
-      type: 'ntlm',
-      options: { userName: '', password: '', domain: '' },
-    };
-  } else {
-    config.user     = process.env.DB_USER     || 'sa';
-    config.password = process.env.DB_PASSWORD || '';
-  }
-  return config;
+const databaseUrl = process.env.DIRECT_URL || process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL or DIRECT_URL must be set before running the seed script.');
 }
 
-const prisma = new PrismaClient({ adapter: new PrismaMssql(buildMssqlConfig()) });
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: databaseUrl }),
+});
 
 // ─── Course data (from src/data/courses.js) ───────────────────────────────────
 
@@ -794,27 +772,27 @@ async function main() {
         hotspotData = JSON.stringify(room.hotspots);
       }
 
-      await prisma.campusLocation.upsert({
-        where: { id: locCount + 1 }, // approximate — we'll use create instead
-        create: {
-          floor: floor.floor,
-          roomId: room.id,
-          name: room.name,
-          type: room.type,
-          hotspotData,
-          x,
-          y,
-          mapImage: floor.mapImage || '',
-        },
-        update: {
-          name: room.name,
-          type: room.type,
-          hotspotData,
-          x,
-          y,
-          mapImage: floor.mapImage || '',
-        },
+      // Upsert by natural key (floor + roomId) so re-running the seed never
+      // duplicates rows or overwrites unrelated ones (id-based upsert breaks
+      // once the autoincrement sequence drifts from the loop counter).
+      const existing = await prisma.campusLocation.findFirst({
+        where: { floor: floor.floor, roomId: room.id },
       });
+      const campusData = {
+        floor: floor.floor,
+        roomId: room.id,
+        name: room.name,
+        type: room.type,
+        hotspotData,
+        x,
+        y,
+        mapImage: floor.mapImage || '',
+      };
+      if (existing) {
+        await prisma.campusLocation.update({ where: { id: existing.id }, data: campusData });
+      } else {
+        await prisma.campusLocation.create({ data: campusData });
+      }
       locCount++;
     }
   }

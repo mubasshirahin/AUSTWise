@@ -35,7 +35,16 @@ import {
   recordCheckOut,
   getOccupancy
 } from './libraryDB.mjs';
-import { initializeDatabase, resetDatabase, query, sql } from './db.mjs';
+import { initializeDatabase, resetDatabase } from './db.mjs';
+import {
+  countInvitations,
+  createInvitation,
+  findInvitationByToken,
+  findInvitationsByEmail,
+  listInvitations,
+  acceptInvitation,
+} from './prisma.js';
+import { createInvitedUser, seedDefaultAdmin } from './userStore.mjs';
 import { handleOAuthRequest } from './socialOAuth.mjs';
 import { handleAuthRoute, readTokenCookie } from './auth.mjs';
 import { extractRoutineRateLimiter } from './rateLimiter.mjs';
@@ -84,6 +93,7 @@ import {
   UPLOADS_DIR,
 } from './vaultNotesDB.mjs';
 import { createWSServer, broadcastToAll } from './wsServer.mjs';
+import { applyCorsHeaders, handleCorsPreflight } from './cors.mjs';
 
 // Helper function to answer callback query
 async function answerCallbackQueryFn(botToken, callbackQueryId, text) {
@@ -186,6 +196,20 @@ const contentTypes = {
   '.woff2': 'font/woff2',
 };
 
+// @vitejs/plugin-react's documented preamble. The custom server must add it
+// itself because its SPA fallback can intercept the virtual preamble module.
+const reactRefreshPreamble = `<script type="module">
+import { injectIntoGlobalHook } from "/@react-refresh";
+injectIntoGlobalHook(window);
+window.$RefreshReg$ = () => {};
+window.$RefreshSig$ = () => (type) => type;
+</script>`;
+
+function addReactRefreshPreamble(html) {
+  if (html.includes('window.$RefreshSig$')) return html;
+  return html.replace('</head>', `${reactRefreshPreamble}\n  </head>`);
+}
+
 function readJsonBody(req) {
   return new Promise((resolve, reject) => {
     let body = '';
@@ -218,9 +242,8 @@ function safeJsonParse(str, fallback) {
 }
 
 function sendJson(res, status, payload) {
-  res.writeHead(status, { 
+  res.writeHead(status, {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*'
   });
   res.end(JSON.stringify(payload));
 }
@@ -254,20 +277,15 @@ async function sendStaticFile(req, res) {
   }
 }
 
-// CORS preflight handler
-function handleCorsPreflight(req, res) {
-  res.writeHead(204, {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-  });
-  res.end();
-}
 
 const vite = useViteMiddleware
   ? await createViteServer({
       server: { middlewareMode: true },
+      // Vite 8 bundled-dev mode skips plugin-react's HTML preamble while
+      // still adding $RefreshSig$ to transformed JSX modules.
+      experimental: { bundledDev: false },
       appType: 'spa',
+      mode: 'development',
     })
   : null;
 
@@ -277,13 +295,13 @@ const FEATURES = {
   telegram: !!process.env.TELEGRAM_BOT_TOKEN,
   gemini:   !!process.env.GEMINI_API_KEY,
   googleApi: !!process.env.VITE_GOOGLE_API_KEY,
-  db:       false,   // set to true after successful SQL Server connection
-  dbConfig: false,   // set to true if DB_* vars are all present
+  db:       false,   // set to true after successful PostgreSQL connection
+  dbConfig: false,   // set to true when Neon connection vars are present
 };
 
-// Check DB credential env vars
-const dbVarMap = { DB_SERVER: 'Server', DB_DATABASE: 'Database', DB_USER: 'User', DB_PASSWORD: 'Password' };
-const missingDbVars = Object.entries(dbVarMap).filter(([k]) => !process.env[k]).map(([, label]) => label);
+// Check Neon connection env vars. DATABASE_URL is required at runtime;
+// DIRECT_URL is used by Prisma CLI migrations when configured.
+const missingDbVars = process.env.DATABASE_URL ? [] : ['DATABASE_URL'];
 FEATURES.dbConfig = missingDbVars.length === 0;
 
 function validateEnv() {
@@ -305,7 +323,7 @@ function validateEnv() {
     warnings.push(`⚠️  Missing DB credentials (${missingDbVars.join(', ')}) — all database features will be unavailable`);
   }
   if (!FEATURES.db && FEATURES.dbConfig) {
-    warnings.push('⚠️  SQL Server connection failed — all database features will be unavailable');
+    warnings.push('⚠️  PostgreSQL connection failed — all database features will be unavailable');
   }
 
   // Social OAuth checks (non-critical — just info)
@@ -332,11 +350,12 @@ function requireFeature(feature, res, label) {
 }
 
 // Auto-create database & tables on startup
-initializeDatabase().then(() => {
+initializeDatabase().then(async () => {
+  await seedDefaultAdmin();
   FEATURES.db = true;
-  console.log('✅ SQL Server connected & tables ready');
+  console.log('✅ PostgreSQL connected and ready');
 }).catch(err => {
-  console.warn('⚠️  SQL Server init failed:', err.message);
+  console.warn('⚠️  PostgreSQL init failed:', err.message);
   console.warn('   Server will still start, but DB features won\'t work.');
 }).finally(() => {
   // validateEnv runs after DB init attempt so FEATURES.db reflects reality
@@ -350,8 +369,8 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Add CORS headers to all responses
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // Dynamic CORS headers (no wildcard) — enables cross-origin HttpOnly cookies
+  applyCorsHeaders(req, res);
 
   // Extract routine from image (rate-limited — OpenAI-backed endpoint)
   if (req.url === '/api/extract-routine' && req.method === 'POST') {
@@ -1023,7 +1042,7 @@ const server = http.createServer(async (req, res) => {
     const auth = requireRole('admin', 'moderator')(req, res);
     if (!auth) return;
     try {
-      const { email, role, invitedBy } = await readJsonBody(req);
+      const { email, role } = await readJsonBody(req);
 
       if (!email || !role) {
         sendJson(res, 400, { success: false, error: 'Email and role are required.' });
@@ -1042,12 +1061,8 @@ const server = http.createServer(async (req, res) => {
       }
 
       // Check if already invited with this email
-      const existing = await query(
-        'SELECT Id, Status FROM Invitations WHERE Email = @email',
-        { email: { value: email } }
-      );
-
-      const pendingInvite = existing.recordset.find(i => i.Status === 'pending');
+      const existing = await findInvitationsByEmail(email.toLowerCase());
+      const pendingInvite = existing.find(i => i.status === 'pending');
       if (pendingInvite) {
         sendJson(res, 409, { success: false, error: 'An active invitation already exists for this email.' });
         return;
@@ -1060,17 +1075,14 @@ const server = http.createServer(async (req, res) => {
       // Set expiry to 7 days from now
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-      await query(
-        `INSERT INTO Invitations (Email, Role, Token, Status, InvitedBy, ExpiresAt)
-         VALUES (@email, @role, @token, 'pending', @invitedBy, @expiresAt)`,
-        {
-          email: { value: email },
-          role: { value: role },
-          token: { value: token },
-          invitedBy: { value: invitedBy || 'Admin' },
-          expiresAt: { value: expiresAt },
-        }
-      );
+      await createInvitation({
+        email: email.toLowerCase(),
+        role,
+        token,
+        status: 'pending',
+        invitedBy: auth.id,
+        expiresAt: new Date(expiresAt),
+      });
 
       console.log(`📨 Invitation sent to ${email} (${role}), token=${token.substring(0, 12)}...`);
 
@@ -1104,20 +1116,23 @@ const server = http.createServer(async (req, res) => {
       const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get('limit') || '10')));
       const offset = (page - 1) * limit;
 
-      const countResult = await query('SELECT COUNT(*) AS total FROM Invitations');
-      const total = countResult.recordset[0].total;
-
-      const result = await query(
-        `SELECT Id, Email, Role, Token, Status, InvitedBy, CreatedAt, ExpiresAt, AcceptedAt
-         FROM Invitations
-         ORDER BY CreatedAt DESC
-         OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY`,
-        { offset: { type: sql.Int, value: offset }, limit: { type: sql.Int, value: limit } }
-      );
+      const total = await countInvitations();
+      const result = await listInvitations(offset, limit);
+      const invitations = result.map(invite => ({
+        Id: invite.id,
+        Email: invite.email,
+        Role: invite.role,
+        Token: invite.token,
+        Status: invite.status,
+        InvitedBy: invite.invitedBy,
+        CreatedAt: invite.createdAt,
+        ExpiresAt: invite.expiresAt,
+        AcceptedAt: invite.acceptedAt,
+      }));
 
       sendJson(res, 200, {
         success: true,
-        invitations: result.recordset,
+        invitations,
         pagination: {
           page,
           limit,
@@ -1145,32 +1160,27 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      const result = await query(
-        `SELECT Id, Email, Role, Status, ExpiresAt FROM Invitations WHERE Token = @token`,
-        { token: { value: token } }
-      );
+      const invite = await findInvitationByToken(token);
 
-      if (result.recordset.length === 0) {
+      if (!invite) {
         sendJson(res, 404, { success: false, error: 'Invalid or expired invitation link.' });
         return;
       }
 
-      const invite = result.recordset[0];
-
-      if (invite.Status === 'accepted') {
+      if (invite.status === 'accepted') {
         sendJson(res, 410, { success: false, error: 'This invitation has already been used.' });
         return;
       }
 
-      if (invite.ExpiresAt && new Date(invite.ExpiresAt) < new Date()) {
+      if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) {
         sendJson(res, 410, { success: false, error: 'This invitation has expired.' });
         return;
       }
 
       sendJson(res, 200, {
         success: true,
-        email: invite.Email,
-        role: invite.Role,
+        email: invite.email,
+        role: invite.role,
       });
     } catch (error) {
       sendJson(res, 500, {
@@ -1191,41 +1201,39 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      const result = await query(
-        `SELECT Id, Email, Role, Status, ExpiresAt FROM Invitations WHERE Token = @token`,
-        { token: { value: token } }
-      );
+      const invite = await findInvitationByToken(token);
 
-      if (result.recordset.length === 0) {
+      if (!invite) {
         sendJson(res, 404, { success: false, error: 'Invalid invitation link.' });
         return;
       }
 
-      const invite = result.recordset[0];
-
-      if (invite.Status === 'accepted') {
+      if (invite.status === 'accepted') {
         sendJson(res, 410, { success: false, error: 'This invitation has already been used.' });
         return;
       }
 
-      if (invite.ExpiresAt && new Date(invite.ExpiresAt) < new Date()) {
+      if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) {
         sendJson(res, 410, { success: false, error: 'This invitation has expired.' });
         return;
       }
 
-      // Mark invitation as accepted
-      await query(
-        `UPDATE Invitations SET Status = 'accepted', AcceptedAt = GETDATE() WHERE Id = @id`,
-        { id: { type: sql.Int, value: invite.Id } }
-      );
+      // Create the invited account, then mark the one-time invitation as accepted.
+      await createInvitedUser({
+        email: invite.email,
+        name,
+        password,
+        role: invite.role,
+      });
+      await acceptInvitation(invite.id);
 
-      console.log(`✅ Invitation accepted: ${invite.Email} registered as ${invite.Role}`);
+      console.log(`✅ Invitation accepted: ${invite.email} registered as ${invite.role}`);
 
       sendJson(res, 200, {
         success: true,
         message: 'Account created successfully!',
-        email: invite.Email,
-        role: invite.Role,
+        email: invite.email,
+        role: invite.role,
       });
     } catch (error) {
       sendJson(res, 500, {
@@ -1298,7 +1306,6 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, {
         'Content-Type': 'application/pdf',
         'Content-Length': pdfBuffer.length,
-        'Access-Control-Allow-Origin': '*',
         'Cache-Control': 'public, max-age=3600',
       });
       res.end(pdfBuffer);
@@ -1928,7 +1935,6 @@ const server = http.createServer(async (req, res) => {
           'Content-Type': note.mimeType || 'application/octet-stream',
           'Content-Length': data.length,
           'Content-Disposition': `attachment; filename="${encodeURIComponent(note.originalName)}"`,
-          'Access-Control-Allow-Origin': '*',
         });
         res.end(data);
       } catch {
@@ -2087,6 +2093,24 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (vite) {
+    // The custom HTTP server bypasses Vite's normal HTML middleware. Transform
+    // the entry document explicitly so @vitejs/plugin-react injects its React
+    // Refresh preamble before any JSX module that calls $RefreshSig$ loads.
+    const requestUrl = new URL(req.url, `http://${req.headers.host}`);
+    if (req.method === 'GET' && ['/', '/index.html'].includes(requestUrl.pathname)) {
+      try {
+        const template = await readFile(path.resolve(__dirname, '..', 'index.html'), 'utf8');
+        const html = addReactRefreshPreamble(await vite.transformIndexHtml(req.url, template));
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(html);
+      } catch (error) {
+        vite.ssrFixStacktrace(error);
+        res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end(error.stack || error.message || 'Failed to transform index.html.');
+      }
+      return;
+    }
+
     // Don't route WebSocket upgrade requests through Vite — our custom WS server
     // (wsServer.mjs) handles those via the http.Server 'upgrade' event.
     if (req.headers['upgrade']?.toLowerCase() !== 'websocket') {

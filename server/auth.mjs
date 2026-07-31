@@ -7,6 +7,7 @@ import {
   createUser, validateLogin, getUserById,
 } from './userStore.mjs';
 import { authRateLimiter } from './rateLimiter.mjs';
+import { IS_PRODUCTION } from './cors.mjs';
 
 const JWT_SECRET = process.env.JWT_SECRET || (() => {
   console.warn('⚠️  JWT_SECRET not set in .env — using insecure default. Set JWT_SECRET in production!');
@@ -14,6 +15,13 @@ const JWT_SECRET = process.env.JWT_SECRET || (() => {
 })();
 const COOKIE_NAME = 'aust_token';
 const TOKEN_EXPIRY = '7d';
+
+/**
+ * Cross-site cookies (Vercel frontend → Render API) need
+ * `HttpOnly; Secure; SameSite=None`. `Secure` is skipped in local dev because
+ * browsers reject Secure cookies over plain http://localhost.
+ */
+const COOKIE_MAX_AGE = Number(process.env.COOKIE_MAX_AGE || 86400); // seconds (1 day)
 
 function signToken(user) {
   return jwt.sign(
@@ -23,13 +31,19 @@ function signToken(user) {
   );
 }
 
+function cookieAttributes() {
+  return IS_PRODUCTION
+    ? 'HttpOnly; Secure; SameSite=None; Path=/'
+    : 'HttpOnly; SameSite=Lax; Path=/';
+}
+
 function setAuthCookie(res, token) {
-  const cookie = `${COOKIE_NAME}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${7 * 24 * 60 * 60}`;
+  const cookie = `${COOKIE_NAME}=${token}; ${cookieAttributes()}; Max-Age=${COOKIE_MAX_AGE}`;
   res.setHeader('Set-Cookie', cookie);
 }
 
 function clearAuthCookie(res) {
-  const cookie = `${COOKIE_NAME}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`;
+  const cookie = `${COOKIE_NAME}=; ${cookieAttributes()}; Max-Age=0`;
   res.setHeader('Set-Cookie', cookie);
 }
 
@@ -148,7 +162,6 @@ function sendJson(res, status, payload) {
   const body = JSON.stringify(payload);
   res.writeHead(status, {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
     'Content-Length': Buffer.byteLength(body),
   });
   res.end(body);

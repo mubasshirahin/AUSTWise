@@ -1,3 +1,5 @@
+import { API_BASE_URL } from './api';
+
 const PROVIDER_MAP = {
   github: {
     name: 'GitHub',
@@ -33,6 +35,7 @@ const PROVIDER_MAP = {
 };
 
 const getBaseUrl = () => {
+  if (API_BASE_URL) return API_BASE_URL;
   if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
     return 'http://localhost:5174';
   }

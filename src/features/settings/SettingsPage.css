@@ -1164,9 +1164,6 @@
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-  }
-}
-
 @media (max-width: 768px) {
   .settings-hero-content {
     padding: var(--sp-5) var(--sp-4);

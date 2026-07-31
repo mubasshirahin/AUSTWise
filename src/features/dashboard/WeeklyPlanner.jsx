@@ -13,6 +13,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import logoUrl from '../../assets/logo-silver.png';
 import { useAuth } from '../../context/AuthContext';
+import { apiFetch } from '../../utils/api';
 
 export default function WeeklyPlanner() {
   const { user } = useAuth();
@@ -266,7 +267,7 @@ export default function WeeklyPlanner() {
         reader.readAsDataURL(file);
       });
 
-      const res = await fetch('/api/extract-routine', {
+      const res = await apiFetch('/api/extract-routine', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageDataUrl }),

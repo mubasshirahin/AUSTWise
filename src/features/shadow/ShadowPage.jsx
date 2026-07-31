@@ -7,6 +7,7 @@ import CourseReview from '../analytics/CourseReview';
 import BuzzPage from '../austeddit/AustedditPage';
 import GliderTabs from '../../components/GliderTabs';
 import './ShadowPage.css';
+import { getWebSocketUrl } from '../../utils/api';
 import '../../components/PageHero.css';
 
 const SHADOW_DURATION = 10 * 60; // 10 minutes in seconds
@@ -101,8 +102,7 @@ export default function ShadowPage() {
 
   /* ─── WebSocket Connection ─── */
   const connectWS = useCallback(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}`;
+    const wsUrl = getWebSocketUrl();
     try {
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;

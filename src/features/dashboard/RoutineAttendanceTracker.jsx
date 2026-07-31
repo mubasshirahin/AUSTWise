@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { setUserStorageItem, getUserStorageKey } from '../../utils/authStorage';
 import { getCalculatedAttendanceDates, getSemesterStartDate } from '../../utils/semesterDates';
+import { apiFetch, getWebSocketUrl } from '../../utils/api';
 
 const SEMESTER_WEEKS = 14;
 const MIN_ATTENDANCE = 75;
@@ -102,7 +103,7 @@ export default function RoutineAttendanceTracker() {
     if (!telegramChatId) return;
     setLoadingTelegram(true);
     try {
-      const response = await fetch(`/api/telegram/attendance?chatId=${encodeURIComponent(telegramChatId)}`);
+      const response = await apiFetch(`/api/telegram/attendance?chatId=${encodeURIComponent(telegramChatId)}`);
       const result   = await response.json();
       if (result.success && result.records) {
         const telegramData = {};
@@ -138,8 +139,7 @@ export default function RoutineAttendanceTracker() {
 
     function connect() {
       try {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        ws = new WebSocket(`${protocol}//${window.location.host}`);
+        ws = new WebSocket(getWebSocketUrl());
 
         ws.onopen = () => {
           console.log('📡 Attendance sync WS connected');

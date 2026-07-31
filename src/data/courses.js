@@ -1,3 +1,5 @@
+import { apiFetch } from '../utils/api';
+
 const CSE_COURSES = [
   { code: 'HUM1107', name: 'Critical Thinking and Communication', credit: 3.0 },
   { code: 'HUM1108', name: 'English Language Sessional', credit: 0.75 },
@@ -794,7 +796,7 @@ function getCourses(department = null) {
 
 // API cache — fetched once, falls back to static data
 let _apiCoursesMap = null;
-fetch('/api/courses')
+apiFetch('/api/courses')
   .then(r => r.json())
   .then(data => {
     if (data.success && Array.isArray(data.courses)) {

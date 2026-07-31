@@ -7,6 +7,8 @@
  * Each lab group has 1 CR who contributes their routine.
  */
 
+import { apiFetch } from './api';
+
 const SHARED_ROUTINES_KEY = 'aust-shared-routines-v1';
 
 /**
@@ -128,7 +130,7 @@ export function getSharedCoverageStats() {
  */
 export async function loadSharedRoutinesFromServer() {
   try {
-    const res = await fetch('/api/shared-routines');
+    const res = await apiFetch('/api/shared-routines');
     if (!res.ok) throw new Error(`Server returned ${res.status}`);
     const data = await res.json();
     if (data.success && Array.isArray(data.routines)) {
@@ -153,7 +155,7 @@ export async function shareRoutineToServer(userData, routineData) {
 
   // Fire-and-forget to server (best-effort, async)
   try {
-    const res = await fetch('/api/shared-routines', {
+    const res = await apiFetch('/api/shared-routines', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

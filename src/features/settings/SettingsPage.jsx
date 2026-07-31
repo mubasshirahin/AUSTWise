@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useRoutine } from '../../context/RoutineContext';
+import { apiFetch } from '../../utils/api';
 import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, AlarmClock, Clock, AlertTriangle, ShieldCheck, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2 } from 'lucide-react';
 import AboutUs from './AboutUs';
 import LinkedAccountsSection from './LinkedAccountsSection';
@@ -308,7 +309,7 @@ export default function SettingsPage() {
     const fetchWebhookInfo = async () => {
       setWebhookLoading(true);
       try {
-        const response = await fetch('/api/telegram/webhook-info');
+        const response = await apiFetch('/api/telegram/webhook-info');
         const result = await response.json();
         setWebhookInfo(result);
       } catch (err) {
@@ -357,7 +358,7 @@ export default function SettingsPage() {
   // Fetch invitations list
   const fetchInvites = useCallback(async (page = 1) => {
     try {
-      const res = await fetch(`/api/invites?page=${page}&limit=10`);
+      const res = await apiFetch(`/api/invites?page=${page}&limit=10`);
       const data = await res.json();
       if (data.success) {
         setInvitations(data.invitations);
@@ -382,10 +383,10 @@ export default function SettingsPage() {
     setInviteSending(true);
     setInviteMsg('');
     try {
-      const res = await fetch('/api/invites', {
+      const res = await apiFetch('/api/invites', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: emailInput.trim(), role: inviteRole, invitedBy: user?.name || 'Admin' }),
+        body: JSON.stringify({ email: emailInput.trim(), role: inviteRole }),
       });
       const data = await res.json();
       if (data.success) {
@@ -1395,7 +1396,7 @@ export default function SettingsPage() {
                           
                           setTelegramTesting(true);
                           try {
-                            const response = await fetch('/api/telegram/register', {
+                            const response = await apiFetch('/api/telegram/register', {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({ 
@@ -1429,7 +1430,7 @@ export default function SettingsPage() {
                           
                           setTelegramTesting(true);
                           try {
-                            const response = await fetch('/api/telegram/unregister', {
+                            const response = await apiFetch('/api/telegram/unregister', {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({ chatId: telegramChatId })
@@ -1466,7 +1467,7 @@ export default function SettingsPage() {
                         
                         setTelegramTesting(true);
                         try {
-                          const response = await fetch('/api/telegram/test', {
+                          const response = await apiFetch('/api/telegram/test', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ 
@@ -1505,7 +1506,7 @@ export default function SettingsPage() {
                         
                         setTelegramTesting(true);
                         try {
-                          const response = await fetch('/api/telegram/test-attendance', {
+                          const response = await apiFetch('/api/telegram/test-attendance', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ 
@@ -1588,7 +1589,7 @@ export default function SettingsPage() {
                               const webhookUrl = prompt('Enter your ngrok webhook URL:\n\nExample: https://abc123.ngrok.io/api/telegram/webhook');
                               if (webhookUrl) {
                                 try {
-                                  const response = await fetch('/api/telegram/set-webhook', {
+                                  const response = await apiFetch('/api/telegram/set-webhook', {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({ webhookUrl })
@@ -1597,7 +1598,7 @@ export default function SettingsPage() {
                                   if (result.ok) {
                                     setTelegramMsg('✅ Webhook configured successfully! Buttons should now work.');
                                     // Refresh webhook info
-                                    const infoResponse = await fetch('/api/telegram/webhook-info');
+                                    const infoResponse = await apiFetch('/api/telegram/webhook-info');
                                     const infoResult = await infoResponse.json();
                                     setWebhookInfo(infoResult);
                                   } else {

@@ -1,10 +1,19 @@
 // Prisma schema for AUST Student Helper
-// SQL Server 2022 provider — matches localStorage data shapes from src/utils/*.js
-// Run: npx prisma db push   (creates/updates tables without migration files)
+// PostgreSQL schema for Neon — matches the application data shapes.
+// Generate a fresh PostgreSQL migration after changing provider; old SQL Server
+// migration SQL is not portable and must not be replayed against Neon.
+// JSON-shaped values remain String fields for compatibility with the existing API.
 //
-// Notes for SQL Server:
-//  - Json type is unsupported → use String (NVARCHAR(MAX)) + JSON.parse/stringify in app
-//  - Multiple cascade paths to User would fail → Message.receiver uses NoAction
+// PostgreSQL mappings used below:
+//  - String → text (or @db.VarChar(n) when a bounded value is required)
+//  - Bytes → bytea
+//  - Boolean → boolean
+//  - DateTime → timestamp(3)
+//  - @db.Date → date (used for attendance day uniqueness)
+//  - Int @default(autoincrement()) → serial/identity-compatible integer
+//
+// Multiple relations to User intentionally use NoAction to avoid accidental
+// cascading deletes across application data.
 
 generator client {
   provider = "prisma-client-js"
@@ -12,7 +21,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlserver"
+  provider = "postgresql"
 }
 
 // ─── Users & Auth ────────────────────────────────────────────────────────────
@@ -58,11 +67,9 @@ model User {
   messagesReceived  Message[]            @relation("ReceivedMessages")
   notices           Notice[]
   clubMemberships   ClubMembership[]
-  libraryCheckins   LibraryCheckin[]
   canteenFeedback   CanteenFeedback[]
   roleApplications  RoleApplication[]
   reactionsSent     MessageReaction[]
-  invitationsCreated Invitation[]        @relation("InvitedBy")
   transcriptTemplates TranscriptTemplate[]
   routineTemplates    RoutineTemplate[]
 }
@@ -261,13 +268,11 @@ model CanteenFeedback {
 
 model LibraryCheckin {
   id          String   @id @default(uuid())
-  userId      String   @unique
+  deviceId    String   @unique
   lat         Float
   lng         Float
   checkedInAt DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: NoAction)
 }
 
 // ─── Clubs ───────────────────────────────────────────────────────────────────
@@ -306,8 +311,6 @@ model Invitation {
   createdAt  DateTime  @default(now())
   expiresAt  DateTime?
   acceptedAt DateTime?
-
-  inviter User @relation("InvitedBy", fields: [invitedBy], references: [id], onDelete: NoAction)
 
   @@index([email])
   @@index([token])
@@ -390,7 +393,7 @@ model TelegramAttendance {
   chatId     String
   courseCode String
   attended   Boolean
-  recordDate DateTime @default(now())
+  recordDate DateTime @default(now()) @db.Date
   timestamp  DateTime @default(now())
 
   user TelegramUser @relation(fields: [chatId], references: [chatId], onDelete: Cascade)

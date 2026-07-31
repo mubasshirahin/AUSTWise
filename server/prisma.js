@@ -11,39 +11,20 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { PrismaMssql } from '@prisma/adapter-mssql';
+import { PrismaPg } from '@prisma/adapter-pg';
 
-// Prisma 7 requires a driver adapter instead of `datasourceUrl`.
-// Build the mssql config from the same DB_* env vars used by server/db.mjs.
-function buildMssqlConfig() {
-  if (process.env.DATABASE_URL) {
-    return process.env.DATABASE_URL;
-  }
-  const useTrusted = process.env.DB_TRUSTED === 'true';
-  const config = {
-    server:   process.env.DB_SERVER   || 'localhost\\SQLEXPRESS',
-    database: process.env.DB_DATABASE || 'AUSTWise',
-    port:     Number(process.env.DB_PORT || 1433),
-    options: {
-      encrypt:                process.env.DB_ENCRYPT === 'true',
-      trustServerCertificate: true,
-      connectTimeout:         10000,
-      requestTimeout:         15000,
-    },
-  };
-  if (useTrusted) {
-    config.authentication = {
-      type: 'ntlm',
-      options: { userName: '', password: '', domain: '' },
-    };
-  } else {
-    config.user     = process.env.DB_USER     || 'sa';
-    config.password = process.env.DB_PASSWORD || '';
-  }
-  return config;
+// Prisma 7 uses the PostgreSQL driver adapter for runtime queries.
+// DATABASE_URL should normally be Neon’s pooled connection string.
+const databaseUrl = process.env.DATABASE_URL || process.env.DIRECT_URL;
+if (!databaseUrl) {
+  console.warn('⚠️  DATABASE_URL is not set — PostgreSQL features will be unavailable until configured.');
 }
 
-const prisma = new PrismaClient({ adapter: new PrismaMssql(buildMssqlConfig()) });
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({
+    connectionString: databaseUrl || 'postgresql://localhost:5432/austwise',
+  }),
+});
 
 export { prisma };
 
@@ -64,21 +45,21 @@ function haversineMeters(lat1, lng1, lat2, lng2) {
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
 }
 
-export async function recordCheckIn(userId, lat, lng) {
-  if (!userId || !Number.isFinite(lat) || !Number.isFinite(lng))
-    throw new Error('userId, lat and lng are required.');
+export async function recordCheckIn(deviceId, lat, lng) {
+  if (!deviceId || !Number.isFinite(lat) || !Number.isFinite(lng))
+    throw new Error('deviceId, lat and lng are required.');
 
   const distance = haversineMeters(LIBRARY_LAT, LIBRARY_LNG, lat, lng);
   const inside = distance <= LIBRARY_RADIUS_M;
 
   if (inside) {
     await prisma.libraryCheckin.upsert({
-      where: { userId },
-      create: { userId, lat, lng },
+      where: { deviceId },
+      create: { deviceId, lat, lng },
       update: { lat, lng },
     });
   } else {
-    await prisma.libraryCheckin.deleteMany({ where: { userId } });
+    await prisma.libraryCheckin.deleteMany({ where: { deviceId } });
   }
 
   // Expire stale checkins (>10 min)
@@ -89,8 +70,8 @@ export async function recordCheckIn(userId, lat, lng) {
   return { inside, distance: Math.round(distance), radius: LIBRARY_RADIUS_M, occupied, capacity: LIBRARY_CAPACITY };
 }
 
-export async function recordCheckOut(userId) {
-  await prisma.libraryCheckin.deleteMany({ where: { userId } });
+export async function recordCheckOut(deviceId) {
+  await prisma.libraryCheckin.deleteMany({ where: { deviceId } });
   const occupied = await prisma.libraryCheckin.count();
   return { occupied, capacity: LIBRARY_CAPACITY };
 }
@@ -111,13 +92,28 @@ export async function getOccupancy() {
 // Telegram (replaces telegramDB.mjs)
 // ═══════════════════════════════════════════════════════════════════════════════
 
+function serializeRoutine(routine) {
+  if (routine == null) return null;
+  return typeof routine === 'string' ? routine : JSON.stringify(routine);
+}
+
+function deserializeRoutine(user) {
+  if (!user) return user;
+  return {
+    ...user,
+    routine: typeof user.routine === 'string' ? (() => {
+      try { return JSON.parse(user.routine); } catch { return {}; }
+    })() : user.routine,
+  };
+}
+
 export async function registerTelegramUser(chatId, routine = null) {
   const user = await prisma.telegramUser.upsert({
     where: { chatId: String(chatId) },
-    create: { chatId: String(chatId), routine, enabled: true },
-    update: { routine: routine ?? undefined, enabled: true },
+    create: { chatId: String(chatId), routine: serializeRoutine(routine), enabled: true },
+    update: { routine: routine == null ? undefined : serializeRoutine(routine), enabled: true },
   });
-  return user;
+  return deserializeRoutine(user);
 }
 
 export async function unregisterTelegramUser(chatId) {
@@ -128,18 +124,20 @@ export async function unregisterTelegramUser(chatId) {
 }
 
 export async function getTelegramUser(chatId) {
-  return prisma.telegramUser.findUnique({ where: { chatId: String(chatId) } });
+  return deserializeRoutine(await prisma.telegramUser.findUnique({ where: { chatId: String(chatId) } }));
 }
 
 export async function getAllTelegramUsers() {
-  return prisma.telegramUser.findMany({ where: { enabled: true } });
+  const users = await prisma.telegramUser.findMany({ where: { enabled: true } });
+  return users.map(deserializeRoutine);
 }
 
 export async function updateTelegramUserRoutine(chatId, routine) {
-  return prisma.telegramUser.update({
+  const user = await prisma.telegramUser.update({
     where: { chatId: String(chatId) },
-    data: { routine },
+    data: { routine: serializeRoutine(routine) },
   });
+  return deserializeRoutine(user);
 }
 
 export async function toggleTelegramUserStatus(chatId) {
@@ -162,29 +160,36 @@ export async function isTelegramRegistered(chatId) {
   return count > 0;
 }
 
+function dateOnlyUtc(value = new Date()) {
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return new Date(`${value}T00:00:00.000Z`);
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
 export async function saveAttendanceRecord(chatId, courseCode, attended) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const recordDate = dateOnlyUtc();
   return prisma.telegramAttendance.upsert({
-    where: { chatId_courseCode_recordDate: { chatId: String(chatId), courseCode, recordDate: today } },
-    create: { chatId: String(chatId), courseCode, attended, recordDate: today },
+    where: { chatId_courseCode_recordDate: { chatId: String(chatId), courseCode, recordDate } },
+    create: { chatId: String(chatId), courseCode, attended, recordDate },
     update: { attended },
   });
 }
 
 export async function saveAttendanceRecordForDate(chatId, courseCode, attended, recordDate) {
+  const normalizedDate = dateOnlyUtc(recordDate);
   return prisma.telegramAttendance.upsert({
-    where: { chatId_courseCode_recordDate: { chatId: String(chatId), courseCode, recordDate: new Date(recordDate) } },
-    create: { chatId: String(chatId), courseCode, attended, recordDate: new Date(recordDate) },
+    where: { chatId_courseCode_recordDate: { chatId: String(chatId), courseCode, recordDate: normalizedDate } },
+    create: { chatId: String(chatId), courseCode, attended, recordDate: normalizedDate },
     update: { attended },
   });
 }
 
 export async function getTodayAttendanceRecord(chatId, courseCode) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const recordDate = dateOnlyUtc();
   return prisma.telegramAttendance.findUnique({
-    where: { chatId_courseCode_recordDate: { chatId: String(chatId), courseCode, recordDate: today } },
+    where: { chatId_courseCode_recordDate: { chatId: String(chatId), courseCode, recordDate } },
   });
 }
 
@@ -447,4 +452,68 @@ export async function upsertSharedRoutine(data) {
 
 export async function deleteSharedRoutine(studentId) {
   return prisma.sharedRoutine.deleteMany({ where: { studentId } });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Users & Invitations
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export async function findUserByEmail(email) {
+  return prisma.user.findUnique({ where: { email: String(email).trim().toLowerCase() } });
+}
+
+export async function findUserById(id) {
+  return prisma.user.findUnique({ where: { id } });
+}
+
+export async function createUserRecord(data) {
+  return prisma.user.create({ data });
+}
+
+export async function updateUserRecord(id, data) {
+  return prisma.user.update({ where: { id }, data });
+}
+
+export async function deleteUserRecord(id) {
+  try {
+    await prisma.user.delete({ where: { id } });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function findAdminUser() {
+  return prisma.user.findFirst({ where: { role: 'admin' } });
+}
+
+export async function findInvitationsByEmail(email) {
+  return prisma.invitation.findMany({ where: { email }, orderBy: { createdAt: 'desc' } });
+}
+
+export async function createInvitation(data) {
+  return prisma.invitation.create({ data });
+}
+
+export async function countInvitations() {
+  return prisma.invitation.count();
+}
+
+export async function listInvitations(skip, take) {
+  return prisma.invitation.findMany({
+    skip,
+    take,
+    orderBy: { createdAt: 'desc' },
+  });
+}
+
+export async function findInvitationByToken(token) {
+  return prisma.invitation.findUnique({ where: { token } });
+}
+
+export async function acceptInvitation(id) {
+  return prisma.invitation.update({
+    where: { id },
+    data: { status: 'accepted', acceptedAt: new Date() },
+  });
 }

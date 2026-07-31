@@ -127,7 +127,6 @@ async function fetchJsonPost(url, body, headers = {}) {
 function sendHtml(res, html) {
   res.writeHead(200, {
     'Content-Type': 'text/html; charset=utf-8',
-    'Access-Control-Allow-Origin': '*',
   });
   res.end(html);
 }

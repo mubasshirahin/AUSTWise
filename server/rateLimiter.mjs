@@ -85,7 +85,6 @@ export function rateLimit({ windowMs, max, keyFn }) {
       res.setHeader('X-RateLimit-Reset', String(Math.ceil(entry.resetTime / 1000)));
       res.writeHead(429, {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
         'Retry-After': String(retryAfter),
       });
       res.end(JSON.stringify({

@@ -1,6 +1,7 @@
 // ─── Cheatsheet storage (admin-added sheets + per-user favorites) ───
 // Tries API first, falls back to localStorage + static seed data.
 import { cheatsheets as seedCheatsheets } from '../data/mockData';
+import { apiFetch } from './api';
 
 const SHEETS_KEY = 'aust-cheatsheets-v1';
 
@@ -12,7 +13,7 @@ async function fetchFromAPI() {
   if (_apiFetchStarted) return;
   _apiFetchStarted = true;
   try {
-    const res = await fetch('/api/cheatsheets');
+    const res = await apiFetch('/api/cheatsheets');
     if (!res.ok) return;
     const data = await res.json();
     if (data.success && Array.isArray(data.cheatsheets)) {

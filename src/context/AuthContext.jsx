@@ -6,17 +6,14 @@ import {
   updateAccountProfile,
   getAllAccounts,
 } from '../utils/authStorage';
+import { apiFetch } from '../utils/api';
 
 const AuthContext = createContext();
 const userStorageKey = 'aust-user-profile';
 
 /** Call server API */
 async function api(path, options = {}) {
-  const res = await fetch(path, {
-    credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json', ...options.headers },
-    ...options,
-  });
+  const res = await apiFetch(path, options);
   const data = await res.json();
   if (!res.ok && !data.success) throw new Error(data.error || 'Request failed');
   return data;

@@ -11,6 +11,7 @@ import {
 } from 'chart.js';
 import { Activity, MapPin, LogOut, Loader2 } from 'lucide-react';
 import { libraryData } from '../../data/mockData';
+import { apiFetch } from '../../utils/api';
 
 ChartJS.register(
   CategoryScale,
@@ -54,7 +55,7 @@ export default function LibraryPulse() {
   // Fetch the current live count.
   const loadOccupancy = useCallback(async () => {
     try {
-      const res = await fetch('/api/library/occupancy');
+      const res = await apiFetch('/api/library/occupancy');
       const data = await res.json();
       if (data.success) {
         setOccupancy({ occupied: data.occupied, capacity: data.capacity });
@@ -77,7 +78,7 @@ export default function LibraryPulse() {
         async (pos) => {
           const { latitude, longitude } = pos.coords;
           try {
-            const res = await fetch('/api/library/checkin', {
+            const res = await apiFetch('/api/library/checkin', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ deviceId, lat: latitude, lng: longitude }),
@@ -116,7 +117,7 @@ export default function LibraryPulse() {
   const doCheckOut = useCallback(async () => {
     setBusy(true);
     try {
-      const res = await fetch('/api/library/checkout', {
+      const res = await apiFetch('/api/library/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deviceId }),

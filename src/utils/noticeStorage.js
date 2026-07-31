@@ -10,6 +10,8 @@
  *   { id, title, category, date, pinned, content }
  */
 
+import { apiFetch } from './api';
+
 const STORAGE_KEY = 'aust-notices';
 
 function readLocal() {
@@ -50,7 +52,7 @@ function toServer(n) {
 /** Fetch notices — server first, localStorage fallback. */
 export async function getNotices() {
   try {
-    const res = await fetch('/api/notices', { credentials: 'same-origin' });
+    const res = await apiFetch('/api/notices');
     if (res.ok) {
       const data = await res.json();
       if (data && Array.isArray(data.notices)) {
@@ -80,9 +82,8 @@ export async function publishNotice(n) {
 
   let saved = frontend;
   try {
-    const res = await fetch('/api/notices', {
+    const res = await apiFetch('/api/notices', {
       method: 'POST',
-      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(toServer(frontend)),
     });
@@ -106,9 +107,8 @@ export async function publishNotice(n) {
  */
 export async function deleteNotice(id) {
   try {
-    const res = await fetch(`/api/notices/${encodeURIComponent(id)}`, {
+    const res = await apiFetch(`/api/notices/${encodeURIComponent(id)}`, {
       method: 'DELETE',
-      credentials: 'same-origin',
     });
     if (res.ok) {
       writeLocal(readLocal().filter((n) => n.id !== id));

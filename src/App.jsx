@@ -24,6 +24,7 @@ import NotificationRunner from './components/NotificationRunner';
 import QuotePopup from './features/dashboard/QuotePopup';
 import FloatingBackground from './components/FloatingBackground';
 import DevToolbar from './components/DevToolbar';
+import { apiFetch } from './utils/api';
 
 const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage'));
 const RoutineTemplatesPage = lazy(() => import('./features/dashboard/RoutineTemplatesPage'));
@@ -78,7 +79,7 @@ function ProtectedAdminRoute({ children }) {
       return;
     }
     // Double-check with server — the JWT is the source of truth
-    fetch('/api/auth/admin', { credentials: 'same-origin' })
+    apiFetch('/api/auth/admin')
       .then(r => {
         if (r.status === 200) setServerVerified(true);
         else setServerVerified(false);
