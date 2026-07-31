@@ -5,7 +5,9 @@ import {
   getPermissionStatus,
   checkClassReminders,
   checkDeadlineReminders,
+  checkWakeMeUp,
 } from '../utils/notificationService';
+import { isAndroidNative } from '../utils/nativeAlarm';
 import { deadlines } from '../data/mockData';
 
 const POLL_MS = 60 * 1000;
@@ -16,9 +18,12 @@ export default function NotificationRunner() {
 
   const runChecks = useCallback(() => {
     const settings = loadSettings();
-    if (!settings.enabled || getPermissionStatus() !== 'granted') return;
-    if (settings.notifyClass) checkClassReminders(routine, weekDays, settings.classReminderMins);
-    if (settings.notifyDeadline) checkDeadlineReminders(deadlines, settings.deadlineReminderHours);
+    if (getPermissionStatus() !== 'granted') return;
+    if (settings.enabled && settings.notifyClass) checkClassReminders(routine, weekDays, settings.classReminderMins);
+    if (settings.enabled && settings.notifyDeadline) checkDeadlineReminders(deadlines, settings.deadlineReminderHours);
+    if (settings.wakeMeUp && !isAndroidNative()) {
+      checkWakeMeUp(routine, weekDays, settings.wakeUpOffsetMins);
+    }
   }, [routine, weekDays]);
 
   useEffect(() => {

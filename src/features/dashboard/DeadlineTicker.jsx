@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Hourglass, AlertTriangle, CalendarRange, Zap, Timer } from 'lucide-react';
-import { deadlines } from '../../data/mockData';
+import { Hourglass, AlertTriangle, CalendarRange, Zap, Timer, Plus, X } from 'lucide-react';
+import { getDeadlines, addDeadline } from '../../utils/deadlineStorage';
 import { useAuth } from '../../context/AuthContext';
 
 export default function DeadlineTicker() {
@@ -18,7 +18,8 @@ export default function DeadlineTicker() {
     document.head.appendChild(style);
     return () => style.remove();
   }, []);
-  const [timers, setTimers] = useState([]);
+  // Lazy-init from the shared deadlineStorage util (avoids set-state-in-effect)
+  const [timers, setTimers] = useState(() => getDeadlines());
   const [calendarTasks, setCalendarTasks] = useState([]);
 
   // Get user's batch group (A1, A2, B1, B2, C1, C2)
@@ -39,17 +40,40 @@ export default function DeadlineTicker() {
   })();
 
   useEffect(() => {
-    // Load deadlines from localStorage or use empty array
-    const stored = localStorage.getItem('aust-deadlines');
-    const loadedDeadlines = stored ? JSON.parse(stored) : [...deadlines];
-    setTimers(loadedDeadlines);
-
-    // Load calendar tasks from localStorage
+    // Load calendar tasks from localStorage (deadlines come from the lazy useState init)
     const storedTasks = localStorage.getItem('aust-week-tasks');
     if (storedTasks) {
       setCalendarTasks(JSON.parse(storedTasks));
     }
   }, []);
+
+  // ─── Add deadline form state ───
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [deadlineForm, setDeadlineForm] = useState({
+    course: '',
+    title: '',
+    dueDate: '',
+    type: 'Assignment',
+  });
+
+  const handleAddDeadline = (e) => {
+    e.preventDefault();
+    if (!deadlineForm.title.trim() || !deadlineForm.dueDate) return;
+
+    const dueDateTime = new Date(`${deadlineForm.dueDate}T23:59:59`);
+    addDeadline({
+      course: deadlineForm.course.trim() || 'General',
+      title: deadlineForm.title.trim(),
+      dueDate: dueDateTime,
+      type: deadlineForm.type,
+      priority: 'medium',
+    });
+
+    // Refresh the list from storage so the new deadline shows up immediately
+    setTimers(getDeadlines());
+    setDeadlineForm({ course: '', title: '', dueDate: '', type: 'Assignment' });
+    setShowAddForm(false);
+  };
 
   // Combine manual deadlines with calendar tasks for user's batch
   const combinedDeadlines = (() => {
@@ -152,9 +176,94 @@ export default function DeadlineTicker() {
               <span>URGENT</span>
             </div>
           )}
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="btn btn-sm btn-ghost"
+            title="Add a deadline"
+            style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '3px 8px', fontSize: '10px' }}
+          >
+            {showAddForm ? <X size={12} /> : <Plus size={12} />}
+            Add
+          </button>
           <CalendarRange size={16} style={{ color: 'var(--text-tertiary)' }} />
         </div>
       </div>
+
+      {/* Add deadline form */}
+      {showAddForm && (
+        <form
+          onSubmit={handleAddDeadline}
+          className="animate-fadeIn"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px',
+            background: 'var(--bg-input)',
+            border: '1px solid var(--border-primary)',
+            borderRadius: 'var(--radius-md)',
+            padding: '12px',
+            marginBottom: '12px',
+          }}
+        >
+          <div className="grid-2" style={{ gap: '8px' }}>
+            <div>
+              <label className="input-label" style={{ fontSize: '10px' }}>Course</label>
+              <input
+                type="text"
+                className="input"
+                placeholder="e.g., CSE1101"
+                value={deadlineForm.course}
+                onChange={(e) => setDeadlineForm({ ...deadlineForm, course: e.target.value })}
+                style={{ padding: '6px 10px', fontSize: '11px' }}
+              />
+            </div>
+            <div>
+              <label className="input-label" style={{ fontSize: '10px' }}>Type</label>
+              <select
+                className="input"
+                value={deadlineForm.type}
+                onChange={(e) => setDeadlineForm({ ...deadlineForm, type: e.target.value })}
+                style={{ padding: '6px 10px', fontSize: '11px' }}
+              >
+                <option value="Assignment">Assignment</option>
+                <option value="Quiz">Quiz</option>
+                <option value="Exam">Exam</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="input-label" style={{ fontSize: '10px' }}>Title *</label>
+            <input
+              type="text"
+              className="input"
+              placeholder="e.g., Assignment 1 submission"
+              value={deadlineForm.title}
+              onChange={(e) => setDeadlineForm({ ...deadlineForm, title: e.target.value })}
+              style={{ padding: '6px 10px', fontSize: '11px' }}
+              required
+            />
+          </div>
+          <div>
+            <label className="input-label" style={{ fontSize: '10px' }}>Due date *</label>
+            <input
+              type="date"
+              className="input"
+              value={deadlineForm.dueDate}
+              onChange={(e) => setDeadlineForm({ ...deadlineForm, dueDate: e.target.value })}
+              style={{ padding: '6px 10px', fontSize: '11px' }}
+              required
+            />
+          </div>
+          <div className="flex gap-2">
+            <button type="submit" className="btn btn-primary btn-sm" style={{ flex: 1, fontSize: '11px' }}>
+              Add Deadline
+            </button>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAddForm(false)} style={{ fontSize: '11px' }}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {displayDeadlines.length === 0 ? (

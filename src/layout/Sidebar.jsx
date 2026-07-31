@@ -8,7 +8,7 @@ import {
   LogIn, Shield, Eye, Megaphone, Utensils,
   Library, FileText, FolderOpen, FileSpreadsheet, Map,
   ChevronLeft, ChevronRight, Crown, ClipboardCheck,
-  UtensilsCrossed, NotebookPen, Coffee,
+  UtensilsCrossed, Coffee,
   DollarSign, AlarmClock, Zap, Home, Moon
 } from 'lucide-react';
 import './Sidebar.css';

@@ -1740,6 +1740,404 @@
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   Routine Templates Page — Filters & Cards
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Stats Bar ─── */
+.rt-stats-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-5);
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius-lg);
+  animation: fadeInUp 0.4s ease both;
+}
+.rt-stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+.rt-stat svg { color: var(--text-tertiary); opacity: 0.7; }
+.rt-stat strong { color: var(--text-primary); }
+.rt-stat-divider {
+  width: 1px;
+  height: 18px;
+  background: rgba(255,255,255,0.08);
+}
+
+.rt-stats-warning {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent-amber) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 18%, transparent);
+  font-size: 10px;
+  color: var(--accent-amber);
+  line-height: 1.4;
+}
+
+/* ─── Dept Chips ─── */
+.rt-dept-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+.rt-dept-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  border: 1px solid;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: rgba(255,255,255,0.02);
+  border-color: rgba(255,255,255,0.06);
+  color: var(--text-tertiary);
+}
+.rt-dept-chip.has-data {
+  color: var(--accent-emerald);
+  border-color: color-mix(in srgb, var(--accent-emerald) 25%, transparent);
+  background: color-mix(in srgb, var(--accent-emerald) 8%, transparent);
+}
+.rt-dept-chip.active {
+  border-color: var(--accent-amber);
+  color: var(--accent-amber);
+  background: color-mix(in srgb, var(--accent-amber) 12%, transparent);
+}
+.rt-dept-chip:hover { filter: brightness(1.15); }
+.rt-dept-label { text-transform: uppercase; letter-spacing: 0.04em; }
+.rt-dept-count { opacity: 0.8; }
+
+/* ─── Filter Bar ─── */
+.rt-filter-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  animation: fadeInUp 0.4s ease 0.1s both;
+}
+.rt-filter-selects {
+  display: flex;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  flex: 1;
+}
+.rt-filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 110px;
+}
+.rt-filter-field label {
+  font-size: 9px;
+  font-weight: var(--fw-semibold);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.rt-filter-field select {
+  padding: 7px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  color: var(--text-primary);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+  min-width: 0;
+}
+.rt-filter-field select:focus {
+  border-color: var(--accent-amber);
+}
+.rt-filter-field select:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.rt-search-wrap {
+  position: relative;
+  flex: 0 1 220px;
+  min-width: 160px;
+}
+.rt-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+.rt-search-input {
+  width: 100%;
+  padding: 7px 10px 7px 30px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  color: var(--text-primary);
+  font-size: var(--fs-xs);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.rt-search-input::placeholder { color: var(--text-tertiary); }
+.rt-search-input:focus {
+  border-color: var(--accent-amber);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-amber) 15%, transparent);
+}
+
+.rt-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 14px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.rt-reset-btn:hover {
+  border-color: var(--accent-amber);
+  color: var(--accent-amber);
+  background: color-mix(in srgb, var(--accent-amber) 8%, transparent);
+}
+
+/* ─── Cards ─── */
+.rt-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.rt-card {
+  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  animation: fadeInUp 0.35s ease both;
+}
+.rt-card:hover {
+  border-color: color-mix(in srgb, var(--accent-amber) 25%, var(--border-primary));
+  box-shadow: 0 6px 28px -8px color-mix(in srgb, var(--accent-amber) 12%, transparent);
+}
+.rt-card.expanded {
+  border-color: color-mix(in srgb, var(--accent-amber) 30%, var(--border-primary));
+}
+
+.rt-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.rt-card-icon {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--accent-amber) 12%, transparent);
+  color: var(--accent-amber);
+  flex-shrink: 0;
+}
+.rt-card-info {
+  flex: 1;
+  min-width: 0;
+}
+.rt-card-title {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rt-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.rt-card-source {
+  font-size: 9px;
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+.rt-card-cr {
+  font-size: 9px;
+  color: var(--accent-cyan);
+  font-weight: var(--fw-semibold);
+}
+
+.rt-load-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ─── Card Stats ─── */
+.rt-card-stats {
+  display: flex;
+  gap: var(--sp-4);
+  padding: var(--sp-2) var(--sp-5);
+  background: rgba(255,255,255,0.02);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.rt-card-stats span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+.rt-card-stats svg { opacity: 0.6; }
+
+/* ─── Expand Button ─── */
+.rt-expand-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  color: var(--accent-amber);
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.rt-expand-btn:hover {
+  background: color-mix(in srgb, var(--accent-amber) 8%, transparent);
+}
+.rt-expand-btn svg { transition: transform 0.2s ease; }
+
+/* ─── Routine Preview Table ─── */
+.rt-routine-preview {
+  border-top: 1px solid rgba(255,255,255,0.06);
+  overflow-x: auto;
+  animation: fadeInUp 0.25s ease both;
+}
+.rt-routine-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-xs);
+}
+.rt-routine-table thead {
+  background: rgba(255,255,255,0.03);
+}
+.rt-routine-table th {
+  padding: 8px 12px;
+  font-size: 10px;
+  font-weight: var(--fw-bold);
+  color: var(--text-secondary);
+  text-align: left;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  white-space: nowrap;
+}
+.rt-routine-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  color: var(--text-secondary);
+}
+.rt-routine-table tbody tr:hover {
+  background: rgba(255,255,255,0.02);
+}
+.rt-day-cell {
+  font-weight: var(--fw-bold);
+  color: var(--accent-blue) !important;
+  vertical-align: top;
+  border-right: 1px solid rgba(255,255,255,0.06);
+}
+.rt-empty-row td {
+  color: var(--text-tertiary) !important;
+  font-style: italic;
+}
+.rt-empty-cell {
+  color: var(--text-tertiary) !important;
+}
+.rt-course-code {
+  font-weight: var(--fw-semibold);
+  color: var(--accent-cyan);
+}
+.rt-course-name {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-top: 1px;
+}
+.rt-time-cell {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.rt-room-cell {
+  white-space: nowrap;
+}
+.rt-type-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  font-size: 8px;
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.rt-type-badge.Theory {
+  background: color-mix(in srgb, var(--accent-blue) 12%, transparent);
+  color: var(--accent-blue);
+}
+.rt-type-badge.Lab {
+  background: color-mix(in srgb, var(--accent-purple) 12%, transparent);
+  color: var(--accent-purple);
+}
+
+/* ─── Legend ─── */
+.rt-legend {
+  display: flex;
+  justify-content: center;
+  gap: var(--sp-5);
+  padding: var(--sp-2) 0;
+}
+.rt-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+.rt-legend-item svg { opacity: 0.6; }
+
+/* ─── Responsive ─── */
+@media (max-width: 768px) {
+  .rt-filter-bar { flex-direction: column; align-items: stretch; }
+  .rt-filter-selects { flex-wrap: wrap; }
+  .rt-filter-field { min-width: calc(50% - 8px); flex: 1; }
+  .rt-search-wrap { flex: 1; min-width: 0; }
+  .rt-card-header { flex-wrap: wrap; }
+  .rt-load-btn { width: 100%; justify-content: center; }
+  .rt-routine-table { font-size: 10px; }
+}
+
 /* ════════════════════════════════════════════════════════════════════════════
    CYBERPUNK THEME — Dashboard HUD personality
    Scoped to [data-theme="cyberpunk"] so the other four themes are untouched.

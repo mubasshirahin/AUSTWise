@@ -3,11 +3,13 @@ import { useSearchParams } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useRoutine } from '../../context/RoutineContext';
-import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, Sparkles, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2 } from 'lucide-react';
+import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, AlarmClock, Clock, AlertTriangle, ShieldCheck, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2 } from 'lucide-react';
 import AboutUs from './AboutUs';
 import LinkedAccountsSection from './LinkedAccountsSection';
 import GliderTabs from '../../components/GliderTabs';
 import { useNotifications } from '../../hooks/useNotifications';
+import { clearWakeUpSchedule, getWakeUpSchedule, scheduleWakeUp } from '../../utils/notificationService';
+import { cancelNativeAlarm, getNativeAlarmStatus, isAndroidNative, openNativeExactAlarmSettings, requestNativeNotificationPermission, scheduleNativeWakeUp } from '../../utils/nativeAlarm';
 import { submitRoleApplication, getApplicationsByUserId, getUserApplicationStatus, checkSlotVacancy, getSlotVacancyMap, resignFromRole, deleteAccountById } from '../../utils/authStorage';
 import './SettingsPage.css';
 import '../../components/PageHero.css';
@@ -125,7 +127,8 @@ export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { user, isAuthenticated, updateUser, logout } = useAuth();
   const { routine, weekDays } = useRoutine();
-  const { supported, permission, settings: notifSettings, enable: enableNotifs, disable: disableNotifs, updateSetting } = useNotifications(routine, weekDays);
+  const { supported, permission, settings: notifSettings, enable: enableNotifs, requestBrowserPermission, disable: disableNotifs, updateSetting } = useNotifications(routine, weekDays);
+  const nativeAndroid = isAndroidNative();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeSubTab, setActiveSubTab] = useState(() => {
@@ -163,12 +166,121 @@ export default function SettingsPage() {
   const [inviteTotalPages, setInviteTotalPages] = useState(1);
   const [notifEnabling, setNotifEnabling] = useState(false);
   const [notifMsg, setNotifMsg] = useState('');
+  const [wakeSchedule, setWakeSchedule] = useState(() => getWakeUpSchedule());
+  const [nativeAlarmStatus, setNativeAlarmStatus] = useState(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [vacancyMap, setVacancyMap] = useState(null);
   const [resignConfirm, setResignConfirm] = useState(false);
   const [resigning, setResigning] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [yearSemTouched, setYearSemTouched] = useState(false);
+
+  useEffect(() => {
+    if (!nativeAndroid) return undefined;
+    const refreshNativeStatus = () => getNativeAlarmStatus().then(setNativeAlarmStatus);
+    refreshNativeStatus();
+    window.addEventListener('focus', refreshNativeStatus);
+    document.addEventListener('visibilitychange', refreshNativeStatus);
+    return () => {
+      window.removeEventListener('focus', refreshNativeStatus);
+      document.removeEventListener('visibilitychange', refreshNativeStatus);
+    };
+  }, [nativeAndroid]);
+
+  const handleWakeMeUpToggle = async () => {
+    if (notifEnabling) return;
+
+    if (notifSettings.wakeMeUp) {
+      updateSetting('wakeMeUp', false);
+      clearWakeUpSchedule();
+      setWakeSchedule(null);
+      if (nativeAndroid) await cancelNativeAlarm();
+      setNotifMsg('Wake me up disabled.');
+      window.setTimeout(() => setNotifMsg(''), 3500);
+      return;
+    }
+
+    setNotifEnabling(true);
+    if (nativeAndroid) {
+      const notificationPermission = await requestNativeNotificationPermission();
+      if (!notificationPermission.granted) {
+        setNotifEnabling(false);
+        setNotifMsg('Allow Android notifications to enable the alarm.');
+        window.setTimeout(() => setNotifMsg(''), 4500);
+        return;
+      }
+
+      const status = await getNativeAlarmStatus();
+      setNativeAlarmStatus(status);
+      if (!status.canScheduleExactAlarms) {
+        await openNativeExactAlarmSettings();
+        setNotifEnabling(false);
+        setNotifMsg('Turn on “Alarms & reminders” for AUSTWise, then tap Wake me up again.');
+        window.setTimeout(() => setNotifMsg(''), 6500);
+        return;
+      }
+    } else {
+      const result = permission === 'granted' ? 'granted' : await requestBrowserPermission();
+      if (result !== 'granted') {
+        setNotifEnabling(false);
+        setNotifMsg('Allow browser notifications to enable Wake me up.');
+        window.setTimeout(() => setNotifMsg(''), 3500);
+        return;
+      }
+    }
+
+    const nextSchedule = scheduleWakeUp(routine, weekDays);
+    setWakeSchedule(nextSchedule);
+    if (nativeAndroid) {
+      await cancelNativeAlarm();
+      if (nextSchedule) {
+        const nativeResult = await scheduleNativeWakeUp(nextSchedule, notifSettings.wakeUpOffsetMins);
+        if (!nativeResult.scheduled) {
+          setNotifEnabling(false);
+          setNotifMsg(nativeResult.error || 'Android could not schedule the exact alarm.');
+          window.setTimeout(() => setNotifMsg(''), 5500);
+          return;
+        }
+      }
+    }
+    updateSetting('wakeMeUp', true);
+    setNotifEnabling(false);
+    setNotifMsg(nextSchedule
+      ? `${nativeAndroid ? 'Android alarm' : 'Wake me up'} is on — alert ${notifSettings.wakeUpOffsetMins} minutes before ${nextSchedule.time} on ${nextSchedule.day}.`
+      : 'Wake me up is on, but no upcoming class was found in your routine.');
+    window.setTimeout(() => setNotifMsg(''), 4500);
+  };
+
+  useEffect(() => {
+    if (!notifSettings.wakeMeUp) return undefined;
+    let cancelled = false;
+
+    const refreshWakeUp = async () => {
+      const nextSchedule = scheduleWakeUp(routine, weekDays);
+      if (cancelled) return;
+      setWakeSchedule(nextSchedule);
+      if (!nativeAndroid) return;
+
+      if (cancelled) return;
+      if (!nextSchedule) {
+        await cancelNativeAlarm();
+        return;
+      }
+      // setAlarmClock replaces the existing alarm with the same PendingIntent.
+      // Keep the old alarm if the replacement payload is invalid or already past.
+      const result = await scheduleNativeWakeUp(nextSchedule, notifSettings.wakeUpOffsetMins);
+      if (result.scheduled && !cancelled) {
+        getNativeAlarmStatus().then((status) => {
+          if (!cancelled) setNativeAlarmStatus(status);
+        });
+      } else if (!cancelled && result.error) {
+        setNotifMsg(result.error);
+      }
+    };
+
+    refreshWakeUp();
+    return () => { cancelled = true; };
+  }, [routine, weekDays, notifSettings.wakeMeUp, notifSettings.wakeUpOffsetMins, nativeAndroid]);
   
   // Telegram notification settings
   const [telegramEnabled, setTelegramEnabled] = useState(() => {
@@ -1003,20 +1115,23 @@ export default function SettingsPage() {
           {activeSubTab === 'notifications' && (
             <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', marginBottom: '4px' }}>Browser Notifications</h3>
+                <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', marginBottom: '4px' }}>{nativeAndroid ? 'Android notifications & alarms' : 'Browser Notifications'}</h3>
                 <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
-                  Get browser alerts before your next class starts or when a deadline is approaching.
+                  {nativeAndroid
+                    ? 'AUSTWise can schedule a real Android system alarm for your first class.'
+                    : 'Get browser alerts before your next class starts or when a deadline is approaching.'}
                 </p>
               </div>
 
-              {!supported && (
+
+              {!supported && !nativeAndroid && (
                 <div className="flex items-center gap-3 p-4" style={{ background: 'var(--accent-rose-glow)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--accent-rose)' }}>
                   <AlertTriangle size={18} style={{ color: 'var(--accent-rose)', flexShrink: 0 }} />
                   <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent-rose)' }}>Your browser does not support notifications.</p>
                 </div>
               )}
 
-              {supported && permission === 'denied' && (
+              {supported && permission === 'denied' && !nativeAndroid && (
                 <div className="flex items-center gap-3 p-4" style={{ background: 'var(--accent-rose-glow)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--accent-rose)' }}>
                   <BellOff size={18} style={{ color: 'var(--accent-rose)', flexShrink: 0 }} />
                   <div>
@@ -1026,7 +1141,7 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              {supported && permission !== 'denied' && (
+              {supported && permission !== 'denied' && !nativeAndroid && (
                 <>
                   <div className="flex justify-between items-center p-4" style={{ background: 'var(--bg-input)', borderRadius: 'var(--radius-lg)' }}>
                     <div className="flex items-center gap-3">
@@ -1071,7 +1186,7 @@ export default function SettingsPage() {
                 </>
               )}
 
-              {supported && notifSettings.enabled && permission === 'granted' && (
+              {supported && notifSettings.enabled && permission === 'granted' && !nativeAndroid && (
                 <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div style={{ height: '1px', background: 'var(--border-primary)' }} />
                   <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', color: 'var(--text-secondary)' }}>Reminder Settings</h4>
@@ -1148,6 +1263,71 @@ export default function SettingsPage() {
                       Reminders are checked every minute. Notifications only fire once per event and won't repeat.
                     </p>
                   </div>
+                </div>
+              )}
+
+              {((supported && permission !== 'denied') || nativeAndroid) && (
+                <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+                  <div className="flex justify-between items-center p-4" style={{ background: 'var(--bg-input)', borderRadius: 'var(--radius-lg)' }}>
+                    <div className="flex items-center gap-3">
+                      <AlarmClock size={17} style={{ color: 'var(--accent-rose)' }} />
+                      <div>
+                        <h4 style={{ fontSize: 'var(--fs-xs)', fontWeight: 'bold' }}>Wake me up</h4>
+                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                          {wakeSchedule
+                            ? `${nativeAndroid ? 'Android alarm' : 'Alert'} ${notifSettings.wakeUpOffsetMins} min before ${wakeSchedule.time} on ${wakeSchedule.day}`
+                            : `Alert ${notifSettings.wakeUpOffsetMins} min before your next first class`}
+                        </p>
+                      </div>
+                    </div>
+                    <div
+                      role="switch"
+                      aria-checked={Boolean(notifSettings.wakeMeUp)}
+                      tabIndex={0}
+                      className={`toggle-switch ${notifSettings.wakeMeUp ? 'active' : ''}`}
+                      onClick={handleWakeMeUpToggle}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          handleWakeMeUpToggle();
+                        }
+                      }}
+                      style={{ opacity: notifEnabling ? 0.6 : 1, cursor: notifEnabling ? 'not-allowed' : 'pointer' }}
+                    />
+                  </div>
+
+                  {notifSettings.wakeMeUp && wakeSchedule && (
+                    <p className="animate-fadeIn" style={{ fontSize: '11px', color: 'var(--accent-rose)', padding: '0 4px' }}>
+                      Next alarm: {wakeSchedule.day}, {wakeSchedule.time} — {wakeSchedule.course}{wakeSchedule.room ? `, Room ${wakeSchedule.room}` : ''}
+                    </p>
+                  )}
+                  <label className="animate-fadeIn p-3" style={{ background: 'var(--bg-input)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '11px' }}>
+                    <span style={{ fontWeight: 'bold' }}>Alert me <strong style={{ color: 'var(--accent-rose)' }}>{notifSettings.wakeUpOffsetMins} minutes</strong> before class</span>
+                    <input
+                      type="range"
+                      min={5}
+                      max={120}
+                      step={5}
+                      value={notifSettings.wakeUpOffsetMins}
+                      onChange={(event) => updateSetting('wakeUpOffsetMins', Number(event.target.value))}
+                      style={{ width: '100%', accentColor: 'var(--accent-rose)' }}
+                    />
+                    <div className="flex justify-between" style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>
+                      <span>5 min</span><span>30 min</span><span>60 min</span><span>90 min</span><span>120 min</span>
+                    </div>
+                  </label>                  <p style={{ fontSize: '10px', color: 'var(--text-tertiary)', padding: '0 4px' }}>
+                    {nativeAndroid
+                      ? nativeAlarmStatus?.canScheduleExactAlarms
+                        ? nativeAlarmStatus?.notificationPermissionGranted === false
+                          ? 'Exact alarm permission is on, but Android notifications are blocked. Re-enable notifications for an audible alert.'
+                          : nativeAlarmStatus?.scheduled
+                            ? 'One Android system alarm is scheduled. It is not an entry inside the phone maker’s Clock app; open AUSTWise after the class to schedule the next one.'
+                            : notifSettings.wakeMeUp
+                              ? 'The previous alarm has completed. Open WakeMeUp again or revisit this screen to schedule the next routine-derived alarm.'
+                              : 'Exact alarms are allowed. Turn Wake me up on to schedule the next alarm.'
+                        : 'Android will ask you to allow exact alarms in system settings.'
+                      : 'Uses a browser/PWA alert. A native system alarm requires the AUSTWise Android app.'}
+                  </p>
                 </div>
               )}
 

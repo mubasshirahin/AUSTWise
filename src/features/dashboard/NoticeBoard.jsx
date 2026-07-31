@@ -1,17 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Megaphone, BellRing, Pin, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
-import { notices } from '../../data/mockData';
+import { getNotices } from '../../utils/noticeStorage';
 
 export default function NoticeBoard() {
   const [expandedNotice, setExpandedNotice] = useState(null);
-  const [noticesList] = useState(() => {
-    try {
-      const stored = localStorage.getItem('aust-notices');
-      return stored ? JSON.parse(stored) : notices;
-    } catch {
-      return notices;
-    }
-  });
+  const [noticesList, setNoticesList] = useState([]);
+
+  // Fetch the admin-managed notices — same source the Admin Panel publishes to.
+  useEffect(() => {
+    let active = true;
+    getNotices().then((list) => {
+      if (active) setNoticesList(list);
+    });
+    return () => { active = false; };
+  }, []);
 
   const toggleExpand = (id) => {
     if (expandedNotice === id) {

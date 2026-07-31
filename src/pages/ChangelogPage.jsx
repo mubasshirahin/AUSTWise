@@ -43,7 +43,6 @@ export default function ChangelogPage() {
 
         <h2>v1.2 — July 2024</h2>
         <ul>
-          <li>Anonymous confession feed</li>
           <li>Faculty office hours and status</li>
           <li>Dark mode refinements</li>
         </ul>

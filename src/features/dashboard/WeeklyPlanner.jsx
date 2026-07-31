@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Trash2, X, Download, Eye, Check, RotateCcw, FileDown, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Trash2, X, Download, Eye, Check, RotateCcw, FileDown, ChevronDown, Share2, Users, Search, Star, BookOpen, Upload } from 'lucide-react';
 import { useRoutine } from '../../context/RoutineContext';
 import { ocrImportedRoutine, ocrImportedWeekDays } from '../../context/RoutineContext';
 import { normalizeAccentColor, getCourseColor } from '../../utils/colorPalette';
@@ -7,6 +7,8 @@ import CourseAutocomplete from '../../components/CourseAutocomplete';
 import { findCourseByCode, findCourseByName } from '../../data/courses';
 import { getAutoColorForCourse } from '../../utils/autoColorPalette';
 import { loadTemplates } from '../../utils/routineTemplates';
+import { loadSharedRoutines, shareRoutine, hasSharedRoutine, unshareRoutine, shareRoutineToServer } from '../../utils/sharedRoutines';
+import { getCurrentUserId, getAccountById } from '../../utils/authStorage';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import logoUrl from '../../assets/logo-silver.png';
@@ -24,7 +26,33 @@ export default function WeeklyPlanner() {
   });
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showShareConfirm, setShowShareConfirm] = useState(false);
+  const [sharedRoutineList, setSharedRoutineList] = useState([]);
+  const [deptFilter, setDeptFilter] = useState('');
+  const [semFilter, setSemFilter] = useState('');
+  const [secFilter, setSecFilter] = useState('');
+  const [labFilter, setLabFilter] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showCRoutines, setShowCRoutines] = useState(false);
   const exportRef = useRef(null);
+  const routineImageRef = useRef(null);
+  const [routineImportStatus, setRoutineImportStatus] = useState('');
+  const [routineImporting, setRoutineImporting] = useState(false);
+
+  // Check if current user is CR
+  const currentUserId = getCurrentUserId();
+  const currentAccount = currentUserId ? getAccountById(currentUserId) : null;
+  const isCR = currentAccount?.role === 'cr';
+  const alreadyShared = currentUserId ? hasSharedRoutine(currentUserId) : false;
+
+  // Count classes in current routine
+  const hasClasses = useMemo(() => {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
+    for (const day of days) {
+      if ((routine[day] || []).length > 0) return true;
+    }
+    return false;
+  }, [routine]);
 
   useEffect(() => {
     localStorage.setItem('aust-ramadan-mode', ramadanMode);
@@ -216,10 +244,62 @@ export default function WeeklyPlanner() {
     setEditing(null);
   };
 
+  // Import routine from an image via the backend extraction endpoint.
+  // The extracted routine is saved through replaceRoutine() into RoutineContext,
+  // which is exactly what RoutineCard / WeekSchedule read from.
+  const handleImportRoutineImage = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setRoutineImportStatus('Please choose an image file (PNG/JPG).');
+      return;
+    }
+
+    setRoutineImporting(true);
+    setRoutineImportStatus('Extracting routine from image…');
+    try {
+      const imageDataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Could not read the image file.'));
+        reader.readAsDataURL(file);
+      });
+
+      const res = await fetch('/api/extract-routine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageDataUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Routine extraction failed.');
+      if (!data.routine || Object.keys(data.routine).length === 0) {
+        throw new Error(data.error || 'No routine detected in the image.');
+      }
+
+      // Feed the extracted routine into RoutineContext so RoutineCard picks it up.
+      replaceRoutine(data.routine, data.weekDays || weekDays);
+      setRoutineImportStatus('✓ Routine imported successfully.');
+      setShowLoadModal(false);
+    } catch (err) {
+      setRoutineImportStatus(err.message || 'Routine extraction failed. Please try again.');
+    } finally {
+      setRoutineImporting(false);
+    }
+  };
+
   const openLoadModal = () => {
+    setRoutineImportStatus('');
     const templates = loadTemplates();
     setAvailableTemplates(templates);
+    setSharedRoutineList(loadSharedRoutines());
     setSelectedTemplate(null);
+    setDeptFilter('');
+    setSemFilter('');
+    setSecFilter('');
+    setLabFilter('');
+    setSearchQuery('');
+    setShowCRoutines(false);
     setShowLoadModal(true);
   };
 
@@ -229,6 +309,33 @@ export default function WeeklyPlanner() {
       setShowLoadModal(false);
       setSelectedTemplate(null);
     }
+  };
+
+  const handleShareRoutine = async () => {
+    if (!currentAccount || !hasClasses) return;
+    // Save to localStorage + server (best-effort) for cross-device access
+    await shareRoutineToServer(
+      {
+        id: currentAccount.id,
+        name: currentAccount.name || currentAccount.email,
+        email: currentAccount.email,
+        department: currentAccount.department || '',
+        semester: currentAccount.semester || '',
+        section: currentAccount.section || '',
+        labSection: currentAccount.labSection || '',
+      },
+      { routine, weekDays }
+    );
+    // Refresh shared routine list in case load modal is opened next
+    setSharedRoutineList(loadSharedRoutines());
+    setShowShareConfirm(false);
+  };
+
+  const handleUnshareRoutine = () => {
+    if (!currentUserId) return;
+    unshareRoutine(currentUserId);
+    setSharedRoutineList(loadSharedRoutines());
+    setShowShareConfirm(false);
   };
 
   const downloadSchedulePDF = async () => {
@@ -448,8 +555,21 @@ export default function WeeklyPlanner() {
          </div>
        </div>
 
-       {/* Right: 🔄 Reset + Load Routine */}
+       {/* Right: Share, Reset, Load Routine */}
        <div className="dash-header-right">
+         {/* Share Routine — for CRs only */}
+         {isCR && (
+           <button
+             className={`btn btn-sm ${alreadyShared ? 'btn-secondary' : 'btn-ghost'}`}
+             onClick={() => setShowShareConfirm(true)}
+             title={alreadyShared ? 'Update your shared routine' : 'Share your routine with classmates'}
+             style={{ opacity: hasClasses ? 1 : 0.5 }}
+             disabled={!hasClasses}
+           >
+             <Share2 size={14} /> {alreadyShared ? 'Shared ✓' : 'Share'}
+           </button>
+         )}
+
          {/* 🔄 Icon-only Reset */}
          <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setConfirmReset(true)} title="Reset schedule">
            <RotateCcw size={14} />
@@ -742,58 +862,267 @@ export default function WeeklyPlanner() {
         </table>
       </div>
 
-      {/* Load Routine Modal */}
+      {/* Load Routine Modal — with shared routines & filtering */}
       {showLoadModal && (
         <div className="modal-overlay" onClick={() => setShowLoadModal(false)}>
-          <div className="modal glass-card-static" onClick={(e) => e.stopPropagation()} style={{ width: 'min(460px, 92vw)', height: 'min(400px, 70vh)', display: 'flex', flexDirection: 'column', overflow: 'hidden', maxWidth: 'none', maxHeight: 'none', margin: 0, animation: 'none' }}>
+          <div className="modal glass-card-static" onClick={(e) => e.stopPropagation()} style={{ width: 'min(520px, 94vw)', height: 'min(500px, 80vh)', display: 'flex', flexDirection: 'column', overflow: 'hidden', maxWidth: 'none', maxHeight: 'none', margin: 0, animation: 'none' }}>
             <div className="flex justify-between items-center" style={{ padding: '0 0 12px', borderBottom: '1px solid var(--border-primary)', flexShrink: 0 }}>
               <div>
-                <h3 style={{ fontSize: 'var(--fs-lg)', fontWeight: 'bold', margin: 0 }}>Load Routine Template</h3>
-                <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: '4px' }}>Select a pre-defined routine template to load</p>
+                <h3 style={{ fontSize: 'var(--fs-lg)', fontWeight: 'bold', margin: 0 }}>Load Routine</h3>
+                <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                  {showCRoutines
+                    ? 'Browse routines shared by CRs — click to load'
+                    : 'Select a pre-defined routine template to load'}
+                </p>
               </div>
-              <button className="btn btn-icon" onClick={() => setShowLoadModal(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-tertiary)' }}>
-                <X size={20} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  className={`btn btn-sm ${showCRoutines ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => {
+                    setShowCRoutines(!showCRoutines);
+                    setSelectedTemplate(null);
+                    setSearchQuery('');
+                    setDeptFilter('');
+                    setSemFilter('');
+                    setSecFilter('');
+                    setLabFilter('');
+                  }}
+                  title={showCRoutines ? 'Show admin templates' : 'Show CR-shared routines'}
+                  style={{ fontSize: '11px', gap: '4px' }}
+                >
+                  {showCRoutines ? <BookOpen size={13} /> : <Users size={13} />}
+                  {showCRoutines ? 'Templates' : 'CR Routines'}
+                </button>
+                <button
+                  className="btn btn-sm btn-ghost"
+                  onClick={() => routineImageRef.current?.click()}
+                  disabled={routineImporting}
+                  title="Upload an image of your routine — we'll extract it with AI"
+                  style={{ fontSize: '11px', gap: '4px' }}
+                >
+                  <Upload size={13} />
+                  {routineImporting ? 'Extracting…' : 'Import Image'}
+                </button>
+                <input
+                  ref={routineImageRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={handleImportRoutineImage}
+                />
+                <button className="btn btn-icon" onClick={() => setShowLoadModal(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-tertiary)' }}>
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, margin: '12px 0' }}>
-              {availableTemplates.length === 0 ? (
-                <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
-                  <p>No routine templates available.</p>
+            {/* Import status message */}
+            {routineImportStatus && (
+              <div style={{ padding: '6px 0', fontSize: '11px', color: routineImportStatus.startsWith('✓') ? 'var(--accent-emerald)' : 'var(--accent-rose)', borderBottom: '1px solid var(--border-primary)' }}>
+                {routineImportStatus}
+              </div>
+            )}
+
+            {/* Filter bar — only show for CR routines */}
+            {showCRoutines && (
+              <div style={{ padding: '8px 0', borderBottom: '1px solid var(--border-primary)', flexShrink: 0 }}>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                  <select
+                    value={deptFilter}
+                    onChange={(e) => { setDeptFilter(e.target.value); setSemFilter(''); setSecFilter(''); setLabFilter(''); }}
+                    style={{ flex: '1', minWidth: '80px', fontSize: '11px', padding: '4px 6px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-primary)', color: 'var(--text-primary)' }}
+                  >
+                    <option value="">All Depts</option>
+                    {[...new Set(sharedRoutineList.filter(r => r.department).map(r => r.department))].sort().map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={semFilter}
+                    onChange={(e) => { setSemFilter(e.target.value); setSecFilter(''); setLabFilter(''); }}
+                    disabled={!deptFilter}
+                    style={{ flex: '1', minWidth: '70px', fontSize: '11px', padding: '4px 6px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-primary)', color: 'var(--text-primary)' }}
+                  >
+                    <option value="">All Sems</option>
+                    {deptFilter && [...new Set(sharedRoutineList.filter(r => r.department === deptFilter && r.semester).map(r => r.semester))].sort().map(s => (
+                      <option key={s} value={s}>Sem {s}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={secFilter}
+                    onChange={(e) => { setSecFilter(e.target.value); setLabFilter(''); }}
+                    disabled={!semFilter}
+                    style={{ flex: '1', minWidth: '60px', fontSize: '11px', padding: '4px 6px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-primary)', color: 'var(--text-primary)' }}
+                  >
+                    <option value="">All Sec</option>
+                    {['A', 'B', 'C'].map(s => (
+                      <option key={s} value={s}>Sec {s}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={labFilter}
+                    onChange={(e) => setLabFilter(e.target.value)}
+                    disabled={!secFilter}
+                    style={{ flex: '1', minWidth: '60px', fontSize: '11px', padding: '4px 6px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-primary)', color: 'var(--text-primary)' }}
+                  >
+                    <option value="">All Lab</option>
+                    {['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map(l => (
+                      <option key={l} value={l}>Lab {l}</option>
+                    ))}
+                  </select>
                 </div>
+                <div style={{ position: 'relative' }}>
+                  <Search size={12} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
+                  <input
+                    type="text"
+                    placeholder="Search by name, dept, or section..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{ width: '100%', fontSize: '11px', padding: '6px 8px 6px 28px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px solid var(--border-primary)', color: 'var(--text-primary)', outline: 'none' }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, margin: '8px 0' }}>
+              {showCRoutines ? (
+                <>
+                  {sharedRoutineList.length === 0 ? (
+                    <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                      <Users size={32} style={{ opacity: 0.3, marginBottom: 8 }} />
+                      <p style={{ margin: 0, fontSize: 'var(--fs-sm)' }}>No CR routines shared yet.</p>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {sharedRoutineList
+                        .filter(r => {
+                          if (deptFilter && r.department !== deptFilter) return false;
+                          if (semFilter && String(r.semester) !== semFilter) return false;
+                          if (secFilter && r.section !== secFilter) return false;
+                          if (labFilter && r.labSection !== labFilter) return false;
+                          if (searchQuery) {
+                            const q = searchQuery.toLowerCase();
+                            if (!(r.studentName || '').toLowerCase().includes(q) &&
+                                !(r.department || '').toLowerCase().includes(q) &&
+                                !(r.section || '').toLowerCase().includes(q)) return false;
+                          }
+                          return true;
+                        })
+                        .map((sr) => {
+                          const isSelected = selectedTemplate?.id === 'shared-' + (sr.studentId || sr.id);
+                          const classCount = Object.values(sr.routine || {}).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
+                          return (
+                            <div
+                              key={'shared-' + (sr.studentId || sr.id)}
+                              onClick={() => setSelectedTemplate({
+                                id: 'shared-' + (sr.studentId || sr.id),
+                                type: 'shared',
+                                routine: sr.routine,
+                                weekDays: sr.weekDays || ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'],
+                                name: sr.studentName + ' (' + (sr.department || '') + ' Sem ' + (sr.semester || '') + ')',
+                                studentName: sr.studentName,
+                                department: sr.department,
+                                semester: sr.semester,
+                                section: sr.section,
+                                labSection: sr.labSection,
+                              })}
+                              style={{
+                                padding: '10px 12px',
+                                background: isSelected ? 'var(--accent-blue-glow)' : 'var(--bg-input)',
+                                border: `1px solid ${isSelected ? 'var(--accent-blue)' : 'var(--border-primary)'}`,
+                                borderRadius: 'var(--radius-md)',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                              }}
+                            >
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Star size={12} style={{ color: 'var(--accent-amber)' }} />
+                                    {sr.studentName || 'CR'}
+                                  </h4>
+                                  <div className="flex items-center gap-2 mt-1" style={{ flexWrap: 'wrap' }}>
+                                    <span className="badge badge-blue" style={{ fontSize: '8px', padding: '1px 5px' }}>{sr.department || '—'}</span>
+                                    <span className="badge badge-purple" style={{ fontSize: '8px', padding: '1px 5px' }}>Sem {sr.semester || '—'}</span>
+                                    {sr.section && <span className="badge badge-amber" style={{ fontSize: '8px', padding: '1px 5px' }}>Sec {sr.section}</span>}
+                                    {sr.labSection && <span className="badge badge-cyan" style={{ fontSize: '8px', padding: '1px 5px' }}>Lab {sr.labSection}</span>}
+                                    <span style={{ fontSize: '9px', color: 'var(--text-tertiary)' }}>{classCount} classes</span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {isSelected && (
+                                    <Check size={16} style={{ color: 'var(--accent-emerald)' }} />
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      {sharedRoutineList.length > 0 && (
+                        <div style={{ textAlign: 'center', padding: '6px 0', fontSize: '10px', color: 'var(--text-tertiary)' }}>
+                          {sharedRoutineList.filter(r => {
+                            if (deptFilter && r.department !== deptFilter) return false;
+                            if (semFilter && String(r.semester) !== semFilter) return false;
+                            if (secFilter && r.section !== secFilter) return false;
+                            if (labFilter && r.labSection !== labFilter) return false;
+                            if (searchQuery) {
+                              const q = searchQuery.toLowerCase();
+                              if (!(r.studentName || '').toLowerCase().includes(q) &&
+                                  !(r.department || '').toLowerCase().includes(q) &&
+                                  !(r.section || '').toLowerCase().includes(q)) return false;
+                            }
+                            return true;
+                          }).length} routine(s) shown
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {availableTemplates.map(template => (
-                    <div
-                      key={template.id}
-                      onClick={() => setSelectedTemplate(template)}
-                      style={{
-                        padding: '12px',
-                        background: selectedTemplate?.id === template.id ? 'var(--accent-blue-glow)' : 'var(--bg-input)',
-                        border: `1px solid ${selectedTemplate?.id === template.id ? 'var(--accent-blue)' : 'var(--border-primary)'}`,
-                        borderRadius: 'var(--radius-md)',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', margin: 0 }}>{template.name}</h4>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="badge badge-blue" style={{ fontSize: '9px', padding: '1px 4px' }}>{template.department}</span>
-                            <span className="badge badge-purple" style={{ fontSize: '9px', padding: '1px 4px' }}>Sem {template.semester}</span>
-                            <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>{template.year}</span>
+                <>
+                  {availableTemplates.length === 0 ? (
+                    <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                      <BookOpen size={32} style={{ opacity: 0.3, marginBottom: 8 }} />
+                      <p style={{ margin: 0, fontSize: 'var(--fs-sm)' }}>No routine templates available.</p>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {availableTemplates.map(template => (
+                        <div
+                          key={template.id}
+                          onClick={() => setSelectedTemplate({
+                            ...template,
+                            type: 'template',
+                          })}
+                          style={{
+                            padding: '10px 12px',
+                            background: selectedTemplate?.id === template.id && selectedTemplate?.type === 'template' ? 'var(--accent-blue-glow)' : 'var(--bg-input)',
+                            border: `1px solid ${selectedTemplate?.id === template.id && selectedTemplate?.type === 'template' ? 'var(--accent-blue)' : 'var(--border-primary)'}`,
+                            borderRadius: 'var(--radius-md)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', margin: 0 }}>{template.name}</h4>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="badge badge-blue" style={{ fontSize: '8px', padding: '1px 5px' }}>{template.department}</span>
+                                <span className="badge badge-purple" style={{ fontSize: '8px', padding: '1px 5px' }}>Sem {template.semester}</span>
+                                <span style={{ fontSize: '9px', color: 'var(--text-tertiary)' }}>{template.year}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {selectedTemplate?.id === template.id && selectedTemplate?.type === 'template' && (
+                                <Check size={16} style={{ color: 'var(--accent-emerald)' }} />
+                              )}
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {selectedTemplate?.id === template.id && (
-                            <Check size={18} style={{ color: 'var(--accent-emerald)' }} />
-                          )}
-                        </div>
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               )}
             </div>
 
@@ -805,7 +1134,70 @@ export default function WeeklyPlanner() {
                 disabled={!selectedTemplate}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: selectedTemplate ? 1 : 0.5 }}
               >
-                <Download size={16} /> Load Template
+                <Download size={16} /> {selectedTemplate?.type === 'shared' ? `Load ${selectedTemplate.studentName}'s Routine` : 'Load Template'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Share Routine Confirm Dialog */}
+      {showShareConfirm && (
+        <div className="modal-overlay" onClick={() => setShowShareConfirm(false)}>
+          <div className="modal glass-card-static" onClick={(e) => e.stopPropagation()} style={{ width: 'min(400px, 90vw)', maxWidth: 'none', margin: 0, animation: 'none' }}>
+            <div className="flex justify-between items-center" style={{ padding: '0 0 12px', borderBottom: '1px solid var(--border-primary)' }}>
+              <div>
+                <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', margin: 0 }}>
+                  {alreadyShared ? 'Update Shared Routine?' : 'Share Your Routine?'}
+                </h3>
+                <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                  {alreadyShared
+                    ? 'Your routine is already shared. Update it with your current schedule?'
+                    : 'Share your routine as CR so classmates can find and load it.'}
+                </p>
+              </div>
+              <button className="btn btn-icon" onClick={() => setShowShareConfirm(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-tertiary)' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Preview info */}
+            <div style={{ padding: '12px 0', borderBottom: '1px solid var(--border-primary)' }}>
+              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                Your routine will appear as:
+              </div>
+              <div style={{
+                padding: '10px 12px',
+                background: 'var(--accent-blue-glow)',
+                border: '1px solid var(--accent-blue)',
+                borderRadius: 'var(--radius-md)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                  <Star size={12} style={{ color: 'var(--accent-amber)' }} />
+                  <span style={{ fontWeight: 'bold', fontSize: 'var(--fs-sm)' }}>{currentAccount?.name || currentAccount?.email || 'You'}</span>
+                </div>
+                <div className="flex items-center gap-2 mt-1" style={{ flexWrap: 'wrap' }}>
+                  <span className="badge badge-blue" style={{ fontSize: '8px', padding: '1px 5px' }}>{currentAccount?.department || '—'}</span>
+                  <span className="badge badge-purple" style={{ fontSize: '8px', padding: '1px 5px' }}>Sem {currentAccount?.semester || '—'}</span>
+                  {currentAccount?.section && <span className="badge badge-amber" style={{ fontSize: '8px', padding: '1px 5px' }}>Sec {currentAccount.section}</span>}
+                  {currentAccount?.labSection && <span className="badge badge-cyan" style={{ fontSize: '8px', padding: '1px 5px' }}>Lab {currentAccount.labSection}</span>}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2" style={{ paddingTop: '12px' }}>
+              <button className="btn btn-secondary flex-1" onClick={() => setShowShareConfirm(false)}>Cancel</button>
+              {alreadyShared && (
+                <button className="btn btn-danger btn-sm" onClick={handleUnshareRoutine} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                  <Trash2 size={14} /> Remove Share
+                </button>
+              )}
+              <button
+                className="btn btn-primary flex-1"
+                onClick={handleShareRoutine}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                <Share2 size={14} /> {alreadyShared ? 'Update Share' : 'Share Routine'}
               </button>
             </div>
           </div>

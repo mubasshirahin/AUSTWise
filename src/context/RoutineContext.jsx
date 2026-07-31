@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { routineData as defaultRoutine, weekDays as defaultWeekDays } from '../data/mockData';
-import { getUserStorageItem, setUserStorageItem, getUserStorageKey, getCurrentUserId } from '../utils/authStorage';
+
+import { getUserStorageItem, setUserStorageItem, getUserStorageKey } from '../utils/authStorage';
 
 const RoutineContext = createContext();
 const storageKeyTypes = {
@@ -24,13 +24,11 @@ export const ocrImportedWeekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 
   export function RoutineProvider({ children }) {
   const [routine, setRoutine] = useState(() => {
     const saved = getUserStorageItem(storageKeyTypes.routine);
-    // getUserStorageItem already parses JSON, so use directly
-    return saved || defaultRoutine;
+    return saved || ocrImportedRoutine;
   });
 
   const [weekDays, setWeekDays] = useState(() => {
     const saved = getUserStorageItem(storageKeyTypes.weekDays);
-    // getUserStorageItem already parses JSON, so use directly
     return saved || ocrImportedWeekDays;
   });
 
@@ -40,6 +38,8 @@ export const ocrImportedWeekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 
     setUserStorageItem(storageKeyTypes.routine, ocrImportedRoutine);
     setUserStorageItem(storageKeyTypes.weekDays, ocrImportedWeekDays);
   };
+
+
 
   const saveRoutine = (nextRoutine) => {
     setRoutine(nextRoutine);
@@ -92,8 +92,8 @@ export const ocrImportedWeekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 
   };
 
   const resetRoutine = () => {
-    setRoutine(defaultRoutine);
-    setWeekDays(defaultWeekDays);
+    setRoutine(ocrImportedRoutine);
+    setWeekDays(ocrImportedWeekDays);
     const routineKey = getUserStorageKey(storageKeyTypes.routine);
     const weekDaysKey = getUserStorageKey(storageKeyTypes.weekDays);
     if (routineKey) localStorage.removeItem(routineKey);

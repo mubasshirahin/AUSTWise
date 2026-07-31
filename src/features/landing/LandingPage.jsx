@@ -91,7 +91,7 @@ const features = [
     tagline: 'Connect with the entire AUST community',
     description: 'Share anonymously, network with alumni, find clubs, and look up any student\'s contact info, blood group, and batch — all in one social hub.',
     benefits: [
-      'Anonymous confession feed — share freely, no judgement',
+      'Buzz forum — anonymous discussion board for the whole campus',
       'Alumni directory — network with graduates by batch & company',
       'Club hub — discover and join active AUST clubs',
       'Student directory — find classmates by name, batch, or blood group',
@@ -836,8 +836,8 @@ const mockScreens = [
     icon: Users,
     elements: [
       // Tab bar
-      { type: 'mini-tabs', tabs: ['Feed', 'Alumni', 'Clubs', 'Students'], active: 0 },
-      // Story feed posts
+      { type: 'mini-tabs', tabs: ['Buzz', 'Alumni', 'Clubs', 'Students'], active: 0 },
+      // Buzz forum posts
       { type: 'story-post', text: 'CSE 3102 lab final postponed to next week! Anyone else relieved?', likes: 24 },
       { type: 'story-post', text: 'Selling used CSE books (Data Structure, Algorithm) — DM for price', likes: 15 },
       { type: 'story-post', text: 'Anyone know if Dr. Kader is taking student projects this sem?', likes: 31 },

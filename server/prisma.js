@@ -11,10 +11,39 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { PrismaMssql } from '@prisma/adapter-mssql';
 
-const prisma = new PrismaClient({
-  datasourceUrl: process.env.DATABASE_URL || 'sqlserver://localhost:1433;database=austwise;integratedSecurity=true;encrypt=true;trustServerCertificate=true',
-});
+// Prisma 7 requires a driver adapter instead of `datasourceUrl`.
+// Build the mssql config from the same DB_* env vars used by server/db.mjs.
+function buildMssqlConfig() {
+  if (process.env.DATABASE_URL) {
+    return process.env.DATABASE_URL;
+  }
+  const useTrusted = process.env.DB_TRUSTED === 'true';
+  const config = {
+    server:   process.env.DB_SERVER   || 'localhost\\SQLEXPRESS',
+    database: process.env.DB_DATABASE || 'AUSTWise',
+    port:     Number(process.env.DB_PORT || 1433),
+    options: {
+      encrypt:                process.env.DB_ENCRYPT === 'true',
+      trustServerCertificate: true,
+      connectTimeout:         10000,
+      requestTimeout:         15000,
+    },
+  };
+  if (useTrusted) {
+    config.authentication = {
+      type: 'ntlm',
+      options: { userName: '', password: '', domain: '' },
+    };
+  } else {
+    config.user     = process.env.DB_USER     || 'sa';
+    config.password = process.env.DB_PASSWORD || '';
+  }
+  return config;
+}
+
+const prisma = new PrismaClient({ adapter: new PrismaMssql(buildMssqlConfig()) });
 
 export { prisma };
 
@@ -381,4 +410,41 @@ export async function upsertCourse(data) {
 
 export async function deleteCourse(code) {
   return prisma.course.delete({ where: { code } });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Shared Routines (CR-contributed routines, aggregated by Free Rooms)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export async function listSharedRoutines() {
+  return prisma.sharedRoutine.findMany({ orderBy: { sharedAt: 'desc' } });
+}
+
+export async function upsertSharedRoutine(data) {
+  return prisma.sharedRoutine.upsert({
+    where: { studentId: data.studentId },
+    create: {
+      studentId: data.studentId,
+      studentName: data.studentName || '',
+      department: data.department || '',
+      semester: String(data.semester || ''),
+      section: data.section || '',
+      labSection: data.labSection || '',
+      routine: typeof data.routine === 'string' ? data.routine : JSON.stringify(data.routine || {}),
+      weekDays: typeof data.weekDays === 'string' ? data.weekDays : JSON.stringify(data.weekDays || []),
+    },
+    update: {
+      studentName: data.studentName || '',
+      department: data.department || '',
+      semester: String(data.semester || ''),
+      section: data.section || '',
+      labSection: data.labSection || '',
+      routine: typeof data.routine === 'string' ? data.routine : JSON.stringify(data.routine || {}),
+      weekDays: typeof data.weekDays === 'string' ? data.weekDays : JSON.stringify(data.weekDays || []),
+    },
+  });
+}
+
+export async function deleteSharedRoutine(studentId) {
+  return prisma.sharedRoutine.deleteMany({ where: { studentId } });
 }

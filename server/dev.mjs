@@ -38,6 +38,7 @@ import {
 import { initializeDatabase, resetDatabase, query, sql } from './db.mjs';
 import { handleOAuthRequest } from './socialOAuth.mjs';
 import { handleAuthRoute, readTokenCookie } from './auth.mjs';
+import { extractRoutineRateLimiter } from './rateLimiter.mjs';
 import { requireRole } from './middleware.mjs';
 import {
   listMarketplace,
@@ -68,6 +69,9 @@ import {
   listCourses,
   upsertCourse,
   deleteCourse,
+  listSharedRoutines,
+  upsertSharedRoutine,
+  deleteSharedRoutine,
 } from './prisma.js';
 import {
   ensureUploadsDir,
@@ -1995,6 +1999,48 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, { success: true });
     } catch (error) {
       sendJson(res, 404, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  // ── Shared Routines (CR-contributed, aggregated by Free Rooms) ──
+
+  if (req.url === '/api/shared-routines' && req.method === 'GET') {
+    if (!requireFeature('db', res, 'Database connection')) return;
+    try {
+      const routines = await listSharedRoutines();
+      // Parse JSON fields for the client
+      const parsed = routines.map(r => ({
+        ...r,
+        routine: safeJsonParse(r.routine, {}),
+        weekDays: safeJsonParse(r.weekDays, []),
+      }));
+      sendJson(res, 200, { success: true, routines: parsed });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  if (req.url === '/api/shared-routines' && req.method === 'POST') {
+    if (!requireFeature('db', res, 'Database connection')) return;
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    try {
+      const payload = await readJsonBody(req);
+      const routine = await upsertSharedRoutine({
+        studentId: payload.studentId || auth.id,
+        studentName: payload.studentName || '',
+        department: payload.department || '',
+        semester: payload.semester || '',
+        section: payload.section || '',
+        labSection: payload.labSection || '',
+        routine: payload.routine || {},
+        weekDays: payload.weekDays || [],
+      });
+      sendJson(res, 201, { success: true, routine: { ...routine, routine: safeJsonParse(routine.routine, {}), weekDays: safeJsonParse(routine.weekDays, []) } });
+    } catch (error) {
+      sendJson(res, 400, { success: false, error: error.message });
     }
     return;
   }

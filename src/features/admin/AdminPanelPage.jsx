@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Shield, BellRing, Coffee, Activity, Users, Trash2, Plus, Check, AlertCircle, Eye, Edit3, Search, X, Save, User, FileText, CheckCircle2, XCircle, Clock3, ClipboardList, CalendarDays } from 'lucide-react';
-import { notices, canteenData, libraryData } from '../../data/mockData';
+import { canteenData, libraryData } from '../../data/mockData';
+import { getNotices, publishNotice, deleteNotice } from '../../utils/noticeStorage';
 import { getRoleLabel, getRoleBadgeClass, updateAccountProfile, getAccountById, getAllRoleApplications, reviewRoleApplication, getAccountById as getUserById, resetAllLocalData } from '../../utils/authStorage';
 import { loadTemplates, saveTemplates, addTemplate, updateTemplate, deleteTemplate, defaultTemplates } from '../../utils/routineTemplates';
 import RoutineTemplatesPanel from './RoutineTemplatesPanel';
@@ -121,13 +122,8 @@ export default function AdminPanelPage() {
 
   // Load Data from LocalStorage
   useEffect(() => {
-    // 1. Notices
-    const storedNotices = localStorage.getItem('aust-notices');
-    if (storedNotices) {
-      setNoticesList(JSON.parse(storedNotices));
-    } else {
-      setNoticesList(notices);
-    }
+    // 1. Notices — server-backed (same source the student NoticeBoard reads)
+    getNotices().then((list) => setNoticesList(list));
 
     // 2. Canteen
     const storedCanteen = localStorage.getItem('aust-canteen-data');
@@ -185,14 +181,8 @@ export default function AdminPanelPage() {
     setFilteredAccounts(result);
   }, [searchQuery, roleFilter, accounts]);
 
-  // Save Notices
-  const saveNotices = (newList) => {
-    setNoticesList(newList);
-    localStorage.setItem('aust-notices', JSON.stringify(newList));
-  };
-
-  // Add Notice
-  const handleAddNotice = (e) => {
+  // Add Notice — persisted server-side so the student NoticeBoard sees it
+  const handleAddNotice = async (e) => {
     e.preventDefault();
     if (!noticeForm.title.trim() || !noticeForm.content.trim()) return;
 
@@ -205,18 +195,19 @@ export default function AdminPanelPage() {
       content: noticeForm.content.trim()
     };
 
-    const updated = noticeForm.pinned 
-      ? [newNotice, ...noticesList] 
-      : [...noticesList, newNotice];
+    const saved = await publishNotice(newNotice);
+    const updated = saved.pinned 
+      ? [saved, ...noticesList.filter(n => n.id !== saved.id)] 
+      : [...noticesList.filter(n => n.id !== saved.id), saved];
 
-    saveNotices(updated);
+    setNoticesList(updated);
     setNoticeForm({ title: '', category: 'Admin', pinned: false, content: '' });
   };
 
-  // Delete Notice
-  const handleDeleteNotice = (id) => {
-    const updated = noticesList.filter(n => n.id !== id);
-    saveNotices(updated);
+  // Delete Notice — removes it from the server so it disappears for everyone
+  const handleDeleteNotice = async (id) => {
+    await deleteNotice(id);
+    setNoticesList(noticesList.filter(n => n.id !== id));
   };
 
   // Update Canteen

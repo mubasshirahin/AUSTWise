@@ -78,7 +78,6 @@ npm run build      # Production build
 ### 6. Community `/community`
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Confessions Feed | ✅ | Anonymous posts, reactions, localStorage |
 | Senior Secrets | ✅ | Role-gated tips (SR only) |
 | Alumni Directory | ⚠️ | Empty until alumni register |
 | Club Portal | ✅ | 14 clubs, join/leave |

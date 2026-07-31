@@ -33,7 +33,7 @@ export default function DocsPage() {
         <p>Interactive floor maps, faculty office locations, library seat availability, and canteen crowd index — all in real time.</p>
 
         <h3>Community</h3>
-        <p>Connect with classmates through anonymous confession feeds, student directory, alumni network, and course-specific groups.</p>
+        <p>Connect with classmates through the Buzz forum, student directory, alumni network, and course-specific groups.</p>
 
         <h3>Marketplace</h3>
         <p>Buy and sell used textbooks, find bachelor rentals near campus, report lost items, and request mentorship from seniors.</p>

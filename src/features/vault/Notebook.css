@@ -208,6 +208,7 @@
 
 .nb-canvas-item {
   position: absolute;
+  z-index: 5;
   cursor: grab;
   border-radius: 8px;
   overflow: hidden;

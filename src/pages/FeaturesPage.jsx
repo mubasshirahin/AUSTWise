@@ -30,7 +30,7 @@ export default function FeaturesPage() {
         <p>Navigate AUST with interactive floor maps. Check faculty availability, library seat occupancy, canteen menus and crowd levels — all updated in real time.</p>
 
         <h2>Community</h2>
-        <p>Connect with the entire AUST ecosystem. Anonymous confession feeds, alumni directory, club hub, student directory with contact info, and in-app messaging with classmates and faculty.</p>
+        <p>Connect with the entire AUST ecosystem. The Buzz forum, alumni directory, club hub, student directory with contact info, and in-app messaging with classmates and faculty.</p>
 
         <h2>Campus Market</h2>
         <p>The ultimate AUST marketplace. Exchange used textbooks, find bachelor rentals near campus, report lost items, and request mentorship from seniors — all free, no commissions.</p>

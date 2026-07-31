@@ -5,11 +5,13 @@ import VaultStepProgress from './VaultStepProgress';
 import VaultBatchSelector from './VaultBatchSelector';
 import MaterialFolders from './MaterialFolders';
 import Notebook from './Notebook';
+
 import GliderTabs from '../../components/GliderTabs';
 import { loadVaultSelection, saveVaultSelection } from './vaultSelectionStorage';
 import './VaultPage.css';
 import './VaultBatchSelector.css';
 import './Notebook.css';
+
 import '../../components/PageHero.css';
 
 function getSelectionStep(department, yearSem, batch) {
@@ -28,7 +30,10 @@ export default function VaultPage() {
     const saved = loadVaultSelection();
     return saved?.vaultTab || 'batch-drive';
   });
-  const [activeTab, setActiveTab] = useState('materials');
+  const [activeTab, setActiveTab] = useState(() => {
+    const saved = loadVaultSelection();
+    return saved?.activeTab || 'materials';
+  });
   const [transitioning, setTransitioning] = useState(null);
 
   const isReady = Boolean(department && yearSem && batch);

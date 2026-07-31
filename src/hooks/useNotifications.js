@@ -39,17 +39,22 @@ export function useNotifications(routine, weekDays) {
     return () => clearInterval(intervalRef.current);
   }, [settings.enabled, permission, runChecks]);
 
-  const enable = useCallback(async () => {
+  const requestBrowserPermission = useCallback(async () => {
     if (!supported) return 'unsupported';
     const result = await requestPermission();
     setPermission(result);
+    return result;
+  }, [supported]);
+
+  const enable = useCallback(async () => {
+    const result = await requestBrowserPermission();
     if (result === 'granted') {
       const next = { ...loadSettings(), enabled: true };
       saveSettings(next);
       setSettings(next);
     }
     return result;
-  }, [supported]);
+  }, [requestBrowserPermission]);
 
   const disable = useCallback(() => {
     const next = { ...loadSettings(), enabled: false };
@@ -63,5 +68,5 @@ export function useNotifications(routine, weekDays) {
     setSettings(next);
   }, []);
 
-  return { supported, permission, settings, enable, disable, updateSetting };
+  return { supported, permission, settings, enable, requestBrowserPermission, disable, updateSetting };
 }

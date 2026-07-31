@@ -219,6 +219,7 @@ model Notice {
   id        String   @id @default(uuid())
   title     String
   body      String
+  category  String   @default("Admin")
   postedBy  String
   postedAt  DateTime @default(now())
   expiresAt DateTime?
@@ -351,6 +352,25 @@ model RoutineTemplate {
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: NoAction)
+}
+
+// ─── Shared Routines (CR-contributed, aggregated by Free Rooms) ──────────────
+
+model SharedRoutine {
+  id          String   @id @default(uuid())
+  studentId   String
+  studentName String   @default("")
+  department  String   @default("")
+  semester    String   @default("")
+  section     String   @default("")
+  labSection  String   @default("")
+  routine     String   @default("{}")   // JSON string: { Sunday: [...], Monday: [...], ... }
+  weekDays    String   @default("[]")   // JSON string array
+  sharedAt    DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([studentId])
+  @@index([department])
 }
 
 // ─── Telegram ────────────────────────────────────────────────────────────────

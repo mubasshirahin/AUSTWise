@@ -6,13 +6,44 @@
  * Usage (from project root):
  *   node dev/seed-data.mjs
  *
- * Requires DATABASE_URL env var or uses default SQL Server connection.
+ * Loads .env and connects via DB_* vars (or DATABASE_URL if set).
  * Safe to run multiple times — upserts courses and campus locations.
  */
 
+import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
+import { PrismaMssql } from '@prisma/adapter-mssql';
 
-const prisma = new PrismaClient();
+// Prisma 7 requires a driver adapter instead of `datasourceUrl`.
+function buildMssqlConfig() {
+  if (process.env.DATABASE_URL) {
+    return process.env.DATABASE_URL;
+  }
+  const useTrusted = process.env.DB_TRUSTED === 'true';
+  const config = {
+    server:   process.env.DB_SERVER   || 'localhost\\SQLEXPRESS',
+    database: process.env.DB_DATABASE || 'AUSTWise',
+    port:     Number(process.env.DB_PORT || 1433),
+    options: {
+      encrypt:                process.env.DB_ENCRYPT === 'true',
+      trustServerCertificate: true,
+      connectTimeout:         10000,
+      requestTimeout:         15000,
+    },
+  };
+  if (useTrusted) {
+    config.authentication = {
+      type: 'ntlm',
+      options: { userName: '', password: '', domain: '' },
+    };
+  } else {
+    config.user     = process.env.DB_USER     || 'sa';
+    config.password = process.env.DB_PASSWORD || '';
+  }
+  return config;
+}
+
+const prisma = new PrismaClient({ adapter: new PrismaMssql(buildMssqlConfig()) });
 
 // ─── Course data (from src/data/courses.js) ───────────────────────────────────
 

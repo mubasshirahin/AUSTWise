@@ -1,5 +1,6 @@
 const STORAGE_KEY = 'aust-notifications-v1';
 const FIRED_KEY = 'aust-notifications-fired-v1';
+const WAKE_UP_KEY = 'aust-wake-me-up-v1';
 
 const defaultSettings = {
   enabled: false,
@@ -8,6 +9,8 @@ const defaultSettings = {
   notifyClass: true,
   notifyDeadline: true,
   notifyNotices: false,
+  wakeMeUp: false,
+  wakeUpOffsetMins: 30,
 };
 
 export function isNotificationSupported() {
@@ -95,6 +98,115 @@ function parseTime(timeStr) {
 function getTodayDayName() {
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   return days[new Date().getDay()];
+}
+
+function getDayName(date) {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  return days[date.getDay()];
+}
+
+function loadWakeUpSchedule() {
+  try {
+    const raw = localStorage.getItem(WAKE_UP_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveWakeUpSchedule(schedule) {
+  try {
+    if (schedule) localStorage.setItem(WAKE_UP_KEY, JSON.stringify(schedule));
+    else localStorage.removeItem(WAKE_UP_KEY);
+  } catch {
+    // Ignore storage errors; notification settings still remain usable.
+  }
+}
+
+function firstClassForDay(routine, dayName) {
+  const classes = Array.isArray(routine?.[dayName]) ? routine[dayName] : [];
+  return classes
+    .map((cls) => ({ cls, parsed: parseTime(cls.time?.split(' - ')[0] || cls.time || '') }))
+    .filter(({ parsed }) => parsed)
+    .sort((a, b) => (a.parsed.h * 60 + a.parsed.m) - (b.parsed.h * 60 + b.parsed.m))[0] || null;
+}
+
+export function findNextWakeUpClass(routine, weekDays, fromDate = new Date()) {
+  const enabledDays = Array.isArray(weekDays) ? weekDays : [];
+  for (let offset = 1; offset <= 7; offset += 1) {
+    const date = new Date(fromDate);
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() + offset);
+    const dayName = getDayName(date);
+    if (!enabledDays.includes(dayName)) continue;
+
+    const first = firstClassForDay(routine, dayName);
+    if (!first) continue;
+
+    const dateKey = [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+    return {
+      date: dateKey,
+      day: dayName,
+      time: `${String(first.parsed.h).padStart(2, '0')}:${String(first.parsed.m).padStart(2, '0')}`,
+      course: first.cls.course || first.cls.name || 'your first class',
+      name: first.cls.name || first.cls.course || 'Class',
+      room: first.cls.room || '',
+    };
+  }
+  return null;
+}
+
+export function scheduleWakeUp(routine, weekDays, fromDate = new Date()) {
+  const schedule = findNextWakeUpClass(routine, weekDays, fromDate);
+  saveWakeUpSchedule(schedule);
+  return schedule;
+}
+
+export function getWakeUpSchedule() {
+  return loadWakeUpSchedule();
+}
+
+export function clearWakeUpSchedule() {
+  saveWakeUpSchedule(null);
+}
+
+export function getWakeUpTriggerAtMillis(schedule, offsetMins = 30) {
+  if (!schedule?.date || !schedule?.time) return null;
+  const [year, month, day] = String(schedule.date).split('-').map(Number);
+  const [hour, minute] = String(schedule.time).split(':').map(Number);
+  const classTime = new Date(year, month - 1, day, hour, minute, 0, 0);
+  return classTime.getTime() - Math.max(0, Number(offsetMins) || 0) * 60 * 1000;
+}
+
+export function checkWakeMeUp(routine, weekDays, offsetMins = 30) {
+  let schedule = loadWakeUpSchedule();
+  if (!schedule) schedule = scheduleWakeUp(routine, weekDays);
+  if (!schedule) return;
+
+  const [year, month, day] = String(schedule.date).split('-').map(Number);
+  const [hour, minute] = String(schedule.time).split(':').map(Number);
+  const classTime = new Date(year, month - 1, day, hour, minute, 0, 0);
+  const triggerAtMillis = getWakeUpTriggerAtMillis(schedule, offsetMins);
+  const diff = triggerAtMillis - Date.now();
+
+  // The runner polls every minute; allow a small late-start window.
+  if (diff < -90 * 1000) {
+    schedule = scheduleWakeUp(routine, weekDays, new Date());
+    return;
+  }
+  if (diff > 90 * 1000) return;
+
+  const key = `wake-${schedule.date}-${schedule.time}-${schedule.course}`;
+  if (hasFired(key)) return;
+  markFired(key);
+  sendNotification(
+    '⏰ WakeMeUp — class soon',
+    `${schedule.course}${schedule.room ? ` • Room ${schedule.room}` : ''}\nYour first class starts at ${schedule.time}.`,
+    { tag: key, requireInteraction: true }
+  );
+  // Search after the class time, not the earlier alert time, so a large offset
+  // cannot cause the same class to be selected again.
+  scheduleWakeUp(routine, weekDays, classTime);
 }
 
 export function checkClassReminders(routine, weekDays, minutesBefore = 10) {

@@ -23,6 +23,7 @@ import AboutUsPage from './pages/AboutUsPage';
 import NotificationRunner from './components/NotificationRunner';
 import QuotePopup from './features/dashboard/QuotePopup';
 import FloatingBackground from './components/FloatingBackground';
+import DevToolbar from './components/DevToolbar';
 
 const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage'));
 const RoutineTemplatesPage = lazy(() => import('./features/dashboard/RoutineTemplatesPage'));
@@ -48,7 +49,6 @@ const CoverPageGeneratorPage = lazy(() => import('./features/cover-page-generato
 const ChillZonePage = lazy(() => import('./features/chill-zone/ChillZonePage'));
 const RoastCVPage = lazy(() => import('./features/roast-cv/RoastCVPage'));
 const CertificatePage = lazy(() => import('./features/certificate/CertificatePage'));
-const AutoAlarmPage = lazy(() => import('./features/auto-alarm/AutoAlarmPage'));
 const AustedditPage = lazy(() => import('./features/austeddit/AustedditPage'));
 const ShadowPage = lazy(() => import('./features/shadow/ShadowPage'));
 const ProPage = lazy(() => import('./features/pro/ProPage'));
@@ -157,7 +157,7 @@ function AppContent() {
                 <Route path="/chill-zone" element={<ChillZonePage />} />
                 <Route path="/roast-cv" element={<RoastCVPage />} />
                 <Route path="/certificate" element={<CertificatePage />} />
-                <Route path="/auto-alarm" element={<AutoAlarmPage />} />
+                <Route path="/auto-alarm" element={<Navigate to="/settings?tab=notifications" replace />} />
                 <Route path="/austeddit" element={<AustedditPage />} />
                 <Route path="/shadow" element={<ShadowPage />} />
                 <Route path="/daily-life" element={<DailyLifePage />} />
@@ -204,7 +204,6 @@ function AppShell() {
     '/chill-zone': 'DownTime',
     '/roast-cv': 'Roast CV',
     '/certificate': 'Certificate',
-    '/auto-alarm': 'WakeMeUp',
     '/austeddit': 'Austeddit',
     '/daily-life': 'Daily Life',
   };
@@ -275,6 +274,7 @@ function App() {
         <AuthProvider>
           <PomodoroProvider>
             <AppShell />
+            <DevToolbar />
           </PomodoroProvider>
         </AuthProvider>
       </ThemeProvider>
