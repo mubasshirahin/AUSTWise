@@ -1,26 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ClipboardCheck, CheckCircle2, Circle, Plus, Trash2, RotateCcw,
-  Package, ArrowUpDown
+  MoreVertical, Check
 } from 'lucide-react';
 import './ExamChecklistPage.css';
-import '../../components/PageHero.css';
 
 const DEFAULT_ITEMS = [
-  { id: 'admit', label: 'Admit Card / Hall Ticket', icon: '🎫' },
+  { id: 'calculator', label: 'Scientific Calculator', icon: '🔢' },
   { id: 'id-card', label: 'Student ID Card', icon: '🪪' },
   { id: 'pen-black', label: 'Black Ball Pen (x2)', icon: '🖊️' },
-  { id: 'pen-blue', label: 'Blue Ball Pen (x2)', icon: '✒️' },
-  { id: 'pencil', label: 'Pencil (HB / 2B)', icon: '✏️' },
-  { id: 'eraser', label: 'Eraser', icon: '🧹' },
-  { id: 'sharpener', label: 'Sharpener', icon: '🔧' },
   { id: 'ruler', label: 'Ruler / Scale (15cm)', icon: '📏' },
-  { id: 'calculator', label: 'Scientific Calculator', icon: '🔢' },
-  { id: 'watch', label: 'Analog Watch', icon: '⌚' },
-  { id: 'water', label: 'Water Bottle (transparent)', icon: '💧' },
-  { id: 'clipboard', label: 'Clipboard / Writing Pad', icon: '📋' },
-  { id: 'geometry', label: 'Geometry Box', icon: '📐' },
-  { id: 'tissues', label: 'Tissues / Handkerchief', icon: '🧻' },
+  { id: 'pencil', label: 'Pencil (HB / 2B)', icon: '✏️' },
 ];
 
 const STORAGE_KEY = 'exam-checklist-state';
@@ -45,12 +35,26 @@ export default function ExamChecklistPage() {
   const [state, setState] = useState(loadState);
   const [newItemText, setNewItemText] = useState('');
   const [sortBy, setSortBy] = useState('default'); // default | checked-last
+  const [menuOpen, setMenuOpen] = useState(false);
   const inputRef = useRef(null);
+  const menuRef = useRef(null);
 
   /* Persist whenever state changes */
   useEffect(() => {
     saveState(state);
   }, [state]);
+
+  /* Close dropdown on outside click */
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleOutside(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [menuOpen]);
 
   const allItems = [
     ...DEFAULT_ITEMS.map((d) => ({ ...d, isCustom: false })),
@@ -108,6 +112,13 @@ export default function ExamChecklistPage() {
   /* Reset all */
   const resetAll = useCallback(() => {
     setState({ checked: [], customItems: [] });
+    setMenuOpen(false);
+  }, []);
+
+  /* Toggle sort from menu */
+  const toggleSort = useCallback(() => {
+    setSortBy((s) => (s === 'default' ? 'checked-last' : 'default'));
+    setMenuOpen(false);
   }, []);
 
   /* Keyboard */
@@ -118,54 +129,84 @@ export default function ExamChecklistPage() {
   }, [addCustomItem]);
 
   return (
-    <div className="exam-checklist-page animate-fadeIn">
-      {/* ── Hero ── */}
-      <header className="page-hero">
-        <div className="page-hero-content">
-          <div className="page-hero-title-row">
-            <div className="page-hero-icon">
-              <ClipboardCheck size={24} />
-            </div>
-            <div>
-              <h1 className="page-hero-title">
-                <span className="page-hero-title-highlight">Exam Checklist</span>
-              </h1>
-              <p className="page-hero-subtitle">
-                Never forget a single item on exam day — tick off everything you need.
-              </p>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="glass-card-static schedule-widget ec-widget animate-fadeInUp">
 
-      {/* ── Progress Card ── */}
-      <div className="ec-progress-card">
-        <div className="ec-progress-top">
-          <div className="ec-progress-left">
-            <div className="ec-progress-icon-wrap" style={{ background: 'var(--accent-emerald-glow)', color: 'var(--accent-emerald)' }}>
-              <Package size={18} />
+      {/* ── Masthead ── */}
+      <div className="schedule-masthead">
+        {/* Left: title block */}
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <ClipboardCheck size={20} strokeWidth={2.2} />
+          </div>
+          <div>
+            <span className="schedule-overline">Daily Life</span>
+            <div className="schedule-title">Exam Checklist</div>
+            <span className="schedule-subtitle">{checkedCount}/{totalItems} items ready</span>
+          </div>
+        </div>
+
+        {/* Center: stats */}
+        <div className="schedule-masthead-center">
+          <div className="schedule-stats">
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{checkedCount}</span>
+              <span className="schedule-stat-label">Packed</span>
             </div>
-            <div>
-              <span className="ec-progress-label">Packing Progress</span>
-              <span className="ec-progress-count">
-                <strong>{checkedCount}</strong> of {totalItems} items ready
-              </span>
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{totalItems - checkedCount}</span>
+              <span className="schedule-stat-label">Remaining</span>
             </div>
           </div>
-          <div className="ec-progress-right">
-            <span className="ec-progress-pct">{Math.round(progress)}%</span>
-            <button className="ec-sort-btn" onClick={() => setSortBy(s => s === 'default' ? 'checked-last' : 'default')} title="Toggle sort">
-              <ArrowUpDown size={13} />
-              {sortBy === 'checked-last' ? 'Unchecked first' : 'Default order'}
+        </div>
+
+        {/* Right: actions — 3-dot menu */}
+        <div className="schedule-actions">
+          <div className="export-dropdown" ref={menuRef}>
+            <button
+              className="schedule-nav-btn"
+              onClick={() => setMenuOpen((o) => !o)}
+              title="Options"
+              aria-haspopup="true"
+              aria-expanded={menuOpen}
+            >
+              <MoreVertical size={16} />
             </button>
+            {menuOpen && (
+              <div className="export-menu" role="menu">
+                {/* Sort toggle */}
+                <button
+                  className={`export-menu-item${sortBy === 'checked-last' ? ' menu-active' : ''}`}
+                  onClick={toggleSort}
+                  role="menuitem"
+                >
+                  <Check size={14} className="menu-check" />
+                  {sortBy === 'checked-last' ? 'Unchecked first' : 'Default order'}
+                </button>
+                <div className="export-menu-sep" />
+                {/* Reset */}
+                <button
+                  className="export-menu-item"
+                  onClick={resetAll}
+                  role="menuitem"
+                >
+                  <RotateCcw size={14} />
+                  Reset Checklist
+                </button>
+              </div>
+            )}
           </div>
         </div>
-        <div className="ec-progress-bar">
-          <div
-            className="ec-progress-fill"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
+      </div>
+
+      {/* ── Dotted divider ── */}
+      <div className="schedule-dotted-divider" />
+
+      {/* ── Slim progress bar ── */}
+      <div className="ec-progress-slim">
+        <div
+          className="ec-progress-slim-fill"
+          style={{ width: `${progress}%` }}
+        />
       </div>
 
       {/* ── Checklist Grid ── */}
@@ -200,7 +241,6 @@ export default function ExamChecklistPage() {
                   <Trash2 size={13} />
                 </button>
               )}
-              {isChecked && <span className="ec-item-strike" />}
             </button>
           );
         })}
@@ -231,21 +271,14 @@ export default function ExamChecklistPage() {
         )}
       </div>
 
-      {/* ── Reset ── */}
-      <div className="ec-reset-row">
-        <button className="ec-reset-btn" onClick={resetAll}>
-          <RotateCcw size={13} />
-          Reset Checklist
-        </button>
-      </div>
-
-      {/* ── Empty / All Done ── */}
+      {/* ── All Done Banner ── */}
       {checkedCount === totalItems && totalItems > 0 && (
         <div className="ec-done-banner">
           <CheckCircle2 size={20} />
           <span>All set! You&apos;re fully packed for the exam. Good luck! 🎉</span>
         </div>
       )}
+
     </div>
   );
 }

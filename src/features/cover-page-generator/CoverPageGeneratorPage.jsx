@@ -1,21 +1,15 @@
-import { useState, useRef, useCallback, forwardRef } from 'react';
+import { useState, useRef, useCallback, useEffect, forwardRef } from 'react';
 import {
   NotebookPen, FileText, Image,
-  Check, FileDown, Sparkles, User,
-  CalendarDays
+  Check, FileDown, Sparkles, User, X, UserPlus, MoreVertical, RotateCcw
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { findCourseByCode } from '../../data/courses';
+import CourseAutocomplete from '../../components/CourseAutocomplete';
 import html2canvas from 'html2canvas-pro';
 import jsPDF from 'jspdf';
+import austwiseLogo from '../../assets/logo-new.png';
+import austLogo from '../../assets/aust-logo.jpg';
 import './CoverPageGeneratorPage.css';
-import '../../components/PageHero.css';
-
-const COVER_TYPES = [
-  { id: 'assignment', label: 'Assignment' },
-  { id: 'lab-report', label: 'Lab Report' },
-  { id: 'project', label: 'Project' },
-];
 
 function formatDate(date) {
   const d = new Date(date);
@@ -24,40 +18,173 @@ function formatDate(date) {
   return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
+// ─── A4 dimensions at 96dpi (210mm × 297mm) ───
+const A4_W = 794;
+const A4_H = 1123;
+
+// ─── Title-case: first letter of each word capital, spaces preserved ───
+function capitalizeWords(str) {
+  return (str || '').replace(/(\S+)/g, (w) => w[0].toUpperCase() + w.slice(1).toLowerCase());
+}
+
+// ─── Cover form persistence (survives page refresh) ───
+const COVER_FORM_KEY = 'aust-cover-form-v1';
+
+function loadCoverForm() {
+  try {
+    const raw = localStorage.getItem(COVER_FORM_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+// ─── Fit A4 sheet into the preview frame ───
+function useCoverScale(frameRef) {
+  const [coverScale, setCoverScale] = useState(0.4);
+  useEffect(() => {
+    const frame = frameRef.current;
+    if (!frame) return undefined;
+    const compute = () => {
+      const w = frame.clientWidth;
+      const h = frame.clientHeight;
+      if (!w || !h) return;
+      const scale = Math.min((w - 56) / A4_W, (h - 72) / A4_H);
+      setCoverScale(scale > 0 ? Math.min(scale, 1) : 0.1);
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(frame);
+    return () => ro.disconnect();
+  }, [frameRef]);
+  return coverScale;
+}
+
 export default function CoverPageGeneratorPage() {
   const { user } = useAuth();
   const previewRef = useRef(null);
   const cloneRef = useRef(null);
+  const frameRef = useRef(null);
+  const menuRef = useRef(null);
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [logoSrc] = useState(austLogo);
+  const coverScale = useCoverScale(frameRef);
 
-  // ─── Form state ───
-  const [coverType, setCoverType] = useState('assignment');
-  const [courseCode, setCourseCode] = useState('');
-  const [courseName, setCourseName] = useState('');
-  const [title, setTitle] = useState('');
-  const [courseTeacher, setCourseTeacher] = useState('');
+  /* Close ⋮ dropdown on outside click */
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleOutside(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+    }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [menuOpen]);
+
+  // ─── Form state (persisted to localStorage) ───
+  const [savedForm] = useState(() => loadCoverForm());
+  const [coverType, setCoverType] = useState(savedForm.coverType || 'Assignment');
+  const [courseCode, setCourseCode] = useState(savedForm.courseCode || '');
+  const [courseName, setCourseName] = useState(savedForm.courseName || '');
+  const [title, setTitle] = useState(savedForm.title || '');
+  const [teachers, setTeachers] = useState(() => {
+    if (Array.isArray(savedForm.teachers) && savedForm.teachers.length) return savedForm.teachers;
+    return [{
+      name: savedForm.courseTeacher || '',
+      designation: savedForm.designation || '',
+    }];
+  });
+  const [refNo, setRefNo] = useState(savedForm.refNo || '');
+  const [groupNo, setGroupNo] = useState(savedForm.groupNo || '');
+  const [members, setMembers] = useState(() => {
+    if (Array.isArray(savedForm.members) && savedForm.members.length) return savedForm.members;
+    return [{
+      name: user?.name || '',
+      id: user?.awid || user?.id || '',
+    }];
+  });
+
+  // Watermark settings (fixed values, previously adjustable)
+  const watermarkSize = savedForm.watermarkSize || 500;
+  const watermarkOpacity = savedForm.watermarkOpacity ?? 0.04;
+  const watermarkX = savedForm.watermarkX ?? 0;
+  const watermarkY = savedForm.watermarkY ?? 0;
+
+  // Footer logo settings (fixed values, previously adjustable)
+  const footerLogoSize = savedForm.footerLogoSize || 60;
+  const footerLogoX = savedForm.footerLogoX ?? 0;
+  const footerLogoY = savedForm.footerLogoY ?? 0;
+
+  // Save form to localStorage on every change
+  useEffect(() => {
+    try {
+      localStorage.setItem(COVER_FORM_KEY, JSON.stringify({
+        coverType,
+        courseCode,
+        courseName,
+        title,
+        refNo,
+        groupNo,
+        members,
+        teachers,
+        watermarkSize,
+        watermarkOpacity,
+        watermarkX,
+        watermarkY,
+        footerLogoSize,
+        footerLogoX,
+        footerLogoY,
+      }));
+    } catch { /* storage full / unavailable — ignore */ }
+  }, [coverType, courseCode, courseName, title, refNo, groupNo, members, teachers, watermarkSize, watermarkOpacity, watermarkX, watermarkY, footerLogoSize, footerLogoX, footerLogoY]);
 
   // Auto-fill from profile
   const studentName = user?.name || '';
   const studentId = user?.awid || user?.id || '';
   const department = user?.department || 'CSE';
-  const semester = user?.yearSemester || `Year ${Math.ceil((user?.semester || 1) / 2)} - Semester ${((user?.semester || 1) % 2 === 0) ? 2 : 1}`;
+  const semNumber = user?.semester || 1;
+  const profileYear = Math.ceil(semNumber / 2);
+  const profileSemester = ((semNumber % 2) === 0) ? 2 : 1;
+  const semester = user?.yearSemester || `Year ${profileYear} - Semester ${profileSemester}`;
   const batch = user?.batch || user?.batchNo || '';
   const section = user?.section || '';
+  const labGroup = user?.labSection || '';
+
+  const updateMember = (index, field, value) => {
+    setMembers((prev) => prev.map((m, i) => (i === index ? { ...m, [field]: value } : m)));
+  };
+
+  const addMember = () => setMembers((prev) => [...prev, { name: '', id: '' }]);
+
+  const removeMember = (index) => setMembers((prev) => prev.filter((_, i) => i !== index));
+
+  const updateTeacher = (index, field, value) => {
+    setTeachers((prev) => prev.map((t, i) => (i === index ? { ...t, [field]: value } : t)));
+  };
+
+  const addTeacher = () => setTeachers((prev) => [...prev, { name: '', designation: '' }]);
+
+  const removeTeacher = (index) => setTeachers((prev) => prev.filter((_, i) => i !== index));
 
   // ─── Course autocomplete ───
-  const handleCourseCodeChange = (value) => {
-    setCourseCode(value);
-    const found = findCourseByCode(value, department);
-    if (found) {
-      setCourseName(found.name || '');
+  const handleCourseSelect = (course) => {
+    if (!course) {
+      setCourseCode('');
+      setCourseName('');
+      return;
     }
+    if (course.partialUpdate) {
+      if (course.field === 'code' && course.code !== undefined) setCourseCode(course.code);
+      if (course.field === 'name' && course.name !== undefined) setCourseName(course.name);
+      return;
+    }
+    setCourseCode(course.code || '');
+    setCourseName(course.name || '');
   };
 
   // ─── Generate cover page ───
-  const generateCover = useCallback(async (format) => {
-    const el = previewRef.current;
+  const generateCover = useCallback(async (format) => {    const el = previewRef.current;
     if (!el) {
       console.warn('Preview element not found');
       return;
@@ -70,16 +197,19 @@ export default function CoverPageGeneratorPage() {
       clone.style.cssText = `
         position: fixed; left: -9999px; top: 0;
         display: flex; flex-direction: column;
-        width: 210mm; min-height: 297mm;
-        background: #ffffff; color: #1a1a2e;
-        font-family: 'Times New Roman', 'Inter', serif;
+        width: ${A4_W}px; height: ${A4_H}px;
+        background: #ffffff;
+        transform: none; zoom: 1;
         z-index: 99999;
       `;
       document.body.appendChild(clone);
       cloneRef.current = clone;
 
-      // Wait for rendering
-      await new Promise(r => setTimeout(r, 150));
+      // Wait for webfonts and images to settle before capturing
+      if (document.fonts?.ready) {
+        try { await document.fonts.ready; } catch { /* best effort */ }
+      }
+      await new Promise(r => setTimeout(r, 300));
 
       const canvas = await html2canvas(clone, {
         scale: 3,
@@ -123,29 +253,92 @@ export default function CoverPageGeneratorPage() {
     } finally {
       setGenerating(false);
     }
-  }, [courseCode, title]);
+  }, [courseCode]);
 
   const isFormValid = courseCode.trim() && title.trim();
 
+  /* Reset the form back to profile-defaults */
+  const resetForm = () => {
+    setCoverType('Assignment');
+    setCourseCode('');
+    setCourseName('');
+    setTitle('');
+    setTeachers([{ name: '', designation: '' }]);
+    setRefNo('');
+    setGroupNo('');
+    setMembers([{ name: studentName, id: studentId }]);
+    setMenuOpen(false);
+  };
+
   return (
-    <div className="cpgen-page animate-fadeIn">
-      <header className="page-hero">
-        <div className="page-hero-content">
-          <div className="page-hero-title-row">
-            <div className="page-hero-icon">
-              <NotebookPen size={24} />
-            </div>
-            <div>
-              <h1 className="page-hero-title">
-                <span className="page-hero-title-highlight">Cover Page Generator</span>
-              </h1>
-              <p className="page-hero-subtitle">
-                Generate professional assignment and lab report cover pages — auto-filled from your profile.
-              </p>
-            </div>
+    <div className="glass-card-static schedule-widget cpgen-widget animate-fadeInUp">
+
+      {/* ── Masthead ── */}
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <NotebookPen size={20} strokeWidth={2.2} />
+          </div>
+          <div>
+            <span className="schedule-overline">Daily Life</span>
+            <p className="schedule-title">Cover Page Generator</p>
+            <span className="schedule-subtitle">Assignment &amp; lab report cover pages</span>
           </div>
         </div>
-      </header>
+
+        <div className="schedule-actions">
+          {generating ? (
+            <span className="cpgen-status-badge">
+              <span className="cpgen-spinner" /> Generating…
+            </span>
+          ) : generated ? (
+            <span className="cpgen-success-badge">
+              <Check size={14} /> Generated!
+            </span>
+          ) : null}
+          <div className="export-dropdown" ref={menuRef}>
+            <button
+              className="schedule-nav-btn"
+              onClick={() => setMenuOpen((o) => !o)}
+              title="Options"
+              aria-haspopup="true"
+              aria-expanded={menuOpen}
+            >
+              <MoreVertical size={18} />
+            </button>
+            {menuOpen && (
+              <div className="export-menu" role="menu">
+                <button
+                  className="export-menu-item"
+                  onClick={() => { setMenuOpen(false); generateCover('pdf'); }}
+                  disabled={!isFormValid || generating}
+                  role="menuitem"
+                >
+                  <FileDown size={14} /> Download PDF
+                </button>
+                <button
+                  className="export-menu-item"
+                  onClick={() => { setMenuOpen(false); generateCover('png'); }}
+                  disabled={!isFormValid || generating}
+                  role="menuitem"
+                >
+                  <Image size={14} /> Download PNG
+                </button>
+                <div className="export-menu-sep" />
+                <button
+                  className="export-menu-item"
+                  onClick={resetForm}
+                  role="menuitem"
+                >
+                  <RotateCcw size={14} /> Reset Form
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="schedule-dotted-divider" />
 
       <div className="cpgen-layout">
         {/* ─── Form Panel ─── */}
@@ -158,62 +351,144 @@ export default function CoverPageGeneratorPage() {
           {/* Cover Type */}
           <div className="cpgen-field">
             <label className="cpgen-label">Cover Type</label>
-            <div className="cpgen-type-tabs">
-              {COVER_TYPES.map(t => (
-                <button
-                  key={t.id}
-                  className={`cpgen-type-tab ${coverType === t.id ? 'active' : ''}`}
-                  onClick={() => setCoverType(t.id)}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
+            <input
+              className="input"
+              placeholder="e.g. Assignment, Lab Report, Project"
+              value={coverType}
+              onChange={(e) => setCoverType(e.target.value)}
+            />
           </div>
 
           {/* Course Code */}
           <div className="cpgen-field">
             <label className="cpgen-label">Course Code <span className="cpgen-required">*</span></label>
-            <input
-              className="input"
-              placeholder="e.g. CSE 3101"
+            <CourseAutocomplete
               value={courseCode}
-              onChange={(e) => handleCourseCodeChange(e.target.value.toUpperCase())}
+              placeholder="e.g. CSE 3101"
+              type="code"
+              department={department}
+              showCredit={false}
+              onCourseSelect={handleCourseSelect}
             />
           </div>
 
           <div className="cpgen-field">
             <label className="cpgen-label">Course Name</label>
-            <input
-              className="input"
-              placeholder="e.g. Software Engineering"
+            <CourseAutocomplete
               value={courseName}
-              onChange={(e) => setCourseName(e.target.value)}
+              placeholder="e.g. Software Engineering"
+              type="name"
+              department={department}
+              showCredit={false}
+              onCourseSelect={handleCourseSelect}
             />
           </div>
 
           {/* Assignment/Report Title */}
           <div className="cpgen-field">
             <label className="cpgen-label">
-              {coverType === 'assignment' ? 'Assignment' : coverType === 'lab-report' ? 'Lab Report' : 'Project'} Title <span className="cpgen-required">*</span>
+              Title <span className="cpgen-required">*</span>
             </label>
             <input
               className="input"
               placeholder="e.g. Design Pattern Implementation"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => setTitle(capitalizeWords(e.target.value))}
             />
           </div>
 
           {/* Course Teacher */}
           <div className="cpgen-field">
             <label className="cpgen-label">Course Teacher</label>
+            <div className="cpgen-members-list">
+              {teachers.map((teacher, index) => (
+                <div className="cpgen-member-row" key={index}>
+                  <input
+                    className="input"
+                    placeholder={`Teacher ${index + 1} name`}
+                    value={teacher.name}
+                    onChange={(e) => updateTeacher(index, 'name', capitalizeWords(e.target.value))}
+                  />
+                  <input
+                    className="input"
+                    placeholder="Designation"
+                    value={teacher.designation}
+                    onChange={(e) => updateTeacher(index, 'designation', capitalizeWords(e.target.value))}
+                  />
+                  <button
+                    type="button"
+                    className="cpgen-member-remove"
+                    onClick={() => removeTeacher(index)}
+                    title="Remove teacher"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button type="button" className="cpgen-add-member" onClick={addTeacher}>
+              <UserPlus size={13} /> Add Teacher
+            </button>
+          </div>
+
+          {/* No. */}
+          <div className="cpgen-field">
+            <label className="cpgen-label">No.</label>
             <input
               className="input"
-              placeholder="e.g. Dr. Abdur Rahim"
-              value={courseTeacher}
-              onChange={(e) => setCourseTeacher(e.target.value)}
+              placeholder="e.g. 01"
+              value={refNo}
+              onChange={(e) => setRefNo(e.target.value.replace(/\D/g, ''))}
+              onBlur={() => {
+                const digits = refNo.replace(/\D/g, '');
+                setRefNo(digits.length === 1 ? `0${digits}` : digits);
+              }}
             />
+          </div>
+
+          {/* Group No. */}
+          <div className="cpgen-field">
+            <label className="cpgen-label">Group No.</label>
+            <input
+              className="input"
+              placeholder="e.g. 04"
+              value={groupNo}
+              onChange={(e) => setGroupNo(e.target.value)}
+            />
+          </div>
+
+          {/* Group Members */}
+          <div className="cpgen-field">
+            <label className="cpgen-label">Group Members</label>
+            <div className="cpgen-members-list">
+              {members.map((member, index) => (
+                <div className="cpgen-member-row" key={index}>
+                  <input
+                    className="input"
+                    placeholder={`Member ${index + 1} name`}
+                    value={member.name}
+                    onChange={(e) => updateMember(index, 'name', capitalizeWords(e.target.value))}
+                  />
+                  <input
+                    className="input"
+                    placeholder="Student ID"
+                    value={member.id}
+                    onChange={(e) => updateMember(index, 'id', e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="cpgen-member-remove"
+                    onClick={() => removeMember(index)}
+                    title="Remove member"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button type="button" className="cpgen-add-member" onClick={addMember}>
+              <UserPlus size={13} /> Add Member
+            </button>
           </div>
 
           {/* ─── Profile Info (Read-only) ─── */}
@@ -249,35 +524,6 @@ export default function CoverPageGeneratorPage() {
               </div>
             </div>
           </div>
-
-          {/* Generate Buttons */}
-          <div className="cpgen-actions">
-            <button
-              className="btn btn-primary cpgen-btn"
-              disabled={!isFormValid || generating}
-              onClick={() => generateCover('pdf')}
-            >
-              {generating ? (
-                <span className="cpgen-spinner" />
-              ) : (
-                <FileDown size={16} />
-              )}
-              {generating ? 'Generating...' : 'Download PDF'}
-            </button>
-            <button
-              className="btn btn-secondary cpgen-btn"
-              disabled={!isFormValid || generating}
-              onClick={() => generateCover('png')}
-            >
-              <Image size={16} />
-              Download PNG
-            </button>
-            {generated && (
-              <div className="cpgen-success-badge">
-                <Check size={14} /> Generated successfully!
-              </div>
-            )}
-          </div>
         </div>
 
         {/* ─── Preview Panel ─── */}
@@ -286,21 +532,49 @@ export default function CoverPageGeneratorPage() {
             <Sparkles size={16} />
             <span>Live Preview</span>
           </div>
-          <div className="cpgen-preview-frame">
-            <CoverPagePreview
-              ref={previewRef}
-              coverType={coverType}
-              courseCode={courseCode}
-              courseName={courseName}
-              title={title}
-              courseTeacher={courseTeacher}
-              studentName={studentName}
-              studentId={studentId}
-              department={department}
-              semester={semester}
-              batch={batch}
-              section={section}
-            />
+          <div className="cpgen-preview-frame" ref={frameRef}>
+            <div
+              className="cpgen-cover-viewport"
+              style={{ width: `${A4_W * coverScale}px`, height: `${A4_H * coverScale}px` }}
+            >
+              <div
+                style={{
+                  transform: `scale(${coverScale})`,
+                  transformOrigin: 'top left',
+                  width: `${A4_W}px`,
+                  height: `${A4_H}px`,
+                }}
+              >
+                <CoverPagePreview
+                  ref={previewRef}
+                  coverType={coverType}
+                  courseCode={courseCode}
+                  courseName={courseName}
+                  title={title}
+                  teachers={teachers}
+                  refNo={refNo}
+                  labGroup={labGroup}
+                  groupNo={groupNo}
+                  studentName={studentName}
+                  studentId={studentId}
+                  members={members}
+                  department={department}
+                  semester={semester}
+                  profileYear={profileYear}
+                  profileSemester={profileSemester}
+                  batch={batch}
+                  section={section}
+                  logoSrc={logoSrc}
+                  watermarkSize={watermarkSize}
+                  watermarkOpacity={watermarkOpacity}
+                  watermarkX={watermarkX}
+                  watermarkY={watermarkY}
+                  footerLogoSize={footerLogoSize}
+                  footerLogoX={footerLogoX}
+                  footerLogoY={footerLogoY}
+                />
+              </div>
+            </div>
             {!isFormValid && (
               <div className="cpgen-preview-placeholder">
                 <NotebookPen size={40} strokeWidth={1.2} />
@@ -314,112 +588,144 @@ export default function CoverPageGeneratorPage() {
   );
 }
 
-// ─── Cover Page Preview (forwardRef so parent can capture via ref) ───
-const CoverPagePreview = forwardRef(({
+
+// ─── Minimal template row (module-scope so it isn't recreated each render) ───
+const MinimalRow = ({ label, value }) =>
+  value !== undefined && value !== null && String(value).trim() ? (
+    <p className="cpgen-min-row">
+      <span className="cpgen-min-row-label">{label}:</span>{' '}
+      <span className="cpgen-min-row-value">{value}</span>
+    </p>
+  ) : null;
+
+// ─── Minimal member row — name left, ID aligned in centered column ───
+const MinimalMemberRow = ({ index, name, id }) =>
+  (name && name.trim()) || (id && id.trim()) ? (
+    <p className="cpgen-min-row cpgen-min-member-row">
+      <span>
+        <span className="cpgen-min-row-label">Member {index + 1}:</span>{' '}
+        <span className="cpgen-min-row-value">{name}</span>
+      </span>
+      <span className="cpgen-min-member-id">
+        <span className="cpgen-min-row-label">ID:</span>{' '}
+        <span className="cpgen-min-row-value">{id}</span>
+      </span>
+    </p>
+  ) : null;
+
+// ─── Minimal template (black & white, left-accent rows) ───
+const MinimalCover = ({
+  innerRef,
   coverType,
   courseCode,
   courseName,
   title,
-  courseTeacher,
-  studentName,
-  studentId,
-  department,
-  semester,
-  batch,
+  teachers,
+  refNo,
+  labGroup,
+  groupNo,
+  members,
+  profileYear,
+  profileSemester,
   section,
-}, ref) => {
-  const typeLabel = coverType === 'assignment' ? 'Assignment'
-    : coverType === 'lab-report' ? 'Lab Report'
-    : 'Project Report';
-
+  logoSrc,
+  watermarkSize,
+  watermarkOpacity,
+  watermarkX,
+  watermarkY,
+  footerLogoSize,
+  footerLogoX,
+  footerLogoY,
+}) => {
   return (
-    <div ref={ref} className="cpgen-cover">
-      {/* Decorative top bar */}
-      <div className="cpgen-cover-topbar" />
+    <div ref={innerRef} className="cpgen-cover cpgen-cover--minimal">
+      {/* Outer black border with margin */}
+      <div className="cpgen-min-border" />
 
-      {/* University header */}
-      <div className="cpgen-cover-header">
-        <div className="cpgen-cover-logo">
-          <svg viewBox="0 0 40 40" fill="none" width="44" height="44">
-            <rect width="40" height="40" rx="8" fill="#1a365d" />
-            <text x="20" y="26" textAnchor="middle" fill="#fbbf24" fontSize="18" fontWeight="bold" fontFamily="serif">A</text>
-          </svg>
+      {/* Watermark — AUST logo, centered, low opacity */}
+      {logoSrc && (
+        <img
+          className="cpgen-min-watermark"
+          src={logoSrc}
+          alt=""
+          aria-hidden="true"
+          style={{
+            width: `${watermarkSize}px`,
+            opacity: watermarkOpacity,
+            transform: `translate(calc(-50% + ${watermarkX}px), calc(-50% + ${watermarkY}px))`,
+          }}
+        />
+      )}
+
+      {/* Content */}
+      <div className="cpgen-min-content">
+        {/* Logo + University Name */}
+        <div className="cpgen-min-head">
+          {logoSrc && (
+            <img className="cpgen-min-logo" src={logoSrc} alt="AUST Logo" />
+          )}
+          <h1 className="cpgen-min-university">
+            Ahsanullah University of Science &amp; Technology
+          </h1>
         </div>
-        <div className="cpgen-cover-title-group">
-          <h1 className="cpgen-cover-university">Ahsanullah University of Science and Technology</h1>
-          <p className="cpgen-cover-dept">Department of {department}</p>
+
+        {/* Assignment / Course Info */}
+        <div className="cpgen-min-group cpgen-min-group-first">
+          {refNo && <MinimalRow label={`${coverType} No`} value={refNo} />}
+          <MinimalRow label={`${coverType} Title`} value={title} />
+          <MinimalRow label="Course No" value={courseCode} />
+          <MinimalRow label="Course Title" value={courseName} />
         </div>
+
+        {/* Submitted By */}
+        <h2 className="cpgen-min-subhead cpgen-min-subhead--by">Submitted By:</h2>
+        <div className="cpgen-min-group">
+          {(members || []).map((member, index) => (
+            <MinimalMemberRow key={index} index={index} name={member.name} id={member.id} />
+          ))}
+          <MinimalRow label="Year" value={profileYear} />
+          <MinimalRow label="Semester" value={profileSemester} />
+          <MinimalRow label="Section" value={section} />
+          <MinimalRow label="Lab Group" value={labGroup} />
+          <MinimalRow label="Group No" value={groupNo} />
+        </div>
+
+        {/* Submitted To */}
+        <h2 className="cpgen-min-subhead">Submitted to:</h2>
+        <div className="cpgen-min-group">
+          {(teachers || []).map((teacher, index) => (
+            <div key={index}>
+              <MinimalRow label={teachers.length > 1 ? `Teacher ${index + 1} Name` : 'Name'} value={teacher.name} />
+            </div>
+          ))}
+        </div>
+
+        {/* Date */}
+        <h2 className="cpgen-min-subhead">
+          Date of Submission: <span className="cpgen-min-date">{formatDate(new Date())}</span>
+        </h2>
       </div>
 
-      {/* Divider */}
-      <div className="cpgen-cover-divider" />
-
-      {/* Type badge */}
-      <div className="cpgen-cover-type-badge">{typeLabel} Cover</div>
-
-      {/* Course info */}
-      <div className="cpgen-cover-course">
-        {courseCode && <span className="cpgen-cover-course-code">{courseCode}</span>}
-        {courseName && <span className="cpgen-cover-course-name">{courseName}</span>}
+      {/* Footer logo — small AUSTWise logo at the bottom */}
+      <div className="cpgen-min-footer">
+        <img
+          className="cpgen-min-footer-logo"
+          src={austwiseLogo}
+          alt="AUSTWise"
+          style={{
+            width: `${footerLogoSize}px`,
+            transform: `translate(${footerLogoX}px, ${footerLogoY}px)`,
+          }}
+        />
       </div>
-
-      {/* Title */}
-      <div className="cpgen-cover-title-area">
-        <h2 className="cpgen-cover-title">{title || 'Your Title Here'}</h2>
-      </div>
-
-      {/* Info table */}
-      <table className="cpgen-cover-table">
-        <tbody>
-          {courseTeacher && (
-            <tr>
-              <td className="cpgen-cover-td-label">Submitted To</td>
-              <td className="cpgen-cover-td-value">{courseTeacher}</td>
-            </tr>
-          )}
-          <tr>
-            <td className="cpgen-cover-td-label">Submitted By</td>
-            <td className="cpgen-cover-td-value">{studentName || 'Your Name'}</td>
-          </tr>
-          {studentId && (
-            <tr>
-              <td className="cpgen-cover-td-label">Student ID</td>
-              <td className="cpgen-cover-td-value">{studentId}</td>
-            </tr>
-          )}
-          <tr>
-            <td className="cpgen-cover-td-label">Department</td>
-            <td className="cpgen-cover-td-value">{department}</td>
-          </tr>
-          <tr>
-            <td className="cpgen-cover-td-label">Semester</td>
-            <td className="cpgen-cover-td-value">{semester}</td>
-          </tr>
-          {batch && (
-            <tr>
-              <td className="cpgen-cover-td-label">Batch</td>
-              <td className="cpgen-cover-td-value">{batch}</td>
-            </tr>
-          )}
-          {section && (
-            <tr>
-              <td className="cpgen-cover-td-label">Section</td>
-              <td className="cpgen-cover-td-value">{section}</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-
-      {/* Date */}
-      <div className="cpgen-cover-date">
-        <CalendarDays size={14} />
-        <span>{formatDate(new Date())}</span>
-      </div>
-
-      {/* Decorative bottom bar */}
-      <div className="cpgen-cover-bottombar" />
     </div>
   );
-});
+};
+
+
+// ─── Cover Page Preview (forwardRef so parent can capture via ref) ───
+const CoverPagePreview = forwardRef((props, ref) => (
+  <MinimalCover innerRef={ref} {...props} />
+));
 
 CoverPagePreview.displayName = 'CoverPagePreview';

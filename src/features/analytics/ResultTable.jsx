@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
-import { Check, ChevronDown, ChevronUp, FileSpreadsheet, Pencil, Plus, RotateCcw, Trash2, X, Download } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Check, ChevronLeft, ChevronRight, FileDown, FileSpreadsheet, Layers, MoreVertical, Pencil, Plus, RotateCcw, Trash2, X } from 'lucide-react';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
-import { formatSemesterLabel } from '../../utils/semester';
+import { formatSemesterLabel, getSemesterCountForDepartment } from '../../utils/semester';
 import { syncHeatmapFromTracker } from '../../utils/deptHeatmapStorage';
 import { semesterResults as mockSemesterResults } from '../../data/mockData';
-import { getUserStorageItem, setUserStorageItem, getUserStorageKey, removeUserStorageItem } from '../../utils/authStorage';
-import { loadTemplates } from '../../utils/transcriptTemplates';
+import { getUserStorageItemWithGuestFallback, setUserStorageItem, getUserStorageKey, getGuestStorageItem, removeUserStorageItem, removeGuestStorageItem } from '../../utils/authStorage';
+import { transcriptTemplates, getTemplateCredits } from '../../data/transcriptTemplateData';
 import { useAuth } from '../../context/AuthContext';
 
 const gradePoints = {
@@ -24,7 +24,21 @@ const gradePoints = {
 
 const gradeOptions = Object.keys(gradePoints);
 const storageKeyType = 'semesterResults';
-const maxSemester = 8;
+
+// AUST departments — each will have its own transcript templates
+const TRANSCRIPT_DEPARTMENTS = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'];
+
+// Department → full name map for the picker
+const DEPT_FULL_NAMES = {
+  CSE: 'Computer Science & Engineering',
+  EEE: 'Electrical & Electronic Engineering',
+  CE: 'Civil Engineering',
+  ME: 'Mechanical Engineering',
+  IPE: 'Industrial & Production Engineering',
+  TE: 'Textile Engineering',
+  ARCH: 'Architecture',
+  BBA: 'Business Administration',
+};
 
 const createBlankCourse = (semNum, index = 0) => ({
   code: '',
@@ -57,7 +71,7 @@ const cloneResults = (results) => results.map((sem) => ({
   courses: sortCourses(sem.courses.map((course) => ({ ...course }))),
 }));
 
-const normalizeResults = (results) => {
+const normalizeResults = (results, maxSemester) => {
   const clonedResults = cloneResults(results);
   const normalizedResults = Array.from({ length: maxSemester }, (_, index) => {
     const semesterNumber = index + 1;
@@ -70,7 +84,7 @@ const normalizeResults = (results) => {
   }));
 };
 
-const getDefaultResults = () => Array.from({ length: maxSemester }, (_, index) => createBlankSemester(index + 1));
+const getDefaultResults = (maxSemester) => Array.from({ length: maxSemester }, (_, index) => createBlankSemester(index + 1));
 
 const roundTwo = (value) => Number(value.toFixed(2));
 
@@ -98,25 +112,30 @@ const calculateSemesterStats = (results) => {
   });
 };
 
-const loadStoredResults = () => {
+const loadStoredResults = (maxSemester) => {
   try {
-    const storedResults = getUserStorageItem(storageKeyType);
+    const storedResults = getUserStorageItemWithGuestFallback(storageKeyType);
     if (storedResults) {
-      return calculateSemesterStats(normalizeResults(storedResults));
+      // Preserve any semesters beyond the department grid that were previously
+      // loaded (e.g. ARCH's 5-1/5-2), so a reload never drops the 5th-year
+      // courses.
+      const storedMaxSem = storedResults.reduce((max, sem) => Math.max(max, Number(sem.semester) || 0), 0);
+      return calculateSemesterStats(normalizeResults(storedResults, Math.max(maxSemester, storedMaxSem)));
     }
     if (mockSemesterResults && mockSemesterResults.length > 0) {
-      return calculateSemesterStats(normalizeResults(mockSemesterResults));
+      return calculateSemesterStats(normalizeResults(mockSemesterResults, maxSemester));
     }
-    return calculateSemesterStats(getDefaultResults());
+    return calculateSemesterStats(getDefaultResults(maxSemester));
   } catch {
-    return calculateSemesterStats(getDefaultResults());
+    return calculateSemesterStats(getDefaultResults(maxSemester));
   }
 };
 
 const hasStoredResults = () => {
   try {
     const key = getUserStorageKey(storageKeyType);
-    return Boolean(key && localStorage.getItem(key));
+    if (key && localStorage.getItem(key)) return true;
+    return getGuestStorageItem(storageKeyType) !== null;
   } catch {
     return false;
   }
@@ -124,21 +143,99 @@ const hasStoredResults = () => {
 
 export default function ResultTable({ onResultsChange }) {
   const { user } = useAuth();
+  const maxSemester = getSemesterCountForDepartment(user?.department);
   const getInitialSem = () => {
     const ysMatch = (user?.yearSemester || '').match(/Year (\d+) - Semester (\d+)/);
-    if (ysMatch) { const y = parseInt(ysMatch[1]), s = parseInt(ysMatch[2]); if (y >= 1 && y <= 4 && s >= 1 && s <= 2) return (y - 1) * 2 + s; }
-    if (user?.semester && user.semester >= 1 && user.semester <= 8) return user.semester;
+    if (ysMatch) { const y = parseInt(ysMatch[1]), s = parseInt(ysMatch[2]); if (y >= 1 && y <= Math.ceil(maxSemester / 2) && s >= 1 && s <= 2) return (y - 1) * 2 + s; }
+    if (user?.semester && user.semester >= 1 && user.semester <= maxSemester) return user.semester;
     return 1;
   };
   const [expandedSemester, setExpandedSemester] = useState(getInitialSem);
-  const [results, setResults] = useState(loadStoredResults);
+  const [results, setResults] = useState(() => loadStoredResults(maxSemester));
   const [draftResults, setDraftResults] = useState(() => cloneResults(results));
   const [editingSemester, setEditingSemester] = useState(null);
-  const [showLoadModal, setShowLoadModal] = useState(false);
-  const [availableTemplates, setAvailableTemplates] = useState([]);
-  const [showTemplateSelectionModal, setShowTemplateSelectionModal] = useState(false);
-  const [selectedSemesterForTemplate, setSelectedSemesterForTemplate] = useState(null);
-  const [templatesForSelection, setTemplatesForSelection] = useState([]);
+  const [showDeptModal, setShowDeptModal] = useState(false);
+  const [selectedDept, setSelectedDept] = useState(null);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const menuRef = useRef(null);
+
+  // Close the ⋮ menu on outside click
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  // Apply one or more curriculum templates to their mapped semesters at once.
+  // targetCountOverride (used for full-curriculum loads) pins the grid to that
+  // department's own semester count — ARCH=10, everyone else=8 — so switching
+  // departments always yields the correct grid. Single-template loads only ever
+  // expand the grid to fit the loaded semester.
+  const applyTemplates = (templatesToApply, targetCountOverride) => {
+    // Map curriculum semester code (1-1, 1-2 ...) to transcript semester number (1..8, ARCH up to 5-2 → 10)
+    const semesterMap = {
+      '1-1': 1, '1-2': 2, '2-1': 3, '2-2': 4,
+      '3-1': 5, '3-2': 6, '4-1': 7, '4-2': 8,
+      '5-1': 9, '5-2': 10
+    };
+
+    // Build a semester number → template courses lookup so multiple
+    // templates (e.g. a full department curriculum) apply in one pass.
+    const coursesBySemester = {};
+    templatesToApply.forEach((template) => {
+      const semNum = semesterMap[template.semester] || 1;
+      coursesBySemester[semNum] = template.courses.map(course => ({
+        code: course.code,
+        name: course.name,
+        credit: getCreditValue(course.credit),
+        grade: '-',
+        point: null,
+      }));
+    });
+
+    // Full-curriculum loads pin the grid to the department's semester count;
+    // single loads expand to fit the loaded semester but never shrink.
+    const mappedSemesters = Object.keys(coursesBySemester).map(Number);
+    const targetCount = targetCountOverride ?? Math.max(results.length, ...mappedSemesters);
+    const baseResults = Array.from({ length: targetCount }, (_, index) => {
+      const semesterNumber = index + 1;
+      return results.find(sem => sem.semester === semesterNumber) ?? createBlankSemester(semesterNumber);
+    });
+
+    // Update every semester that has a matching template, keep others as-is
+    const updatedResults = baseResults.map(sem => {
+      const templateCourses = coursesBySemester[sem.semester];
+      if (!templateCourses) return sem;
+      return {
+        ...sem,
+        courses: sortCourses(templateCourses),
+        year: sem.year,
+      };
+    });
+
+    const calculatedResults = calculateSemesterStats(updatedResults);
+    setResults(calculatedResults);
+    setDraftResults(cloneResults(calculatedResults));
+    setUserStorageItem(storageKeyType, calculatedResults);
+    setEditingSemester(null);
+    syncHeatmapFromTracker();
+    onResultsChange?.(calculatedResults);
+    setShowDeptModal(false);
+    setSelectedDept(null);
+  };
+
+  const handleLoadTemplate = (template) => applyTemplates([template]);
+
+  // Load the complete department curriculum (all semesters) in one click.
+  // Pins the grid to the department's own semester count so ARCH loads 10
+  // semesters (5.1/5.2 visible) while every other department stays at 8.
+  const handleLoadFullCurriculum = (dept) =>
+    applyTemplates(transcriptTemplates[dept] || [], getSemesterCountForDepartment(dept));
   const hasCustomResults = hasStoredResults();
   const inputRefs = useRef({});
 
@@ -175,11 +272,6 @@ export default function ResultTable({ onResultsChange }) {
     }
   };
 
-  useEffect(() => {
-    // Load available templates
-    const templates = loadTemplates();
-    setAvailableTemplates(templates);
-  }, []);
 
   const toggleSemester = (semNum) => {
     setExpandedSemester(expandedSemester === semNum ? null : semNum);
@@ -207,52 +299,14 @@ export default function ResultTable({ onResultsChange }) {
   };
 
   const resetResults = () => {
-    const defaultResults = calculateSemesterStats(getDefaultResults());
+    const defaultResults = calculateSemesterStats(getDefaultResults(maxSemester));
     setResults(defaultResults);
     setDraftResults(cloneResults(defaultResults));
     removeUserStorageItem(storageKeyType);
+    removeGuestStorageItem(storageKeyType);
     setEditingSemester(null);
     syncHeatmapFromTracker();
     onResultsChange?.(defaultResults);
-  };
-
-  const handleLoadTemplate = (template) => {
-    // Find which semester this template is for
-    const semesterMap = {
-      '1-1': 1, '1-2': 2, '2-1': 3, '2-2': 4,
-      '3-1': 5, '3-2': 6, '4-1': 7, '4-2': 8
-    };
-    const semNum = semesterMap[template.semester] || 1;
-
-    // Convert template courses to result format
-    const templateCourses = template.courses.map(course => ({
-      code: course.code,
-      name: course.name,
-      credit: getCreditValue(course.credit),
-      grade: course.grade || '-',
-      point: course.point !== null ? course.point : gradePoints[course.grade || '-'],
-    }));
-
-    // Update the results with template data for the specific semester
-    const updatedResults = results.map(sem => {
-      if (sem.semester === semNum) {
-        return {
-          ...sem,
-          courses: sortCourses(templateCourses),
-          year: template.year || sem.year,
-        };
-      }
-      return sem;
-    });
-
-    const calculatedResults = calculateSemesterStats(updatedResults);
-    setResults(calculatedResults);
-    setDraftResults(cloneResults(calculatedResults));
-    setUserStorageItem(storageKeyType, calculatedResults);
-    setEditingSemester(null);
-    syncHeatmapFromTracker();
-    onResultsChange?.(calculatedResults);
-    setShowLoadModal(false);
   };
 
   const updateCourseField = (semNum, courseIndex, field, value) => {
@@ -363,9 +417,9 @@ export default function ResultTable({ onResultsChange }) {
     const ysMatch = (user?.yearSemester || '').match(/Year (\d+) - Semester (\d+)/);
     if (ysMatch) {
       const y = parseInt(ysMatch[1]), s = parseInt(ysMatch[2]);
-      if (y >= 1 && y <= 4 && s >= 1 && s <= 2) return (y - 1) * 2 + s;
+      if (y >= 1 && y <= Math.ceil(maxSemester / 2) && s >= 1 && s <= 2) return (y - 1) * 2 + s;
     }
-    if (user?.semester && user.semester >= 1 && user.semester <= 8) return user.semester;
+    if (user?.semester && user.semester >= 1 && user.semester <= maxSemester) return user.semester;
     for (let i = results.length - 1; i >= 0; i--) {
       const sem = results[i];
       const hasRealCourses = sem.courses.some(c => c.code && c.code.trim() !== '');
@@ -388,449 +442,462 @@ export default function ResultTable({ onResultsChange }) {
     }
   };
 
-  return (
-    <div className="result-table-container animate-fadeInUp" style={{
-      background: 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)',
-      backdropFilter: 'blur(16px)',
-      WebkitBackdropFilter: 'blur(16px)',
-      border: '1px solid rgba(255,255,255,0.08)',
-      borderRadius: 'var(--radius-xl)',
-      padding: 'var(--sp-5)',
-      boxShadow: '0 4px 28px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.06)',
-    }}>
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 className="section-title" style={{ fontSize: 'var(--fs-lg)', margin: 0 }}>Academic Transcript Breakdown</h2>
-          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>Detailed semester-wise grade sheet breakdown</p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap" style={{ justifyContent: 'flex-end' }}>
-          <button className="btn btn-secondary btn-sm" onClick={exportTranscript}>
-            <FileSpreadsheet size={14} /> Export Transcript
-          </button>
-        </div>
-      </div>
+  // ─── Shared semester-cell renderer — used identically by every semester ───
+  const renderSemesterCard = (sem) => {
+    const displaySemester = editingSemester === sem.semester
+      ? draftResults.find((draftSem) => draftSem.semester === sem.semester) ?? sem
+      : sem;
+    const isExpanded = expandedSemester === sem.semester;
+    const isCurrentSemester = displaySemester.semester === getCurrentSemester();
+    const isEditing = editingSemester === sem.semester;
 
-      <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-        <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 'var(--fw-semibold)', marginRight: '4px' }}>View:</span>
-        {results.map((sem) => {
-          const hasReal = sem.courses.some(c => c.code && c.code.trim() !== '');
-          return (
-            <button key={sem.semester} onClick={() => setExpandedSemester(expandedSemester === sem.semester ? null : sem.semester)}
-              style={{
-                border: 'none', cursor: 'pointer', borderRadius: '6px', padding: '4px 12px',
-                fontSize: '11px', fontWeight: 'bold', whiteSpace: 'nowrap',
-                background: expandedSemester === sem.semester ? 'var(--accent-amber)' : 'rgba(255,255,255,0.04)',
-                color: expandedSemester === sem.semester ? '#0d0d0d' : hasReal ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                opacity: hasReal ? 1 : 0.45,
-                transition: 'all 0.15s'
-              }}>
-              {formatSemesterLabel(sem.semester)}
-            </button>
-          );
-        })}
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {results.map((sem) => {
-          const displaySemester = editingSemester === sem.semester
-            ? draftResults.find((draftSem) => draftSem.semester === sem.semester) ?? sem
-            : sem;
-          const isExpanded = expandedSemester === sem.semester;
-          const isCurrentSemester = displaySemester.semester === getCurrentSemester();
-          const isEditing = editingSemester === sem.semester;
-
-          return (
-            <div 
-              key={sem.semester}
-              style={{
-                border: '1px solid rgba(255,255,255,0.07)',
-                borderRadius: 'var(--radius-lg)',
-                overflow: 'hidden',
-                background: 'rgba(255,255,255,0.02)',
-                transition: 'all var(--transition-base)',
-                boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
-              }}
-            >
-              {/* Semester row header */}
-              <div 
-                onClick={() => toggleSemester(sem.semester)}
-                style={{
-                  padding: '16px 20px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  cursor: 'pointer',
-                  background: isExpanded ? 'rgba(255,255,255,0.04)' : 'transparent',
-                  transition: 'background var(--transition-fast)'
-                }}
-              >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="flex items-center gap-2">
-                    <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'var(--fw-bold)' }}>
-                      {formatSemesterLabel(displaySemester.semester)}
-                    </h3>
-                    {displaySemester.year && (
-                      <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>
-                        Batch {displaySemester.year}
-                      </span>
-                    )}
-                    {isCurrentSemester && (
-                      <span className="badge badge-purple" style={{ fontSize: '8px', padding: '1px 5px' }}>CURRENT SEMESTER</span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-6" style={{ marginRight: '16px' }}>
-                  <div>
-                    <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', textTransform: 'uppercase', display: 'block', textAlign: 'right' }}>SGPA</span>
-                    <span style={{ fontWeight: 'var(--fw-bold)', fontSize: 'var(--fs-sm)', color: 'var(--accent-cyan)' }}>{displaySemester.sgpa ?? '—'}</span>
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', textTransform: 'uppercase', display: 'block', textAlign: 'right' }}>CGPA</span>
-                    <span style={{ fontWeight: 'var(--fw-bold)', fontSize: 'var(--fs-sm)', color: 'var(--accent-amber)' }}>{displaySemester.cgpa ?? '—'}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2" style={{ marginRight: '12px' }} onClick={(event) => event.stopPropagation()}>
-                  {/* Load Template button for this semester */}
-                  {!isEditing && (() => {
-                    const year = Math.ceil(sem.semester / 2);
-                    const half = sem.semester % 2 === 1 ? '1' : '2';
-                    const semCode = `${year}-${half}`;
-                    const matchingTemplates = availableTemplates.filter(t => t.semester === semCode);
-                    return (
-                      <button 
-                        className="btn btn-secondary btn-sm" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (matchingTemplates.length > 0) {
-                            // Show modal to choose template
-                            setSelectedSemesterForTemplate(sem.semester);
-                            setTemplatesForSelection(matchingTemplates);
-                            setShowTemplateSelectionModal(true);
-                          } else {
-                            alert(`No template available for ${formatSemesterLabel(sem.semester)}. Admin needs to create one.`);
-                          }
-                        }}
-                        title={`Load template for ${formatSemesterLabel(sem.semester)}`}
-                        style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
-                        disabled={matchingTemplates.length === 0}
-                      >
-                        <Download size={12} /> Load Template
-                      </button>
-                    );
-                  })()}
-                  {/* Reset button for this semester */}
-                  {!isEditing && (
-                    <button 
-                      className="btn btn-secondary btn-sm" 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Reset this semester to blank state directly without confirmation popup
-                        const updatedResults = results.map(s => {
-                          if (s.semester === sem.semester) {
-                            return {
-                              ...s,
-                              courses: [{ code: '', name: '', credit: 3, grade: '-', point: null }],
-                              year: ''
-                            };
-                          }
-                          return s;
-                        });
-                        const calculatedResults = calculateSemesterStats(updatedResults);
-                        setResults(calculatedResults);
-                        setDraftResults(cloneResults(calculatedResults));
-                        setUserStorageItem(storageKeyType, calculatedResults);
-                        syncHeatmapFromTracker();
-                        onResultsChange?.(calculatedResults);
-                      }}
-                      title={`Reset ${formatSemesterLabel(sem.semester)}`}
-                      style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
-                    >
-                      <RotateCcw size={12} /> Reset
-                    </button>
-                  )}
-                  {isEditing ? (
-                    <>
-                      <button className="btn btn-primary btn-sm" onClick={saveEditing}>
-                        <Check size={14} /> Save
-                      </button>
-                      <button className="btn btn-secondary btn-sm" onClick={cancelEditing}>
-                        <X size={14} /> Cancel
-                      </button>
-                    </>
-                  ) : (
-                    <button className="btn btn-secondary btn-sm" onClick={() => startEditing(sem.semester)}>
-                      <Pencil size={14} /> Edit
-                    </button>
-                  )}
-                </div>
-                {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-              </div>
-
-              {/* Collapsed table details */}
-              {isExpanded && (
-                <div className="animate-fadeIn" style={{ borderTop: '1px solid rgba(255,255,255,0.07)', padding: '16px 20px', background: 'rgba(255,255,255,0.015)' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--fs-sm)' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', textAlign: 'left' }}>
-                        <th style={{ padding: '8px', color: 'var(--text-tertiary)', fontWeight: 'var(--fw-semibold)' }}>Course Code</th>
-                        <th style={{ padding: '8px', color: 'var(--text-tertiary)', fontWeight: 'var(--fw-semibold)' }}>Course Title</th>
-                        <th style={{ padding: '8px', color: 'var(--text-tertiary)', fontWeight: 'var(--fw-semibold)', textAlign: 'center' }}>Credits</th>
-                        <th style={{ padding: '8px', color: 'var(--text-tertiary)', fontWeight: 'var(--fw-semibold)', textAlign: 'center' }}>Grade</th>
-                        <th style={{ padding: '8px', color: 'var(--text-tertiary)', fontWeight: 'var(--fw-semibold)', textAlign: 'center' }}>GPA</th>
-                        {isEditing && (
-                          <th style={{ width: '52px', padding: '8px', color: 'var(--text-tertiary)', fontWeight: 'var(--fw-semibold)', textAlign: 'center' }}>Action</th>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {displaySemester.courses.map((course, courseIndex) => (
-                        <tr key={`${displaySemester.semester}-${courseIndex}`} style={{ borderBottom: '1px solid var(--border-secondary)' }}>
-                          <td style={{ padding: '12px 8px', fontWeight: 'var(--fw-semibold)', position: 'relative', overflow: 'visible', zIndex: 1000 }}>
-                            {isEditing ? (
-                              <div style={{ position: 'relative', zIndex: 10001 }}>
-                                <CourseAutocomplete
-                                  value={course.code}
-                                  department={user?.department}
-                                  onCourseSelect={(selectedCourse) => {
-                                    updateCourseField(displaySemester.semester, courseIndex, 'code', selectedCourse.code);
-                                    updateCourseField(displaySemester.semester, courseIndex, 'name', selectedCourse.name);
-                                    // Auto-fill credit based on last digit of course code
-                                    // Odd digit (1,3,5,7,9) = 3 credits, Even digit (0,2,4,6,8) = 1.5 credits
-                                    const lastDigit = parseInt(selectedCourse.code.slice(-1));
-                                    if (!isNaN(lastDigit)) {
-                                      const autoCredit = lastDigit % 2 === 1 ? 3 : 1.5;
-                                      updateCourseField(displaySemester.semester, courseIndex, 'credit', autoCredit.toString());
-                                    }
-                                  }}
-                                  placeholder="CSE 4201"
-                                  type="code"
-                                />
-                              </div>
-                            ) : (
-                              course.code || '-'
-                            )}
-                          </td>
-                          <td style={{ padding: '12px 8px', color: 'var(--text-secondary)' }}>
-                            {isEditing ? (
-                              <input
-                                ref={el => inputRefs.current[`r_${displaySemester.semester}_${courseIndex}_0`] = el}
-                                className="input"
-                                value={course.name}
-                                onChange={(event) => updateCourseField(displaySemester.semester, courseIndex, 'name', event.target.value)}
-                                placeholder="Course title"
-                                style={{ minWidth: '220px' }}
-                                onKeyDown={e => handleKeyDown(e, displaySemester.semester, courseIndex, 0)}
-                              />
-                            ) : (
-                              course.name
-                            )}
-                          </td>
-                          <td style={{ padding: '12px 8px', textAlign: 'center' }}>
-                            {isEditing ? (
-                              <input
-                                ref={el => inputRefs.current[`r_${displaySemester.semester}_${courseIndex}_1`] = el}
-                                className="input"
-                                type="number"
-                                min="0"
-                                step="0.5"
-                                value={course.credit}
-                                onChange={(event) => updateCourseField(displaySemester.semester, courseIndex, 'credit', event.target.value)}
-                                style={{ width: '82px', margin: '0 auto', textAlign: 'center' }}
-                                onKeyDown={e => handleKeyDown(e, displaySemester.semester, courseIndex, 1)}
-                              />
-                            ) : (
-                              formatCredit(course.credit)
-                            )}
-                          </td>
-                          <td style={{ padding: '12px 8px', textAlign: 'center' }}>
-                            {isEditing ? (
-                              <select
-                                ref={el => inputRefs.current[`r_${displaySemester.semester}_${courseIndex}_2`] = el}
-                                className="input"
-                                value={course.grade}
-                                onChange={(event) => updateCourseField(displaySemester.semester, courseIndex, 'grade', event.target.value)}
-                                style={{ width: '76px', padding: '5px 8px', textAlign: 'center', margin: '0 auto' }}
-                                onKeyDown={e => handleKeyDown(e, displaySemester.semester, courseIndex, 2)}
-                              >
-                                {gradeOptions.map((grade) => (
-                                  <option key={grade} value={grade}>{grade}</option>
-                                ))}
-                              </select>
-                            ) : (
-                              <span className={`badge ${getGradeColor(course.grade)}`} style={{ padding: '3px 10px', minWidth: '40px', textAlign: 'center', justifyContent: 'center', fontWeight: '700', letterSpacing: '0.03em' }}>
-                                {course.grade}
-                              </span>
-                            )}
-                          </td>
-                          <td style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 'var(--fw-semibold)' }}>
-                            {course.point !== null ? course.point.toFixed(2) : '-'}
-                          </td>
-                          {isEditing && (
-                            <td style={{ padding: '12px 8px', textAlign: 'center' }}>
-                              <button
-                                className="btn btn-secondary btn-icon"
-                                onClick={() => removeCourse(displaySemester.semester, courseIndex)}
-                                disabled={displaySemester.courses.length === 1}
-                                title="Remove course"
-                                style={{ width: '30px', height: '30px', opacity: displaySemester.courses.length === 1 ? 0.45 : 1 }}
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </td>
-                          )}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '24px', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                    <div style={{ textAlign: 'right' }}>
-                      <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', textTransform: 'uppercase', display: 'block', fontWeight: 'var(--fw-semibold)' }}>SGPA</span>
-                      <span style={{ fontWeight: 'var(--fw-bold)', fontSize: 'var(--fs-sm)', color: 'var(--accent-cyan)' }}>{displaySemester.sgpa ?? '—'}</span>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', textTransform: 'uppercase', display: 'block', fontWeight: 'var(--fw-semibold)' }}>CGPA</span>
-                      <span style={{ fontWeight: 'var(--fw-bold)', fontSize: 'var(--fs-sm)', color: 'var(--accent-amber)' }}>{displaySemester.cgpa ?? '—'}</span>
-                    </div>
-                  </div>
-                  {isEditing && (
-                    <div className="flex justify-between items-center" style={{ marginTop: '12px' }}>
-                      <button className="btn btn-secondary btn-sm" onClick={() => addCourse(displaySemester.semester)}>
-                        <Plus size={14} /> Add Course
-                      </button>
-                    </div>
-                  )}
-                </div>
+    return (
+      <div
+        key={sem.semester}
+        className={`schedule-day-card cgpa-sem-card${isCurrentSemester ? ' today' : ''}`}
+        onClick={() => toggleSemester(sem.semester)}
+      >
+        {/* Card header */}
+        <div className="cgpa-sem-head">
+          <div className="cgpa-sem-head-main">
+            <div className="cgpa-sem-title">
+              <span className="cgpa-sem-code" style={{ color: 'var(--accent-blue)' }}>{formatSemesterLabel(sem.semester)}</span>
+              {displaySemester.year && <span className="cgpa-sem-year">Batch {displaySemester.year}</span>}
+              {isCurrentSemester && <span className="cgpa-sem-current">CURRENT SEMESTER</span>}
+            </div>
+          </div>
+          <div className="cgpa-sem-metrics">
+            <div className="cgpa-sem-metric">
+              <span>SGPA</span>
+              <b style={{ color: 'var(--accent-cyan)' }}>{displaySemester.sgpa ?? '—'}</b>
+            </div>
+            <div className="cgpa-sem-metric">
+              <span>CGPA</span>
+              <b style={{ color: 'var(--accent-amber)' }}>{displaySemester.cgpa ?? '—'}</b>
+            </div>
+          </div>
+          <div className="cgpa-sem-head-side">
+            <div className="cgpa-sem-actions" onClick={(event) => event.stopPropagation()}>
+              {!isEditing && (
+                <button
+                  className="schedule-nav-btn"
+                  onClick={() => {
+                    const updatedResults = results.map(s => {
+                      if (s.semester === sem.semester) {
+                        return {
+                          ...s,
+                          courses: [{ code: '', name: '', credit: 3, grade: '-', point: null }],
+                          year: ''
+                        };
+                      }
+                      return s;
+                    });
+                    const calculatedResults = calculateSemesterStats(updatedResults);
+                    setResults(calculatedResults);
+                    setDraftResults(cloneResults(calculatedResults));
+                    setUserStorageItem(storageKeyType, calculatedResults);
+                    syncHeatmapFromTracker();
+                    onResultsChange?.(calculatedResults);
+                  }}
+                  title={`Reset ${formatSemesterLabel(sem.semester)}`}
+                >
+                  <RotateCcw size={14} />
+                </button>
+              )}
+              {isEditing ? (
+                <>
+                  <button className="btn btn-primary btn-sm" onClick={saveEditing}>
+                    <Check size={14} /> Save
+                  </button>
+                  <button className="btn btn-secondary btn-sm" onClick={cancelEditing}>
+                    <X size={14} /> Cancel
+                  </button>
+                </>
+              ) : (
+                <button className="btn btn-secondary btn-sm" onClick={() => startEditing(sem.semester)}>
+                  <Pencil size={14} /> Edit
+                </button>
               )}
             </div>
-          );
-        })}
+          </div>
+        </div>
+
+        {/* Collapsed/expanded details */}
+        {isExpanded && (
+          <div className="cgpa-sem-body" onClick={(event) => event.stopPropagation()}>
+            <table className="cgpa-sem-table">
+              <thead>
+                <tr>
+                  <th>Course Code</th>
+                  <th>Course Title</th>
+                  <th style={{ textAlign: 'center' }}>Credits</th>
+                  <th style={{ textAlign: 'center' }}>Grade</th>
+                  <th style={{ textAlign: 'center' }}>GPA</th>
+                  {isEditing && <th style={{ width: '52px', textAlign: 'center' }}>Action</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {displaySemester.courses.map((course, courseIndex) => (
+                  <tr
+                    key={`${displaySemester.semester}-${courseIndex}`}
+                    className="cgpa-course-row"
+                  >
+                    <td style={{ fontWeight: 'var(--fw-semibold)', position: 'relative', zIndex: 1000 }}>
+                      {isEditing ? (
+                        <div style={{ position: 'relative', zIndex: 10001 }}>
+                          <CourseAutocomplete
+                            value={course.code}
+                            department={user?.department}
+                            onCourseSelect={(selectedCourse) => {
+                              updateCourseField(displaySemester.semester, courseIndex, 'code', selectedCourse.code);
+                              updateCourseField(displaySemester.semester, courseIndex, 'name', selectedCourse.name);
+                              // Auto-fill credit based on last digit of course code
+                              // Odd digit (1,3,5,7,9) = 3 credits, Even digit (0,2,4,6,8) = 1.5 credits
+                              const lastDigit = parseInt(selectedCourse.code.slice(-1));
+                              if (!isNaN(lastDigit)) {
+                                const autoCredit = lastDigit % 2 === 1 ? 3 : 1.5;
+                                updateCourseField(displaySemester.semester, courseIndex, 'credit', autoCredit.toString());
+                              }
+                            }}
+                            placeholder="CSE 4201"
+                            type="code"
+                          />
+                        </div>
+                      ) : (
+                        <span style={{ color: 'var(--accent-blue)', fontWeight: 'var(--fw-bold)' }}>{course.code || '-'}</span>
+                      )}
+                    </td>
+                    <td className="cgpa-course-name">
+                      {isEditing ? (
+                        <input
+                          ref={el => inputRefs.current[`r_${displaySemester.semester}_${courseIndex}_0`] = el}
+                          className="input"
+                          value={course.name}
+                          onChange={(event) => updateCourseField(displaySemester.semester, courseIndex, 'name', event.target.value)}
+                          placeholder="Course title"
+                          style={{ minWidth: '220px' }}
+                          onKeyDown={e => handleKeyDown(e, displaySemester.semester, courseIndex, 0)}
+                        />
+                      ) : (
+                        course.name
+                      )}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      {isEditing ? (
+                        <input
+                          ref={el => inputRefs.current[`r_${displaySemester.semester}_${courseIndex}_1`] = el}
+                          className="input cgpa-credit-input"
+                          type="number"
+                          min="0"
+                          step="0.5"
+                          value={course.credit}
+                          onChange={(event) => updateCourseField(displaySemester.semester, courseIndex, 'credit', event.target.value)}
+                          style={{ width: '82px', margin: '0 auto', textAlign: 'center' }}
+                          onKeyDown={e => handleKeyDown(e, displaySemester.semester, courseIndex, 1)}
+                        />
+                      ) : (
+                        formatCredit(course.credit)
+                      )}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      {isEditing ? (
+                        <select
+                          ref={el => inputRefs.current[`r_${displaySemester.semester}_${courseIndex}_2`] = el}
+                          className="input cgpa-grade-select"
+                          value={course.grade}
+                          onChange={(event) => updateCourseField(displaySemester.semester, courseIndex, 'grade', event.target.value)}
+                          style={{ width: '76px', padding: '5px 8px', textAlign: 'center', margin: '0 auto' }}
+                          onKeyDown={e => handleKeyDown(e, displaySemester.semester, courseIndex, 2)}
+                        >
+                          {gradeOptions.map((grade) => (
+                            <option key={grade} value={grade}>{grade}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className={`badge ${getGradeColor(course.grade)}`} style={{ padding: '3px 10px', minWidth: '40px', textAlign: 'center', justifyContent: 'center', fontWeight: '700', letterSpacing: '0.03em' }}>
+                          {course.grade}
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ textAlign: 'center', fontWeight: 'var(--fw-semibold)' }}>
+                      {course.point !== null ? course.point.toFixed(2) : '-'}
+                    </td>
+                    {isEditing && (
+                      <td style={{ textAlign: 'center' }}>
+                        <button
+                          className="btn btn-secondary btn-icon"
+                          onClick={() => removeCourse(displaySemester.semester, courseIndex)}
+                          disabled={displaySemester.courses.length === 1}
+                          title="Remove course"
+                          style={{ width: '30px', height: '30px', opacity: displaySemester.courses.length === 1 ? 0.45 : 1 }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {isEditing && (
+              <div className="cgpa-sem-foot">
+                <button className="btn btn-secondary btn-sm" onClick={() => addCourse(displaySemester.semester)}>
+                  <Plus size={14} /> Add Course
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+    );
+  };
 
-      {/* Template Selection Modal */}
-      {showTemplateSelectionModal && (
-        <div className="modal-overlay" onClick={() => setShowTemplateSelectionModal(false)}>
-          <div className="modal glass-card-static" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px', maxHeight: '70vh', overflowY: 'auto' }}>
-            <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', margin: '0 0 16px' }}>
-              Select Template for {formatSemesterLabel(selectedSemesterForTemplate)}
-            </h3>
-            <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-              Choose a template to load courses for this semester.
-            </p>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {templatesForSelection.map(template => (
-                <div 
-                  key={template.id}
-                  style={{
-                    padding: '12px',
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid var(--border-primary)',
-                    borderRadius: 'var(--radius-md)',
-                    cursor: 'pointer',
-                    transition: 'all var(--transition-fast)'
-                  }}
-                  onClick={() => {
-                    handleLoadTemplate(template);
-                    setShowTemplateSelectionModal(false);
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--accent-amber)';
-                    e.currentTarget.style.background = 'color-mix(in srgb, var(--accent-amber) 8%, transparent)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border-primary)';
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-                  }}
-                >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', margin: 0 }}>{template.name}</h4>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="badge badge-blue" style={{ fontSize: '8px', padding: '1px 4px' }}>{template.department}</span>
-                        <span style={{ fontSize: '9px', color: 'var(--text-tertiary)' }}>{template.year}</span>
-                        <span style={{ fontSize: '9px', color: 'var(--text-tertiary)' }}>{template.courses.length} courses</span>
-                      </div>
-                    </div>
-                    <div style={{ fontSize: '9px', color: 'var(--accent-amber)' }}>
-                      Click to load
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--border-secondary)' }}>
-              <button className="btn btn-secondary btn-sm" onClick={() => setShowTemplateSelectionModal(false)} style={{ width: '100%' }}>
-                Cancel
+  return (
+    <div className="cgpa-transcript">
+      {/* Section head — title + ⋮ menu (matches CGPA Bol masthead) */}
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <FileSpreadsheet size={20} strokeWidth={2.2} />
+          </div>
+          <div>
+            <span className="schedule-overline">Transcript</span>
+            <p className="schedule-title">Semester Breakdown</p>
+            <span className="schedule-subtitle">Detailed semester-wise grade sheet breakdown</span>
+          </div>
+        </div>
+        <div className="schedule-masthead-center" />
+        <div className="export-dropdown" ref={menuRef}>
+          <button className="schedule-nav-btn cgpa-more-btn" onClick={() => setShowMenu((v) => !v)} aria-label="More options" aria-haspopup="true">
+            <MoreVertical size={18} />
+          </button>
+          {showMenu && (
+            <div className="export-menu">
+              <button
+                className="export-menu-item"
+                onClick={() => { setShowMenu(false); setShowDeptModal(true); }}
+              >
+                <Layers size={14} /> Load Template
+              </button>
+              <button
+                className="export-menu-item"
+                onClick={() => { setShowMenu(false); exportTranscript(); }}
+              >
+                <FileDown size={14} /> Export Transcript PDF
+              </button>
+              <div className="export-menu-sep" />
+              <button
+                className="export-menu-item export-menu-item-danger"
+                onClick={() => { setShowMenu(false); setShowResetConfirm(true); }}
+              >
+                <RotateCcw size={14} /> Reset All
               </button>
             </div>
+          )}
+        </div>
+      </div>
+
+      <div className="schedule-dotted-divider" />
+
+      {/* Semester cells */}
+      <div className="cgpa-sem-list">
+        {results.map(renderSemesterCard)}
+      </div>
+
+      {/* Load Template — Department Picker Modal */}
+      {showDeptModal && (
+        <div className="modal-overlay" onClick={() => { setShowDeptModal(false); setSelectedDept(null); }}>
+          <div className="modal glass-card-static" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '620px', maxHeight: '75vh', overflowY: 'auto' }}>
+            <div className="flex justify-between items-center" style={{ marginBottom: '14px' }}>
+              <div>
+                <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', margin: 0 }}>
+                  {selectedDept ? `${DEPT_FULL_NAMES[selectedDept] || selectedDept}` : 'Load Transcript Template'}
+                </h3>
+                <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
+                  {selectedDept
+                    ? `Choose a semester template for ${selectedDept}.`
+                    : 'Select your department to load the standard course template.'}
+                </p>
+              </div>
+              <button
+                className="btn btn-icon"
+                onClick={() => { setShowDeptModal(false); setSelectedDept(null); }}
+                style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-tertiary)' }}
+                aria-label="Close"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {!selectedDept ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '10px' }}>
+                {TRANSCRIPT_DEPARTMENTS.map(dept => (
+                  <button
+                    key={dept}
+                    className="btn btn-secondary"
+                    onClick={() => setSelectedDept(dept)}
+                    style={{
+                      padding: '18px 12px',
+                      fontSize: 'var(--fs-sm)',
+                      fontWeight: 'bold',
+                      letterSpacing: '0.04em',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <span style={{ fontSize: 'var(--fs-md)' }}>{dept}</span>
+                    <span style={{ fontSize: '10px', fontWeight: 'normal', opacity: 0.7, lineHeight: 1.3 }}>
+                      {DEPT_FULL_NAMES[dept]}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : (transcriptTemplates[selectedDept] || []).length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '48px 20px' }}>
+                <div
+                  style={{
+                    fontSize: 'var(--fs-lg)',
+                    fontWeight: 'bold',
+                    color: 'var(--accent-cyan)',
+                    marginBottom: '8px',
+                  }}
+                >
+                  {selectedDept}
+                </div>
+                <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: '0 0 4px' }}>
+                  Templates for {selectedDept} are coming soon.
+                </p>
+                <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', margin: 0 }}>
+                  The department curriculum template will appear here.
+                </p>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setSelectedDept(null)}
+                  style={{ marginTop: '20px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <ChevronLeft size={14} /> Back to departments
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {/* Load entire department curriculum at once */}
+                <button
+                  className="btn btn-primary"
+                  onClick={() => handleLoadFullCurriculum(selectedDept)}
+                  style={{
+                    padding: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    textAlign: 'left',
+                    width: '100%',
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 'bold', fontSize: 'var(--fs-sm)' }}>Load Full Curriculum</div>
+                    <div style={{ fontSize: '10px', opacity: 0.75, marginTop: '2px' }}>
+                      All {(transcriptTemplates[selectedDept] || []).length} semesters of {selectedDept} in one go
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                    <span style={{ fontSize: '11px', fontWeight: 'bold' }}>
+                      {(transcriptTemplates[selectedDept] || []).reduce((sum, t) => sum + getTemplateCredits(t), 0)} cr total
+                    </span>
+                    <ChevronRight size={16} />
+                  </div>
+                </button>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '4px 0' }}>
+                  <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
+                  <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    or load a single semester
+                  </span>
+                  <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
+                </div>
+
+                {(transcriptTemplates[selectedDept] || []).map(template => (
+                  <button
+                    key={template.semester}
+                    className="btn btn-secondary"
+                    onClick={() => handleLoadTemplate(template)}
+                    style={{
+                      padding: '14px 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '12px',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 'bold', fontSize: 'var(--fs-sm)' }}>{template.label}</div>
+                      <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                        {template.courses.length} courses
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                      <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--accent-amber)' }}>
+                        {getTemplateCredits(template)} cr
+                      </span>
+                      <ChevronRight size={16} style={{ color: 'var(--text-tertiary)' }} />
+                    </div>
+                  </button>
+                ))}
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setSelectedDept(null)}
+                  style={{ marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <ChevronLeft size={14} /> Back to departments
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Load Template Modal */}
-      {showLoadModal && (
-        <div className="modal-overlay" onClick={() => setShowLoadModal(false)}>
-          <div className="modal glass-card-static" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px', maxHeight: '70vh', overflowY: 'auto' }}>
-            <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', margin: '0 0 16px' }}>Load Transcript Template</h3>
-            <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-              Select a template to quickly populate your transcript with standard courses for a semester.
-            </p>
-            
-            {availableTemplates.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-tertiary)' }}>
-                No templates available
+      {/* Reset All — Confirmation Modal */}
+      {showResetConfirm && (
+        <div className="modal-overlay" onClick={() => setShowResetConfirm(false)}>
+          <div className="modal glass-card-static" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px', textAlign: 'center' }}>
+            <div style={{ marginBottom: '12px' }}>
+              <div
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  margin: '0 auto 12px',
+                  borderRadius: 'var(--radius-md)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'var(--accent-rose-glow)',
+                  color: 'var(--accent-rose)',
+                }}
+              >
+                <RotateCcw size={22} />
               </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {availableTemplates.map(template => (
-                  <div 
-                    key={template.id}
-                    style={{
-                      padding: '12px',
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid var(--border-primary)',
-                      borderRadius: 'var(--radius-md)',
-                      cursor: 'pointer',
-                      transition: 'all var(--transition-fast)'
-                    }}
-                    onClick={() => handleLoadTemplate(template)}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--accent-amber)';
-                      e.currentTarget.style.background = 'color-mix(in srgb, var(--accent-amber) 8%, transparent)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--border-primary)';
-                      e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-                    }}
-                  >
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', margin: 0 }}>{template.name}</h4>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="badge badge-blue" style={{ fontSize: '8px', padding: '1px 4px' }}>{template.department}</span>
-                          <span className="badge badge-purple" style={{ fontSize: '8px', padding: '1px 4px' }}>Sem {template.semester}</span>
-                          <span style={{ fontSize: '9px', color: 'var(--text-tertiary)' }}>{template.year}</span>
-                        </div>
-                      </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
-                            {template.courses.length} courses
-                          </span>
-                          <div style={{ fontSize: '9px', color: 'var(--accent-amber)', marginTop: '2px' }}>
-                            Click to load
-                          </div>
-                        </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--border-secondary)' }}>
-              <button className="btn btn-secondary btn-sm" onClick={() => setShowLoadModal(false)} style={{ width: '100%' }}>
+              <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', margin: 0 }}>Reset All Grades?</h3>
+              <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: '8px 0 0', lineHeight: 1.5 }}>
+                All {maxSemester} semesters of course data, SGPA &amp; CGPA will be permanently cleared. This cannot be undone.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              <button className="btn btn-secondary" onClick={() => setShowResetConfirm(false)} style={{ flex: 1 }}>
                 Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  setShowResetConfirm(false);
+                  resetResults();
+                }}
+                style={{ flex: 1, background: 'var(--accent-rose)', borderColor: 'var(--accent-rose)' }}
+              >
+                Reset All
               </button>
             </div>
           </div>

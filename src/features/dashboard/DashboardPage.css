@@ -1634,6 +1634,48 @@
   max-width: 240px;
 }
 
+/* ─── Load Routine primary button (flat, no animation/glow) ─── */
+.load-routine-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  white-space: nowrap;
+  line-height: 1;
+  min-width: 132px;
+  padding: 9px 16px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent-amber) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 38%, var(--border-primary));
+  color: var(--accent-amber);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-sm);
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  /* Override base .btn transition so no motion remains */
+  transition: none;
+}
+
+.load-routine-btn:hover {
+  border-color: color-mix(in srgb, var(--accent-amber) 60%, var(--border-primary));
+  background: color-mix(in srgb, var(--accent-amber) 18%, transparent);
+}
+
+.load-routine-btn:active {
+  background: color-mix(in srgb, var(--accent-amber) 24%, transparent);
+  /* Override base .btn:active scale so there's no press animation */
+  transform: none;
+}
+
+.load-routine-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-amber) 60%, transparent);
+  outline-offset: 2px;
+}
+
+.load-routine-btn > svg {
+  flex-shrink: 0;
+}
+
 .weekly-table-wrap {
   width: 100%;
   max-width: 100%;
@@ -2966,6 +3008,18 @@
 .schedule-icon-tile svg {
   filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-blue) 35%, transparent));
 }
+
+/* Widget masthead icons mirror their matching GliderTab accent color */
+.quick-stats-widget .schedule-icon-tile { background: var(--accent-blue-glow); color: var(--accent-blue); }
+.weekly-planner .schedule-icon-tile { background: var(--accent-cyan-glow); color: var(--accent-cyan); }
+.week-schedule-widget .schedule-icon-tile { background: var(--accent-purple-glow); color: var(--accent-purple); }
+.exam-widget .schedule-icon-tile { background: var(--accent-amber-glow); color: var(--accent-amber); }
+.attendance-tracker-widget .schedule-icon-tile { background: var(--accent-emerald-glow); color: var(--accent-emerald); }
+.quick-stats-widget .schedule-icon-tile svg { filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-blue) 35%, transparent)); }
+.weekly-planner .schedule-icon-tile svg { filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-cyan) 35%, transparent)); }
+.week-schedule-widget .schedule-icon-tile svg { filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-purple) 35%, transparent)); }
+.exam-widget .schedule-icon-tile svg { filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-amber) 35%, transparent)); }
+.attendance-tracker-widget .schedule-icon-tile svg { filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-emerald) 35%, transparent)); }
 .schedule-overline {
   font-size: 9px;
   font-weight: var(--fw-bold);

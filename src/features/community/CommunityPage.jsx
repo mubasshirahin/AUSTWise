@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Users, Building2, GraduationCap, MessageCircle, UserPlus } from 'lucide-react';
 import AlumniDirectory from './AlumniDirectory';
 import ClubPortal from './ClubPortal';
 import StudentDirectory from './StudentDirectory';
 import MentorRequests from './MentorRequests';
 import GliderTabs from '../../components/GliderTabs';
+import '../../components/PageHero.css';
 import './CommunityPage.css';
 
 const COMMUNITY_TAB_KEY = 'aust-community-active-tab';
@@ -38,17 +39,17 @@ export default function CommunityPage() {
 
   return (
     <div className="community-page animate-fadeIn">
-      <header className="community-hero">
-        <div className="community-hero-content">
-          <div className="community-hero-title-row">
-            <div className="community-hero-icon">
+      <header className="page-hero">
+        <div className="page-hero-content">
+          <div className="page-hero-title-row">
+            <div className="page-hero-icon">
               <MessageCircle size={24} />
             </div>
             <div>
-              <h1 className="community-hero-title">
-                <span className="community-hero-title-highlight">Community</span>
+              <h1 className="page-hero-title">
+                <span className="page-hero-title-highlight">Community</span>
               </h1>
-               <p className="community-hero-subtitle">
+               <p className="page-hero-subtitle">
                  Connect with alumni networks, join student clubs, find classmates, and request mentors.
                </p>
             </div>

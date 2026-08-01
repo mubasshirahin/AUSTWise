@@ -1,29 +1,52 @@
-.aust-bhara-page { max-width: 1100px; margin: 0 auto; padding: var(--sp-4); --page-hero-icon-bg: var(--accent-emerald-glow); --page-hero-icon-color: var(--accent-emerald); --page-hero-gradient-start: var(--accent-emerald); }
-.ab-hero { position: relative; border-radius: var(--radius-xl); border: 1px solid var(--border-primary); background: var(--bg-card); overflow: hidden; box-shadow: 0 1px 0 0 rgba(255,255,255,0.04) inset, var(--shadow-md); animation: gradeHeroIn 0.55s cubic-bezier(0.4, 0, 0.2, 1) both; transition: border-color 0.3s ease, box-shadow 0.3s ease; }
-.ab-hero:hover { border-color: color-mix(in srgb, var(--accent-emerald) 30%, var(--border-primary)); box-shadow: 0 1px 0 0 rgba(255,255,255,0.06) inset, 0 0 0 1px color-mix(in srgb, var(--accent-emerald) 10%, transparent), 0 8px 40px -8px color-mix(in srgb, var(--accent-emerald) 12%, transparent), var(--shadow-lg); }
-.ab-hero-bg { position: absolute; inset: 0; pointer-events: none; }
-.ab-hero-grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px); background-size: 40px 40px; mask-image: linear-gradient(135deg, black 0%, transparent 70%); }
-.ab-hero-orb { position: absolute; border-radius: 50%; filter: blur(72px); animation: gradeFloat 10s ease-in-out infinite; }
-.ab-hero-orb-1 { width: 220px; height: 220px; top: -80px; right: -40px; background: radial-gradient(circle, rgba(52,211,153,0.12) 0%, transparent 70%); }
-.ab-hero-orb-2 { width: 160px; height: 160px; bottom: -60px; left: 8%; background: radial-gradient(circle, rgba(167,139,250,0.08) 0%, transparent 70%); animation-delay: -4s; }
-.ab-hero-shimmer { position: absolute; top: 0; left: -100%; width: 60%; height: 1px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent-emerald) 40%, transparent), transparent); animation: heroShimmer 4s ease-in-out infinite 1s; }
-.ab-hero-content { position: relative; padding: var(--sp-5) var(--sp-6); z-index: 1; display: flex; flex-direction: column; gap: var(--sp-3); }
-.ab-hero-title-row { display: flex; align-items: center; gap: var(--sp-4); flex-wrap: wrap; }
-.ab-hero-icon { width: 34px; height: 34px; min-width: 34px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--accent-emerald) 14%, transparent); border: 1px solid color-mix(in srgb, var(--accent-emerald) 22%, transparent); color: var(--accent-emerald); transition: transform 0.3s ease, box-shadow 0.3s ease; }
-.ab-hero:hover .ab-hero-icon { transform: rotate(-6deg) scale(1.08); box-shadow: 0 0 14px color-mix(in srgb, var(--accent-emerald) 30%, transparent); }
-.ab-hero-title { font-size: clamp(1.6rem, 3.5vw, 2.4rem); font-weight: 800; letter-spacing: -0.035em; line-height: 1.12; margin: 0 0 var(--sp-1); color: var(--text-primary); }
-.ab-hero-name { display: inline-block; background: linear-gradient(135deg, var(--accent-emerald) 0%, var(--accent-cyan) 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; filter: brightness(1.05); transition: filter 0.3s ease; }
-.ab-hero:hover .ab-hero-name { filter: brightness(1.15) drop-shadow(0 0 12px color-mix(in srgb, var(--accent-emerald) 40%, transparent)); }
-.ab-hero-subtitle { font-size: var(--fs-sm); font-weight: var(--fw-regular); color: var(--text-secondary); margin: 0; max-width: 440px; line-height: 1.6; }
+/* ═══════════════════════════════════════════════════════════════
+   BHARA KOTO — Semester View design language
+   (shared masthead/cells come from SemesterViewWidget.css)
+   ═══════════════════════════════════════════════════════════════ */
 
-.ab-coming-soon { margin-top: var(--sp-6); display: flex; justify-content: center; }
-.ab-cs-card { background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%); border: 1px solid rgba(255,255,255,0.07); border-radius: var(--radius-xl); padding: var(--sp-8) var(--sp-6); text-align: center; max-width: 520px; box-shadow: 0 4px 24px rgba(0,0,0,0.14); display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); color: var(--text-secondary); animation: dash-enter 0.5s cubic-bezier(0.22,1,0.36,1) 0.15s both; }
-.ab-cs-card svg { color: var(--accent-emerald); opacity: 0.5; }
-.ab-cs-card h2 { font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--text-primary); margin: 0; }
-.ab-cs-card p { max-width: 380px; line-height: 1.6; margin: 0; }
+.bhara-widget {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-bottom: var(--sp-10);
+}
 
-.ab-feature-pills { display: flex; gap: var(--sp-2); flex-wrap: wrap; justify-content: center; margin-top: var(--sp-2); }
-.ab-feature-pills span { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: var(--radius-full); font-size: var(--fs-xs); font-weight: var(--fw-medium); border: 1px solid color-mix(in srgb, var(--accent-emerald) 20%, transparent); background: color-mix(in srgb, var(--accent-emerald) 6%, transparent); color: var(--accent-emerald); }
+/* ── Icon tile tinted amber for the fee/payment context ── */
+.bhara-widget .bhara-icon-tile {
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
+}
 
-@media (max-width: 768px) { .ab-hero-content { padding: var(--sp-4); } .ab-hero-title { font-size: clamp(1.3rem, 6vw, 1.8rem); } .ab-hero-title-row { flex-direction: column; gap: var(--sp-3); } }
-@media (max-width: 480px) { .ab-hero-content { padding: var(--sp-4) var(--sp-3); } .ab-cs-card { padding: var(--sp-5) var(--sp-4); } }
+.bhara-widget .bhara-icon-tile svg {
+  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-amber) 35%, transparent));
+}
+
+/* ── Coming-soon badge in stats ── */
+.bhara-cs-badge {
+  font-size: var(--fs-xs);
+  color: var(--accent-amber);
+  background: var(--accent-amber-glow);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 25%, transparent);
+  border-radius: var(--radius-full);
+  padding: 2px 10px;
+}
+
+/* ── Feature pills below the empty-state ── */
+.bhara-feature-pills {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: var(--sp-2);
+}
+
+.bhara-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 20%, transparent);
+  background: color-mix(in srgb, var(--accent-amber) 6%, transparent);
+  color: var(--accent-amber);
+}

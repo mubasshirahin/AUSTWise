@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Trash2, X, Download, Eye, Check, RotateCcw, FileDown, Share2, Search, Loader2, MoreVertical, Moon, Image as ImageIcon, CalendarRange, Building2, GraduationCap } from 'lucide-react';
+import { Trash2, X, Download, Eye, Check, RotateCcw, FileDown, Share2, Search, Loader2, MoreVertical, Moon, Image as ImageIcon, CalendarDays, Building2, GraduationCap } from 'lucide-react';
 import { useRoutine } from '../../context/RoutineContext';
 import { ocrImportedRoutine, ocrImportedWeekDays } from '../../context/RoutineContext';
 import { normalizeAccentColor, getCourseColor } from '../../utils/colorPalette';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
 import { findCourseByCode, findCourseByName } from '../../data/courses';
 import { getAutoColorForCourse } from '../../utils/autoColorPalette';
-import { loadTemplates } from '../../utils/routineTemplates';
+import { loadTemplates, mergeTemplatesToRoutine } from '../../utils/routineTemplates';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas-pro';
 import logoUrl from '../../assets/logo-silver.png';
@@ -328,6 +328,32 @@ export default function WeeklyPlanner() {
     }
   };
 
+  // Load every semester template for a department in one go — merged into the
+  // weekly schedule. No more semester-by-semester loading. The modal stays open
+  // so the user SEES the single combined card with its Loaded ✓ badge.
+  const loadTemplatesAtOnce = (templates) => {
+    const merged = mergeTemplatesToRoutine(templates);
+    if (!merged) return;
+    replaceRoutine(merged.routine, merged.weekDays);
+    setSelectedTemplate(null);
+  };
+
+  // Selecting a department auto-loads all of its semester templates at once.
+  const handleLoadDeptChange = (value) => {
+    setLoadDept(value);
+    if (value !== 'all') {
+      const deptTemplates = availableTemplates.filter(t => t.department === value);
+      // Only auto-load when the department actually has template classes —
+      // avoids wiping the user's routine with blank days.
+      const hasClasses = deptTemplates.some(t =>
+        Object.values(t.routine || {}).some(day => Array.isArray(day) && day.length > 0)
+      );
+      if (hasClasses) {
+        loadTemplatesAtOnce(deptTemplates);
+      }
+    }
+  };
+
   // Filter shared routines for the load overlay
   const filteredShared = sharedRoutines.filter(r => {
     if (loadDept !== 'all' && r.department !== loadDept) return false;
@@ -338,6 +364,16 @@ export default function WeeklyPlanner() {
     return hay.includes(q);
   });
   const sharedSems = [...new Set(sharedRoutines.map(r => r.yearSemester).filter(Boolean))].sort();
+
+  // Admin templates grouped by department — one combined card per dept,
+  // so a department never shows as separate per-semester entries.
+  const deptGroups = [...new Set(availableTemplates.map(t => t.department).filter(Boolean))].sort();
+  const visibleGroups = loadDept === 'all' ? deptGroups : deptGroups.filter(d => d === loadDept);
+
+  // Dropdown options come from the actual templates (plus the CR depts used for
+  // shared routines) — never a hardcoded list, so admin-created departments
+  // always match what the user can pick.
+  const deptOptions = [...new Set([...CR_DEPTS, ...deptGroups])].sort();
 
   const downloadSchedulePDF = async () => {
     const tableWrap = document.querySelector('.weekly-table-wrap');
@@ -526,7 +562,7 @@ export default function WeeklyPlanner() {
        <div className="schedule-masthead weekly-masthead">
          <div className="schedule-title-block">
            <div className="schedule-icon-tile">
-             <CalendarRange size={20} />
+             <CalendarDays size={20} />
            </div>
            <div>
              <span className="schedule-overline">Weekly Schedule</span>
@@ -538,37 +574,12 @@ export default function WeeklyPlanner() {
          {/* Center: Load Routine — the primary action */}
          <div className="schedule-masthead-center">
            <button
-             className="btn btn-primary btn-sm"
+             className="btn btn-sm load-routine-btn"
              onClick={openLoadModal}
-             style={{
-               position: 'relative',
-               display: 'inline-flex',
-               alignItems: 'center',
-               justifyContent: 'center',
-               gap: '6px',
-               whiteSpace: 'nowrap',
-               lineHeight: 1,
-               minWidth: '132px',
-             }}
+             title="Load a routine shared by a CR or an admin template"
            >
-             <Download size={14} style={{ flexShrink: 0 }} />
+             <Download size={14} />
              <span>Load Routine</span>
-             <span
-               className="badge badge-amber"
-               style={{
-                 position: 'absolute',
-                 right: '7px',
-                 top: '50%',
-                 transform: 'translateY(-50%)',
-                 minWidth: '18px',
-                 textAlign: 'center',
-                 lineHeight: '1.5',
-                 padding: '0 5px',
-                 fontVariantNumeric: 'tabular-nums',
-               }}
-             >
-               {sharedStats.shared}
-             </span>
            </button>
          </div>
 
@@ -948,9 +959,9 @@ export default function WeeklyPlanner() {
               <div className="load-filter-row">
                 <div className="load-filter">
                   <Building2 size={14} />
-                  <select className="input" value={loadDept} onChange={e => setLoadDept(e.target.value)}>
+                  <select className="input" value={loadDept} onChange={e => handleLoadDeptChange(e.target.value)}>
                     <option value="all">All departments</option>
-                    {CR_DEPTS.map(d => <option key={d} value={d}>{d}</option>)}
+                    {deptOptions.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
                 <div className="load-filter">
@@ -974,6 +985,11 @@ export default function WeeklyPlanner() {
                   {filteredShared.length === 0 && (
                     <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
                       <p>{sharedRoutines.length === 0 ? 'No CR has shared a routine yet.' : 'No routines match your search.'}</p>
+                    </div>
+                  )}
+                  {filteredShared.length > 0 && (
+                    <div style={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', margin: '0 0 2px' }}>
+                      Routines shared by CRs
                     </div>
                   )}
                   {filteredShared.map(routine => {
@@ -1015,42 +1031,58 @@ export default function WeeklyPlanner() {
                     );
                   })}
 
-                  {availableTemplates.length > 0 && (
+                  {visibleGroups.length > 0 && (
                     <div style={{ marginTop: '6px' }}>
                       <div style={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', margin: '0 0 8px' }}>
-                        Admin templates
+                        Admin templates — full department schedules
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {availableTemplates.map(template => (
-                          <div
-                            key={template.id}
-                            onClick={() => setSelectedTemplate(template)}
-                            style={{
-                              padding: '10px',
-                              background: selectedTemplate?.id === template.id ? 'var(--accent-blue-glow)' : 'var(--bg-input)',
-                              border: `1px solid ${selectedTemplate?.id === template.id ? 'var(--accent-blue)' : 'var(--border-primary)'}`,
-                              borderRadius: 'var(--radius-md)',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s'
-                            }}
-                          >
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', margin: 0 }}>{template.name}</h4>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <span className="badge badge-blue" style={{ fontSize: '9px', padding: '1px 4px' }}>{template.department}</span>
-                                  <span className="badge badge-purple" style={{ fontSize: '9px', padding: '1px 4px' }}>Sem {template.semester}</span>
-                                  <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>{template.year}</span>
+                        {visibleGroups.map(dept => {
+                          const groupTemplates = availableTemplates.filter(t => t.department === dept);
+                          const merged = mergeTemplatesToRoutine(groupTemplates);
+                          const totalClasses = merged
+                            ? Object.values(merged.routine).reduce((sum, day) => sum + (Array.isArray(day) ? day.length : 0), 0)
+                            : 0;
+                          const semCount = groupTemplates.length;
+                          return (
+                            <div
+                              key={dept}
+                              onClick={() => handleLoadDeptChange(dept)}
+                              title={`Load the whole ${dept} schedule (${semCount} semester template${semCount !== 1 ? 's' : ''} combined)`}
+                              style={{
+                                padding: '12px',
+                                background: loadDept === dept ? 'var(--accent-blue-glow)' : 'var(--bg-input)',
+                                border: `1px solid ${loadDept === dept ? 'var(--accent-blue)' : 'var(--border-primary)'}`,
+                                borderRadius: 'var(--radius-md)',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    {dept} — Full Schedule
+                                    <span className="badge badge-emerald" style={{ fontSize: '8px', padding: '1px 4px' }}>All semesters</span>
+                                  </h4>
+                                  <div className="flex items-center gap-2 mt-1" style={{ flexWrap: 'wrap' }}>
+                                    <span className="badge badge-blue" style={{ fontSize: '9px', padding: '1px 4px' }}>{dept}</span>
+                                    <span className="badge badge-purple" style={{ fontSize: '9px', padding: '1px 4px' }}>{semCount} semester{semCount !== 1 ? 's' : ''} combined</span>
+                                    <span className="badge badge-blue" style={{ fontSize: '9px', padding: '1px 4px' }}>{totalClasses} classes</span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {loadDept === dept && (totalClasses > 0 ? (
+                                    <span className="badge badge-emerald" style={{ fontSize: '10px', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                      <Check size={12} /> Loaded ✓
+                                    </span>
+                                  ) : (
+                                    <span className="badge badge-purple" style={{ fontSize: '10px', padding: '4px 10px' }}>No classes yet</span>
+                                  ))}
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2">
-                                {selectedTemplate?.id === template.id && (
-                                  <Check size={18} style={{ color: 'var(--accent-emerald)' }} />
-                                )}
-                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}

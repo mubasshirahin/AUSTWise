@@ -1,12 +1,13 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   ZoomIn, Maximize2, Minimize2,
-  MapPin, Compass, Move, RotateCcw,
+  MapPin, Compass, Move, RotateCcw, MoreVertical, Check,
 } from 'lucide-react';
 import { campusFloors as staticCampusFloors } from '../../data/mockData';
 import GliderTabs from '../../components/GliderTabs';
 import FirstFloorInteractivePlan from './FirstFloorInteractivePlan';
 import BuildingStructure from './BuildingStructure';
+import './SemesterViewWidget.css';
 
 // Attempt to fetch campus locations from API — falls back to static data
 let _campusApiPromise = null;
@@ -75,6 +76,8 @@ function FloorShowcase({ floorData, selectedFloor }) {
   const [floorView, setFloorView] = useState('image');
   const [editMode, setEditMode] = useState(false);
   const [selectedZone, setSelectedZone] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
   const [positions, setPositions] = useState(() => {
     try {
       const saved = localStorage.getItem('aust-campus-positions');
@@ -111,6 +114,16 @@ function FloorShowcase({ floorData, selectedFloor }) {
     document.addEventListener('fullscreenchange', onFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, []);
+
+  // Close ⋮ menu on outside click
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleOutside(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+    }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [menuOpen]);
 
   const clearSelection = useCallback(() => {
     setSelectedRoomId(null);
@@ -354,86 +367,110 @@ function FloorShowcase({ floorData, selectedFloor }) {
   }
 
   return (
-    <div className="floor-plan-showcase animate-fadeInUp">
-      <header className="floor-plan-hero">
-        <div className="floor-plan-hero-bg" aria-hidden="true">
-          <div className="floor-plan-grid" />
+    <div className="glass-card-static schedule-widget sv-widget floor-map-widget animate-fadeInUp">
+
+      {/* ── Masthead ── */}
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <Compass size={20} strokeWidth={2.2} />
+          </div>
+          <div>
+            <span className="schedule-overline">Campus</span>
+            <div className="schedule-title">{selectedFloor} Floor Plan</div>
+            <span className="schedule-subtitle">
+              AUST {selectedFloor.toLowerCase()} floor · click Key Locations to highlight areas
+            </span>
+          </div>
         </div>
-        <div className="floor-plan-hero-content">
-          <div className="floor-plan-hero-row">
-            <div className="floor-plan-hero-icon">
-              <Compass size={26} />
+
+        <div className="schedule-masthead-center">
+          <div className="schedule-stats">
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{floorData.rooms.length}</span>
+              <span className="schedule-stat-label">Rooms</span>
             </div>
-            <div>
-              <h2 className="floor-plan-title">{selectedFloor} Floor Plan</h2>
-              <p className="floor-plan-subtitle">
-                AUST {selectedFloor.toLowerCase()} floor - click Key Locations to highlight areas on the map.
-              </p>
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">
+                {floorData.rooms.filter(r => r.type === 'classroom' || r.type === 'lab').length}
+              </span>
+              <span className="schedule-stat-label">Classes / Labs</span>
+            </div>
+            <div className="schedule-stat">
+              <span className="schedule-stat-value" style={{ textTransform: 'capitalize' }}>{floorView}</span>
+              <span className="schedule-stat-label">View</span>
             </div>
           </div>
         </div>
-      </header>
+
+        <div className="schedule-actions">
+          <div className="export-dropdown" ref={menuRef}>
+            <button
+              className="schedule-nav-btn"
+              onClick={() => setMenuOpen((o) => !o)}
+              title="Options"
+              aria-haspopup="true"
+              aria-expanded={menuOpen}
+            >
+              <MoreVertical size={18} />
+            </button>
+            {menuOpen && (
+              <div className="export-menu" role="menu">
+                <button
+                  className={`export-menu-item${floorView === 'image' ? ' menu-active' : ''}`}
+                  onClick={() => { setFloorView('image'); setSelectedZone(null); setMenuOpen(false); }}
+                  role="menuitem"
+                >
+                  Image View
+                  {floorView === 'image' && <Check size={14} className="menu-check" />}
+                </button>
+                <button
+                  className={`export-menu-item${floorView === 'interactive' ? ' menu-active' : ''}`}
+                  onClick={() => { setFloorView('interactive'); clearSelection(); setMenuOpen(false); }}
+                  role="menuitem"
+                >
+                  Interactive View
+                  {floorView === 'interactive' && <Check size={14} className="menu-check" />}
+                </button>
+                <div className="export-menu-sep" />
+                {zoomLevels.map(level => (
+                  <button
+                    key={level.id}
+                    className={`export-menu-item${zoom === level.id ? ' menu-active' : ''}`}
+                    onClick={() => { setZoom(level.id); setMenuOpen(false); }}
+                    role="menuitem"
+                  >
+                    <ZoomIn size={14} /> Zoom {level.label}
+                    {zoom === level.id && <Check size={14} className="menu-check" />}
+                  </button>
+                ))}
+                <div className="export-menu-sep" />
+                <button
+                  className={`export-menu-item${editMode ? ' menu-active' : ''}`}
+                  onClick={() => { setEditMode(p => !p); setMenuOpen(false); }}
+                  role="menuitem"
+                >
+                  <Move size={14} /> {editMode ? 'Exit Edit Mode' : 'Edit Positions'}
+                  {editMode && <Check size={14} className="menu-check" />}
+                </button>
+                <button
+                  className="export-menu-item"
+                  onClick={() => { toggleFullscreen(); setMenuOpen(false); }}
+                  role="menuitem"
+                >
+                  {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                  {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="schedule-dotted-divider" />
 
       <div className="floor-plan-workspace">
         <div className="floor-plan-main">
-          <div className="floor-plan-toolbar">
-            <span className="floor-plan-toolbar-label">
-              <ZoomIn size={14} />
-              Zoom
-            </span>
-             <div className="floor-plan-view-switch" role="tablist" aria-label={`${selectedFloor} floor map type`}>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={floorView === 'image'}
-                  className={`floor-plan-view-option ${floorView === 'image' ? 'active' : ''}`}
-                  onClick={() => { setFloorView('image'); setSelectedZone(null); }}
-                >
-                  Image
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={floorView === 'interactive'}
-                  className={`floor-plan-view-option ${floorView === 'interactive' ? 'active' : ''}`}
-                  onClick={() => { setFloorView('interactive'); clearSelection(); }}
-                >
-                  Interactive
-                </button>
-              </div>
-            <div className="floor-plan-zoom-group">
-              {zoomLevels.map((level) => (
-                <button
-                  key={level.id}
-                  type="button"
-                  className={`floor-plan-zoom-btn ${zoom === level.id ? 'active' : ''}`}
-                  onClick={() => setZoom(level.id)}
-                >
-                  {level.label}
-                </button>
-              ))}
-            </div>
-            <button
-              type="button"
-              className={`floor-plan-fullscreen-btn ${editMode ? 'active' : ''}`}
-              onClick={() => {
-                setEditMode((prev) => !prev);
-              }}
-              aria-label={editMode ? 'Exit edit mode' : 'Edit positions'}
-            >
-              <Move size={16} />
-              {editMode ? 'Editing' : 'Edit'}
-            </button>
-            <button
-              type="button"
-              className="floor-plan-fullscreen-btn"
-              onClick={toggleFullscreen}
-              aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-            >
-              {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-              {isFullscreen ? 'Exit' : 'Fullscreen'}
-            </button>
-          </div>
 
           <div
             ref={viewportRef}

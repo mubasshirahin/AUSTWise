@@ -12,9 +12,9 @@
   padding-bottom: var(--sp-10);
 
   /* Page-hero accent */
-  --page-hero-icon-bg:        var(--accent-purple-glow);
-  --page-hero-icon-color:     var(--accent-purple);
-  --page-hero-gradient-start: var(--accent-purple);
+  --page-hero-icon-bg:        var(--accent-amber-glow);
+  --page-hero-icon-color:     var(--accent-amber);
+  --page-hero-gradient-start: var(--accent-amber);
 }
 
 /* ── Tab content wrapper ── */

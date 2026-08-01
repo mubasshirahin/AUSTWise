@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Plus, Trash2, Edit3, Save, X, Download, Upload } from 'lucide-react';
-import { loadTemplates, saveTemplates, addTemplate, updateTemplate, deleteTemplate, defaultTemplates } from '../../utils/transcriptTemplates';
+import { loadTemplates, saveTemplates, addTemplate, updateTemplate, deleteTemplate } from '../../utils/transcriptTemplates';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
 
 export default function TranscriptTemplatesPanel() {

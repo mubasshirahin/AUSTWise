@@ -9,8 +9,10 @@ import {
   Tooltip as ChartTooltip,
   Legend as ChartLegend,
 } from 'chart.js';
-import { Activity, MapPin, LogOut, Loader2 } from 'lucide-react';
+import { Library, Activity, MapPin, LogOut, Loader2, Users, Armchair, Gauge } from 'lucide-react';
 import { libraryData } from '../../data/mockData';
+import './SemesterViewWidget.css';
+import './LibraryPulse.css';
 
 ChartJS.register(
   CategoryScale,
@@ -153,9 +155,9 @@ export default function LibraryPulse() {
       {
         label: 'Occupancy %',
         data: libState.peakHours ? libState.peakHours.map(item => item.occupancy) : [],
-        backgroundColor: '#6391ff',
+        backgroundColor: 'var(--accent-blue)',
         borderRadius: 4,
-        hoverBackgroundColor: '#22d3ee',
+        hoverBackgroundColor: 'var(--accent-cyan)',
       }
     ]
   };
@@ -175,57 +177,117 @@ export default function LibraryPulse() {
   const capacity = occupancy.capacity || 120;
   const occupied = occupancy.occupied || 0;
   const occupancyPercentage = capacity > 0 ? Math.round((occupied / capacity) * 100) : 0;
+  const freeSeats = Math.max(capacity - occupied, 0);
+  const densityClass = occupancyPercentage >= 75 ? 'is-rose' : occupancyPercentage >= 40 ? 'is-amber' : occupancyPercentage >= 1 ? 'is-cyan' : 'is-emerald';
 
   return (
-    <div className="glass-card-static library-pulse-container animate-fadeInUp">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-2">
-          <div className="icon" style={{ backgroundColor: 'rgba(99, 145, 255, 0.12)', color: 'var(--accent-blue)', padding: '6px', borderRadius: '8px' }}>
-            <Activity size={18} />
+    <div className="glass-card-static schedule-widget sv-widget library-widget animate-fadeInUp">
+
+      {/* ── Masthead ── */}
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <Library size={20} strokeWidth={2.2} />
           </div>
           <div>
-            <h2 className="section-title" style={{ fontSize: 'var(--fs-lg)', margin: 0 }}>Library Occupancy Pulse</h2>
-            <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>Live crowd level from students checked in via GPS</p>
+            <span className="schedule-overline">Campus</span>
+            <div className="schedule-title">Library Occupancy Pulse</div>
+            <span className="schedule-subtitle">Live crowd level from students checked in via GPS</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', padding: '6px 12px', borderRadius: 'var(--radius-md)' }}>
-          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Live Occupancy:</span>
-          <span style={{ fontWeight: 'bold', fontSize: 'var(--fs-sm)', color: 'var(--accent-blue)' }}>
-            {occupancyPercentage}%
-          </span>
-          <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>({occupied}/{capacity} seats)</span>
+        <div className="schedule-masthead-center">
+          <div className="schedule-stats">
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{occupied}</span>
+              <span className="schedule-stat-label">Occupied</span>
+            </div>
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{freeSeats}</span>
+              <span className="schedule-stat-label">Free</span>
+            </div>
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{occupancyPercentage}%</span>
+              <span className="schedule-stat-label">Full</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="schedule-actions">
+          {checkedIn ? (
+            <button className="lib-action-btn" onClick={doCheckOut} disabled={busy}>
+              {busy ? <Loader2 size={14} className="animate-spin" /> : <LogOut size={14} />}
+              Check out
+            </button>
+          ) : (
+            <button className="lib-action-btn primary" onClick={() => doCheckIn(false)} disabled={busy}>
+              {busy ? <Loader2 size={14} className="animate-spin" /> : <MapPin size={14} />}
+              I'm at the library
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Check-in control */}
-      <div
-        className="flex justify-between items-center mb-6"
-        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', padding: '12px 16px', borderRadius: 'var(--radius-lg)', flexWrap: 'wrap', gap: '8px' }}
-      >
-        <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-          {status || 'Tap to share your location and update the live library count.'}
+      <div className="schedule-dotted-divider" />
+
+      {/* ── Status line + occupancy cell ── */}
+      <p className="lib-status-text">
+        {status || 'Tap the button to share your location and update the live library count.'}
+      </p>
+
+      <div className={`sv-cell lib-occ-cell ${densityClass}`}>
+        <div className="lib-occ-left">
+          <Gauge size={18} className="lib-occ-icon" />
+          <div>
+            <div className="sv-cell-title">Library {densityClass === 'is-rose' ? 'Near Capacity' : densityClass === 'is-amber' ? 'Getting Busy' : 'Plenty of Space'}</div>
+            <div className="sv-cell-sub">
+              {occupied}/{capacity} seats occupied · {freeSeats} seats free
+            </div>
+          </div>
         </div>
-        {checkedIn ? (
-          <button className="btn btn-secondary" onClick={doCheckOut} disabled={busy} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            {busy ? <Loader2 size={14} className="animate-spin" /> : <LogOut size={14} />}
-            Check out
-          </button>
-        ) : (
-          <button className="btn btn-primary" onClick={() => doCheckIn(false)} disabled={busy} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            {busy ? <Loader2 size={14} className="animate-spin" /> : <MapPin size={14} />}
-            I'm at the library
-          </button>
-        )}
+        <div className="lib-occ-meter">
+          <div className="lib-occ-meter-fill" style={{ width: `${occupancyPercentage}%` }} />
+        </div>
       </div>
 
-      {/* Hourly Occupancy Chart */}
-      <div className="glass-card-static" style={{ height: '280px', display: 'flex', flexDirection: 'column' }}>
-        <h3 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', marginBottom: '12px' }}>Hourly Peak Tracker</h3>
-        <div style={{ flex: 1, position: 'relative' }}>
+      {/* ── Hourly Occupancy Chart ── */}
+      <div className="lib-chart-card">
+        <div className="lib-chart-head">
+          <Activity size={15} />
+          <span>Hourly Peak Tracker</span>
+          <span className="lib-chart-hint">occupancy %</span>
+        </div>
+        <div className="lib-chart-body">
           <Bar data={chartData} options={chartOptions} />
         </div>
       </div>
+
+      {/* ── Zone seats ── */}
+      {libState.zones && libState.zones.length > 0 && (
+        <>
+          <div className="sv-section-label">Reading Zones</div>
+          <div className="lib-zones-grid">
+            {libState.zones.map(zone => {
+              const zOcc = zone.occupied || 0;
+              const zCap = zone.seats || 0;
+              const zPct = zCap > 0 ? Math.round((zOcc / zCap) * 100) : 0;
+              const zClass = zPct >= 75 ? 'is-rose' : zPct >= 40 ? 'is-amber' : zPct >= 1 ? 'is-cyan' : 'is-emerald';
+              return (
+                <div key={zone.name} className={`sv-cell lib-zone-cell ${zClass}`}>
+                  <span className={`sv-count${zPct >= 75 ? ' hot' : ''}`}>{zPct}%</span>
+                  <div className="lib-zone-emoji">
+                    {zPct >= 75 ? <Users size={18} /> : <Armchair size={18} />}
+                  </div>
+                  <div className="sv-cell-title">{zone.name}</div>
+                  <div className="sv-cell-sub">
+                    {zOcc}/{zCap} seats · {zone.noise}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }

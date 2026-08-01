@@ -1,4 +1,4 @@
-/** Semester number (1–8) → year-term label, e.g. 1 → "1.1", 2 → "1.2". */
+/** Semester number (1–10, ARCH has 10) → year-term label, e.g. 1 → "1.1", 9 → "5.1". */
 export function formatSemesterLabel(semester) {
   const sem = Number(semester);
   if (!Number.isFinite(sem) || sem < 1) return '';

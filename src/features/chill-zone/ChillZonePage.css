@@ -1,7 +1,7 @@
 .chill-page {
-  --page-hero-icon-bg: var(--accent-orange-glow);
-  --page-hero-icon-color: var(--accent-orange);
-  --page-hero-gradient-start: var(--accent-orange);
+  --page-hero-icon-bg: var(--accent-amber-glow);
+  --page-hero-icon-color: var(--accent-amber);
+  --page-hero-gradient-start: var(--accent-amber);
   max-width: 1100px;
   margin: 0 auto;
   padding: var(--sp-4);

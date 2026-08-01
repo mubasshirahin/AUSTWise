@@ -1,40 +1,57 @@
 import { Banknote, CreditCard, Receipt } from 'lucide-react';
+import '../campus/SemesterViewWidget.css';
 import './AustBharaPage.css';
-import '../../components/PageHero.css';
 
 export default function AustBharaPage() {
   return (
-    <div className="aust-bhara-page animate-fadeIn">
-      <header className="page-hero">
-        <div className="page-hero-content">
-          <div className="page-hero-title-row">
-            <div className="page-hero-icon">
-              <Banknote size={24} />
-            </div>
-            <div>
-              <h1 className="page-hero-title">
-                <span className="page-hero-title-highlight">Bhara Koto</span>
-              </h1>
-              <p className="page-hero-subtitle">
-                Track your semester fees, tuition, and all AUST-related payments in one place.
-              </p>
+    <div className="glass-card-static schedule-widget sv-widget bhara-widget animate-fadeInUp">
+
+      {/* ── Masthead ── */}
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile bhara-icon-tile">
+            <Banknote size={20} strokeWidth={2.2} />
+          </div>
+          <div>
+            <span className="schedule-overline">Campus</span>
+            <div className="schedule-title">Bhara Koto</div>
+            <span className="schedule-subtitle">
+              Semester fees, tuition &amp; AUST-related payments
+            </span>
+          </div>
+        </div>
+
+        <div className="schedule-masthead-center">
+          <div className="schedule-stats">
+            <div className="schedule-stat">
+              <span className="schedule-stat-value bhara-cs-badge">Soon</span>
+              <span className="schedule-stat-label">Status</span>
             </div>
           </div>
         </div>
-      </header>
 
-      <div className="ab-coming-soon">
-        <div className="ab-cs-card">
-          <Receipt size={32} strokeWidth={1.5} />
-          <h2>Fee Tracker — Coming Soon</h2>
-          <p>View semester-wise fee breakdowns, track payment deadlines, and get reminders before due dates. All your AUST payment history in one clean dashboard.</p>
-          <div className="ab-feature-pills">
-            <span><CreditCard size={14} /> Semester Fees</span>
-            <span><Banknote size={14} /> Exam Fees</span>
-            <span><Receipt size={14} /> Payment History</span>
-          </div>
+        <div className="schedule-actions">
+          {/* placeholder — no actions yet */}
         </div>
       </div>
+
+      <div className="schedule-dotted-divider" />
+
+      {/* ── Coming Soon body ── */}
+      <div className="sv-empty">
+        <Receipt size={38} className="sv-empty-icon" />
+        <h3>Fee Tracker — Coming Soon</h3>
+        <p>
+          View semester-wise fee breakdowns, track payment deadlines, and get reminders before
+          due dates. All your AUST payment history in one clean dashboard.
+        </p>
+        <div className="bhara-feature-pills">
+          <span className="bhara-pill"><CreditCard size={14} /> Semester Fees</span>
+          <span className="bhara-pill"><Banknote size={14} /> Exam Fees</span>
+          <span className="bhara-pill"><Receipt size={14} /> Payment History</span>
+        </div>
+      </div>
+
     </div>
   );
 }

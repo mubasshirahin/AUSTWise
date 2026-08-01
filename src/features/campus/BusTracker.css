@@ -1,136 +1,35 @@
-/* ─── Bus Tracker Root ─── */
+/* ═══════════════════════════════════════════════════════════════
+   BUS TRACKER — Semester View design language
+   (shared masthead/cells come from SemesterViewWidget.css)
+   ═══════════════════════════════════════════════════════════════ */
 
-@keyframes bus-modal-in {
-  from {
-    opacity: 0;
-    transform: scale(0.96) translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-.bus-tracker-root {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-4);
-  width: 100%;
-  animation: fadeInUp 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+.bus-widget {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-bottom: var(--sp-10);
 }
 
-/* ─── Header ─── */
-.bus-tracker-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--sp-4);
-  flex-wrap: wrap;
-}
-
-.bus-tracker-header-row {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--sp-4);
-}
-
-.bus-tracker-header-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  flex-wrap: wrap;
-}
-
-.bus-tracker-heading-icon {
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
-  border-radius: var(--radius-lg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, var(--accent-emerald), #059669);
-  color: #fff;
-  box-shadow: 0 6px 20px color-mix(in srgb, var(--accent-emerald) 30%, transparent);
-}
-
-/* ─── Add Bus Button ─── */
-.bus-tracker-add-btn {
+/* ─── Add button (empty state) ─── */
+.bus-add-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 7px 16px;
-  border-radius: var(--radius-full);
-  background: linear-gradient(135deg, var(--accent-emerald), #059669);
+  border-radius: var(--radius-md);
+  background: var(--accent-blue);
   border: none;
-  color: #fff;
+  color: var(--text-inverse);
   font-size: 12px;
   font-weight: var(--fw-semibold);
+  font-family: inherit;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  font: inherit;
   white-space: nowrap;
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent-emerald) 25%, transparent);
+  transition: all 0.2s ease;
 }
 
-.bus-tracker-add-btn:hover {
+.bus-add-btn:hover {
+  opacity: 0.88;
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px color-mix(in srgb, var(--accent-emerald) 35%, transparent);
-}
-
-.bus-tracker-add-btn:active {
-  transform: translateY(0);
-}
-
-.bus-tracker-title {
-  font-size: var(--fs-xl);
-  font-weight: var(--fw-bold);
-  letter-spacing: -0.02em;
-  margin: 0 0 2px;
-}
-
-.bus-tracker-desc {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-.bus-tracker-live-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  border-radius: var(--radius-full);
-  font-size: 11px;
-  font-weight: var(--fw-semibold);
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.07);
-}
-
-.bus-tracker-live-badge.active {
-  color: var(--accent-emerald);
-  border-color: color-mix(in srgb, var(--accent-emerald) 25%, transparent);
-  background: color-mix(in srgb, var(--accent-emerald) 8%, transparent);
-}
-
-.bus-tracker-live-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--text-tertiary);
-}
-
-.bus-tracker-live-badge.active .bus-tracker-live-dot {
-  background: var(--accent-emerald);
-  box-shadow: 0 0 8px var(--accent-emerald);
-  animation: pulse-dot 2s ease-in-out infinite;
-}
-
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.45; }
 }
 
 /* ─── Search ─── */
@@ -138,6 +37,7 @@
   position: relative;
   display: flex;
   align-items: center;
+  margin-bottom: var(--sp-3);
 }
 
 .bus-tracker-search-icon {
@@ -150,12 +50,14 @@
 .bus-tracker-search-input {
   width: 100%;
   padding: 10px 38px 10px 40px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: var(--radius-lg);
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
   font-size: var(--fs-sm);
+  font-family: inherit;
   color: var(--text-primary);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+  transition: border-color 0.2s ease;
 }
 
 .bus-tracker-search-input::placeholder {
@@ -163,9 +65,7 @@
 }
 
 .bus-tracker-search-input:focus {
-  outline: none;
-  border-color: color-mix(in srgb, var(--accent-emerald) 35%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-emerald) 10%, transparent);
+  border-color: var(--accent-blue);
 }
 
 .bus-tracker-search-clear {
@@ -190,12 +90,11 @@
   display: flex;
   flex-direction: column;
   background: var(--bg-card);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
   overflow: hidden;
-  box-shadow: var(--shadow-lg);
-  margin-top: -4px;
-  z-index: 10;
+  box-shadow: var(--shadow-popper);
+  margin-bottom: var(--sp-3);
 }
 
 .bus-tracker-search-result-item {
@@ -206,7 +105,7 @@
   background: none;
   border: none;
   text-align: left;
-  font: inherit;
+  font-family: inherit;
   color: var(--text-primary);
   cursor: pointer;
   font-size: var(--fs-sm);
@@ -214,11 +113,11 @@
 }
 
 .bus-tracker-search-result-item:hover {
-  background: rgba(255,255,255,0.04);
+  background: var(--bg-input);
 }
 
 .bus-tracker-search-result-item svg {
-  color: var(--accent-emerald);
+  color: var(--accent-blue);
   flex-shrink: 0;
 }
 
@@ -228,127 +127,39 @@
   color: var(--text-tertiary);
   padding: 2px 8px;
   border-radius: var(--radius-full);
-  background: rgba(255,255,255,0.04);
+  background: var(--bg-input);
   white-space: nowrap;
 }
 
-/* ─── Route Tabs ─── */
-.bus-tracker-tabs {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+/* ─── Route nav (prev / pill / next) ─── */
+.bus-route-nav {
+  margin-bottom: var(--sp-3);
 }
 
-.bus-tracker-tab-wrapper {
-  position: relative;
-  display: inline-flex;
-}
-
-.bus-tracker-tab-wrapper:hover .bus-tracker-tab-actions {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.bus-tracker-tab-actions {
-  position: absolute;
-  top: -8px;
-  right: -6px;
-  display: flex;
-  gap: 2px;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s ease;
-  z-index: 5;
-}
-
-.bus-tracker-tab-action-btn {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-card);
-  border: 1px solid rgba(255,255,255,0.12);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  padding: 0;
-}
-
-.bus-tracker-tab-action-btn:hover {
-  color: var(--accent-emerald);
-  border-color: color-mix(in srgb, var(--accent-emerald) 40%, transparent);
-  background: color-mix(in srgb, var(--accent-emerald) 10%, transparent);
-}
-
-.bus-tracker-tab-action-btn.danger:hover {
-  color: #ef4444;
-  border-color: color-mix(in srgb, #ef4444 40%, transparent);
-  background: color-mix(in srgb, #ef4444 10%, transparent);
-}
-
-.bus-tracker-tab {
-  display: inline-flex;
-  align-items: center;
+.bus-route-pill {
   gap: 8px;
-  padding: 8px 16px;
-  border-radius: var(--radius-full);
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.07);
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: var(--fw-semibold);
-  cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  font: inherit;
+  min-width: 0;
+  max-width: 260px;
 }
 
-.bus-tracker-tab:hover {
-  color: var(--text-primary);
-  background: rgba(255,255,255,0.06);
-  border-color: rgba(255,255,255,0.12);
-}
-
-.bus-tracker-tab.active {
-  color: var(--tab-color);
-  background: var(--tab-bg);
-  border-color: color-mix(in srgb, var(--tab-color) 35%, transparent);
-  box-shadow: 0 0 16px color-mix(in srgb, var(--tab-color) 12%, transparent);
-}
-
-.bus-tracker-tab-icon {
-  width: 26px;
-  height: 26px;
+.bus-route-pill-icon {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: var(--fw-bold);
-  flex-shrink: 0;
 }
 
-.bus-tracker-add-tab-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  border-radius: var(--radius-full);
-  background: rgba(255,255,255,0.03);
-  border: 1.5px dashed rgba(255,255,255,0.15);
-  color: var(--text-tertiary);
-  cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  font: inherit;
-}
-
-.bus-tracker-add-tab-btn:hover {
-  color: var(--accent-emerald);
-  border-color: color-mix(in srgb, var(--accent-emerald) 40%, transparent);
-  background: color-mix(in srgb, var(--accent-emerald) 8%, transparent);
+.bus-route-pill-name {
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ─── Info Bar ─── */
@@ -359,9 +170,10 @@
   gap: var(--sp-3);
   flex-wrap: wrap;
   padding: var(--sp-3) var(--sp-4);
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.07);
-  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--sp-3);
 }
 
 .bus-tracker-direction-btn {
@@ -369,20 +181,21 @@
   align-items: center;
   gap: 6px;
   padding: 6px 14px;
-  border-radius: var(--radius-full);
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
   color: var(--text-primary);
   font-size: 12px;
   font-weight: var(--fw-semibold);
+  font-family: inherit;
   cursor: pointer;
   transition: all 0.2s ease;
-  font: inherit;
 }
 
 .bus-tracker-direction-btn:hover {
-  border-color: color-mix(in srgb, var(--accent-emerald) 30%, transparent);
-  background: color-mix(in srgb, var(--accent-emerald) 8%, transparent);
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+  background: var(--accent-blue-glow);
 }
 
 .bus-tracker-direction-icon {
@@ -403,15 +216,15 @@
 }
 
 .bus-tracker-next-bus strong {
-  color: var(--accent-emerald);
+  color: var(--accent-blue);
   font-weight: var(--fw-bold);
 }
 
 .bus-tracker-next-countdown {
   padding: 2px 8px;
   border-radius: var(--radius-full);
-  background: color-mix(in srgb, var(--accent-emerald) 10%, transparent);
-  color: var(--accent-emerald);
+  background: var(--accent-blue-glow);
+  color: var(--accent-blue);
   font-size: 10px;
   font-weight: var(--fw-bold);
 }
@@ -426,32 +239,35 @@
   display: flex;
   gap: var(--sp-2);
   flex-wrap: wrap;
+  margin-bottom: var(--sp-3);
 }
 
 .bus-tracker-schedule-chip {
   padding: 4px 12px;
   border-radius: var(--radius-full);
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
   font-size: 11px;
   color: var(--text-tertiary);
 }
 
 /* ─── Route Detail Card ─── */
 .bus-tracker-route-detail {
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.07);
-  border-radius: var(--radius-xl);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
   overflow: hidden;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+  margin-bottom: var(--sp-3);
 }
 
 .bus-tracker-route-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
   padding: var(--sp-4) var(--sp-5);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid var(--border-primary);
 }
 
 .bus-tracker-route-badge {
@@ -465,6 +281,40 @@
   border: 1px solid;
 }
 
+.bus-tracker-route-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.bus-tracker-tab-action-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.bus-tracker-tab-action-btn:hover {
+  color: var(--accent-blue);
+  border-color: color-mix(in srgb, var(--accent-blue) 40%, transparent);
+  background: var(--accent-blue-glow);
+}
+
+.bus-tracker-tab-action-btn.danger:hover {
+  color: var(--accent-rose);
+  border-color: color-mix(in srgb, var(--accent-rose) 40%, transparent);
+  background: var(--accent-rose-glow);
+}
+
 .bus-tracker-route-stop-count {
   font-size: 10px;
   color: var(--text-tertiary);
@@ -475,7 +325,7 @@
 
 /* ─── Timeline ─── */
 .bus-tracker-timeline {
-  padding: var(--sp-5) var(--sp-5);
+  padding: var(--sp-5);
   display: flex;
   flex-direction: column;
 }
@@ -501,8 +351,8 @@
   height: 12px;
   min-width: 12px;
   border-radius: 50%;
-  border: 2.5px solid rgba(255,255,255,0.15);
-  background: rgba(255,255,255,0.04);
+  border: 2.5px solid var(--border-primary);
+  background: var(--bg-input);
   z-index: 1;
   transition: all 0.3s ease;
 }
@@ -512,7 +362,7 @@
   height: 16px;
   min-width: 16px;
   border-width: 3px;
-  box-shadow: 0 0 12px color-mix(in srgb, var(--accent-emerald) 30%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent-blue) 30%, transparent);
 }
 
 .bus-tracker-timeline-line {
@@ -520,6 +370,7 @@
   flex: 1;
   min-height: 28px;
   margin: -2px 0;
+  background: var(--border-primary);
 }
 
 .bus-tracker-stop-info {
@@ -566,9 +417,41 @@
   flex-shrink: 0;
 }
 
+/* ─── Tips ─── */
+.bus-tracker-tips {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  line-height: 1.5;
+  margin-bottom: var(--sp-2);
+}
+
+.bus-tracker-tips svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--accent-blue);
+}
+
 /* ═══════════════════════════════════════
      ADD / EDIT BUS MODAL
    ═══════════════════════════════════════ */
+
+@keyframes bus-modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
 
 .bus-tracker-modal-overlay {
   position: fixed;
@@ -580,7 +463,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.55);
+  background: color-mix(in srgb, var(--bg-primary) 85%, transparent);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   padding: var(--sp-4);
@@ -595,9 +478,9 @@
   display: flex;
   flex-direction: column;
   background: var(--bg-card);
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid var(--border-primary);
   border-radius: var(--radius-2xl);
-  box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+  box-shadow: var(--shadow-popper);
   animation: bus-modal-in 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -606,7 +489,7 @@
   align-items: center;
   justify-content: space-between;
   padding: var(--sp-4) var(--sp-5);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid var(--border-primary);
   flex-shrink: 0;
 }
 
@@ -628,7 +511,7 @@
   align-items: center;
   justify-content: center;
   background: none;
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid var(--border-primary);
   color: var(--text-tertiary);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -636,8 +519,8 @@
 
 .bus-tracker-modal-close:hover {
   color: var(--text-primary);
-  background: rgba(255,255,255,0.06);
-  border-color: rgba(255,255,255,0.15);
+  background: var(--bg-input);
+  border-color: var(--border-focus);
 }
 
 .bus-tracker-modal-body {
@@ -655,26 +538,26 @@
   justify-content: flex-end;
   gap: var(--sp-3);
   padding: var(--sp-4) var(--sp-5);
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid var(--border-primary);
   flex-shrink: 0;
 }
 
 .bus-tracker-modal-cancel {
   padding: 8px 20px;
-  border-radius: var(--radius-full);
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
   color: var(--text-secondary);
   font-size: 13px;
   font-weight: var(--fw-semibold);
+  font-family: inherit;
   cursor: pointer;
   transition: all 0.2s ease;
-  font: inherit;
 }
 
 .bus-tracker-modal-cancel:hover {
   color: var(--text-primary);
-  border-color: rgba(255,255,255,0.15);
+  border-color: var(--border-focus);
 }
 
 .bus-tracker-modal-save {
@@ -682,25 +565,23 @@
   align-items: center;
   gap: 6px;
   padding: 8px 22px;
-  border-radius: var(--radius-full);
-  background: linear-gradient(135deg, var(--accent-emerald), #059669);
+  border-radius: var(--radius-md);
+  background: var(--accent-blue);
   border: none;
-  color: #fff;
+  color: var(--text-inverse);
   font-size: 13px;
   font-weight: var(--fw-semibold);
+  font-family: inherit;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  font: inherit;
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent-emerald) 25%, transparent);
+  transition: all 0.2s ease;
 }
 
 .bus-tracker-modal-save:hover {
+  opacity: 0.88;
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px color-mix(in srgb, var(--accent-emerald) 35%, transparent);
 }
 
 /* ─── Form Groups ─── */
-
 .bus-tracker-form-group {
   display: flex;
   flex-direction: column;
@@ -729,13 +610,14 @@
 
 .bus-tracker-form-input {
   padding: 9px 14px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: var(--radius-lg);
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
   font-size: var(--fs-sm);
   color: var(--text-primary);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
   font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s ease;
 }
 
 .bus-tracker-form-input::placeholder {
@@ -743,14 +625,11 @@
 }
 
 .bus-tracker-form-input:focus {
-  outline: none;
-  border-color: color-mix(in srgb, var(--accent-emerald) 35%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-emerald) 10%, transparent);
+  border-color: var(--accent-blue);
 }
 
 .bus-tracker-form-input.error {
-  border-color: #ef4444;
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+  border-color: var(--accent-rose);
 }
 
 .bus-tracker-form-input.sm {
@@ -770,12 +649,11 @@
 
 .bus-tracker-form-error {
   font-size: 11px;
-  color: #ef4444;
+  color: var(--accent-rose);
   font-weight: var(--fw-medium);
 }
 
 /* ─── Color Picker ─── */
-
 .bus-tracker-color-picker {
   display: flex;
   gap: 6px;
@@ -798,7 +676,7 @@
 }
 
 .bus-tracker-color-swatch.active {
-  border-color: #fff;
+  border-color: var(--text-inverse);
   box-shadow: 0 0 0 2px currentColor, 0 0 12px color-mix(in srgb, currentColor 30%, transparent);
   transform: scale(1.1);
 }
@@ -807,7 +685,7 @@
   width: 32px;
   height: 32px;
   border-radius: var(--radius-full);
-  border: 2px dashed rgba(255,255,255,0.2);
+  border: 2px dashed var(--border-primary);
   cursor: pointer;
   padding: 0;
   background: none;
@@ -824,7 +702,6 @@
 }
 
 /* ─── Stop Rows ─── */
-
 .bus-tracker-stop-row {
   display: grid;
   grid-template-columns: auto 1fr auto auto;
@@ -841,8 +718,8 @@
   height: 22px;
   min-width: 22px;
   border-radius: var(--radius-full);
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -860,16 +737,16 @@
   align-items: center;
   justify-content: center;
   background: none;
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid var(--border-primary);
   color: var(--text-tertiary);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .bus-tracker-stop-remove:hover {
-  color: #ef4444;
-  border-color: color-mix(in srgb, #ef4444 40%, transparent);
-  background: color-mix(in srgb, #ef4444 8%, transparent);
+  color: var(--accent-rose);
+  border-color: color-mix(in srgb, var(--accent-rose) 40%, transparent);
+  background: var(--accent-rose-glow);
 }
 
 .bus-tracker-add-stop-btn {
@@ -877,110 +754,26 @@
   align-items: center;
   gap: 5px;
   padding: 5px 14px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-md);
   background: none;
-  border: 1.5px dashed rgba(255,255,255,0.1);
+  border: 1.5px dashed var(--border-primary);
   color: var(--text-tertiary);
   font-size: 11px;
   font-weight: var(--fw-semibold);
+  font-family: inherit;
   cursor: pointer;
   transition: all 0.2s ease;
-  font: inherit;
   align-self: flex-start;
 }
 
 .bus-tracker-add-stop-btn:hover {
-  color: var(--accent-emerald);
-  border-color: color-mix(in srgb, var(--accent-emerald) 35%, transparent);
-  background: color-mix(in srgb, var(--accent-emerald) 6%, transparent);
-}
-
-/* ─── Empty State ─── */
-
-.bus-tracker-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: var(--sp-10) var(--sp-5);
-  gap: var(--sp-4);
-  border: 1.5px dashed rgba(255,255,255,0.08);
-  border-radius: var(--radius-2xl);
-  background: rgba(255,255,255,0.015);
-  animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-.bus-tracker-empty-icon {
-  width: 72px;
-  height: 72px;
-  border-radius: var(--radius-2xl);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.06);
-  color: var(--text-tertiary);
-  margin-bottom: var(--sp-2);
-}
-
-.bus-tracker-empty-title {
-  font-size: var(--fs-lg);
-  font-weight: var(--fw-bold);
-  margin: 0;
-  color: var(--text-primary);
-}
-
-.bus-tracker-empty-desc {
-  font-size: var(--fs-sm);
-  color: var(--text-tertiary);
-  margin: 0;
-  max-width: 340px;
-  line-height: 1.6;
-}
-
-/* ─── Tips ─── */
-.bus-tracker-tips {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: var(--sp-3) var(--sp-4);
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: var(--radius-lg);
-  font-size: 11px;
-  color: var(--text-tertiary);
-  line-height: 1.5;
-  margin-bottom: var(--sp-2);
-}
-
-.bus-tracker-tips svg {
-  flex-shrink: 0;
-  margin-top: 2px;
-  color: var(--accent-emerald);
+  color: var(--accent-blue);
+  border-color: color-mix(in srgb, var(--accent-blue) 35%, transparent);
+  background: var(--accent-blue-glow);
 }
 
 /* ─── Responsive ─── */
 @media (max-width: 768px) {
-  .bus-tracker-header {
-    flex-direction: column;
-  }
-
-  .bus-tracker-tabs {
-    gap: 4px;
-  }
-
-  .bus-tracker-tab {
-    padding: 6px 12px;
-    font-size: 11px;
-  }
-
-  .bus-tracker-tab-icon {
-    width: 22px;
-    height: 22px;
-    font-size: 10px;
-  }
-
   .bus-tracker-info-bar {
     flex-direction: column;
     align-items: stretch;

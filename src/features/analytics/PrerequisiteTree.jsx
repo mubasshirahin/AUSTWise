@@ -2,7 +2,8 @@ import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { createPortal } from 'react-dom';
 import {
   Search, Maximize2, Minimize2, ZoomIn, ZoomOut,
-  ChevronsDownUp, ChevronsUpDown, GitBranch, RotateCcw
+  ChevronsDownUp, ChevronsUpDown, GitBranch, RotateCcw,
+  MoreVertical, Check
 } from 'lucide-react';
 import './PrerequisiteTree.css';
 
@@ -268,6 +269,8 @@ export default function PrerequisiteTree() {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
   const [fullscreen, setFullscreen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
   // single transform state so zoom + pan update atomically (cursor-anchored zoom)
   const [view, setView] = useState({ scale: 1, x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
@@ -412,6 +415,15 @@ export default function PrerequisiteTree() {
 
   useEffect(() => () => clearTimeout(zoomTimerRef.current), []);
 
+  // Close the ⋮ menu on outside click
+  useEffect(() => {
+    const handleClick = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
   // ─── Pan (drag empty canvas) ───
   const handlePanStart = useCallback((e) => {
     if (e.target.closest('.pt-node')) return;
@@ -543,24 +555,100 @@ export default function PrerequisiteTree() {
   }, [fullscreen]);
 
   const isDeptAvailable = DEPARTMENTS.find(d => d.id === dept)?.available;
+  const statsCourses = isDeptAvailable ? `${visibleCourses}/${totalCourses}` : '—';
+  const statsBranches = isDeptAvailable ? parentIds.length : '—';
 
   const content = (
-    <div className={`prerequisite-tree ${fullscreen ? 'prereq-fullscreen' : ''}`} ref={containerRef}>
-      {/* Department Selector */}
-      <div className="prereq-dept-bar">
-        <span className="prereq-dept-label">Department:</span>
-        <div className="prereq-dept-pills">
-          {DEPARTMENTS.map((d) => (
-            <button
-              key={d.id}
-              className={`prereq-dept-pill ${dept === d.id ? 'active' : ''}`}
-              onClick={() => setDept(d.id)}
-            >
-              {d.label}
+    <div
+      ref={containerRef}
+      className={`prerequisite-tree glass-card-static schedule-widget st-widget prereq-widget animate-fadeInUp ${fullscreen ? 'prereq-fullscreen' : ''}`}
+    >
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <GitBranch size={20} strokeWidth={2.2} />
+          </div>
+          <div className="schedule-title-text">
+            <span className="schedule-overline">Grade Lab</span>
+            <h2 className="schedule-title">Prerequisites</h2>
+            <span className="schedule-subtitle">CSE undergraduate course flow</span>
+          </div>
+        </div>
+
+        <div className="schedule-masthead-center schedule-stats">
+          <div className="schedule-stat">
+            <span className="schedule-stat-value">{statsCourses}</span>
+            <span className="schedule-stat-label">Courses</span>
+          </div>
+          <div className="schedule-stat">
+            <span className="schedule-stat-value">{statsBranches}</span>
+            <span className="schedule-stat-label">Branches</span>
+          </div>
+          <div className="schedule-stat">
+            <span className="schedule-stat-value">{dept}</span>
+            <span className="schedule-stat-label">Department</span>
+          </div>
+        </div>
+
+        <div className="schedule-actions">
+          <div className="schedule-week-nav">
+            <button className="schedule-nav-btn" onClick={zoomOut} disabled={scale <= MIN_ZOOM} title="Zoom out (⌘-)">
+              <ZoomOut size={16} />
             </button>
-          ))}
+            <span className="schedule-week-pill">
+              <span className={`schedule-week-pill-value ${isZooming ? 'is-zooming' : ''}`}>{zoomPercent}%</span>
+            </span>
+            <button className="schedule-nav-btn" onClick={zoomIn} disabled={scale >= MAX_ZOOM} title="Zoom in (⌘=)">
+              <ZoomIn size={16} />
+            </button>
+          </div>
+
+          <div className="export-dropdown" ref={menuRef}>
+            <button
+              className="schedule-nav-btn"
+              onClick={() => setMenuOpen((open) => !open)}
+              aria-label="Tree options"
+              aria-expanded={menuOpen}
+            >
+              <MoreVertical size={16} />
+            </button>
+            {menuOpen && (
+              <div className="export-menu prereq-menu">
+                <div className="export-menu-sep" />
+                <span className="export-menu-title">Department</span>
+                {DEPARTMENTS.map((d) => (
+                  <button
+                    key={d.id}
+                    className={`export-menu-item ${dept === d.id ? 'menu-active' : ''}`}
+                    onClick={() => { setDept(d.id); setMenuOpen(false); }}
+                  >
+                    <Check size={13} style={{ opacity: dept === d.id ? 1 : 0 }} />
+                    {d.label}
+                    {!d.available && <em className="menu-tag">soon</em>}
+                  </button>
+                ))}
+                <div className="export-menu-sep" />
+                <button className="export-menu-item" onClick={expandAll}>
+                  <ChevronsUpDown size={13} /> Expand All
+                </button>
+                <button className="export-menu-item" onClick={collapseAll}>
+                  <ChevronsDownUp size={13} /> Collapse All
+                </button>
+                <button className="export-menu-item" onClick={resetNodePositions} disabled={nodeOffsets.size === 0}>
+                  <RotateCcw size={13} /> Reset Positions
+                </button>
+                <div className="export-menu-sep" />
+                <button className="export-menu-item" onClick={() => setFullscreen((p) => !p)}>
+                  {fullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+                  {fullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      <div className="schedule-dotted-divider" />
 
       <div className="prereq-coming-soon" style={{ display: !isDeptAvailable ? 'flex' : 'none' }}>
         <div className="prereq-coming-soon-icon">
@@ -578,7 +666,7 @@ export default function PrerequisiteTree() {
       </div>
 
       <div className="prereq-content" style={{ display: isDeptAvailable ? 'contents' : 'none' }}>
-      {/* Toolbar */}
+      {/* Search */}
       <div className="prereq-toolbar">
         <div className="prereq-search">
           <Search size={14} className="prereq-search-icon" />
@@ -590,50 +678,6 @@ export default function PrerequisiteTree() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-
-        <span className="prereq-stats">
-          <GitBranch size={12} /> {visibleCourses} / {totalCourses} courses
-        </span>
-
-        <button className="prereq-action-btn" onClick={expandAll} title="Expand all branches">
-          <ChevronsUpDown size={14} />
-          <span>Expand All</span>
-        </button>
-        <button className="prereq-action-btn" onClick={collapseAll} title="Collapse all branches">
-          <ChevronsDownUp size={14} />
-          <span>Collapse All</span>
-        </button>
-        <button
-          className="prereq-action-btn"
-          onClick={resetNodePositions}
-          title="Reset all node positions"
-          disabled={nodeOffsets.size === 0}
-        >
-          <RotateCcw size={13} />
-          <span>Reset Positions</span>
-        </button>
-
-        {/* Zoom Controls */}
-        <div className="prereq-zoom-group">
-          <button className="prereq-action-btn" onClick={zoomOut} disabled={scale <= MIN_ZOOM} title="Zoom out (⌘-)">
-            <ZoomOut size={14} />
-          </button>
-          <button className="prereq-action-btn prereq-zoom-reset" onClick={resetZoom} title="Reset zoom (⌘0)">
-            <span className={`prereq-zoom-pct ${isZooming ? 'is-zooming' : ''}`}>{zoomPercent}%</span>
-          </button>
-          <button className="prereq-action-btn" onClick={zoomIn} disabled={scale >= MAX_ZOOM} title="Zoom in (⌘=)">
-            <ZoomIn size={14} />
-          </button>
-        </div>
-
-        <button
-          className={`prereq-action-btn ${fullscreen ? 'active' : ''}`}
-          onClick={() => setFullscreen((p) => !p)}
-          title={fullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen view'}
-        >
-          {fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-          <span>{fullscreen ? 'Exit' : 'Fullscreen'}</span>
-        </button>
       </div>
 
       {/* Selected course info */}
@@ -652,10 +696,10 @@ export default function PrerequisiteTree() {
       {/* Hint */}
       <div className="prereq-hint">
         <span>
-          💡 <strong>Click</strong> a node to expand / collapse &bull;
+          <strong>Click</strong> a node to expand / collapse &bull;
           <strong>Drag</strong> any node to reposition &bull;
-          <strong> Scroll</strong> to zoom &bull;
-          <strong> Drag</strong> canvas to pan
+          <strong>Scroll</strong> to zoom &bull;
+          <strong>Drag</strong> canvas to pan
         </span>
       </div>
 
@@ -708,6 +752,7 @@ export default function PrerequisiteTree() {
                   const hasChildren = !!node.children?.length;
                   const isOpen = effectiveExpanded.has(node.id);
                   const isMatch = matchedIds.has(node.id);
+                  const isSelected = selected?.id === node.id;
                   const dim = term && !isMatch && !hasChildren;
                   const neon = NEON_VAR[node.type] || NEON_VAR.core;
                   return (
@@ -718,13 +763,15 @@ export default function PrerequisiteTree() {
                         `pt-node--${node.type}`,
                         hasChildren ? 'pt-node--parent' : '',
                         isMatch ? 'pt-node--match' : '',
+                        isSelected ? 'pt-node--selected' : '',
                         dim ? 'pt-node--dim' : '',
                       ].join(' ')}
                       transform={`translate(${x}, ${y - NODE_H / 2})`}
                       onMouseDown={(e) => handleNodeMouseDown(e, node)}
                     >
                       <rect className="pt-node-rect" width={w} height={NODE_H} rx={9} />
-                      <text className="pt-node-text" x={14} y={NODE_H / 2 + 4}>
+                      <rect className="pt-node-accent" x={0} y={3} width={3} height={NODE_H - 6} rx={1.5} fill={neon} />
+                      <text className="pt-node-text" x={18} y={NODE_H / 2 + 4}>
                         {node.code && <tspan className="pt-node-code">{node.code}</tspan>}
                         <tspan className="pt-node-name" dx={node.code ? 7 : 0}>{node.name}</tspan>
                       </text>
@@ -763,11 +810,7 @@ export default function PrerequisiteTree() {
             <div key={item.label} className="prereq-legend-item">
               <span
                 className="prereq-legend-swatch"
-                style={{
-                  background: 'transparent',
-                  border: `2px solid ${NEON_VAR[item.type]}`,
-                  boxShadow: `0 0 6px ${NEON_VAR[item.type]}`,
-                }}
+                style={{ border: `2px solid ${NEON_VAR[item.type]}` }}
               />
               <span>{item.label}</span>
             </div>

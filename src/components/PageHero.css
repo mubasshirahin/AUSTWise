@@ -48,10 +48,7 @@
 }
 
 .page-hero-title-highlight {
-  background: linear-gradient(135deg, var(--page-hero-gradient-start, var(--accent-amber)), #f59e0b, var(--accent-purple));
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--page-hero-gradient-start, var(--accent-amber));
 }
 
 .page-hero-subtitle {

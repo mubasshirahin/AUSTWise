@@ -128,80 +128,612 @@
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* ─── CGPA Summary Cards ─── */
-.cgpa-summary-cards {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--sp-4);
-  margin-bottom: var(--sp-5);
+/* ════════════════════════════════════════════════════════════════
+   CGPA BOL — Semester View design language
+   Self-contained copy of the shared schedule-widget shell, masthead,
+   nav, pill, stats and export-menu classes (DashboardPage.css is not
+   guaranteed to be loaded on this route), scoped under .cgpa-bol-widget.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ─── Widget shell ─── */
+.cgpa-bol-widget {
+  position: relative;
+  overflow: hidden;
+  background: transparent;
 }
 
-.cgpa-summary-card {
-  padding: var(--sp-4) var(--sp-5);
-  background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border: 1px solid rgba(255,255,255,0.08);
+.cgpa-bol-widget .schedule-masthead {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--sp-3);
+  padding-top: 4px;
+}
+
+.cgpa-bol-widget .schedule-masthead-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.cgpa-bol-widget .schedule-title-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.cgpa-bol-widget .schedule-icon-tile {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--accent-blue-glow);
+  color: var(--accent-blue);
+  transition: transform 0.3s cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+
+.cgpa-bol-widget .schedule-icon-tile:hover {
+  transform: scale(1.08) rotate(-3deg);
+}
+
+.cgpa-bol-widget .schedule-icon-tile svg {
+  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-blue) 35%, transparent));
+}
+
+.cgpa-bol-widget .schedule-overline {
+  font-size: 9px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  display: block;
+}
+
+.cgpa-bol-widget .schedule-title {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  margin: 2px 0 0;
+  line-height: 1.2;
+}
+
+.cgpa-bol-widget .schedule-subtitle {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  display: block;
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+/* ─── Stat counters (masthead center) ─── */
+.cgpa-bol-widget .schedule-stats {
+  display: flex;
+  gap: 18px;
+}
+
+.cgpa-bol-widget .schedule-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.cgpa-bol-widget .schedule-stat-value {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.cgpa-bol-widget .schedule-stat-label {
+  font-size: 9px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 2px;
+}
+
+/* ─── Dashed divider ─── */
+.cgpa-bol-widget .schedule-dotted-divider {
+  border-top: 1px dashed var(--border-primary);
+  margin: 12px 0 16px;
+}
+
+/* ─── Nav buttons + pill ─── */
+.cgpa-bol-widget .schedule-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.cgpa-bol-widget .schedule-nav-btn:hover {
+  border-color: var(--border-focus);
+  color: var(--text-primary);
+}
+
+/* ─── Transcript ⋮ dropdown button ─── */
+.cgpa-breakdown-box .schedule-nav-btn.cgpa-more-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--accent-blue-glow);
+  border: 1px solid color-mix(in srgb, var(--accent-blue) 30%, var(--border-primary));
+  color: var(--accent-blue);
+}
+
+.cgpa-breakdown-box .schedule-nav-btn.cgpa-more-btn:hover {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px -4px color-mix(in srgb, var(--accent-blue) 45%, transparent);
+}
+
+.cgpa-breakdown-box .export-menu {
+  border: 1px solid color-mix(in srgb, var(--accent-blue) 18%, var(--border-primary));
+  box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.35);
   border-radius: var(--radius-lg);
-  box-shadow: 0 4px 24px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.06);
-  transition:
-    transform 0.24s cubic-bezier(0.4,0,0.2,1),
-    border-color 0.24s ease,
-    box-shadow 0.24s ease;
+  padding: 6px;
+  min-width: 220px;
+}
+
+.cgpa-breakdown-box .export-menu-item {
+  border-radius: var(--radius-sm);
+  font-weight: var(--fw-medium);
+}
+
+.cgpa-breakdown-box .export-menu-item svg {
+  color: var(--accent-blue);
+}
+
+.cgpa-breakdown-box .export-menu-item:hover svg {
+  color: var(--accent-blue);
+}
+
+.cgpa-breakdown-box .export-menu-sep {
+  margin: 6px 10px;
+}
+
+.cgpa-breakdown-box .export-menu-item-danger {
+  color: var(--accent-rose);
+}
+
+.cgpa-breakdown-box .export-menu-item-danger svg {
+  color: var(--accent-rose);
+}
+
+.cgpa-breakdown-box .export-menu-item-danger:hover {
+  background: var(--accent-rose-glow);
+  color: var(--accent-rose);
+}
+
+.cgpa-breakdown-box .export-menu-item-danger:hover svg {
+  color: var(--accent-rose);
+}
+
+/* ─── ⋮ export menu ─── */
+.cgpa-bol-widget .export-dropdown {
   position: relative;
+}
+
+.cgpa-bol-widget .export-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 200px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popper);
+  z-index: 40;
   overflow: hidden;
 }
 
-.cgpa-summary-card::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, var(--accent-amber), var(--accent-blue));
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 0.4s ease;
+.cgpa-bol-widget .export-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: background var(--transition-base);
 }
 
-.cgpa-summary-card:hover {
-  transform: translateY(-3px);
-  border-color: color-mix(in srgb, var(--accent-amber) 28%, var(--border-primary));
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.04) inset,
-    0 8px 28px -8px color-mix(in srgb, var(--accent-amber) 14%, transparent);
-}
-
-.cgpa-summary-card:hover::after {
-  transform: scaleX(1);
-}
-
-.cgpa-summary-label {
-  font-size: var(--fs-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-tertiary);
+.cgpa-bol-widget .export-menu-item.menu-active {
+  color: var(--accent-blue);
+  background: var(--accent-blue-glow);
   font-weight: var(--fw-semibold);
-  margin-bottom: var(--sp-2);
 }
 
-.cgpa-summary-value {
-  font-size: var(--fs-2xl);
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  background: linear-gradient(135deg, var(--text-primary) 55%, var(--text-secondary));
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+.cgpa-bol-widget .export-menu-item:hover {
+  background: var(--bg-input);
 }
 
-.cgpa-summary-sub {
+.cgpa-bol-widget .export-menu-sep {
+  height: 1px;
+  background: var(--border-primary);
+  margin: 4px 8px;
+}
+
+/* ─── Data cells (flat day-card) ─── */
+.cgpa-bol-widget .schedule-day-card {
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  min-height: 100px;
+  background: var(--bg-card);
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cgpa-bol-widget .schedule-day-card:hover {
+  border-color: var(--border-focus);
+  box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.15);
+}
+
+.cgpa-bol-widget .schedule-day-card.today {
+  border-color: color-mix(in srgb, var(--accent-blue) 45%, var(--border-primary));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-blue) 18%, transparent),
+    0 4px 14px -6px color-mix(in srgb, var(--accent-blue) 35%, transparent);
+}
+
+.cgpa-bol-widget .schedule-day-count {
+  font-size: 9px;
+  font-weight: var(--fw-bold);
+  color: var(--text-secondary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-full);
+  min-width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.cgpa-bol-widget .schedule-day-count.hot {
+  color: var(--accent-rose);
+  background: var(--accent-rose-glow);
+  border-color: var(--accent-rose);
+}
+
+/* ─── Empty state ─── */
+.cgpa-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 200px;
+  padding: 40px 0;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+.cgpa-empty h3 {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  color: var(--text-secondary);
+  margin: 0;
+}
+.cgpa-empty p {
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
-  margin-top: var(--sp-1);
+  margin: 0;
+}
+
+.cgpa-breakdown-box .schedule-masthead .export-dropdown {
+  justify-self: end;
+}
+
+/* ─── Transcript section ─── */
+.cgpa-transcript {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: var(--sp-4);
+}
+
+/* ─── Semester Breakdown — separate card from CGPA Bol ─── */
+.cgpa-breakdown-box {
+  margin-top: var(--sp-4);
+}
+
+.cgpa-breakdown-box .cgpa-transcript {
+  margin-top: 0;
+}
+
+/* Let the flex gap of .cgpa-transcript handle spacing around the divider
+   so it matches the CGPA Bol box (no double-spacing from divider margins). */
+.cgpa-breakdown-box .cgpa-transcript .schedule-dotted-divider {
+  margin: 0;
+}
+
+.cgpa-transcript-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.cgpa-transcript-icon {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-blue-glow);
+  color: var(--accent-blue);
+}
+
+.cgpa-sem-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cgpa-bol-widget .cgpa-sem-card {
+  cursor: pointer;
+  min-height: 0;
+  padding: 6px 14px;
+  gap: 4px;
+  background: transparent;
+  border-color: var(--border-primary);
+}
+
+.cgpa-bol-widget .cgpa-sem-card:hover {
+  background: color-mix(in srgb, var(--bg-card-hover) 60%, transparent);
+}
+
+.cgpa-bol-widget .cgpa-sem-card.today {
+  box-shadow: none;
+}
+
+.cgpa-sem-head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+}
+
+.cgpa-sem-head-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cgpa-sem-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.cgpa-sem-code {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.01em;
+}
+
+.cgpa-sem-year {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
+
+.cgpa-sem-current {
+  font-size: 8px;
+  font-weight: var(--fw-bold);
+  color: var(--accent-purple);
+  background: var(--accent-purple-glow);
+  border: 1px solid color-mix(in srgb, var(--accent-purple) 30%, transparent);
+  border-radius: var(--radius-full);
+  padding: 1px 7px;
+  letter-spacing: 0.05em;
+}
+
+.cgpa-sem-metrics {
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+  align-items: center;
+}
+
+.cgpa-sem-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.cgpa-sem-metric span {
+  font-size: 8px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.cgpa-sem-metric b {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.cgpa-sem-head-side {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  justify-self: end;
+}
+
+.cgpa-sem-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cgpa-sem-chev {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.cgpa-sem-body {
+  border-top: 1px dashed var(--border-primary);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cgpa-sem-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+.cgpa-sem-table th {
+  padding: 8px;
+  text-align: left;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border-primary);
+  white-space: nowrap;
+}
+
+.cgpa-sem-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--border-secondary);
+  color: var(--text-primary);
+}
+
+.cgpa-sem-table tr:last-child td {
+  border-bottom: none;
+}
+
+.cgpa-course-row {
+  border-left-width: 2px;
+  transition: background var(--transition-fast);
+}
+
+.cgpa-course-row:hover {
+  background: color-mix(in srgb, var(--accent-blue) 4%, var(--bg-card-hover));
+}
+
+.cgpa-course-name {
+  color: var(--text-secondary);
+}
+
+.cgpa-sem-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 0 2px;
+  border-top: 1px solid var(--border-secondary);
+}
+
+.cgpa-sem-foot-stats {
+  display: flex;
+  gap: 18px;
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
+
+.cgpa-sem-foot-stats b {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+}
+
+/* ─── Credit input + Grade select (edit mode) ─── */
+.cgpa-breakdown-box .cgpa-credit-input,
+.cgpa-breakdown-box .cgpa-grade-select {
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--transition-base), box-shadow var(--transition-base), background var(--transition-base);
+}
+
+.cgpa-breakdown-box .cgpa-credit-input:hover,
+.cgpa-breakdown-box .cgpa-grade-select:hover {
+  border-color: color-mix(in srgb, var(--accent-blue) 40%, var(--border-primary));
+}
+
+.cgpa-breakdown-box .cgpa-credit-input:focus,
+.cgpa-breakdown-box .cgpa-grade-select:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-blue) 18%, transparent);
+  background: var(--bg-card);
+}
+
+.cgpa-breakdown-box .cgpa-credit-input {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.cgpa-breakdown-box .cgpa-credit-input::-webkit-outer-spin-button,
+.cgpa-breakdown-box .cgpa-credit-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.cgpa-breakdown-box .cgpa-grade-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 26px;
+  cursor: pointer;
+}
+
+.cgpa-breakdown-box .cgpa-grade-select option {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+/* ─── Responsive: collapse masthead under 1000px ─── */
+@media (max-width: 1000px) {
+  .cgpa-bol-widget .schedule-masthead {
+    grid-template-columns: 1fr auto;
+  }
+  .cgpa-bol-widget .schedule-masthead-center {
+    grid-column: 1 / -1;
+    order: 3;
+  }
 }
 
 /* ─── Target Calculator ─── */
@@ -252,50 +784,7 @@
   transform: translateY(-2px);
 }
 
-/* ─── Result Table ─── */
-.result-table-container {
-  width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.result-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-size: var(--fs-sm);
-}
-
-.result-table th {
-  padding: var(--sp-3) var(--sp-4);
-  text-align: left;
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-semibold);
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border-bottom: 1px solid var(--border-primary);
-  background: rgba(255,255,255,0.03);
-  white-space: nowrap;
-}
-
-.result-table th:first-child { border-radius: var(--radius-md) 0 0 0; }
-.result-table th:last-child { border-radius: 0 var(--radius-md) 0 0; }
-
-.result-table td {
-  padding: var(--sp-3) var(--sp-4);
-  border-bottom: 1px solid var(--border-secondary);
-  color: var(--text-primary);
-  transition: background var(--transition-fast);
-}
-
-.result-table tr:last-child td {
-  border-bottom: none;
-}
-
-.result-table tr:hover td {
-  background: color-mix(in srgb, var(--accent-amber) 4%, var(--bg-card-hover));
-}
+/* ─── Result Table (moved into .cgpa-bol-widget day-card cells) ─── */
 
 /* ─── Course Review ─── */
 .review-grid {
@@ -331,28 +820,14 @@
    Uses keyframes from dashboard-premium.css (dash-enter, etc).
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── CGPA summary cards (3 stat cards) ── */
-.cgpa-summary-card:nth-child(1) {
-  animation: dash-enter-card 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.04s both;
-}
-.cgpa-summary-card:nth-child(2) {
-  animation: dash-enter-card 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.11s both;
-}
-.cgpa-summary-card:nth-child(3) {
-  animation: dash-enter-card 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.18s both;
-}
 
-/* ── CGPA Chart Card ── */
+
+/* ── CGPA Chart Card (flat) ── */
 .cgpa-chart-card {
   position: relative;
-  background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: var(--radius-xl);
-  box-shadow: 
-    0 4px 28px rgba(0,0,0,0.18),
-    inset 0 1px 0 rgba(255,255,255,0.06);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
   overflow: hidden;
   animation: dash-enter 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.24s both;
   transition:
@@ -360,23 +835,9 @@
     box-shadow 0.3s ease;
 }
 
-.cgpa-chart-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
-  pointer-events: none;
-}
-
 .cgpa-chart-card:hover {
-  border-color: color-mix(in srgb, var(--accent-amber) 22%, var(--border-primary));
-  box-shadow: 
-    0 8px 32px -6px color-mix(in srgb, var(--accent-amber) 12%, transparent),
-    0 4px 28px rgba(0,0,0,0.18),
-    inset 0 1px 0 rgba(255,255,255,0.06);
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-sm);
 }
 
 /* ── Chart Header ── */
@@ -402,15 +863,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-amber) 18%, transparent), color-mix(in srgb, var(--accent-emerald) 14%, transparent));
-  border: 1px solid color-mix(in srgb, var(--accent-amber) 20%, transparent);
-  color: var(--accent-amber);
+  background: var(--accent-blue-glow);
+  color: var(--accent-blue);
 }
 
 .cgpa-chart-title {
   font-size: var(--fs-md);
   font-weight: var(--fw-bold);
-  color: #ffffff;
+  color: var(--text-primary);
   letter-spacing: -0.01em;
   margin: 0;
   line-height: 1.3;
@@ -418,7 +878,7 @@
 
 .cgpa-chart-subtitle {
   font-size: var(--fs-xs);
-  color: rgba(255,255,255,0.75);
+  color: var(--text-secondary);
   margin: 2px 0 0;
   line-height: 1.4;
 }
@@ -451,31 +911,17 @@
   padding: var(--sp-4) var(--sp-5) var(--sp-5);
 }
 
-/* ── Result table: semester row stagger ── */
-.result-table-container > div:nth-child(3) > div:nth-child(1) {
-  animation: dash-enter-card 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.06s both;
-}
-.result-table-container > div:nth-child(3) > div:nth-child(2) {
-  animation: dash-enter-card 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
-}
-.result-table-container > div:nth-child(3) > div:nth-child(3) {
-  animation: dash-enter-card 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.18s both;
-}
-.result-table-container > div:nth-child(3) > div:nth-child(4) {
-  animation: dash-enter-card 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.24s both;
-}
-.result-table-container > div:nth-child(3) > div:nth-child(5) {
-  animation: dash-enter-card 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.30s both;
-}
-.result-table-container > div:nth-child(3) > div:nth-child(6) {
-  animation: dash-enter-card 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.36s both;
-}
-.result-table-container > div:nth-child(3) > div:nth-child(7) {
-  animation: dash-enter-card 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.42s both;
-}
-.result-table-container > div:nth-child(3) > div:nth-child(8) {
-  animation: dash-enter-card 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.48s both;
-}
+/* ── CGPA Bol: semester cell stagger ── */
+.cgpa-sem-list .schedule-day-card:nth-child(1) { animation: dash-enter-card 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.04s both; }
+.cgpa-sem-list .schedule-day-card:nth-child(2) { animation: dash-enter-card 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both; }
+.cgpa-sem-list .schedule-day-card:nth-child(3) { animation: dash-enter-card 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both; }
+.cgpa-sem-list .schedule-day-card:nth-child(4) { animation: dash-enter-card 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.16s both; }
+.cgpa-sem-list .schedule-day-card:nth-child(5) { animation: dash-enter-card 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.20s both; }
+.cgpa-sem-list .schedule-day-card:nth-child(6) { animation: dash-enter-card 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.24s both; }
+.cgpa-sem-list .schedule-day-card:nth-child(7) { animation: dash-enter-card 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.28s both; }
+.cgpa-sem-list .schedule-day-card:nth-child(8) { animation: dash-enter-card 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.32s both; }
+.cgpa-sem-list .schedule-day-card:nth-child(9) { animation: dash-enter-card 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.36s both; }
+.cgpa-sem-list .schedule-day-card:nth-child(10) { animation: dash-enter-card 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.40s both; }
 
 /* ── Semester Tracker: theory section cascade ── */
 .st-wrapper .st-section-header:first-of-type {
@@ -535,52 +981,10 @@
   animation: dash-enter-subtle 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.14s both;
 }
 
-/* ── Dept Heatmap: section cascade ── */
-.dept-heatmap-container > div:first-child {
-  animation: dash-enter-subtle 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.02s both;
-}
-
-/* ── Course Poll: leaderboard stagger ── */
-.course-poll-wrapper .grid-2 > .glass-card-static:nth-child(1) {
-  animation: dash-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both;
-}
-.course-poll-wrapper .grid-2 > .glass-card-static:nth-child(2) {
-  animation: dash-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
-}
-
-/* Remove hover glow from CoursePoll leaderboard cards */
-.course-poll-wrapper .grid-2 > .glass-card-static:hover {
-  box-shadow: var(--shadow-sm) !important;
-  border-color: var(--border-primary) !important;
-  transform: none !important;
-}
-
-/* Remove ALL hover effects from PickList input cards (Best/Worst course pickers) */
-.course-poll-wrapper .grid-2 > .glass-card {
-  transition: none !important;
-}
-.course-poll-wrapper .grid-2 > .glass-card:hover,
-.course-poll-wrapper .grid-2 > .glass-card:hover::before {
-  box-shadow: var(--shadow-sm) !important;
-  border-color: var(--border-primary) !important;
-  transform: none !important;
-  background: var(--bg-card) !important;
-  opacity: 1 !important;
-  filter: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-.course-poll-wrapper .grid-2 > .glass-card:hover .course-autocomplete-input-wrapper .input {
-  border-color: var(--border-primary) !important;
-  box-shadow: none !important;
-}
-
 /* ── Reduced-motion: instant, no movement ── */
 @media (prefers-reduced-motion: reduce) {
-  .cgpa-summary-card,
-  .cgpagraph-container > .cgpa-chart-card,
-  .cgpagraph-container > .glass-card-static,
-  .result-table-container > div:nth-child(3) > div,
+  .cgpa-bol-widget .schedule-day-card,
+  .cgpa-bol-widget .cgpa-chart-card,
   .st-wrapper .st-section-header,
   .st-wrapper .st-legend,
   .st-wrapper .st-table-scroll,
@@ -589,9 +993,10 @@
   .prereq-toolbar,
   .prereq-canvas,
   .prereq-legend,
-  .dept-heatmap-container > div:first-child,
   .course-reviews-container .grid-2 > div:first-child > div,
-  .course-poll-wrapper .grid-2 > .glass-card-static {
+  .heatmap-widget,
+  .poll-widget,
+  .prereq-widget {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
@@ -616,9 +1021,7 @@
 
   .grade-hero-orb-3 { display: none; }
 
-  .cgpa-summary-cards {
-    grid-template-columns: 1fr;
-  }
+
 
   .target-calculator-grid,
   .syllabus-grid,
@@ -675,27 +1078,27 @@
 [data-theme="sketchbook"] .grade-hero-subtitle {
   font-family: 'Patrick Hand', 'Comic Sans MS', cursive;
 }
-[data-theme="sketchbook"] .cgpa-summary-card {
+[data-theme="sketchbook"] .cgpa-bol-widget .schedule-day-card {
   border: 2px solid var(--border-primary);
   border-radius: var(--radius-md);
   background: var(--bg-card);
   box-shadow: var(--shadow-sm);
   transition: transform 120ms ease, box-shadow 120ms ease;
 }
-[data-theme="sketchbook"] .cgpa-summary-card:hover {
+[data-theme="sketchbook"] .cgpa-bol-widget .schedule-day-card:hover {
   box-shadow: var(--shadow-lg);
   transform: translateY(-2px);
 }
-[data-theme="sketchbook"] .cgpa-summary-label {
-  font-family: 'Patrick Hand', 'Comic Sans MS', cursive;
-  text-transform: none;
-  letter-spacing: 0.02em;
+[data-theme="sketchbook"] .cgpa-bol-widget .schedule-icon-tile {
+  background: var(--bg-card);
+  color: var(--accent-purple);
+  border: 2px solid var(--border-primary);
+  box-shadow: var(--shadow-sm);
 }
-[data-theme="sketchbook"] .cgpa-summary-value {
+[data-theme="sketchbook"] .cgpa-sem-code {
   font-family: 'Kalam', 'Patrick Hand', cursive;
   font-weight: 700;
 }
-[data-theme="sketchbook"] .cgpa-summary-card::after { display: none; }
 [data-theme="sketchbook"] .syllabus-course-card,
 [data-theme="sketchbook"] .target-result-card,
 [data-theme="sketchbook"] .review-card {
@@ -711,15 +1114,366 @@
   box-shadow: var(--shadow-lg);
   transform: translateY(-2px);
 }
-[data-theme="sketchbook"] .result-table-container {
-  border: 2px solid var(--border-primary);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-[data-theme="sketchbook"] .result-table th {
+[data-theme="sketchbook"] .cgpa-sem-table th {
   font-family: 'Patrick Hand', 'Comic Sans MS', cursive;
   text-transform: none;
   letter-spacing: 0.02em;
   border-bottom: 2px solid var(--border-primary);
   background: var(--bg-tertiary);
+}
+
+/* ════════════════════════════════════════════════════════════
+   ANALYTICS WIDGETS — dashboard "Semester View" design language.
+   DeptHeatmap / CoursePoll / PrerequisiteTree.
+   Reuses .st-widget masthead styles scoped in SemesterTracker.css.
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Signature accent tile for the three Grade Lab widgets ── */
+.st-widget.heatmap-widget .schedule-icon-tile {
+  background: var(--accent-rose-glow);
+  color: var(--accent-rose);
+}
+.st-widget.heatmap-widget .schedule-icon-tile svg {
+  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-rose) 35%, transparent));
+}
+.st-widget.poll-widget .schedule-icon-tile {
+  background: var(--accent-emerald-glow);
+  color: var(--accent-emerald);
+}
+.st-widget.poll-widget .schedule-icon-tile svg {
+  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-emerald) 35%, transparent));
+}
+.st-widget.prereq-widget .schedule-icon-tile {
+  background: var(--accent-purple-glow);
+  color: var(--accent-purple);
+}
+.st-widget.prereq-widget .schedule-icon-tile svg {
+  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-purple) 35%, transparent));
+}
+
+/* Scoped count badge — works even when DashboardPage.css is not loaded */
+.st-widget .schedule-day-count {
+  font-size: 9px;
+  font-weight: var(--fw-bold);
+  color: var(--text-secondary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-full);
+  min-width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+.st-widget .schedule-day-count.hot {
+  color: var(--accent-rose);
+  background: var(--accent-rose-glow);
+  border-color: var(--accent-rose);
+}
+
+/* Scoped menu active state */
+.st-widget .export-menu-item.menu-active {
+  color: var(--accent-blue);
+  background: var(--accent-blue-glow);
+  font-weight: var(--fw-semibold);
+}
+
+/* ── Dept Heatmap ── */
+.hm-table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.hm-row {
+  display: grid;
+  gap: 6px;
+  align-items: center;
+  min-width: 760px;
+}
+.hm-header { margin-bottom: 2px; }
+.hm-head {
+  text-align: center;
+  font-weight: var(--fw-bold);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.hm-batch-head { text-align: left; padding-left: 10px; }
+.hm-batch {
+  position: relative;
+  padding: 4px 0;
+  border-radius: var(--radius-sm);
+}
+.hm-batch.hm-user {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-amber) 25%, transparent);
+  background: color-mix(in srgb, var(--accent-amber) 5%, transparent);
+}
+.hm-cell {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-left-width: 2px;
+  border-radius: var(--radius-md);
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+}
+.hm-batch-label {
+  gap: 6px;
+  justify-content: flex-start;
+  padding: 6px 10px;
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+}
+.hm-batch-label .schedule-day-count {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.hm-batch-label em {
+  font-style: normal;
+  font-size: 9px;
+  font-weight: var(--fw-bold);
+  color: var(--accent-amber);
+  background: var(--accent-amber-glow);
+  border-radius: var(--radius-full);
+  padding: 1px 6px;
+}
+
+/* ── Dept Heatmap: collected data + legend ── */
+.hm-summary {
+  margin-top: var(--sp-4);
+  padding: var(--sp-3);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-xs);
+}
+.hm-summary > strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 11px;
+  margin-bottom: var(--sp-2);
+}
+.hm-summary-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.hm-summary-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+}
+.hm-summary-chip b {
+  font-weight: var(--fw-bold);
+  color: var(--accent-amber);
+}
+.hm-summary-chip.ready b { color: var(--accent-emerald); }
+.hm-summary-chip em {
+  font-style: normal;
+  color: var(--text-tertiary);
+}
+.hm-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  align-items: center;
+  justify-content: center;
+  margin-top: var(--sp-4);
+  padding: var(--sp-3);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  font-size: 11px;
+}
+.hm-legend-title {
+  color: var(--text-tertiary);
+  font-weight: var(--fw-bold);
+}
+.hm-legend-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+}
+.hm-legend-chip::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--chip);
+}
+
+/* ── Course Poll ── */
+.poll-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+.poll-submit:hover {
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-blue) 15%, transparent);
+}
+.poll-recorded {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--accent-emerald);
+  background: var(--accent-emerald-glow);
+  border: 1px solid var(--accent-emerald);
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+.poll-pickers { margin-bottom: var(--sp-4); }
+.poll-error {
+  font-size: var(--fs-xs);
+  color: var(--accent-rose);
+  margin-top: var(--sp-3);
+}
+.poll-recorded-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: var(--sp-4);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--sp-4);
+}
+.poll-recorded-banner svg {
+  color: var(--accent-emerald);
+  flex-shrink: 0;
+}
+.poll-recorded-banner p:first-of-type {
+  font-weight: var(--fw-bold);
+  margin: 0;
+  color: var(--text-primary);
+}
+.poll-recorded-banner p:last-of-type {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  margin: 2px 0 0;
+}
+.poll-pick-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.poll-pick-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+}
+.poll-pick-head svg { flex-shrink: 0; }
+.poll-pick-head h4 { margin: 0; }
+.poll-pick-head .schedule-day-count { margin-left: auto; }
+.poll-pick-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.poll-board {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+}
+.poll-board-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sp-4);
+}
+.poll-board-head h3 {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  margin: 0;
+}
+.poll-board-head > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.poll-board-voters {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+.poll-board-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.poll-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  border-left-width: 2px;
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+}
+.poll-rank {
+  font-size: 13px;
+  font-weight: var(--fw-bold);
+  color: var(--text-tertiary);
+  min-width: 20px;
+  text-align: center;
+}
+.poll-course { flex: 1; min-width: 0; }
+.poll-course-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.poll-code {
+  font-size: 13px;
+  font-weight: var(--fw-bold);
+}
+.poll-course-line .schedule-day-count { flex-shrink: 0; }
+.poll-name {
+  display: block;
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin: 2px 0 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

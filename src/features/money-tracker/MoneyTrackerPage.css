@@ -1,33 +1,169 @@
-.mt-page {
-  --page-hero-icon-bg: var(--accent-emerald-glow);
-  --page-hero-icon-color: var(--accent-emerald);
-  --page-hero-gradient-start: var(--accent-emerald);
-  max-width: 840px;
-  margin: 0 auto;
-  padding-bottom: var(--sp-10);
+/* ============================================
+   MoneyTrackerPage — matches SemesterTracker
+   design language (mt-widget)
+   ============================================ */
+
+/* ── Widget shell ── */
+.mt-widget {
+  overflow: hidden;
+  background: transparent;
 }
-.mt-hero { position: relative; border-radius: var(--radius-xl); border: 1px solid var(--border-primary); background: var(--bg-card); overflow: hidden; box-shadow: 0 1px 0 0 rgba(255,255,255,0.04) inset, var(--shadow-md); animation: mtHeroIn 0.55s cubic-bezier(0.4,0,0.2,1) both; margin-bottom: var(--sp-5); transition: border-color 0.3s ease, box-shadow 0.3s ease; }
-.mt-hero:hover { border-color: color-mix(in srgb, var(--accent-emerald) 30%, var(--border-primary)); box-shadow: 0 1px 0 0 rgba(255,255,255,0.06) inset, 0 0 0 1px color-mix(in srgb, var(--accent-emerald) 10%, transparent), 0 8px 40px -8px color-mix(in srgb, var(--accent-emerald) 12%, transparent), var(--shadow-lg); }
-@keyframes mtHeroIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
-.mt-hero-bg { position: absolute; inset: 0; pointer-events: none; }
-.mt-hero-grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px); background-size: 40px 40px; mask-image: linear-gradient(135deg, black 0%, transparent 70%); }
-.mt-hero-shimmer { position: absolute; top: 0; left: -100%; width: 60%; height: 1px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent-emerald) 60%, transparent), transparent); animation: mtShimmer 4s ease-in-out infinite 1s; }
-@keyframes mtShimmer { 0% { left: -60%; opacity: 0; } 30% { opacity: 1; } 100% { left: 110%; opacity: 0; } }
-.mt-hero-orb { position: absolute; border-radius: 50%; filter: blur(72px); animation: mtFloat 10s ease-in-out infinite; }
-.mt-hero-orb-1 { width: 240px; height: 240px; top: -100px; right: -40px; background: radial-gradient(circle, rgba(52,211,153,0.12) 0%, transparent 70%); }
-.mt-hero-orb-2 { width: 180px; height: 180px; bottom: -60px; left: 6%; background: radial-gradient(circle, rgba(245,158,11,0.07) 0%, transparent 70%); animation-delay: -4.5s; }
-@keyframes mtFloat { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(10px,-14px) scale(1.04); } 66% { transform: translate(-8px,6px) scale(0.97); } }
-.mt-hero-content { position: relative; padding: var(--sp-6) var(--sp-6) var(--sp-5); z-index: 1; display: flex; flex-direction: column; gap: var(--sp-3); }
-.mt-hero-title-row { display: flex; align-items: center; gap: var(--sp-4); }
-.mt-hero-icon { width: 34px; height: 34px; min-width: 34px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--accent-emerald) 14%, transparent); border: 1px solid color-mix(in srgb, var(--accent-emerald) 22%, transparent); color: var(--accent-emerald); transition: transform 0.3s ease, box-shadow 0.3s ease; }
-.mt-hero:hover .mt-hero-icon { transform: rotate(-6deg) scale(1.08); box-shadow: 0 0 14px color-mix(in srgb, var(--accent-emerald) 30%, transparent); }
-.mt-hero-title { font-size: clamp(1.5rem, 3.5vw, 2rem); font-weight: 800; letter-spacing: -0.035em; line-height: 1.12; margin: 0 0 var(--sp-1); color: var(--text-primary); }
-.mt-hero-name { display: inline-block; background: linear-gradient(135deg, var(--accent-emerald) 0%, var(--accent-cyan) 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; transition: filter 0.3s ease; }
-.mt-hero:hover .mt-hero-name { filter: brightness(1.15) drop-shadow(0 0 12px color-mix(in srgb, var(--accent-emerald) 40%, transparent)); }
-.mt-hero-subtitle { font-size: var(--fs-sm); font-weight: var(--fw-regular); color: var(--text-secondary); margin: 0; max-width: 440px; line-height: 1.6; }
-.mt-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-3); padding: var(--sp-16) var(--sp-6); text-align: center; color: var(--text-tertiary); }
-.mt-placeholder svg { opacity: 0.3; }
-.mt-placeholder h3 { color: var(--text-secondary); font-size: var(--fs-md); font-weight: var(--fw-semibold); margin: 0; }
-.mt-placeholder p { font-size: var(--fs-sm); max-width: 320px; line-height: 1.5; margin: 0; }
-@media (max-width: 640px) { .mt-hero-content { padding: var(--sp-4) var(--sp-3); } }
-@media (prefers-reduced-motion: reduce) { .mt-hero,.mt-hero-icon { animation: none !important; } .mt-hero-orb,.mt-hero-shimmer { animation: none !important; opacity: 0.5; } }
+
+/* ════════════════════════════════════════════════════════════
+   MASTHEAD — scoped to .mt-widget so it works independently
+   of DashboardPage.css / SemesterTracker.css loading order.
+   ════════════════════════════════════════════════════════════ */
+.mt-widget .schedule-masthead {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--sp-3);
+  padding-top: 4px;
+}
+.mt-widget .schedule-masthead-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.mt-widget .schedule-title-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* Icon tile — signature accent (matches About Us dev name) */
+.mt-widget .schedule-icon-tile {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--accent-blue-glow);
+  color: var(--accent-blue);
+  transition: transform 0.3s cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+.mt-widget .schedule-icon-tile:hover {
+  transform: scale(1.08) rotate(-3deg);
+}
+.mt-widget .schedule-icon-tile svg {
+  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-blue) 35%, transparent));
+}
+
+.mt-widget .schedule-overline {
+  font-size: 9px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  display: block;
+}
+.mt-widget .schedule-title {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  margin: 2px 0 0;
+  line-height: 1.2;
+}
+.mt-widget .schedule-subtitle {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
+  display: block;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.mt-widget .schedule-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+/* Nav / action square buttons */
+.mt-widget .schedule-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+.mt-widget .schedule-nav-btn:hover:not(:disabled) {
+  border-color: var(--border-focus);
+  color: var(--text-primary);
+}
+.mt-widget .schedule-nav-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Dotted divider */
+.mt-widget .schedule-dotted-divider {
+  border-top: 1px dashed var(--border-primary);
+  margin: 14px 0 20px;
+}
+
+/* ════════════════════════════════════════
+   EMPTY STATE / PLACEHOLDER — flat data cell
+════════════════════════════════════════ */
+.mt-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  padding: var(--sp-16) var(--sp-6);
+  text-align: center;
+  color: var(--text-tertiary);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  min-height: 100px;
+}
+.mt-placeholder svg {
+  opacity: 0.3;
+}
+.mt-placeholder h3 {
+  color: var(--text-secondary);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  margin: 0;
+}
+.mt-placeholder p {
+  font-size: var(--fs-sm);
+  max-width: 320px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ════════════════════════════════════════
+   RESPONSIVE — collapse center panel at 1000px
+════════════════════════════════════════ */
+@media (max-width: 1000px) {
+  .mt-widget .schedule-masthead {
+    grid-template-columns: 1fr auto;
+  }
+  .mt-widget .schedule-masthead-center {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+  .mt-widget .schedule-actions {
+    justify-content: flex-end;
+  }
+}

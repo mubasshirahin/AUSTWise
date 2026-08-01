@@ -1,123 +1,12 @@
-/* ─── Canteen Menu Container ─── */
-.canteen-menu-container {
-  animation: fadeInUp 0.4s ease both;
-}
+/* ═══════════════════════════════════════════════════════════════
+   CANTEEN MENU — Semester View design language
+   (shared masthead/cells come from SemesterViewWidget.css)
+   ═══════════════════════════════════════════════════════════════ */
 
-/* ─── Header Row ─── */
-.canteen-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--sp-4);
-  margin-bottom: var(--sp-6);
-}
-
-.canteen-header-left {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-}
-
-.canteen-header-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-lg);
-  background: var(--gradient-primary);
-  color: #fff;
-  flex-shrink: 0;
-  box-shadow: 0 6px 20px color-mix(in srgb, var(--accent-blue) 30%, transparent);
-}
-
-.canteen-header-title {
-  font-size: var(--fs-lg);
-  font-weight: var(--fw-bold);
-  margin: 0;
-  letter-spacing: -0.02em;
-}
-
-.canteen-header-subtitle {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  margin: 2px 0 0;
-}
-
-/* ─── Controls Bar ─── */
-.canteen-controls {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  flex-wrap: wrap;
-}
-
-.canteen-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: var(--radius-full);
-  font-size: 11px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.canteen-pill-label {
-  color: var(--text-tertiary);
-  font-weight: var(--fw-medium);
-}
-
-.canteen-badge-dot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  margin-right: 3px;
-}
-
-.canteen-badge-dot.open { background: var(--accent-emerald); }
-.canteen-badge-dot.closed { background: var(--accent-rose); }
-
-.canteen-status-text {
-  font-weight: var(--fw-bold);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.canteen-status-text.open { color: var(--accent-emerald); }
-.canteen-status-text.closed { color: var(--accent-rose); }
-
-.canteen-crowd-text {
-  font-weight: var(--fw-bold);
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-}
-
-.canteen-crowd-level {
-  color: var(--text-tertiary);
-  font-size: 10px;
-}
-
-.canteen-info-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 3px;
-  color: var(--text-tertiary);
-  transition: color 0.15s ease;
-  line-height: 0;
-}
-
-.canteen-info-btn:hover {
-  color: var(--text-primary);
+.canteen-widget {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-bottom: var(--sp-10);
 }
 
 /* ─── Category Tabs ─── */
@@ -125,12 +14,13 @@
   display: flex;
   gap: 4px;
   padding: 3px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.07);
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
   border-radius: var(--radius-md);
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  margin-bottom: var(--sp-3);
 }
 
 .canteen-categories::-webkit-scrollbar {
@@ -145,6 +35,7 @@
   font-size: 11px;
   font-weight: var(--fw-medium);
   color: var(--text-secondary);
+  font-family: inherit;
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.2s ease;
@@ -152,50 +43,40 @@
 
 .canteen-cat-btn:hover {
   color: var(--text-primary);
-  background: rgba(255,255,255,0.05);
+  background: var(--bg-card-hover);
 }
 
 .canteen-cat-btn.active {
-  background: rgba(255,255,255,0.06);
+  background: var(--accent-blue-glow);
   color: var(--accent-blue);
   font-weight: var(--fw-semibold);
-  box-shadow: 0 0 8px rgba(59,130,246,0.15);
 }
 
-/* ─── Add Item Button ─── */
-.canteen-add-btn {
-  display: inline-flex;
+/* ─── Current slot chip ─── */
+.canteen-slot-chip {
+  display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  border: none;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  padding: var(--sp-2) var(--sp-3);
   border-radius: var(--radius-md);
-  background: var(--accent-blue);
-  color: var(--text-inverse);
-  font-size: 11px;
-  font-weight: var(--fw-semibold);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 25%, transparent);
+  background: var(--accent-amber-glow);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--accent-amber);
+  margin-bottom: var(--sp-4);
 }
 
-.canteen-add-btn:hover {
-  background: var(--accent-blue);
-  filter: brightness(1.15);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent-blue) 35%, transparent);
+.canteen-slot-chip.closed {
+  border-color: color-mix(in srgb, var(--accent-rose) 25%, transparent);
+  background: var(--accent-rose-glow);
+  color: var(--accent-rose);
 }
 
-.canteen-add-btn-close {
-  background: rgba(255,255,255,0.04);
-  color: var(--text-secondary);
-  border: 1px solid rgba(255,255,255,0.08);
-}
-
-.canteen-add-btn-close:hover {
-  background: color-mix(in srgb, var(--accent-blue) 12%, transparent);
-  color: var(--accent-blue);
-  border-color: color-mix(in srgb, var(--accent-blue) 30%, transparent);
+.canteen-slot-time {
+  color: var(--text-tertiary);
+  font-weight: var(--fw-regular);
 }
 
 /* ─── Add Item Form ─── */
@@ -206,8 +87,8 @@
   flex-wrap: wrap;
   padding: var(--sp-4);
   margin-bottom: var(--sp-4);
-  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
   animation: fadeInUp 0.25s ease both;
 }
@@ -241,54 +122,31 @@
   color: var(--text-inverse);
   font-size: 12px;
   font-weight: var(--fw-semibold);
+  font-family: inherit;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .canteen-add-submit:hover {
-  filter: brightness(1.15);
+  opacity: 0.88;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent-blue) 35%, transparent);
 }
 
 /* ─── Food Grid ─── */
 .canteen-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
-  gap: var(--sp-4);
+  gap: var(--sp-3);
 }
 
-.canteen-empty {
-  padding: 32px;
-  text-align: center;
-  color: var(--text-secondary);
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.07);
-  border-radius: var(--radius-lg);
-  font-size: var(--fs-sm);
-}
-
-/* ─── Food Card ─── */
+/* ─── Food Card (sv-cell) ─── */
 .canteen-food-card {
-  padding: var(--sp-4);
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.07);
-  border-radius: var(--radius-lg);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  position: relative;
-  transition: all 0.25s ease;
-}
-
-.canteen-food-card:hover {
-  border-color: color-mix(in srgb, var(--accent-amber) 25%, transparent);
-  box-shadow: 0 8px 28px -8px color-mix(in srgb, var(--accent-amber) 14%, transparent);
-  transform: translateY(-2px);
+  min-height: 120px;
+  cursor: default;
 }
 
 .canteen-food-card.unavailable {
-  opacity: 0.5;
+  opacity: 0.55;
 }
 
 .canteen-bestseller-badge {
@@ -306,6 +164,7 @@
   font-weight: var(--fw-bold);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  z-index: 1;
 }
 
 .canteen-food-category {
@@ -318,9 +177,7 @@
 
 .canteen-food-name {
   font-size: 14px;
-  font-weight: var(--fw-bold);
-  margin: 4px 0;
-  color: var(--text-primary);
+  margin: 2px 0;
 }
 
 .canteen-food-rating {
@@ -344,16 +201,16 @@
   font-size: var(--fs-md);
   font-weight: var(--fw-bold);
   color: var(--accent-amber);
-  margin: 8px 0 0;
+  margin: 6px 0 0;
 }
 
 .canteen-food-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: var(--sp-5);
+  margin-top: var(--sp-4);
   padding-top: var(--sp-2);
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid var(--border-secondary);
   font-size: 11px;
 }
 
@@ -378,9 +235,10 @@
   align-items: center;
   color: var(--text-secondary);
   background: none;
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid var(--border-primary);
   border-radius: var(--radius-md);
   padding: 6px 10px;
+  font-family: inherit;
   cursor: pointer;
   transition: all 0.2s ease;
   width: 100%;
@@ -389,22 +247,13 @@
 .canteen-feedback-toggle:hover {
   border-color: var(--accent-blue);
   color: var(--accent-blue);
-  background: color-mix(in srgb, var(--accent-blue) 12%, transparent);
-}
-
-.canteen-complaint-count {
-  font-size: 8px;
-  padding: 1px 5px;
-  border-radius: var(--radius-full);
-  background: var(--accent-rose);
-  color: #fff;
-  font-weight: var(--fw-bold);
+  background: var(--accent-blue-glow);
 }
 
 /* ─── Food Feedback Panel ─── */
 .canteen-feedback-panel {
   margin-top: 10px;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid var(--border-secondary);
   padding-top: 10px;
 }
 
@@ -413,7 +262,7 @@
   gap: 4px;
   margin-bottom: var(--sp-3);
   padding: 2px;
-  background: rgba(255,255,255,0.03);
+  background: var(--bg-input);
   border-radius: var(--radius-md);
 }
 
@@ -429,6 +278,7 @@
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-secondary);
+  font-family: inherit;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -438,10 +288,9 @@
 }
 
 .canteen-feedback-tab.active {
-  background: rgba(255,255,255,0.06);
+  background: var(--accent-blue-glow);
   color: var(--accent-blue);
   font-weight: var(--fw-semibold);
-  box-shadow: 0 0 8px rgba(59,130,246,0.15);
 }
 
 .canteen-feedback-error {
@@ -471,21 +320,17 @@
   background: var(--accent-blue);
   color: var(--text-inverse);
   font-weight: var(--fw-semibold);
+  font-family: inherit;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .canteen-feedback-submit:hover {
-  filter: brightness(1.15);
+  opacity: 0.88;
 }
 
 .canteen-feedback-submit.complaint {
   background: var(--accent-rose);
-  color: #fff;
-}
-
-.canteen-feedback-submit.complaint:hover {
-  filter: brightness(1.1);
 }
 
 .canteen-feedback-list {
@@ -504,7 +349,7 @@
 }
 
 .canteen-review-card {
-  background: rgba(255,255,255,0.04);
+  background: var(--bg-input);
   border-radius: var(--radius-sm);
   padding: 8px;
 }
@@ -566,16 +411,15 @@
   line-height: 1.5;
 }
 
-/* ─── Overlay Backdrop ─── */
+/* ─── Overlay ─── */
 .canteen-overlay-backdrop {
   position: fixed;
   inset: 0;
   z-index: 99999;
-  background: rgba(0, 0, 0, 0.85);
+  background: color-mix(in srgb, var(--bg-primary) 85%, transparent);
   animation: overlayFadeIn 0.2s ease-out;
 }
 
-/* ─── Overlay ─── */
 .canteen-overlay {
   position: fixed;
   inset: 0;
@@ -593,12 +437,10 @@
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(135deg, rgba(20,20,22,0.98) 0%, rgba(18,18,20,0.98) 100%);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: var(--bg-card);
   border-radius: var(--radius-xl);
-  border: 1px solid rgba(255,255,255,0.1);
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-popper);
   animation: overlayScaleIn 0.2s ease-out;
 }
 
@@ -607,7 +449,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 20px 24px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  border-bottom: 1px solid var(--border-primary);
   flex-shrink: 0;
 }
 
@@ -615,6 +457,7 @@
   margin: 0;
   font-size: var(--fs-lg);
   font-weight: var(--fw-bold);
+  color: var(--text-primary);
 }
 
 .canteen-overlay-close {
@@ -622,12 +465,13 @@
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid var(--border-primary);
   border-radius: var(--radius-md);
   background: transparent;
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: var(--fw-medium);
+  font-family: inherit;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -635,7 +479,7 @@
 .canteen-overlay-close:hover {
   border-color: var(--accent-blue);
   color: var(--accent-blue);
-  background: color-mix(in srgb, var(--accent-blue) 12%, transparent);
+  background: var(--accent-blue-glow);
 }
 
 .canteen-overlay-body {
@@ -657,7 +501,7 @@
   padding: 8px 12px;
   font-weight: var(--fw-bold);
   color: var(--text-secondary);
-  border-bottom: 2px solid rgba(255,255,255,0.1);
+  border-bottom: 1px solid var(--border-primary);
 }
 
 .canteen-ref-table th.center {
@@ -666,7 +510,7 @@
 
 .canteen-ref-table td {
   padding: 6px 12px;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid var(--border-secondary);
   color: var(--text-primary);
 }
 
@@ -694,6 +538,7 @@
 .canteen-ref-active-icon {
   margin-right: 6px;
   font-size: 11px;
+  color: var(--accent-amber);
 }
 
 /* ─── Star Picker ─── */
@@ -724,16 +569,6 @@
 
 /* ─── Responsive ─── */
 @media (max-width: 768px) {
-  .canteen-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .canteen-controls {
-    width: 100%;
-    justify-content: flex-start;
-  }
-
   .canteen-grid {
     grid-template-columns: 1fr;
   }
@@ -766,11 +601,6 @@
 }
 
 @media (max-width: 480px) {
-  .canteen-pill {
-    font-size: 10px;
-    padding: 4px 8px;
-  }
-
   .canteen-categories {
     width: 100%;
   }

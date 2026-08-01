@@ -14,7 +14,7 @@ import {
   Gauge, Percent, BookOpen, CalendarDays, Zap, AlertTriangle, Calendar,
   Flame, X, Trophy, Medal, Award, Star, Target, Sparkles, Sun, BarChart3,
 } from 'lucide-react';
-import { getUserStorageItem, getCurrentUserId } from '../../utils/authStorage';
+import { getUserStorageItemWithGuestFallback, getCurrentUserId } from '../../utils/authStorage';
 import { useAuth } from '../../context/AuthContext';
 import './DashboardPage.css';
 import './dashboard-premium.css';
@@ -324,7 +324,7 @@ const PERIOD_ICONS = {
   night: <MoonIcon />,
 };
 
-function useAnimatedValue(target, duration = 900) {
+function useAnimatedValue(target, duration = 900, forceDecimals = false) {
   const [display, setDisplay] = useState('—');
 
   useEffect(() => {
@@ -346,12 +346,12 @@ function useAnimatedValue(target, duration = 900) {
       const progress = Math.min((now - startTime) / duration, 1);
       const eased = 1 - (1 - progress) ** 3;
       const current = num * eased;
-      setDisplay(isInt ? String(Math.round(current)) : current.toFixed(2));
+      setDisplay(forceDecimals || !isInt ? current.toFixed(2) : String(Math.round(current)));
       if (progress < 1) requestAnimationFrame(tick);
     };
 
     requestAnimationFrame(tick);
-  }, [target, duration]);
+  }, [target, duration, forceDecimals]);
 
   return display;
 }
@@ -363,7 +363,7 @@ function QuickStats() {
   useEffect(() => {
     const userId = getCurrentUserId();
     setIsGuest(!userId);
-    const stored = getUserStorageItem(storageKeyType);
+    const stored = getUserStorageItemWithGuestFallback(storageKeyType);
     setUserResults(stored);
   }, []);
 
@@ -422,7 +422,7 @@ function QuickStats() {
   }, [userResults, isGuest]);
 
   const animatedCgpa = useAnimatedValue(stats.currentCgpa);
-  const animatedCredits = useAnimatedValue(stats.creditsCompleted);
+  const animatedCredits = useAnimatedValue(stats.creditsCompleted, 900, true);
   const animatedDeadlines = useAnimatedValue(stats.upcomingDeadlines);
 
   const hasCgpa = stats.currentCgpa !== null && stats.currentCgpa !== undefined;

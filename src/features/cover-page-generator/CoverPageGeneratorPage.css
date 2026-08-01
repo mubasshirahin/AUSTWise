@@ -2,13 +2,196 @@
    Cover Page Generator
    ═══════════════════════════════════════════════════════════════════════ */
 
-.cpgen-page {
-  --page-hero-icon-bg: var(--accent-blue-glow);
-  --page-hero-icon-color: var(--accent-blue);
-  --page-hero-gradient-start: var(--accent-blue);
+.cpgen-widget {
   max-width: 1200px;
   margin: 0 auto;
-  padding: var(--sp-4);
+  padding-bottom: var(--sp-10);
+  overflow: hidden;
+  background: transparent;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MASTHEAD — scoped under .cpgen-widget so it renders even when
+   DashboardPage.css is not loaded (lazy route with its own CSS chunk).
+   ═══════════════════════════════════════════════════════════════════════ */
+.cpgen-widget .schedule-masthead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding-top: 4px;
+}
+.cpgen-widget .schedule-title-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.cpgen-widget .schedule-icon-tile {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--accent-blue-glow);
+  color: var(--accent-blue);
+  transition: transform 0.3s cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+.cpgen-widget .schedule-icon-tile:hover {
+  transform: scale(1.08) rotate(-3deg);
+}
+.cpgen-widget .schedule-icon-tile svg {
+  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-blue) 35%, transparent));
+}
+.cpgen-widget .schedule-overline {
+  font-size: 9px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  display: block;
+}
+.cpgen-widget .schedule-title {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  margin: 2px 0 0;
+  line-height: 1.2;
+}
+.cpgen-widget .schedule-subtitle {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
+  display: block;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+.cpgen-widget .schedule-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.cpgen-widget .schedule-stats {
+  display: flex;
+  gap: 18px;
+}
+.cpgen-widget .schedule-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.cpgen-widget .schedule-stat-value {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+.cpgen-widget .schedule-stat-label {
+  font-size: 9px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 2px;
+}
+.cpgen-widget .schedule-dotted-divider {
+  border-top: 1px dashed var(--border-primary);
+  margin: 14px 0 20px;
+}
+
+/* Nav square (⋮ trigger) */
+.cpgen-widget .schedule-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+.cpgen-widget .schedule-nav-btn:hover {
+  border-color: var(--border-focus);
+  color: var(--text-primary);
+}
+
+/* ── ⋮ dropdown menu ── */
+.cpgen-widget .export-dropdown {
+  position: relative;
+}
+.cpgen-widget .export-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 180px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popper);
+  z-index: 20;
+  overflow: hidden;
+  padding: 4px 0;
+}
+.cpgen-widget .export-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+.cpgen-widget .export-menu-item:hover {
+  background: var(--bg-input);
+}
+.cpgen-widget .export-menu-item:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.cpgen-widget .export-menu-sep {
+  height: 1px;
+  background: var(--border-primary);
+  margin: 4px 8px;
+}
+
+/* Masthead status badges (generating / generated) */
+.cpgen-status-badge,
+.cpgen-success-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  border-radius: var(--radius-md);
+  white-space: nowrap;
+  animation: cpgenFadeIn 0.3s ease;
+}
+.cpgen-status-badge {
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+}
+.cpgen-success-badge {
+  color: var(--accent-emerald);
+  background: var(--accent-emerald-glow);
+  border: 1px solid color-mix(in srgb, var(--accent-emerald) 25%, transparent);
 }
 
 /* ─── Layout ─── */
@@ -16,13 +199,19 @@
   display: grid;
   grid-template-columns: 380px 1fr;
   gap: var(--sp-6);
-  margin-top: var(--sp-6);
   align-items: start;
 }
 
 @media (max-width: 900px) {
   .cpgen-layout {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ── Masthead collapse under 1000px ── */
+@media (max-width: 1000px) {
+  .cpgen-widget .schedule-actions {
+    justify-content: flex-end;
   }
 }
 
@@ -33,7 +222,7 @@
 .cpgen-form-panel {
   background: var(--bg-card);
   border: 1px solid var(--border-primary);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-md);
   padding: var(--sp-5);
   display: flex;
   flex-direction: column;
@@ -158,51 +347,84 @@
   white-space: nowrap;
 }
 
-/* ─── Actions ─── */
-.cpgen-actions {
+/* ─── Group members form ─── */
+.cpgen-members-list {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
-  padding-top: var(--sp-2);
+  gap: 6px;
 }
 
-.cpgen-btn {
-  width: 100%;
+.cpgen-member-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.cpgen-member-remove {
+  display: flex;
+  align-items: center;
   justify-content: center;
-  padding: 10px 16px;
-  font-size: var(--fs-sm);
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--accent-rose-glow);
+  color: var(--accent-rose);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex: none;
 }
 
+.cpgen-member-remove:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.cpgen-member-remove:not(:disabled):hover {
+  background: var(--accent-rose);
+  color: #fff;
+}
+
+.cpgen-add-member {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 12px;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--accent-emerald);
+  background: var(--accent-emerald-glow);
+  border: 1px dashed color-mix(in srgb, var(--accent-emerald) 40%, transparent);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: inherit;
+}
+
+.cpgen-add-member:hover {
+  background: color-mix(in srgb, var(--accent-emerald) 18%, transparent);
+}
+
+/* ─── Actions ─── */
 .cpgen-spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #fff;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--border-primary);
+  border-top-color: var(--accent-blue);
   border-radius: 50%;
   animation: cpgenSpin 0.6s linear infinite;
+  flex-shrink: 0;
 }
 
 @keyframes cpgenSpin {
   to { transform: rotate(360deg); }
 }
 
-.cpgen-success-badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px;
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-semibold);
-  color: var(--accent-emerald);
-  background: var(--accent-emerald-glow);
-  border-radius: var(--radius-md);
-  animation: cpgenFadeIn 0.3s ease;
-}
-
 @keyframes cpgenFadeIn {
   from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -212,7 +434,7 @@
 .cpgen-preview-panel {
   background: var(--bg-card);
   border: 1px solid var(--border-primary);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-md);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
 }
@@ -235,23 +457,38 @@
 
 .cpgen-preview-frame {
   position: relative;
-  min-height: 500px;
+  min-height: 560px;
+  height: calc(100vh - 200px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--sp-6);
   background:
     repeating-conic-gradient(var(--bg-tertiary) 0% 25%, transparent 0% 50%) 0 0 / 20px 20px;
+  overflow: hidden;
+}
+
+.cpgen-cover-viewport {
+  position: relative;
+  flex: none;
+  line-height: 0;
 }
 
 .cpgen-preview-placeholder {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: var(--sp-3);
   color: var(--text-tertiary);
   text-align: center;
-  max-width: 280px;
+  max-width: 320px;
+  margin: 0 auto;
+  background: color-mix(in srgb, var(--bg-card) 92%, transparent);
+  backdrop-filter: blur(2px);
+  z-index: 2;
 }
 
 .cpgen-preview-placeholder p {
@@ -260,209 +497,171 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   COVER PAGE TEMPLATE (the actual printable cover)
+   COVER PAGE TEMPLATE (the actual printable cover, A4 @ 96dpi)
    ═══════════════════════════════════════════════════════════════════════ */
 
 .cpgen-cover {
-  width: 210mm;
-  min-height: 297mm;
+  width: 794px;
+  height: 1123px;
   background: #ffffff;
-  color: #1a1a2e;
-  font-family: 'Times New Roman', 'Inter', serif;
-  padding: 0;
-  display: none; /* hidden until capture */
+  display: none; /* hidden until captured for export */
   flex-direction: column;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.1);
-  border-radius: 4px;
   overflow: hidden;
   position: relative;
 }
 
-/* Show in preview mode */
+/* Show in preview mode (scaled by the JS letterbox wrapper) */
 .cpgen-preview-frame .cpgen-cover {
   display: flex;
-  transform: scale(0.45);
-  transform-origin: top left;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
-  border: 1px solid #e2e8f0;
+  box-shadow: 0 8px 32px rgba(28, 42, 74, 0.18);
 }
 
-/* Decorative bars */
-.cpgen-cover-topbar {
-  height: 8px;
-  background: linear-gradient(90deg, #1a365d, #2d4a7a, #1a365d);
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MINIMAL TEMPLATE (black & white, Poppins sans-serif)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.cpgen-cover--minimal {
+  color: #1a1a1a;
+  font-family: 'Poppins', 'Segoe UI', 'Inter', sans-serif;
 }
 
-.cpgen-cover-bottombar {
-  margin-top: auto;
-  height: 6px;
-  background: linear-gradient(90deg, #1a365d, #2d4a7a, #1a365d);
+/* Outer black border (3px), inset ~10–12mm from page edge */
+.cpgen-min-border {
+  position: absolute;
+  top: 45px;   /* ≈ 12mm */
+  bottom: 45px;
+  left: 38px;  /* ≈ 10mm */
+  right: 38px;
+  border: 3px solid #000000;
+  pointer-events: none;
+  z-index: 1;
 }
 
-/* Header */
-.cpgen-cover-header {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding: 40px 50px 20px;
-  text-align: center;
-  justify-content: center;
+/* Watermark — AUST crest logo, centered, 6% opacity */
+.cpgen-min-watermark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 566px; /* ≈ 150mm */
+  height: auto;
+  opacity: 0.06;
+  pointer-events: none;
+  z-index: 0;
 }
 
-.cpgen-cover-logo {
-  flex-shrink: 0;
-}
-
-.cpgen-cover-title-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.cpgen-cover-university {
-  font-size: 22px;
-  font-weight: 800;
-  color: #1a365d;
-  letter-spacing: 0.02em;
-  margin: 0;
-  line-height: 1.2;
-}
-
-.cpgen-cover-dept {
-  font-size: 14px;
-  font-weight: 600;
-  color: #4a5568;
-  margin: 0;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-/* Divider */
-.cpgen-cover-divider {
-  height: 2px;
-  background: linear-gradient(90deg, transparent, #cbd5e0, #1a365d, #cbd5e0, transparent);
-  margin: 0 50px;
-}
-
-/* Type badge */
-.cpgen-cover-type-badge {
-  display: inline-block;
-  align-self: center;
-  margin: 24px auto 16px;
-  padding: 6px 28px;
-  background: linear-gradient(135deg, #1a365d, #2d4a7a);
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  border-radius: 4px;
-}
-
-/* Course info */
-.cpgen-cover-course {
+/* Content padding ≈ 22mm / 20mm safe margin */
+.cpgen-min-content {
+  position: relative;
+  z-index: 10;
+  flex: 1;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  margin: 0 50px 20px;
+  padding: 83px 76px 76px;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.cpgen-cover-course-code {
-  font-size: 20px;
-  font-weight: 800;
-  color: #1a365d;
-  letter-spacing: 0.04em;
-}
-
-.cpgen-cover-course-name {
-  font-size: 14px;
-  color: #4a5568;
-  font-weight: 500;
-}
-
-/* Title */
-.cpgen-cover-title-area {
-  margin: 0 50px 28px;
-  text-align: center;
-  padding: 20px 30px;
-  border: 2px dashed #cbd5e0;
-  border-radius: 6px;
-  background: #f8fafc;
-}
-
-.cpgen-cover-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: #1a365d;
-  margin: 0;
-  line-height: 1.4;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
-
-/* Info table */
-.cpgen-cover-table {
-  margin: 0 60px 24px;
-  border-collapse: collapse;
-  width: calc(100% - 120px);
-}
-
-.cpgen-cover-table tr {
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.cpgen-cover-table tr:last-child {
-  border-bottom: none;
-}
-
-.cpgen-cover-td-label {
-  padding: 10px 16px 10px 0;
-  font-size: 13px;
-  font-weight: 700;
-  color: #1a365d;
-  width: 140px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  border-right: 2px solid #e2e8f0;
-}
-
-.cpgen-cover-td-value {
-  padding: 10px 0 10px 16px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #2d3748;
-}
-
-/* Date */
-.cpgen-cover-date {
+/* ─── Logo + University Name ─── */
+.cpgen-min-head {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin: 0 50px 30px;
-  padding: 10px;
-  font-size: 13px;
-  color: #4a5568;
-  font-weight: 600;
+  text-align: center;
 }
 
-.cpgen-cover-date svg {
-  color: #1a365d;
+.cpgen-min-logo {
+  display: block;
+  width: auto;
+  height: 180px;
+  object-fit: contain;
 }
 
-/* ─── Responsive ─── */
-@media (max-width: 900px) {
-  .cpgen-preview-frame .cpgen-cover {
-    transform: scale(0.3);
-  }
+.cpgen-min-university {
+  margin: -10px 0 0;
+  font-size: 23px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #1a1a1a;
+  max-width: 520px;
 }
 
-@media (max-width: 480px) {
-  .cpgen-profile-grid {
-    grid-template-columns: 1fr;
-  }
-  .cpgen-preview-frame .cpgen-cover {
-    transform: scale(0.22);
-  }
+/* ─── Left-accent info groups ─── */
+.cpgen-min-group {
+  width: 100%;
+  padding-left: 20px;
+  border-left: 2px solid #000000;
 }
+
+.cpgen-min-group-first {
+  margin-top: 40px;
+}
+
+.cpgen-min-row {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.7;
+  color: #1a1a1a;
+}
+
+.cpgen-min-row-label {
+  font-weight: 500;
+}
+
+.cpgen-min-row-value {
+  font-weight: 400;
+}
+
+.cpgen-min-member-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  column-gap: 12px;
+  padding-right: 100px;
+}
+
+.cpgen-min-member-row > span:first-child {
+  white-space: nowrap;
+}
+
+.cpgen-min-member-id {
+  white-space: nowrap;
+}
+
+/* ─── Section headings ─── */
+.cpgen-min-subhead {
+  margin: 48px 0 40px;
+  font-size: 20px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-align: center;
+  color: #1a1a1a;
+}
+
+.cpgen-min-subhead--by {
+  margin-top: 68px;
+}
+
+.cpgen-min-date {
+  font-weight: 400;
+}
+
+/* ─── Footer logo (small AUSTWise logo at bottom) ─── */
+.cpgen-min-footer {
+  position: absolute;
+  bottom: 36px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  line-height: 0;
+}
+
+.cpgen-min-footer-logo {
+  display: block;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}

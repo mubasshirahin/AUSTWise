@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Coffee, Flame, Star, MessageSquare, AlertTriangle, Plus, X, Info } from 'lucide-react';
+import { Coffee, Flame, Star, MessageSquare, AlertTriangle, Plus, X, Info, MoreVertical, Check } from 'lucide-react';
 import { canteenData } from '../../data/mockData';
 import {
   getReviewSummary,
@@ -10,6 +10,7 @@ import {
   getComplaintCount,
   addComplaint,
 } from '../../utils/canteenFeedbackStorage';
+import './SemesterViewWidget.css';
 import './CanteenMenu.css';
 
 // ─── Time-slot based crowd status ───
@@ -99,27 +100,30 @@ function FoodCard({ food }) {
   const summary = useMemo(() => getReviewSummary(food.id), [food.id, feedbackVersion]);
   const complaintCount = useMemo(() => getComplaintCount(food.id), [food.id, feedbackVersion]);
 
+  const densityClass = !food.available ? 'is-rose' : food.popular ? 'is-amber' : 'is-emerald';
+
   return (
-    <div className={`canteen-food-card${food.available ? '' : ' unavailable'}`}>
+    <div className={`sv-cell canteen-food-card ${densityClass}${food.available ? '' : ' unavailable'}`}>
       {food.popular && (
         <span className="canteen-bestseller-badge">
           <Flame size={8} /> BESTSELLER
         </span>
       )}
+      {complaintCount > 0 && (
+        <span className="sv-count hot">{complaintCount}</span>
+      )}
 
-      <div>
-        <span className="canteen-food-category">{food.category}</span>
-        <h3 className="canteen-food-name">{food.name}</h3>
+      <span className="canteen-food-category">{food.category}</span>
+      <div className="sv-cell-title canteen-food-name">{food.name}</div>
 
-        <div className="canteen-food-rating">
-          <StarDisplay value={summary.average} />
-          <span className="canteen-food-rating-count">
-            {summary.count > 0 ? `${summary.average} (${summary.count})` : 'No ratings'}
-          </span>
-        </div>
-
-        <p className="canteen-food-price">৳ {food.price}</p>
+      <div className="canteen-food-rating">
+        <StarDisplay value={summary.average} />
+        <span className="canteen-food-rating-count">
+          {summary.count > 0 ? `${summary.average} (${summary.count})` : 'No ratings'}
+        </span>
       </div>
+
+      <p className="canteen-food-price">৳ {food.price}</p>
 
       <div className="canteen-food-footer">
         <span className={`canteen-stock-status ${food.available ? 'in-stock' : 'out-of-stock'}`}>
@@ -133,9 +137,6 @@ function FoodCard({ food }) {
       >
         <MessageSquare size={11} />
         {isFeedbackOpen ? 'Hide feedback' : 'Review or complain'}
-        {complaintCount > 0 && (
-          <span className="canteen-complaint-count">{complaintCount}</span>
-        )}
       </button>
 
       {isFeedbackOpen && (
@@ -282,6 +283,8 @@ export default function CanteenMenu() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [addForm, setAddForm] = useState({ name: '', category: 'Meals', price: '' });
   const [showCrowdInfo, setShowCrowdInfo] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
 
   // Lock body scroll + close on Escape when overlay is open
   useEffect(() => {
@@ -294,6 +297,16 @@ export default function CanteenMenu() {
       document.removeEventListener('keydown', handler);
     };
   }, [showCrowdInfo]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleOutside(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+    }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [menuOpen]);
 
   const currentSlot = useMemo(() => getCurrentTimeSlot(), []);
 
@@ -341,82 +354,109 @@ export default function CanteenMenu() {
     return 'var(--accent-emerald)';
   };
 
+  const crowdLabel = canteenInfo.crowdLevel >= 75 ? 'Busy' : canteenInfo.crowdLevel >= 40 ? 'Moderate' : 'Quiet';
+
   return (
-    <div className="glass-card-static canteen-menu-container animate-fadeInUp">
-      {/* ─── Header ─── */}
-      <div className="canteen-header">
-        <div className="canteen-header-left">
-          <div className="canteen-header-icon">
-            <Coffee size={20} />
+    <div className="glass-card-static schedule-widget sv-widget canteen-widget animate-fadeInUp">
+
+      {/* ── Masthead ── */}
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <Coffee size={20} strokeWidth={2.2} />
           </div>
           <div>
-            <h2 className="canteen-header-title">Canteen Food Menu &amp; Crowd</h2>
-            <p className="canteen-header-subtitle">
-              Check live crowd indices, timings, and popular menu choices
-            </p>
+            <span className="schedule-overline">Campus</span>
+            <div className="schedule-title">Canteen Food Menu &amp; Crowd</div>
+            <span className="schedule-subtitle">Live crowd indices, timings &amp; popular picks</span>
           </div>
         </div>
 
-        <div className="canteen-controls">
-          {/* Status */}
-          <div className="canteen-pill">
-            <span className="canteen-pill-label">Status:</span>
-            <span className={`canteen-status-text ${isOpen ? 'open' : 'closed'}`}>
-              {isOpen ? 'OPEN' : 'CLOSED'}
-            </span>
-          </div>
-
-          {/* Crowd */}
-          <div className="canteen-pill">
-            <span className="canteen-pill-label">Crowd:</span>
-            {canteenInfo.crowdMode === 'auto' && effectiveCrowdSlot ? (
-              <span className="canteen-crowd-text">
-                {effectiveCrowdSlot.icon} {effectiveCrowdSlot.status}
-                <span className="canteen-crowd-level">({effectiveCrowdSlot.level})</span>
+        <div className="schedule-masthead-center">
+          <div className="schedule-stats">
+            <div className="schedule-stat">
+              <span className="schedule-stat-value" style={{ color: isOpen ? 'var(--accent-emerald)' : 'var(--accent-rose)' }}>
+                {isOpen ? 'OPEN' : 'CLOSED'}
               </span>
-            ) : (
-              <span className="canteen-crowd-text" style={{ color: getCrowdColor() }}>
-                {canteenInfo.crowdLevel}% ({canteenInfo.crowdLevel >= 75 ? 'Busy' : canteenInfo.crowdLevel >= 40 ? 'Moderate' : 'Quiet'})
-              </span>
-            )}
-            <button
-              type="button"
-              className="canteen-info-btn"
-              onClick={() => setShowCrowdInfo(true)}
-              title="View crowd time-slots reference"
-            >
-              <Info size={13} />
-            </button>
-          </div>
-
-          {/* Categories */}
-          {categories.length > 1 && (
-            <div className="canteen-categories">
-              {categories.map(cat => (
-                <button
-                  key={cat}
-                  className={`canteen-cat-btn ${activeCategory === cat ? 'active' : ''}`}
-                  onClick={() => setActiveCategory(cat)}
-                >
-                  {cat}
-                </button>
-              ))}
+              <span className="schedule-stat-label">Status</span>
             </div>
-          )}
+            <div className="schedule-stat">
+              <span className="schedule-stat-value" style={{ color: getCrowdColor() }}>
+                {effectiveCrowdSlot ? effectiveCrowdSlot.icon : `${canteenInfo.crowdLevel}%`}
+              </span>
+              <span className="schedule-stat-label">{effectiveCrowdSlot ? effectiveCrowdSlot.level : crowdLabel}</span>
+            </div>
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{canteenInfo.menu ? canteenInfo.menu.length : 0}</span>
+              <span className="schedule-stat-label">Items</span>
+            </div>
+          </div>
+        </div>
 
-          {/* Add Item */}
-          <button
-            type="button"
-            className={`canteen-add-btn ${showAddForm ? 'canteen-add-btn-close' : ''}`}
-            onClick={() => setShowAddForm(open => !open)}
-          >
-            {showAddForm ? <X size={14} /> : <Plus size={14} />}
-            {showAddForm ? 'Close' : 'Add Item'}
-          </button>
+        <div className="schedule-actions">
+          <div className="export-dropdown" ref={menuRef}>
+            <button className="schedule-nav-btn" onClick={() => setMenuOpen((o) => !o)} title="Options" aria-haspopup="true" aria-expanded={menuOpen}>
+              <MoreVertical size={18} />
+            </button>
+            {menuOpen && (
+              <div className="export-menu" role="menu">
+                <button
+                  className="export-menu-item"
+                  onClick={() => { setMenuOpen(false); setShowAddForm(open => !open); }}
+                  role="menuitem"
+                >
+                  {showAddForm ? <X size={14} /> : <Plus size={14} />}
+                  {showAddForm ? 'Close Add Form' : 'Add Menu Item'}
+                </button>
+                <div className="export-menu-sep" />
+                <button
+                  className="export-menu-item"
+                  onClick={() => { setMenuOpen(false); setShowCrowdInfo(true); }}
+                  role="menuitem"
+                >
+                  <Info size={14} /> Crowd Reference
+                </button>
+                <button
+                  className="export-menu-item"
+                  onClick={() => setActiveCategory('All')}
+                  role="menuitem"
+                >
+                  <Check size={14} /> Show all items
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* ─── Add Item Form ─── */}
+      <div className="schedule-dotted-divider" />
+
+      {/* ── Category filter ── */}
+      {categories.length > 1 && (
+        <div className="canteen-categories">
+          {categories.map(cat => (
+            <button
+              key={cat}
+              className={`canteen-cat-btn ${activeCategory === cat ? 'active' : ''}`}
+              onClick={() => setActiveCategory(cat)}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── Current slot indicator ── */}
+      {effectiveCrowdSlot && (
+        <div className={`canteen-slot-chip ${isOpen ? '' : 'closed'}`}>
+          <span>{effectiveCrowdSlot.icon} {effectiveCrowdSlot.status}</span>
+          <span className="canteen-slot-time">
+            {effectiveCrowdSlot.start} – {effectiveCrowdSlot.end} · {effectiveCrowdSlot.desc}
+          </span>
+        </div>
+      )}
+
+      {/* ── Add Item Form ── */}
       {showAddForm && (
         <form className="canteen-add-form" onSubmit={handleAddItem}>
           <div className="canteen-add-field" style={{ flex: '1 1 160px' }}>
@@ -465,9 +505,13 @@ export default function CanteenMenu() {
 
       {/* ─── Menu Grid ─── */}
       {filteredMenu.length === 0 ? (
-        <div className="canteen-empty">
-          <p style={{ margin: 0 }}>
-            {!isOpen ? 'The canteen is currently closed.' : 'No menu items available.'}
+        <div className="sv-empty">
+          <Coffee size={38} className="sv-empty-icon" />
+          <h3>{!isOpen ? 'Canteen Closed' : 'No Menu Items'}</h3>
+          <p>
+            {!isOpen
+              ? 'The canteen is currently closed. Menu will return when it reopens.'
+              : 'No menu items available in this category yet.'}
           </p>
         </div>
       ) : (

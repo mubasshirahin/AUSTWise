@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Bus,
@@ -13,7 +13,12 @@ import {
   Trash2,
   Save,
   Edit3,
+  ChevronLeft,
+  ChevronRight,
+  MoreVertical,
+  Check,
 } from 'lucide-react';
+import './SemesterViewWidget.css';
 import './BusTracker.css';
 
 // ─── LocalStorage Helpers ───
@@ -132,12 +137,24 @@ export default function BusTracker() {
   const [editingBusId, setEditingBusId] = useState(null);
   const [form, setForm] = useState(INITIAL_FORM_STATE);
   const [formErrors, setFormErrors] = useState({});
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
 
   // Tick every 30s to refresh countdowns
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(id);
   }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleOutside(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+    }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [menuOpen]);
 
   // Reset form when modal closes
   useEffect(() => {
@@ -210,6 +227,14 @@ export default function BusTracker() {
   const toggleDirection = () => {
     setDirection(d => d === 'to-campus' ? 'from-campus' : 'to-campus');
   };
+
+  // Prev / next route navigation
+  const navigateRoute = useCallback((delta) => {
+    if (routes.length === 0) return;
+    const idx = routes.findIndex(r => r.id === selectedRoute?.id);
+    const nextIdx = (idx + delta + routes.length) % routes.length;
+    setActiveRoute(routes[nextIdx].id);
+  }, [routes, selectedRoute]);
 
   // ─── Form Handlers ───
 
@@ -318,38 +343,84 @@ export default function BusTracker() {
     setCustomBuses(updated);
     saveCustomBuses(updated);
     if (activeRoute === busId) {
-      setActiveRoute(allRoutes[0]?.id || null);
+      setActiveRoute(updated[0]?.id || null);
     }
-  }, [customBuses, activeRoute, allRoutes]);
+  }, [customBuses, activeRoute]);
 
   return (
-    <div className="bus-tracker-root">
-      {/* ─── Header Section ─── */}
-      <div className="bus-tracker-header">
-        <div className="bus-tracker-header-row">
-          <div className="bus-tracker-heading-icon">
-            <Bus size={22} strokeWidth={2.5} />
+    <div className="glass-card-static schedule-widget sv-widget bus-widget animate-fadeInUp">
+
+      {/* ── Masthead ── */}
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <Bus size={20} strokeWidth={2.2} />
           </div>
           <div>
-            <h2 className="bus-tracker-title">Bus Tracker</h2>
-            <p className="bus-tracker-desc">
-              Your custom bus routes & real-time next departure
-            </p>
+            <span className="schedule-overline">Campus</span>
+            <div className="schedule-title">Bus Tracker</div>
+            <span className="schedule-subtitle">
+              {isTodayActive ? 'Shuttle service active today' : 'No service today (Friday)'}
+            </span>
           </div>
         </div>
 
-        <div className="bus-tracker-header-actions">
-          <div className={`bus-tracker-live-badge ${isTodayActive ? 'active' : ''}`}>
-            <span className="bus-tracker-live-dot" />
-            {isTodayActive ? 'Service Active' : 'No Service (Friday)'}
+        <div className="schedule-masthead-center">
+          <div className="schedule-stats">
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{routes.length}</span>
+              <span className="schedule-stat-label">Routes</span>
+            </div>
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{currentDirectionStops.length}</span>
+              <span className="schedule-stat-label">Stops</span>
+            </div>
+            <div className="schedule-stat">
+              <span className="schedule-stat-value" style={{ fontSize: 'var(--fs-sm)' }}>
+                {nextDeparture.time ? nextDeparture.time : '—'}
+              </span>
+              <span className="schedule-stat-label">Next Bus</span>
+            </div>
           </div>
+        </div>
 
-          <button className="bus-tracker-add-btn" onClick={() => { setEditingBusId(null); setForm(INITIAL_FORM_STATE); setShowAddModal(true); }}>
-            <Plus size={14} />
-            Add Bus
-          </button>
+        <div className="schedule-actions">
+          <div className="export-dropdown" ref={menuRef}>
+            <button className="schedule-nav-btn" onClick={() => setMenuOpen((o) => !o)} title="Options" aria-haspopup="true" aria-expanded={menuOpen}>
+              <MoreVertical size={18} />
+            </button>
+            {menuOpen && (
+              <div className="export-menu" role="menu">
+                <button
+                  className="export-menu-item"
+                  onClick={() => { setMenuOpen(false); setEditingBusId(null); setForm(INITIAL_FORM_STATE); setShowAddModal(true); }}
+                  role="menuitem"
+                >
+                  <Plus size={14} /> Add Bus
+                </button>
+                {routes.length > 0 && (
+                  <>
+                    <div className="export-menu-sep" />
+                    {routes.map(route => (
+                      <button
+                        key={route.id}
+                        className={`export-menu-item${activeRoute === route.id ? ' menu-active' : ''}`}
+                        onClick={() => { setMenuOpen(false); setActiveRoute(route.id); }}
+                        role="menuitem"
+                      >
+                        {route.name}
+                        {activeRoute === route.id && <Check size={14} className="menu-check" />}
+                      </button>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      <div className="schedule-dotted-divider" />
 
       {/* ─── Search Bar ─── */}
       <div className="bus-tracker-search">
@@ -391,62 +462,32 @@ export default function BusTracker() {
 
       {/* ─── Empty State ─── */}
       {!search.trim() && routes.length === 0 && (
-        <div className="bus-tracker-empty">
-          <div className="bus-tracker-empty-icon">
-            <Bus size={36} strokeWidth={1.5} />
-          </div>
-          <h3 className="bus-tracker-empty-title">No Bus Routes Yet</h3>
-          <p className="bus-tracker-empty-desc">
-            Add your first bus route to start tracking schedules, stops, and departure times.
-          </p>
-          <button className="bus-tracker-add-btn" onClick={() => { setEditingBusId(null); setForm(INITIAL_FORM_STATE); setShowAddModal(true); }}>
-            <Plus size={16} />
-            Add Your First Bus
+        <div className="sv-empty">
+          <Bus size={36} className="sv-empty-icon" strokeWidth={1.5} />
+          <h3>No Bus Routes Yet</h3>
+          <p>Add your first bus route to start tracking schedules, stops, and departure times.</p>
+          <button className="bus-add-btn" onClick={() => { setEditingBusId(null); setForm(INITIAL_FORM_STATE); setShowAddModal(true); }}>
+            <Plus size={16} /> Add Your First Bus
           </button>
         </div>
       )}
 
-      {/* ─── Route Tabs ─── */}
+      {/* ─── Route Navigation + Details ─── */}
       {!search.trim() && routes.length > 0 && (
         <>
-          <div className="bus-tracker-tabs">
-            {routes.map(route => (
-              <div key={route.id} className="bus-tracker-tab-wrapper">
-                <button
-                  className={`bus-tracker-tab ${activeRoute === route.id ? 'active' : ''}`}
-                  style={{
-                    '--tab-color': route.color,
-                    '--tab-bg': route.bg,
-                  }}
-                  onClick={() => setActiveRoute(route.id)}
-                >
-                  <span className="bus-tracker-tab-icon" style={{ background: route.color }}>
-                    {route.icon}
-                  </span>
-                  <span className="bus-tracker-tab-label">{route.name}</span>
-                </button>
-                {route.id.startsWith('custom-') && (
-                  <div className="bus-tracker-tab-actions">
-                    <button
-                      className="bus-tracker-tab-action-btn"
-                      title="Edit bus"
-                      onClick={(e) => { e.stopPropagation(); handleEditBus(route); }}
-                    >
-                      <Edit3 size={10} />
-                    </button>
-                    <button
-                      className="bus-tracker-tab-action-btn danger"
-                      title="Delete bus"
-                      onClick={(e) => { e.stopPropagation(); handleDeleteBus(route.id); }}
-                    >
-                      <Trash2 size={10} />
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
-            <button className="bus-tracker-add-tab-btn" onClick={() => { setEditingBusId(null); setForm(INITIAL_FORM_STATE); setShowAddModal(true); }}>
-              <Plus size={14} />
+          {/* Route nav: prev / pill / next */}
+          <div className="schedule-week-nav bus-route-nav">
+            <button className="schedule-nav-btn" onClick={() => navigateRoute(-1)} title="Previous route">
+              <ChevronLeft size={20} />
+            </button>
+            <div className="schedule-week-pill bus-route-pill">
+              <span className="bus-route-pill-icon" style={{ background: selectedRoute.color }}>
+                {selectedRoute.icon}
+              </span>
+              <span className="schedule-week-pill-value bus-route-pill-name">{selectedRoute.name}</span>
+            </div>
+            <button className="schedule-nav-btn" onClick={() => navigateRoute(1)} title="Next route">
+              <ChevronRight size={20} />
             </button>
           </div>
 
@@ -494,6 +535,22 @@ export default function BusTracker() {
               >
                 <Bus size={12} strokeWidth={2.5} />
                 {selectedRoute.name}
+              </span>
+              <span className="bus-tracker-route-actions">
+                <button
+                  className="bus-tracker-tab-action-btn"
+                  title="Edit bus"
+                  onClick={() => handleEditBus(selectedRoute)}
+                >
+                  <Edit3 size={11} />
+                </button>
+                <button
+                  className="bus-tracker-tab-action-btn danger"
+                  title="Delete bus"
+                  onClick={() => handleDeleteBus(selectedRoute.id)}
+                >
+                  <Trash2 size={11} />
+                </button>
               </span>
               <span className="bus-tracker-route-stop-count">
                 {currentDirectionStops.length} stops
@@ -549,7 +606,7 @@ export default function BusTracker() {
           <div className="bus-tracker-tips">
             <AlertCircle size={12} />
             <span>
-              Add your bus routes using the + button. Times are approximate and subject to traffic.
+              Use the ← / → buttons to switch routes. Times are approximate and subject to traffic.
             </span>
           </div>
         </>

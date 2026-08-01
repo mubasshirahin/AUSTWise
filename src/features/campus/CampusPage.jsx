@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Map, MapPin, Users, Library, UtensilsCrossed, Bus, Banknote, DoorOpen } from 'lucide-react';
 import InteractiveMap from './InteractiveMap';
 import FacultyStatus from './FacultyStatus';

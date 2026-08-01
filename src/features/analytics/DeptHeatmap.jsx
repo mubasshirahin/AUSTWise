@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Flame, ChevronDown } from 'lucide-react';
+import { Grid3x3, MoreVertical, Check } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { formatSemesterLabel } from '../../utils/semester';
 import {
@@ -13,118 +13,99 @@ import {
 
 const semesterNumbers = Array.from({ length: HEATMAP_SEMESTER_COUNT }, (_, index) => index + 1);
 
+const densityColor = (count) => {
+  if (count >= 3) return 'var(--accent-rose)';
+  if (count === 2) return 'var(--accent-amber)';
+  if (count === 1) return 'var(--accent-cyan)';
+  return 'var(--accent-emerald)';
+};
+
+const tierColor = (value) => {
+  if (value === null) return null;
+  if (value >= 3.5) return 'var(--accent-emerald)';
+  if (value >= 3.2) return 'var(--accent-blue)';
+  if (value >= 2.8) return 'var(--accent-amber)';
+  return 'var(--accent-rose)';
+};
+
 export default function DeptHeatmap() {
   const { user } = useAuth();
   const [selectedDepartment, setSelectedDepartment] = React.useState(user.department || 'CSE');
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const menuRef = React.useRef(null);
   const userBatchNo = getBatchNoFromUser(user);
+
+  React.useEffect(() => {
+    const handleClick = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   const heatmapView = useMemo(
     () => buildHeatmapView(selectedDepartment),
     [selectedDepartment, user.department, user.batch, user.batchNo],
   );
 
-  const userPendingBatch = heatmapView.pendingBatches.find((batch) => batch.batchNo === userBatchNo);
+  const totalBatches = heatmapView.visibleBatches.length + heatmapView.pendingBatches.length;
 
-  const getCellColor = (val) => {
-    if (val === null) return 'rgba(255,255,255,0.03)';
-    if (val >= 3.5) return 'var(--accent-emerald)';
-    if (val >= 3.2) return 'var(--accent-blue)';
-    if (val >= 2.8) return 'var(--accent-amber)';
-    return 'var(--accent-rose)';
-  };
-
-  const getCellOpacity = (val) => {
-    if (val === null) return 0.2;
-    if (val >= 3.5) return 0.9;
-    if (val >= 3.2) return 0.75;
-    if (val >= 2.8) return 0.6;
-    return 0.8;
-  };
+  const allBatches = [...heatmapView.visibleBatches, ...heatmapView.pendingBatches]
+    .sort((a, b) => Number(b.batchNo) - Number(a.batchNo));
 
   return (
-    <div className="dept-heatmap-container animate-fadeInUp" style={{
-      background: 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)',
-      backdropFilter: 'blur(16px)',
-      WebkitBackdropFilter: 'blur(16px)',
-      border: '1px solid rgba(255,255,255,0.08)',
-      borderRadius: 'var(--radius-xl)',
-      padding: 'var(--sp-5)',
-      boxShadow: '0 4px 28px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.06)',
-    }}>
-      <div className="flex justify-between items-center mb-6 flex-wrap gap-3">
-        <div className="flex items-center gap-2">
-          <div className="icon" style={{ backgroundColor: 'color-mix(in srgb, var(--accent-rose) 14%, transparent)', color: 'var(--accent-rose)', padding: '6px', borderRadius: '8px', border: '1px solid color-mix(in srgb, var(--accent-rose) 22%, transparent)' }}>
-            <Flame size={16} strokeWidth={2.5} />
+    <div className="glass-card-static schedule-widget st-widget heatmap-widget animate-fadeInUp">
+      <div className="schedule-masthead" style={{ gridTemplateColumns: '1fr auto' }}>
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <Grid3x3 size={20} strokeWidth={2.2} />
           </div>
-          <div>
-            <h2 className="section-title" style={{ fontSize: 'var(--fs-lg)', margin: 0 }}>Dept. CGPA Heatmap</h2>
-            <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
-              Averages CGPA from {heatmapView.totalSubmissions} students across {heatmapView.visibleBatches.length + heatmapView.pendingBatches.length} batches
-            </p>
+          <div className="schedule-title-text">
+            <span className="schedule-overline">Grade Lab</span>
+            <h2 className="schedule-title">Dept. Heatmap</h2>
+            <span className="schedule-subtitle">
+              Avg CGPA · {heatmapView.totalSubmissions} students · {totalBatches} batches
+            </span>
           </div>
         </div>
 
-        <label className="flex items-center gap-3" style={{ fontSize: 'var(--fs-sm)', whiteSpace: 'nowrap' }}>
-          <span style={{ color: 'var(--text-secondary)', fontWeight: 'var(--fw-medium)' }}>Department</span>
-          <div style={{ position: 'relative', display: 'inline-flex' }}>
-            <select
-              value={selectedDepartment}
-              onChange={(event) => setSelectedDepartment(event.target.value)}
-              style={{
-                padding: '8px 32px 8px 14px',
-                fontSize: 'var(--fs-sm)',
-                fontWeight: 'var(--fw-semibold)',
-                borderRadius: 'var(--radius-full)',
-                background: 'var(--bg-card)',
-                border: '1px solid var(--border-primary)',
-                color: 'var(--text-primary)',
-                cursor: 'pointer',
-                outline: 'none',
-                minWidth: '120px',
-                appearance: 'none',
-                WebkitAppearance: 'none',
-                MozAppearance: 'none',
-                transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'var(--accent-rose)';
-                e.currentTarget.style.background = 'color-mix(in srgb, var(--accent-rose) 8%, var(--bg-card))';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'var(--border-primary)';
-                e.currentTarget.style.background = 'var(--bg-card)';
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = 'var(--accent-rose)';
-                e.currentTarget.style.background = 'color-mix(in srgb, var(--accent-rose) 8%, var(--bg-card))';
-                e.currentTarget.style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--accent-rose) 20%, transparent)';
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = 'var(--border-primary)';
-                e.currentTarget.style.background = 'var(--bg-card)';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
+        <div className="schedule-actions">
+          <div className="export-dropdown" ref={menuRef}>
+            <button
+              className="schedule-nav-btn"
+              onClick={() => setMenuOpen((open) => !open)}
+              aria-label="Heatmap options"
+              aria-expanded={menuOpen}
             >
-              {heatmapDepartments.map((department) => (
-                <option key={department} value={department}>{department}</option>
-              ))}
-            </select>
-            <ChevronDown size={12} style={{
-              position: 'absolute',
-              right: '12px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: 'var(--text-tertiary)',
-              pointerEvents: 'none',
-            }} />
+              <MoreVertical size={16} />
+            </button>
+            {menuOpen && (
+              <div className="export-menu">
+                <div className="export-menu-sep" />
+                {heatmapDepartments.map((department) => (
+                  <button
+                    key={department}
+                    className={`export-menu-item ${selectedDepartment === department ? 'menu-active' : ''}`}
+                    onClick={() => {
+                      setSelectedDepartment(department);
+                      setMenuOpen(false);
+                    }}
+                  >
+                    <Check size={13} style={{ opacity: selectedDepartment === department ? 1 : 0 }} />
+                    {department}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-        </label>
+        </div>
       </div>
 
+      <div className="schedule-dotted-divider" />
 
       {heatmapView.visibleBatches.length === 0 ? (
         <div className="empty-state" style={{ padding: '32px 16px' }}>
-          <Flame size={36} />
+          <Grid3x3 size={36} />
           <h3>No batch data visible yet</h3>
           <p style={{ maxWidth: '520px', margin: '0 auto' }}>
             {heatmapView.pendingBatches.length > 0
@@ -133,94 +114,90 @@ export default function DeptHeatmap() {
           </p>
         </div>
       ) : (
-        <div style={{ width: '100%' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '120px repeat(8, 1fr)', gap: '6px', marginBottom: '8px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px', color: 'var(--text-secondary)' }}>
-              <div>Batch</div>
-              {semesterNumbers.map((semester) => (
-                <div key={semester}>{formatSemesterLabel(semester)}</div>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {heatmapView.visibleBatches.map((batch) => {
-                const isUserBatch = batch.batchNo === userBatchNo;
-
-                return (
-                  <div
-                    key={batch.batchNo}
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: '120px repeat(8, 1fr)',
-                      gap: '6px',
-                      alignItems: 'center',
-                      background: isUserBatch ? 'color-mix(in srgb, var(--accent-amber) 6%, transparent)' : 'transparent',
-                      padding: '4px 0',
-                      borderRadius: 'var(--radius-sm)',
-                    }}
-                  >
-                    <div style={{ paddingLeft: '8px', fontSize: '12px', fontWeight: isUserBatch ? 'bold' : 'normal', color: isUserBatch ? 'var(--accent-amber)' : 'var(--text-primary)' }}>
-                      {batch.label}{isUserBatch ? ' (You)' : ''}
-                      <span style={{ display: 'inline-flex', alignItems:'center', gap:'3px', marginLeft:'8px', fontSize:'9px', fontWeight:'bold', padding:'1px 8px', borderRadius:'10px', background:batch.contributorCount >= MIN_BATCH_CONTRIBUTORS ? 'var(--accent-emerald-glow)' : 'var(--accent-amber-glow)', color:batch.contributorCount >= MIN_BATCH_CONTRIBUTORS ? 'var(--accent-emerald)' : 'var(--accent-amber)' }}>
-                        {batch.contributorCount}/{MIN_BATCH_CONTRIBUTORS} students
-                      </span>
-                    </div>
-
-                    {batch.cells.map((gpa, semIdx) => (
-                      <div
-                        key={semIdx}
-                        className="heatmap-cell tooltip-wrapper"
-                        style={{
-                          backgroundColor: getCellColor(gpa),
-                          opacity: getCellOpacity(gpa),
-                          aspectRatio: '1.6',
-                          borderRadius: '4px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '10px',
-                          fontWeight: 'bold',
-                          color: gpa !== null ? '#fff' : 'var(--text-tertiary)',
-                          boxShadow: isUserBatch && gpa !== null ? '0 0 8px color-mix(in srgb, var(--accent-amber) 60%, transparent)' : 'none',
-                        }}
-                      >
-                        {gpa !== null ? gpa.toFixed(2) : '—'}
-                        <div className="tooltip">
-                          {batch.label} • {formatSemesterLabel(semIdx + 1)}:{' '}
-                          {gpa !== null ? `${gpa} avg CGPA` : `Needs ${MIN_CELL_CONTRIBUTORS}+ CGPA Bol entries`}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
+        <div className="hm-table">
+          <div
+            className="hm-row hm-header"
+            style={{ gridTemplateColumns: `120px repeat(${HEATMAP_SEMESTER_COUNT}, 1fr)` }}
+          >
+            <div className="hm-head hm-batch-head">Batch</div>
+            {semesterNumbers.map((semester) => (
+              <div className="hm-head" key={semester}>{formatSemesterLabel(semester)}</div>
+            ))}
           </div>
+
+          {heatmapView.visibleBatches.map((batch) => {
+            const isUserBatch = batch.batchNo === userBatchNo;
+            const batchDensity = densityColor(batch.contributorCount);
+            const ready = batch.contributorCount >= MIN_BATCH_CONTRIBUTORS;
+
+            return (
+              <div
+                key={batch.batchNo}
+                className={`hm-row hm-batch ${isUserBatch ? 'hm-user' : ''}`}
+                style={{ gridTemplateColumns: `120px repeat(${HEATMAP_SEMESTER_COUNT}, 1fr)` }}
+              >
+                <div className="hm-cell hm-batch-label" style={{ borderLeftColor: batchDensity, color: batchDensity }}>
+                  {batch.label}
+                  {isUserBatch && <em>You</em>}
+                  <span
+                    className={`schedule-day-count ${ready ? 'hot' : ''}`}
+                    title={`${batch.contributorCount} / ${MIN_BATCH_CONTRIBUTORS} students`}
+                  >
+                    {batch.contributorCount}
+                  </span>
+                </div>
+
+                {batch.cells.map((gpa, semesterIndex) => {
+                  const color = tierColor(gpa);
+                  return (
+                    <div
+                      key={semesterIndex}
+                      className="hm-cell tooltip-wrapper"
+                      style={{
+                        borderLeftColor: color || 'transparent',
+                        color: color || 'var(--text-tertiary)',
+                      }}
+                    >
+                      {gpa !== null ? gpa.toFixed(2) : '—'}
+                      <div className="tooltip">
+                        {batch.label} • {formatSemesterLabel(semesterIndex + 1)}:{' '}
+                        {gpa !== null ? `${gpa} avg CGPA` : `Needs ${MIN_CELL_CONTRIBUTORS}+ CGPA Bol entries`}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
       )}
 
       {/* ── Batch-wise contributor counter ── */}
       {(heatmapView.visibleBatches.length > 0 || heatmapView.pendingBatches.length > 0) && (
-        <div style={{ marginTop: '16px', padding:'12px', background:'rgba(255,255,255,0.04)', borderRadius:'var(--radius-md)', fontSize: 'var(--fs-xs)' }}>
-          <strong style={{ color: 'var(--text-primary)', fontSize:'11px' }}>Collected Data:</strong>
-          <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', marginTop:'6px' }}>
-            {[...heatmapView.visibleBatches, ...heatmapView.pendingBatches].sort((a,b)=>Number(b.batchNo)-Number(a.batchNo)).map((batch) => (
-              <span key={batch.batchNo} style={{ display:'inline-flex', alignItems:'center', gap:'4px', background:'rgba(255,255,255,0.025)', padding:'3px 10px', borderRadius:'12px', fontSize:'11px' }}>
-                <span style={{fontWeight:'600'}}>{batch.label}</span>
-                <span style={{ fontWeight:'bold', color:batch.contributorCount >= MIN_BATCH_CONTRIBUTORS ? 'var(--accent-emerald)' : 'var(--accent-amber)' }}>
-                  {batch.contributorCount}
+        <div className="hm-summary">
+          <strong>Collected Data:</strong>
+          <div className="hm-summary-chips">
+            {allBatches.map((batch) => {
+              const ready = batch.contributorCount >= MIN_BATCH_CONTRIBUTORS;
+              return (
+                <span key={batch.batchNo} className={`hm-summary-chip ${ready ? 'ready' : ''}`}>
+                  <span>{batch.label}</span>
+                  <b>{batch.contributorCount}</b>
+                  <em>students</em>
                 </span>
-                <span style={{color:'var(--text-tertiary)'}}>students</span>
-              </span>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
 
-      <div className="flex flex-wrap gap-4 items-center justify-center p-3" style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 'var(--radius-md)', fontSize: '11px', marginTop: '20px' }}>
-        <span style={{ color: 'var(--text-tertiary)', fontWeight: 'bold' }}>Heatmap Legend:</span>
-        <div className="flex items-center gap-1"><span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '2px', background: 'var(--accent-emerald)' }}></span> High CGPA (3.5+)</div>
-        <div className="flex items-center gap-1"><span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '2px', background: 'var(--accent-blue)' }}></span> Moderate (3.2-3.5)</div>
-        <div className="flex items-center gap-1"><span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '2px', background: 'var(--accent-amber)' }}></span> Average (2.8-3.2)</div>
-        <div className="flex items-center gap-1"><span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '2px', background: 'var(--accent-rose)' }}></span> Critical (&lt;2.8)</div>
+      {/* ── Legend ── */}
+      <div className="hm-legend">
+        <span className="hm-legend-title">Heatmap Legend</span>
+        <span className="hm-legend-chip" style={{ '--chip': 'var(--accent-emerald)' }}>High CGPA (3.5+)</span>
+        <span className="hm-legend-chip" style={{ '--chip': 'var(--accent-blue)' }}>Moderate (3.2–3.5)</span>
+        <span className="hm-legend-chip" style={{ '--chip': 'var(--accent-amber)' }}>Average (2.8–3.2)</span>
+        <span className="hm-legend-chip" style={{ '--chip': 'var(--accent-rose)' }}>Critical (&lt;2.8)</span>
       </div>
     </div>
   );

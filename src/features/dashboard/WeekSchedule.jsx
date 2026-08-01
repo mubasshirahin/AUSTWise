@@ -494,7 +494,7 @@ export default function WeekSchedule() {
   }, [user, viewMode]);
 
   return (
-    <div className="glass-card-static schedule-widget animate-fadeInUp" style={{ minHeight: '480px' }}>
+    <div className="glass-card-static schedule-widget week-schedule-widget animate-fadeInUp" style={{ minHeight: '480px' }}>
 
       <div className="schedule-masthead">
         <div className="schedule-title-block">

@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { TrendingUp, ChartLine, Sparkles } from 'lucide-react';
 import ResultTable from './ResultTable';
 import { formatSemesterLabel } from '../../utils/semester';
 import { Line } from 'react-chartjs-2';
@@ -13,8 +14,8 @@ import {
   Legend,
   Filler,
 } from 'chart.js';
-import { TrendingUp, Award, CheckCircle, ChartLine, Sparkles } from 'lucide-react';
-import { getUserStorageItem, getCurrentUserId } from '../../utils/authStorage';
+import { getUserStorageItemWithGuestFallback, getCurrentUserId } from '../../utils/authStorage';
+import { useAuth } from '../../context/AuthContext';
 
 ChartJS.register(
   CategoryScale,
@@ -32,6 +33,7 @@ const storageKeyType = 'semesterResults';
 const getCreditValue = (credit) => Number(credit) || 0;
 
 export default function CGPAGraph() {
+  const { user } = useAuth();
   const [resultsVersion, setResultsVersion] = useState(0);
   const [userResults, setUserResults] = useState(null);
   const [isGuest, setIsGuest] = useState(false);
@@ -41,8 +43,9 @@ export default function CGPAGraph() {
     const userId = getCurrentUserId();
     setIsGuest(!userId);
 
-    // Load user-specific results (only returns data for authenticated users)
-    const stored = getUserStorageItem(storageKeyType);
+    // Load user-specific results (falls back to the guest bucket so data
+    // saved before server-auth user ids existed stays visible)
+    const stored = getUserStorageItemWithGuestFallback(storageKeyType);
     setUserResults(stored);
   }, [resultsVersion]);
 
@@ -212,74 +215,90 @@ export default function CGPAGraph() {
     }, 0);
   }, 0);
 
-  return (
-    <div className="cgpagraph-container stagger-children" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+  const hasData = completedSemesters.length > 0;
 
-      {completedSemesters.length === 0 && (
-        <div className="glass-card-static animate-fadeInUp">
-          <div className="empty-state">
+  return (
+    <>
+      {/* ─── Box 1: CGPA Bol (masthead + chart) ─── */}
+      <div className="glass-card-static schedule-widget cgpa-bol-widget animate-fadeInUp">
+        {/* ─── Masthead: 3-col grid (title | stats | actions) ─── */}
+        <div className="schedule-masthead">
+          <div className="schedule-title-block">
+            <div className="schedule-icon-tile">
+              <TrendingUp size={20} strokeWidth={2.2} />
+            </div>
+            <div>
+              <span className="schedule-overline">Grade Lab</span>
+              <p className="schedule-title">CGPA Bol</p>
+              <span className="schedule-subtitle">
+                {user?.department
+                  ? `${user.department}${user?.yearSemester ? ` · ${user.yearSemester}` : ''}`
+                  : 'Semester-wise grade breakdown'}
+              </span>
+            </div>
+          </div>
+
+          <div className="schedule-masthead-center">
+            {hasData && (
+              <div className="schedule-stats">
+                <div className="schedule-stat">
+                  <span className="schedule-stat-value" style={{ color: 'var(--accent-amber)' }}>{currentCgpa?.toFixed(2) ?? '—'}</span>
+                  <span className="schedule-stat-label">Current CGPA</span>
+                </div>
+                <div className="schedule-stat">
+                  <span className="schedule-stat-value" style={{ color: 'var(--accent-blue)' }}>{bestSem.gpa ?? '—'}</span>
+                  <span className="schedule-stat-label">Best Sem</span>
+                </div>
+                <div className="schedule-stat">
+                  <span className="schedule-stat-value" style={{ color: 'var(--accent-emerald)' }}>{creditsCompleted.toFixed(2)}</span>
+                  <span className="schedule-stat-label">Credits Done</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+      </div>
+
+      <div className="schedule-dotted-divider" />
+
+        {/* ─── Empty state ─── */}
+        {!hasData && (
+          <div className="cgpa-empty">
             <TrendingUp size={42} />
             <h3>No grade data yet</h3>
             <p>Add your semester results below to build your CGPA Bol.</p>
           </div>
-        </div>
-      )}
+        )}
 
-      {completedSemesters.length > 0 && (
-        <>
-      {/* Visual Analytics Info Cards */}
-      <div className="grid-3">
-        <div className="cgpa-summary-card">
-          <div className="flex justify-between items-center">
-            <span className="stat-label" style={{fontSize:'var(--fs-xs)',textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-tertiary)',fontWeight:'var(--fw-semibold)'}}>Current CGPA</span>
-            <TrendingUp size={16} style={{ color: 'var(--accent-amber)', opacity: 0.85 }} />
-          </div>
-          <span className="stat-value cgpa-summary-value" style={{ color: 'var(--accent-amber)' }}>{currentCgpa?.toFixed(2)}</span>
-        </div>
-
-        <div className="cgpa-summary-card">
-          <div className="flex justify-between items-center">
-            <span className="stat-label" style={{fontSize:'var(--fs-xs)',textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-tertiary)',fontWeight:'var(--fw-semibold)'}}>Best Semester</span>
-            <Award size={16} style={{ color: 'var(--accent-blue)', opacity: 0.85 }} />
-          </div>
-          <span className="stat-value cgpa-summary-value" style={{ color: 'var(--accent-blue)' }}>{bestSem.gpa}</span>
-          <span className="stat-change cgpa-summary-sub" style={{ color: 'var(--text-secondary)' }}>{bestSem.sem}</span>
-        </div>
-
-        <div className="cgpa-summary-card">
-          <div className="flex justify-between items-center">
-            <span className="stat-label" style={{fontSize:'var(--fs-xs)',textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-tertiary)',fontWeight:'var(--fw-semibold)'}}>Credits Completed</span>
-            <CheckCircle size={16} style={{ color: 'var(--accent-emerald)', opacity: 0.85 }} />
-          </div>
-          <span className="stat-value cgpa-summary-value" style={{ color: 'var(--accent-emerald)' }}>{creditsCompleted.toFixed(1)}</span>
-        </div>
-      </div>
-
-      {/* CGPA Chart Card */}
-      <div className="cgpa-chart-card">
-        <div className="cgpa-chart-header">
-          <div className="cgpa-chart-header-left">
-            <div className="cgpa-chart-icon">
-              <ChartLine size={18} strokeWidth={2.5} />
+        {/* ─── Chart card (flat) ─── */}
+        {hasData && (
+          <div className="cgpa-chart-card">
+            <div className="cgpa-chart-header">
+              <div className="cgpa-chart-header-left">
+                <div className="cgpa-chart-icon">
+                  <ChartLine size={18} strokeWidth={2.5} />
+                </div>
+                <div>
+                  <h3 className="cgpa-chart-title">Academic Progression Trend</h3>
+                  <p className="cgpa-chart-subtitle">SGPA &amp; CGPA across semesters</p>
+                </div>
+              </div>
+              <div className="cgpa-chart-badge">
+                <Sparkles size={12} strokeWidth={2.5} />
+                <span>Live</span>
+              </div>
             </div>
-            <div>
-              <h3 className="cgpa-chart-title">Academic Progression Trend</h3>
-              <p className="cgpa-chart-subtitle">SGPA &amp; CGPA across semesters</p>
+            <div className="cgpa-chart-body">
+              <Line data={chartData} options={options} />
             </div>
           </div>
-          <div className="cgpa-chart-badge">
-            <Sparkles size={12} strokeWidth={2.5} />
-            <span>Live</span>
-          </div>
-        </div>
-        <div className="cgpa-chart-body">
-          <Line data={chartData} options={options} />
-        </div>
+        )}
       </div>
-        </>
-      )}
 
-      <ResultTable onResultsChange={() => setResultsVersion((version) => version + 1)} />
-    </div>
+      {/* ─── Box 2: Semester Breakdown (transcript) — separate card ─── */}
+      <div className="glass-card-static schedule-widget cgpa-bol-widget cgpa-breakdown-box animate-fadeInUp">
+        <ResultTable onResultsChange={() => setResultsVersion((version) => version + 1)} />
+      </div>
+    </>
   );
 }

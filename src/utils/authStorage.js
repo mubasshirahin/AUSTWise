@@ -24,10 +24,21 @@ const userStoragePrefixes = {
 };
 
 // Get current session user ID for user-specific storage
+// Falls back to the cached user profile (written on every server-side
+// login/signup) so user-specific keys keep working even though the
+// legacy session key isn't written by the server auth flow.
 export function getCurrentUserId() {
   try {
     const session = loadSession();
-    return session?.userId || null;
+    if (session?.userId) return session.userId;
+    // Server auth (/api/auth/*) persists the hydrated profile instead of
+    // the legacy session key — derive the user id from it.
+    const raw = localStorage.getItem(profileKey);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.id && parsed.id !== 'guest') return parsed.id;
+    }
+    return null;
   } catch {
     return null;
   }
@@ -52,6 +63,41 @@ export function getUserStorageItem(keyType) {
   } catch {
     return null;
   }
+}
+
+// Read from the shared guest bucket. Used as a fallback so data that was
+// saved before the profile-based user id existed (or while browsing as a
+// guest) isn't lost when an authenticated user views the same feature.
+export function getGuestStorageItem(keyType) {
+  const prefix = userStoragePrefixes[keyType];
+  if (!prefix) return null;
+  try {
+    const raw = localStorage.getItem(`${prefix}-guest`);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+// Remove the shared guest bucket value, so "reset all" clears data that
+// was saved while browsing as a guest (which getUserStorageItemWithGuestFallback
+// would otherwise resurrect).
+export function removeGuestStorageItem(keyType) {
+  const prefix = userStoragePrefixes[keyType];
+  if (!prefix) return;
+  try {
+    localStorage.removeItem(`${prefix}-guest`);
+  } catch {
+    // Ignore errors
+  }
+}
+
+// User-specific read with guest-bucket fallback, so previously saved
+// results remain visible for authenticated users.
+export function getUserStorageItemWithGuestFallback(keyType) {
+  const value = getUserStorageItem(keyType);
+  if (value !== null && value !== undefined) return value;
+  return getGuestStorageItem(keyType);
 }
 
 export function setUserStorageItem(keyType, value) {

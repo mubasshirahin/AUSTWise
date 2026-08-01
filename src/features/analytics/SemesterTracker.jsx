@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   AlertCircle, BookOpen, FlaskConical,
-  Plus, X, Check, Settings2, ChevronRight, RotateCcw, Info, FileSpreadsheet
+  Plus, X, Check, Settings2, ChevronLeft, ChevronRight, RotateCcw, Info, FileDown, MoreVertical, Layers
 } from 'lucide-react';
 
-import { getUserStorageItem, setUserStorageItem, getCurrentUserId } from '../../utils/authStorage';
+import { getUserStorageItemWithGuestFallback, setUserStorageItem, getCurrentUserId } from '../../utils/authStorage';
 import { useAuth } from '../../context/AuthContext';
 import { formatSemesterLabel } from '../../utils/semester';
 import './SemesterTracker.css';
@@ -140,12 +141,18 @@ function expandLabColumns(config) {
 ═══════════════════════════════════════════ */
 export default function SemesterTracker() {
   const { user } = useAuth();
-  const getInitialSem = () => {
-    const saved = localStorage.getItem(`aust-tracker-sem-${getCurrentUserId() || 'guest'}`);
-    if (saved) { const n = parseInt(saved, 10); if (n >= 1 && n <= 8) return n; }
+  /* User's current semester (their standing in studies) */
+  const getCurrentSemester = () => {
     const ysMatch = (user?.yearSemester || '').match(/Year (\d+) - Semester (\d+)/);
     if (ysMatch) { const y = parseInt(ysMatch[1]), s = parseInt(ysMatch[2]); if (y >= 1 && y <= 4 && s >= 1 && s <= 2) return (y - 1) * 2 + s; }
     if (user?.semester && user.semester >= 1 && user.semester <= 8) return user.semester;
+    return null;
+  };
+  const getInitialSem = () => {
+    const current = getCurrentSemester();
+    if (current !== null) return current;
+    const saved = localStorage.getItem(`aust-tracker-sem-${getCurrentUserId() || 'guest'}`);
+    if (saved) { const n = parseInt(saved, 10); if (n >= 1 && n <= 8) return n; }
     return 1;
   };
   const [selectedSemester, setSelectedSemester] = useState(getInitialSem);
@@ -159,7 +166,7 @@ export default function SemesterTracker() {
 
   /* ── Load data for a semester ── */
   const loadTranscriptCourses = (sem) => {
-    const allResults = getUserStorageItem('semesterResults') || [];
+    const allResults = getUserStorageItemWithGuestFallback('semesterResults') || [];
     const semData = allResults.find(r => r.semester === sem);
     if (!semData?.courses?.length) return { theoryCourses: [], labCourses: [] };
     const theoryCourses = semData.courses
@@ -213,6 +220,18 @@ export default function SemesterTracker() {
   const [confirm, setConfirm] = useState(null); // { message, onConfirm } | null
 
   const askConfirm = (message, onConfirm) => setConfirm({ message, onConfirm });
+
+  /* ── ⋮ dropdown menu ── */
+  const [stMenuOpen, setStMenuOpen] = useState(false);
+  const stMenuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (stMenuRef.current && !stMenuRef.current.contains(e.target)) setStMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   /* ── Save to per-semester keys (live save for edits within current semester) ── */
   useEffect(() => { setSemItem('courses', currentSemRef.current, theoryCourses); }, [theoryCourses]);
@@ -277,6 +296,16 @@ export default function SemesterTracker() {
     });
   };
 
+  /* ── Semester nav (masthead chevrons) ── */
+  const goPrevSem = () => {
+    const idx = availableSemesters.indexOf(selectedSemester);
+    if (idx > 0) setSelectedSemester(availableSemesters[idx - 1]);
+  };
+  const goNextSem = () => {
+    const idx = availableSemesters.indexOf(selectedSemester);
+    if (idx < availableSemesters.length - 1) setSelectedSemester(availableSemesters[idx + 1]);
+  };
+
   /* ════════════════════
      LAB SETUP WIZARD
   ════════════════════ */
@@ -323,6 +352,12 @@ export default function SemesterTracker() {
     askConfirm('Reset this lab setup? All marks will be cleared.', () => {
       setLabConfig(prev => { const n={...prev}; delete n[courseId]; return n; });
       setLabMarks(prev  => { const n={...prev}; delete n[courseId]; return n; });
+    });
+  };
+
+  const resetAllLabMarks = () => {
+    askConfirm('Reset all lab marks for this semester?', () => {
+      setLabMarks({});
     });
   };
 
@@ -535,7 +570,7 @@ export default function SemesterTracker() {
   /* ════════════════════════════════════════════
      RENDER
   ═══════════════════════════════════════════ */
-  const allResults = useMemo(() => getUserStorageItem('semesterResults') || [], []);
+  const allResults = useMemo(() => getUserStorageItemWithGuestFallback('semesterResults') || [], []);
   const availableSemesters = useMemo(() => {
     const fromData = allResults
       .filter(r => r.courses?.some(c => c.code && c.code.trim()))
@@ -545,7 +580,10 @@ export default function SemesterTracker() {
   }, [allResults]);
 
   // Auto-switch to first available if current has no transcript data
+  // (but never move away from the user's current semester)
   useEffect(() => {
+    const current = getCurrentSemester();
+    if (current !== null && current === selectedSemester) return;
     if (allResults.length > 0 && !allResults.some(r => r.semester === selectedSemester && r.courses?.some(c => c.code))) {
       const first = availableSemesters[0];
       if (first && first !== selectedSemester) setSelectedSemester(first);
@@ -553,32 +591,81 @@ export default function SemesterTracker() {
   }, []);
 
   return (
-    <div className="st-wrapper animate-fadeInUp">
+    <div className="glass-card-static schedule-widget st-widget animate-fadeInUp">
 
-      {/* Semester selector */}
-      <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
-        <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 'var(--fw-semibold)', marginRight: '4px' }}>Semester:</span>
-        {availableSemesters.map((sem) => (
-          <button key={sem} onClick={() => setSelectedSemester(sem)}
-            style={{
-              border: selectedSemester === sem ? '1px solid var(--accent-amber)' : '1px solid rgba(255,255,255,0.08)',
-              cursor: 'pointer', borderRadius: '8px', padding: '5px 14px',
-              fontSize: '11px', fontWeight: '700', whiteSpace: 'nowrap',
-              background: selectedSemester === sem 
-                ? 'linear-gradient(135deg, rgba(245,158,11,0.18), rgba(245,158,11,0.06))'
-                : 'rgba(255,255,255,0.04)',
-              color: selectedSemester === sem ? 'var(--accent-amber)' : 'var(--text-secondary)',
-              transition: 'all 0.18s ease',
-              letterSpacing: selectedSemester === sem ? '0.02em' : '0',
-              boxShadow: selectedSemester === sem ? '0 0 12px rgba(245,158,11,0.12)' : 'none',
-            }}>
-            {formatSemesterLabel(sem)}
-          </button>
-        ))}
-        <button className="btn btn-secondary btn-sm" onClick={exportSemesterPdf} style={{marginLeft:'auto'}} title="Export this semester as PDF">
-          <FileSpreadsheet size={13} /> PDF
-        </button>
+      {/* ── Masthead (matches dashboard Semester View) ── */}
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <Layers size={20} strokeWidth={2.2} />
+          </div>
+          <div>
+            <span className="schedule-overline">Per-Semester</span>
+            <p className="schedule-title">Semester View</p>
+            <span className="schedule-subtitle">
+              {user?.department
+                ? `${user.department} · ${formatSemesterLabel(selectedSemester)}`
+                : 'Theory & lab mark sheet'}
+            </span>
+          </div>
+        </div>
+
+        <div className="schedule-masthead-center">
+          <div className="schedule-stats">
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{theoryCourses.length}</span>
+              <span className="schedule-stat-label">Theory</span>
+            </div>
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{labCourses.length}</span>
+              <span className="schedule-stat-label">Lab</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="schedule-actions">
+          <div className="schedule-week-nav">
+            <button className="schedule-nav-btn" onClick={goPrevSem} title="Previous semester">
+              <ChevronLeft size={20} />
+            </button>
+            <div className="schedule-week-pill">
+              <span className="schedule-week-pill-value">{formatSemesterLabel(selectedSemester)}</span>
+            </div>
+            <button className="schedule-nav-btn" onClick={goNextSem} title="Next semester">
+              <ChevronRight size={20} />
+            </button>
+          </div>
+          <div className="export-dropdown" ref={stMenuRef}>
+            <button className="schedule-nav-btn" onClick={() => setStMenuOpen((v) => !v)} aria-label="More options" aria-haspopup="true">
+              <MoreVertical size={18} />
+            </button>
+            {stMenuOpen && (
+              <div className="export-menu">
+                <button className="export-menu-item" onClick={() => { setStMenuOpen(false); exportSemesterPdf(); }}>
+                  <FileDown size={14} /> Export PDF
+                </button>
+                <div className="export-menu-sep" />
+                <button
+                  className="export-menu-item"
+                  onClick={() => { setStMenuOpen(false); resetTheoryMarks(); }}
+                  disabled={theoryCourses.length === 0}
+                >
+                  <RotateCcw size={14} /> Reset Theory Marks
+                </button>
+                <button
+                  className="export-menu-item"
+                  onClick={() => { setStMenuOpen(false); resetAllLabMarks(); }}
+                  disabled={labCourses.length === 0}
+                >
+                  <RotateCcw size={14} /> Reset Lab Marks
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
+
+      <div className="schedule-dotted-divider" />
 
       {/* ══════════════════════════════
           THEORY SECTION
@@ -591,20 +678,13 @@ export default function SemesterTracker() {
             Set quiz count &amp; best-of per course below
           </p>
         </div>
-        {theoryCourses.length > 0 && (
-          <button className="st-icon-btn" onClick={resetTheoryMarks} title="Reset all theory marks" style={{marginLeft:'auto'}}>
-            <RotateCcw size={13}/>
-          </button>
-        )}
-      </div>
-
-      {/* Legend */}
-      <div className="st-legend">
-        <div className="st-legend-item"><span className="st-legend-dot" style={{background:'var(--accent-emerald)'}}/>≥80%</div>
-        <div className="st-legend-item"><span className="st-legend-dot" style={{background:'var(--accent-amber)'}}/>60–79%</div>
-        <div className="st-legend-item"><span className="st-legend-dot" style={{background:'var(--accent-rose)'}}/>{'<60%'}</div>
-        <div className="st-legend-sep">|</div>
-        <div className="st-legend-item" onClick={()=>setShowQuizCfg(v=>!v)} style={{cursor:'pointer',userSelect:'none'}}><Info size={11} style={{opacity:0.5}}/> {showQuizCfg ? 'Hide' : 'Show'} quiz config</div>
+        <button
+          className="st-quiz-toggle"
+          onClick={()=>setShowQuizCfg(v=>!v)}
+          title={showQuizCfg ? 'Hide quiz configuration' : 'Show quiz configuration'}
+        >
+          <Info size={12} /> {showQuizCfg ? 'Hide' : 'Show'} quiz config
+        </button>
       </div>
 
       {theoryCourses.length === 0 ? (
@@ -655,29 +735,13 @@ export default function SemesterTracker() {
                         <span className="st-course-code">{course.code}</span>
                         <span className="st-course-name">{course.name}</span>
                       </div>
-                      <div className="st-quiz-config" style={{marginTop:'2px',display:'flex',gap:'4px',alignItems:'center'}}>
+                      <div className="st-quiz-config" style={{marginTop:'2px',display:'flex',gap:'4px',alignItems:'center',flexWrap:'wrap'}}>
                         {showQuizCfg && <>
-                        <span style={{fontSize:'0.5rem',color:'var(--text-tertiary)'}}>Q:</span>
-                        <input type="text" inputMode="numeric"
-                          value={quizDrafts[`${course.id}_q`] ?? qc}
-                          className="st-cell-input"
-                          style={{width:'26px',height:'20px',fontSize:'0.5rem',textAlign:'center',padding:'0',border:'1px solid var(--border-primary)',borderRadius:'var(--radius-sm)',background:'var(--bg-tertiary)'}}
-                          onChange={e=>{
-                            const v = e.target.value;
-                            setQuizDrafts(p=>({...p,[`${course.id}_q`]:v}));
-                            if (v === '') return;
-                            const n = Number(v);
-                            if (!isNaN(n) && n >= 1 && n <= 10) {
-                              setTheoryConfig(p=>({...p,[course.id]:{...p[course.id],quizCount:n}}));
-                            }
-                          }}
-                          onBlur={() => setQuizDrafts(p=>{const n={...p}; delete n[`${course.id}_q`]; return n;})}
-                        />
-                        <span style={{fontSize:'0.5rem',color:'var(--text-tertiary)'}}>B:</span>
+                        <span style={{fontSize:'0.55rem',color:'var(--text-tertiary)',fontWeight:'600'}}>Best</span>
                         <input type="text" inputMode="numeric"
                           value={quizDrafts[`${course.id}_b`] ?? best}
                           className="st-cell-input"
-                          style={{width:'26px',height:'20px',fontSize:'0.5rem',textAlign:'center',padding:'0',border:'1px solid var(--border-primary)',borderRadius:'var(--radius-sm)',background:'var(--bg-tertiary)'}}
+                          style={{width:'24px',height:'20px',fontSize:'0.55rem',textAlign:'center',padding:'0',border:'1px solid var(--border-primary)',borderRadius:'var(--radius-sm)',background:'var(--bg-tertiary)'}}
                           onChange={e=>{
                             const v = e.target.value;
                             setQuizDrafts(p=>({...p,[`${course.id}_b`]:v}));
@@ -689,6 +753,23 @@ export default function SemesterTracker() {
                           }}
                           onBlur={() => setQuizDrafts(p=>{const n={...p}; delete n[`${course.id}_b`]; return n;})}
                         />
+                        <span style={{fontSize:'0.55rem',color:'var(--text-tertiary)',fontWeight:'600'}}>of</span>
+                        <input type="text" inputMode="numeric"
+                          value={quizDrafts[`${course.id}_q`] ?? qc}
+                          className="st-cell-input"
+                          style={{width:'24px',height:'20px',fontSize:'0.55rem',textAlign:'center',padding:'0',border:'1px solid var(--border-primary)',borderRadius:'var(--radius-sm)',background:'var(--bg-tertiary)'}}
+                          onChange={e=>{
+                            const v = e.target.value;
+                            setQuizDrafts(p=>({...p,[`${course.id}_q`]:v}));
+                            if (v === '') return;
+                            const n = Number(v);
+                            if (!isNaN(n) && n >= 1 && n <= 10) {
+                              setTheoryConfig(p=>({...p,[course.id]:{...p[course.id],quizCount:n}}));
+                            }
+                          }}
+                          onBlur={() => setQuizDrafts(p=>{const n={...p}; delete n[`${course.id}_q`]; return n;})}
+                        />
+                        <span style={{fontSize:'0.5rem',color:'var(--text-tertiary)'}}>quizzes</span>
                         </>}
                       </div>
                     </td>
@@ -1062,8 +1143,9 @@ export default function SemesterTracker() {
       )}
 
 
-      {/* ─ Confirm Modal ─ */}
-      {confirm && (
+      {/* ─ Confirm Modal — portal to <body> so it always covers the screen
+           (the widget's transform + overflow:hidden would otherwise clip it) */}
+      {confirm && createPortal(
         <div className="st-modal-overlay" onClick={() => setConfirm(null)}>
           <div className="st-modal" onClick={e => e.stopPropagation()}>
             <p className="st-modal-message">{confirm.message}</p>
@@ -1072,7 +1154,8 @@ export default function SemesterTracker() {
               <button className="btn btn-primary btn-sm" style={{background:'var(--accent-rose)'}} onClick={() => { confirm.onConfirm(); setConfirm(null); }}>Confirm</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>

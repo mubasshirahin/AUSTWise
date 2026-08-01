@@ -10,9 +10,12 @@ export function loadTemplates() {
   try {
     const stored = localStorage.getItem(TEMPLATES_STORAGE_KEY);
     if (stored) {
-      return JSON.parse(stored);
+      const parsed = JSON.parse(stored);
+      // Filter out legacy dummy templates that may have been persisted
+      // from the old defaultTemplates fallback (ids template-1..8)
+      return parsed.filter(t => !/^template-[1-8]$/.test(t.id));
     }
-    // No stored templates yet
+    // No stored templates yet — admin must create them
     return [];
   } catch {
     return [];
@@ -85,4 +88,26 @@ export function getTemplatesByDepartment(department) {
 export function getTemplatesBySemester(semester) {
   const templates = loadTemplates();
   return templates.filter(t => t.semester === semester);
+}
+
+// Merge multiple semester templates into one combined weekly routine.
+// Returns { routine, weekDays } or null when there is nothing to merge.
+// Class ids are regenerated so classes from different templates never collide.
+export function mergeTemplatesToRoutine(templates) {
+  if (!templates || templates.length === 0) return null;
+
+  const dayOrder = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
+  const days = [...new Set([...dayOrder, ...templates.flatMap(t => t.weekDays || [])])];
+
+  const routine = {};
+  days.forEach(day => {
+    routine[day] = templates.flatMap((t, tIdx) =>
+      (t.routine && t.routine[day]) ? t.routine[day].map((cls, cIdx) => ({
+        ...cls,
+        id: `${t.id || 'tpl'}-${day}-${tIdx}-${cIdx}`,
+      })) : []
+    );
+  });
+
+  return { routine, weekDays: days };
 }
