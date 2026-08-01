@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Calendar, ClipboardList, Plus, Trash2, ChevronLeft, ChevronRight, ChevronDown, FileDown } from 'lucide-react';
+import { Calendar, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, FileDown, MoreVertical, Settings, Check } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
 import { findCourseByCode } from '../../data/courses';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 import logoUrl from '../../assets/logo-silver.png';
 
 export default function WeekSchedule() {
@@ -181,6 +181,70 @@ export default function WeekSchedule() {
     
     return filteredTasks;
   };
+
+  // Day-cell density: 0 → calm, 1 → light, 2 → busy, 3+ → packed.
+  const getDayDensityColor = (count) => {
+    if (count >= 3) return 'var(--accent-rose)';
+    if (count === 2) return 'var(--accent-amber)';
+    if (count === 1) return 'var(--accent-cyan)';
+    return 'var(--accent-emerald)';
+  };
+
+  // Shared day-cell renderer — used identically by Day, Week and Month views.
+  const renderDayCard = (date, opts = {}) => {
+    const { limit } = opts;
+    const dayTasks = getTasksForDate(date);
+    const visibleTasks = limit ? dayTasks.slice(0, limit) : dayTasks;
+    const densityColor = getDayDensityColor(dayTasks.length);
+    if (isBeforeSemesterStart(date)) {
+      return (
+        <div key={formatDateKey(date)} className="schedule-day-card before-semester">
+          <div className="schedule-empty">{getDayNumber(date)}</div>
+        </div>
+      );
+    }
+    return (
+      <div key={formatDateKey(date)} className={`schedule-day-card${isToday(date) ? ' today' : ''}`}>
+        <div className="schedule-day-top">
+          <div className="schedule-day-num-wrap">
+            <div className={`schedule-day-num${isToday(date) ? ' today' : ''}`}>{getDayNumber(date)} <span className="schedule-day-month">{getMonthName(date)}</span></div>
+          </div>
+          <div className="schedule-day-badges">
+            {dayTasks.length > 0 && <span className={`schedule-day-count${dayTasks.length >= 3 ? ' hot' : ''}`}>{dayTasks.length}</span>}
+          </div>
+        </div>
+        <div className="schedule-task-list">
+          {visibleTasks.map(task => (
+            <div key={task.id} onClick={(e) => { e.stopPropagation(); setSelectedTask(task); }}
+              className="schedule-task-item"
+              style={{ background: `${getTypeColor(task.type)}15`, borderLeft: `2px solid ${densityColor}` }}>
+              {task.batchGroup && <span className="schedule-task-batch">{task.batchGroup}</span>}
+              <div className="schedule-task-info">
+                {task.courseCode && <span className="schedule-task-code" style={{ color: densityColor }}>{task.courseCode}</span>}
+                <span className="schedule-task-title">{task.title}</span>
+              </div>
+            </div>
+          ))}
+          {limit && dayTasks.length > limit && (
+            <div style={{ fontSize: '9px', color: 'var(--text-tertiary)', textAlign: 'center' }}>+{dayTasks.length - limit} more</div>
+          )}
+          {dayTasks.length === 0 && <div className="schedule-empty">Clear</div>}
+        </div>
+      </div>
+    );
+  };
+
+  // Human-friendly semester string, e.g. "Year 3 - Semester 1" → "3rd Year, 1 Sem"
+  const fmtSem = (s) => {
+    const m = (s || '').match(/Year\s*(\d+)\s*-\s*Semester\s*(\d+)/i);
+    if (!m) return s;
+    const ord = +m[1] === 1 ? '1st' : +m[1] === 2 ? '2nd' : +m[1] === 3 ? '3rd' : `${m[1]}th`;
+    return `${ord} Year, ${m[2]} Sem`;
+  };
+
+  // Week stats for the current visible range
+  const weekTaskCount = weekDates.reduce((sum, d) => sum + getTasksForDate(d).length, 0);
+  const weekDaysWithTasks = weekDates.filter(d => getTasksForDate(d).length > 0).length;
 
   const handleAddTask = (e) => {
     e.preventDefault();
@@ -430,95 +494,119 @@ export default function WeekSchedule() {
   }, [user, viewMode]);
 
   return (
-    <div className="glass-card-static animate-fadeInUp" style={{ minHeight: '480px' }}>
-      <div className="dash-header-three mb-8">
-        <div className="dash-header-left">
-          <div className="icon" style={{ backgroundColor: 'var(--accent-cyan-glow)', color: 'var(--accent-cyan)', padding: '8px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <ClipboardList size={20} />
+    <div className="glass-card-static schedule-widget animate-fadeInUp" style={{ minHeight: '480px' }}>
+
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <Calendar size={30} />
           </div>
           <div>
-            <p style={{ fontSize: 'var(--fs-lg)', color: 'var(--text-secondary)' }}>Academic calendar with tasks & events</p>
+            <span className="schedule-overline">14-Week View</span>
+            <p className="schedule-title">Semester View</p>
+            <span className="schedule-subtitle">
+              {user?.department || 'AUST'}
+              {user?.yearSemester ? ` · ${fmtSem(user.yearSemester)}` : ''}
+            </span>
           </div>
         </div>
-        {/* Middle: Export + Settings */}
-        <div className="dash-header-center">
+        <div className="schedule-masthead-center">
+          <div className="schedule-stats">
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{weekTaskCount}</span>
+              <span className="schedule-stat-label">tasks</span>
+            </div>
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{weekDaysWithTasks}</span>
+              <span className="schedule-stat-label">busy days</span>
+            </div>
+          </div>
+        </div>
+        <div className="schedule-actions">
+          <div className="schedule-week-nav">
+            <button className="schedule-nav-btn" onClick={() => {
+              const d = new Date(currentDate);
+              if (viewMode === 'daily') d.setDate(d.getDate() - 1);
+              else if (viewMode === 'monthly') d.setMonth(d.getMonth() - 1);
+              else if (canGoPrev()) d.setDate(d.getDate() - 7);
+              setCurrentDate(d);
+            }}>
+              <ChevronLeft size={20} />
+            </button>
+            <div className="schedule-week-pill">
+              <span className="schedule-week-pill-value">
+                {viewMode === 'daily'
+                  ? currentDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
+                  : viewMode === 'monthly'
+                    ? currentDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                    : getWeekLabel()}
+              </span>
+            </div>
+            <button className="schedule-nav-btn" onClick={() => {
+              const d = new Date(currentDate);
+              if (viewMode === 'daily') d.setDate(d.getDate() + 1);
+              else if (viewMode === 'monthly') d.setMonth(d.getMonth() + 1);
+              else if (canGoNext()) d.setDate(d.getDate() + 7);
+              setCurrentDate(d);
+            }}>
+              <ChevronRight size={20} />
+            </button>
+          </div>
           <div className="export-dropdown" ref={exportRef}>
-            <button className="btn btn-secondary btn-sm" onClick={() => setShowExportMenu(!showExportMenu)} aria-label="Export schedule" aria-haspopup="true">
-              <FileDown size={14} /> Export <ChevronDown size={12} />
+            <button className="schedule-nav-btn" onClick={() => setShowExportMenu(!showExportMenu)} aria-label="More options" aria-haspopup="true">
+              <MoreVertical size={18} />
             </button>
             {showExportMenu && (
               <div className="export-menu">
+                <button
+                  className={`export-menu-item${viewMode === 'daily' ? ' menu-active' : ''}`}
+                  onClick={() => { setCurrentDate(new Date()); setViewMode('daily'); setShowExportMenu(false); }}
+                >
+                  <CalendarDays size={14} /> Day View {viewMode === 'daily' && <Check size={14} className="menu-check" />}
+                </button>
+                <button
+                  className={`export-menu-item${viewMode === 'weekly' ? ' menu-active' : ''}`}
+                  onClick={() => { setViewMode('weekly'); setShowExportMenu(false); }}
+                >
+                  <CalendarRange size={14} /> Week View {viewMode === 'weekly' && <Check size={14} className="menu-check" />}
+                </button>
+                <button
+                  className={`export-menu-item${viewMode === 'monthly' ? ' menu-active' : ''}`}
+                  onClick={() => {
+                    const d = new Date(currentDate);
+                    d.setDate(15);
+                    setCurrentDate(d);
+                    setViewMode('monthly');
+                    setShowExportMenu(false);
+                  }}
+                >
+                  <Calendar size={14} /> Month View {viewMode === 'monthly' && <Check size={14} className="menu-check" />}
+                </button>
+                <div className="export-menu-sep" />
                 <button className="export-menu-item" onClick={() => { downloadSchedulePDF(); setShowExportMenu(false); }}>
                   <FileDown size={14} /> Export as PDF
                 </button>
                 <button className="export-menu-item" onClick={() => { downloadScheduleImage(); setShowExportMenu(false); }}>
                   <FileDown size={14} /> Export as Image
                 </button>
+                <div className="export-menu-sep" />
+                <button
+                  className="export-menu-item"
+                  onClick={() => { setShowExportMenu(false); setShowSettings(true); }}
+                >
+                  <Settings size={14} /> Semester Start Date
+                </button>
               </div>
             )}
           </div>
-          <button
-            className="schedule-nav-btn"
-            onClick={() => setShowSettings(true)}
-            title="Set semester start date"
-          >
-            <Calendar size={18} />
-          </button>
-        </div>
-        {/* Right: View toggle + Navigation */}
-        <div className="dash-header-right">
-          <div className="view-toggle">
-            {['daily', 'weekly', 'monthly'].map(mode => (
-              <button
-                key={mode}
-                className={`view-toggle-btn${viewMode === mode ? ' active' : ''}`}
-                onClick={() => {
-                  if (mode === 'daily' && viewMode !== 'daily') {
-                    setCurrentDate(new Date());
-                  } else if (mode === 'monthly' && viewMode !== 'monthly') {
-                    const d = new Date(currentDate);
-                    d.setDate(15);
-                    setCurrentDate(d);
-                  }
-                  setViewMode(mode);
-                }}
-              >
-                {mode === 'daily' ? 'Day' : mode === 'weekly' ? 'Week' : 'Month'}
-              </button>
-            ))}
-          </div>
-          <button className="schedule-nav-btn" onClick={() => {
-            const d = new Date(currentDate);
-            if (viewMode === 'daily') d.setDate(d.getDate() - 1);
-            else if (viewMode === 'monthly') d.setMonth(d.getMonth() - 1);
-            else if (canGoPrev()) d.setDate(d.getDate() - 7);
-            setCurrentDate(d);
-          }}>
-            <ChevronLeft size={20} />
-          </button>
-          <span className="schedule-week-label">
-            {viewMode === 'daily'
-              ? currentDate.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })
-              : viewMode === 'monthly'
-                ? currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-                : getWeekLabel()}
-          </span>
-          <button className="schedule-nav-btn" onClick={() => {
-            const d = new Date(currentDate);
-            if (viewMode === 'daily') d.setDate(d.getDate() + 1);
-            else if (viewMode === 'monthly') d.setMonth(d.getMonth() + 1);
-            else if (canGoNext()) d.setDate(d.getDate() + 7);
-            setCurrentDate(d);
-          }}>
-            <ChevronRight size={20} />
-          </button>
         </div>
       </div>
+
+      <div className="schedule-dotted-divider" />
 
       <div ref={scheduleRef}>
       {viewMode === 'daily' ? (() => {
         const date = currentDate;
-        const dayTasks = getTasksForDate(date);
         return (
           <div className={`schedule-daily-view${isToday(date) ? ' today' : ''}`}>
             <div className="schedule-daily-header">
@@ -534,25 +622,8 @@ export default function WeekSchedule() {
                 <span className="schedule-daily-badge">TODAY</span>
               )}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {dayTasks.map(task => (
-                <div key={task.id} onClick={(e) => { e.stopPropagation(); setSelectedTask(task); }}
-                  className="schedule-daily-task"
-                  style={{ background: `${getTypeColor(task.type)}15`, borderLeft: `3px solid ${getTypeColor(task.type)}` }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = `${getTypeColor(task.type)}30`; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = `${getTypeColor(task.type)}15`; }}
-                >
-                  <div className="schedule-daily-task-title">{task.title}</div>
-                  <div className="schedule-daily-task-meta">
-                    {task.courseCode && <span className="schedule-daily-task-code">{task.courseCode}</span>}
-                    {task.batchGroup && <span className="schedule-daily-task-batch">{task.batchGroup}</span>}
-                    {task.time && <span className="schedule-daily-task-time">{task.time}</span>}
-                  </div>
-                </div>
-              ))}
-              {dayTasks.length === 0 && (
-                <div className="schedule-daily-empty">No tasks for this day</div>
-              )}
+            <div className="schedule-daily-grid">
+              {renderDayCard(date)}
             </div>
             {canAddTask && (
               <button className="schedule-add-btn" onClick={(e) => { e.stopPropagation(); setSelectedDay(date); setNewTask({ ...newTask, date: formatDateKey(date) }); setShowAddModal(true); }}>
@@ -563,76 +634,27 @@ export default function WeekSchedule() {
         );
       })() : viewMode === 'monthly' ? (
         <>
-          <div className="schedule-month-grid" style={{ marginBottom: '12px' }}>
-            {['Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu'].map(day => (
-              <div key={day} className="schedule-month-header">{day}</div>
+          <div className="schedule-month-grid schedule-days-row" style={{ marginBottom: '12px' }}>
+            {['Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu'].map((day, i) => (
+              <div key={day} className={`schedule-month-header${i < 2 ? ' weekend' : ''}`}>{day}</div>
             ))}
           </div>
           <div className="schedule-month-grid" style={{ alignItems: 'start' }}>
             {getMonthDates().map((date, idx) => {
               if (!date) return <div key={`pad-${idx}`} />;
-              const dayTasks = getTasksForDate(date);
-              return (
-                <div key={idx} className={`schedule-day-card${isToday(date) ? ' today' : ''}`}>
-                  <div className={`schedule-day-num${isToday(date) ? ' today' : ''}`}>{getDayNumber(date)} <span className="schedule-day-month">{getMonthName(date)}</span></div>
-                  <div className="schedule-task-list">
-                    {dayTasks.slice(0, 5).map(task => (
-                      <div key={task.id} onClick={(e) => { e.stopPropagation(); setSelectedTask(task); }}
-                        className="schedule-task-item"
-                        style={{ background: `${getTypeColor(task.type)}15` }}>
-                          {task.batchGroup && <span className="schedule-task-batch">{task.batchGroup}</span>}
-                          <div className="schedule-task-info">
-                            {task.courseCode && <span className="schedule-task-code">{task.courseCode}</span>}
-                            <span className="schedule-task-title">{task.title}</span>
-                          </div>
-                      </div>
-                    ))}
-                    {dayTasks.length > 5 && (
-                      <div style={{ fontSize: '9px', color: 'var(--text-tertiary)', textAlign: 'center' }}>+{dayTasks.length - 5} more</div>
-                    )}
-                    {dayTasks.length === 0 && <div className="schedule-empty">No tasks</div>}
-                  </div>
-                </div>
-              );
+              return renderDayCard(date, { limit: 5 });
             })}
           </div>
         </>
       ) : (
         <>
-          <div className="schedule-grid" style={{ marginBottom: '12px' }}>
-            {['Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu'].map(day => (
-              <div key={day} className="schedule-day-header">{day}</div>
+          <div className="schedule-grid schedule-days-row" style={{ marginBottom: '12px' }}>
+            {['Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu'].map((day, i) => (
+              <div key={day} className={`schedule-day-header${i < 2 ? ' weekend' : ''}`}>{day}</div>
             ))}
           </div>
           <div className="schedule-grid" style={{ alignItems: 'start' }}>
-            {weekDates.map((date, idx) => {
-              const dayTasks = getTasksForDate(date);
-              return (
-                <div key={idx} className={`schedule-day-card${isToday(date) ? ' today' : ''}${isBeforeSemesterStart(date) ? ' before-semester' : ''}`}>
-                  {isBeforeSemesterStart(date) ? (
-                    <div className="schedule-empty">{getDayNumber(date)}</div>
-                  ) : (
-                    <>
-                      <div className={`schedule-day-num${isToday(date) ? ' today' : ''}`}>{getDayNumber(date)} <span className="schedule-day-month">{getMonthName(date)}</span></div>
-                      <div className="schedule-task-list">
-                        {dayTasks.map(task => (
-                          <div key={task.id} onClick={(e) => { e.stopPropagation(); setSelectedTask(task); }}
-                            className="schedule-task-item"
-                            style={{ background: `${getTypeColor(task.type)}15` }}>
-                            {task.batchGroup && <span className="schedule-task-batch">{task.batchGroup}</span>}
-                            <div className="schedule-task-info">
-                              {task.courseCode && <span className="schedule-task-code">{task.courseCode}</span>}
-                              <span className="schedule-task-title">{task.title}</span>
-                            </div>
-                          </div>
-                        ))}
-                        {dayTasks.length === 0 && <div className="schedule-empty">No tasks</div>}
-                      </div>
-                    </>
-                  )}
-                </div>
-              );
-            })}
+            {weekDates.map(date => renderDayCard(date))}
           </div>
         </>
       )}

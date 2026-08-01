@@ -8,6 +8,7 @@ import {
   seedFromDeadlines,
   seedFromTasks,
   clearAllNotifications,
+  showNativeNotification,
 } from '../utils/inAppNotifications';
 
 const POLL_MS = 5000;
@@ -45,12 +46,27 @@ export function useInAppNotifications() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Poll for external changes
+  // Poll for external changes + fire native notifications for new items.
+  // First load establishes a baseline so pre-existing/seeded items don't spam.
   useEffect(() => {
-    const interval = setInterval(() => {
-      setNotifications(loadNotifications());
+    let baseline = null;
+
+    const check = () => {
+      const items = loadNotifications();
+      if (baseline === null) {
+        baseline = new Set(items.map((n) => n.id));
+      } else {
+        items.forEach((n) => {
+          if (!baseline.has(n.id)) showNativeNotification(n);
+        });
+        baseline = new Set(items.map((n) => n.id));
+      }
+      setNotifications(items);
       setUnread(getUnreadCount());
-    }, POLL_MS);
+    };
+
+    check();
+    const interval = setInterval(check, POLL_MS);
     return () => clearInterval(interval);
   }, []);
 

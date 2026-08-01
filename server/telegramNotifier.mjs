@@ -318,6 +318,82 @@ export async function sendDailyNotifications() {
 }
 
 /**
+ * Escape Markdown (v1) special characters so notice text renders as plain text
+ */
+function escapeMarkdown(text) {
+  return String(text || '').replace(/([_*\[\]`])/g, '\\$1');
+}
+
+/**
+ * Broadcast a notice to all registered users via the system bot
+ * @param {Object} notice - { title, content, pinned, postedByName, postedByRole }
+ * @returns {Object} Summary of all send attempts
+ */
+export async function sendNoticeToAllUsers(notice) {
+  if (!TELEGRAM_BOT_TOKEN) {
+    return {
+      success: false,
+      error: 'TELEGRAM_BOT_TOKEN not configured in environment variables.',
+      totalUsers: 0,
+      sent: 0,
+      failed: 0,
+      results: []
+    };
+  }
+
+  const users = await getAllUsers();
+  if (users.length === 0) {
+    return {
+      success: true,
+      totalUsers: 0,
+      sent: 0,
+      failed: 0,
+      results: []
+    };
+  }
+
+  const title = escapeMarkdown(notice.title || 'New Notice');
+  const content = escapeMarkdown(notice.content || '');
+  const postedBy = escapeMarkdown(notice.postedByName || '');
+  const role = String(notice.postedByRole || '').toUpperCase();
+
+  let message = `📢 *New Notice*\n\n`;
+  message += `*${title}*\n\n`;
+  if (content) message += `${content}\n`;
+  message += `\n👤 Posted by ${postedBy}${role ? ` (${role})` : ''}${notice.pinned ? '\n📌 Pinned' : ''}`;
+  message += `\n\n📖 AUSTWise`;
+
+  console.log(`Broadcasting notice to ${users.length} Telegram users...`);
+
+  const results = [];
+  let sentCount = 0;
+  let failedCount = 0;
+
+  for (const user of users) {
+    const result = await sendTelegramMessage(TELEGRAM_BOT_TOKEN, user.chatId, message);
+    results.push({ chatId: user.chatId, ...result });
+    if (result.success) {
+      sentCount++;
+    } else {
+      failedCount++;
+    }
+    if (users.length > 1) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+  }
+
+  console.log(`Notice broadcast summary: Total ${users.length}, Sent ${sentCount}, Failed ${failedCount}`);
+
+  return {
+    success: true,
+    totalUsers: users.length,
+    sent: sentCount,
+    failed: failedCount,
+    results
+  };
+}
+
+/**
  * Send a test notification to a specific user
  * This simulates what the next 8 AM notification would look like
  * @param {string} chatId - User's Telegram Chat ID

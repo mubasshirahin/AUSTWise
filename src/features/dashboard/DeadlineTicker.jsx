@@ -1,23 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Hourglass, AlertTriangle, CalendarRange, Zap, Timer } from 'lucide-react';
+import { Hourglass, AlertTriangle, Timer } from 'lucide-react';
 import { deadlines } from '../../data/mockData';
 import { useAuth } from '../../context/AuthContext';
 
 export default function DeadlineTicker() {
   const { user } = useAuth();
-
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes hourglass-sand {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-      .deadline-hourglass svg { animation: hourglass-sand 4s ease-in-out infinite alternate; }
-    `;
-    document.head.appendChild(style);
-    return () => style.remove();
-  }, []);
   const [timers, setTimers] = useState([]);
   const [calendarTasks, setCalendarTasks] = useState([]);
 
@@ -132,87 +119,63 @@ export default function DeadlineTicker() {
     return () => clearInterval(interval);
   }, [combinedDeadlines.length, calendarTasks.length, timers.length]);
 
-  const hasUrgent = displayDeadlines.some(dl => dl.urgent);
-
   return (
-    <div className="glass-card-static deadline-ticker premium-card animate-fadeInUp">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div className="icon" style={{ backgroundColor: 'var(--accent-rose-glow)', color: 'var(--accent-rose)', padding: '6px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Timer size={18} />
+    <div className="glass-card-static schedule-widget deadline-widget animate-fadeInUp">
+
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <Hourglass size={20} />
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {hasUrgent && (
-            <div className="deadline-urgent-badge">
-              <Zap size={12} />
-              <span>URGENT</span>
-            </div>
-          )}
-          <CalendarRange size={16} style={{ color: 'var(--text-tertiary)' }} />
+          <div>
+            <span className="schedule-overline">Live Countdown</span>
+            <p className="schedule-title">Deadlines</p>
+            <span className="schedule-subtitle">
+              {displayDeadlines.length} upcoming · nearest first
+            </span>
+          </div>
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <div className="schedule-dotted-divider" />
+
+      <div className="deadline-list">
         {displayDeadlines.length === 0 ? (
-          <div className="empty-state" style={{ padding: '24px 0' }}>
-            <Hourglass size={20} style={{ opacity: 0.25 }} />
-            <p style={{ color: 'var(--text-tertiary)', opacity: 0.6 }}>No upcoming deadlines</p>
+          <div className="schedule-empty" style={{ padding: '28px 0' }}>
+            <Hourglass size={22} style={{ opacity: 0.3, marginBottom: '6px' }} />
+            No upcoming deadlines
           </div>
-        ) : displayDeadlines.map(dl => {
+        ) : displayDeadlines.map((dl, idx) => {
           return (
-            <div 
+            <div
               key={dl.id}
-              className="flex justify-between items-center p-3 premium-list-item"
+              className="schedule-day-card deadline-row"
               style={{
-                background: 'var(--bg-input)',
-                borderRadius: 'var(--radius-md)',
-                borderLeft: `3px solid ${dl.urgent ? 'var(--accent-rose)' : dl.color}`,
-                animation: dl.urgent ? 'countdownPulse 2s infinite' : 'none',
-                transition: 'background 0.18s ease, transform 0.18s ease',
+                borderLeft: '2px solid var(--accent-blue)',
+                animationDelay: `${idx * 60}ms`,
               }}
             >
-              <div style={{ flex: 1, minWidth: 0, paddingRight: '12px' }}>
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span style={{ fontSize: '10px', fontWeight: 'var(--fw-bold)', color: 'var(--text-tertiary)' }}>{dl.course}</span>
-                  {dl.crGroup && (
-                    <span className="badge badge-emerald" style={{ fontSize: '8px', padding: '1px 4px' }}>
-                      {dl.crGroup}
-                    </span>
-                  )}
-                  {dl.fromCalendar && (
-                    <span className="badge badge-cyan" style={{ fontSize: '8px', padding: '1px 4px' }}>
-                      {dl.batchGroup}
+              <div className="schedule-day-top">
+                <div className="schedule-day-num-wrap">
+                  <div className="deadline-course">
+                    {dl.course}
+                  </div>
+                </div>
+                <div className="schedule-day-badges">
+                  {dl.crGroup && <span className="deadline-tag cr">{dl.crGroup}</span>}
+                  {dl.fromCalendar && <span className="deadline-tag cal">{dl.batchGroup}</span>}
+                  {dl.urgent && (
+                    <span className="deadline-tag urgent">
+                      <AlertTriangle size={10} /> URGENT
                     </span>
                   )}
                 </div>
-                <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'var(--fw-medium)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {dl.title}
-                </h4>
               </div>
-
-              <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                <span 
-                  style={{ 
-                    fontFamily: 'monospace', 
-                    fontSize: 'var(--fs-sm)', 
-                    fontWeight: 'var(--fw-semibold)',
-                    color: dl.urgent ? 'var(--accent-rose)' : 'var(--text-primary)'
-                  }}
-                >
-                  {dl.formatted}
+              <div className="deadline-title">{dl.title}</div>
+              <div className="deadline-meta">
+                <span className="deadline-countdown">
+                  <Timer size={11} /> {dl.formatted}
                 </span>
-                {dl.urgent && (
-                  <div className="flex items-center justify-end gap-1 text-rose mt-1" style={{ color: 'var(--accent-rose)', fontSize: '8px', fontWeight: 'bold' }}>
-                    <AlertTriangle size={10} />
-                    <span>URGENT</span>
-                  </div>
-                )}
-                {dl.fromCalendar && (
-                  <div style={{ fontSize: '8px', color: 'var(--accent-cyan)', marginTop: '2px' }}>
-                    Calendar
-                  </div>
-                )}
               </div>
             </div>
           );

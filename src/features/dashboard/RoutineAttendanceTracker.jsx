@@ -1,12 +1,13 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useRoutine } from '../../context/RoutineContext';
-import { normalizeAccentColor } from '../../utils/colorPalette';
 import {
-  TrendingUp, AlertTriangle, ShieldAlert, ShieldCheck,
-  Info, BookOpen, Trash2, ChevronDown, Clock, MapPin, CheckCircle2, XCircle
+  Percent, AlertTriangle,
+  Info, BookOpen, Trash2, Clock, MapPin, CheckCircle2, XCircle,
+  MoreVertical, Activity, Check,
 } from 'lucide-react';
 import { setUserStorageItem, getUserStorageKey } from '../../utils/authStorage';
 import { getCalculatedAttendanceDates, getSemesterStartDate } from '../../utils/semesterDates';
+import './attendance-widget.css';
 
 const SEMESTER_WEEKS = 14;
 const MIN_ATTENDANCE = 75;
@@ -37,36 +38,6 @@ function loadInitialState() {
 function loadTelegramChatId() { return localStorage.getItem('telegram_chat_id') || ''; }
 function loadIsTelegramRegistered() { return localStorage.getItem('telegram_is_registered') === 'true'; }
 
-function AttendanceRing({ percentage, size = 52, strokeWidth = 4, color }) {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference * (1 - Math.min(percentage, 100) / 100);
-  const center = size / 2;
-  const isLow = percentage < MIN_ATTENDANCE;
-
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink: 0 }}>
-      <circle cx={center} cy={center} r={radius} fill="none" stroke="var(--bg-card)" strokeWidth={strokeWidth} />
-      <circle
-        cx={center} cy={center} r={radius} fill="none"
-        stroke={isLow ? 'var(--accent-amber)' : color || 'var(--accent-emerald)'}
-        strokeWidth={strokeWidth} strokeLinecap="round"
-        strokeDasharray={circumference} strokeDashoffset={offset}
-        transform={`rotate(-90 ${center} ${center})`}
-        style={{ transition: 'stroke-dashoffset 0.5s ease, stroke 0.3s ease' }}
-      />
-      <text
-        x={center} y={center + 1} textAnchor="middle" dominantBaseline="central"
-        fill={isLow ? 'var(--accent-amber)' : 'var(--text-primary)'}
-        fontSize={size * 0.26} fontWeight="700" fontFamily="system-ui, sans-serif"
-        style={{ fontVariantNumeric: 'tabular-nums' }}
-      >
-        {Math.round(percentage)}%
-      </text>
-    </svg>
-  );
-}
-
 function MiniSegBar({ attended, missed, unmarked, total }) {
   const aPct = total > 0 ? (attended / total) * 100 : 0;
   const mPct = total > 0 ? (missed  / total) * 100 : 0;
@@ -96,6 +67,44 @@ export default function RoutineAttendanceTracker() {
 
   const [showGuide,         setShowGuide]         = useState(false);
   const [expandedCourseKey, setExpandedCourseKey] = useState(null);
+  const [showMenu,          setShowMenu]          = useState(false);
+  const [inView,            setInView]            = useState(false);
+  const menuRef = useRef(null);
+  const widgetRef = useRef(null);
+
+  // Play the entrance animation only when the widget scrolls into view.
+  useEffect(() => {
+    const el = widgetRef.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      setInView(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setInView(true);
+            observer.disconnect();
+          }
+        });
+      },
+      { threshold: 0.05, rootMargin: '0px 0px -10% 0px' }
+    );
+    observer.observe(el);
+    const fallback = setTimeout(() => setInView(true), 1200);
+    return () => { observer.disconnect(); clearTimeout(fallback); };
+  }, []);
+
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   // ---------- Telegram sync ----------
   const loadTelegramAttendance = useCallback(async () => {
@@ -188,16 +197,6 @@ export default function RoutineAttendanceTracker() {
     setAttendanceData({});
     setSessionMarks({});
     setIsEnabled(false);
-  };
-
-  const resetAttendance = (courseKey) => {
-    setAttendanceData(prev => { const n = { ...prev }; delete n[courseKey]; return n; });
-    // also clear session marks for this course
-    setSessionMarks(prev => {
-      const n = { ...prev };
-      Object.keys(n).forEach(id => { if (id.startsWith(courseKey + '::')) delete n[id]; });
-      return n;
-    });
   };
 
   // ---------- Course structure ----------
@@ -327,45 +326,14 @@ export default function RoutineAttendanceTracker() {
 
   useEffect(() => { try { localStorage.setItem('aust-attendance-overall-average', String(overallStats.average)); } catch {} }, [overallStats.average]);
 
-  // ---------- Premium toggle button styles ----------
-  const ToggleBtn = ({ sessionId, courseKey, currentStatus, targetStatus, label, icon: Icon, activeColor, activeBg, mutedColor }) => {
+  // ---------- Present / Absent toggle buttons ----------
+  const ToggleBtn = ({ sessionId, courseKey, currentStatus, targetStatus, label, icon: Icon }) => {
     const isActive = currentStatus === targetStatus;
     return (
       <button
+        className={`att-toggle-pill ${targetStatus}${isActive ? ' active' : ''}`}
         onClick={(e) => { e.stopPropagation(); setSessionStatus(sessionId, courseKey, targetStatus); }}
         title={isActive ? `Clear ${label}` : `Mark ${label}`}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '4px',
-          padding: '3px 10px',
-          borderRadius: '6px',
-          border: `1px solid ${isActive ? activeColor : 'rgba(255,255,255,0.08)'}`,
-          background: isActive ? activeBg : 'rgba(255,255,255,0.03)',
-          color: isActive ? activeColor : mutedColor || 'var(--text-tertiary)',
-          cursor: 'pointer',
-          fontSize: '10px',
-          fontWeight: isActive ? '700' : '500',
-          letterSpacing: '0.01em',
-          transition: 'all 0.2s ease',
-          lineHeight: 1,
-          whiteSpace: 'nowrap',
-          outline: 'none',
-        }}
-        onMouseEnter={e => {
-          if (!isActive) {
-            e.currentTarget.style.borderColor = activeColor + '66';
-            e.currentTarget.style.background = activeBg;
-            e.currentTarget.style.color = activeColor;
-          }
-        }}
-        onMouseLeave={e => {
-          if (!isActive) {
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-            e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-            e.currentTarget.style.color = mutedColor || 'var(--text-tertiary)';
-          }
-        }}
       >
         <Icon size={11} style={{ flexShrink: 0 }} />
         {label}
@@ -375,45 +343,220 @@ export default function RoutineAttendanceTracker() {
 
   if (Object.keys(courseStats).length === 0) return null;
 
+  const courseList = Object.values(courseStats);
+
+  // Shared course-cell renderer — used identically for every course cell.
+  const renderCourseCell = (stat, idx) => {
+    const localAtt = attendanceData[stat.fullKey]?.attended || 0;
+
+    // Count absent marks from sessionMarks for this course
+    const coursePrefix = stat.fullKey + '::';
+    const absentMarks = Object.entries(sessionMarks)
+      .filter(([id, status]) => id.startsWith(coursePrefix) && status === 'absent')
+      .length;
+
+    const telegramData = telegramAttendance[stat.fullKey] || telegramAttendance[stat.course];
+    const telegramAtt  = typeof telegramData === 'object' ? (telegramData.attended || 0) : 0;
+    const telegramTot  = typeof telegramData === 'object' ? (telegramData.total    || 0) : 0;
+    const telegramAbs  = telegramTot - telegramAtt;
+
+    const attended     = Math.max(localAtt, telegramAtt);
+    const absent       = Math.max(absentMarks, telegramAbs);
+    const totalMarked  = attended + absent;
+    const unmarked     = Math.max(0, stat.totalSemesterClasses - totalMarked);
+    const percentage   = stat.totalSemesterClasses > 0
+      ? ((attended / stat.totalSemesterClasses) * 100) : 0;
+    const isDanger     = percentage < MIN_ATTENDANCE;
+
+    const neededTotal  = Math.ceil(stat.totalSemesterClasses * (MIN_ATTENDANCE / 100));
+    const canMissThis  = Math.max(0, stat.totalSemesterClasses - neededTotal - absent);
+
+    const isExpanded   = expandedCourseKey === stat.fullKey;
+
+    return (
+      <div
+        key={stat.fullKey}
+        className={[
+          'schedule-day-card',
+          'att-cell',
+          isExpanded ? 'today' : '',
+          isDanger ? 'att-cell-danger' : '',
+        ].filter(Boolean).join(' ')}
+        style={{
+          animationDelay: `${0.05 + idx * 0.06}s`,
+        }}
+        onClick={() => setExpandedCourseKey(prev => prev === stat.fullKey ? null : stat.fullKey)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setExpandedCourseKey(prev => prev === stat.fullKey ? null : stat.fullKey); }}
+      >
+        <div className="schedule-day-top">
+          <div className="schedule-day-num-wrap">
+            <div className="att-cell-code" style={{ color: 'var(--accent-blue)' }}>
+              {stat.course}
+              {stat.part && <span className="att-cell-part">Part {stat.part}</span>}
+            </div>
+          </div>
+        </div>
+
+        <div className="att-cell-pct-row">
+          <span
+            className={`att-cell-pct${isDanger ? ' danger' : ''}`}
+            style={{ color: isDanger ? 'var(--accent-rose)' : 'var(--accent-emerald)' }}
+          >
+            {Math.round(percentage)}%
+          </span>
+        </div>
+
+        <div className="att-cell-name">{stat.name}</div>
+
+        {isExpanded && (
+          <div className="att-cell-expanded">
+            <div className="schedule-task-list">
+              <div className="att-cell-stats">
+                <span className="att-cell-stat att-cell-stat-att">{attended}</span>
+                <span className="att-cell-sep">/</span>
+                <span className="att-cell-stat att-cell-stat-mis">{absent}</span>
+                <span className="att-cell-sep">/</span>
+                <span className="att-cell-stat att-cell-stat-umr">{unmarked}</span>
+              </div>
+              <div className="att-cell-buffer">
+                You can miss <strong>{canMissThis}</strong> more class{canMissThis !== 1 ? 'es' : ''}
+              </div>
+            </div>
+
+            <MiniSegBar attended={attended} missed={absent} unmarked={unmarked} total={stat.totalSemesterClasses} />
+
+            {courseInstances.length > 0 && (
+              <div className="att-course-instances">
+                <div className="att-instances-header">
+                  <Clock size={12} />
+                  {courseInstances.length} class sessions · {SEMESTER_WEEKS}-week semester
+                  <span className="att-instances-hint">Tap a row to mark Present / Absent</span>
+                </div>
+                <div className="att-instances-list">
+                  {courseInstances.map((inst, instIdx) => {
+                    const mark = sessionMarks[inst.id];
+                    return (
+                      <div
+                        key={inst.id}
+                        className={`att-instance-row${mark ? ` state-${mark}` : ''}`}
+                        style={{ animationDelay: `${0.02 + instIdx * 0.03}s` }}
+                      >
+                        <span className="att-instance-date">
+                          {inst.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </span>
+                        <span className="att-instance-day">{inst.dayName.substring(0, 3)}</span>
+                        <span className="att-instance-label">{inst.label}</span>
+                        <span className="att-instance-time">{inst.time || '—'}</span>
+                        <span className="att-instance-room">
+                          <MapPin size={9} /> {inst.room || '—'}
+                        </span>
+                        <span className="att-instance-spacer">
+                          <ToggleBtn
+                            sessionId={inst.id}
+                            courseKey={stat.fullKey}
+                            currentStatus={mark}
+                            targetStatus="present"
+                            label="Present"
+                            icon={CheckCircle2}
+                          />
+                          <ToggleBtn
+                            sessionId={inst.id}
+                            courseKey={stat.fullKey}
+                            currentStatus={mark}
+                            targetStatus="absent"
+                            label="Absent"
+                            icon={XCircle}
+                          />
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <div className="att-tracker-wrap glass-card-static animate-fadeInUp">
-      <div className="att-header-row">
-        <div className="att-header-left">
-          <div className="att-header-icon" style={{ background: 'var(--accent-emerald-glow)', color: 'var(--accent-emerald)' }}>
-            <TrendingUp size={20} />
+    <div className={`glass-card-static schedule-widget attendance-widget attendance-tracker-widget animate-fadeInUp${inView ? ' att-drop-active' : ''}`} ref={widgetRef}>
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <Percent size={20} />
           </div>
           <div>
-            <div className="att-header-title">Attendance Tracker</div>
-            <div className="att-header-sub">
+            <span className="schedule-overline">Semester Progress</span>
+            <p className="schedule-title">Attendance Tracker</p>
+            <span className="schedule-subtitle">
               {isEnabled
-                ? `${SEMESTER_WEEKS}-week semester · ${Object.keys(courseStats).length} courses`
+                ? `${SEMESTER_WEEKS}-week semester · ${courseList.length} courses`
                 : 'Track your attendance across the semester'}
+            </span>
+          </div>
+        </div>
+
+        <div className="schedule-masthead-center">
+          <div className="schedule-stats">
+            <div className="schedule-stat">
+              <span
+                className="schedule-stat-value"
+                style={{ color: overallStats.average >= MIN_ATTENDANCE ? 'var(--accent-emerald)' : 'var(--accent-amber)' }}
+              >
+                {overallStats.average}%
+              </span>
+              <span className="schedule-stat-label">overall</span>
+            </div>
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{overallStats.totalCanMiss}</span>
+              <span className="schedule-stat-label">can miss</span>
+            </div>
+            <div className="schedule-stat">
+              <span
+                className="schedule-stat-value"
+                style={{ color: overallStats.warningCount > 0 ? 'var(--accent-rose)' : undefined }}
+              >
+                {overallStats.warningCount}
+              </span>
+              <span className="schedule-stat-label">at risk</span>
             </div>
           </div>
         </div>
-        <div className="att-header-actions">
-          <button className="att-guide-btn" onClick={() => setShowGuide(!showGuide)} title="Attendance guide">
-            <Info size={15} />
-          </button>
-          <button
-            className="att-guide-btn"
-            onClick={clearAllData}
-            title="Reset all attendance data"
-            style={{ color: 'var(--accent-rose)' }}
-          >
-            <Trash2 size={15} />
-          </button>
-          <button
-            className="att-toggle-btn"
-            onClick={() => setIsEnabled(!isEnabled)}
-            aria-label={isEnabled ? 'Disable tracking' : 'Enable tracking'}
-          >
-            <div className={`att-toggle-track${isEnabled ? ' active' : ''}`}>
-              <div className="att-toggle-thumb" />
-            </div>
-          </button>
+
+        <div className="schedule-actions">
+          <div className="export-dropdown" ref={menuRef}>
+            <button className="schedule-nav-btn" onClick={() => setShowMenu(!showMenu)} aria-label="More options" aria-haspopup="true">
+              <MoreVertical size={18} />
+            </button>
+            {showMenu && (
+              <div className="export-menu">
+                <button
+                  className={`export-menu-item${isEnabled ? ' menu-active' : ''}`}
+                  onClick={() => { setIsEnabled(v => !v); setShowMenu(false); }}
+                >
+                  <Activity size={14} /> Tracking enabled {isEnabled && <Check size={14} className="menu-check" />}
+                </button>
+                <button
+                  className={`export-menu-item${showGuide ? ' menu-active' : ''}`}
+                  onClick={() => { setShowGuide(v => !v); setShowMenu(false); }}
+                >
+                  <Info size={14} /> Attendance guide {showGuide && <Check size={14} className="menu-check" />}
+                </button>
+                <div className="export-menu-sep" />
+                <button className="export-menu-item" onClick={() => { clearAllData(); setShowMenu(false); }}>
+                  <Trash2 size={14} /> Reset all data
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      <div className="schedule-dotted-divider" />
 
       {showGuide && (
         <div className="att-guide-panel">
@@ -438,7 +581,7 @@ export default function RoutineAttendanceTracker() {
               <span className="att-guide-stat-lbl">Course(s) at risk</span>
             </div>
           </div>
-          <p style={{ marginTop: '8px', fontSize: '10px', opacity: 0.8 }}>
+          <p className="att-guide-tip">
             Tip: Click each class session below to mark Present / Absent.
             The aggregate updates automatically.
           </p>
@@ -447,246 +590,22 @@ export default function RoutineAttendanceTracker() {
 
       {isEnabled ? (
         <>
-          <div className="att-hero-box">
-            <div className="att-hero-body">
-              <div className="att-hero-label">Overall Attendance</div>
-              <div className="att-hero-value"
+          <div className="att-overall-strip">
+            <div className="att-overall-bar">
+              <div className="att-overall-fill"
                 style={{
-                  color: overallStats.average >= MIN_ATTENDANCE ? 'var(--accent-emerald)' : 'var(--accent-amber)'
+                  width: `${Math.min(overallStats.average, 100)}%`,
+                  background: overallStats.average >= MIN_ATTENDANCE ? 'var(--accent-emerald)' : 'var(--accent-amber)'
                 }}
-              >
-                {overallStats.average}%
-                {overallStats.average >= MIN_ATTENDANCE
-                  ? <ShieldCheck size={18} style={{ marginLeft: 6 }} />
-                  : <ShieldAlert  size={18} style={{ marginLeft: 6 }} />
-                }
-              </div>
+              />
             </div>
-
-            {/* Premium Analytics Cards */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: '8px',
-              marginBottom: '10px',
-            }}>
-              {[
-                {
-                  label: 'Present',
-                  value: overallStats.totalAttended,
-                  icon: CheckCircle2,
-                  color: 'var(--accent-emerald)',
-                  glow: 'rgba(52,211,153,0.12)',
-                  border: 'rgba(52,211,153,0.2)',
-                },
-                {
-                  label: 'Absent',
-                  value: overallStats.totalAbsent,
-                  icon: XCircle,
-                  color: 'var(--accent-rose)',
-                  glow: 'rgba(251,113,133,0.12)',
-                  border: 'rgba(251,113,133,0.2)',
-                },
-                {
-                  label: 'Total Classes',
-                  value: overallStats.totalClasses,
-                  icon: BookOpen,
-                  color: 'var(--accent-cyan)',
-                  glow: 'rgba(6,182,212,0.12)',
-                  border: 'rgba(6,182,212,0.2)',
-                },
-              ].map(stat => (
-                <div key={stat.label} style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '6px',
-                  padding: '10px 12px',
-                  borderRadius: '10px',
-                  background: stat.glow,
-                  border: `1px solid ${stat.border}`,
-                  backdropFilter: 'blur(8px)',
-                  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <stat.icon size={12} style={{ color: stat.color }} />
-                    <span style={{ fontSize: '9px', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '600' }}>
-                      {stat.label}
-                    </span>
-                  </div>
-                  <span style={{
-                    fontSize: '20px',
-                    fontWeight: '800',
-                    color: stat.color,
-                    fontVariantNumeric: 'tabular-nums',
-                    lineHeight: 1,
-                  }}>
-                    {stat.value}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <div className="att-hero-bar-wrap">
-              <div className="att-hero-bar-bg">
-                <div className="att-hero-bar-fill"
-                  style={{
-                    width: `${Math.min(overallStats.average, 100)}%`,
-                    background: overallStats.average >= MIN_ATTENDANCE ? 'var(--accent-emerald)' : 'var(--accent-amber)'
-                  }}
-                />
-              </div>
-              <span className="att-hero-bar-label">{MIN_ATTENDANCE}% minimum · {overallStats.totalAttended}/{overallStats.totalClasses} attended</span>
-            </div>
+            <span className="att-overall-label">
+              {overallStats.average}% · {MIN_ATTENDANCE}% minimum · {overallStats.totalAttended}/{overallStats.totalClasses} attended
+            </span>
           </div>
 
-          <div className="att-course-grid">
-            {Object.values(courseStats).map((stat) => {
-              const localAtt = attendanceData[stat.fullKey]?.attended || 0;
-
-              // Count absent marks from sessionMarks for this course
-              const coursePrefix = stat.fullKey + '::';
-              const absentMarks = Object.entries(sessionMarks)
-                .filter(([id, status]) => id.startsWith(coursePrefix) && status === 'absent')
-                .length;
-              const totalLocalMarks = Object.keys(sessionMarks)
-                .filter(id => id.startsWith(coursePrefix))
-                .length;
-
-              const telegramData = telegramAttendance[stat.fullKey] || telegramAttendance[stat.course];
-              const telegramAtt  = typeof telegramData === 'object' ? (telegramData.attended || 0) : 0;
-              const telegramTot  = typeof telegramData === 'object' ? (telegramData.total    || 0) : 0;
-              const telegramAbs  = telegramTot - telegramAtt;
-
-              const attended     = Math.max(localAtt, telegramAtt);
-              const absent       = Math.max(absentMarks, telegramAbs);
-              const totalMarked  = attended + absent;
-              const unmarked     = Math.max(0, stat.totalSemesterClasses - totalMarked);
-              const percentage   = stat.totalSemesterClasses > 0
-                ? ((attended / stat.totalSemesterClasses) * 100) : 0;
-              const isDanger     = percentage < MIN_ATTENDANCE;
-              const accentColor  = normalizeAccentColor(stat.color);
-
-              const neededTotal  = Math.ceil(stat.totalSemesterClasses * (MIN_ATTENDANCE / 100));
-              const canMissThis  = Math.max(0, stat.totalSemesterClasses - neededTotal - absent);
-
-              const isExpanded   = expandedCourseKey === stat.fullKey;
-
-              return (
-                <div key={stat.fullKey} className={`att-course-card${isDanger ? ' att-course-danger' : ''}${isExpanded ? ' att-course-expanded' : ''}`}>
-                  <div
-                    className="att-course-row"
-                    onClick={() => setExpandedCourseKey(prev => prev === stat.fullKey ? null : stat.fullKey)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <div className="att-course-info">
-                      <div className="att-course-code" style={{ color: accentColor }}>
-                        {stat.course}
-                        {stat.part && <span className="att-course-part">Part {stat.part}</span>}
-                        <ChevronDown size={14} style={{
-                          marginLeft: 'auto',
-                          transition: 'transform 0.2s ease',
-                          transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                          opacity: 0.5,
-                        }} />
-                      </div>
-                      <div className="att-course-sub">
-                        <span className="att-course-stat att-course-stat-att" title="Present">{attended}</span>
-                        <span className="att-course-stat-sep">/</span>
-                        <span className="att-course-stat att-course-stat-mis" title="Absent">{absent}</span>
-                        <span className="att-course-stat-sep">/</span>
-                        <span className="att-course-stat att-course-stat-umr" title="Unmarked">{unmarked}</span>
-                        <span className="att-course-stat-hint">present/absent/unmk</span>
-                      </div>
-                    </div>
-                    <button
-                      className="att-course-reset"
-                      onClick={(e) => { e.stopPropagation(); resetAttendance(stat.fullKey); }}
-                      title="Reset attendance"
-                    >&times;</button>
-                  </div>
-
-                  <div className="att-course-buffer">
-                    <span className="att-buffer-label">
-                      You can miss <strong>{canMissThis}</strong> more class{canMissThis !== 1 ? 'es' : ''}
-                    </span>
-                  </div>
-
-                  <MiniSegBar attended={attended} missed={absent} unmarked={unmarked} total={stat.totalSemesterClasses} />
-
-                  {isExpanded && courseInstances.length > 0 && (
-                    <div className="att-course-instances">
-                      <div className="att-instances-header">
-                        <Clock size={12} />
-                        {courseInstances.length} class sessions · {SEMESTER_WEEKS}-week semester
-                        <span style={{ marginLeft: 'auto', fontSize: '10px', opacity: 0.65 }}>
-                          Tap a row to mark Present / Absent
-                        </span>
-                      </div>
-                      <div className="att-instances-list">
-                        {courseInstances.map((inst) => {
-                          const mark = sessionMarks[inst.id];
-                          const isPresentMark = mark === 'present';
-                          const isAbsentMark  = mark === 'absent';
-
-                          return (
-                            <div
-                              key={inst.id}
-                              className="att-instance-row"
-                              style={{
-                                background: isPresentMark
-                                  ? 'rgba(52,211,153,0.04)'
-                                  : isAbsentMark
-                                  ? 'rgba(251,113,133,0.04)'
-                                  : undefined,
-                                transition: 'background 0.2s ease',
-                              }}
-                            >
-                              <span className="att-instance-date">
-                                {inst.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                              </span>
-                              <span className="att-instance-day">{inst.dayName.substring(0, 3)}</span>
-                              <span style={{ fontSize: '9px', color: 'var(--text-tertiary)', flexShrink: 0 }}>
-                                {inst.label}
-                              </span>
-                              <span className="att-instance-time">
-                                {inst.time || '—'}
-                              </span>
-                              <span className="att-instance-room">
-                                <MapPin size={9} /> {inst.room || '—'}
-                              </span>
-                              <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                                <ToggleBtn
-                                  sessionId={inst.id}
-                                  courseKey={stat.fullKey}
-                                  currentStatus={mark}
-                                  targetStatus="present"
-                                  label="Present"
-                                  icon={CheckCircle2}
-                                  activeColor="var(--accent-emerald)"
-                                  activeBg="rgba(52,211,153,0.12)"
-                                  mutedColor="var(--text-tertiary)"
-                                />
-                                <ToggleBtn
-                                  sessionId={inst.id}
-                                  courseKey={stat.fullKey}
-                                  currentStatus={mark}
-                                  targetStatus="absent"
-                                  label="Absent"
-                                  icon={XCircle}
-                                  activeColor="var(--accent-rose)"
-                                  activeBg="rgba(251,113,133,0.12)"
-                                  mutedColor="var(--text-tertiary)"
-                                />
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+          <div className="attendance-grid">
+            {courseList.map(renderCourseCell)}
           </div>
 
           {loadingTelegram && (
@@ -700,7 +619,7 @@ export default function RoutineAttendanceTracker() {
           </div>
           <div className="att-disabled-title">Attendance tracking is off</div>
           <div className="att-disabled-desc">
-            Toggle the switch above to start tracking {Object.keys(courseStats).length} courses
+            Open the ⋮ menu above to start tracking {courseList.length} courses
             across {SEMESTER_WEEKS} weeks and see how many classes you can miss.
           </div>
         </div>

@@ -32,31 +32,6 @@ function formatDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function SlotCard({ slot, slotData, onViewDetails, courseCode, courseName }) {
-  const state = getSlotState(slotData?.date);
-
-  const handleClick = () => onViewDetails(slot.key, slot.label, slotData?.date, slotData?.syllabus, courseCode, courseName);
-
-  return (
-    <div
-      className="exam-slot"
-      style={{ '--slot-clr': slot.color }}
-      onClick={handleClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter') handleClick(); }}
-    >
-      <div className="exam-slot-header">
-        <span className="exam-slot-name">{slot.label}</span>
-        <span className={`exam-slot-state ${state.cls}`}>{state.label}</span>
-      </div>
-      <div className="exam-slot-display">
-        <span className="exam-slot-date">{formatDate(slotData?.date)}</span>
-      </div>
-    </div>
-  );
-}
-
 export default function ExamTracker() {
   const { routine } = useRoutine();
   const { user } = useAuth();
@@ -81,6 +56,23 @@ export default function ExamTracker() {
     return courses;
   }, [routine]);
 
+  const fmtSem = (s) => {
+    const m = (s || '').match(/Year\s*(\d+)\s*-\s*Semester\s*(\d+)/i);
+    if (!m) return s;
+    const ord = +m[1] === 1 ? '1st' : +m[1] === 2 ? '2nd' : +m[1] === 3 ? '3rd' : `${m[1]}th`;
+    return `${ord} Year, ${m[2]} Sem`;
+  };
+
+  const totalScheduled = useMemo(() => {
+    return theoryCourses.reduce((sum, course) => {
+      const exams = examData[course.code] || {};
+      return sum + Object.keys(exams).filter((k) => {
+        const v = exams[k];
+        return v?.date && getSlotState(v.date).cls !== 'passed';
+      }).length;
+    }, 0);
+  }, [theoryCourses, examData]);
+
   const openDetails = (slotKey, slotLabel, date, syllabus, courseCode, courseName) => {
     setDetailModal({ slotKey, slotLabel, date, syllabus, courseCode, courseName, isEditing: false, editDate: date || '', editSyllabus: syllabus || '' });
   };
@@ -99,20 +91,102 @@ export default function ExamTracker() {
     setDetailModal(null);
   };
 
-  if (theoryCourses.length === 0) {
+  /* Shared course-cell renderer — used identically for every course cell. */
+  const renderCourseCell = (course) => {
+    const courseExams = examData[course.code] || {};
+    const slots = EXAM_SLOTS.map((slot) => ({ ...slot, data: courseExams[slot.key] }));
+    const scheduled = slots.filter((s) => s.data?.date);
+    const hasToday = slots.some((s) => s.data?.date && getSlotState(s.data.date).cls === 'today');
+
     return (
-      <div className="exam-tracker animate-fadeIn">
+      <div
+        key={course.code}
+        className={[
+          'schedule-day-card',
+          'exam-cell',
+          hasToday ? 'today' : '',
+        ].filter(Boolean).join(' ')}
+      >
+        <div className="schedule-day-top">
+          <div className="schedule-day-num-wrap">
+            <div className="exam-cell-code">{course.code}</div>
+          </div>
+          <div className="schedule-day-badges">
+            {scheduled.length > 0 && (
+              <span className="schedule-day-count">{scheduled.length}</span>
+            )}
+          </div>
+        </div>
+        <div className="exam-cell-name">{course.name}</div>
+        <div className="schedule-task-list">
+          {slots.map((slot) => {
+            const state = getSlotState(slot.data?.date);
+            const handleClick = () => openDetails(slot.key, slot.label, slot.data?.date, slot.data?.syllabus, course.code, course.name);
+            return (
+              <div
+                key={slot.key}
+                className="schedule-task-item exam-slot-item"
+                onClick={handleClick}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleClick(); }}
+              >
+                <span className="exam-slot-name" style={{ color: 'var(--text-primary)' }}>{slot.label}</span>
+                <span className="exam-slot-date">{formatDate(slot.data?.date)}</span>
+                {slot.data?.date && <span className={`exam-slot-state ${state.cls}`}>{state.label}</span>}
+              </div>
+            );
+          })}
+          {scheduled.length === 0 && <div className="schedule-empty">No exams scheduled</div>}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="glass-card-static schedule-widget exam-widget animate-fadeInUp">
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <BookOpen size={20} />
+          </div>
+          <div>
+            <span className="schedule-overline">Exam Tracker</span>
+            <p className="schedule-title">Zero Hour</p>
+            <span className="schedule-subtitle">
+              {user?.department || 'AUST'}
+              {user?.yearSemester ? ` · ${fmtSem(user.yearSemester)}` : ''}
+            </span>
+          </div>
+        </div>
+        <div className="schedule-masthead-center">
+          <div className="schedule-stats">
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{theoryCourses.length}</span>
+              <span className="schedule-stat-label">courses</span>
+            </div>
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{totalScheduled}</span>
+              <span className="schedule-stat-label">scheduled</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="schedule-dotted-divider" />
+
+      {theoryCourses.length === 0 ? (
         <div className="exam-empty">
           <BookOpen size={24} style={{ opacity: 0.3 }} />
           <p>No theory courses found</p>
           <span>Add theory courses to your routine first</span>
         </div>
-      </div>
-    );
-  }
+      ) : (
+        <div className="exam-grid">
+          {theoryCourses.map(renderCourseCell)}
+        </div>
+      )}
 
-  return (
-    <div className="exam-tracker animate-fadeIn">
       {/* ─── Detail Overlay ─── */}
       {detailModal && (
         <div className="modal-overlay" onClick={() => setDetailModal(null)}>
@@ -200,37 +274,6 @@ export default function ExamTracker() {
           </div>
         </div>
       )}
-
-      {theoryCourses.map((course) => {
-        const courseExams = examData[course.code] || {};
-
-        return (
-          <div key={course.code} className="exam-course-card">
-            <div className="exam-course-header">
-              <div className="exam-course-title">
-                <span className="exam-course-code" style={{ color: course.color }}>{course.code}</span>
-                <span className="exam-course-name">{course.name}</span>
-              </div>
-            </div>
-
-            <div className="exam-slots-grid">
-              {EXAM_SLOTS.map((slot) => {
-                const slotData = courseExams[slot.key];
-                return (
-                  <SlotCard
-                    key={slot.key}
-                    slot={slot}
-                    slotData={slotData}
-                    onViewDetails={openDetails}
-                    courseCode={course.code}
-                    courseName={course.name}
-                  />
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
     </div>
   );
 }

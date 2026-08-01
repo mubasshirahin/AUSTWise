@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Shield, BellRing, Coffee, Activity, Users, Trash2, Plus, Check, AlertCircle, Eye, Edit3, Search, X, Save, User, FileText, CheckCircle2, XCircle, Clock3, ClipboardList, CalendarDays } from 'lucide-react';
 import { notices, canteenData, libraryData } from '../../data/mockData';
 import { getRoleLabel, getRoleBadgeClass, updateAccountProfile, getAccountById, getAllRoleApplications, reviewRoleApplication, getAccountById as getUserById, resetAllLocalData } from '../../utils/authStorage';
-import { loadTemplates, saveTemplates, addTemplate, updateTemplate, deleteTemplate, defaultTemplates } from '../../utils/routineTemplates';
+import { loadTemplates, saveTemplates, addTemplate, updateTemplate, deleteTemplate } from '../../utils/routineTemplates';
 import RoutineTemplatesPanel from './RoutineTemplatesPanel';
 import TranscriptTemplatesPanel from './TranscriptTemplatesPanel';
 import './AdminPanelPage.css';

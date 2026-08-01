@@ -3,33 +3,6 @@
    Design: Minimal luxury · Unified glassmorphism · 4px/8px grid
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── Card micro-interactions ── */
-.premium-card {
-  transition:
-    transform 0.24s cubic-bezier(0.4, 0, 0.2, 1),
-    border-color 0.24s ease,
-    box-shadow 0.24s ease;
-}
-.premium-card:hover {
-  transform: translateY(-2px);
-  border-color: color-mix(in srgb, var(--accent-blue) 28%, var(--border-primary));
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.04) inset,
-    0 8px 28px -8px color-mix(in srgb, var(--accent-blue) 14%, transparent);
-}
-
-/* ── List row micro-interaction ── */
-.premium-list-item {
-  transition:
-    background 0.18s ease,
-    transform 0.18s cubic-bezier(0.4, 0, 0.2, 1),
-    border-color 0.18s ease;
-}
-.premium-list-item:hover {
-  background: color-mix(in srgb, var(--accent-blue) 6%, var(--bg-input)) !important;
-  transform: translateX(3px);
-}
-
 /* ── Status badges — unified token system ── */
 .badge-live,
 .badge-urgent,
@@ -243,26 +216,6 @@
   box-shadow: 0 8px 28px -8px color-mix(in srgb, var(--accent-rose) 18%, transparent);
 }
 
-/* ── Routine tab bar ── */
-.routine-card .tabs {
-  background: var(--bg-secondary);
-  border-radius: var(--radius-lg);
-  padding: 3px;
-}
-.routine-card .tab {
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-semibold);
-  letter-spacing: 0.03em;
-  border-radius: var(--radius-md);
-  padding: 5px 10px;
-  transition: background 0.18s ease, color 0.18s ease;
-  color: var(--text-secondary);
-}
-.routine-card .tab.active {
-  background: color-mix(in srgb, var(--accent-blue) 12%, var(--bg-card));
-  color: var(--accent-blue);
-}
-
 /* ── Attendance bar ── */
 .attendance-bar-track {
   height: 5px;
@@ -430,38 +383,13 @@ div[class="animate-fadeIn"]:hover {
   animation-delay: inherit;
 }
 
-/* ── Quick-stat cards: stagger via nth-child ── */
-.quick-stat-card:nth-child(1) { animation: dash-enter-card 0.48s cubic-bezier(0.22, 1, 0.36, 1) 0.35s both; }
-.quick-stat-card:nth-child(2) { animation: dash-enter-card 0.48s cubic-bezier(0.22, 1, 0.36, 1) 0.42s both; }
-.quick-stat-card:nth-child(3) { animation: dash-enter-card 0.48s cubic-bezier(0.22, 1, 0.36, 1) 0.49s both; }
-.quick-stat-card:nth-child(4) { animation: dash-enter-card 0.48s cubic-bezier(0.22, 1, 0.36, 1) 0.56s both; }
-.quick-stat-card:nth-child(5) { animation: dash-enter-card 0.48s cubic-bezier(0.22, 1, 0.36, 1) 0.63s both; }
-.quick-stat-card:nth-child(6) { animation: dash-enter-card 0.48s cubic-bezier(0.22, 1, 0.36, 1) 0.70s both; }
-
-/* ── Exam course cards ── */
-.exam-course-card:nth-child(1) { animation: dash-enter-card 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.55s both; }
-.exam-course-card:nth-child(2) { animation: dash-enter-card 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.62s both; }
-.exam-course-card:nth-child(3) { animation: dash-enter-card 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.69s both; }
-.exam-course-card:nth-child(4) { animation: dash-enter-card 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.76s both; }
-.exam-course-card:nth-child(5) { animation: dash-enter-card 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.83s both; }
-.exam-course-card:nth-child(6) { animation: dash-enter-card 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.90s both; }
-
-/* ── Routine class rows ── */
-.routine-item:nth-child(1) { animation: dash-enter-subtle 0.35s cubic-bezier(0.22, 1, 0.36, 1) 0.6s  both; }
-.routine-item:nth-child(2) { animation: dash-enter-subtle 0.35s cubic-bezier(0.22, 1, 0.36, 1) 0.65s both; }
-.routine-item:nth-child(3) { animation: dash-enter-subtle 0.35s cubic-bezier(0.22, 1, 0.36, 1) 0.70s both; }
-.routine-item:nth-child(4) { animation: dash-enter-subtle 0.35s cubic-bezier(0.22, 1, 0.36, 1) 0.75s both; }
-.routine-item:nth-child(5) { animation: dash-enter-subtle 0.35s cubic-bezier(0.22, 1, 0.36, 1) 0.80s both; }
-.routine-item:nth-child(6) { animation: dash-enter-subtle 0.35s cubic-bezier(0.22, 1, 0.36, 1) 0.85s both; }
-.routine-item:nth-child(7) { animation: dash-enter-subtle 0.35s cubic-bezier(0.22, 1, 0.36, 1) 0.90s both; }
-.routine-item:nth-child(8) { animation: dash-enter-subtle 0.35s cubic-bezier(0.22, 1, 0.36, 1) 0.95s both; }
-
-/* ── Notice items ── */
-.notice-item:nth-child(1) { animation: dash-enter-subtle 0.35s cubic-bezier(0.22, 1, 0.36, 1) 0.65s both; }
-.notice-item:nth-child(2) { animation: dash-enter-subtle 0.35s cubic-bezier(0.22, 1, 0.36, 1) 0.72s both; }
-.notice-item:nth-child(3) { animation: dash-enter-subtle 0.35s cubic-bezier(0.22, 1, 0.36, 1) 0.79s both; }
-.notice-item:nth-child(4) { animation: dash-enter-subtle 0.35s cubic-bezier(0.22, 1, 0.36, 1) 0.86s both; }
-.notice-item:nth-child(5) { animation: dash-enter-subtle 0.35s cubic-bezier(0.22, 1, 0.36, 1) 0.93s both; }
+/* ── Exam course cells ── */
+.exam-cell:nth-child(1) { animation: dash-enter-card 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.55s both; }
+.exam-cell:nth-child(2) { animation: dash-enter-card 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.62s both; }
+.exam-cell:nth-child(3) { animation: dash-enter-card 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.69s both; }
+.exam-cell:nth-child(4) { animation: dash-enter-card 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.76s both; }
+.exam-cell:nth-child(5) { animation: dash-enter-card 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.83s both; }
+.exam-cell:nth-child(6) { animation: dash-enter-card 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.90s both; }
 
 /* ── Profile warning banner ── */
 .dash-profile-warning {
@@ -477,10 +405,11 @@ div[class="animate-fadeIn"]:hover {
   .dashboard-grid,
   .dashboard-main-col > .dash-section-group,
   .dashboard-side-col > .dash-section-group,
-  .quick-stat-card,
-  .exam-course-card,
-  .routine-item,
-  .notice-item,
+  .quick-stat-cell,
+  .exam-cell,
+  .routine-widget .schedule-day-card,
+  .deadline-widget .schedule-day-card,
+  .notice-widget .schedule-day-card,
   .dash-profile-warning {
     animation: none !important;
     opacity: 1 !important;

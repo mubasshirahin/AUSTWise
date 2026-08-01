@@ -19,22 +19,6 @@
   padding-bottom: var(--sp-10);
 }
 
-/* Glider variant */
-.glider-tabs-chillzone .glider-tabs-glider {
-  background: linear-gradient(
-    135deg,
-    var(--bg-card) 0%,
-    color-mix(in srgb, var(--accent-orange) 10%, var(--bg-card)) 100%
-  );
-  box-shadow:
-    var(--shadow-md),
-    0 0 0 1px color-mix(in srgb, var(--accent-orange) 18%, transparent);
-}
-
-.glider-tabs-chillzone .glider-tab.active .glider-tab-icon {
-  background: linear-gradient(135deg, var(--accent-orange), var(--accent-rose));
-}
-
 /* Tab content wrapper */
 .chill-tab-content {
   animation: czFadeIn 0.22s ease both;

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Trash2, X, Download, Eye, Check, RotateCcw, FileDown, ChevronDown } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Trash2, X, Download, Eye, Check, RotateCcw, FileDown, Share2, Search, Loader2, MoreVertical, Moon, Image as ImageIcon, CalendarRange, Building2, GraduationCap } from 'lucide-react';
 import { useRoutine } from '../../context/RoutineContext';
 import { ocrImportedRoutine, ocrImportedWeekDays } from '../../context/RoutineContext';
 import { normalizeAccentColor, getCourseColor } from '../../utils/colorPalette';
@@ -8,7 +9,7 @@ import { findCourseByCode, findCourseByName } from '../../data/courses';
 import { getAutoColorForCourse } from '../../utils/autoColorPalette';
 import { loadTemplates } from '../../utils/routineTemplates';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 import logoUrl from '../../assets/logo-silver.png';
 import { useAuth } from '../../context/AuthContext';
 
@@ -23,8 +24,22 @@ export default function WeeklyPlanner() {
     return stored === 'true';
   });
   const [selectedTemplate, setSelectedTemplate] = useState(null);
-  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const exportRef = useRef(null);
+
+  // ── Shared routine (CR publishing) ──
+  const CR_TOTAL_SLOTS = 396;
+  const CR_DEPTS = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'];
+  const isCR = !!(user && (user.role === 'cr' || (typeof user.hasRole === 'function' && user.hasRole('cr'))));
+  const [sharedRoutines, setSharedRoutines] = useState([]);
+  const [sharedStats, setSharedStats] = useState({ shared: 0, total: CR_TOTAL_SLOTS });
+  const [sharedLoading, setSharedLoading] = useState(false);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareMsg, setShareMsg] = useState(null);
+  // ── Load Routine overlay filters ──
+  const [loadSearch, setLoadSearch] = useState('');
+  const [loadDept, setLoadDept] = useState('all');
+  const [loadSem, setLoadSem] = useState('all');
 
   useEffect(() => {
     localStorage.setItem('aust-ramadan-mode', ramadanMode);
@@ -33,11 +48,24 @@ export default function WeeklyPlanner() {
   useEffect(() => {
     const handleClick = (e) => {
       if (exportRef.current && !exportRef.current.contains(e.target)) {
-        setShowExportMenu(false);
+        setShowMenu(false);
       }
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  // Keep the shared-routine counter fresh on the toolbar.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/routines/shared/stats', { credentials: 'same-origin' });
+        const data = await res.json();
+        if (!cancelled && data.stats) setSharedStats(data.stats);
+      } catch { /* server not reachable — keep defaults */ }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   const [availableTemplates, setAvailableTemplates] = useState([]);
@@ -216,11 +244,80 @@ export default function WeeklyPlanner() {
     setEditing(null);
   };
 
-  const openLoadModal = () => {
-    const templates = loadTemplates();
-    setAvailableTemplates(templates);
+  const sharedApi = async (path, options = {}) => {
+    const res = await fetch(path, {
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      ...options,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Request failed');
+    return data;
+  };
+
+  const refreshSharedRoutines = async () => {
+    try {
+      const [sharedRes, statsRes] = await Promise.all([
+        sharedApi('/api/routines/shared'),
+        sharedApi('/api/routines/shared/stats'),
+      ]);
+      setSharedRoutines(sharedRes.routines || []);
+      setSharedStats(statsRes.stats || { shared: 0, total: CR_TOTAL_SLOTS });
+    } catch (e) {
+      console.warn('Failed to load shared routines:', e.message);
+      setSharedRoutines([]);
+      setSharedStats({ shared: 0, total: CR_TOTAL_SLOTS });
+    }
+  };
+
+  const openLoadModal = async () => {
     setSelectedTemplate(null);
+    setLoadSearch('');
+    setLoadDept('all');
+    setLoadSem('all');
+    setAvailableTemplates(loadTemplates());
     setShowLoadModal(true);
+    setSharedLoading(true);
+    await refreshSharedRoutines();
+    setSharedLoading(false);
+  };
+
+  const mySlotKey = user && (user.department || user.yearSemester || user.section || user.labSection)
+    ? `${user.department || ''}|${user.yearSemester || ''}|${user.section || ''}|${user.labSection || ''}`
+    : null;
+  const myShared = mySlotKey ? sharedRoutines.find(r => `${r.department || ''}|${r.yearSemester || ''}|${r.section || ''}|${r.labSection || ''}` === mySlotKey) : null;
+
+  const handleShareRoutine = async () => {
+    if (shareBusy) return;
+    setShareBusy(true);
+    setShareMsg(null);
+    try {
+      await sharedApi('/api/routines/shared', {
+        method: 'POST',
+        body: JSON.stringify({ routine, weekDays }),
+      });
+      setShareMsg('Routine shared ✓');
+      await refreshSharedRoutines();
+    } catch (e) {
+      setShareMsg(e.message || 'Sharing failed — try again');
+    } finally {
+      setShareBusy(false);
+    }
+  };
+
+  const handleUnshareRoutine = async () => {
+    if (shareBusy) return;
+    setShareBusy(true);
+    setShareMsg(null);
+    try {
+      await sharedApi('/api/routines/shared', { method: 'DELETE' });
+      setShareMsg('Routine removed from load list');
+      await refreshSharedRoutines();
+    } catch (e) {
+      setShareMsg(e.message || 'Failed to remove — try again');
+    } finally {
+      setShareBusy(false);
+    }
   };
 
   const handleLoadTemplate = () => {
@@ -230,6 +327,17 @@ export default function WeeklyPlanner() {
       setSelectedTemplate(null);
     }
   };
+
+  // Filter shared routines for the load overlay
+  const filteredShared = sharedRoutines.filter(r => {
+    if (loadDept !== 'all' && r.department !== loadDept) return false;
+    if (loadSem !== 'all' && r.yearSemester !== loadSem) return false;
+    const q = loadSearch.trim().toLowerCase();
+    if (!q) return true;
+    const hay = [r.department, r.yearSemester, r.section, r.labSection, r.crName].join(' ').toLowerCase();
+    return hay.includes(q);
+  });
+  const sharedSems = [...new Set(sharedRoutines.map(r => r.yearSemester).filter(Boolean))].sort();
 
   const downloadSchedulePDF = async () => {
     const tableWrap = document.querySelector('.weekly-table-wrap');
@@ -413,56 +521,119 @@ export default function WeeklyPlanner() {
   };
 
    return (
-     <div className="glass-card-static weekly-planner animate-fadeInUp">      <div className="dash-header-three mb-4">
+     <div className="glass-card-static schedule-widget weekly-planner animate-fadeInUp">
+       {/* ── Masthead (Semester View / Quick Stats design language) ── */}
+       <div className="schedule-masthead weekly-masthead">
+         <div className="schedule-title-block">
+           <div className="schedule-icon-tile">
+             <CalendarRange size={20} />
+           </div>
+           <div>
+             <span className="schedule-overline">Weekly Schedule</span>
+             <p className="schedule-title">Routine</p>
+             <span className="schedule-subtitle">Tap a class to edit</span>
+           </div>
+         </div>
 
-       {/* Left: Export Dropdown */}
-       <div className="dash-header-left">
-         <div className="export-dropdown" ref={exportRef}>
-           <button className="btn btn-secondary btn-sm" onClick={() => setShowExportMenu(!showExportMenu)} aria-label="Export schedule" aria-haspopup="true">
-             <FileDown size={14} /> Export <ChevronDown size={12} />
+         {/* Center: Load Routine — the primary action */}
+         <div className="schedule-masthead-center">
+           <button
+             className="btn btn-primary btn-sm"
+             onClick={openLoadModal}
+             style={{
+               position: 'relative',
+               display: 'inline-flex',
+               alignItems: 'center',
+               justifyContent: 'center',
+               gap: '6px',
+               whiteSpace: 'nowrap',
+               lineHeight: 1,
+               minWidth: '132px',
+             }}
+           >
+             <Download size={14} style={{ flexShrink: 0 }} />
+             <span>Load Routine</span>
+             <span
+               className="badge badge-amber"
+               style={{
+                 position: 'absolute',
+                 right: '7px',
+                 top: '50%',
+                 transform: 'translateY(-50%)',
+                 minWidth: '18px',
+                 textAlign: 'center',
+                 lineHeight: '1.5',
+                 padding: '0 5px',
+                 fontVariantNumeric: 'tabular-nums',
+               }}
+             >
+               {sharedStats.shared}
+             </span>
            </button>
-           {showExportMenu && (
-             <div className="export-menu">
-               <button className="export-menu-item" onClick={() => { downloadSchedulePDF(); setShowExportMenu(false); }}>
-                 <FileDown size={14} /> Export as PDF
-               </button>
-               <button className="export-menu-item" onClick={() => { downloadScheduleImage(); setShowExportMenu(false); }}>
-                 <FileDown size={14} /> Export as Image
-               </button>
+         </div>
+
+         {/* Right: 3-dot menu (export / reset / ramadan / share) */}
+         <div className="schedule-actions">
+           <div className="export-dropdown" ref={exportRef}>
+             <button className="schedule-nav-btn" onClick={() => setShowMenu(!showMenu)} aria-label="Routine options" aria-haspopup="true">
+               <MoreVertical size={18} />
+             </button>
+             {showMenu && (
+               <div className="export-menu routine-more-menu">
+                 <button className="export-menu-item" onClick={() => { downloadSchedulePDF(); setShowMenu(false); }}>
+                   <FileDown size={14} /> Export as PDF
+                 </button>
+                 <button className="export-menu-item" onClick={() => { downloadScheduleImage(); setShowMenu(false); }}>
+                   <ImageIcon size={14} /> Export as Image
+                 </button>
+
+                 <div className="export-menu-sep" />
+
+                 <button className="export-menu-item" onClick={() => { setConfirmReset(true); setShowMenu(false); }}>
+                   <RotateCcw size={14} /> Reset schedule
+                 </button>
+
+                 <button className="export-menu-item menu-ramadan" onClick={() => setRamadanMode(!ramadanMode)} title={ramadanMode ? 'Switch to normal schedule' : 'Switch to Ramadan schedule'}>
+                   <span className="menu-ramadan-label"><Moon size={14} /> Ramadan mode</span>
+                   <div className={`ramadan-toggle-track${ramadanMode ? ' active' : ''}`}>
+                     {ramadanMode ? <span className="ramadan-toggle-icon">🕌</span> : <div className="ramadan-toggle-thumb" />}
+                   </div>
+                 </button>
+
+                 {isCR && (
+                   <>
+                     <div className="export-menu-sep" />
+                     <button
+                       className="export-menu-item"
+                       disabled={shareBusy}
+                       onClick={() => { if (myShared) handleUnshareRoutine(); else handleShareRoutine(); setShowMenu(false); }}
+                       title={myShared ? 'Your routine is shared — click to remove it from the load list' : 'Publish your routine so other students can load it'}
+                     >
+                       {shareBusy ? <Loader2 size={14} className="spin" /> : <Share2 size={14} />}
+                       {myShared ? 'Unshare routine' : 'Share routine'}
+                     </button>
+                   </>
+                 )}
+               </div>
+             )}
+           </div>
+
+           {shareMsg && (
+             <div className="weekly-share-msg" style={{
+               position: 'absolute', right: '4px', top: 'calc(100% + 6px)',
+               fontSize: 'var(--fs-xs)', color: 'var(--accent-emerald)',
+               background: 'var(--bg-card)', padding: '4px 10px', borderRadius: 'var(--radius-sm)',
+               border: '1px solid var(--border-primary)', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', zIndex: 5,
+             }}>
+               {shareMsg}
              </div>
            )}
          </div>
        </div>
 
-       {/* Middle: 🌙 Ramadan Toggle Switch */}
-       <div className="dash-header-center">
-         <div className="ramadan-toggle" onClick={() => setRamadanMode(!ramadanMode)} title={ramadanMode ? 'Switch to normal schedule' : 'Switch to Ramadan schedule'}>
-           <span className="ramadan-toggle-label">Ramadan</span>
-           <div className={`ramadan-toggle-track${ramadanMode ? ' active' : ''}`}>
-             {ramadanMode ? (
-               <span className="ramadan-toggle-icon">🕌</span>
-             ) : (
-               <div className="ramadan-toggle-thumb" />
-             )}
-           </div>
-         </div>
-       </div>
+       <div className="schedule-dotted-divider" />
 
-       {/* Right: 🔄 Reset + Load Routine */}
-       <div className="dash-header-right">
-         {/* 🔄 Icon-only Reset */}
-         <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setConfirmReset(true)} title="Reset schedule">
-           <RotateCcw size={14} />
-         </button>
-
-         {/* Load Routine — the primary action */}
-         <button className="btn btn-primary btn-sm" onClick={openLoadModal}>
-           <Download size={14} /> Load Routine
-         </button>
-       </div>
-     </div>
-
-      <div className="weekly-table-wrap">
+       <div className="weekly-table-wrap">
         <table className="weekly-table">
           <thead>
             <tr>
@@ -743,56 +914,146 @@ export default function WeeklyPlanner() {
       </div>
 
       {/* Load Routine Modal */}
-      {showLoadModal && (
+      {showLoadModal && createPortal(
         <div className="modal-overlay" onClick={() => setShowLoadModal(false)}>
-          <div className="modal glass-card-static" onClick={(e) => e.stopPropagation()} style={{ width: 'min(460px, 92vw)', height: 'min(400px, 70vh)', display: 'flex', flexDirection: 'column', overflow: 'hidden', maxWidth: 'none', maxHeight: 'none', margin: 0, animation: 'none' }}>
+          <div className="modal glass-card-static" onClick={(e) => e.stopPropagation()} style={{ width: 'min(620px, 94vw)', height: 'auto', maxHeight: 'calc(100vh - clamp(64px, 14vh, 144px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', maxWidth: 'none', margin: 'auto', animation: 'none' }}>
             <div className="flex justify-between items-center" style={{ padding: '0 0 12px', borderBottom: '1px solid var(--border-primary)', flexShrink: 0 }}>
               <div>
-                <h3 style={{ fontSize: 'var(--fs-lg)', fontWeight: 'bold', margin: 0 }}>Load Routine Template</h3>
-                <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: '4px' }}>Select a pre-defined routine template to load</p>
+                <h3 style={{ fontSize: 'var(--fs-lg)', fontWeight: 'bold', margin: 0 }}>Load Routine</h3>
+                <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                  Routines shared by CRs — select one to load
+                </p>
               </div>
-              <button className="btn btn-icon" onClick={() => setShowLoadModal(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-tertiary)' }}>
-                <X size={20} />
-              </button>
+              <div className="flex items-center gap-2">
+                <span className="badge badge-purple" style={{ fontSize: '10px', padding: '4px 10px' }}>
+                  {sharedStats.shared} / {sharedStats.total} CRs shared
+                </span>
+                <button className="btn btn-icon" onClick={() => setShowLoadModal(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-tertiary)' }}>
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, margin: '12px 0' }}>
-              {availableTemplates.length === 0 ? (
+            {/* Search / filter bar */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '16px 0 14px', flexShrink: 0 }}>
+              <div className="load-filter load-filter-search">
+                <Search size={14} />
+                <input
+                  className="input"
+                  value={loadSearch}
+                  onChange={e => setLoadSearch(e.target.value)}
+                  placeholder="Search by dept, section, lab group or CR name…"
+                />
+              </div>
+              <div className="load-filter-row">
+                <div className="load-filter">
+                  <Building2 size={14} />
+                  <select className="input" value={loadDept} onChange={e => setLoadDept(e.target.value)}>
+                    <option value="all">All departments</option>
+                    {CR_DEPTS.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+                <div className="load-filter">
+                  <GraduationCap size={14} />
+                  <select className="input" value={loadSem} onChange={e => setLoadSem(e.target.value)}>
+                    <option value="all">All semesters</option>
+                    {sharedSems.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, margin: '6px 0 16px' }}>
+              {sharedLoading ? (
                 <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
-                  <p>No routine templates available.</p>
+                  <Loader2 size={20} className="spin" style={{ margin: '0 auto 8px' }} />
+                  <p>Loading shared routines…</p>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {availableTemplates.map(template => (
-                    <div
-                      key={template.id}
-                      onClick={() => setSelectedTemplate(template)}
-                      style={{
-                        padding: '12px',
-                        background: selectedTemplate?.id === template.id ? 'var(--accent-blue-glow)' : 'var(--bg-input)',
-                        border: `1px solid ${selectedTemplate?.id === template.id ? 'var(--accent-blue)' : 'var(--border-primary)'}`,
-                        borderRadius: 'var(--radius-md)',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', margin: 0 }}>{template.name}</h4>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="badge badge-blue" style={{ fontSize: '9px', padding: '1px 4px' }}>{template.department}</span>
-                            <span className="badge badge-purple" style={{ fontSize: '9px', padding: '1px 4px' }}>Sem {template.semester}</span>
-                            <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>{template.year}</span>
+                  {filteredShared.length === 0 && (
+                    <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                      <p>{sharedRoutines.length === 0 ? 'No CR has shared a routine yet.' : 'No routines match your search.'}</p>
+                    </div>
+                  )}
+                  {filteredShared.map(routine => {
+                    const isSelected = selectedTemplate?.id === routine.id;
+                    const isMine = mySlotKey === `${routine.department || ''}|${routine.yearSemester || ''}|${routine.section || ''}|${routine.labSection || ''}`;
+                    return (
+                      <div
+                        key={routine.id}
+                        onClick={() => setSelectedTemplate(routine)}
+                        style={{
+                          padding: '12px',
+                          background: isSelected ? 'var(--accent-blue-glow)' : 'var(--bg-input)',
+                          border: `1px solid ${isSelected ? 'var(--accent-blue)' : 'var(--border-primary)'}`,
+                          borderRadius: 'var(--radius-md)',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              {routine.crName || 'CR'}
+                              {isMine && <span className="badge badge-emerald" style={{ fontSize: '8px', padding: '1px 4px' }}>Yours</span>}
+                            </h4>
+                            <div className="flex items-center gap-2 mt-1" style={{ flexWrap: 'wrap' }}>
+                              <span className="badge badge-blue" style={{ fontSize: '9px', padding: '1px 4px' }}>{routine.department}</span>
+                              <span className="badge badge-purple" style={{ fontSize: '9px', padding: '1px 4px' }}>{routine.yearSemester}</span>
+                              <span className="badge badge-blue" style={{ fontSize: '9px', padding: '1px 4px' }}>Sec {routine.section}</span>
+                              <span className="badge badge-purple" style={{ fontSize: '9px', padding: '1px 4px' }}>Lab {routine.labSection}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {isSelected && (
+                              <Check size={18} style={{ color: 'var(--accent-emerald)' }} />
+                            )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {selectedTemplate?.id === template.id && (
-                            <Check size={18} style={{ color: 'var(--accent-emerald)' }} />
-                          )}
-                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {availableTemplates.length > 0 && (
+                    <div style={{ marginTop: '6px' }}>
+                      <div style={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', margin: '0 0 8px' }}>
+                        Admin templates
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {availableTemplates.map(template => (
+                          <div
+                            key={template.id}
+                            onClick={() => setSelectedTemplate(template)}
+                            style={{
+                              padding: '10px',
+                              background: selectedTemplate?.id === template.id ? 'var(--accent-blue-glow)' : 'var(--bg-input)',
+                              border: `1px solid ${selectedTemplate?.id === template.id ? 'var(--accent-blue)' : 'var(--border-primary)'}`,
+                              borderRadius: 'var(--radius-md)',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', margin: 0 }}>{template.name}</h4>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="badge badge-blue" style={{ fontSize: '9px', padding: '1px 4px' }}>{template.department}</span>
+                                  <span className="badge badge-purple" style={{ fontSize: '9px', padding: '1px 4px' }}>Sem {template.semester}</span>
+                                  <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>{template.year}</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {selectedTemplate?.id === template.id && (
+                                  <Check size={18} style={{ color: 'var(--accent-emerald)' }} />
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
             </div>
@@ -805,14 +1066,15 @@ export default function WeeklyPlanner() {
                 disabled={!selectedTemplate}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: selectedTemplate ? 1 : 0.5 }}
               >
-                <Download size={16} /> Load Template
+                <Download size={16} /> Load Routine
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {editing && (
+      {editing && createPortal(
         <div className="modal-overlay" onClick={() => setEditing(null)}>
           <form className="modal routine-edit-modal" onSubmit={saveEdit} onClick={(event) => event.stopPropagation()}>
             <div className="routine-edit-header">
@@ -994,10 +1256,11 @@ export default function WeeklyPlanner() {
               <button type="submit" className="btn btn-primary btn-sm">Save</button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {confirmReset && (
+      {confirmReset && createPortal(
         <div className="modal-overlay" onClick={() => setConfirmReset(false)}>
           <form className="modal routine-edit-modal" onClick={(event) => event.stopPropagation()}>
             <div className="modal-body">
@@ -1020,7 +1283,8 @@ export default function WeeklyPlanner() {
               }}>Reset</button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

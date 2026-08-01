@@ -1,0 +1,532 @@
+/* ════════════════════════════════════════════════════════════════
+   ATTENDANCE WIDGETS — Semester View design language
+   Reuses the shared schedule-widget shell, masthead, nav, pill and
+   export-menu classes from DashboardPage.css. Only attendance-specific
+   pieces live here. Shared by AttendanceWidget and RoutineAttendanceTracker.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ─── Course list ─── */
+.attendance-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-3);
+  align-items: start;
+}
+@media (max-width: 560px) {
+  .attendance-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Entrance animations — boxes drop down like a dropdown (staggered).
+   Gated by .att-drop-active, which the widget adds only once it is in view. ─── */
+.attendance-widget.att-drop-active .attendance-grid .att-cell {
+  animation: attDropIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.attendance-widget.att-drop-active .att-overall-strip {
+  animation: attDropIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.attendance-widget.att-drop-active .att-guide-panel {
+  animation: attDropIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.att-course-instances .att-instance-row {
+  animation: attDropIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes attDropIn {
+  0% { opacity: 0; transform: translateY(-24px); }
+  55% { opacity: 1; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Overall bar fills up on mount */
+.att-overall-fill {
+  transform-origin: left;
+  animation: attFillGrow 1s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+}
+@keyframes attFillGrow {
+  from { transform: scaleX(0); }
+}
+
+/* Count badge pops in */
+.attendance-widget .schedule-day-count {
+  animation: badgePop 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes badgePop {
+  0% { transform: scale(0.4); opacity: 0; }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ─── Course cell ───
+   Reuses .schedule-day-card: flat var(--bg-card) fill, --radius-md,
+   ~100px min-height, no background tinting of the whole cell. */
+/* ─── Course cell ───
+   Overrides the shared .schedule-day-card into a quiet, flat row:
+   transparent fill, no hover lift/shadow, tight spacing. */
+.attendance-widget .att-cell {
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  min-width: 0;
+  min-height: 0;
+  gap: 2px;
+  box-shadow: none;
+  transition: border-color var(--transition-base), background var(--transition-base);
+}
+.attendance-widget .att-cell:hover {
+  transform: none;
+  border-color: var(--border-focus);
+  background: color-mix(in srgb, var(--bg-card) 55%, transparent);
+  box-shadow: none;
+}
+.attendance-widget .att-cell.today {
+  border-color: color-mix(in srgb, var(--accent-blue) 45%, var(--border-primary));
+  background: color-mix(in srgb, var(--accent-blue) 4%, transparent);
+  box-shadow: none;
+}
+.att-cell-code {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.02em;
+}
+.att-cell-part {
+  font-size: 7px;
+  font-weight: var(--fw-bold);
+  color: var(--accent-amber);
+  background: var(--accent-amber-glow);
+  padding: 1px 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.att-cell-name {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.attendance-widget .att-cell-danger {
+  border-color: color-mix(in srgb, var(--accent-amber) 35%, var(--border-primary));
+}
+
+/* ─── Collapsed summary: percentage centered between code and name ─── */
+.att-cell-pct-row {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
+.att-cell-pct {
+  font-size: 18px;
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* ─── Expanded detail area ─── */
+.att-cell-expanded {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-primary);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.att-cell.today .att-cell-expanded {
+  border-top-color: color-mix(in srgb, var(--accent-blue) 30%, var(--border-primary));
+}
+.att-cell-reset {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  opacity: 0.4;
+  transition: opacity var(--transition-base), color var(--transition-base), background var(--transition-base);
+}
+.att-cell-reset:hover {
+  opacity: 1;
+  color: var(--accent-rose);
+  background: var(--accent-rose-glow);
+}
+.att-cell-stats {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+.att-cell-stat { font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; }
+.att-cell-stat-att { color: var(--accent-emerald); }
+.att-cell-stat-mis { color: var(--accent-rose); }
+.att-cell-stat-umr { color: var(--text-tertiary); }
+.att-cell-sep { opacity: 0.25; }
+.att-cell-buffer {
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+.att-cell-buffer strong { color: var(--accent-emerald); font-weight: var(--fw-bold); }
+
+/* ─── Flat pill override for the nav pill (no translucency) ─── */
+.attendance-widget .schedule-week-pill {
+  background: var(--bg-card);
+}
+
+/* ─── Count badge — theme accent, no density coloring ─── */
+.attendance-widget .schedule-day-count {
+  color: var(--accent-blue);
+  border-color: var(--accent-blue);
+  background: var(--accent-blue-glow);
+}
+.attendance-widget .schedule-day-count.hot {
+  color: var(--accent-blue);
+  border-color: var(--accent-blue);
+  background: var(--accent-blue-glow);
+}
+
+/* ─── Overall progress strip ─── */
+.att-overall-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: var(--sp-3);
+  padding: 10px 12px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+}
+.att-overall-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg-input);
+  overflow: hidden;
+}
+.att-overall-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+.att-overall-label {
+  font-size: 9px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  font-weight: var(--fw-medium);
+}
+
+/* ─── Detail view (AttendanceWidget) ─── */
+.att-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.att-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.att-detail-code {
+  font-size: var(--fs-base);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+.att-detail-name {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  display: block;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.att-detail-pct {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.att-detail-pct.ok { color: var(--accent-emerald); }
+.att-detail-pct.risk { color: var(--accent-rose); }
+
+.schedule-stats.att-detail-stats {
+  justify-content: space-around;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+}
+.att-progress {
+  height: 4px;
+  border-radius: 4px;
+  background: var(--bg-input);
+  overflow: hidden;
+}
+.att-progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.att-detail-sessions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 340px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.att-week-label {
+  font-size: 9px;
+  font-weight: var(--fw-bold);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 5px;
+}
+.att-week-list { display: flex; flex-direction: column; gap: 4px; }
+
+.att-session-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-primary);
+  border-left-width: 2px;
+  background: var(--bg-input);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--transition-base), transform var(--transition-base);
+}
+.att-session-item:hover {
+  border-color: var(--border-focus);
+  transform: translateY(-1px);
+}
+.att-session-item.today {
+  border-color: color-mix(in srgb, var(--accent-blue) 45%, var(--border-primary));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-blue) 18%, transparent),
+    0 4px 14px -6px color-mix(in srgb, var(--accent-blue) 35%, transparent);
+}
+.att-session-date { font-size: 11px; font-weight: var(--fw-semibold); color: var(--text-primary); }
+.att-session-day { font-size: 9px; color: var(--text-tertiary); margin-top: 1px; }
+.att-session-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: var(--fw-bold);
+}
+.att-session-state.present { color: var(--accent-emerald); }
+.att-session-state.absent { color: var(--accent-rose); }
+.att-session-state.unmarked { color: var(--text-tertiary); font-weight: var(--fw-medium); }
+
+/* ─── Expandable session list (RoutineAttendanceTracker) ─── */
+.att-course-instances {
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border-secondary);
+  animation: fadeIn 0.25s ease;
+}
+.att-instances-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+}
+.att-instances-hint {
+  margin-left: auto;
+  font-size: 10px;
+  opacity: 0.65;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: var(--fw-regular);
+}
+.att-instance-label { font-size: 9px; color: var(--text-tertiary); flex-shrink: 0; }
+.att-instances-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.att-instance-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-primary);
+  border-left-width: 2px;
+  background: var(--bg-input);
+  font-size: 11px;
+  color: var(--text-secondary);
+  transition: border-color var(--transition-base);
+}
+.att-instance-row:hover { border-color: var(--border-focus); }
+.att-instance-row.state-present { border-left-color: var(--accent-emerald); }
+.att-instance-row.state-absent { border-left-color: var(--accent-rose); }
+.att-instance-date { font-weight: var(--fw-medium); color: var(--text-primary); }
+.att-instance-day { color: var(--text-tertiary); font-size: 10px; text-transform: uppercase; }
+.att-instance-time { font-variant-numeric: tabular-nums; color: var(--accent-cyan); font-weight: var(--fw-medium); font-size: 10px; }
+.att-instance-room { display: flex; align-items: center; gap: 3px; color: var(--text-tertiary); font-size: 10px; }
+.att-instance-spacer { margin-left: auto; display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+
+/* ─── Present / Absent toggle pills ─── */
+.att-toggle-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-primary);
+  background: var(--bg-input);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.01em;
+  line-height: 1;
+  white-space: nowrap;
+  outline: none;
+  transition: all 0.15s ease;
+}
+.att-toggle-pill:hover { border-color: var(--border-focus); color: var(--text-primary); }
+.att-toggle-pill.present:hover:not(.active) { border-color: var(--accent-emerald); color: var(--accent-emerald); background: var(--accent-emerald-glow); }
+.att-toggle-pill.absent:hover:not(.active) { border-color: var(--accent-rose); color: var(--accent-rose); background: var(--accent-rose-glow); }
+.att-toggle-pill.present.active { border-color: var(--accent-emerald); background: var(--accent-emerald-glow); color: var(--accent-emerald); font-weight: var(--fw-bold); }
+.att-toggle-pill.absent.active { border-color: var(--accent-rose); background: var(--accent-rose-glow); color: var(--accent-rose); font-weight: var(--fw-bold); }
+.att-toggle-pill.active { transform: scale(1.05); }
+.att-toggle-pill:active { transform: scale(0.95); }
+
+/* ─── Mini segment bar ─── */
+.att-minibar {
+  display: flex;
+  height: 5px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--bg-input);
+  gap: 1px;
+  margin-top: 6px;
+}
+.att-minibar-seg { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+
+/* ─── Guide panel ─── */
+.att-guide-panel {
+  margin-bottom: var(--sp-4);
+  padding: var(--sp-4);
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  line-height: 1.6;
+  animation: fadeIn 0.25s ease;
+}
+.att-guide-panel p { margin: 6px 0; }
+.att-guide-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--accent-amber);
+  margin-bottom: 6px;
+}
+.att-guide-stats { display: flex; gap: var(--sp-3); margin: 10px 0; }
+.att-guide-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-secondary);
+}
+.att-guide-stat-val { font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--text-primary); }
+.att-guide-stat-lbl { font-size: 9px; color: var(--text-tertiary); text-align: center; }
+.att-guide-tip { font-size: 10px; opacity: 0.8; }
+
+/* ─── Disabled / empty states ─── */
+.att-disabled {
+  padding: 32px 16px;
+  text-align: center;
+  border: 1px dashed var(--border-secondary);
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+}
+.att-disabled-icon { color: var(--text-tertiary); margin-bottom: 10px; }
+.att-disabled-title { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--text-secondary); margin-bottom: 4px; }
+.att-disabled-desc { font-size: var(--fs-xs); color: var(--text-tertiary); max-width: 300px; margin: 0 auto; line-height: 1.5; }
+
+.att-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 200px;
+  padding: 40px 0;
+  color: var(--text-tertiary);
+}
+.att-empty p { font-weight: var(--fw-medium); margin: 0; color: var(--text-secondary); }
+.att-empty span { font-size: var(--fs-xs); color: var(--text-tertiary); }
+
+/* ─── Telegram sync indicator ─── */
+.att-telegram-syncing {
+  text-align: center;
+  padding: 6px;
+  font-size: 9px;
+  color: var(--text-tertiary);
+  margin-top: 8px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+@media (max-width: 576px) {
+  .att-guide-stats { flex-direction: column; }
+  .att-instance-row { flex-wrap: wrap; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .attendance-widget.att-drop-active .attendance-grid .att-cell,
+  .attendance-widget.att-drop-active .att-overall-strip,
+  .attendance-widget.att-drop-active .att-guide-panel,
+  .att-course-instances .att-instance-row,
+  .att-overall-fill,
+  .attendance-widget .schedule-day-count {
+    animation: none;
+  }
+}

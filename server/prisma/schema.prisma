@@ -353,6 +353,24 @@ model RoutineTemplate {
   user User @relation(fields: [userId], references: [id], onDelete: NoAction)
 }
 
+// Routine published by a CR for their dept/semester/section/lab-group slot.
+// One routine per slot — publishing again replaces the previous one.
+model SharedRoutine {
+  id           String   @id @default(uuid())
+  crId         String   @default("")
+  crName       String   @default("")
+  department   String
+  yearSemester String   @default("")
+  section      String   @default("")
+  labSection   String   @default("")
+  routine      String   @default("{}")   // JSON string
+  weekDays     String   @default("[]")   // JSON string
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([department, yearSemester, section, labSection])
+}
+
 // ─── Telegram ────────────────────────────────────────────────────────────────
 
 model TelegramUser {

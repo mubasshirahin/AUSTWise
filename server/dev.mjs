@@ -13,7 +13,8 @@ import {
   handleAttendanceCallback,
   getTodayClasses,
   setTelegramWebhook,
-  getWebhookInfo
+  getWebhookInfo,
+  sendNoticeToAllUsers
 } from './telegramNotifier.mjs';
 import {
   registerUser,
@@ -39,6 +40,7 @@ import { initializeDatabase, resetDatabase, query, sql } from './db.mjs';
 import { handleOAuthRequest } from './socialOAuth.mjs';
 import { handleAuthRoute, readTokenCookie } from './auth.mjs';
 import { requireRole } from './middleware.mjs';
+import { getUserById } from './userStore.mjs';
 import {
   listMarketplace,
   addMarketplaceListing,
@@ -68,6 +70,10 @@ import {
   listCourses,
   upsertCourse,
   deleteCourse,
+  listSharedRoutines,
+  upsertSharedRoutine,
+  deleteSharedRoutineBySlot,
+  getSharedRoutineStats,
 } from './prisma.js';
 import {
   ensureUploadsDir,
@@ -622,6 +628,37 @@ server.on('request', async (req, res) => {
       sendJson(res, 500, {
         success: false,
         error: error.message || 'Broadcast failed.',
+      });
+    }
+    return;
+  }
+
+  // Broadcast a notice to all Telegram users (CR / SR / admin / moderator)
+  if (req.url === '/api/telegram/send-notice' && req.method === 'POST') {
+    if (!requireFeature('telegram', res, 'TELEGRAM_BOT_TOKEN')) return;
+    const auth = requireRole('cr', 'sr', 'admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const payload = await readJsonBody(req);
+      if (!payload || !payload.title) {
+        sendJson(res, 400, {
+          success: false,
+          error: 'Notice title is required.'
+        });
+        return;
+      }
+      const result = await sendNoticeToAllUsers({
+        title: payload.title,
+        content: payload.content,
+        pinned: !!payload.pinned,
+        postedByName: payload.postedByName || '',
+        postedByRole: auth.role,
+      });
+      sendJson(res, 200, result);
+    } catch (error) {
+      sendJson(res, 500, {
+        success: false,
+        error: error.message || 'Failed to send notice.',
       });
     }
     return;
@@ -1494,6 +1531,96 @@ server.on('request', async (req, res) => {
     return;
   }
 
+  // ========== Shared Routines (CRs publish their routine) ==========
+
+  // List every routine CRs have published, so anyone can load one.
+  if (req.url === '/api/routines/shared' && req.method === 'GET') {
+    try {
+      const items = await listSharedRoutines();
+      const routines = items.map(r => ({
+        ...r,
+        routine: safeJsonParse(r.routine, {}),
+        weekDays: safeJsonParse(r.weekDays, []),
+      }));
+      sendJson(res, 200, { success: true, routines });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to list shared routines.' });
+    }
+    return;
+  }
+
+  // CR publishes (or updates) their own routine — one per CR slot, replaces old.
+  if (req.url === '/api/routines/shared' && req.method === 'POST') {
+    const auth = requireRole('cr')(req, res);
+    if (!auth) return;
+    try {
+      const user = await getUserById(auth.id);
+      if (!user) {
+        sendJson(res, 404, { success: false, error: 'User not found.' });
+        return;
+      }
+      if (!user.department || !user.yearSemester || !user.section || !user.labSection) {
+        sendJson(res, 400, { success: false, error: 'Complete your profile (department, year-semester, section, lab group) before sharing your routine.' });
+        return;
+      }
+
+      const { routine, weekDays } = await readJsonBody(req);
+      if (!routine || typeof routine !== 'object') {
+        sendJson(res, 400, { success: false, error: 'Routine is required.' });
+        return;
+      }
+
+      const record = await upsertSharedRoutine({
+        crId: user.id,
+        crName: user.name,
+        department: user.department,
+        yearSemester: user.yearSemester,
+        section: user.section,
+        labSection: user.labSection,
+        routine: JSON.stringify(routine),
+        weekDays: JSON.stringify(weekDays || ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday']),
+      });
+      sendJson(res, 200, { success: true, routine: { ...record, routine, weekDays: weekDays || [] } });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to share routine.' });
+    }
+    return;
+  }
+
+  // CR removes their shared routine from the load list.
+  if (req.url === '/api/routines/shared' && req.method === 'DELETE') {
+    const auth = requireRole('cr')(req, res);
+    if (!auth) return;
+    try {
+      const user = await getUserById(auth.id);
+      if (!user) {
+        sendJson(res, 404, { success: false, error: 'User not found.' });
+        return;
+      }
+      const removed = await deleteSharedRoutineBySlot({
+        department: user.department,
+        yearSemester: user.yearSemester,
+        section: user.section,
+        labSection: user.labSection,
+      });
+      sendJson(res, 200, { success: true, removed });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to remove shared routine.' });
+    }
+    return;
+  }
+
+  // Counter: how many of the 396 CR slots have published a routine.
+  if (req.url === '/api/routines/shared/stats' && req.method === 'GET') {
+    try {
+      const stats = await getSharedRoutineStats();
+      sendJson(res, 200, { success: true, stats });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to get shared routine stats.' });
+    }
+    return;
+  }
+
   // ========== PostgreSQL-backed REST API ==========
 
   // ── Marketplace ──
@@ -2070,6 +2197,7 @@ server.listen(port, '0.0.0.0', () => {
   console.log('  POST /api/telegram/toggle              - Toggle notification status');
   console.log('  GET  /api/telegram/users               - List all users (admin)');
   console.log('  POST /api/telegram/broadcast           - Send notifications to all users');
+  console.log('  POST /api/telegram/send-notice         - Broadcast a notice to all users (CR/SR)');
   console.log('  POST /api/telegram/test                - Send test notification (8 AM)');
   console.log('  POST /api/telegram/test-attendance     - Send test attendance message (9 PM)');
   console.log('  POST /api/telegram/attendance-callback - Handle attendance button callback');

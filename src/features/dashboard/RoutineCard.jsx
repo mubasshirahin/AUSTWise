@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Calendar, Clock, MapPin, User, ChevronRight } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { CalendarDays, Clock, MapPin, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useRoutine } from '../../context/RoutineContext';
 import { normalizeAccentColor } from '../../utils/colorPalette';
 
@@ -86,6 +86,15 @@ export default function RoutineCard() {
       setSelectedDay(weekDays[0]);
     }
   }, [weekDays, selectedDay]);
+
+  const goPrev = () => {
+    const i = (weekDays.indexOf(selectedDay) - 1 + weekDays.length) % weekDays.length;
+    setSelectedDay(weekDays[i]);
+  };
+  const goNext = () => {
+    const i = (weekDays.indexOf(selectedDay) + 1) % weekDays.length;
+    setSelectedDay(weekDays[i]);
+  };
 
   const classesForDay = useMemo(() => {
     return routine[selectedDay] || [];
@@ -177,25 +186,52 @@ export default function RoutineCard() {
   }, [selectedDay, weekDays, classesForDay, currentTime]);
 
   return (
-    <div className="glass-card-static routine-card premium-card animate-fadeInUp">
+    <div className="glass-card-static schedule-widget routine-widget animate-fadeInUp">
 
-      <div className="tabs mb-4" style={{ display: 'flex', overflowX: 'auto', gap: '4px', padding: '4px' }}>
-        {weekDays.map((day) => (
-          <button
-            key={day}
-            className={`tab ${selectedDay === day ? 'active' : ''}`}
-            onClick={() => setSelectedDay(day)}
-            style={{ flex: 1, textAlign: 'center', minWidth: '80px' }}
-          >
-            {day.substring(0, 3)}
-          </button>
-        ))}
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <CalendarDays size={20} />
+          </div>
+          <div>
+            <span className="schedule-overline">Today's Schedule</span>
+            <p className="schedule-title">Daily Flow</p>
+            <span className="schedule-subtitle">
+              {classesForDay.length} classes · {selectedDay}
+            </span>
+          </div>
+        </div>
+
+        <div className="schedule-masthead-center">
+          <div className="schedule-stats">
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{classesForDay.length}</span>
+              <span className="schedule-stat-label">classes</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="schedule-actions">
+          <div className="schedule-week-nav">
+            <button className="schedule-nav-btn" onClick={goPrev} aria-label="Previous day">
+              <ChevronLeft size={20} />
+            </button>
+            <div className="schedule-week-pill">
+              <span className="schedule-week-pill-value">{selectedDay}</span>
+            </div>
+            <button className="schedule-nav-btn" onClick={goNext} aria-label="Next day">
+              <ChevronRight size={20} />
+            </button>
+          </div>
+        </div>
       </div>
 
-      <div className="routine-list stagger-children" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div className="schedule-dotted-divider" />
+
+      <div className="routine-list">
         {classesForDay.length === 0 ? (
-          <div className="empty-state" style={{ padding: '24px 0' }}>
-            <p>No classes scheduled for {selectedDay}</p>
+          <div className="schedule-empty" style={{ padding: '28px 0' }}>
+            No classes scheduled for {selectedDay}
           </div>
         ) : (
           classesForDay.map((cls, idx) => {
@@ -206,43 +242,33 @@ export default function RoutineCard() {
             return (
               <div
                 key={cls.id}
-                className="routine-item premium-list-item"
+                className="schedule-day-card routine-class-row"
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '12px 16px',
-                  borderRadius: 'var(--radius-md)',
-                  background: 'var(--bg-input)',
-                  borderLeft: `3px solid ${accentColor}`,
-                  position: 'relative',
-                  overflow: 'hidden',
-                  transition: 'transform 0.2s cubic-bezier(0.4,0,0.2,1), background 0.2s ease',
+                  borderLeft: `2px solid ${accentColor}`,
+                  animationDelay: `${idx * 60}ms`,
                 }}
               >
-                {isNow && (
-                  <span className="badge badge-rose" style={{ position: 'absolute', top: '8px', right: '8px', fontSize: '8px' }}>NOW</span>
-                )}
-                {isNext && (
-                  <span className="badge badge-blue" style={{ position: 'absolute', top: '8px', right: '8px', fontSize: '8px' }}>NEXT</span>
-                )}
-
-                <div style={{ flex: 1 }}>
-                  <div className="flex items-center gap-2">
-                    <span style={{ fontWeight: 'var(--fw-bold)', fontSize: 'var(--fs-sm)' }}>
-                      {cls.course}{cls.biWeekly && <span style={{ color: 'var(--accent-amber)', fontWeight: 'var(--fw-bold)', fontSize: '1.3em', marginLeft: '1px' }}>*</span>}
-                    </span>
-                    <span className="badge" style={{ backgroundColor: cls.type === 'Lab' ? 'var(--accent-purple-glow)' : 'var(--accent-blue-glow)', color: cls.type === 'Lab' ? 'var(--accent-purple)' : 'var(--accent-blue)', padding: '2px 6px', fontSize: '10px' }}>
-                      {cls.type}
-                    </span>
+                <div className="schedule-day-top">
+                  <div className="schedule-day-num-wrap">
+                    <div className="routine-class-code" style={{ color: accentColor }}>
+                      {cls.course}
+                      {cls.biWeekly && <span className="routine-biweekly">*</span>}
+                    </div>
                   </div>
-                  <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'var(--fw-medium)', margin: '4px 0' }}>{cls.name}</h4>
-                  <div className="flex flex-wrap gap-4 mt-1 text-tertiary" style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                    <span className="flex items-center gap-1"><Clock size={12} /> {cls.time}</span>
-                    <span className="flex items-center gap-1"><MapPin size={12} /> Room {cls.room}</span>
-                    <span className="flex items-center gap-1"><User size={12} /> {cls.teacher}</span>
+                  <div className="schedule-day-badges">
+                    {isNow && <span className="routine-status-badge now">NOW</span>}
+                    {isNext && <span className="routine-status-badge next">NEXT</span>}
                   </div>
                 </div>
-                <ChevronRight size={16} style={{ color: 'var(--text-tertiary)' }} />
+                <div className="routine-class-name">
+                  {cls.name}
+                  <span className={`routine-type-badge ${cls.type === 'Lab' ? 'lab' : 'theory'}`}>{cls.type}</span>
+                </div>
+                <div className="routine-class-meta">
+                  <span><Clock size={11} /> {cls.time}</span>
+                  <span><MapPin size={11} /> Room {cls.room}</span>
+                  <span><User size={11} /> {cls.teacher}</span>
+                </div>
               </div>
             );
           })

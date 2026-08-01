@@ -585,8 +585,7 @@
 }
 
 [data-theme="swiss"] .glider-tabs-glider,
-[data-theme="swiss"] .glider-tabs-dashboard .glider-tabs-glider,
-[data-theme="swiss"] .glider-tabs-gradelab .glider-tabs-glider {
+[data-theme="swiss"] .glider-tabs-dashboard .glider-tabs-glider {
   background: #000000;
   border-radius: 0;
   box-shadow: none;

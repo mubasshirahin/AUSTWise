@@ -29,6 +29,7 @@ const RoutineTemplatesPage = lazy(() => import('./features/dashboard/RoutineTemp
 const TranscriptTemplatesPage = lazy(() => import('./features/dashboard/TranscriptTemplatesPage'));
 const AnalyticsPage = lazy(() => import('./features/analytics/AnalyticsPage'));
 const VaultPage = lazy(() => import('./features/vault/VaultPage'));
+const NotebookPage = lazy(() => import('./features/vault/NotebookPage'));
 const CheatsheetsPage = lazy(() => import('./features/vault/CheatsheetsPage'));
 const CampusPage = lazy(() => import('./features/campus/CampusPage'));
 const CommunityPage = lazy(() => import('./features/community/CommunityPage'));
@@ -131,6 +132,7 @@ function AppContent() {
                 <Route path="/admin/transcript-templates" element={<TranscriptTemplatesPage />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
                 <Route path="/vault" element={<VaultPage />} />
+                <Route path="/notebook" element={<NotebookPage />} />
                 <Route path="/cheatsheets" element={<CheatsheetsPage />} />
                 <Route path="/campus" element={<CampusPage />} />
                 <Route path="/community" element={<CommunityPage />} />
@@ -184,6 +186,7 @@ function AppShell() {
     '/templates': 'Routine Templates',
     '/analytics': 'Grade Lab',
     '/vault': 'Vault',
+    '/notebook': 'Notebook',
     '/cheatsheets': 'Cheat Sheets',
     '/campus': 'InsideAUST',
     '/community': 'Community',

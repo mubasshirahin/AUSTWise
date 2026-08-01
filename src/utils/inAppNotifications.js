@@ -1,4 +1,5 @@
 const NOTIFS_KEY = 'aust-inapp-notifs-v1';
+const NATIVE_SHOWN_KEY = 'aust-inapp-notifs-native-v1';
 
 /**
  * @typedef {Object} AppNotification
@@ -71,6 +72,80 @@ export function addNotification(item) {
   if (items.some((n) => n.id === item.id)) return;
   items.push(item);
   saveNotifications(items);
+}
+
+export function removeNotificationById(id) {
+  if (!id) return;
+  const items = loadNotifications();
+  const filtered = items.filter((n) => n.id !== id);
+  if (filtered.length !== items.length) saveNotifications(filtered);
+}
+
+export function removeNotificationsByTitle(title) {
+  if (!title) return;
+  const items = loadNotifications();
+  const filtered = items.filter((n) => !(n.type === 'notice' && n.body === title));
+  if (filtered.length !== items.length) saveNotifications(filtered);
+}
+
+// ─── Native device (browser/OS) notifications ───
+
+function getNativeShownIds() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(NATIVE_SHOWN_KEY) || '[]'));
+  } catch {
+    return new Set();
+  }
+}
+
+function saveNativeShownIds(ids) {
+  try {
+    localStorage.setItem(NATIVE_SHOWN_KEY, JSON.stringify([...ids]));
+  } catch {
+    // storage full – silently fail
+  }
+}
+
+/**
+ * Show a native OS/browser notification for an in-app notification.
+ * Each notification id is shown only once. Requests permission if not yet decided.
+ * @param {Object} item - AppNotification shape ({ id, title, body })
+ */
+export function showNativeNotification(item) {
+  if (typeof window === 'undefined' || !('Notification' in window)) return;
+  const shown = getNativeShownIds();
+  if (shown.has(item.id)) return;
+
+  const title = item.title || 'AUSTWise';
+  const body = item.body || '';
+  const options = {
+    body,
+    tag: item.id,
+    icon: '/icon-192x192.png',
+  };
+
+  const fire = () => {
+    try {
+      new Notification(title, options);
+      const next = getNativeShownIds();
+      next.add(item.id);
+      saveNativeShownIds(next);
+    } catch {
+      // ignore – native notifications unavailable
+    }
+  };
+
+  if (Notification.permission === 'granted') {
+    fire();
+  } else if (Notification.permission !== 'denied') {
+    try {
+      Notification.requestPermission().then((permission) => {
+        if (permission === 'granted') fire();
+      });
+    } catch {
+      // older browsers may throw – ignore
+    }
+  }
 }
 
 export function clearAllNotifications() {

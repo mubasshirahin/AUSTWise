@@ -66,7 +66,7 @@ export default function ProductivityPage() {
         tabs={TABS}
         activeTab={activeTab}
         onChange={handleTabChange}
-        variant="productivity"
+        variant="dashboard"
         compact
       />
 

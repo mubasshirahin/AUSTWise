@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, BookOpen, GraduationCap, Library, Users, ShoppingBag, Settings, LayoutDashboard, FileText, X, Map, ScrollText, Home } from 'lucide-react';
+import { Search, BookOpen, GraduationCap, Library, Users, ShoppingBag, Settings, LayoutDashboard, FileText, X, ScrollText, Home, StickyNote } from 'lucide-react';
 import './SearchModal.css';
 
 const searchItems = [
@@ -8,6 +8,7 @@ const searchItems = [
   { label: 'Routine Templates', path: '/templates', icon: FileText, keywords: 'templates routine schedule' },
   { label: 'Grade Lab', path: '/analytics', icon: GraduationCap, keywords: 'analytics grades cgpa' },
   { label: 'Resource Vault', path: '/vault', icon: Library, keywords: 'vault resources notes questions' },
+  { label: 'Notebook', path: '/notebook', icon: StickyNote, keywords: 'notebook notes canvas whiteboard editor writing' },
   { label: 'InsideAUST', path: '/campus', icon: BookOpen, keywords: 'campus map canteen library seat insideaust' },
   { label: 'Community', path: '/community', icon: Users, keywords: 'community alumni clubs stories' },
   { label: 'Marketplace', path: '/marketplace', icon: ShoppingBag, keywords: 'marketplace buy sell exchange mentor' },

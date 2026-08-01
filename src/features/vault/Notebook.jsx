@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo, Fragment } from 'react';
-import { Bold, Italic, Underline, Image, Plus, Trash2, Move, Type, FileImage, Maximize2, Minimize2, StickyNote, Link2, Link2Off, Download } from 'lucide-react';
-import html2canvas from 'html2canvas';
+import { useState, useEffect, useRef, useCallback, useMemo, Fragment } from 'react';
+import { ImageIcon, Trash2, Move, Type, Maximize2, Minimize2, Link2, Link2Off, Download } from 'lucide-react';
+import html2canvas from 'html2canvas-pro';
 import jsPDF from 'jspdf';
 
 const STORAGE_PREFIX = 'aust-notebook-';
@@ -17,21 +17,57 @@ function saveNotes(key, data) {
   catch (e) { console.error('Failed to save notebook:', e); }
 }
 
+// Resolve a theme CSS variable to its concrete color. html2canvas 1.4.1 reads
+// INLINE styles literally and throws on var()/color-mix(), so any color that
+// ends up in an inline style must be a plain hex/rgb value.
+function resolveThemeVar(name, fallback) {
+  try {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    // Only accept plain colors (hex / rgb / hsl / named). Anything else
+    // (var() chains, color-mix(), oklch(), …) would make html2canvas throw
+    // again, so fall back to a safe literal.
+    return v && /^(#([0-9a-f]{3,8})|rgba?\([^)]*\)|hsla?\([^)]*\)|transparent|white|black|currentColor)$/i.test(v) ? v : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export default function Notebook({ vaultContext, batch }) {
   const { department, yearSem } = vaultContext;
   const storageKey = `${department}-${yearSem}-${batch?.id || 'default'}`;
 
-  const [mode, setMode] = useState('editor');
-  const editorRef = useRef(null);
   const [saved, setSaved] = useState(true);
 
   // Canvas state
+  // Concrete theme accents for html2canvas-safe inline styles (no var()/color-mix).
+  const accentBlue = resolveThemeVar('--accent-blue', '#3b82f6');
+  const accentPurple = resolveThemeVar('--accent-purple', accentBlue);
   const [items, setItems] = useState([]);
   const [dragId, setDragId] = useState(null);
   const [dragOff, setDragOff] = useState({ x: 0, y: 0 });
+  const [resizingId, setResizingId] = useState(null);
+  const resizeStartRef = useRef(null); // { id, clientX, clientY, w, h, snapshot }
   const canvasRef = useRef(null);
+  const canvasWrapRef = useRef(null);
+  const lastCanvasPoint = useRef(null);
   const [canvasZoom, setCanvasZoom] = useState(1);
+
+  // Ctrl + scroll zooms the canvas (native listener so preventDefault works).
+  useEffect(() => {
+    const el = canvasWrapRef.current;
+    if (!el) return;
+    const onWheel = (e) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      setCanvasZoom(z => Math.min(3, Math.max(0.3, z * (e.deltaY < 0 ? 1.1 : 0.9))));
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
+  const [pasteFlash, setPasteFlash] = useState(null);
+  const pasteFlashTimer = useRef(null);
   const [editingId, setEditingId] = useState(null);
+  const editedSessionRef = useRef(false); // true once the user typed during the current edit session
   const [connections, setConnections] = useState([]);
   const [connectFrom, setConnectFrom] = useState(null);
   const [drawMode, setDrawMode] = useState(false);
@@ -41,41 +77,48 @@ export default function Notebook({ vaultContext, batch }) {
   const [drawPreview, setDrawPreview] = useState(null);
   const [lineColor, setLineColor] = useState('#22c55e');
   const [lineStyle, setLineStyle] = useState('solid'); // solid | dashed | dotted
+  const [selectedLineId, setSelectedLineId] = useState(null);
+  const [selectedConnId, setSelectedConnId] = useState(null);
 
-  // Load saved data
+  // Load saved data (with one-time migration from the old per-batch vault keys)
   useEffect(() => {
-    const saved = loadNotes(storageKey);
-    if (saved) {
-      if (saved.editorHtml) {
-        lastEditorHtml.current = saved.editorHtml;
-        if (editorRef.current) editorRef.current.innerHTML = saved.editorHtml;
+    let saved = loadNotes(storageKey);
+    if (!saved) {
+      // Notebook used to live inside the Vault, where notes were saved under a
+      // per-batch key. Fold any legacy canvas notes into this page's key so
+      // nothing is stranded after the Notebook moved to its own sidebar entry.
+      const legacy = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith(STORAGE_PREFIX) && k !== STORAGE_PREFIX + storageKey) {
+          try {
+            const d = JSON.parse(localStorage.getItem(k));
+            if (d && (Array.isArray(d.items) && d.items.length > 0)) legacy.push(d);
+          } catch { /* skip unreadable entries */ }
+        }
       }
+      if (legacy.length > 0) {
+        saved = {
+          items: legacy.flatMap((d, idx) => (d.items || []).map(it => ({ ...it, y: (it.y || 0) + idx * 40 }))),
+          connections: legacy.flatMap(d => d.connections || []),
+          manualLines: legacy.flatMap(d => d.manualLines || []),
+        };
+        saveNotes(storageKey, saved);
+      }
+    }
+    if (saved) {
       if (saved.items) setItems(saved.items);
-      if (saved.mode) setMode(saved.mode);
       if (saved.connections) setConnections(saved.connections);
       if (saved.manualLines) setManualLines(saved.manualLines);
-    } else {
-      if (editorRef.current) {
-        editorRef.current.innerHTML = '<p style="color:var(--text-tertiary);font-style:italic;">Start typing or paste an image (Ctrl+V)…</p>';
-      }
     }
   }, [storageKey]);
 
   // Auto-save
-  const lastEditorHtml = useRef('');
-
   const doSave = useCallback(() => {
-    if (editorRef.current) lastEditorHtml.current = editorRef.current.innerHTML;
-    const data = {
-      editorHtml: lastEditorHtml.current,
-      items,
-      mode,
-      connections,
-      manualLines,
-    };
+    const data = { items, connections, manualLines };
     saveNotes(storageKey, data);
     setSaved(true);
-  }, [items, mode, connections, manualLines, storageKey]);
+  }, [items, connections, manualLines, storageKey]);
 
   useEffect(() => {
     if (!saved) {
@@ -86,76 +129,45 @@ export default function Notebook({ vaultContext, batch }) {
 
   const markDirty = () => setSaved(false);
 
-  // ─── Text formatting ───
-  const exec = (cmd, val) => {
-    document.execCommand(cmd, false, val);
-    editorRef.current?.focus();
+  // ─── Auto-size text boxes: bigger content → bigger box, wrapping grows the box, no scroll ───
+  const TEXT_MAX_W = 440;
+  const TEXT_MIN_W = 160;
+  const TEXT_MIN_H = 56;
+
+  const sizeToContent = (id, el) => {
+    if (!el) return;
+    // Natural width = widest unwrapped line
+    const prevWs = el.style.whiteSpace;
+    const prevH = el.style.height;
+    const prevO = el.style.overflow;
+    el.style.whiteSpace = 'nowrap';
+    el.style.height = 'auto';
+    el.style.overflow = 'hidden';
+    const naturalW = el.scrollWidth;
+    const newW = Math.max(TEXT_MIN_W, Math.min(TEXT_MAX_W, naturalW + 6));
+
+    // Height measured at the new target width — with wrapping ENABLED so
+    // multi-line text grows the box to fit everything (no inner scroll).
+    el.style.width = `${newW}px`;
+    el.style.whiteSpace = 'pre-wrap';
+    const contentH = el.scrollHeight;
+    const newH = Math.max(TEXT_MIN_H, contentH + 4);
+
+    el.style.whiteSpace = prevWs;
+    el.style.height = prevH;
+    el.style.overflow = prevO;
+    el.style.width = '';
+
+    setItems(prev => prev.map(i => (i.id === id ? { ...i, w: newW, h: newH } : i)));
     markDirty();
   };
-
-  // ─── Image paste ───
-  const handlePaste = (e) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-    for (const item of items) {
-      if (item.type.startsWith('image/')) {
-        e.preventDefault();
-        const blob = item.getAsFile();
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          const img = `<img src="${ev.target.result}" style="max-width:100%;border-radius:8px;margin:8px 0;" contenteditable="false" />`;
-          document.execCommand('insertHTML', false, img);
-          markDirty();
-        };
-        reader.readAsDataURL(blob);
-        break;
-      }
-    }
-  };
-
-  // ─── Drag & drop images ───
-  const handleDrop = (e) => {
-    e.preventDefault();
-    const files = e.dataTransfer?.files;
-    if (!files) return;
-    for (const file of files) {
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          const img = `<img src="${ev.target.result}" style="max-width:100%;border-radius:8px;margin:8px 0;" contenteditable="false" />`;
-          if (editorRef.current) {
-            const sel = window.getSelection();
-            if (sel && sel.rangeCount > 0) {
-              const range = sel.getRangeAt(0);
-              const rect = editorRef.current.getBoundingClientRect();
-              const x = e.clientX - rect.left;
-              const y = e.clientY - rect.top;
-              const pos = document.caretPositionFromPoint ? document.caretPositionFromPoint(x, y) : null;
-              if (pos) {
-                range.setStart(pos.offsetNode, pos.offset);
-                range.collapse(true);
-                sel.removeAllRanges();
-                sel.addRange(range);
-              }
-            }
-            document.execCommand('insertHTML', false, img);
-            markDirty();
-          }
-        };
-        reader.readAsDataURL(blob);
-        break;
-      }
-    }
-  };
-
-  const handleDragOver = (e) => { e.preventDefault(); };
 
   // ─── Canvas / Whiteboard ───
 
   const addCanvasImage = (file) => {
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const rect = canvasRef.current?.getBoundingClientRect();
+      pushUndo();
       setItems(prev => [...prev, {
         id: Date.now(),
         type: 'image',
@@ -171,6 +183,7 @@ export default function Notebook({ vaultContext, batch }) {
   };
 
   const addTextBox = () => {
+    pushUndo();
     setItems(prev => [...prev, {
       id: Date.now(),
       type: 'text',
@@ -196,15 +209,277 @@ export default function Notebook({ vaultContext, batch }) {
 
   const handleCanvasDragOver = (e) => { e.preventDefault(); };
 
+  // ─── Canvas paste (Ctrl+V): screenshot / image → image item, text → text box ───
+  const handleCanvasPaste = useCallback((e) => {
+    const flash = (msg) => {
+      setPasteFlash(msg);
+      clearTimeout(pasteFlashTimer.current);
+      pasteFlashTimer.current = setTimeout(() => setPasteFlash(null), 1400);
+    };
+
+    // Snapshot the current canvas state before a mutation so undo can restore it
+    const pushSnapshot = () => {
+      undoStack.current.push({
+        items: [...stateRef.current.items],
+        connections: [...stateRef.current.connections],
+        manualLines: [...stateRef.current.manualLines],
+      });
+      if (undoStack.current.length > 100) undoStack.current.shift();
+      redoStack.current = [];
+    };
+
+    const addImage = (blob) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const src = ev.target.result;
+        const probe = new Image(); // global Image constructor (icon import is renamed)
+        probe.onload = () => {
+          // Fit the pasted image sensibly on the canvas, keeping aspect ratio
+          const maxW = 360;
+          const maxH = 240;
+          const scale = Math.min(1, maxW / probe.naturalWidth, maxH / probe.naturalHeight);
+          const w = Math.max(80, Math.round(probe.naturalWidth * scale));
+          const h = Math.max(60, Math.round(probe.naturalHeight * scale));
+          // Place where the user last clicked, else a staggered default spot
+          const pos = lastCanvasPoint.current || { x: 100 + Math.random() * 120, y: 100 + Math.random() * 120 };
+          pushSnapshot();
+          setItems(prev => [...prev, {
+            id: Date.now(),
+            type: 'image',
+            src,
+            x: pos.x,
+            y: pos.y,
+            w,
+            h,
+          }]);
+          flash('Image pasted to canvas');
+          setSaved(false);
+        };
+        probe.onerror = () => flash('Could not paste image');
+        probe.src = src;
+      };
+      reader.readAsDataURL(blob);
+    };
+
+    // Prefer clipboardData.items (Chromium, Firefox); fall back to files for Safari
+    let handled = false;
+    const clipboardItems = e.clipboardData?.items;
+    if (clipboardItems) {
+      for (const item of clipboardItems) {
+        if (item.type.startsWith('image/')) {
+          const blob = item.getAsFile();
+          if (blob) {
+            e.preventDefault();
+            addImage(blob);
+            handled = true;
+            break;
+          }
+        }
+      }
+    }
+    if (!handled) {
+      const file = e.clipboardData?.files?.[0];
+      if (file && file.type.startsWith('image/')) {
+        e.preventDefault();
+        addImage(file);
+        handled = true;
+      }
+    }
+    if (handled) return true;
+
+    // Plain text → create a text box, unless focus is in an input/textarea or
+    // the user is editing an existing canvas text box (let native paste handle it)
+    const active = document.activeElement;
+    const inEditable = active && (
+      active.isContentEditable ||
+      active.tagName === 'INPUT' ||
+      active.tagName === 'TEXTAREA'
+    );
+    if (!inEditable) {
+      const text = e.clipboardData?.getData('text/plain');
+      if (text && text.trim()) {
+        e.preventDefault();
+        const pos = lastCanvasPoint.current || { x: 100 + Math.random() * 120, y: 100 + Math.random() * 120 };
+        pushSnapshot();
+        const newId = Date.now();
+        setItems(prev => [...prev, {
+          id: newId,
+          type: 'text',
+          content: text.trim(),
+          x: pos.x,
+          y: pos.y,
+          w: 200,
+          h: 60,
+        }]);
+        requestAnimationFrame(() => {
+          const el = canvasRef.current?.querySelector(`[data-item-id="${newId}"] .nb-canvas-text`);
+          if (el) sizeToContent(newId, el);
+        });
+        flash('Text pasted to canvas');
+        setSaved(false);
+        return true;
+      }
+    }
+    return false;
+  }, []);
+
+  // Window-level paste fallback (fires when focus is outside the canvas).
+  // Lets the editor/inputs handle their own paste natively, otherwise routes
+  // the clipboard into the canvas so Ctrl+V reliably delivers clipboard data.
+  useEffect(() => {
+    const onWindowPaste = async (e) => {
+      if (e.defaultPrevented) return; // already handled by the canvas onPaste
+      // Let inputs handle their own paste natively
+      const active = document.activeElement;
+      if (active && (active.isContentEditable || active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
+      // 1) Synchronous clipboardData path.
+      if (handleCanvasPaste(e)) return;
+      // 2) Async Clipboard API fallback for browsers where the paste event
+      //    doesn't expose the image data (some Safari / restricted contexts).
+      try {
+        const cb = navigator.clipboard;
+        if (cb && typeof cb.read === 'function') {
+          const items = await cb.read();
+          for (const item of items) {
+            const imgType = item.types.find(t => t.startsWith('image/'));
+            if (imgType) {
+              const blob = await item.getType(imgType);
+              // Synthesize a minimal paste-like event so the same handler runs
+              handleCanvasPaste({
+                clipboardData: { items: null, files: [blob], getData: () => '' },
+                preventDefault: () => {},
+              });
+              return;
+            }
+          }
+        }
+      } catch { /* clipboard read unavailable / permission denied */ }
+    };
+    window.addEventListener('paste', onWindowPaste);
+    return () => window.removeEventListener('paste', onWindowPaste);
+  }, [handleCanvasPaste]);
+
+  // Clear the paste-flash timer on unmount
+  useEffect(() => () => clearTimeout(pasteFlashTimer.current), []);
+
+  // ─── Undo / Redo (Ctrl+Z undo · Ctrl+Shift+Z redo) ───
+  const undoStack = useRef([]);
+  const redoStack = useRef([]);
+  const dragStartState = useRef(null);
+  const stateRef = useRef({ items: [], connections: [], manualLines: [] });
+  useEffect(() => { stateRef.current = { items, connections, manualLines }; }, [items, connections, manualLines]);
+
+  const pushUndo = () => {
+    undoStack.current.push({
+      items: [...stateRef.current.items],
+      connections: [...stateRef.current.connections],
+      manualLines: [...stateRef.current.manualLines],
+    });
+    if (undoStack.current.length > 100) undoStack.current.shift();
+    redoStack.current = [];
+  };
+
+  // Canvas keyboard shortcuts: Ctrl+Z undo, Ctrl+Shift+Z redo.
+  // The undo/redo logic is inlined here so the listener only depends on stable
+  // refs/setters and never needs to re-subscribe.
+  useEffect(() => {
+    const restore = (snap) => {
+      setItems(snap.items);
+      setConnections(snap.connections);
+      setManualLines(snap.manualLines);
+      // Cancel any in-progress draw / connect / edit / drag state
+      setDrawPhase('idle');
+      setDrawStart(null);
+      setDrawPreview(null);
+      setConnectFrom(null);
+      setEditingId(null);
+      setDragId(null);
+      setResizingId(null);
+      resizeStartRef.current = null;
+      setSaved(false);
+    };
+    const undoNow = () => {
+      const prev = undoStack.current.pop();
+      if (!prev) return;
+      redoStack.current.push({
+        items: [...stateRef.current.items],
+        connections: [...stateRef.current.connections],
+        manualLines: [...stateRef.current.manualLines],
+      });
+      restore(prev);
+    };
+    const redoNow = () => {
+      const next = redoStack.current.pop();
+      if (!next) return;
+      undoStack.current.push({
+        items: [...stateRef.current.items],
+        connections: [...stateRef.current.connections],
+        manualLines: [...stateRef.current.manualLines],
+      });
+      restore(next);
+    };
+    const onKeyDown = (e) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      // Don't hijack shortcuts while typing inside a text box / input
+      const active = document.activeElement;
+      if (active && (active.isContentEditable || active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
+      const k = e.key.toLowerCase();
+      if (k === 'z' && e.shiftKey) { e.preventDefault(); redoNow(); }
+      else if (k === 'z') { e.preventDefault(); undoNow(); }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  // Deselect the active line / connection with Escape
+  useEffect(() => {
+    const onEsc = (e) => {
+      if (e.key === 'Escape') {
+        setSelectedLineId(null);
+        setSelectedConnId(null);
+      }
+    };
+    window.addEventListener('keydown', onEsc);
+    return () => window.removeEventListener('keydown', onEsc);
+  }, []);
+
   const startDrag = (e, id) => {
     if (drawMode) return;
     const item = items.find(i => i.id === id);
     if (!item) return;
+    dragStartState.current = stateRef.current;
     setDragId(id);
     setDragOff({ x: e.clientX - item.x * canvasZoom, y: e.clientY - item.y * canvasZoom });
   };
 
+  // ─── Real-time resize (drag the corner handle) ───
+  const startResize = (e, id) => {
+    if (drawMode) return;
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+    e.stopPropagation(); // don't start a move-drag / connect
+    resizeStartRef.current = {
+      id,
+      clientX: e.clientX,
+      clientY: e.clientY,
+      w: item.w,
+      h: item.h,
+      snapshot: stateRef.current,
+    };
+    setResizingId(id);
+  };
+
   const onCanvasMouseMove = (e) => {
+    if (resizingId) {
+      const rs = resizeStartRef.current;
+      if (!rs) return;
+      const dx = (e.clientX - rs.clientX) / canvasZoom;
+      const dy = (e.clientY - rs.clientY) / canvasZoom;
+      const newW = Math.max(80, rs.w + dx);
+      const newH = Math.max(40, rs.h + dy);
+      setItems(prev => prev.map(i => (i.id === resizingId ? { ...i, w: newW, h: newH } : i)));
+      return;
+    }
     if (!dragId) return;
     setItems(prev => prev.map(i =>
       i.id === dragId
@@ -214,23 +489,57 @@ export default function Notebook({ vaultContext, batch }) {
   };
 
   const stopDrag = () => {
-    if (dragId) { setDragId(null); markDirty(); }
+    if (resizingId) {
+      const rs = resizeStartRef.current;
+      const after = stateRef.current;
+      const afterItem = after.items.find(i => i.id === resizingId);
+      if (rs && afterItem && (rs.w !== afterItem.w || rs.h !== afterItem.h)) {
+        undoStack.current.push({
+          items: [...rs.snapshot.items],
+          connections: [...rs.snapshot.connections],
+          manualLines: [...rs.snapshot.manualLines],
+        });
+        redoStack.current = [];
+      }
+      setResizingId(null);
+      resizeStartRef.current = null;
+      markDirty();
+      return;
+    }
+    if (dragId) {
+      // Record an undo step only if the item actually moved
+      const before = dragStartState.current;
+      const after = stateRef.current;
+      const beforeItem = before?.items.find(i => i.id === dragId);
+      const afterItem = after.items.find(i => i.id === dragId);
+      if (beforeItem && afterItem && (beforeItem.x !== afterItem.x || beforeItem.y !== afterItem.y)) {
+        undoStack.current.push({
+          items: [...before.items],
+          connections: [...before.connections],
+          manualLines: [...before.manualLines],
+        });
+        redoStack.current = [];
+      }
+      setDragId(null);
+      markDirty();
+    }
   };
 
   const updateItemContent = (id, content) => {
+    const current = items.find(i => i.id === id);
+    if (current && current.content === content) return; // no change → no junk undo entry
+    pushUndo();
     setItems(prev => prev.map(i => i.id === id ? { ...i, content } : i));
     markDirty();
   };
 
-  const updateItemSize = (id, w, h) => {
-    setItems(prev => prev.map(i => i.id === id ? { ...i, w, h } : i));
-    markDirty();
-  };
 
   // ─── Connections ───
   const toggleConnectMode = () => {
     setConnectFrom(prev => prev === null ? 'ready' : null);
     setDrawMode(false);
+    setSelectedLineId(null);
+    setSelectedConnId(null);
   };
 
   const handleItemClick = (id) => {
@@ -238,6 +547,7 @@ export default function Notebook({ vaultContext, batch }) {
     if (connectFrom === 'ready') {
       setConnectFrom(id);
     } else if (connectFrom !== id) {
+      pushUndo();
       setConnections(prev => {
         const exists = prev.find(c => c.fromId === connectFrom && c.toId === id);
         if (exists) return prev.filter(c => c.id !== exists.id);
@@ -256,12 +566,21 @@ export default function Notebook({ vaultContext, batch }) {
   };
 
   const deleteConnection = (connId) => {
+    pushUndo();
     setConnections(prev => prev.filter(c => c.id !== connId));
+    if (selectedConnId === connId) setSelectedConnId(null);
+    markDirty();
+  };
+
+  const updateConnectionStyle = (connId, patch) => {
+    pushUndo();
+    setConnections(prev => prev.map(c => c.id === connId ? { ...c, ...patch } : c));
     markDirty();
   };
 
   // Remove orphan connections when an item is deleted
   const deleteItem = (id) => {
+    pushUndo();
     setItems(prev => prev.filter(i => i.id !== id));
     setConnections(prev => prev.filter(c => c.fromId !== id && c.toId !== id));
     if (connectFrom === id || connectFrom === 'ready') setConnectFrom(null);
@@ -286,6 +605,7 @@ export default function Notebook({ vaultContext, batch }) {
       const dx = pt.x - drawStart.x;
       const dy = pt.y - drawStart.y;
       if (Math.sqrt(dx * dx + dy * dy) > 5) {
+        pushUndo();
         setManualLines(prev => [...prev, { x1: drawStart.x, y1: drawStart.y, x2: pt.x, y2: pt.y, id: Date.now(), color: lineColor, style: lineStyle }]);
         markDirty();
       }
@@ -305,7 +625,15 @@ export default function Notebook({ vaultContext, batch }) {
   };
 
   const deleteLine = (lineId) => {
+    pushUndo();
     setManualLines(prev => prev.filter(l => l.id !== lineId));
+    if (selectedLineId === lineId) setSelectedLineId(null);
+    markDirty();
+  };
+
+  const updateLineStyle = (lineId, patch) => {
+    pushUndo();
+    setManualLines(prev => prev.map(l => l.id === lineId ? { ...l, ...patch } : l));
     markDirty();
   };
 
@@ -315,23 +643,21 @@ export default function Notebook({ vaultContext, batch }) {
     setDrawStart(null);
     setDrawPreview(null);
     setConnectFrom(null);
+    setSelectedLineId(null);
+    setSelectedConnId(null);
   };
 
   // ─── Clear ───
-  const clearEditor = () => {
-    if (editorRef.current) {
-      editorRef.current.innerHTML = '';
-    }
-    markDirty();
-  };
-
   const clearCanvas = () => {
+    pushUndo();
     setItems([]);
     setConnections([]);
     setManualLines([]);
     setDrawStart(null);
     setDrawPreview(null);
     setDrawPhase('idle');
+    setSelectedLineId(null);
+    setSelectedConnId(null);
     markDirty();
   };
 
@@ -341,30 +667,119 @@ export default function Notebook({ vaultContext, batch }) {
     return Math.max(800, maxY + 300);
   }, [items]);
 
-  // ─── Export ───
-  const exportAsImage = async (type) => {
-    const el = type === 'editor' ? editorRef.current : canvasRef.current;
-    if (!el) return;
-    try {
-      const origTransform = el.style.transform;
-      if (type === 'canvas') el.style.transform = 'none';
-      const canvas = await html2canvas(el, { backgroundColor: '#ffffff', scale: 2, useCORS: true });
-      if (type === 'canvas') el.style.transform = origTransform;
-      const link = document.createElement('a');
-      link.download = `notebook-${type}-${Date.now()}.png`;
-      link.href = canvas.toDataURL();
-      link.click();
-    } catch (e) { console.error('Export failed:', e); }
+  // ─── Export (whole board, regardless of zoom/scroll) ───
+  const getBoardBounds = () => {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    const include = (x, y, w, h) => {
+      minX = Math.min(minX, x); minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x + (w || 0)); maxY = Math.max(maxY, y + (h || 0));
+    };
+    items.forEach(i => include(i.x || 0, i.y || 0, i.w || 0, i.h || 0));
+    manualLines.forEach(l => {
+      minX = Math.min(minX, l.x1, l.x2); minY = Math.min(minY, l.y1, l.y2);
+      maxX = Math.max(maxX, l.x1, l.x2); maxY = Math.max(maxY, l.y1, l.y2);
+    });
+    connections.forEach(c => {
+      const from = items.find(i => i.id === c.fromId);
+      const to = items.find(i => i.id === c.toId);
+      if (from) include(from.x, from.y, from.w, from.h);
+      if (to) include(to.x, to.y, to.w, to.h);
+    });
+    if (!isFinite(minX)) { minX = 0; minY = 0; maxX = 800; maxY = 800; }
+    return { minX, minY, maxX, maxY };
   };
 
-  const exportAsPDF = async (type) => {
-    const el = type === 'editor' ? editorRef.current : canvasRef.current;
-    if (!el) return;
+  // Temporarily sizes the canvas element to the full content bounds (selection
+  // UI hidden), captures the whole board with html2canvas, then restores.
+  const captureFullCanvas = async () => {
+    const el = canvasRef.current;
+    if (!el) return null;
+    const PAD = 40;
+    const b = getBoardBounds();
+    // Clamp to the origin so the shift never becomes negative padding (which
+    // is invalid CSS and silently breaks the capture).
+    const minX = Math.min(0, Math.floor(b.minX));
+    const minY = Math.min(0, Math.floor(b.minY));
+    const maxX = Math.max(400, Math.ceil(b.maxX));
+    const maxY = Math.max(400, Math.ceil(b.maxY));
+    const width = maxX - minX + PAD * 2;
+    const height = maxY - minY + PAD * 2;
+
+    const orig = {
+      transform: el.style.transform,
+      width: el.style.width,
+      height: el.style.height,
+      minHeight: el.style.minHeight,
+      paddingTop: el.style.paddingTop,
+      paddingLeft: el.style.paddingLeft,
+      paddingRight: el.style.paddingRight,
+      paddingBottom: el.style.paddingBottom,
+    };
+
+    el.classList.add('nb-exporting');
     try {
-      const origTransform = el.style.transform;
-      if (type === 'canvas') el.style.transform = 'none';
-      const canvas = await html2canvas(el, { backgroundColor: '#ffffff', scale: 2, useCORS: true });
-      if (type === 'canvas') el.style.transform = origTransform;
+      el.style.transform = 'none';
+      el.style.width = `${width}px`;
+      el.style.height = `${height}px`;
+      el.style.minHeight = '0';
+      // Shift absolutely-positioned children so the whole board (including any
+      // content dragged to negative coordinates) lands inside the padded box.
+      el.style.paddingLeft = `${PAD - minX}px`;
+      el.style.paddingTop = `${PAD - minY}px`;
+      el.style.paddingRight = `${PAD}px`;
+      el.style.paddingBottom = `${PAD}px`;
+
+      return await html2canvas(el, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        useCORS: true,
+        width,
+        height,
+        windowWidth: width,
+        windowHeight: height,
+      });
+    } finally {
+      el.classList.remove('nb-exporting');
+      el.style.transform = orig.transform;
+      el.style.width = orig.width;
+      el.style.height = orig.height;
+      el.style.minHeight = orig.minHeight;
+      el.style.paddingTop = orig.paddingTop;
+      el.style.paddingLeft = orig.paddingLeft;
+      el.style.paddingRight = orig.paddingRight;
+      el.style.paddingBottom = orig.paddingBottom;
+    }
+  };
+
+  const flashExport = (msg) => {
+    setPasteFlash(msg);
+    clearTimeout(pasteFlashTimer.current);
+    pasteFlashTimer.current = setTimeout(() => setPasteFlash(null), 2000);
+  };
+
+  const exportAsImage = async () => {
+    try {
+      const canvas = await captureFullCanvas();
+      if (!canvas) { flashExport('Nothing to export'); return; }
+      const link = document.createElement('a');
+      link.download = `notebook-${Date.now()}.png`;
+      link.href = canvas.toDataURL();
+      // The anchor must be in the DOM for the download attribute to fire
+      // in Chrome/Firefox — a detached anchor's click() silently no-ops.
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      flashExport('PNG downloaded ✓');
+    } catch (e) {
+      console.error('Export failed:', e);
+      flashExport('Export failed — try again');
+    }
+  };
+
+  const exportAsPDF = async () => {
+    try {
+      const canvas = await captureFullCanvas();
+      if (!canvas) { flashExport('Nothing to export'); return; }
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfW = pdf.internal.pageSize.getWidth();
@@ -378,8 +793,12 @@ export default function Notebook({ vaultContext, batch }) {
         pdf.addImage(imgData, 'PNG', 0, position, pdfW, pdfH);
         heightLeft -= pdf.internal.pageSize.getHeight();
       }
-      pdf.save(`notebook-${type}-${Date.now()}.pdf`);
-    } catch (e) { console.error('PDF export failed:', e); }
+      pdf.save(`notebook-${Date.now()}.pdf`);
+      flashExport('PDF downloaded ✓');
+    } catch (e) {
+      console.error('PDF export failed:', e);
+      flashExport('Export failed — try again');
+    }
   };
 
   // ─── Canvas image upload via click ───
@@ -389,80 +808,55 @@ export default function Notebook({ vaultContext, batch }) {
     <div className="nb-container">
       {/* Toolbar */}
       <div className="nb-toolbar">
-        <div className="nb-toolbar-left">
-          <button className={`nb-mode-btn ${mode === 'editor' ? 'active' : ''}`} onClick={() => { setMode('editor'); markDirty(); }}>
-            <StickyNote size={14} /> Editor
+        <div className="nb-canvas-tools">
+          <button className="nb-fmt-btn" onClick={addTextBox} title="Add text box"><Type size={14} /></button>
+          <button className="nb-fmt-btn" onClick={() => canvasFileRef.current?.click()} title="Add image"><ImageIcon size={14} /></button>
+          <input ref={canvasFileRef} type="file" accept="image/*" style={{ display: 'none' }}
+            onChange={e => { const f = e.target.files?.[0]; if (f) addCanvasImage(f); e.target.value = ''; }} />
+          <span className="nb-fmt-sep" />
+          <button className="nb-fmt-btn" onClick={clearCanvas} title="Clear canvas"><Trash2 size={13} /></button>
+          <span className="nb-fmt-sep" />
+          <button className={`nb-fmt-btn ${drawMode ? 'active' : ''}`} onClick={toggleDrawMode} title="Draw line">
+            <Move size={14} />
           </button>
-          <button className={`nb-mode-btn ${mode === 'canvas' ? 'active' : ''}`} onClick={() => { setMode('canvas'); markDirty(); }}>
-            <Move size={14} /> Canvas
+          {drawMode && (
+            <>
+              <span className="nb-fmt-sep" />
+              {['#22c55e','#ef4444','#3b82f6','#eab308','#a855f7','#f97316'].map(c => (
+                <button key={c} className="nb-fmt-btn" onClick={() => setLineColor(c)} title={c}
+                  style={{ width: 18, height: 18, borderRadius: '50%', background: c, border: lineColor === c ? '2px solid #fff' : '2px solid transparent', boxSizing: 'content-box' }}
+                />
+              ))}
+              <span className="nb-fmt-sep" />
+              {['solid','dashed','dotted'].map(s => (
+                <button key={s} className={`nb-fmt-btn ${lineStyle === s ? 'active' : ''}`} onClick={() => setLineStyle(s)}
+                  style={{ fontSize: 9, padding: '0 4px' }}>
+                  {s === 'solid' ? '━━' : s === 'dashed' ? '╌╌' : '┅┅'}
+                </button>
+              ))}
+              <span className="nb-fmt-sep" />
+              <span className="nb-connect-hint">
+                {drawPhase === 'placing' ? 'Click to end · Right-click cancel' : 'Click to draw · Right-click remove'} · Ctrl+Z undo · Ctrl+Shift+Z redo
+              </span>
+            </>
+          )}
+          <button className={`nb-fmt-btn ${connectFrom ? 'active' : ''}`} onClick={toggleConnectMode} title="Connect items">
+            {connectFrom ? <Link2Off size={14} /> : <Link2 size={14} />}
           </button>
+          {connectFrom && connectFrom !== 'ready' && (
+            <span className="nb-connect-hint">Click another item to connect</span>
+          )}
+          <span className="nb-fmt-sep" />
+          <button className="nb-fmt-btn" onClick={() => setCanvasZoom(z => Math.min(3, z + 0.1))} title="Zoom in"><Maximize2 size={13} /></button>
+          <span className="nb-zoom-label">{Math.round(canvasZoom * 100)}%</span>
+          <button className="nb-fmt-btn" onClick={() => setCanvasZoom(z => Math.max(0.3, z - 0.1))} title="Zoom out"><Minimize2 size={13} /></button>
         </div>
-        {mode === 'editor' && (
-          <div className="nb-format-bar">
-            <button className="nb-fmt-btn" onClick={() => exec('bold')} title="Bold"><Bold size={14} /></button>
-            <button className="nb-fmt-btn" onClick={() => exec('italic')} title="Italic"><Italic size={14} /></button>
-            <button className="nb-fmt-btn" onClick={() => exec('underline')} title="Underline"><Underline size={14} /></button>
-            <span className="nb-fmt-sep" />
-            <button className="nb-fmt-btn" onClick={() => exec('insertUnorderedList')} title="Bullet list">☰</button>
-            <button className="nb-fmt-btn" onClick={() => exec('insertOrderedList')} title="Numbered list">#</button>
-            <span className="nb-fmt-sep" />
-            <button className="nb-fmt-btn" onClick={() => exec('formatBlock', '<h1>')} title="Heading 1">H1</button>
-            <button className="nb-fmt-btn" onClick={() => exec('formatBlock', '<h2>')} title="Heading 2">H2</button>
-            <button className="nb-fmt-btn" onClick={() => exec('formatBlock', '<h3>')} title="Heading 3">H3</button>
-            <span className="nb-fmt-sep" />
-            <button className="nb-fmt-btn" onClick={clearEditor} title="Clear editor"><Trash2 size={13} /></button>
-          </div>
-        )}
-        {mode === 'canvas' && (
-          <div className="nb-canvas-tools">
-            <button className="nb-fmt-btn" onClick={addTextBox} title="Add text box"><Type size={14} /></button>
-            <button className="nb-fmt-btn" onClick={() => canvasFileRef.current?.click()} title="Add image"><Image size={14} /></button>
-            <input ref={canvasFileRef} type="file" accept="image/*" style={{ display: 'none' }}
-              onChange={e => { const f = e.target.files?.[0]; if (f) addCanvasImage(f); e.target.value = ''; }} />
-            <span className="nb-fmt-sep" />
-            <span className="nb-fmt-sep" />
-            <button className="nb-fmt-btn" onClick={clearCanvas} title="Clear canvas"><Trash2 size={13} /></button>
-            <span className="nb-fmt-sep" />
-            <button className={`nb-fmt-btn ${drawMode ? 'active' : ''}`} onClick={toggleDrawMode} title="Draw line">
-              <Move size={14} />
-            </button>
-            {drawMode && (
-              <>
-                <span className="nb-fmt-sep" />
-                {['#22c55e','#ef4444','#3b82f6','#eab308','#a855f7','#f97316'].map(c => (
-                  <button key={c} className="nb-fmt-btn" onClick={() => setLineColor(c)} title={c}
-                    style={{ width: 18, height: 18, borderRadius: '50%', background: c, border: lineColor === c ? '2px solid #fff' : '2px solid transparent', boxSizing: 'content-box' }}
-                  />
-                ))}
-                <span className="nb-fmt-sep" />
-                {['solid','dashed','dotted'].map(s => (
-                  <button key={s} className={`nb-fmt-btn ${lineStyle === s ? 'active' : ''}`} onClick={() => setLineStyle(s)}
-                    style={{ fontSize: 9, padding: '0 4px' }}>
-                    {s === 'solid' ? '━━' : s === 'dashed' ? '╌╌' : '┅┅'}
-                  </button>
-                ))}
-                <span className="nb-fmt-sep" />
-                <span className="nb-connect-hint">{drawPhase === 'placing' ? 'Click to end line' : 'Click to start line'}</span>
-              </>
-            )}
-            <button className={`nb-fmt-btn ${connectFrom ? 'active' : ''}`} onClick={toggleConnectMode} title="Connect items">
-              {connectFrom ? <Link2Off size={14} /> : <Link2 size={14} />}
-            </button>
-            {connectFrom && connectFrom !== 'ready' && (
-              <span className="nb-connect-hint">Click another item to connect</span>
-            )}
-            <span className="nb-fmt-sep" />
-            <button className="nb-fmt-btn" onClick={() => setCanvasZoom(z => Math.min(3, z + 0.1))} title="Zoom in"><Maximize2 size={13} /></button>
-            <span className="nb-zoom-label">{Math.round(canvasZoom * 100)}%</span>
-            <button className="nb-fmt-btn" onClick={() => setCanvasZoom(z => Math.max(0.3, z - 0.1))} title="Zoom out"><Minimize2 size={13} /></button>
-          </div>
-        )}
         <div className="nb-toolbar-right">
           <div className="nb-export-group">
-            <button className="nb-export-btn" onClick={() => exportAsImage(mode)} title="Export as PNG">
+            <button className="nb-export-btn" onClick={() => exportAsImage()} title="Export whiteboard as PNG">
               <Download size={12} /> PNG
             </button>
-            <button className="nb-export-btn" onClick={() => exportAsPDF(mode)} title="Export as PDF">
+            <button className="nb-export-btn" onClick={() => exportAsPDF()} title="Export whiteboard as PDF">
               <Download size={12} /> PDF
             </button>
           </div>
@@ -470,34 +864,41 @@ export default function Notebook({ vaultContext, batch }) {
         </div>
       </div>
 
-      {/* Editor Mode */}
-      {mode === 'editor' && (
-        <div
-          ref={editorRef}
-          className="nb-editor"
-          contentEditable
-          suppressContentEditableWarning
-          onPaste={handlePaste}
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onInput={markDirty}
-          onKeyDown={() => markDirty()}
-        />
-      )}
-
-      {/* Canvas Mode */}
-      {mode === 'canvas' && (
+      <div className="nb-canvas-wrap" ref={canvasWrapRef}>
         <div
           ref={canvasRef}
           className={`nb-canvas ${drawMode ? 'draw-active' : ''}`}
+          tabIndex={-1}
+          onPaste={handleCanvasPaste}
           onDrop={handleCanvasDrop}
           onDragOver={handleCanvasDragOver}
           onMouseMove={(e) => { onDrawMouseMove(e); onCanvasMouseMove(e); }}
           onMouseUp={stopDrag}
           onMouseLeave={stopDrag}
           onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              lastCanvasPoint.current = getCanvasPoint(e);
+              setConnectFrom(null);
+              setSelectedLineId(null);
+              setSelectedConnId(null);
+              canvasRef.current?.focus({ preventScroll: true });
+            }
             if (drawMode) { handleDrawClick(e); return; }
-            if (e.target === e.currentTarget) setConnectFrom(null);
+          }}
+          onContextMenu={(e) => {
+            if (!drawMode) return; // keep the browser menu outside draw mode
+            e.preventDefault();
+            if (drawPhase === 'placing') {
+              // Right-click while placing cancels the in-progress line
+              setDrawPhase('idle');
+              setDrawPreview(null);
+              setDrawStart(null);
+            } else if (manualLines.length > 0) {
+              // Right-click removes the last drawn line
+              pushUndo();
+              setManualLines(prev => prev.slice(0, -1));
+              setSaved(false);
+            }
           }}
           style={{ transform: `scale(${canvasZoom})`, transformOrigin: '0 0', height: canvasHeight }}
         >
@@ -517,16 +918,37 @@ export default function Notebook({ vaultContext, batch }) {
                 <div style={{
                   position: 'absolute',
                   left: line.x1,
-                  top: line.y1,
+                  top: line.y1 - (isSolid ? 1 : 0),
                   width: len,
-                  height: 0,
-                  borderTop: isSolid ? `3px solid ${col}` : line.style === 'dashed' ? `2px dashed ${col}` : `2px dotted ${col}`,
+                  height: isSolid ? 3 : 0,
+                  background: isSolid ? `linear-gradient(90deg, ${col}, ${col}cc)` : 'transparent',
+                  borderTop: isSolid ? 'none' : line.style === 'dashed' ? `2px dashed ${col}` : `2px dotted ${col}`,
+                  borderRadius: 2,
+                  filter: `drop-shadow(0 0 4px ${col})`,
                   transformOrigin: '0 0',
                   transform: `rotate(${angle}deg)`,
                   pointerEvents: 'none',
-                  zIndex: 2,
+                  zIndex: 0,
                 }} />
                 <div
+                  className={`nb-line-hit ${selectedLineId === line.id ? 'selected' : ''}`}
+                  onClick={(e) => { e.stopPropagation(); setSelectedConnId(null); setSelectedLineId(prev => prev === line.id ? null : line.id); }}
+                  style={{
+                    position: 'absolute',
+                    left: line.x1,
+                    top: line.y1 - 7,
+                    width: len,
+                    height: 14,
+                    transformOrigin: '0 0',
+                    transform: `rotate(${angle}deg)`,
+                    cursor: 'pointer',
+                    pointerEvents: drawMode ? 'none' : 'auto',
+                    zIndex: 1,
+                  }}
+                  title="Edit line"
+                />
+                <div
+                  className="nb-line-arrow"
                   onClick={(e) => { e.stopPropagation(); deleteLine(line.id); }}
                   style={{
                     position: 'absolute',
@@ -536,10 +958,11 @@ export default function Notebook({ vaultContext, batch }) {
                     height: 12,
                     background: col,
                     clipPath: 'polygon(0% 20%, 100% 50%, 0% 80%)',
+                    filter: `drop-shadow(0 0 3px ${col})`,
                     transform: `rotate(${angle}deg)`,
                     cursor: 'pointer',
                     pointerEvents: 'auto',
-                    zIndex: 3,
+                    zIndex: 2,
                   }}
                   title="Delete line"
                 />
@@ -551,12 +974,75 @@ export default function Notebook({ vaultContext, batch }) {
                   height: 6,
                   borderRadius: '50%',
                   background: col,
+                  filter: `drop-shadow(0 0 3px ${col})`,
                   pointerEvents: 'none',
-                  zIndex: 2,
+                  zIndex: 0,
                 }} />
               </Fragment>
             );
           })}
+          {/* Line / connection options popover — shows when a line or connection is selected */}
+          {(selectedLineId || selectedConnId) && (() => {
+            const isConn = !!selectedConnId;
+            const line = isConn
+              ? connections.find(c => c.id === selectedConnId)
+              : manualLines.find(l => l.id === selectedLineId);
+            if (!line) return null;
+            let mx;
+            let my;
+            if (isConn) {
+              const from = items.find(i => i.id === line.fromId);
+              const to = items.find(i => i.id === line.toId);
+              if (!from || !to) return null;
+              mx = (from.x + from.w / 2 + to.x + to.w / 2) / 2;
+              my = (from.y + from.h / 2 + to.y + to.h / 2) / 2;
+            } else {
+              mx = (line.x1 + line.x2) / 2;
+              my = (line.y1 + line.y2) / 2;
+            }
+            const activeCol = line.color || (isConn ? '#3b82f6' : '#22c55e');
+            const activeStyle = line.style || 'solid';
+            const applyPatch = (patch) =>
+              isConn ? updateConnectionStyle(line.id, patch) : updateLineStyle(line.id, patch);
+            return (
+              <div
+                className="nb-line-options"
+                style={{ left: mx, top: my }}
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="nb-line-options-row">
+                  {['#22c55e','#ef4444','#3b82f6','#eab308','#a855f7','#f97316'].map(c => (
+                    <button
+                      key={c}
+                      className={`nb-line-swatch ${activeCol === c ? 'active' : ''}`}
+                      onClick={() => applyPatch({ color: c })}
+                      style={{ background: c }}
+                      title={c}
+                    />
+                  ))}
+                </div>
+                <div className="nb-line-options-row">
+                  {['solid','dashed','dotted'].map(s => (
+                    <button
+                      key={s}
+                      className={`nb-line-style-btn ${activeStyle === s ? 'active' : ''}`}
+                      onClick={() => applyPatch({ style: s })}
+                    >
+                      {s === 'solid' ? '━━' : s === 'dashed' ? '╌╌' : '┅┅'}
+                    </button>
+                  ))}
+                  <button
+                    className="nb-line-del-btn"
+                    title={isConn ? 'Remove connection' : 'Delete line'}
+                    onClick={() => isConn ? deleteConnection(line.id) : deleteLine(line.id)}
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
           {/* Preview line */}
           {drawPreview && drawStart && (() => {
             const dx = drawPreview.x - drawStart.x;
@@ -566,14 +1052,17 @@ export default function Notebook({ vaultContext, batch }) {
             const col = lineColor;
             const isSolid = lineStyle === 'solid';
             return (
-              <div style={{ position: 'absolute', pointerEvents: 'none', zIndex: 1, opacity: 0.6 }}>
+              <div style={{ position: 'absolute', pointerEvents: 'none', zIndex: 0, opacity: 0.6 }}>
                 <div style={{
                   position: 'absolute',
                   left: drawStart.x,
-                  top: drawStart.y,
+                  top: drawStart.y - (isSolid ? 1 : 0),
                   width: len,
-                  height: 0,
-                  borderTop: isSolid ? `3px solid ${col}` : lineStyle === 'dashed' ? `2px dashed ${col}` : `2px dotted ${col}`,
+                  height: isSolid ? 3 : 0,
+                  background: isSolid ? `linear-gradient(90deg, ${col}, ${col}cc)` : 'transparent',
+                  borderTop: isSolid ? 'none' : lineStyle === 'dashed' ? `2px dashed ${col}` : `2px dotted ${col}`,
+                  borderRadius: 2,
+                  filter: `drop-shadow(0 0 4px ${col})`,
                   transformOrigin: '0 0',
                   transform: `rotate(${angle}deg)`,
                 }} />
@@ -585,6 +1074,7 @@ export default function Notebook({ vaultContext, batch }) {
                   height: 8,
                   borderRadius: '50%',
                   background: col,
+                  filter: `drop-shadow(0 0 3px ${col})`,
                   opacity: 0.8,
                 }} />
               </div>
@@ -603,43 +1093,76 @@ export default function Notebook({ vaultContext, batch }) {
             const dy = y2 - y1;
             const len = Math.sqrt(dx * dx + dy * dy);
             const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+            const col = conn.color;
+            const connStyle = conn.style || 'solid';
+            const isSolid = connStyle === 'solid';
+            const connColorCss = col || accentBlue;
             return (
-              <div key={conn.id} style={{ position: 'absolute', pointerEvents: 'none', zIndex: 1 }}>
-                <div style={{
-                  position: 'absolute',
-                  left: x1,
-                  top: y1,
-                  width: len,
-                  height: 2,
-                  background: 'var(--accent-blue)',
-                  opacity: 0.7,
-                  transformOrigin: '0 0',
-                  transform: `rotate(${angle}deg)`,
-                }} />
+              <Fragment key={conn.id}>
+                <div style={{ position: 'absolute', pointerEvents: 'none', zIndex: 0 }}>
+                  <div style={{
+                    position: 'absolute',
+                    left: x1,
+                    top: y1 - (isSolid ? 1 : 0),
+                    width: len,
+                    height: isSolid ? 3 : 0,
+                    borderRadius: 2,
+                    background: isSolid
+                      ? col
+                        ? `linear-gradient(90deg, ${col}, ${col}cc)`
+                        : `linear-gradient(90deg, ${accentBlue}, ${accentPurple})`
+                      : 'transparent',
+                    borderTop: isSolid ? 'none' : connStyle === 'dashed' ? `2px dashed ${connColorCss}` : `2px dotted ${connColorCss}`,
+                    filter: `drop-shadow(0 0 5px ${connColorCss})`,
+                    transformOrigin: '0 0',
+                    transform: `rotate(${angle}deg)`,
+                  }} />
+                </div>
                 <div
+                  className={`nb-line-hit ${selectedConnId === conn.id ? 'selected' : ''}`}
+                  onClick={(e) => { e.stopPropagation(); setSelectedLineId(null); setSelectedConnId(prev => prev === conn.id ? null : conn.id); }}
+                  style={{
+                    position: 'absolute',
+                    left: x1,
+                    top: y1 - 7,
+                    width: len,
+                    height: 14,
+                    transformOrigin: '0 0',
+                    transform: `rotate(${angle}deg)`,
+                    cursor: 'pointer',
+                    pointerEvents: drawMode ? 'none' : 'auto',
+                    zIndex: 1,
+                  }}
+                  title="Edit connection"
+                />
+                <div
+                  className="nb-line-arrow"
                   onClick={(e) => { e.stopPropagation(); deleteConnection(conn.id); }}
                   style={{
                     position: 'absolute',
-                    left: x2 - 5,
-                    top: y2 - 5,
+                    left: (x1 + x2) / 2 - 5,
+                    top: (y1 + y2) / 2 - 5,
                     width: 10,
                     height: 10,
-                    background: 'var(--accent-blue)',
+                    background: connColorCss,
                     clipPath: 'polygon(0% 0%, 100% 50%, 0% 100%)',
+                    filter: `drop-shadow(0 0 3px ${connColorCss})`,
                     transform: `rotate(${angle}deg)`,
                     cursor: 'pointer',
                     pointerEvents: 'auto',
+                    zIndex: 3,
                   }}
                   title="Remove connection"
                 />
-              </div>
+              </Fragment>
             );
           })}
 
           {items.map(item => (
             <div
               key={item.id}
-              className={`nb-canvas-item ${connectFrom === item.id ? 'connecting' : ''} ${connectFrom && connectFrom !== 'ready' && connectFrom !== item.id ? 'connect-target' : ''}`}
+              className={`nb-canvas-item ${connectFrom === item.id ? 'connecting' : ''} ${connectFrom && connectFrom !== 'ready' && connectFrom !== item.id ? 'connect-target' : ''} ${resizingId === item.id ? 'resizing' : ''}`}
+              data-item-id={item.id}
               style={{ left: item.x, top: item.y, width: item.w, height: item.h }}
               onMouseDown={(e) => { if (connectFrom) { e.stopPropagation(); handleItemClick(item.id); } else { startDrag(e, item.id); } }}
             >
@@ -650,8 +1173,9 @@ export default function Notebook({ vaultContext, batch }) {
                   className={`nb-canvas-text ${editingId === item.id ? 'editing' : ''}`}
                   contentEditable={editingId === item.id}
                   suppressContentEditableWarning
-                  onBlur={(e) => { updateItemContent(item.id, e.currentTarget.textContent); setEditingId(null); }}
-                  onDoubleClick={(e) => { e.stopPropagation(); setEditingId(item.id); }}
+                  onInput={(e) => { if (editingId === item.id) { editedSessionRef.current = true; sizeToContent(item.id, e.currentTarget); } }}
+                  onBlur={(e) => { updateItemContent(item.id, e.currentTarget.textContent); if (editedSessionRef.current) sizeToContent(item.id, e.currentTarget); editedSessionRef.current = false; setEditingId(null); }}
+                  onDoubleClick={(e) => { e.stopPropagation(); editedSessionRef.current = false; setEditingId(item.id); }}
                 >
                   {item.content}
                 </div>
@@ -660,10 +1184,22 @@ export default function Notebook({ vaultContext, batch }) {
                 onMouseDown={e => e.stopPropagation()}>
                 <Trash2 size={12} />
               </button>
+              <div className="nb-resize-handle" title="Resize" onMouseDown={(e) => startResize(e, item.id)} />
             </div>
           ))}
+
+          {items.length === 0 && !drawMode && (
+            <div className="nb-canvas-empty-hint">
+              <ImageIcon size={22} />
+              <span>Paste a screenshot, image or text with <kbd>Ctrl</kbd>+<kbd>V</kbd>, or drag &amp; drop an image</span>
+            </div>
+          )}
         </div>
-      )}
+
+        {pasteFlash && (
+          <div className="nb-paste-flash">{pasteFlash}</div>
+        )}
+      </div>
     </div>
   );
 }

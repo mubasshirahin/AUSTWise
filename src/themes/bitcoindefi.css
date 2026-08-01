@@ -1133,14 +1133,14 @@
 /* ─── Routine card ─── */
 [data-theme="bitcoindefi"] .routine-item,
 [data-theme="bitcoindefi"] .notice-item,
-[data-theme="bitcoindefi"] .exam-course-card,
-[data-theme="bitcoindefi"] .exam-slot-display {
+[data-theme="bitcoindefi"] .exam-cell,
+[data-theme="bitcoindefi"] .exam-slot-item {
   transition: background var(--transition-fast);
 }
 
 [data-theme="bitcoindefi"] .routine-item:hover,
 [data-theme="bitcoindefi"] .notice-item:hover,
-[data-theme="bitcoindefi"] .exam-course-card:hover {
+[data-theme="bitcoindefi"] .exam-cell:hover {
   border-left-color: var(--btc-orange);
   background: rgba(247, 147, 26, 0.04);
 }

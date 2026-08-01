@@ -66,7 +66,7 @@ export default function ChillZonePage() {
         tabs={TABS}
         activeTab={activeTab}
         onChange={handleTabChange}
-        variant="chillzone"
+        variant="dashboard"
         compact
       />
 

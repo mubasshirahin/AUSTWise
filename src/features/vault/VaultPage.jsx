@@ -1,15 +1,13 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Archive, ArrowLeft, Users, StickyNote, BookOpen, HardDrive, Cpu } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Archive, ArrowLeft, Users, HardDrive, Cpu } from 'lucide-react';
 import VaultSelection from './VaultSelection';
 import VaultStepProgress from './VaultStepProgress';
 import VaultBatchSelector from './VaultBatchSelector';
 import MaterialFolders from './MaterialFolders';
-import Notebook from './Notebook';
 import GliderTabs from '../../components/GliderTabs';
 import { loadVaultSelection, saveVaultSelection } from './vaultSelectionStorage';
 import './VaultPage.css';
 import './VaultBatchSelector.css';
-import './Notebook.css';
 import '../../components/PageHero.css';
 
 function getSelectionStep(department, yearSem, batch) {
@@ -28,7 +26,6 @@ export default function VaultPage() {
     const saved = loadVaultSelection();
     return saved?.vaultTab || 'batch-drive';
   });
-  const [activeTab, setActiveTab] = useState('materials');
   const [transitioning, setTransitioning] = useState(null);
 
   const isReady = Boolean(department && yearSem && batch);
@@ -40,8 +37,8 @@ export default function VaultPage() {
   );
 
   useEffect(() => {
-    saveVaultSelection({ department, yearSem, activeTab, vaultTab });
-  }, [department, yearSem, activeTab, vaultTab]);
+    saveVaultSelection({ department, yearSem, vaultTab });
+  }, [department, yearSem, vaultTab]);
 
   const handleSelectDepartment = (nextDepartment) => {
     setDepartment(nextDepartment);
@@ -52,12 +49,10 @@ export default function VaultPage() {
   const handleSelectYearSem = (nextYearSem) => {
     setYearSem(nextYearSem);
     setBatch(null);
-    setActiveTab('materials');
   };
 
   const handleSelectBatch = (nextBatch) => {
     setBatch(nextBatch);
-    setActiveTab('materials');
   };
 
   const handleBackToDepartments = () => {
@@ -100,19 +95,6 @@ export default function VaultPage() {
     { id: 'carbon-vault', label: 'Carbon Vault', icon: Cpu, desc: 'Coming soon', color: 'emerald' },
   ];
 
-  const tabs = [
-    { id: 'materials', label: 'Materials', icon: BookOpen },
-    { id: 'notebook', label: 'Notebook', icon: StickyNote },
-  ];
-
-  const renderActiveTab = () => {
-    switch (activeTab) {
-      case 'notebook':
-        return <Notebook vaultContext={vaultContext} batch={batch} />;
-      default:
-        return <MaterialFolders vaultContext={vaultContext} />;
-    }
-  };
 
   const renderVaultContent = () => {
     if (vaultTab === 'carbon-vault') {
@@ -182,22 +164,7 @@ export default function VaultPage() {
         </div>
 
         <div className="vault-content-area">
-          <div className="vault-inner-tabs">
-            {tabs.map(tab => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  className={`vault-inner-tab ${activeTab === tab.id ? 'active' : ''}`}
-                  onClick={() => setActiveTab(tab.id)}
-                >
-                  <Icon size={14} />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-          {renderActiveTab()}
+          <MaterialFolders vaultContext={vaultContext} />
         </div>
       </div>
     );
@@ -231,7 +198,7 @@ export default function VaultPage() {
         tabs={vaultTabs}
         activeTab={vaultTab}
         onChange={setVaultTab}
-        variant="vault"
+        variant="dashboard"
       />
 
       <div className="vault-content-area" key={vaultTab}>

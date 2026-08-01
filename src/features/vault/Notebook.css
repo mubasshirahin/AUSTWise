@@ -21,47 +21,11 @@
   flex-wrap: wrap;
 }
 
-.nb-toolbar-left {
-  display: flex;
-  gap: 2px;
-}
-
-.nb-mode-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--text-tertiary);
-  font-size: 10px;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
-  font-weight: 500;
-}
-
-.nb-mode-btn:hover {
-  background: var(--bg-input);
-  color: var(--text-primary);
-}
-
-.nb-mode-btn.active {
-  background: var(--accent-blue);
-  color: #fff;
-}
-
-.nb-format-bar,
 .nb-canvas-tools {
   display: flex;
   align-items: center;
   gap: 1px;
-  margin-left: 6px;
   padding-left: 6px;
-  border-left: 1px solid var(--border-primary);
 }
 
 .nb-fmt-btn {
@@ -152,47 +116,32 @@
   opacity: 0.6;
 }
 
-/* ─── Editor Mode ─── */
-.nb-editor {
-  padding: var(--sp-5);
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  font-size: var(--fs-md);
-  line-height: 1.7;
-  outline: none;
+/* ─── Canvas ─── */
+.nb-canvas-wrap {
+  position: relative;
+  overflow: auto;
+  max-height: min(72vh, 920px);
   min-height: 400px;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--accent-blue) 30%, transparent) transparent;
 }
 
-.nb-editor:focus {
-  box-shadow: inset 0 0 0 1px var(--accent-blue-glow);
+.nb-canvas-wrap::-webkit-scrollbar { width: 8px; height: 8px; }
+.nb-canvas-wrap::-webkit-scrollbar-track { background: transparent; }
+.nb-canvas-wrap::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--accent-blue) 28%, transparent);
+  border-radius: 8px;
+}
+.nb-canvas-wrap::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--accent-blue) 55%, transparent);
 }
 
-.nb-editor img {
-  max-width: 100%;
-  border-radius: 6px;
-  margin: 8px 0;
-  box-shadow: 0 1px 8px rgba(0,0,0,0.08);
-}
-
-.nb-editor h1 { font-size: 1.8em; margin: 16px 0 8px; }
-.nb-editor h2 { font-size: 1.4em; margin: 14px 0 6px; }
-.nb-editor h3 { font-size: 1.2em; margin: 12px 0 4px; }
-.nb-editor ul, .nb-editor ol { padding-left: 24px; margin: 8px 0; }
-.nb-editor li { margin: 4px 0; }
-.nb-editor blockquote {
-  border-left: 3px solid var(--accent-blue);
-  padding-left: var(--sp-3);
-  margin: 8px 0;
-  color: var(--text-secondary);
-  font-style: italic;
-}
-
-/* ─── Canvas Mode ─── */
 .nb-canvas {
   position: relative;
   overflow: visible;
   min-height: 800px;
   background: var(--bg-primary);
+  outline: none;
 }
 
 .nb-canvas-grid {
@@ -208,26 +157,45 @@
 
 .nb-canvas-item {
   position: absolute;
+  z-index: 2; /* keep items above the connection/drawing lines */
   cursor: grab;
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
-  background: var(--bg-card);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent-blue) 9%, var(--bg-card)) 0%, var(--bg-card) 62%);
+  border: 1px solid color-mix(in srgb, var(--accent-blue) 45%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent-blue) 10%, transparent),
+    0 0 12px -2px color-mix(in srgb, var(--accent-blue) 40%, transparent),
+    0 0 28px -6px color-mix(in srgb, var(--accent-blue) 22%, transparent),
+    0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .nb-canvas-item:hover {
-  box-shadow: 0 4px 16px rgba(0,0,0,0.1), 0 0 0 1px var(--accent-blue);
+  border-color: color-mix(in srgb, var(--accent-blue) 70%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent-blue) 18%, transparent),
+    0 0 18px -2px color-mix(in srgb, var(--accent-blue) 65%, transparent),
+    0 0 42px -8px color-mix(in srgb, var(--accent-blue) 38%, transparent),
+    0 4px 14px rgba(0, 0, 0, 0.12);
   z-index: 10;
 }
 
 .nb-canvas-item.connect-target:hover {
-  box-shadow: 0 4px 16px rgba(0,0,0,0.1), 0 0 0 1px var(--accent-rose);
+  border-color: color-mix(in srgb, var(--accent-rose) 70%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent-rose) 18%, transparent),
+    0 4px 16px rgba(0,0,0,0.1),
+    0 0 16px -2px color-mix(in srgb, var(--accent-rose) 55%, transparent);
 }
 
 .nb-canvas-item:active {
   cursor: grabbing;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 0 0 1px var(--accent-blue);
+  border-color: color-mix(in srgb, var(--accent-blue) 65%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent-blue) 16%, transparent),
+    0 2px 8px rgba(0,0,0,0.08),
+    0 0 14px -2px color-mix(in srgb, var(--accent-blue) 50%, transparent);
 }
 
 .nb-canvas-text {
@@ -237,8 +205,9 @@
   font-size: var(--fs-sm);
   color: var(--text-primary);
   outline: none;
-  overflow-y: auto;
+  overflow: visible;
   word-wrap: break-word;
+  white-space: pre-wrap; /* keep line breaks from pasted multi-line text */
 }
 
 .nb-canvas-text:focus {
@@ -281,6 +250,45 @@
   background: var(--accent-rose);
 }
 
+/* ─── Real-time resize handle ─── */
+.nb-resize-handle {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  cursor: nwse-resize;
+  background: color-mix(in srgb, var(--accent-blue) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-blue) 55%, transparent);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent-blue) 45%, transparent);
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease, transform 0.15s ease;
+  touch-action: none;
+}
+
+/* Always show the handle while the item is being resized */
+.nb-canvas-item.resizing .nb-resize-handle {
+  opacity: 1;
+}
+
+.nb-canvas-item:hover .nb-resize-handle {
+  opacity: 1;
+}
+
+.nb-resize-handle:hover {
+  background: var(--accent-blue);
+  transform: scale(1.15);
+}
+
+/* Highlight the box while resizing */
+.nb-canvas-item.resizing {
+  border-color: color-mix(in srgb, var(--accent-blue) 90%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent-blue) 25%, transparent),
+    0 0 18px -2px color-mix(in srgb, var(--accent-blue) 70%, transparent);
+}
+
 /* ─── Connections ─── */
 .nb-canvas-lines {
   position: absolute;
@@ -301,6 +309,108 @@
   box-shadow: 0 0 0 2px var(--accent-blue), 0 0 16px var(--accent-blue-glow);
 }
 
+/* ─── Line selection & options popover ─── */
+.nb-line-hit {
+  border-radius: 8px;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.nb-line-hit:hover {
+  background: color-mix(in srgb, var(--accent-blue) 12%, transparent);
+}
+
+.nb-line-hit.selected {
+  background: color-mix(in srgb, var(--accent-blue) 14%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent-blue) 45%, transparent),
+    0 0 14px -2px color-mix(in srgb, var(--accent-blue) 50%, transparent);
+}
+
+.nb-line-options {
+  position: absolute;
+  z-index: 40;
+  transform: translate(-50%, -100%) translateY(-14px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg-card) 92%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-blue) 40%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent-blue) 10%, transparent),
+    0 0 16px -2px color-mix(in srgb, var(--accent-blue) 40%, transparent),
+    0 8px 24px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(8px);
+  animation: fadeInUp 0.15s ease;
+}
+
+.nb-line-options-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.nb-line-swatch {
+  width: 18px;
+  height: 18px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  box-sizing: content-box;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+
+.nb-line-swatch:hover { transform: scale(1.15); }
+
+.nb-line-swatch.active {
+  outline: 2px solid color-mix(in srgb, var(--text-primary) 75%, transparent);
+  outline-offset: 1px;
+}
+
+.nb-line-style-btn {
+  padding: 3px 8px;
+  border: 1px solid var(--border-primary);
+  border-radius: 6px;
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.nb-line-style-btn:hover {
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--accent-blue) 50%, transparent);
+}
+
+.nb-line-style-btn.active {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #fff;
+}
+
+.nb-line-del-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: 4px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.nb-line-del-btn:hover {
+  background: var(--accent-rose-glow);
+  color: var(--accent-rose);
+}
+
 .nb-canvas-item.connect-target {
   cursor: crosshair;
   animation: nb-pulse 1s infinite;
@@ -319,4 +429,76 @@
 .nb-canvas.draw-active .nb-canvas-item {
   cursor: crosshair;
   pointer-events: none;
+}
+
+/* ─── Paste (Ctrl+V) ─── */
+.nb-paste-flash {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  background: var(--accent-blue);
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  animation: fadeInUp 0.25s ease;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.nb-canvas-empty-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  pointer-events: none;
+  opacity: 0.55;
+  text-align: center;
+}
+
+.nb-canvas-empty-hint kbd {
+  padding: 1px 6px;
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  background: var(--bg-input);
+  font-family: inherit;
+  font-size: 11px;
+}
+
+/* ─── Export: hide interactive UI from PNG/PDF captures ─── */
+.nb-canvas.nb-exporting .nb-line-hit,
+.nb-canvas.nb-exporting .nb-line-options,
+.nb-canvas.nb-exporting .nb-line-arrow,
+.nb-canvas.nb-exporting .nb-canvas-del,
+.nb-canvas.nb-exporting .nb-canvas-empty-hint,
+.nb-canvas.nb-exporting .nb-resize-handle {
+  display: none !important;
+}
+
+/* html2canvas can't parse color-mix()/gradients on modern CSS — fall back to
+   plain colors during capture so the export never fails silently. */
+.nb-canvas.nb-exporting .nb-canvas-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.nb-canvas.nb-exporting .nb-canvas-text:focus {
+  box-shadow: none;
+}
+
+.nb-canvas.nb-exporting .nb-canvas-item.connecting,
+.nb-canvas.nb-exporting .nb-canvas-item.connect-target {
+  box-shadow: none !important;
+  animation: none !important;
 }

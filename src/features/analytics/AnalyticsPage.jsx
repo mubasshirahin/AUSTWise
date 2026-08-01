@@ -67,7 +67,7 @@ export default function AnalyticsPage() {
         tabs={gradeLabTabs}
         activeTab={activeTab}
         onChange={handleTabChange}
-        variant="gradelab"
+        variant="dashboard"
       />
 
       <div className="analytics-content-area" key={activeTab}>

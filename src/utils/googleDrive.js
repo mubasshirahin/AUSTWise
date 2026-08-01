@@ -35,6 +35,10 @@ export async function fetchDriveFolderFiles(folderId, apiKey) {
     throw new Error('Folder ID is required');
   }
 
+  if (!apiKey) {
+    throw new Error('Google API key is not configured. Add VITE_GOOGLE_API_KEY to your .env file and restart the server.');
+  }
+
   const query = "'" + folderId + "' in parents and trashed = false";
   const fields = 'files(id, name, mimeType, size, createdTime, modifiedTime, webViewLink, thumbnailLink, iconLink)';
   let allFiles = [];

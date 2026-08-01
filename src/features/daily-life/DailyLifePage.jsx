@@ -66,7 +66,7 @@ export default function DailyLifePage() {
         tabs={TABS}
         activeTab={activeTab}
         onChange={handleTabChange}
-        variant="dailylife"
+        variant="dashboard"
         compact
       />
 

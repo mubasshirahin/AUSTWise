@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import RoutineCard from './RoutineCard';
 import ExamTracker from './ExamTracker';
@@ -11,9 +11,8 @@ import RoutineAttendanceTracker from './RoutineAttendanceTracker';
 import GliderTabs from '../../components/GliderTabs';
 import { leaderboardData } from '../../data/mockData';
 import {
-  TrendingUp, Gauge, Percent, BookOpen,
-  CalendarDays, Zap, AlertTriangle, Calendar,
-  Hourglass, BellRing, Flame, X, Trophy, Medal, Award, Star, Target, Sparkles, Sun, BarChart3, UserCheck,
+  Gauge, Percent, BookOpen, CalendarDays, Zap, AlertTriangle, Calendar,
+  Flame, X, Trophy, Medal, Award, Star, Target, Sparkles, Sun, BarChart3,
 } from 'lucide-react';
 import { getUserStorageItem, getCurrentUserId } from '../../utils/authStorage';
 import { useAuth } from '../../context/AuthContext';
@@ -232,7 +231,7 @@ function StudyStreak() {
 }
 
 const focusModes = [
-  { id: 'stats', label: 'Quick Stats', icon: Gauge, desc: 'CGPA & metrics', color: 'blue' },
+  { id: 'stats', label: 'Quick Stats', icon: BarChart3, desc: 'CGPA & metrics', color: 'blue' },
   { id: 'routine', label: 'Routine', icon: CalendarDays, desc: 'Weekly timetable', color: 'cyan' },
   { id: 'calendar', label: 'Semester View', icon: Calendar, desc: '14-week view', color: 'purple' },
   { id: 'exams', label: 'Zero Hour', icon: BookOpen, desc: 'Quiz, Mid & Final', color: 'amber' },
@@ -357,61 +356,6 @@ function useAnimatedValue(target, duration = 900) {
   return display;
 }
 
-function RunningClock({ size = 18 }) {
-  useEffect(() => {
-    if (document.getElementById('rc-style')) return;
-    const style = document.createElement('style');
-    style.id = 'rc-style';
-    style.textContent = `
-      @keyframes rc-min { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
-      @keyframes rc-hour { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
-      .rc-min { animation: rc-min 60s linear infinite; transform-origin: 50% 50%; }
-      .rc-hour { animation: rc-hour 3600s linear infinite; transform-origin: 50% 50%; }
-    `;
-    document.head.appendChild(style);
-  }, []);
-
-  const s = size;
-  const cx = s / 2, cy = s / 2, r = s / 2 - 1;
-  return (
-    <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx={cx} cy={cy} r={r} />
-      <line className="rc-hour" x1={cx} y1={cy} x2={cx} y2={cy - r * 0.5} stroke="currentColor" strokeWidth="1.5" />
-      <line className="rc-min" x1={cx} y1={cy} x2={cx} y2={cy - r * 0.75} stroke="currentColor" strokeWidth="1" />
-    </svg>
-  );
-}
-
-function FlippingBook({ size = 18 }) {
-  useEffect(() => {
-    if (document.getElementById('fb-style')) return;
-    const s = document.createElement('style');
-    s.id = 'fb-style';
-    s.textContent = `
-      @keyframes fb-mv {
-        0%,100%{transform:translateX(0);opacity:.7}
-        25%{transform:translateX(-3px);opacity:.3}
-        50%{transform:translateX(-6px);opacity:0}
-        75%{transform:translateX(0);opacity:.7}
-      }
-      .fb1{animation:fb-mv 2.4s ease-in-out infinite}
-      .fb2{animation:fb-mv 2.4s ease-in-out .8s infinite}
-      .fb3{animation:fb-mv 2.4s ease-in-out 1.6s infinite}
-    `;
-    document.head.appendChild(s);
-  }, []);
-
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
-      <path d="M12 2v20" opacity="0.15" />
-      <path className="fb1" d="M16 5v14" opacity="0.6" />
-      <path className="fb2" d="M17 6v12" opacity="0.4" strokeWidth="1" />
-      <path className="fb3" d="M15 6v12" opacity="0.4" strokeWidth="1" />
-    </svg>
-  );
-}
-
 function QuickStats() {
   const [userResults, setUserResults] = useState(null);
   const [isGuest, setIsGuest] = useState(false);
@@ -458,6 +402,7 @@ function QuickStats() {
         avgAttendance: avgAttendance !== null ? avgAttendance : '—',
         upcomingDeadlines: pending,
         creditsCompleted: 0,
+        semestersCompleted: 0,
       };
     }
 
@@ -467,7 +412,13 @@ function QuickStats() {
       return total + sem.courses.reduce((sum, c) => (c.point !== null ? sum + (Number(c.credit) || 0) : sum), 0);
     }, 0);
 
-    return { currentCgpa, avgAttendance: avgAttendance !== null ? avgAttendance : '—', upcomingDeadlines: pending, creditsCompleted };
+    return {
+      currentCgpa,
+      avgAttendance: avgAttendance !== null ? avgAttendance : '—',
+      upcomingDeadlines: pending,
+      creditsCompleted,
+      semestersCompleted: completedSems.length,
+    };
   }, [userResults, isGuest]);
 
   const animatedCgpa = useAnimatedValue(stats.currentCgpa);
@@ -479,72 +430,104 @@ function QuickStats() {
 
   const items = [
     {
+      code: 'CGPA',
       label: 'Current CGPA',
+      icon: Gauge,
+      tone: 'blue',
       value: hasCgpa ? animatedCgpa : '0.00',
       placeholder: !hasCgpa,
-      icon: BarChart3,
-      color: 'var(--accent-blue)',
-      bg: 'var(--accent-blue-glow)',
-      accent: 'blue',
+      // Risk tier: 0 great, 1 good, 2 okay, 3 poor.
+      count: !hasCgpa ? 0 : (stats.currentCgpa >= 3.5 ? 0 : stats.currentCgpa >= 3.0 ? 1 : stats.currentCgpa >= 2.5 ? 2 : 3),
       trend: hasCgpa ? (stats.currentCgpa >= 3.0 ? 'up' : stats.currentCgpa >= 2.5 ? 'stable' : 'down') : null,
     },
     {
+      code: 'ATT',
       label: 'Avg. Attendance',
+      icon: Percent,
+      tone: 'emerald',
       value: hasAttendance ? `${stats.avgAttendance}%` : '—',
       placeholder: !hasAttendance,
-      icon: UserCheck,
-      color: 'var(--accent-emerald)',
-      bg: 'var(--accent-emerald-glow)',
-      accent: 'emerald',
+      // Risk tier: 0 fine, 1 slipping, 2 risky, 3 critical (75% minimum).
+      count: !hasAttendance ? 0 : (stats.avgAttendance >= 75 ? 0 : stats.avgAttendance >= 70 ? 1 : stats.avgAttendance >= 65 ? 2 : 3),
       trend: null,
     },
     {
+      code: 'DL',
       label: 'Pending Deadlines',
+      icon: Calendar,
+      tone: 'amber',
       value: animatedDeadlines,
-      icon: RunningClock,
-      color: stats.upcomingDeadlines > 3 ? 'var(--accent-rose)' : 'var(--accent-amber)',
-      bg: stats.upcomingDeadlines > 3 ? 'var(--accent-rose-glow)' : 'var(--accent-amber-glow)',
-      accent: stats.upcomingDeadlines > 3 ? 'rose' : 'amber',
+      placeholder: false,
+      count: stats.upcomingDeadlines,
       trend: null,
     },
     {
+      code: 'CR',
       label: 'Credits Completed',
+      icon: Award,
+      tone: 'purple',
       value: animatedCredits,
-      icon: FlippingBook,
-      color: 'var(--accent-purple)',
-      bg: 'var(--accent-purple-glow)',
-      accent: 'purple',
+      placeholder: !hasCgpa,
+      count: hasCgpa ? stats.semestersCompleted : 0,
       trend: null,
     },
   ];
 
-  return (
-    <div className="dashboard-quick-stats stagger-children">
-      {items.map((item, i) => {
-        const Icon = item.icon;
-        return (
-          <div
-            key={item.label}
-            className={`quick-stat-card glass-card-static quick-stat-${item.accent} animate-fadeInUp`}
-            style={{ animationDelay: `${i * 80}ms` }}
+  // Shared stat-cell renderer — used identically for every metric cell.
+  const renderStatCell = (item, idx) => {
+    const isActive = idx === 0 && hasCgpa;
+    const Icon = item.icon;
+    return (
+      <div
+        key={item.code}
+        className={`schedule-day-card quick-stat-cell${isActive ? ' today' : ''}${item.placeholder ? ' placeholder' : ''}`}
+        style={{
+          animationDelay: `${idx * 70}ms`,
+        }}
+      >
+        <div className="quick-stat-top">
+          <span className={`quick-stat-icon tone-${item.tone}`}>
+            <Icon size={14} />
+          </span>
+          <span className="quick-stat-name">{item.label}</span>
+        </div>
+        <div className="quick-stat-value-row">
+          <span
+            className={`quick-stat-value${item.placeholder ? ' placeholder' : ''}`}
+            style={{ animationDelay: `${idx * 70 + 140}ms` }}
           >
-            <div className="quick-stat-icon" style={{ background: item.bg, color: item.color, position: 'relative' }}>
-              <Icon size={18} />
-            </div>
-            <div className="quick-stat-body">
-              <div className="quick-stat-value-row">
-                <span className={`quick-stat-value${item.placeholder ? ' placeholder' : ''}`} style={{ color: item.color }}>{item.value}</span>
-                {item.trend && (
-                  <span className={`quick-stat-trend trend-${item.trend}`}>
-                    {item.trend === 'up' ? '↗' : item.trend === 'down' ? '↘' : '→'}
-                  </span>
-                )}
-              </div>
-              <span className="quick-stat-label">{item.label}</span>
-            </div>
+            {item.value}
+          </span>
+          {item.trend && (
+            <span className={`quick-stat-trend trend-${item.trend}`}>
+              {item.trend === 'up' ? '↗' : item.trend === 'down' ? '↘' : '→'}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="glass-card-static schedule-widget quick-stats-widget animate-fadeInUp">
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <BarChart3 size={20} />
           </div>
-        );
-      })}
+          <div>
+            <span className="schedule-overline">Semester Overview</span>
+            <p className="schedule-title">Quick Stats</p>
+            <span className="schedule-subtitle">CGPA · attendance · deadlines · credits</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="schedule-dotted-divider" />
+
+      <div className="quick-stats-grid">
+        {items.map(renderStatCell)}
+      </div>
     </div>
   );
 }
@@ -619,14 +602,6 @@ export default function DashboardPage() {
 
       {isVisible('stats') && (
         <section className="dash-section-group">
-          <div className="section-header">
-            <h2 className="section-title">
-              <span className="icon" style={{ background: 'var(--accent-blue-glow)', color: 'var(--accent-blue)' }}>
-                <Gauge size={16} />
-              </span>
-              Quick Statistics
-            </h2>
-          </div>
           <div className="dash-section">
             <QuickStats />
           </div>
@@ -641,15 +616,6 @@ export default function DashboardPage() {
 
       {isVisible('routine') && (
         <section className="dash-section-group">
-          <div className="section-header">
-            <h2 className="section-title">
-              <span className="icon" style={{ background: 'var(--accent-cyan-glow)', color: 'var(--accent-cyan)' }}>
-                <CalendarDays size={16} />
-              </span>
-              Weekly Timetable
-            </h2>
-            <p className="section-subtitle">Traditional AUST timetable — 50 min per slot (SUN-THU)</p>
-          </div>
           <div className="dash-section">
             <WeeklyPlanner />
           </div>
@@ -658,14 +624,6 @@ export default function DashboardPage() {
 
       {isVisible('calendar') && (
         <section className="dash-section-group">
-          <div className="section-header">
-            <h2 className="section-title">
-              <span className="icon" style={{ background: 'var(--accent-purple-glow)', color: 'var(--accent-purple)' }}>
-                <Calendar size={16} />
-              </span>
-              <span>Semester View</span>
-            </h2>
-          </div>
           <div className="dash-section">
             <WeekSchedule />
           </div>
@@ -675,15 +633,6 @@ export default function DashboardPage() {
       <div className="dashboard-grid">
         {isVisible('exams') && (
           <section className="dash-section-group" style={{ gridColumn: '1 / -1' }}>
-            <div className="section-header">
-              <h2 className="section-title">
-                <span className="icon" style={{ background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)' }}>
-                  <BookOpen size={16} />
-                </span>
-                Zero Hour
-              </h2>
-              <p className="section-subtitle">Quiz, Mid &amp; Final exam dates &amp; syllabus</p>
-            </div>
             <div className="dash-section">
               <ExamTracker />
             </div>
@@ -692,15 +641,6 @@ export default function DashboardPage() {
         <div className="dashboard-main-col">
           {isVisible('routine_day') && (
             <section className="dash-section-group">
-              <div className="section-header">
-                <h2 className="section-title">
-                  <span className="icon" style={{ background: 'var(--accent-blue-glow)', color: 'var(--accent-blue)' }}>
-                    <CalendarDays size={16} />
-                  </span>
-                  Daily Flow
-                </h2>
-                <p className="section-subtitle">Stay productive and attend class or study</p>
-              </div>
               <div className="dash-section">
                 <RoutineCard />
               </div>
@@ -708,16 +648,15 @@ export default function DashboardPage() {
           )}
           {isVisible('attendance') && (
             <section className="dash-section-group">
-              <div className="section-header">
-                <h2 className="section-title">
-                  <span className="icon" style={{ background: 'var(--accent-emerald-glow)', color: 'var(--accent-emerald)' }}>
-                    <Percent size={16} />
-                  </span>
-                  Attendance Progress
-                </h2>
-              </div>
               <div className="dash-section">
                 <RoutineAttendanceTracker />
+              </div>
+            </section>
+          )}
+          {isVisible('notices') && (
+            <section className="dash-section-group">
+              <div className="dash-section">
+                <NoticeBoard />
               </div>
             </section>
           )}
@@ -726,31 +665,8 @@ export default function DashboardPage() {
         <div className="dashboard-side-col">
           {isVisible('deadlines') && (
             <section className="dash-section-group">
-              <div className="section-header">
-                <h2 className="section-title">
-                  <span className="icon" style={{ background: 'var(--accent-rose-glow)', color: 'var(--accent-rose)' }}>
-                    <Hourglass size={16} />
-                  </span>
-                  Deadlines
-                </h2>
-              </div>
               <div className="dash-section">
                 <DeadlineTicker />
-              </div>
-            </section>
-          )}
-          {isVisible('notices') && (
-            <section className="dash-section-group">
-              <div className="section-header">
-                <h2 className="section-title">
-                  <span className="icon" style={{ background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)' }}>
-                    <BellRing size={16} />
-                  </span>
-                  Notice Board
-                </h2>
-              </div>
-              <div className="dash-section">
-                <NoticeBoard />
               </div>
             </section>
           )}

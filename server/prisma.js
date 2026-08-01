@@ -1100,3 +1100,116 @@ export async function deleteCourse(code) {
 
   return getPrisma().course.delete({ where: { code } });
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Shared Routines (CRs publish their class routine for everyone to load)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// AUST CR capacity: 7 four-year depts (CSE, EEE, CE, ME, IPE, TE, BBA)
+// × 8 semesters × 3 sections × 2 lab groups = 336, plus ARCH (10 semesters)
+// × 3 sections × 2 lab groups = 60. Total = 396 CR slots.
+export const SHARED_ROUTINE_TOTAL_SLOTS = 396;
+
+export function sharedRoutineSlotKey(record) {
+  return `${record.department || ''}|${record.yearSemester || ''}|${record.section || ''}|${record.labSection || ''}`;
+}
+
+export async function listSharedRoutines() {
+  if (!_prismaAvailable) {
+    const list = await readJson('shared_routines.json');
+    return list.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  }
+
+  return getPrisma().sharedRoutine.findMany({ orderBy: { updatedAt: 'desc' } });
+}
+
+export async function getSharedRoutineBySlot(slot) {
+  if (!_prismaAvailable) {
+    const list = await readJson('shared_routines.json');
+    return list.find(r => sharedRoutineSlotKey(r) === sharedRoutineSlotKey(slot)) || null;
+  }
+
+  return getPrisma().sharedRoutine.findFirst({
+    where: {
+      department: slot.department,
+      yearSemester: slot.yearSemester,
+      section: slot.section,
+      labSection: slot.labSection,
+    },
+  });
+}
+
+// Publishing a routine replaces any existing routine for the same CR slot.
+export async function upsertSharedRoutine(data) {
+  const record = {
+    id: data.id || null,
+    crId: data.crId || '',
+    crName: data.crName || '',
+    department: data.department || '',
+    yearSemester: data.yearSemester || '',
+    section: data.section || '',
+    labSection: data.labSection || '',
+    routine: typeof data.routine === 'string' ? data.routine : JSON.stringify(data.routine || {}),
+    weekDays: typeof data.weekDays === 'string' ? data.weekDays : JSON.stringify(data.weekDays || []),
+    createdAt: data.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (!_prismaAvailable) {
+    const list = await readJson('shared_routines.json');
+    const idx = list.findIndex(r => sharedRoutineSlotKey(r) === sharedRoutineSlotKey(record));
+    if (idx !== -1) {
+      record.id = list[idx].id;
+      record.createdAt = list[idx].createdAt;
+      list[idx] = record;
+    } else {
+      record.id = Math.random().toString(36).substring(2, 11);
+      list.push(record);
+    }
+    await writeJson('shared_routines.json', list);
+    return record;
+  }
+
+  const p = getPrisma();
+  const existing = await p.sharedRoutine.findFirst({
+    where: {
+      department: record.department,
+      yearSemester: record.yearSemester,
+      section: record.section,
+      labSection: record.labSection,
+    },
+  });
+  if (existing) {
+    return p.sharedRoutine.update({
+      where: { id: existing.id },
+      data: { crId: record.crId, crName: record.crName, routine: record.routine, weekDays: record.weekDays },
+    });
+  }
+  return p.sharedRoutine.create({ data: record });
+}
+
+export async function deleteSharedRoutineBySlot(slot) {
+  if (!_prismaAvailable) {
+    let list = await readJson('shared_routines.json');
+    const initialLen = list.length;
+    list = list.filter(r => sharedRoutineSlotKey(r) !== sharedRoutineSlotKey(slot));
+    await writeJson('shared_routines.json', list);
+    return list.length < initialLen;
+  }
+
+  const p = getPrisma();
+  const deleted = await p.sharedRoutine.deleteMany({
+    where: {
+      department: slot.department,
+      yearSemester: slot.yearSemester,
+      section: slot.section,
+      labSection: slot.labSection,
+    },
+  });
+  return deleted.count > 0;
+}
+
+export async function getSharedRoutineStats() {
+  const list = await listSharedRoutines();
+  return { shared: list.length, total: SHARED_ROUTINE_TOTAL_SLOTS };
+}

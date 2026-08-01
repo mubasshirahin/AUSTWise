@@ -17,22 +17,6 @@
   --page-hero-gradient-start: var(--accent-purple);
 }
 
-/* ── GliderTabs variant override ── */
-.glider-tabs-productivity .glider-tabs-glider {
-  background: linear-gradient(
-    135deg,
-    var(--bg-card) 0%,
-    color-mix(in srgb, var(--accent-purple) 10%, var(--bg-card)) 100%
-  );
-  box-shadow:
-    var(--shadow-md),
-    0 0 0 1px color-mix(in srgb, var(--accent-purple) 18%, transparent);
-}
-
-.glider-tabs-productivity .glider-tab.active .glider-tab-icon {
-  background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
-}
-
 /* ── Tab content wrapper ── */
 /* Sub-pages rendered inside tabs should NOT show their own hero headers */
 .productivity-tab-content {

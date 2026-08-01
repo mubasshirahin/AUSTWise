@@ -6,10 +6,10 @@ import { getUnreadCount } from '../utils/messageStorage';
 import {
   LayoutDashboard, CalendarDays, BarChart3, BookOpen, MapPin, Users, ShoppingBag, Settings, MessageSquare,
   LogIn, Shield, Eye, Megaphone, Utensils,
-  Library, FileText, FolderOpen, FileSpreadsheet, Map,
-  ChevronLeft, ChevronRight, Crown, ClipboardCheck,
-  UtensilsCrossed, NotebookPen, Coffee,
-  DollarSign, AlarmClock, Zap, Home, Moon
+  Library, FileText, FolderOpen, FileSpreadsheet,
+  ChevronLeft, ChevronRight, Crown,
+  NotebookPen, Coffee,
+  Zap, Home, Moon
 } from 'lucide-react';
 import './Sidebar.css';
 
@@ -19,6 +19,7 @@ const navItems = [
   { path: '/analytics', label: 'Grade Lab', icon: BarChart3 },
   { path: '/campus', label: 'InsideAUST', icon: MapPin },
   { path: '/vault', label: 'Resource Vault', icon: BookOpen },
+  { path: '/notebook', label: 'Notebook', icon: NotebookPen },
   { path: '/community', label: 'Community', icon: Users },
   { path: '/messages', label: 'ConnectBox', icon: MessageSquare },
   { path: '/productivity', label: 'Productivity', icon: Zap },
@@ -62,6 +63,7 @@ export default function Sidebar({ collapsed, onToggle }) {
       { path: '/settings', label: 'Settings', icon: Settings },
       { path: '/daily-life', label: 'Daily Life', icon: Home },
       { path: '/productivity', label: 'Productivity', icon: Zap },
+      { path: '/notebook', label: 'Notebook', icon: NotebookPen },
       { id: 'toggle', label: 'Collapse', icon: ChevronLeft },
     ];
   }

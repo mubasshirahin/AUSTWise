@@ -16,9 +16,9 @@ const campusTabs = [
   { id: 'faculty', label: 'Faculty Status',   icon: Users,           color: 'amber',   desc: 'Office hours' },
   { id: 'library', label: 'Library Pulse',    icon: Library,         color: 'emerald', desc: 'Occupancy' },
   { id: 'canteen', label: 'Canteen Menu',     icon: UtensilsCrossed, color: 'rose',    desc: "Today's menu" },
-  { id: 'bus',     label: 'Bus Tracker',      icon: Bus,             color: 'indigo',  desc: 'Shuttle routes' },
+  { id: 'bus',     label: 'Bus Tracker',      icon: Bus,             color: 'cyan',    desc: 'Shuttle routes' },
   { id: 'bhara',     label: 'Bhara Koto',       icon: Banknote,        color: 'amber',   desc: 'Fee tracker' },
-  { id: 'classroom', label: 'Free Rooms',   icon: DoorOpen,         color: 'violet',  desc: 'Find available rooms' },
+  { id: 'classroom', label: 'Free Rooms',   icon: DoorOpen,         color: 'purple',  desc: 'Find available rooms' },
 ];
 
 const CAMPUS_TAB_KEY = 'aust-campus-active-tab';
@@ -70,7 +70,7 @@ export default function CampusPage() {
         tabs={campusTabs}
         activeTab={activeTab}
         onChange={handleTabChange}
-        variant="gradelab"
+        variant="dashboard"
         compact
       />
 
