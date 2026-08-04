@@ -1,119 +1,9 @@
-.nb-container {
-  display: flex;
-  flex-direction: column;
-  min-height: 500px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-xl);
-  overflow: hidden;
-  animation: fadeInUp 0.35s ease both;
-}
-
-/* ─── Toolbar ─── */
-.nb-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  border-bottom: 1px solid var(--border-primary);
-  background: var(--bg-surface);
-  flex-shrink: 0;
-  flex-wrap: wrap;
-}
-
-.nb-canvas-tools {
-  display: flex;
-  align-items: center;
-  gap: 1px;
-  padding-left: 6px;
-}
-
-.nb-fmt-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--text-tertiary);
-  font-size: 10px;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.12s ease;
-  opacity: 0.75;
-}
-
-.nb-fmt-btn:hover {
-  background: var(--bg-input);
-  color: var(--text-primary);
-  opacity: 1;
-}
-
-.nb-fmt-btn.active {
-  background: var(--accent-blue);
-  color: #fff;
-  opacity: 1;
-}
-
 .nb-fmt-sep {
   width: 1px;
   height: 14px;
   background: var(--border-primary);
   margin: 0 3px;
   opacity: 0.5;
-}
-
-.nb-zoom-label {
-  font-size: 9px;
-  color: var(--text-tertiary);
-  min-width: 28px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-
-.nb-toolbar-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-}
-
-.nb-export-group {
-  display: flex;
-  gap: 2px;
-}
-
-.nb-export-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 3px 7px;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--text-tertiary);
-  font-size: 9px;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.12s ease;
-  opacity: 0.7;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-weight: 500;
-}
-
-.nb-export-btn:hover {
-  background: var(--bg-input);
-  color: var(--text-primary);
-  opacity: 1;
-}
-
-.nb-save-status {
-  font-size: 9px;
-  color: var(--text-tertiary);
-  opacity: 0.6;
 }
 
 /* ─── Canvas ─── */
@@ -124,6 +14,18 @@
   min-height: 400px;
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--accent-blue) 30%, transparent) transparent;
+  /* The paper + dot/grid lives on the scrolling wrapper, attached to its content
+     (background-attachment: local). Because it is painted on the scroll box itself
+     it ALWAYS fills the visible viewport — at any zoom level and any scroll
+     position — unlike a grid inside the transform-scaled canvas, which only covers
+     the wrapper-sized visual area anchored top-left and leaves empty space once the
+     wrapper scrolls at zoom < 100%. The tile size is set inline (scaled by zoom). */
+  background-color: var(--bg-primary);
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--border-primary) 20%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--border-primary) 20%, transparent) 1px, transparent 1px);
+  background-repeat: repeat;
+  background-attachment: local, local;
 }
 
 .nb-canvas-wrap::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -140,7 +42,10 @@
   position: relative;
   overflow: visible;
   min-height: 800px;
-  background: var(--bg-primary);
+  /* Background comes from the scrolling wrapper (.nb-canvas-wrap) so the paper
+     + grid always fill the visible box at any zoom; the canvas itself stays
+     transparent so the wrapper's background-attachment: local grid shows through. */
+  background: transparent;
   outline: none;
 }
 
@@ -152,7 +57,10 @@
     linear-gradient(var(--border-primary) 1px, transparent 1px),
     linear-gradient(90deg, var(--border-primary) 1px, transparent 1px);
   background-size: 40px 40px;
-  opacity: 0.2;
+  /* Hidden on screen — the wrapper paints the grid (see .nb-canvas-wrap) so it
+     fills the whole box at every zoom. Shown again only during export, where the
+     wrapper background isn't captured and we need the board's grid in the PNG/PDF. */
+  opacity: 0;
 }
 
 .nb-canvas-item {
@@ -476,6 +384,17 @@
 }
 
 /* ─── Export: hide interactive UI from PNG/PDF captures ─── */
+/* The canvas is transparent on screen (paper/grid live on the scroll wrapper),
+   but the wrapper background isn't part of the capture — restore the paper color
+   on the canvas itself so exported boards keep their background. */
+.nb-canvas.nb-exporting {
+  background: var(--bg-primary);
+}
+
+.nb-canvas.nb-exporting .nb-canvas-grid {
+  opacity: 0.2;
+}
+
 .nb-canvas.nb-exporting .nb-line-hit,
 .nb-canvas.nb-exporting .nb-line-options,
 .nb-canvas.nb-exporting .nb-line-arrow,
@@ -501,4 +420,537 @@
 .nb-canvas.nb-exporting .nb-canvas-item.connect-target {
   box-shadow: none !important;
   animation: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   NOTEBOOK DESIGN — mirrors the dashboard "Semester View"
+   widget (masthead, stats, ⋮ menu, density cells). Scoped
+   under .nb-widget so it works on this route without
+   depending on Dashboard/campus CSS being loaded.
+   ═══════════════════════════════════════════════════════ */
+
+/* Notebook palette — centralized here (one source of truth for the section).
+   Brand accent (amber) is the ONLY decorative color; green/red/teal are
+   reserved purely for their semantic meaning (success / urgent / info). */
+:root {
+  --nb-accent:       #F5A623;   /* brand — CTAs, active nav, primary icons */
+  --nb-accent-soft:  rgba(245, 166, 35, 0.16);
+  --nb-bg:           #0E0E10;   /* page / shell background */
+  --nb-surface:      #1B1B1F;   /* cards, inputs, raised panels */
+  --nb-surface-raise:#26262B;
+  --nb-border:       #2A2A2E;
+  --nb-text:         #F2F2F3;
+  --nb-muted:        #9A9AA0;
+  --nb-success:      #3ECF8E;   /* completed / positive ONLY */
+  --nb-danger:       #F0554A;   /* urgent / enemies / overdue ONLY */
+  --nb-info:         #3AC1D9;   /* info badges ONLY (sparse) */
+}
+
+.nb-widget {
+  overflow: hidden;
+  background: var(--nb-bg);
+  border: 1px solid var(--nb-border);
+  /* Map the whole themed surface to the unified palette so everything inside
+     the Notebook (masthead, nav, cards, menus, canvas chrome) is consistent. */
+  --bg-card: var(--nb-surface);
+  --bg-surface: var(--nb-surface);
+  --bg-card-hover: var(--nb-surface-raise);
+  --bg-input: var(--nb-surface);
+  --bg-tertiary: color-mix(in srgb, var(--nb-bg) 70%, var(--nb-surface));
+  --border-primary: var(--nb-border);
+  --border-focus: var(--nb-accent);
+  --text-primary: var(--nb-text);
+  --text-secondary: var(--nb-muted);
+  --text-tertiary: color-mix(in srgb, var(--nb-muted) 78%, transparent);
+  --accent-blue: var(--nb-accent);
+  --accent-purple: var(--nb-accent);
+  --accent-blue-glow: var(--nb-accent-soft);
+  --accent-purple-glow: var(--nb-accent-soft);
+  --accent-rose: var(--nb-danger);
+  --accent-rose-glow: color-mix(in srgb, var(--nb-danger) 16%, transparent);
+  --accent-emerald: var(--nb-success);
+  --accent-cyan: var(--nb-info);
+}
+
+/* ─── Masthead ─── */
+.nb-widget .schedule-masthead {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--sp-3);
+  padding-top: 4px;
+}
+
+.nb-widget .schedule-masthead-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.nb-widget .schedule-title-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.nb-widget .schedule-icon-tile {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--accent-purple-glow, color-mix(in srgb, var(--accent-purple) 14%, transparent));
+  color: var(--accent-purple);
+  transition: transform 0.3s cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+
+.nb-widget .schedule-icon-tile:hover {
+  transform: scale(1.08) rotate(-3deg);
+}
+
+.nb-widget .schedule-icon-tile svg {
+  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-purple) 35%, transparent));
+}
+
+.nb-widget .schedule-overline {
+  font-size: 9px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  display: block;
+}
+
+.nb-widget .schedule-title {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  margin: 2px 0 0;
+  line-height: 1.2;
+}
+
+.nb-widget .schedule-subtitle {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
+  display: block;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 240px;
+}
+
+.nb-widget .schedule-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+/* ─── Stats (centered chips) ─── */
+.nb-widget .schedule-stats {
+  display: flex;
+  gap: 18px;
+}
+
+.nb-widget .schedule-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.nb-widget .schedule-stat-value {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.nb-widget .schedule-stat-label {
+  font-size: 9px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 2px;
+}
+
+/* ─── Nav squares + pill ─── */
+.nb-widget .schedule-week-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nb-widget .schedule-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.nb-widget .schedule-nav-btn:hover:not(:disabled) {
+  border-color: var(--border-focus);
+  color: var(--text-primary);
+  background: var(--bg-card-hover);
+}
+
+.nb-widget .schedule-nav-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.nb-widget .schedule-week-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 88px;
+  max-width: 220px;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.nb-widget .schedule-week-pill:hover {
+  border-color: var(--border-focus);
+}
+
+.nb-widget .schedule-week-pill-value {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  color: var(--accent-purple);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─── Dotted divider ─── */
+.nb-widget .schedule-dotted-divider {
+  border-top: 1px dashed var(--border-primary);
+  margin: 14px 0 20px;
+}
+
+/* ─── ⋮ dropdown menu ─── */
+.nb-widget .export-dropdown {
+  position: relative;
+}
+
+.nb-widget .export-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 180px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popper);
+  z-index: 20;
+  overflow: hidden;
+  padding: 4px 0;
+}
+
+.nb-widget .export-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.nb-widget .export-menu-item:hover {
+  background: var(--bg-input);
+}
+
+.nb-widget .export-menu-item:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.nb-widget .export-menu-sep {
+  height: 1px;
+  background: var(--border-primary);
+  margin: 4px 8px;
+}
+
+.nb-widget .export-menu-item.menu-active {
+  color: var(--accent-blue);
+  background: var(--accent-blue-glow);
+  font-weight: var(--fw-semibold);
+}
+
+.nb-widget .menu-check {
+  margin-left: auto;
+  color: var(--accent-blue);
+}
+
+/* ─── Library cells (one shared renderer for folders & notes) ─── */
+.nb-library-widget .nb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.nb-library-widget .nb-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 6px;
+  min-height: 100px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-primary);
+  border-left-width: 2px;
+  border-left-color: var(--border-primary);
+  background: var(--bg-card);
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.22s cubic-bezier(0.4, 0, 0.2, 1), transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nb-library-widget .nb-cell:hover {
+  border-color: var(--border-focus);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.nb-library-widget .nb-cell:active {
+  transform: scale(0.985);
+}
+
+/* Library cells use the neutral surface. No rotating per-category palette:
+   the ONLY color signals are semantic — the round count badge turns red
+   ("hot") when an item is packed (≥3 → urgent). */
+.nb-library-widget .nb-cell.is-hot {
+  border-left-color: var(--nb-danger);
+}
+
+.nb-library-widget .nb-cell-icon {
+  display: inline-flex;
+  color: var(--nb-muted);
+}
+
+.nb-library-widget .nb-cell-icon.folder {
+  color: var(--nb-muted);
+}
+
+.nb-library-widget .nb-cell-title {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  line-height: 1.25;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nb-library-widget .nb-cell-sub {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  line-height: 1.45;
+}
+
+/* Round count badge — top-right, hot when ≥3 */
+.nb-library-widget .nb-count {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 9px;
+  font-weight: var(--fw-bold);
+  color: var(--text-secondary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-full);
+  min-width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  box-sizing: border-box;
+}
+
+.nb-library-widget .nb-count.hot {
+  color: var(--accent-rose);
+  background: var(--accent-rose-glow);
+  border-color: var(--accent-rose);
+}
+
+/* Active (current folder) — minimal tinted border + soft glow */
+.nb-library-widget .nb-cell.active {
+  border-color: color-mix(in srgb, var(--accent-purple) 45%, var(--border-primary));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-purple) 18%, transparent),
+    0 4px 14px -6px color-mix(in srgb, var(--accent-purple) 35%, transparent);
+}
+
+/* Cell action squares — subtle, revealed on hover */
+.nb-library-widget .nb-cell-actions {
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.nb-library-widget .nb-cell:hover .nb-cell-actions,
+.nb-library-widget .nb-cell:focus-within .nb-cell-actions {
+  opacity: 1;
+}
+
+.nb-library-widget .nb-cell-actions .schedule-nav-btn {
+  width: 26px;
+  height: 26px;
+}
+
+.nb-library-widget .nb-cell-actions .schedule-nav-btn:last-child:hover {
+  color: var(--accent-rose);
+  border-color: color-mix(in srgb, var(--accent-rose) 50%, transparent);
+}
+
+/* Inline rename editor inside a cell */
+.nb-library-widget .nb-note-editor {
+  width: 100%;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--accent-purple) 60%, transparent);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  outline: none;
+}
+
+/* ─── Breadcrumb row ─── */
+.nb-library-widget .nb-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+  margin: -8px 0 12px;
+}
+
+.nb-library-widget .nb-crumb-seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--text-tertiary);
+}
+
+.nb-library-widget .nb-crumb-sep {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.nb-library-widget .nb-crumb {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.nb-library-widget .nb-crumb:hover {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--accent-purple) 10%, transparent);
+}
+
+.nb-library-widget .nb-crumb.active {
+  color: var(--accent-purple);
+}
+
+/* ─── Empty state ─── */
+.nb-library-widget .nb-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+  text-align: center;
+  gap: 10px;
+}
+
+.nb-library-widget .nb-empty-icon {
+  color: var(--text-tertiary);
+  opacity: 0.25;
+}
+
+.nb-library-widget .nb-empty h3 {
+  font-size: var(--fs-md);
+  color: var(--text-secondary);
+  font-weight: var(--fw-semibold);
+  margin: 0;
+}
+
+.nb-library-widget .nb-empty p {
+  font-size: var(--fs-sm);
+  color: var(--text-tertiary);
+  max-width: 380px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ─── Responsive: collapse masthead under 1000px ─── */
+@media (max-width: 1000px) {
+  .nb-widget .schedule-masthead {
+    grid-template-columns: 1fr auto;
+  }
+  .nb-widget .schedule-masthead-center {
+    grid-column: 1 / -1;
+    order: 3;
+    justify-content: flex-start;
+  }
+  .nb-widget .schedule-actions {
+    justify-content: flex-end;
+  }
+}
+
+/* ─── Back bar shown while editing a single note ─── */
+.nb-backbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-primary);
+  background: color-mix(in srgb, var(--bg-card) 92%, transparent);
+}
+
+.nb-backbar-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

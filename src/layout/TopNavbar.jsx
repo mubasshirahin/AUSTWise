@@ -6,7 +6,7 @@ import {
   Search, Bell, BellRing, Sun, Moon, Menu, Newspaper, Terminal, Check, User,
   Clock, Hourglass, AlertTriangle, CalendarCheck, Info, CheckCheck, Trash2,
   Settings, LogOut, Sparkles, Gauge, MoonStar, Pen, PenTool, Zap,
-  Building2, Type, Grid2x2,
+  Building2, Type, Grid2x2, Cpu,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -47,6 +47,7 @@ function formatNotifTime(ts) {
 const darkThemeOptions = [
   { id: 'dark', label: 'Dark', icon: Moon },
   { id: 'midnight', label: 'Midnight', icon: MoonStar },
+  { id: 'nexus', label: 'Nexus', icon: Cpu },
   { id: 'cyberpunk', label: 'Cyberpunk', icon: Terminal },
   { id: 'bitcoindefi', label: 'Bitcoin DeFi', icon: Zap },
   { id: 'art-deco', label: 'Art Deco', icon: Building2 },

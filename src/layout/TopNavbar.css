@@ -565,6 +565,11 @@
   filter: drop-shadow(0 0 6px rgba(247, 147, 26, 0.6));
 }
 
+.theme-toggle-icon.nexus {
+  color: #10B981;
+  filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.6));
+}
+
 .topbar-icon-btn:hover .theme-toggle-icon {
   transform: rotate(20deg);
 }

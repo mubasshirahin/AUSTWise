@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { GraduationCap, Briefcase, BookOpen, Monitor, Moon, Sun, Newspaper, Terminal, Sparkles, Gauge, MoonStar, Pen, PenTool, Building2, Check, Eye, EyeOff, Zap, Type, Grid2x2, ArrowLeft } from 'lucide-react';
+import { GraduationCap, Briefcase, BookOpen, Monitor, Moon, Sun, Newspaper, Terminal, Sparkles, Gauge, MoonStar, Pen, PenTool, Building2, Check, Eye, EyeOff, Zap, Type, Grid2x2, Cpu, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { getYearSemOptions } from '../../utils/semester';
@@ -24,6 +24,7 @@ const roleOptions = [
 const darkThemeOptions = [
   { id: 'dark',                  label: 'Dark',       icon: Moon       },
   { id: 'midnight',              label: 'Midnight',   icon: MoonStar   },
+  { id: 'nexus',                 label: 'Nexus',      icon: Cpu        },
   { id: 'art-deco',              label: 'Art Deco',   icon: Building2  },
   { id: 'poster',                label: 'Bold Type',  icon: Type       },
   { id: 'bitcoindefi',           label: 'Bitcoin Defi', icon: Zap      },

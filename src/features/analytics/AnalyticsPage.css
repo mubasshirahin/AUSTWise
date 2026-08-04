@@ -266,6 +266,32 @@
   color: var(--text-primary);
 }
 
+/* ─── Transcript Load Template button ─── */
+.cgpa-breakdown-box .schedule-nav-btn.cgpa-load-template-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: var(--radius-md);
+  background: var(--accent-blue-glow);
+  border: 1px solid color-mix(in srgb, var(--accent-blue) 30%, var(--border-primary));
+  color: var(--accent-blue);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.cgpa-breakdown-box .schedule-nav-btn.cgpa-load-template-btn:hover {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px -4px color-mix(in srgb, var(--accent-blue) 45%, transparent);
+}
+
 /* ─── Transcript ⋮ dropdown button ─── */
 .cgpa-breakdown-box .schedule-nav-btn.cgpa-more-btn {
   width: 36px;
@@ -445,7 +471,10 @@
   margin: 0;
 }
 
-.cgpa-breakdown-box .schedule-masthead .export-dropdown {
+.cgpa-breakdown-box .schedule-masthead .cgpa-transcript-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   justify-self: end;
 }
 

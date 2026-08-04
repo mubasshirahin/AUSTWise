@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, Fragment } from 'react';
-import { ImageIcon, Trash2, Move, Type, Maximize2, Minimize2, Link2, Link2Off, Download } from 'lucide-react';
+import { ImageIcon, Trash2, Move, Type, Check, Link2, Link2Off, Download, MoreVertical, NotebookPen, ZoomIn, ZoomOut, ArrowLeft } from 'lucide-react';
 import html2canvas from 'html2canvas-pro';
 import jsPDF from 'jspdf';
 
@@ -32,16 +32,19 @@ function resolveThemeVar(name, fallback) {
   }
 }
 
-export default function Notebook({ vaultContext, batch }) {
+export default function Notebook({ vaultContext, batch, noteKey, title, onBack, onSaved }) {
   const { department, yearSem } = vaultContext;
-  const storageKey = `${department}-${yearSem}-${batch?.id || 'default'}`;
+  // noteKey (from the Notebook library) gives every note its own storage slot:
+  // `aust-notebook-<noteKey>`. Without it we fall back to the legacy single
+  // per-batch key so old canvases keep working.
+  const storageKey = noteKey || `${department}-${yearSem}-${batch?.id || 'default'}`;
 
   const [saved, setSaved] = useState(true);
 
   // Canvas state
   // Concrete theme accents for html2canvas-safe inline styles (no var()/color-mix).
-  const accentBlue = resolveThemeVar('--accent-blue', '#3b82f6');
-  const accentPurple = resolveThemeVar('--accent-purple', accentBlue);
+  const accentBlue = resolveThemeVar('--nb-accent', '#F5A623');
+  const accentPurple = resolveThemeVar('--nb-accent', '#F5A623');
   const [items, setItems] = useState([]);
   const [dragId, setDragId] = useState(null);
   const [dragOff, setDragOff] = useState({ x: 0, y: 0 });
@@ -79,11 +82,23 @@ export default function Notebook({ vaultContext, batch }) {
   const [lineStyle, setLineStyle] = useState('solid'); // solid | dashed | dotted
   const [selectedLineId, setSelectedLineId] = useState(null);
   const [selectedConnId, setSelectedConnId] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  // Close the ⋮ menu on outside click
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onClick = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [menuOpen]);
 
   // Load saved data (with one-time migration from the old per-batch vault keys)
   useEffect(() => {
     let saved = loadNotes(storageKey);
-    if (!saved) {
+    if (!saved && !noteKey) {
       // Notebook used to live inside the Vault, where notes were saved under a
       // per-batch key. Fold any legacy canvas notes into this page's key so
       // nothing is stranded after the Notebook moved to its own sidebar entry.
@@ -111,14 +126,15 @@ export default function Notebook({ vaultContext, batch }) {
       if (saved.connections) setConnections(saved.connections);
       if (saved.manualLines) setManualLines(saved.manualLines);
     }
-  }, [storageKey]);
+  }, [storageKey, noteKey]);
 
   // Auto-save
   const doSave = useCallback(() => {
     const data = { items, connections, manualLines };
     saveNotes(storageKey, data);
     setSaved(true);
-  }, [items, connections, manualLines, storageKey]);
+    if (noteKey) onSaved?.(noteKey);
+  }, [items, connections, manualLines, storageKey, noteKey, onSaved]);
 
   useEffect(() => {
     if (!saved) {
@@ -667,6 +683,29 @@ export default function Notebook({ vaultContext, batch }) {
     return Math.max(800, maxY + 300);
   }, [items]);
 
+  // Track the visible wrapper viewport so the grid/background can always fill it.
+  // The canvas is rendered at layout size then scaled with transform: scale().
+  // Without compensation, zooming out shrinks the visual canvas below the
+  // wrapper and the grid stops mid-viewport (background "cut off").
+  const [wrapSize, setWrapSize] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    const el = canvasWrapRef.current;
+    if (!el) return;
+    const update = () => setWrapSize({ w: el.clientWidth, h: el.clientHeight });
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Layout size that, once scaled, still covers the whole wrapper viewport.
+  const zoomFillW = wrapSize.w ? wrapSize.w / canvasZoom : 0;
+  const zoomFillH = wrapSize.h ? wrapSize.h / canvasZoom : 0;
+  const canvasLayoutW = Math.max(wrapSize.w, zoomFillW);
+  const canvasLayoutH = Math.max(canvasHeight, zoomFillH);
+
+  const linksCount = connections.length + manualLines.length;
+
   // ─── Export (whole board, regardless of zoom/scroll) ───
   const getBoardBounds = () => {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -805,66 +844,149 @@ export default function Notebook({ vaultContext, batch }) {
   const canvasFileRef = useRef(null);
 
   return (
-    <div className="nb-container">
-      {/* Toolbar */}
-      <div className="nb-toolbar">
-        <div className="nb-canvas-tools">
-          <button className="nb-fmt-btn" onClick={addTextBox} title="Add text box"><Type size={14} /></button>
-          <button className="nb-fmt-btn" onClick={() => canvasFileRef.current?.click()} title="Add image"><ImageIcon size={14} /></button>
-          <input ref={canvasFileRef} type="file" accept="image/*" style={{ display: 'none' }}
-            onChange={e => { const f = e.target.files?.[0]; if (f) addCanvasImage(f); e.target.value = ''; }} />
-          <span className="nb-fmt-sep" />
-          <button className="nb-fmt-btn" onClick={clearCanvas} title="Clear canvas"><Trash2 size={13} /></button>
-          <span className="nb-fmt-sep" />
-          <button className={`nb-fmt-btn ${drawMode ? 'active' : ''}`} onClick={toggleDrawMode} title="Draw line">
-            <Move size={14} />
+    <div className="glass-card-static schedule-widget nb-widget animate-fadeInUp">
+
+      {onBack && (
+        <div className="nb-backbar">
+          <button className="schedule-nav-btn" onClick={onBack} title="Back to notes">
+            <ArrowLeft size={16} />
           </button>
-          {drawMode && (
-            <>
-              <span className="nb-fmt-sep" />
-              {['#22c55e','#ef4444','#3b82f6','#eab308','#a855f7','#f97316'].map(c => (
-                <button key={c} className="nb-fmt-btn" onClick={() => setLineColor(c)} title={c}
-                  style={{ width: 18, height: 18, borderRadius: '50%', background: c, border: lineColor === c ? '2px solid #fff' : '2px solid transparent', boxSizing: 'content-box' }}
-                />
-              ))}
-              <span className="nb-fmt-sep" />
-              {['solid','dashed','dotted'].map(s => (
-                <button key={s} className={`nb-fmt-btn ${lineStyle === s ? 'active' : ''}`} onClick={() => setLineStyle(s)}
-                  style={{ fontSize: 9, padding: '0 4px' }}>
-                  {s === 'solid' ? '━━' : s === 'dashed' ? '╌╌' : '┅┅'}
-                </button>
-              ))}
-              <span className="nb-fmt-sep" />
-              <span className="nb-connect-hint">
-                {drawPhase === 'placing' ? 'Click to end · Right-click cancel' : 'Click to draw · Right-click remove'} · Ctrl+Z undo · Ctrl+Shift+Z redo
-              </span>
-            </>
-          )}
-          <button className={`nb-fmt-btn ${connectFrom ? 'active' : ''}`} onClick={toggleConnectMode} title="Connect items">
-            {connectFrom ? <Link2Off size={14} /> : <Link2 size={14} />}
-          </button>
-          {connectFrom && connectFrom !== 'ready' && (
-            <span className="nb-connect-hint">Click another item to connect</span>
-          )}
-          <span className="nb-fmt-sep" />
-          <button className="nb-fmt-btn" onClick={() => setCanvasZoom(z => Math.min(3, z + 0.1))} title="Zoom in"><Maximize2 size={13} /></button>
-          <span className="nb-zoom-label">{Math.round(canvasZoom * 100)}%</span>
-          <button className="nb-fmt-btn" onClick={() => setCanvasZoom(z => Math.max(0.3, z - 0.1))} title="Zoom out"><Minimize2 size={13} /></button>
+          <span className="nb-backbar-title">{title || 'Note'}</span>
         </div>
-        <div className="nb-toolbar-right">
-          <div className="nb-export-group">
-            <button className="nb-export-btn" onClick={() => exportAsImage()} title="Export whiteboard as PNG">
-              <Download size={12} /> PNG
+      )}
+
+      {/* ── Masthead ── */}
+      <div className="schedule-masthead">
+        {/* Left: title block */}
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <NotebookPen size={20} strokeWidth={2.2} />
+          </div>
+          <div>
+            <span className="schedule-overline">Study Canvas</span>
+            <div className="schedule-title">Batch Notebook</div>
+            <span className="schedule-subtitle">Paste Ctrl+V · drag &amp; drop images</span>
+          </div>
+        </div>
+
+        {/* Center: stats */}
+        <div className="schedule-masthead-center">
+          <div className="schedule-stats">
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{items.length}</span>
+              <span className="schedule-stat-label">Items</span>
+            </div>
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{linksCount}</span>
+              <span className="schedule-stat-label">Links</span>
+            </div>
+            <div className="schedule-stat">
+              <span className={`schedule-stat-value nb-saved-value${saved ? ' is-saved' : ''}`}>
+                {saved ? '✓' : '…'}
+              </span>
+              <span className="schedule-stat-label">Saved</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: zoom nav + ⋮ menu */}
+        <div className="schedule-actions">
+          <div className="schedule-week-nav">
+            <button className="schedule-nav-btn" onClick={() => setCanvasZoom(z => Math.max(0.3, z - 0.1))} title="Zoom out">
+              <ZoomOut size={16} />
             </button>
-            <button className="nb-export-btn" onClick={() => exportAsPDF()} title="Export whiteboard as PDF">
-              <Download size={12} /> PDF
+            <div className="schedule-week-pill">
+              <span className="schedule-week-pill-value">{Math.round(canvasZoom * 100)}%</span>
+            </div>
+            <button className="schedule-nav-btn" onClick={() => setCanvasZoom(z => Math.min(3, z + 0.1))} title="Zoom in">
+              <ZoomIn size={16} />
             </button>
           </div>
-          <span className="nb-save-status">{saved ? 'Saved' : 'Unsaved…'}</span>
+          <div className="export-dropdown" ref={menuRef}>
+            <button
+              className="schedule-nav-btn"
+              onClick={() => setMenuOpen(o => !o)}
+              aria-label="More options"
+              aria-haspopup="true"
+              aria-expanded={menuOpen}
+              title="Options"
+            >
+              <MoreVertical size={18} />
+            </button>
+            {menuOpen && (
+              <div className="export-menu">
+                <button className="export-menu-item" onClick={() => { addTextBox(); setMenuOpen(false); }}>
+                  <Type size={14} /> Add Text Box
+                </button>
+                <button className="export-menu-item" onClick={() => { canvasFileRef.current?.click(); setMenuOpen(false); }}>
+                  <ImageIcon size={14} /> Add Image
+                </button>
+                <div className="export-menu-sep" />
+                <button className={`export-menu-item${drawMode ? ' menu-active' : ''}`} onClick={() => { toggleDrawMode(); setMenuOpen(false); }}>
+                  <Move size={14} /> Draw Line {drawMode && <Check size={14} className="menu-check" />}
+                </button>
+                <button className={`export-menu-item${connectFrom ? ' menu-active' : ''}`} onClick={() => { toggleConnectMode(); setMenuOpen(false); }}>
+                  {connectFrom ? <Link2Off size={14} /> : <Link2 size={14} />} Connect Items {connectFrom && <Check size={14} className="menu-check" />}
+                </button>
+                <div className="export-menu-sep" />
+                <button className="export-menu-item" onClick={() => { exportAsImage(); setMenuOpen(false); }}>
+                  <Download size={14} /> Export as PNG
+                </button>
+                <button className="export-menu-item" onClick={() => { exportAsPDF(); setMenuOpen(false); }}>
+                  <Download size={14} /> Export as PDF
+                </button>
+                <div className="export-menu-sep" />
+                <button className="export-menu-item" onClick={() => { clearCanvas(); setMenuOpen(false); }}>
+                  <Trash2 size={14} /> Clear Canvas
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="nb-canvas-wrap" ref={canvasWrapRef}>
+      <div className="schedule-dotted-divider" />
+
+      {/* Contextual draw toolbar (shown while Draw mode is on) */}
+      {drawMode && (
+        <div className="nb-draw-bar">
+          <span className="nb-draw-label">Line</span>
+          {['#22c55e','#ef4444','#3b82f6','#eab308','#a855f7','#f97316'].map(c => (
+            <button
+              key={c}
+              className={`nb-line-swatch ${lineColor === c ? 'active' : ''}`}
+              onClick={() => setLineColor(c)}
+              title={c}
+              style={{ background: c }}
+            />
+          ))}
+          <span className="nb-fmt-sep" />
+          {['solid','dashed','dotted'].map(s => (
+            <button key={s} className={`nb-line-style-btn ${lineStyle === s ? 'active' : ''}`} onClick={() => setLineStyle(s)}>
+              {s === 'solid' ? '━━' : s === 'dashed' ? '╌╌' : '┅┅'}
+            </button>
+          ))}
+          <span className="nb-draw-hint">
+            {drawPhase === 'placing' ? 'Click to end · Right-click cancel' : 'Click to draw · Right-click remove'} · Ctrl+Z undo · Ctrl+Shift+Z redo
+          </span>
+        </div>
+      )}
+      {connectFrom && connectFrom !== 'ready' && (
+        <div className="nb-connect-hint">Click another item to connect</div>
+      )}
+
+      <input ref={canvasFileRef} type="file" accept="image/*" style={{ display: 'none' }}
+        onChange={e => { const f = e.target.files?.[0]; if (f) addCanvasImage(f); e.target.value = ''; }} />
+
+      <div
+        className="nb-canvas-wrap"
+        ref={canvasWrapRef}
+        style={{
+          // Grid tiles live on the scrolling wrapper and must scale with the
+          // canvas so lines stay aligned with the zoomed items.
+          backgroundSize: `${40 * canvasZoom}px ${40 * canvasZoom}px`,
+        }}
+      >
         <div
           ref={canvasRef}
           className={`nb-canvas ${drawMode ? 'draw-active' : ''}`}
@@ -900,7 +1022,7 @@ export default function Notebook({ vaultContext, batch }) {
               setSaved(false);
             }
           }}
-          style={{ transform: `scale(${canvasZoom})`, transformOrigin: '0 0', height: canvasHeight }}
+          style={{ transform: `scale(${canvasZoom})`, transformOrigin: '0 0', width: canvasLayoutW, height: canvasLayoutH }}
         >
           {/* Canvas grid background */}
           <div className="nb-canvas-grid" />

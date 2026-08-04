@@ -667,18 +667,16 @@ export default function ResultTable({ onResultsChange }) {
           </div>
         </div>
         <div className="schedule-masthead-center" />
-        <div className="export-dropdown" ref={menuRef}>
+        <div className="cgpa-transcript-actions">
+          <button className="schedule-nav-btn cgpa-load-template-btn" onClick={() => setShowDeptModal(true)}>
+            <Layers size={15} /> Load Template
+          </button>
+          <div className="export-dropdown" ref={menuRef}>
           <button className="schedule-nav-btn cgpa-more-btn" onClick={() => setShowMenu((v) => !v)} aria-label="More options" aria-haspopup="true">
             <MoreVertical size={18} />
           </button>
           {showMenu && (
             <div className="export-menu">
-              <button
-                className="export-menu-item"
-                onClick={() => { setShowMenu(false); setShowDeptModal(true); }}
-              >
-                <Layers size={14} /> Load Template
-              </button>
               <button
                 className="export-menu-item"
                 onClick={() => { setShowMenu(false); exportTranscript(); }}
@@ -694,6 +692,7 @@ export default function ResultTable({ onResultsChange }) {
               </button>
             </div>
           )}
+          </div>
         </div>
       </div>
 

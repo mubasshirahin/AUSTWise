@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Home, DollarSign, ClipboardCheck, NotebookPen, UtensilsCrossed } from 'lucide-react';
+import { Home, DollarSign, ClipboardCheck, NotebookPen, UtensilsCrossed, Banknote } from 'lucide-react';
 import GliderTabs from '../../components/GliderTabs';
 import MoneyTrackerPage from '../money-tracker/MoneyTrackerPage';
 import ExamChecklistPage from '../exam-checklist/ExamChecklistPage';
 import CoverPageGeneratorPage from '../cover-page-generator/CoverPageGeneratorPage';
 import MessMealTrackerPage from './MessMealTrackerPage';
+import BharaKoto from './BharaKoto';
 import './DailyLifePage.css';
 import '../../components/PageHero.css';
 
@@ -13,6 +14,7 @@ const TABS = [
   { id: 'cover-page-generator', label: 'Cover Page',          icon: NotebookPen,   color: 'purple',  desc: 'Generate cover page'},
   { id: 'money-tracker',        label: 'TiyaHodeJargoi',       icon: DollarSign,    color: 'emerald', desc: 'Expenses & budget'  },
   { id: 'mess-meal',            label: 'Mess Meal',           icon: UtensilsCrossed,color: 'orange', desc: 'Meal planner'       },
+  { id: 'bhara-koto',           label: 'Bhara Koto',          icon: Banknote,       color: 'orange', desc: 'Fare estimator'     },
 ];
 
 const STORAGE_KEY = 'daily-life-active-tab';
@@ -33,6 +35,7 @@ export default function DailyLifePage() {
       case 'exam-checklist':       return <ExamChecklistPage />;
       case 'cover-page-generator': return <CoverPageGeneratorPage />;
       case 'mess-meal':            return <MessMealTrackerPage />;
+      case 'bhara-koto':           return <BharaKoto />;
       default:                     return <MoneyTrackerPage />;
     }
   };

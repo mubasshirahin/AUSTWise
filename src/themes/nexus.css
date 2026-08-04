@@ -1,0 +1,362 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   NEXUS CORE  —  "dashboard command center" theme
+   ────────────────────────────────────────────────────────────────────────────
+   A deep, technical operation-deck inspired by retro-futurist dashboard UIs:
+   near-black canvas (#0A0A0C), a single vibrant emerald primary (#10B981) as
+   the sole interactive accent, an indigo secondary (#6366F1) for supporting
+   emphasis, and amber (#F59E0B) reserved for rare contrast moments. Glass
+   surfaces float over a faint perspective grid field with depth fade. Think
+   Linear / modern monitoring consoles at 2am — precise, meditative, premium.
+
+   Distinct from the built-in `dark` theme (warm-taupe standard dark mode) and
+   from `midnight` (amber on layered slate): Nexus is emerald-led, glassier and
+   grid-aligned. Architecture mirrors the per-theme convention in index.css — a
+   token remap the whole app reads from, plus a scoped personality layer. Lives
+   in its own file (imported from main.jsx after index.css); only one theme is
+   ever active via the data-theme attribute, so cascade order is irrelevant.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Token remap ─────────────────────────────────────────────────────────────
+   Redefines the shared custom-property contract so every feature re-skins from
+   tokens alone. Emerald lands in the primary (--accent-blue) slot; indigo fills
+   the secondary (--accent-purple) slot; amber stays a quiet tertiary. */
+[data-theme="nexus"] {
+  /* Typography — clean, technical Inter; tight negative tracking on display */
+  --font-display: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  --font-code: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  --font-label: 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* Layered near-black — the "room" stays a single deep tone */
+  --bg-primary: #0A0A0C;          /* deepest — the canvas */
+  --bg-secondary: #101014;        /* slightly elevated surfaces */
+  --bg-tertiary: #16161B;         /* elevated / muted surfaces, input wells */
+  --bg-card: rgba(22, 22, 27, 0.55);    /* glass — floats over the grid */
+  --bg-card-hover: rgba(27, 27, 34, 0.75);
+  --bg-glass: rgba(13, 13, 16, 0.6);
+  --bg-glass-heavy: rgba(10, 10, 12, 0.88);
+  --bg-input: rgba(22, 22, 27, 0.6);
+
+  /* Type — near-white primary (high contrast on the black), neutral greys below */
+  --text-primary: #F4F4F5;
+  --text-secondary: #A1A1AA;      /* zinc-400 — the design's neutral foundation */
+  --text-tertiary: #71717A;       /* zinc-500 — muted, still AA on the black */
+  --text-inverse: #0A0A0C;        /* dark ink on emerald */
+
+  /* Borders — hairline white, whisper-subtle like a display fine grid */
+  --border-primary: rgba(255, 255, 255, 0.10);
+  --border-secondary: rgba(255, 255, 255, 0.05);
+  --border-focus: rgba(16, 185, 129, 0.55);
+
+  /* Accents — emerald is the PRIMARY interactive accent; indigo supports;
+     amber and rose are reserved for rare semantic contrast moments */
+  --accent-blue: #10B981;         /* emerald-500 — PRIMARY / interactive */
+  --accent-blue-glow: rgba(16, 185, 129, 0.14);
+  --accent-purple: #6366F1;       /* indigo-500 — supporting emphasis */
+  --accent-purple-glow: rgba(99, 102, 241, 0.14);
+  --accent-amber: #F59E0B;        /* amber — reserved tertiary contrast */
+  --accent-amber-glow: rgba(245, 158, 11, 0.13);
+  --accent-emerald: #10B981;      /* success — same as primary */
+  --accent-emerald-glow: rgba(16, 185, 129, 0.14);
+  --accent-rose: #FB7185;         /* soft alert rose */
+  --accent-rose-glow: rgba(251, 113, 133, 0.13);
+  --accent-cyan: #22D3EE;         /* cool teal for the odd telemetry chip */
+  --accent-cyan-glow: rgba(34, 211, 238, 0.12);
+  --accent-orange: #FB923C;       /* warm orange */
+  --accent-orange-glow: rgba(251, 146, 60, 0.13);
+
+  /* Gradients — restrained, emerald-led with an indigo secondary arm */
+  --gradient-primary: linear-gradient(135deg, #10B981 0%, #6366F1 100%);
+  --gradient-secondary: linear-gradient(135deg, #16161B 0%, #101014 100%);
+  --gradient-accent: linear-gradient(135deg, #10B981 0%, #22D3EE 100%);
+  --gradient-warm: linear-gradient(135deg, #F59E0B 0%, #FB7185 100%);
+  --gradient-success: linear-gradient(135deg, #10B981 0%, #22D3EE 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(16, 185, 129, 0.07) 0%, rgba(255, 255, 255, 0.015) 100%);
+
+  /* Radius — tight, controlled system anchored by 6px; glass at 15/16px */
+  --radius-sm: 6px;
+  --radius-md: 9px;
+  --radius-lg: 15px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+
+  /* Elevation — quiet depth + the signature emerald/indigo ambient glow */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.32);
+  --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.38);
+  --shadow-xl: 0 18px 44px rgba(0, 0, 0, 0.45);
+  --shadow-popper: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-glow-blue: 0 0 12px rgba(16, 185, 129, 0.22);
+  --shadow-glow-purple: 0 0 10px rgba(99, 102, 241, 0.20);
+  --shadow-glow-amber: 0 0 6px rgba(245, 158, 11, 0.18);
+
+  /* Nexus-only primitives consumed by the personality layer below */
+  --nx-emerald: #10B981;
+  --nx-emerald-glow: rgba(16, 185, 129, 0.15);
+  --nx-indigo: #6366F1;
+  --nx-amber: #F59E0B;
+  --nx-glow-sm: 0 0 12px rgba(16, 185, 129, 0.18);
+  --nx-glow-md: 0 0 16px rgba(16, 185, 129, 0.28);
+  --nx-border-glow: 0 0 0 1px rgba(16, 185, 129, 0.25), 0 0 12px rgba(16, 185, 129, 0.16);
+  --nx-blur: blur(12px);
+  --nx-grid-line: rgba(255, 255, 255, 0.035);
+
+  --scrollbar-track: #0A0A0C;
+  --scrollbar-thumb: #2A2A32;
+  --scrollbar-thumb-hover: #3E3E48;
+
+  --status-online: #10B981;
+  --status-away: #F59E0B;
+  --status-offline: #52525B;
+  --status-busy: #FB7185;
+
+  --danger: #FB7185;
+  --warning: #F59E0B;
+  --success: #10B981;
+  --info: #22D3EE;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   PERSONALITY LAYER  —  scoped to [data-theme="nexus"]
+   Pure CSS on the shared component classes: no component/DOM changes required.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── The room: near-black canvas + faint perspective grid field (depth fade)
+     rendered as a DOM-backed backdrop — always degrades gracefully ─── */
+[data-theme="nexus"] body {
+  background-color: var(--bg-primary);
+  background-image:
+    /* depth-faded vertical grid lines converging toward a horizon */
+    linear-gradient(180deg, transparent 0%, rgba(16, 185, 129, 0.05) 100%),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0px, transparent 28px,
+      var(--nx-grid-line) 28px, var(--nx-grid-line) 29px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0px, transparent 28px,
+      var(--nx-grid-line) 28px, var(--nx-grid-line) 29px
+    ),
+    radial-gradient(120% 90% at 50% 0%, rgba(16, 185, 129, 0.045) 0%, transparent 55%);
+  background-attachment: fixed;
+}
+
+/* ─── Typography: tight technical display + tabular numerics ─── */
+[data-theme="nexus"] .page-title,
+[data-theme="nexus"] .section-title,
+[data-theme="nexus"] .stat-value,
+[data-theme="nexus"] h1,
+[data-theme="nexus"] h2,
+[data-theme="nexus"] h3 {
+  font-family: 'Inter', system-ui, sans-serif;
+  letter-spacing: -0.025em;
+}
+[data-theme="nexus"] .stat-value,
+[data-theme="nexus"] .countdown-value,
+[data-theme="nexus"] .score-number {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "cv11" 1;
+}
+[data-theme="nexus"] .stat-label,
+[data-theme="nexus"] .countdown-label,
+[data-theme="nexus"] .badge,
+[data-theme="nexus"] .section-eyebrow {
+  font-family: 'JetBrains Mono', 'SFMono-Regular', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ─── Cards: floating glass with an emerald-tinted edge glow ─── */
+[data-theme="nexus"] .glass-card,
+[data-theme="nexus"] .glass-card-static {
+  background: var(--bg-card);
+  -webkit-backdrop-filter: var(--nx-blur);
+  backdrop-filter: var(--nx-blur);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+[data-theme="nexus"] .glass-card:hover {
+  background: var(--bg-card-hover);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: var(--shadow-lg);
+}
+
+[data-theme="nexus"] .card-list-item {
+  background: var(--bg-card);
+  -webkit-backdrop-filter: var(--nx-blur);
+  backdrop-filter: var(--nx-blur);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+}
+[data-theme="nexus"] .card-list-item:hover {
+  background: var(--bg-card-hover);
+  border-color: rgba(16, 185, 129, 0.28);
+}
+
+/* ─── Gradient border shell: emerald→indigo hairline on elevated hero cards ─── */
+[data-theme="nexus"] .hero-panel,
+[data-theme="nexus"] .page-hero {
+  border: 1px solid transparent;
+  border-radius: var(--radius-xl);
+  background:
+    linear-gradient(var(--bg-glass), var(--bg-glass)) padding-box,
+    linear-gradient(135deg, rgba(16, 185, 129, 0.45), rgba(99, 102, 241, 0.35)) border-box;
+}
+
+/* ─── Buttons: emerald primary, indigo secondary, quiet ghost ─── */
+[data-theme="nexus"] .btn {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: var(--fw-semibold);
+  border-radius: var(--radius-md);
+  transition: background var(--transition-base), border-color var(--transition-base),
+              box-shadow var(--transition-base), transform 150ms ease-out, filter var(--transition-base);
+}
+[data-theme="nexus"] .btn:active { transform: scale(0.98); }
+
+[data-theme="nexus"] .btn-primary {
+  background: var(--nx-emerald);
+  color: var(--text-inverse);
+  border: none;
+  box-shadow: none;
+}
+[data-theme="nexus"] .btn-primary:hover {
+  filter: brightness(1.08);
+  box-shadow: var(--nx-glow-sm);
+}
+
+[data-theme="nexus"] .btn-secondary {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+[data-theme="nexus"] .btn-secondary:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--nx-emerald);
+}
+
+[data-theme="nexus"] .btn-ghost {
+  background: transparent;
+  color: var(--text-primary);
+}
+[data-theme="nexus"] .btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--nx-emerald);
+}
+
+[data-theme="nexus"] .btn-danger {
+  background: var(--danger);
+  color: #0A0A0C;
+}
+[data-theme="nexus"] .btn-danger:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 0 12px rgba(251, 113, 133, 0.3);
+}
+
+/* ─── Inputs: glass wells with an emerald focus bloom ─── */
+[data-theme="nexus"] .input,
+[data-theme="nexus"] .search-box input {
+  background-color: var(--bg-input);
+  -webkit-backdrop-filter: var(--nx-blur);
+  backdrop-filter: var(--nx-blur);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+}
+[data-theme="nexus"] .input:focus,
+[data-theme="nexus"] .search-box input:focus {
+  border-color: rgba(16, 185, 129, 0.55);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.18), 0 0 14px rgba(16, 185, 129, 0.10);
+}
+[data-theme="nexus"] .input::placeholder,
+[data-theme="nexus"] .search-box input::placeholder { color: var(--text-tertiary); }
+
+/* ─── Tabs: quiet rail, emerald-lit active key ─── */
+[data-theme="nexus"] .tabs {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+}
+[data-theme="nexus"] .tab { color: var(--text-secondary); }
+[data-theme="nexus"] .tab:hover { background: rgba(255, 255, 255, 0.04); color: var(--text-primary); }
+[data-theme="nexus"] .tab.active {
+  background: var(--accent-blue-glow);
+  color: var(--nx-emerald);
+  box-shadow: var(--nx-glow-sm);
+}
+
+/* ─── Tags / badges: subtle glass chips with emerald emphasis ─── */
+[data-theme="nexus"] .tag {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+}
+[data-theme="nexus"] .tag:hover,
+[data-theme="nexus"] .tag.active {
+  background: var(--accent-blue-glow);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: var(--nx-emerald);
+}
+
+/* ─── Progress: emerald bar with a soft glow ─── */
+[data-theme="nexus"] .progress-bar { background: rgba(255, 255, 255, 0.06); }
+[data-theme="nexus"] .progress-bar-fill {
+  background: var(--gradient-primary);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+}
+
+/* ─── Toggle: track glows emerald when on ─── */
+[data-theme="nexus"] .toggle-switch { background: rgba(255, 255, 255, 0.08); border: 1px solid var(--border-primary); }
+[data-theme="nexus"] .toggle-switch.active {
+  background: var(--nx-emerald);
+  border-color: transparent;
+  box-shadow: var(--nx-glow-sm);
+}
+[data-theme="nexus"] .toggle-switch::after { background: #F4F4F5; }
+
+/* ─── Modal: heavy glass, lifted clear of the grid ─── */
+[data-theme="nexus"] .modal {
+  background: var(--bg-glass-heavy);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+}
+
+/* ─── Banner: glass strip with a coloured rule ─── */
+[data-theme="nexus"] .info-banner {
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 3px solid currentColor;
+}
+
+/* ─── Focus: emerald ring, everywhere ─── */
+[data-theme="nexus"] :focus-visible {
+  outline: 2px solid var(--nx-emerald);
+  outline-offset: 2px;
+}
+
+/* ─── Scrollbar ─── */
+[data-theme="nexus"] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+[data-theme="nexus"] ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+[data-theme="nexus"] ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: var(--radius-full); }
+[data-theme="nexus"] ::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
+
+/* ─── Reduced motion: keep the glow, drop the pulse/scale ─── */
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="nexus"] .glass-card:hover,
+  [data-theme="nexus"] .glass-card-static:hover,
+  [data-theme="nexus"] .card-list-item:hover {
+    transform: none;
+  }
+  [data-theme="nexus"] .btn { transition: none; }
+  [data-theme="nexus"] .btn:active { transform: none; }
+}

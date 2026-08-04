@@ -10,7 +10,7 @@ import {
   Coffee, Sun as SunIcon, Book, Bell,
   Smartphone, Eye, Activity, List, Menu,
   Newspaper, Terminal, Gauge, MoonStar, Pen, PenTool,
-  Building2, Type, Grid2x2,
+  Building2, Type, Grid2x2, Cpu,
   ChevronLeft, Heart, ThumbsUp, Download, MessageCircle,
   X, Search, Hash, Megaphone,
 } from 'lucide-react';
@@ -1254,6 +1254,7 @@ function BeforeAfterSection() {
 const darkThemeOptions = [
   { id: 'dark', label: 'Dark', icon: Moon },
   { id: 'midnight', label: 'Midnight', icon: MoonStar },
+  { id: 'nexus', label: 'Nexus', icon: Cpu },
   { id: 'cyberpunk', label: 'Cyberpunk', icon: Terminal },
   { id: 'bitcoindefi', label: 'Bitcoin DeFi', icon: Zap },
   { id: 'art-deco', label: 'Art Deco', icon: Building2 },
