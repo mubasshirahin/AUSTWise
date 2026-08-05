@@ -9,6 +9,7 @@ import { loadVaultSelection, saveVaultSelection } from './vaultSelectionStorage'
 import './VaultPage.css';
 import './VaultBatchSelector.css';
 import '../../components/PageHero.css';
+import './vault-tokens.css';
 
 function getSelectionStep(department, yearSem, batch) {
   if (!department) return 'dept';
@@ -91,7 +92,7 @@ export default function VaultPage() {
   };
 
   const vaultTabs = [
-    { id: 'batch-drive', label: 'Batch Drive', icon: HardDrive, desc: 'Study materials & drive', color: 'blue' },
+    { id: 'batch-drive', label: 'Batch Drive', icon: HardDrive, desc: 'Study materials & drive', color: 'amber' },
     { id: 'carbon-vault', label: 'Carbon Vault', icon: Cpu, desc: 'Coming soon', color: 'emerald' },
   ];
 

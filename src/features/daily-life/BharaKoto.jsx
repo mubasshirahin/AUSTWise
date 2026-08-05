@@ -111,8 +111,8 @@ function findTrackedBuses(area) {
       found.push({
         id: route.id,
         name: route.name,
-        color: route.color || '#22d3ee',
-        bg: route.bg || '#22d3ee1F',
+        color: route.color || '#f5a623',
+        bg: route.bg || '#f5a62324',
       });
     }
   }

@@ -1,0 +1,75 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   INSIDEAUST / CAMPUS UNIFIED PALETTE
+   ────────────────────────────────────────────────────────────────────────────
+   Central token layer for the InsideAUST (campus) section. Scoped to
+   `.campus-page` so it does not leak into the rest of the app, and imported
+   AFTER the other campus stylesheets so it wins the cascade for every
+   descendant component.
+
+   Design rules enforced here:
+     1. Primary accent (#F5A623 amber) is the ONE brand color — it fills the
+        `--accent-blue` (primary) slot AND the decorative `--accent-purple` /
+        `--accent-orange` / `--accent-cyan` / `--accent-amber` slots, so
+        per-category icons, cards and borders no longer rotate through
+        blue/orange/teal/purple.
+     2. Red, green and teal are reserved for SEMANTIC meaning only:
+        --accent-emerald → open/success/completed, --accent-rose → closed/
+        urgent/overdue, --accent-cyan → info. They are never used as category
+        identifiers.
+     3. Card/surface backgrounds and borders use the surface/border tokens.
+     4. Everything reads from these variables — no hardcoded hex in components.
+   ════════════════════════════════════════════════════════════════════════════ */
+.campus-page {
+  /* ─── Primary accent (amber #F5A623) — the single brand color ─── */
+  --accent-blue: #f5a623;
+  --accent-blue-glow: rgba(245, 166, 35, 0.14);
+
+  /* Decorative slots (--accent-purple / --accent-orange / --accent-cyan /
+     --accent-amber) collapse into the primary so category icons / card
+     borders stay monochrome on-brand. */
+  --accent-purple: #f5a623;
+  --accent-purple-glow: rgba(245, 166, 35, 0.14);
+  --accent-orange: #f5a623;
+  --accent-orange-glow: rgba(245, 166, 35, 0.14);
+  --accent-cyan: #f5a623;
+  --accent-cyan-glow: rgba(245, 166, 35, 0.14);
+  --accent-amber: #f5a623;
+  --accent-amber-glow: rgba(245, 166, 35, 0.14);
+
+  /* ─── Semantic accents — ONLY used when they mean something ─── */
+  --accent-emerald: #3ecf8e;                     /* open / success / completed */
+  --accent-emerald-glow: rgba(62, 207, 142, 0.14);
+  --accent-rose: #f0554a;                        /* closed / urgent / overdue */
+  --accent-rose-glow: rgba(240, 85, 74, 0.14);
+
+  --danger: #f0554a;
+  --warning: #f5a623;
+  --success: #3ecf8e;
+  --info: #3ac1d9;
+
+  /* ─── Surfaces ─── */
+  --bg-primary: #0e0e10;
+  --bg-secondary: #151518;
+  --bg-tertiary: #1b1b1f;
+  --bg-card: #1b1b1f;
+  --bg-card-hover: #222227;
+  --bg-glass: rgba(18, 18, 22, 0.85);
+  --bg-glass-heavy: rgba(14, 14, 16, 0.92);
+  --bg-input: #1b1b1f;
+
+  /* ─── Borders / dividers ─── */
+  --border-primary: #2a2a2e;
+  --border-secondary: #222227;
+  --border-focus: rgba(245, 166, 35, 0.5);
+
+  /* ─── Text ─── */
+  --text-primary: #f2f2f3;
+  --text-secondary: #9a9aa0;
+  --text-tertiary: #71717a;
+  --text-inverse: #0e0e10;
+
+  /* ─── Hero ─── */
+  --page-hero-icon-bg: rgba(245, 166, 35, 0.14);
+  --page-hero-icon-color: #f5a623;
+  --page-hero-gradient-start: #f5a623;
+}

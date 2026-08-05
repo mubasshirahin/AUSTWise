@@ -8,6 +8,18 @@
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
+
+  /* Unified palette — amber is the one brand accent; blue/purple/orange/cyan
+     collapse into it so category icons/cards stay monochrome. Rose (unread/
+     urgent) and emerald (online) remain semantic. */
+  --accent-blue: #f5a623;
+  --accent-blue-glow: rgba(245, 166, 35, 0.14);
+  --accent-purple: #f5a623;
+  --accent-purple-glow: rgba(245, 166, 35, 0.14);
+  --accent-orange: #f5a623;
+  --accent-orange-glow: rgba(245, 166, 35, 0.14);
+  --accent-cyan: #f5a623;
+  --accent-cyan-glow: rgba(245, 166, 35, 0.14);
 }
 
 /* ─── Quick Stats Row (matches Dashboard pattern) ─── */

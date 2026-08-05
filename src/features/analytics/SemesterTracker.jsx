@@ -49,24 +49,27 @@ const isLabCourse = (code) => {
 };
 
 const getTotalColor = (total) => {
-  if (total >= 80) return '#22c55e';
-  if (total >= 60) return '#eab308';
-  if (total >= 40) return '#f97316';
-  return '#ef4444';
+  if (total >= 80) return 'var(--accent-emerald)';
+  if (total >= 60) return 'var(--accent-amber)';
+  if (total >= 40) return 'var(--accent-amber)';
+  return 'var(--accent-rose)';
 };
 
-/* ─── Theory mark fields (fixed) ─── */
+/* ─── Theory mark fields (fixed) — all columns share the primary accent.
+   No per-assessment rotating color; red/green/teal are reserved for the
+   semantic grade scale (getGrade / cell classes). ─── */
+const MARK_ACCENT = 'var(--accent-blue)';
 const THEORY_FIXED_FIELDS = [
-  { id: 'attendance', label: 'Attend.', fullLabel: 'Attendance', maxMarks: 10, color: 'var(--accent-emerald)' },
-  { id: 'midterm',    label: 'Midterm', fullLabel: 'Midterm',     maxMarks: 20, color: 'var(--accent-amber)'   },
-  { id: 'final',      label: 'Final',   fullLabel: 'Final Exam',  maxMarks: 50, color: 'var(--accent-rose)'    },
+  { id: 'attendance', label: 'Attend.', fullLabel: 'Attendance', maxMarks: 10, color: MARK_ACCENT },
+  { id: 'midterm',    label: 'Midterm', fullLabel: 'Midterm',     maxMarks: 20, color: MARK_ACCENT },
+  { id: 'final',      label: 'Final',   fullLabel: 'Final Exam',  maxMarks: 50, color: MARK_ACCENT },
 ];
 
 const getTheoryFields = (quizCount = 3, bestOf = 2) => {
   const perQuizMax = Math.round((20 / bestOf) * 100) / 100;
   const fields = [THEORY_FIXED_FIELDS[0]]; // attendance
   for (let i = 1; i <= quizCount; i++) {
-    fields.push({ id: `quiz${i}`, label: `Quiz ${i}`, fullLabel: `Quiz ${i}`, maxMarks: perQuizMax, color: 'var(--accent-cyan)' });
+    fields.push({ id: `quiz${i}`, label: `Quiz ${i}`, fullLabel: `Quiz ${i}`, maxMarks: perQuizMax, color: MARK_ACCENT });
   }
   fields.push(THEORY_FIXED_FIELDS[1]); // midterm
   fields.push(THEORY_FIXED_FIELDS[2]); // final
@@ -1028,12 +1031,12 @@ export default function SemesterTracker() {
                         <tr>
                           <th className="st-th st-th-course" style={{minWidth:'80px',textAlign:'center'}}>Component</th>
                           {Array.from({length: maxCount}, (_, i) => (
-                            <th key={i} className="st-th st-th-mark" style={{'--col-color':'var(--accent-cyan)',minWidth:'36px'}}>
+                            <th key={i} className="st-th st-th-mark" style={{'--col-color':'var(--accent-blue)',minWidth:'36px'}}>
                               <span style={{fontSize:'0.55rem'}}>{i + 1}</span>
                             </th>
                           ))}
-                          <th className="st-th st-th-mark" style={{'--col-color':'var(--accent-cyan)',minWidth:'45px',background:'var(--bg-tertiary)'}}>
-                            <span style={{fontSize:'0.5rem',color:'var(--accent-amber)'}}>Sub Total</span>
+                          <th className="st-th st-th-mark" style={{'--col-color':'var(--accent-blue)',minWidth:'45px',background:'var(--bg-tertiary)'}}>
+                            <span style={{fontSize:'0.5rem',color:'var(--text-secondary)'}}>Sub Total</span>
                           </th>
                           <th className="st-th st-th-total" style={{minWidth:'50px'}}>Total<br/><span className="st-th-sub">/{maxTot}</span></th>
                           <th className="st-th st-th-grade" style={{minWidth:'50px'}}>Grade</th>
@@ -1045,7 +1048,7 @@ export default function SemesterTracker() {
                           return (
                             <tr key={gi} className="st-row">
                               <td className="st-td st-td-course" style={{padding:'2px 8px',fontSize:'0.6rem',textAlign:'center',borderRight:'1.5px solid var(--border-primary)'}}>
-                                <span style={{fontWeight:'var(--fw-bold)',color:'var(--accent-cyan)'}}>{group.label}</span>
+                                <span style={{fontWeight:'var(--fw-bold)',color:'var(--text-secondary)'}}>{group.label}</span>
                               </td>
                               {Array.from({length: maxCount}, (_, ii) => {
                                 const col = group.items[ii];
@@ -1060,7 +1063,7 @@ export default function SemesterTracker() {
                                 return (
                                   <td key={col.key}
                                     className={`st-td st-td-input ${getCellClass(val,col.max)} ${isActive?'st-td-active':''}`}
-                                    style={{'--col-color':'var(--accent-cyan)'}}
+                                    style={{'--col-color':'var(--accent-blue)'}}
                                   >
                                     <div className="st-raw-wrap">
                                       <input

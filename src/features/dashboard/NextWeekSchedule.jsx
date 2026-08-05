@@ -127,7 +127,7 @@ export default function NextWeekSchedule() {
       priority: newDeadline.priority,
       batchGroup: userBatchGroup,
       crGroup: crGroup || undefined,
-      color: newDeadline.priority === 'high' ? '#ef4444' : newDeadline.priority === 'medium' ? '#f59e0b' : '#3b82f6'
+      color: newDeadline.priority === 'high' ? '#f0554a' : newDeadline.priority === 'medium' ? '#f5a623' : '#9a9aa0'
     };
 
     const updated = [...deadlines, deadline];

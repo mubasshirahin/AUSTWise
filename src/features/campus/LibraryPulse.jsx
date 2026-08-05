@@ -157,7 +157,7 @@ export default function LibraryPulse() {
         data: libState.peakHours ? libState.peakHours.map(item => item.occupancy) : [],
         backgroundColor: 'var(--accent-blue)',
         borderRadius: 4,
-        hoverBackgroundColor: 'var(--accent-cyan)',
+        hoverBackgroundColor: 'var(--accent-blue)',
       }
     ]
   };

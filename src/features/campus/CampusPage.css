@@ -5,9 +5,11 @@
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  --page-hero-icon-bg: var(--accent-amber-glow);
-  --page-hero-icon-color: var(--accent-amber);
-  --page-hero-gradient-start: var(--accent-amber);
+
+  /* Unified palette lives in campus-tokens.css (imported after this file).
+     Amber is the one brand accent; blue/purple/orange/cyan collapse into it
+     so category icons/cards stay monochrome. Rose (closed/urgent) and
+     emerald (open/success) remain semantic. */
 }
 
 .campus-tabs {

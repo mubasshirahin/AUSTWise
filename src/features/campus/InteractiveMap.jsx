@@ -55,18 +55,10 @@ const RESIZE_DIRECTIONS = {
 const getRoomHotspots = (room) => room.hotspots || (room.hotspot ? [room.hotspot] : []);
 const getHotspotKey = (room, index) => `${room.id}-${index}`;
 
-const getRoomColor = (type) => {
-  switch (type) {
-    case 'classroom': return 'var(--accent-blue)';
-    case 'lab': return 'var(--accent-purple)';
-    case 'admin': return 'var(--accent-amber)';
-    case 'facility': return 'var(--accent-cyan)';
-    case 'library': return 'var(--accent-emerald)';
-    case 'lift': return 'var(--accent-rose)';
-    case 'washroom': return 'var(--accent-blue)';
-    default: return 'var(--text-tertiary)';
-  }
-};
+/* Room-type hotspots all share the single primary accent so the map stays
+   consistent, not a rotating palette. Semantic colors (emerald/rose) are
+   reserved for status, not room categories. */
+const getRoomColor = (type) => 'var(--accent-blue)';
 
 function FloorShowcase({ floorData, selectedFloor }) {
   const [zoom, setZoom] = useState('fit');

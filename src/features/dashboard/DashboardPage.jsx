@@ -18,6 +18,7 @@ import { getUserStorageItemWithGuestFallback, getCurrentUserId } from '../../uti
 import { useAuth } from '../../context/AuthContext';
 import './DashboardPage.css';
 import './dashboard-premium.css';
+import './dashboard-tokens.css';
 
 const FOCUS_SECTIONS = {
   stats: ['stats', 'routine_day', 'deadlines', 'notices', 'notif'],
@@ -102,9 +103,6 @@ function StudyStreak() {
 
   const getStreakColor = () => {
     if (streak === 0) return 'var(--text-tertiary)';
-    if (streak < 3) return 'var(--accent-amber)';
-    if (streak < 7) return 'var(--accent-orange)';
-    if (streak < 30) return 'var(--accent-rose)';
     return 'var(--accent-amber)';
   };
 
@@ -172,7 +170,7 @@ function StudyStreak() {
             <div className="leaderboard-podium">
               {topThree.map((entry, i) => {
                 const icons = [<Trophy size={16} />, <Medal size={16} />, <Star size={16} />];
-                const colors = ['var(--accent-amber)', 'var(--text-secondary)', 'var(--accent-orange)'];
+                const colors = ['var(--accent-amber)', 'var(--text-secondary)', 'var(--text-secondary)'];
                 return (
                   <div key={entry.id} className={`podium-item podium-${i + 1}`}>
                     <div className="podium-icon" style={{ color: colors[i] }}>{icons[i]}</div>
@@ -231,11 +229,11 @@ function StudyStreak() {
 }
 
 const focusModes = [
-  { id: 'stats', label: 'Quick Stats', icon: BarChart3, desc: 'CGPA & metrics', color: 'blue' },
-  { id: 'routine', label: 'Routine', icon: CalendarDays, desc: 'Weekly timetable', color: 'cyan' },
-  { id: 'calendar', label: 'Semester View', icon: Calendar, desc: '14-week view', color: 'purple' },
+  { id: 'stats', label: 'Quick Stats', icon: BarChart3, desc: 'CGPA & metrics', color: 'amber' },
+  { id: 'routine', label: 'Routine', icon: CalendarDays, desc: 'Weekly timetable', color: 'amber' },
+  { id: 'calendar', label: 'Semester View', icon: Calendar, desc: '14-week view', color: 'amber' },
   { id: 'exams', label: 'Zero Hour', icon: BookOpen, desc: 'Quiz, Mid & Final', color: 'amber' },
-  { id: 'attendance', label: 'Attendance', icon: Percent, desc: 'Semester progress', color: 'emerald' },
+  { id: 'attendance', label: 'Attendance', icon: Percent, desc: 'Semester progress', color: 'amber' },
 ];
 
 function getGreeting() {

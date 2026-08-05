@@ -1,0 +1,83 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   DASHBOARD UNIFIED PALETTE
+   ────────────────────────────────────────────────────────────────────────────
+   Central token layer for the Dashboard section. Scoped to `.dashboard-page`
+   so it does not leak into the rest of the app, and imported AFTER the other
+   dashboard stylesheets so it wins the cascade for every descendant component.
+
+   Design rules enforced here:
+     1. Primary accent (#F5A623 amber) is the ONE brand color — it fills the
+        `--accent-blue` (primary) slot AND the decorative `--accent-purple` /
+        `--accent-orange` slots, so per-category icons/cards/borders no longer
+        rotate through blue/orange/teal/purple.
+     2. Red, green and teal are reserved for SEMANTIC meaning only:
+        --accent-emerald → success/completed, --accent-rose → urgent/overdue,
+        --accent-cyan → info. They are never used as category identifiers.
+     3. Card/surface backgrounds and borders use the surface/border tokens.
+     4. Everything reads from these variables — no hardcoded hex in components.
+   ════════════════════════════════════════════════════════════════════════════ */
+.dashboard-page {
+  /* ─── Primary accent (amber #F5A623) — the single brand color ─── */
+  --accent-blue: #f5a623;
+  --accent-blue-glow: rgba(245, 166, 35, 0.14);
+
+  /* Decorative slots (--accent-purple / --accent-orange) collapse into the
+     primary so category icons / card borders stay monochrome on-brand. */
+  --accent-purple: #f5a623;
+  --accent-purple-glow: rgba(245, 166, 35, 0.14);
+  --accent-orange: #f5a623;
+  --accent-orange-glow: rgba(245, 166, 35, 0.14);
+
+  --accent-amber: #f5a623;
+  --accent-amber-glow: rgba(245, 166, 35, 0.14);
+
+  /* ─── Semantic accents — ONLY used when they mean something ─── */
+  --accent-emerald: #3ecf8e;                     /* success / completed */
+  --accent-emerald-glow: rgba(62, 207, 142, 0.14);
+  --accent-rose: #f0554a;                        /* urgent / overdue */
+  --accent-rose-glow: rgba(240, 85, 74, 0.14);
+  --accent-cyan: #3ac1d9;                        /* info (sparse) */
+  --accent-cyan-glow: rgba(58, 193, 217, 0.14);
+
+  --danger: #f0554a;
+  --warning: #f5a623;
+  --success: #3ecf8e;
+  --info: #3ac1d9;
+
+  /* ─── Surfaces ─── */
+  --bg-primary: #0e0e10;
+  --bg-secondary: #151518;
+  --bg-tertiary: #1b1b1f;
+  --bg-card: #1b1b1f;
+  --bg-card-hover: #222227;
+  --bg-glass: rgba(18, 18, 22, 0.85);
+  --bg-glass-heavy: rgba(14, 14, 16, 0.92);
+  --bg-input: #1b1b1f;
+
+  /* ─── Borders / dividers ─── */
+  --border-primary: #2a2a2e;
+  --border-secondary: #222227;
+  --border-focus: rgba(245, 166, 35, 0.5);
+
+  /* ─── Text ─── */
+  --text-primary: #f2f2f3;
+  --text-secondary: #9a9aa0;
+  --text-tertiary: #71717a;
+  --text-inverse: #0e0e10;
+
+  /* ─── Shadows ─── */
+  --shadow-glow-blue: 0 0 20px rgba(245, 166, 35, 0.12);
+  --shadow-glow-purple: 0 0 20px rgba(245, 166, 35, 0.1);
+  --shadow-glow-amber: 0 0 20px rgba(245, 166, 35, 0.12);
+
+  /* ─── Hero ambient accent — unified instead of per-theme ─── */
+  --hero-accent-a: #f5a623;
+  --hero-accent-b: #f5a623;
+}
+
+/* The hero accent is set per-theme at `[data-theme="X"] .dashboard-page`
+   (higher specificity). Re-assert it last so the dashboard stays consistent. */
+[data-theme] .dashboard-page {
+  --hero-accent-a: #f5a623;
+  --hero-accent-b: #f5a623;
+}

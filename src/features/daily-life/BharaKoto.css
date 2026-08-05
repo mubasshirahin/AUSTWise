@@ -392,21 +392,28 @@
   margin-top: 2px;
 }
 
-/* Accent tints per mode */
-.bk-accent-rickshaw .bk-fare-card-icon { background: var(--accent-rose-glow); color: var(--accent-rose); }
-.bk-accent-local-bus .bk-fare-card-icon { background: var(--accent-cyan-glow); color: var(--accent-cyan); }
-.bk-accent-metro .bk-fare-card-icon { background: var(--accent-purple-glow); color: var(--accent-purple); }
-.bk-accent-tracked-bus .bk-fare-card-icon { background: var(--accent-blue-glow); color: var(--accent-blue); }
-.bk-accent-cng .bk-fare-card-icon { background: var(--accent-emerald-glow); color: var(--accent-emerald); }
-.bk-accent-taxi .bk-fare-card-icon { background: var(--accent-amber-glow); color: var(--accent-amber); }
-.bk-accent-rideshare .bk-fare-card-icon { background: var(--accent-orange-glow); color: var(--accent-orange); }
+/* Per-mode fare cards use the single primary accent (no rotating palette).
+   Red / green / teal are reserved for semantic meaning and never used to
+   label individual transport modes. */
+.bk-accent-rickshaw .bk-fare-card-icon,
+.bk-accent-local-bus .bk-fare-card-icon,
+.bk-accent-metro .bk-fare-card-icon,
+.bk-accent-tracked-bus .bk-fare-card-icon,
+.bk-accent-cng .bk-fare-card-icon,
+.bk-accent-taxi .bk-fare-card-icon,
+.bk-accent-rideshare .bk-fare-card-icon {
+  background: var(--accent-blue-glow);
+  color: var(--accent-blue);
+}
 
-.bk-accent-rickshaw .bk-fare-card-fare { color: var(--accent-rose); }
-.bk-accent-local-bus .bk-fare-card-fare { color: var(--accent-cyan); }
-.bk-accent-metro .bk-fare-card-fare { color: var(--accent-purple); }
-.bk-accent-tracked-bus .bk-fare-card-fare { color: var(--accent-blue); }
-.bk-accent-cng .bk-fare-card-fare { color: var(--accent-emerald); }
-.bk-accent-taxi .bk-fare-card-fare { color: var(--accent-amber); }
+.bk-accent-rickshaw .bk-fare-card-fare,
+.bk-accent-local-bus .bk-fare-card-fare,
+.bk-accent-metro .bk-fare-card-fare,
+.bk-accent-tracked-bus .bk-fare-card-fare,
+.bk-accent-cng .bk-fare-card-fare,
+.bk-accent-taxi .bk-fare-card-fare {
+  color: var(--text-primary);
+}
 
 /* ── Bus chips ── */
 .bk-bus-chips {

@@ -35,17 +35,20 @@ import './MaterialFolders.css';
 // No OAuth login needed — works for folders shared with "Anyone with the link"
 const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || '';
 
-/* ─── Colour palette for each file category ─── */
+/* ─── Colour palette for each file category ───
+   File-type icons/badges are decorative, not semantic, so they collapse to
+   neutral gray or the primary amber accent — never the rotating blue/rose/
+   purple/emerald palette. (Rose/emerald are reserved for urgent/success.) */
 const CATEGORY_META = {
-  folder:      { color: 'var(--accent-blue)',    glow: 'var(--accent-blue-glow)',     icon: '\u{1F4C1}',   label: 'Folder' },
-  pdf:         { color: 'var(--accent-rose)',     glow: 'var(--accent-rose-glow)',     icon: '\u{1F4C4}',   label: 'PDF' },
-  image:       { color: 'var(--accent-purple)',   glow: 'var(--accent-purple-glow)',   icon: '\u{1F5BC}\uFE0F',   label: 'Image' },
-  video:       { color: 'var(--accent-amber)',    glow: 'var(--accent-amber-glow)',    icon: '\u{1F3AC}',   label: 'Video' },
-  spreadsheet: { color: 'var(--accent-emerald)',  glow: 'var(--accent-emerald-glow)',  icon: '\u{1F4CA}',   label: 'Sheet' },
-  document:    { color: 'var(--accent-blue)',     glow: 'var(--accent-blue-glow)',     icon: '\u{1F4DD}',   label: 'Doc' },
-  presentation:{ color: '#f97316',                glow: 'rgba(249,115,22,0.15)',       icon: '\u{1F4FD}\uFE0F',   label: 'Slides' },
-  archive:     { color: 'var(--text-tertiary)',   glow: 'var(--bg-secondary)',         icon: '\u{1F4E6}',   label: 'Archive' },
-  other:       { color: 'var(--text-tertiary)',   glow: 'var(--bg-secondary)',         icon: '\u{1F4CE}',   label: 'Other' },
+  folder:      { color: 'var(--accent-amber)',   glow: 'var(--accent-amber-glow)',   icon: '\u{1F4C1}',   label: 'Folder' },
+  pdf:         { color: 'var(--text-secondary)', glow: 'var(--bg-tertiary)',         icon: '\u{1F4C4}',   label: 'PDF' },
+  image:       { color: 'var(--text-secondary)', glow: 'var(--bg-tertiary)',         icon: '\u{1F5BC}\uFE0F',   label: 'Image' },
+  video:       { color: 'var(--accent-amber)',   glow: 'var(--accent-amber-glow)',   icon: '\u{1F3AC}',   label: 'Video' },
+  spreadsheet: { color: 'var(--text-secondary)', glow: 'var(--bg-tertiary)',         icon: '\u{1F4CA}',   label: 'Sheet' },
+  document:    { color: 'var(--accent-amber)',   glow: 'var(--accent-amber-glow)',   icon: '\u{1F4DD}',   label: 'Doc' },
+  presentation:{ color: 'var(--accent-amber)',  glow: 'var(--accent-amber-glow)',   icon: '\u{1F4FD}\uFE0F',   label: 'Slides' },
+  archive:     { color: 'var(--text-tertiary)',  glow: 'var(--bg-secondary)',         icon: '\u{1F4E6}',   label: 'Archive' },
+  other:       { color: 'var(--text-tertiary)',  glow: 'var(--bg-secondary)',         icon: '\u{1F4CE}',   label: 'Other' },
 };
 
 // ─── Single file-type icon component ───

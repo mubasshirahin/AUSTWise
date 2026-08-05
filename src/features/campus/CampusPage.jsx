@@ -10,15 +10,16 @@ import EmptyClassroomPage from '../empty-classroom/EmptyClassroomPage';
 import GliderTabs from '../../components/GliderTabs';
 import './CampusPage.css';
 import '../../components/PageHero.css';
+import './campus-tokens.css';
 
 const campusTabs = [
-  { id: 'map',     label: 'Floor Map',        icon: MapPin,          color: 'cyan',    desc: '' },
-  { id: 'faculty', label: 'Faculty Status',   icon: Users,           color: 'amber',   desc: 'Office hours' },
-  { id: 'library', label: 'Library Pulse',    icon: Library,         color: 'emerald', desc: 'Occupancy' },
-  { id: 'canteen', label: 'Canteen Menu',     icon: UtensilsCrossed, color: 'rose',    desc: "Today's menu" },
-  { id: 'bus',     label: 'Bus Tracker',      icon: Bus,             color: 'cyan',    desc: 'Shuttle routes' },
-  { id: 'bhara',     label: 'Bhara Koto',       icon: Banknote,        color: 'amber',   desc: 'Fee tracker' },
-  { id: 'classroom', label: 'Free Rooms',   icon: DoorOpen,         color: 'purple',  desc: 'Find available rooms' },
+  { id: 'map',     label: 'Floor Map',        icon: MapPin,          color: 'amber', desc: '' },
+  { id: 'faculty', label: 'Faculty Status',   icon: Users,           color: 'amber', desc: 'Office hours' },
+  { id: 'library', label: 'Library Pulse',    icon: Library,         color: 'amber', desc: 'Occupancy' },
+  { id: 'canteen', label: 'Canteen Menu',     icon: UtensilsCrossed, color: 'amber', desc: "Today's menu" },
+  { id: 'bus',     label: 'Bus Tracker',      icon: Bus,             color: 'amber', desc: 'Shuttle routes' },
+  { id: 'bhara',     label: 'Bhara Koto',       icon: Banknote,        color: 'amber', desc: 'Fee tracker' },
+  { id: 'classroom', label: 'Free Rooms',   icon: DoorOpen,         color: 'amber', desc: 'Find available rooms' },
 ];
 
 const CAMPUS_TAB_KEY = 'aust-campus-active-tab';

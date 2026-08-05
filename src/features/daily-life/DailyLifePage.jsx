@@ -8,13 +8,14 @@ import MessMealTrackerPage from './MessMealTrackerPage';
 import BharaKoto from './BharaKoto';
 import './DailyLifePage.css';
 import '../../components/PageHero.css';
+import './daily-life-tokens.css';
 
 const TABS = [
-  { id: 'exam-checklist',       label: 'Exam Checklist',      icon: ClipboardCheck,color: 'blue',    desc: 'Exam prep'          },
-  { id: 'cover-page-generator', label: 'Cover Page',          icon: NotebookPen,   color: 'purple',  desc: 'Generate cover page'},
-  { id: 'money-tracker',        label: 'TiyaHodeJargoi',       icon: DollarSign,    color: 'emerald', desc: 'Expenses & budget'  },
-  { id: 'mess-meal',            label: 'Mess Meal',           icon: UtensilsCrossed,color: 'orange', desc: 'Meal planner'       },
-  { id: 'bhara-koto',           label: 'Bhara Koto',          icon: Banknote,       color: 'orange', desc: 'Fare estimator'     },
+  { id: 'exam-checklist',       label: 'Exam Checklist',      icon: ClipboardCheck, color: 'amber', desc: 'Exam prep'          },
+  { id: 'cover-page-generator', label: 'Cover Page',          icon: NotebookPen,    color: 'amber', desc: 'Generate cover page'},
+  { id: 'money-tracker',        label: 'TiyaHodeJargoi',       icon: DollarSign,     color: 'amber', desc: 'Expenses & budget'  },
+  { id: 'mess-meal',            label: 'Mess Meal',           icon: UtensilsCrossed,color: 'amber', desc: 'Meal planner'       },
+  { id: 'bhara-koto',           label: 'Bhara Koto',          icon: Banknote,       color: 'amber', desc: 'Fare estimator'     },
 ];
 
 const STORAGE_KEY = 'daily-life-active-tab';

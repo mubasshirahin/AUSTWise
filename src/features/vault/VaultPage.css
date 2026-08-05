@@ -9,9 +9,6 @@
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  --page-hero-icon-bg: var(--accent-amber-glow);
-  --page-hero-icon-color: var(--accent-amber);
-  --page-hero-gradient-start: var(--accent-amber);
 }
 
 /* ─── Hero: Shell ─── */
@@ -628,15 +625,15 @@
   transition: transform 0.2s ease;
 }
 
-/* Dept accent colors */
-.vault-dept-cse { --dept-accent: var(--accent-blue); --dept-glow: var(--accent-blue-glow); }
-.vault-dept-eee { --dept-accent: #f59e0b; --dept-glow: rgba(245, 158, 11, 0.15); }
-.vault-dept-ce { --dept-accent: var(--accent-emerald); --dept-glow: var(--accent-emerald-glow); }
-.vault-dept-me { --dept-accent: var(--accent-rose); --dept-glow: var(--accent-rose-glow); }
-.vault-dept-ipe { --dept-accent: var(--accent-cyan); --dept-glow: rgba(6, 182, 212, 0.15); }
-.vault-dept-te { --dept-accent: #ec4899; --dept-glow: rgba(236, 72, 153, 0.15); }
-.vault-dept-arch { --dept-accent: #f97316; --dept-glow: rgba(249, 115, 22, 0.15); }
-.vault-dept-bba { --dept-accent: var(--accent-purple); --dept-glow: var(--accent-purple-glow); }
+/* Dept accent colors — unified amber */
+.vault-dept-cse { --dept-accent: var(--accent-amber); --dept-glow: var(--accent-amber-glow); }
+.vault-dept-eee { --dept-accent: var(--accent-amber); --dept-glow: var(--accent-amber-glow); }
+.vault-dept-ce { --dept-accent: var(--accent-amber); --dept-glow: var(--accent-amber-glow); }
+.vault-dept-me { --dept-accent: var(--accent-amber); --dept-glow: var(--accent-amber-glow); }
+.vault-dept-ipe { --dept-accent: var(--accent-amber); --dept-glow: var(--accent-amber-glow); }
+.vault-dept-te { --dept-accent: var(--accent-amber); --dept-glow: var(--accent-amber-glow); }
+.vault-dept-arch { --dept-accent: var(--accent-amber); --dept-glow: var(--accent-amber-glow); }
+.vault-dept-bba { --dept-accent: var(--accent-amber); --dept-glow: var(--accent-amber-glow); }
 
 .vault-dept-card[class*='vault-dept-'] {
   border-color: color-mix(in srgb, var(--dept-accent) 20%, var(--border-primary));
@@ -780,8 +777,8 @@
 }
 
 .vault-course-card:hover {
-  border-color: var(--accent-emerald);
-  box-shadow: 0 12px 32px rgba(16, 185, 129, 0.15);
+  border-color: var(--accent-amber);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--accent-amber) 15%, transparent);
   transform: translateY(-3px);
 }
 
@@ -819,8 +816,8 @@
 }
 
 .vault-course-type.lab {
-  background: rgba(6, 182, 212, 0.15);
-  color: var(--accent-cyan);
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
 }
 
 .vault-course-name {
@@ -839,7 +836,7 @@
   position: absolute;
   right: var(--sp-4);
   bottom: var(--sp-4);
-  color: var(--accent-emerald);
+  color: var(--accent-amber);
   opacity: 0;
   transform: translateX(-8px);
   transition: all 0.25s ease;
@@ -1267,7 +1264,7 @@
   background: var(--accent-blue-glow);
   border-color: var(--accent-blue);
   color: var(--accent-blue);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent-blue) 20%, transparent);
 }
 
 .qb-term-chip-count {
@@ -1314,7 +1311,7 @@
 
 .qb-fab:hover {
   transform: translateY(-3px) scale(1.05);
-  box-shadow: 0 12px 28px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--accent-blue) 40%, transparent);
 }
 
 .qb-fab-emerald {
@@ -1322,7 +1319,7 @@
 }
 
 .qb-fab-emerald:hover {
-  box-shadow: 0 12px 28px rgba(16, 185, 129, 0.4);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--accent-emerald) 40%, transparent);
 }
 
 .qb-fab-toast {
@@ -1448,7 +1445,7 @@
 
 .qb-paper-card:hover {
   border-color: var(--accent-blue);
-  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.12);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--accent-blue) 12%, transparent);
   transform: translateY(-3px);
 }
 
@@ -1509,7 +1506,7 @@
   border: none;
   display: block;
   object-fit: contain;
-  background: #1a1a1a;
+  background: var(--bg-tertiary);
 }
 
 .material-folders-grid,

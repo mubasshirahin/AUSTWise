@@ -182,12 +182,12 @@ export default function WeekSchedule() {
     return filteredTasks;
   };
 
-  // Day-cell density: 0 → calm, 1 → light, 2 → busy, 3+ → packed.
+  // Day-cell density: neutral → primary accent as the day gets busier.
+  // No rotating palette — calm days are neutral, busy days are the amber accent.
   const getDayDensityColor = (count) => {
-    if (count >= 3) return 'var(--accent-rose)';
-    if (count === 2) return 'var(--accent-amber)';
-    if (count === 1) return 'var(--accent-cyan)';
-    return 'var(--accent-emerald)';
+    if (count >= 2) return 'var(--accent-amber)';
+    if (count === 1) return 'var(--text-secondary)';
+    return 'var(--text-tertiary)';
   };
 
   // Shared day-cell renderer — used identically by Day, Week and Month views.
@@ -305,16 +305,10 @@ export default function WeekSchedule() {
     return date.toLocaleDateString('en-US', { month: 'short' });
   };
 
-  const getTypeColor = (type) => {
-    switch (type) {
-      case 'class': return 'var(--accent-blue)';
-      case 'lab': return 'var(--accent-purple)';
-      case 'exam': return 'var(--accent-rose)';
-      case 'assignment': return 'var(--accent-amber)';
-      case 'event': return 'var(--accent-emerald)';
-      default: return 'var(--accent-cyan)';
-    }
-  };
+  // Task type is a CATEGORY, not a semantic state — so it always resolves to
+  // the single primary accent (amber) for a consistent schedule. No more
+  // blue/purple/rose/emerald/cyan rotating by type.
+  const getTypeColor = () => 'var(--accent-amber)';
 
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportRef = useRef(null);

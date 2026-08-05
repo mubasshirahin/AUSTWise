@@ -5,9 +5,11 @@
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  --page-hero-icon-bg: var(--accent-amber-glow);
-  --page-hero-icon-color: var(--accent-amber);
-  --page-hero-gradient-start: var(--accent-amber);
+
+  /* Unified palette lives in analytics-tokens.css (imported after this
+     file). Amber is the one brand accent; blue/purple/orange collapse into
+     it so category icons/cards stay monochrome. Rose (urgent), emerald
+     (success) and cyan (info) remain semantic. */
 }
 
 /* ─── Hero: Shell ─── */
@@ -1157,27 +1159,18 @@
    Reuses .st-widget masthead styles scoped in SemesterTracker.css.
    ════════════════════════════════════════════════════════════ */
 
-/* ── Signature accent tile for the three Grade Lab widgets ── */
-.st-widget.heatmap-widget .schedule-icon-tile {
-  background: var(--accent-rose-glow);
-  color: var(--accent-rose);
-}
-.st-widget.heatmap-widget .schedule-icon-tile svg {
-  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-rose) 35%, transparent));
-}
-.st-widget.poll-widget .schedule-icon-tile {
-  background: var(--accent-emerald-glow);
-  color: var(--accent-emerald);
-}
-.st-widget.poll-widget .schedule-icon-tile svg {
-  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-emerald) 35%, transparent));
-}
+/* ── Signature accent tile — all three Grade Lab widgets share the single
+   primary accent (no per-widget rotating color). ── */
+.st-widget.heatmap-widget .schedule-icon-tile,
+.st-widget.poll-widget .schedule-icon-tile,
 .st-widget.prereq-widget .schedule-icon-tile {
-  background: var(--accent-purple-glow);
-  color: var(--accent-purple);
+  background: var(--accent-blue-glow);
+  color: var(--accent-blue);
 }
+.st-widget.heatmap-widget .schedule-icon-tile svg,
+.st-widget.poll-widget .schedule-icon-tile svg,
 .st-widget.prereq-widget .schedule-icon-tile svg {
-  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-purple) 35%, transparent));
+  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-blue) 35%, transparent));
 }
 
 /* Scoped count badge — works even when DashboardPage.css is not loaded */

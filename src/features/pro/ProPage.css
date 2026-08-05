@@ -10,6 +10,17 @@
   margin: 0 auto;
   padding: 8px 0 32px;
   animation: fadeInUp 0.5s ease forwards;
+
+  /* Unified palette — amber is the one brand accent; blue/purple collapse
+     into it so pricing tier accents stay monochrome. */
+  --accent-blue: #f5a623;
+  --accent-blue-glow: rgba(245, 166, 35, 0.14);
+  --accent-purple: #f5a623;
+  --accent-purple-glow: rgba(245, 166, 35, 0.14);
+  --accent-orange: #f5a623;
+  --accent-orange-glow: rgba(245, 166, 35, 0.14);
+  --accent-cyan: #f5a623;
+  --accent-cyan-glow: rgba(245, 166, 35, 0.14);
 }
 
 /* ─── Hero Section ─── */
@@ -253,23 +264,23 @@
 }
 
 .pro-card-icon.node {
-  background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(59,130,246,0.06));
-  color: #3b82f6;
-  border: 1px solid rgba(59,130,246,0.2);
+  background: color-mix(in srgb, var(--accent-amber) 14%, transparent);
+  color: var(--accent-amber);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 22%, transparent);
 }
 
 .pro-card-icon.helix {
-  background: linear-gradient(135deg, rgba(245,158,11,0.18), rgba(245,158,11,0.06));
-  color: #f59e0b;
-  border: 1px solid rgba(245,158,11,0.25);
-  box-shadow: 0 0 16px rgba(245,158,11,0.12);
+  background: color-mix(in srgb, var(--accent-amber) 14%, transparent);
+  color: var(--accent-amber);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 22%, transparent);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--accent-amber) 12%, transparent);
 }
 
 .pro-card-icon.apex {
-  background: linear-gradient(135deg, rgba(167,139,250,0.18), rgba(139,92,246,0.08));
-  color: #a78bfa;
-  border: 1px solid rgba(167,139,250,0.25);
-  box-shadow: 0 0 20px rgba(167,139,250,0.14);
+  background: color-mix(in srgb, var(--accent-amber) 14%, transparent);
+  color: var(--accent-amber);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 22%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--accent-amber) 14%, transparent);
 }
 
 .pro-card-name {
@@ -402,38 +413,38 @@
 }
 
 .pro-cta-btn.node {
-  background: linear-gradient(135deg, rgba(59,130,246,0.12), rgba(59,130,246,0.04));
+  background: color-mix(in srgb, var(--accent-amber) 12%, transparent);
   color: var(--text-primary);
-  border: 1px solid rgba(59,130,246,0.2);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 20%, transparent);
 }
 
 .pro-cta-btn.node:hover {
-  border-color: #3b82f6;
-  color: #3b82f6;
-  background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(59,130,246,0.08));
-  box-shadow: 0 4px 16px rgba(59,130,246,0.15);
+  border-color: var(--accent-amber);
+  color: var(--accent-amber);
+  background: color-mix(in srgb, var(--accent-amber) 16%, transparent);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--accent-amber) 15%, transparent);
 }
 
 .pro-cta-btn.helix {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
+  background: linear-gradient(135deg, #f59e0b, #f5a623);
   color: #fff;
-  box-shadow: 0 4px 16px rgba(245,158,11,0.3);
+  box-shadow: 0 4px 16px rgba(245,166,35,0.3);
 }
 
 .pro-cta-btn.helix:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(245,158,11,0.4);
+  box-shadow: 0 8px 28px rgba(245,166,35,0.4);
 }
 
 .pro-cta-btn.apex {
-  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  background: linear-gradient(135deg, #f5a623, #d97706);
   color: #fff;
-  box-shadow: 0 4px 16px rgba(139,92,246,0.3);
+  box-shadow: 0 4px 16px rgba(245,166,35,0.3);
 }
 
 .pro-cta-btn.apex:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(139,92,246,0.4);
+  box-shadow: 0 8px 28px rgba(245,166,35,0.4);
 }
 
 .pro-cta-btn:active {

@@ -15,36 +15,42 @@ import {
   fetchFromAPI as fetchCheatsheetsFromAPI,
 } from '../../utils/cheatsheetStorage';
 
+/* Category & department colours collapse to the single primary accent so
+   filter pills and badges stay monochrome on-brand instead of rotating
+   through a decorative rainbow. (Emerald/rose/cyan stay reserved for
+   success/urgent/info semantics — never used here.) */
+const VAULT_ACCENT = '#F5A623';
+
 const categoryColors = {
-  'Programming': '#a855f7',
-  'Data Structures': '#3b82f6',
-  'Object-Oriented': '#f59e0b',
-  'Algorithms': '#10b981',
-  'Operating Systems': '#ef4444',
-  'Database': '#06b6d4',
-  'Networks': '#f97316',
-  'Software Engineering': '#8b5cf6',
-  'AI': '#ec4899',
-  'Machine Learning': '#14b8a6',
-  'Mathematics': '#6366f1',
-  'Physics': '#5c6bc0',
-  'Chemistry': '#26a69a',
-  'English': '#ef5350',
-  'Humanities': '#ab47bc',
+  'Programming': VAULT_ACCENT,
+  'Data Structures': VAULT_ACCENT,
+  'Object-Oriented': VAULT_ACCENT,
+  'Algorithms': VAULT_ACCENT,
+  'Operating Systems': VAULT_ACCENT,
+  'Database': VAULT_ACCENT,
+  'Networks': VAULT_ACCENT,
+  'Software Engineering': VAULT_ACCENT,
+  'AI': VAULT_ACCENT,
+  'Machine Learning': VAULT_ACCENT,
+  'Mathematics': VAULT_ACCENT,
+  'Physics': VAULT_ACCENT,
+  'Chemistry': VAULT_ACCENT,
+  'English': VAULT_ACCENT,
+  'Humanities': VAULT_ACCENT,
 };
 
 const deptMeta = {
-  CSE:  { label: 'CSE',  full: 'Computer Science & Engineering',      color: '#a855f7', Icon: Monitor },
-  EEE:  { label: 'EEE',  full: 'Electrical & Electronic Engineering',  color: '#ff5722', Icon: Zap },
-  CE:   { label: 'CE',   full: 'Civil Engineering',                    color: '#3f51b5', Icon: Building2 },
-  ME:   { label: 'ME',   full: 'Mechanical Engineering',               color: '#f44336', Icon: Cog },
-  IPE:  { label: 'IPE',  full: 'Industrial & Production Engineering',  color: '#9c27b0', Icon: Factory },
-  TE:   { label: 'TE',   full: 'Textile Engineering',                  color: '#ff4081', Icon: Scissors },
-  ARCH: { label: 'ARCH', full: 'Architecture',                         color: '#ff9800', Icon: Building },
-  BBA:  { label: 'BBA',  full: 'Business Administration',              color: '#4db6ac', Icon: BarChart3 },
-  MATH: { label: 'MATH', full: 'Mathematics',                          color: '#6366f1', Icon: Calculator },
-  PHY:  { label: 'PHY',  full: 'Physics',                              color: '#5c6bc0', Icon: Atom },
-  CHEM: { label: 'CHEM', full: 'Chemistry',                            color: '#26a69a', Icon: FlaskConical },
+  CSE:  { label: 'CSE',  full: 'Computer Science & Engineering',      color: VAULT_ACCENT, Icon: Monitor },
+  EEE:  { label: 'EEE',  full: 'Electrical & Electronic Engineering',  color: VAULT_ACCENT, Icon: Zap },
+  CE:   { label: 'CE',   full: 'Civil Engineering',                    color: VAULT_ACCENT, Icon: Building2 },
+  ME:   { label: 'ME',   full: 'Mechanical Engineering',               color: VAULT_ACCENT, Icon: Cog },
+  IPE:  { label: 'IPE',  full: 'Industrial & Production Engineering',  color: VAULT_ACCENT, Icon: Factory },
+  TE:   { label: 'TE',   full: 'Textile Engineering',                  color: VAULT_ACCENT, Icon: Scissors },
+  ARCH: { label: 'ARCH', full: 'Architecture',                         color: VAULT_ACCENT, Icon: Building },
+  BBA:  { label: 'BBA',  full: 'Business Administration',              color: VAULT_ACCENT, Icon: BarChart3 },
+  MATH: { label: 'MATH', full: 'Mathematics',                          color: VAULT_ACCENT, Icon: Calculator },
+  PHY:  { label: 'PHY',  full: 'Physics',                              color: VAULT_ACCENT, Icon: Atom },
+  CHEM: { label: 'CHEM', full: 'Chemistry',                            color: VAULT_ACCENT, Icon: FlaskConical },
 };
 
 const emptyForm = { title: '', category: '', course: '', formulas: '' };
@@ -228,7 +234,7 @@ export default function Cheatsheets({ vaultContext }) {
                 background: showAddForm
                   ? 'color-mix(in srgb, var(--accent-amber) 80%, transparent)'
                   : 'color-mix(in srgb, var(--accent-amber) 10%, transparent)',
-                color: showAddForm ? '#0a0a0a' : 'var(--accent-amber)',
+                color: showAddForm ? 'var(--text-inverse)' : 'var(--accent-amber)',
                 fontWeight: 700,
               }}
             >
@@ -333,7 +339,7 @@ export default function Cheatsheets({ vaultContext }) {
                 borderRadius: 'var(--radius-md)',
                 border: 'none',
                 background: 'var(--accent-amber)',
-                color: '#0a0a0a',
+                color: 'var(--text-inverse)',
                 cursor: 'pointer',
                 transition: 'filter 0.2s ease, transform 0.2s ease',
               }}
