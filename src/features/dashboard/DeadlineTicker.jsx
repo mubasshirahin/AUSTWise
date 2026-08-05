@@ -100,13 +100,18 @@ export default function DeadlineTicker() {
         const mins = Math.floor((diff / (1000 * 60)) % 60);
         const secs = Math.floor((diff / 1000) % 60);
 
-        let formatted = '';
-        if (days > 0) formatted += `${days}d `;
-        formatted += `${hours.toString().padStart(2, '0')}h ${mins.toString().padStart(2, '0')}m ${secs.toString().padStart(2, '0')}s`;
+        // Cleaner countdown text — rounded days when possible, otherwise h/m.
+        const formatted =
+          days > 0 ? `${days} Day${days > 1 ? 's' : ''} Left`
+            : hours > 0 ? `${hours}h ${mins}m Left`
+              : mins > 0 ? `${mins}m Left`
+                : `${secs}s Left`;
 
+        // Semantic priority: < 3 days = HIGH (danger), < 7 days = MEDIUM (warning).
+        const priority = diff < 3 * 24 * 60 * 60 * 1000 ? 'high' : diff < 7 * 24 * 60 * 60 * 1000 ? 'medium' : 'low';
         const urgent = diff < 48 * 60 * 60 * 1000; // less than 48 hours
 
-        return { ...dl, formatted, urgent };
+        return { ...dl, formatted, urgent, priority };
       });
 
       // Sort by nearest deadline
@@ -149,33 +154,37 @@ export default function DeadlineTicker() {
           return (
             <div
               key={dl.id}
-              className="schedule-day-card deadline-row"
-              style={{
-                borderLeft: '2px solid var(--accent-blue)',
-                animationDelay: `${idx * 60}ms`,
-              }}
+              className={`schedule-day-card deadline-row${dl.urgent ? ' urgent' : ''}`}
+              style={{ animationDelay: `${idx * 60}ms` }}
             >
-              <div className="schedule-day-top">
-                <div className="schedule-day-num-wrap">
-                  <div className="deadline-course">
-                    {dl.course}
+              <div className="deadline-timeline" />
+              <div className="deadline-row-body">
+                <div className="schedule-day-top">
+                  <div className="schedule-day-num-wrap">
+                    <div className="deadline-course">
+                      {dl.course}
+                    </div>
+                  </div>
+                  <div className="schedule-day-badges">
+                    {dl.crGroup && <span className="deadline-tag cr">{dl.crGroup}</span>}
+                    {dl.fromCalendar && <span className="deadline-tag cal">{dl.batchGroup}</span>}
+                    {dl.priority === 'high' && (
+                      <span className="deadline-tag prio-high"><AlertTriangle size={10} /> HIGH</span>
+                    )}
+                    {dl.priority === 'medium' && (
+                      <span className="deadline-tag prio-medium">MEDIUM</span>
+                    )}
+                    {dl.urgent && (
+                      <span className="deadline-tag urgent">URGENT</span>
+                    )}
                   </div>
                 </div>
-                <div className="schedule-day-badges">
-                  {dl.crGroup && <span className="deadline-tag cr">{dl.crGroup}</span>}
-                  {dl.fromCalendar && <span className="deadline-tag cal">{dl.batchGroup}</span>}
-                  {dl.urgent && (
-                    <span className="deadline-tag urgent">
-                      <AlertTriangle size={10} /> URGENT
-                    </span>
-                  )}
+                <div className="deadline-title">{dl.title}</div>
+                <div className="deadline-meta">
+                  <span className="deadline-countdown">
+                    <Timer size={11} /> {dl.formatted}
+                  </span>
                 </div>
-              </div>
-              <div className="deadline-title">{dl.title}</div>
-              <div className="deadline-meta">
-                <span className="deadline-countdown">
-                  <Timer size={11} /> {dl.formatted}
-                </span>
               </div>
             </div>
           );

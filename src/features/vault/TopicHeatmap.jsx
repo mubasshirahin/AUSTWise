@@ -37,20 +37,27 @@ export default function TopicHeatmap({ vaultContext }) {
   }, [course, currentData]);
 
   return (
-    <div className="glass-card-static topic-heatmap-container animate-fadeInUp">
-      <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-        <div className="flex items-center gap-2">
-          <div className="icon" style={{ backgroundColor: 'var(--accent-amber-glow)', color: 'var(--accent-amber)', padding: '6px', borderRadius: '8px' }}>
-            <TrendingUp size={18} />
+    <div className="glass-card-static schedule-widget topic-heatmap-container animate-fadeInUp">
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <TrendingUp size={20} strokeWidth={2.2} />
           </div>
           <div>
-            <h2 className="section-title" style={{ fontSize: 'var(--fs-lg)', margin: 0 }}>Topic Analysis</h2>
-            <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
+            <span className="schedule-overline">Vault</span>
+            <div className="schedule-title">Topic Analysis</div>
+            <span className="schedule-subtitle">
               {courseName} — exam topic frequency over the years
-            </p>
+            </span>
           </div>
         </div>
+
+        <div className="schedule-masthead-center" />
+
+        <div className="schedule-actions" />
       </div>
+
+      <div className="schedule-dotted-divider" />
 
       {!currentData ? (
         <div className="glass-card-static" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)', background: 'var(--bg-input)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-lg)' }}>

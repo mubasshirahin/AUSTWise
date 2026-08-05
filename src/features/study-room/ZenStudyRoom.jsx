@@ -221,7 +221,7 @@ export default function ZenStudyRoom({ onExit }) {
             <circle
               cx="220" cy="220" r="200"
               fill="none"
-              stroke={mode === 'focus' ? 'rgba(249,115,22,0.18)' : 'rgba(52,211,153,0.18)'}
+              stroke={mode === 'focus' ? 'color-mix(in srgb, var(--accent-amber) 18%, transparent)' : 'color-mix(in srgb, var(--text-tertiary) 18%, transparent)'}
               strokeWidth="6"
               strokeDasharray={`${circumference}`}
               strokeDashoffset={circumference * (1 - progress / 100)}
@@ -232,14 +232,14 @@ export default function ZenStudyRoom({ onExit }) {
             <circle
               cx="220" cy="220" r="200"
               fill="none"
-              stroke={mode === 'focus' ? '#f97316' : '#34d399'}
+              stroke={mode === 'focus' ? 'var(--accent-amber)' : 'var(--text-tertiary)'}
               strokeWidth="3"
               strokeDasharray={`${circumference}`}
               strokeDashoffset={circumference * (1 - progress / 100)}
               strokeLinecap="round"
               style={{
                 transition: 'stroke-dashoffset 0.6s ease',
-                filter: `drop-shadow(0 0 8px ${mode === 'focus' ? 'rgba(249,115,22,0.5)' : 'rgba(52,211,153,0.5)'})`,
+                filter: `drop-shadow(0 0 8px ${mode === 'focus' ? 'color-mix(in srgb, var(--accent-amber) 50%, transparent)' : 'color-mix(in srgb, var(--text-tertiary) 50%, transparent)'})`,
               }}
             />
           </svg>

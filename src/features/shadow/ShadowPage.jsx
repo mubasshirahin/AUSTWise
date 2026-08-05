@@ -8,7 +8,7 @@ import StoryFeed from '../community/StoryFeed';
 import BuzzPage from '../austeddit/AustedditPage';
 import GliderTabs from '../../components/GliderTabs';
 import './ShadowPage.css';
-import '../../components/PageHero.css';
+import './shadow-tokens.css';
 
 const SHADOW_DURATION = 10 * 60; // 10 minutes in seconds
 
@@ -243,30 +243,31 @@ export default function ShadowPage() {
   const getPeerLabel = (msgFrom) => (msgFrom === shadowId ? 'You' : 'Stranger');
 
   const stats = [
-    { icon: Eye, value: totalReviews, label: 'Total Reviews', color: 'var(--accent-purple)', bg: 'var(--accent-purple-glow)' },
+    { icon: Eye, value: totalReviews, label: 'Total Reviews', color: 'var(--accent-amber)', bg: 'var(--accent-amber-glow)' },
     { icon: Star, value: uniqueUsers, label: 'Anonymous Reporters', color: 'var(--accent-amber)', bg: 'var(--accent-amber-glow)' },
-    { icon: Shield, value: '100%', label: 'Anonymous', color: 'var(--accent-emerald)', bg: 'var(--accent-emerald-glow)' },
+    { icon: Shield, value: '100%', label: 'Anonymous', color: 'var(--accent-amber)', bg: 'var(--accent-amber-glow)' },
   ];
 
   return (
     <div className="shadow-page animate-fadeIn">
 
-      {/* ── Hero ── */}
-      <header className="page-hero">
-        <div className="page-hero-content">
-          <div className="page-hero-title-row">
-            <div className="page-hero-icon">
-              <Moon size={24} />
-            </div>
-            <div>
-              <h1 className="page-hero-title">
-                <span className="page-hero-title-highlight">Shadow</span>
-              </h1>
-              <p className="page-hero-subtitle">
-                Anonymous confessions, course reviews, and 10-minute anonymous chats — no login required.
-              </p>
-            </div>
+      {/* ── 1. Hero box (own card) ── */}
+      <header className="sh-hero">
+        <div className="sh-hero-content">
+          <div className="sh-hero-eyebrow">
+            <span className="sh-hero-period-icon">
+              <Moon size={16} />
+            </span>
+            <span className="sh-hero-date-label">
+              Anonymous · no login required
+            </span>
           </div>
+          <h1 className="sh-hero-title">
+            Shadow<span className="sh-hero-name"> Mode</span>
+          </h1>
+          <p className="sh-hero-subtitle">
+            Anonymous confessions, course reviews, and 10-minute anonymous chats — no login required.
+          </p>
         </div>
       </header>
 
@@ -296,209 +297,214 @@ export default function ShadowPage() {
         </div>
       )}
 
-      {/* ── Glider Tabs ── */}
-      <GliderTabs
-        tabs={[
-          { id: 'feed',    label: 'Confessions Feed', desc: 'Anonymous posts',        color: 'amber',  icon: MessageCircle },
-          { id: 'reviews', label: 'Course Reviews',   desc: 'Anonymous feedback',     color: 'purple', icon: Star          },
-          { id: 'chat',    label: 'Shadow Chat',      desc: '10-min anonymous match', color: 'rose',   icon: MessageSquare },
-          { id: 'buzz',    label: 'Buzz',             desc: 'AUST forum',             color: 'cyan',   icon: Zap           },
-        ]}
-        activeTab={activeTab}
-        onChange={setActiveTab}
-        variant="dashboard"
-      />
+      {/* ── 2. Glider tabs bar (own card) ── */}
+      <div className="glass-card-static sh-tabs-card">
+        <GliderTabs
+          tabs={[
+            { id: 'feed',    label: 'Confessions Feed', desc: 'Anonymous posts',        color: 'amber',  icon: MessageCircle },
+            { id: 'reviews', label: 'Course Reviews',   desc: 'Anonymous feedback',     color: 'amber',  icon: Star          },
+            { id: 'chat',    label: 'Shadow Chat',      desc: '10-min anonymous match', color: 'amber',  icon: MessageSquare },
+            { id: 'buzz',    label: 'Buzz',             desc: 'AUST forum',             color: 'amber',  icon: Zap           },
+          ]}
+          activeTab={activeTab}
+          onChange={setActiveTab}
+          variant="dashboard"
+          compact
+        />
+      </div>
 
-      {/* ── Tab Content ── */}
-      <div className="shadow-content-area">
-        {activeTab === 'buzz' ? (
-          <BuzzPage />
-        ) : activeTab === 'reviews' ? (
-          <>
-            <div className="section-header">
-              <h2 className="section-title">
-                <span className="icon" style={{ background: 'var(--accent-purple-glow)', color: 'var(--accent-purple)' }}>
-                  <Star size={16} />
-                </span>
-                Course Reviews
-              </h2>
-              <p className="section-subtitle">Anonymous feedback shared by the AUST community</p>
-            </div>
-            <CourseReview />
-          </>
-        ) : activeTab === 'feed' ? (
-          <>
-            <div className="section-header">
-              <h2 className="section-title">
-                <span className="icon" style={{ background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)' }}>
-                  <MessageCircle size={16} />
-                </span>
-                Confessions Feed
-              </h2>
-              <p className="section-subtitle">Anonymous posts shared by the AUST community</p>
-            </div>
-            <StoryFeed />
-          </>
-        ) : (
-          <section className="shadow-chat-card">
-            <div className="shadow-chat-header">
-              <div className="shadow-chat-header-left">
-                <div className="shadow-chat-header-icon">
-                  <MessageSquare size={18} />
-                </div>
-                <div>
-                  <h2 className="shadow-chat-title">
-                    <span className="shadow-chat-title-accent">Shadow</span> Chat
-                  </h2>
-                  <p className="shadow-chat-subtitle">
-                    Match with a stranger for a 10-minute anonymous conversation.
-                  </p>
-                </div>
-              </div>
-              <div className="shadow-chat-status">
-                {wsConnected ? (
-                  <span className="shadow-chat-status-badge badge-live">
-                    <Wifi size={10} /> Connected
-                  </span>
-                ) : (
-                  <span className="shadow-chat-status-badge badge-urgent">
-                    <WifiOff size={10} /> Disconnected
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="shadow-chat-body">
-          {/* Idle state */}
-          {chatState === 'idle' && (
-            <div className="shadow-chat-idle">
-              <div className="shadow-chat-idle-icon">
-                <User size={40} />
-              </div>
-              <h3>Ready to talk?</h3>
-              <p>You'll be matched with a random stranger for exactly 10 minutes. Completely anonymous — no names, no traces.</p>
-              <button
-                className="shadow-join-btn"
-                onClick={handleJoinQueue}
-                disabled={!wsConnected}
-              >
-                {wsConnected ? (
-                  <><MessageSquare size={16} /> Find a Stranger</>
-                ) : (
-                  <><Loader2 size={16} className="spin" /> Connecting...</>
-                )}
-              </button>
-              {wsError && (
-                <p className="shadow-chat-error">
-                  <AlertTriangle size={12} /> Connection failed. Please refresh the page.
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Queued state */}
-          {chatState === 'queued' && (
-            <div className="shadow-chat-queued">
-              <div className="shadow-chat-queued-ring">
-                <Loader2 size={48} className="spin" />
-              </div>
-              <h3>Finding a stranger...</h3>
-              <p>You're in the queue at position #{queuePosition}. Hang tight!</p>
-              <button className="shadow-leave-btn" onClick={handleLeaveQueue}>
-                Cancel
-              </button>
-            </div>
-          )}
-
-          {/* Matched state — Chat UI */}
-          {chatState === 'matched' && (
+      {/* ── 3. Main content box (own card) ── */}
+      <div className="sh-content-card" key={activeTab}>
+        <div className="shadow-content-area">
+          {activeTab === 'buzz' ? (
+            <BuzzPage />
+          ) : activeTab === 'reviews' ? (
             <>
-              {/* Timer bar */}
-              <div className="shadow-timer-bar">
-                <Timer size={14} />
-                <div className="shadow-timer-track">
-                  <div
-                    className="shadow-timer-fill"
-                    style={{ width: `${(timeLeft / SHADOW_DURATION) * 100}%` }}
-                  />
+              <div className="section-header">
+                <h2 className="section-title">
+                  <span className="icon" style={{ background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)' }}>
+                    <Star size={16} />
+                  </span>
+                  Course Reviews
+                </h2>
+                <p className="section-subtitle">Anonymous feedback shared by the AUST community</p>
+              </div>
+              <CourseReview />
+            </>
+          ) : activeTab === 'feed' ? (
+            <>
+              <div className="section-header">
+                <h2 className="section-title">
+                  <span className="icon" style={{ background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)' }}>
+                    <MessageCircle size={16} />
+                  </span>
+                  Confessions Feed
+                </h2>
+                <p className="section-subtitle">Anonymous posts shared by the AUST community</p>
+              </div>
+              <StoryFeed />
+            </>
+          ) : (
+            <section className="shadow-chat-card">
+              <div className="shadow-chat-header">
+                <div className="shadow-chat-header-left">
+                  <div className="shadow-chat-header-icon">
+                    <MessageSquare size={18} />
+                  </div>
+                  <div>
+                    <h2 className="shadow-chat-title">
+                      <span className="shadow-chat-title-accent">Shadow</span> Chat
+                    </h2>
+                    <p className="shadow-chat-subtitle">
+                      Match with a stranger for a 10-minute anonymous conversation.
+                    </p>
+                  </div>
                 </div>
-                <span className={`shadow-timer-text ${timeLeft <= 60 ? 'shadow-timer-urgent' : ''}`}>
-                  {formatTime(timeLeft)}
-                </span>
-              </div>
-
-              {/* Messages */}
-              <div className="shadow-messages">
-                {messages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`shadow-msg ${msg.isOwn ? 'shadow-msg-own' : 'shadow-msg-peer'}`}
-                  >
-                    <span className="shadow-msg-sender">
-                      {msg.isOwn ? 'You' : 'Stranger'}
+                <div className="shadow-chat-status">
+                  {wsConnected ? (
+                    <span className="shadow-chat-status-badge badge-live">
+                      <Wifi size={10} /> Connected
                     </span>
-                    <div className="shadow-msg-bubble">
-                      {msg.text}
-                    </div>
-                    <span className="shadow-msg-time">
-                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  ) : (
+                    <span className="shadow-chat-status-badge badge-urgent">
+                      <WifiOff size={10} /> Disconnected
                     </span>
-                  </div>
-                ))}
-                {peerTyping && (
-                  <div className="shadow-msg shadow-msg-peer">
-                    <span className="shadow-msg-sender">Stranger</span>
-                    <div className="shadow-msg-bubble shadow-msg-typing">
-                      <span className="typing-dot" />
-                      <span className="typing-dot" />
-                      <span className="typing-dot" />
-                    </div>
-                  </div>
-                )}
-                <div ref={messagesEndRef} />
+                  )}
+                </div>
               </div>
-
-              {/* Input */}
-              <div className="shadow-input-area">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  className="shadow-input"
-                  placeholder="Type a message..."
-                  value={input}
-                  onChange={(e) => handleTyping(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  maxLength={500}
-                />
+              <div className="shadow-chat-body">
+            {/* Idle state */}
+            {chatState === 'idle' && (
+              <div className="shadow-chat-idle">
+                <div className="shadow-chat-idle-icon">
+                  <User size={40} />
+                </div>
+                <h3>Ready to talk?</h3>
+                <p>You'll be matched with a random stranger for exactly 10 minutes. Completely anonymous — no names, no traces.</p>
                 <button
-                  className="shadow-send-btn"
-                  onClick={handleSend}
-                  disabled={!input.trim()}
+                  className="shadow-join-btn"
+                  onClick={handleJoinQueue}
+                  disabled={!wsConnected}
                 >
-                  <Send size={16} />
+                  {wsConnected ? (
+                    <><MessageSquare size={16} /> Find a Stranger</>
+                  ) : (
+                    <><Loader2 size={16} className="spin" /> Connecting...</>
+                  )}
+                </button>
+                {wsError && (
+                  <p className="shadow-chat-error">
+                    <AlertTriangle size={12} /> Connection failed. Please refresh the page.
+                  </p>
+                )}
+              </div>
+            )}
+  
+            {/* Queued state */}
+            {chatState === 'queued' && (
+              <div className="shadow-chat-queued">
+                <div className="shadow-chat-queued-ring">
+                  <Loader2 size={48} className="spin" />
+                </div>
+                <h3>Finding a stranger...</h3>
+                <p>You're in the queue at position #{queuePosition}. Hang tight!</p>
+                <button className="shadow-leave-btn" onClick={handleLeaveQueue}>
+                  Cancel
                 </button>
               </div>
-            </>
-          )}
-
-          {/* Ended state */}
-          {chatState === 'ended' && (
-            <div className="shadow-chat-ended">
-              <div className="shadow-chat-ended-icon">
-                <AlertTriangle size={36} />
+            )}
+  
+            {/* Matched state — Chat UI */}
+            {chatState === 'matched' && (
+              <>
+                {/* Timer bar */}
+                <div className="shadow-timer-bar">
+                  <Timer size={14} />
+                  <div className="shadow-timer-track">
+                    <div
+                      className="shadow-timer-fill"
+                      style={{ width: `${(timeLeft / SHADOW_DURATION) * 100}%` }}
+                    />
+                  </div>
+                  <span className={`shadow-timer-text ${timeLeft <= 60 ? 'shadow-timer-urgent' : ''}`}>
+                    {formatTime(timeLeft)}
+                  </span>
+                </div>
+  
+                {/* Messages */}
+                <div className="shadow-messages">
+                  {messages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`shadow-msg ${msg.isOwn ? 'shadow-msg-own' : 'shadow-msg-peer'}`}
+                    >
+                      <span className="shadow-msg-sender">
+                        {msg.isOwn ? 'You' : 'Stranger'}
+                      </span>
+                      <div className="shadow-msg-bubble">
+                        {msg.text}
+                      </div>
+                      <span className="shadow-msg-time">
+                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  ))}
+                  {peerTyping && (
+                    <div className="shadow-msg shadow-msg-peer">
+                      <span className="shadow-msg-sender">Stranger</span>
+                      <div className="shadow-msg-bubble shadow-msg-typing">
+                        <span className="typing-dot" />
+                        <span className="typing-dot" />
+                        <span className="typing-dot" />
+                      </div>
+                    </div>
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+  
+                {/* Input */}
+                <div className="shadow-input-area">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    className="shadow-input"
+                    placeholder="Type a message..."
+                    value={input}
+                    onChange={(e) => handleTyping(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    maxLength={500}
+                  />
+                  <button
+                    className="shadow-send-btn"
+                    onClick={handleSend}
+                    disabled={!input.trim()}
+                  >
+                    <Send size={16} />
+                  </button>
+                </div>
+              </>
+            )}
+  
+            {/* Ended state */}
+            {chatState === 'ended' && (
+              <div className="shadow-chat-ended">
+                <div className="shadow-chat-ended-icon">
+                  <AlertTriangle size={36} />
+                </div>
+                <h3>Session Ended</h3>
+                <p>{endReason || 'The session has concluded.'}</p>
+                <button
+                  className="shadow-join-btn"
+                  onClick={() => { setChatState('idle'); setMessages([]); setEndReason(''); setTimeLeft(SHADOW_DURATION); }}
+                >
+                  <MessageSquare size={16} /> Start New Chat
+                </button>
               </div>
-              <h3>Session Ended</h3>
-              <p>{endReason || 'The session has concluded.'}</p>
-              <button
-                className="shadow-join-btn"
-                onClick={() => { setChatState('idle'); setMessages([]); setEndReason(''); setTimeLeft(SHADOW_DURATION); }}
-              >
-                <MessageSquare size={16} /> Start New Chat
-              </button>
-            </div>
+            )}
+              </div>
+            </section>
           )}
-            </div>
-          </section>
-        )}
+        </div>
       </div>
     </div>
   );

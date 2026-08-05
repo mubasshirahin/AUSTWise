@@ -95,10 +95,9 @@ function StudyStreak() {
 
   const getStreakMessage = () => {
     if (streak === 0) return 'Start your streak today!';
-    if (streak === 1) return '1 day streak — keep going!';
-    if (streak < 7) return `${streak} days — building momentum!`;
-    if (streak < 30) return `${streak} days — on fire!`;
-    return `${streak} days — legendary!`;
+    if (streak === 1) return '1 Day · on fire!';
+    if (streak < 30) return `${streak} Days · on fire!`;
+    return `${streak} Days · legendary!`;
   };
 
   const getStreakColor = () => {
@@ -228,6 +227,8 @@ function StudyStreak() {
   );
 }
 
+// All modules share the single theme accent — the tab icons read one color,
+// matching the widget box header icons.
 const focusModes = [
   { id: 'stats', label: 'Quick Stats', icon: BarChart3, desc: 'CGPA & metrics', color: 'amber' },
   { id: 'routine', label: 'Routine', icon: CalendarDays, desc: 'Weekly timetable', color: 'amber' },
@@ -591,12 +592,14 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <GliderTabs
-        tabs={focusModes}
-        activeTab={focusMode}
-        onChange={handleFocusChange}
-        variant="dashboard"
-      />
+      <div className="glass-card-static das-tabs-card">
+        <GliderTabs
+          tabs={focusModes}
+          activeTab={focusMode}
+          onChange={handleFocusChange}
+          variant="dashboard"
+        />
+      </div>
 
       {isVisible('stats') && (
         <section className="dash-section-group">

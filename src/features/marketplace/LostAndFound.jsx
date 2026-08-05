@@ -135,23 +135,30 @@ export default function LostAndFound() {
   };
 
   return (
-    <div className="glass-card-static lost-found-container animate-fadeInUp">
-      <div className="flex justify-between items-center mb-6 flex-wrap gap-3">
-        <div className="flex items-center gap-2">
-          <div className="icon" style={{ backgroundColor: 'var(--accent-rose-glow)', color: 'var(--accent-rose)', padding: '6px', borderRadius: '8px' }}>
-            <HelpCircle size={18} />
+    <div className="lost-found-container animate-fadeInUp">
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <HelpCircle size={20} strokeWidth={2.2} />
           </div>
           <div>
-            <h2 className="section-title" style={{ fontSize: 'var(--fs-lg)', margin: 0 }}>Lost & Found Desk</h2>
-            <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>Report or claim items around campus</p>
+            <span className="schedule-overline">Marketplace</span>
+            <div className="schedule-title">Lost &amp; Found Desk</div>
+            <span className="schedule-subtitle">Report or claim items around campus</span>
           </div>
         </div>
 
-        <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowForm((open) => !open)}>
-          {showForm ? <X size={14} /> : <Plus size={14} />}
-          {showForm ? 'Close' : 'Report Item'}
-        </button>
+        <div className="schedule-masthead-center" />
+
+        <div className="schedule-actions">
+          <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowForm((open) => !open)}>
+            {showForm ? <X size={14} /> : <Plus size={14} />}
+            {showForm ? 'Close' : 'Report Item'}
+          </button>
+        </div>
       </div>
+
+      <div className="schedule-dotted-divider" />
 
       {message && <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent-emerald)', marginBottom: '10px' }}>{message}</p>}
       {error && <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent-rose)', marginBottom: '10px' }}>{error}</p>}
@@ -247,7 +254,7 @@ export default function LostAndFound() {
                 </div>
                 <div className="mp-card-body">
                   <div className="mp-card-header">
-                    <span className={`mp-card-badge ${isClaimed ? 'badge-blue' : isLost ? 'badge-rose' : 'badge-emerald'}`}>
+                    <span className={`mp-card-badge${isClaimed ? ' mp-card-badge-success' : ''}`}>
                       {isClaimed ? 'CLAIMED' : isLost ? 'LOST' : 'FOUND'}
                     </span>
                     <span className="mp-card-date">{formatPostedDate(item.postedAt)}</span>

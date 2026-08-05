@@ -50,8 +50,8 @@
   --accent-blue-glow: rgba(247, 147, 26, 0.15);
   --accent-purple: #EA580C;          /* Burnt Orange — secondary accent */
   --accent-purple-glow: rgba(234, 88, 12, 0.15);
-  --accent-amber: #FFD600;           /* Digital Gold — value accent */
-  --accent-amber-glow: rgba(255, 214, 0, 0.15);
+  --accent-amber: #F7931A;           /* Bitcoin Orange — PRIMARY interactive */
+  --accent-amber-glow: rgba(247, 147, 26, 0.15);
   --accent-emerald: #22C55E;         /* Success green */
   --accent-emerald-glow: rgba(34, 197, 94, 0.13);
   --accent-rose: #EF4444;            /* Alert red */

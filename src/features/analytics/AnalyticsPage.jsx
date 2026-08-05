@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { TrendingUp, Layers, Grid3x3, Trophy, FlaskConical, GitBranch } from 'lucide-react';
 import CGPAGraph from './CGPAGraph';
 import SemesterTracker from './SemesterTracker';
@@ -7,7 +7,6 @@ import CoursePoll from './CoursePoll';
 import PrerequisiteTree from './PrerequisiteTree';
 import GliderTabs from '../../components/GliderTabs';
 import './AnalyticsPage.css';
-import '../../components/PageHero.css';
 import './analytics-tokens.css';
 
 const TAB_KEY = 'analyticsActiveTab';
@@ -48,31 +47,41 @@ export default function AnalyticsPage() {
 
   return (
     <div className="analytics-page animate-fadeIn">
-      <header className="page-hero">
-        <div className="page-hero-content">
-          <div className="page-hero-title-row">
-            <div className="page-hero-icon">
-              <FlaskConical size={24} />
-            </div>
-            <div>
-              <h1 className="page-hero-title">
-                <span className="page-hero-title-highlight">Grade Lab</span>
-              </h1>
-              <p className="page-hero-subtitle">{heroSubtitle}</p>
-            </div>
+
+      {/* ── 1. Hero box (own card) ── */}
+      <header className="gl-hero">
+        <div className="gl-hero-content">
+          <div className="gl-hero-eyebrow">
+            <span className="gl-hero-period-icon">
+              <FlaskConical size={16} />
+            </span>
+            <span className="gl-hero-date-label">
+              Analytics · all semesters
+            </span>
           </div>
+          <h1 className="gl-hero-title">
+            Grade<span className="gl-hero-name"> Lab</span>
+          </h1>
+          <p className="gl-hero-subtitle">{heroSubtitle}</p>
         </div>
       </header>
 
-      <GliderTabs
-        tabs={gradeLabTabs}
-        activeTab={activeTab}
-        onChange={handleTabChange}
-        variant="dashboard"
-      />
+      {/* ── 2. Glider tabs bar (own card) ── */}
+      <div className="glass-card-static gl-tabs-card">
+        <GliderTabs
+          tabs={gradeLabTabs}
+          activeTab={activeTab}
+          onChange={handleTabChange}
+          variant="dashboard"
+          compact
+        />
+      </div>
 
-      <div className="analytics-content-area" key={activeTab}>
-        {renderActiveTab()}
+      {/* ── 3. Main content box (own card) ── */}
+      <div className="gl-content-card" key={activeTab}>
+        <div className="analytics-content-area">
+          {renderActiveTab()}
+        </div>
       </div>
     </div>
   );

@@ -99,17 +99,27 @@ export default function QuestionBank({ vaultContext }) {
     item.isUserUpload && (item.contributorId === user?.id || user?.role === 'admin');
 
   return (
-    <div className="glass-card-static question-bank-container animate-fadeInUp">
-      <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
-        <div>
-          <h2 className="section-title" style={{ fontSize: 'var(--fs-lg)', margin: 0 }}>
-            Question Bank
-          </h2>
-          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
-            {courseName} — {getQuestionBankSubtitle(courseType)}
-          </p>
+    <div className="glass-card-static schedule-widget question-bank-container animate-fadeInUp">
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <BookOpen size={20} strokeWidth={2.2} />
+          </div>
+          <div>
+            <span className="schedule-overline">Vault</span>
+            <div className="schedule-title">Question Bank</div>
+            <span className="schedule-subtitle">
+              {courseName} — {getQuestionBankSubtitle(courseType)}
+            </span>
+          </div>
         </div>
+
+        <div className="schedule-masthead-center" />
+
+        <div className="schedule-actions" />
       </div>
+
+      <div className="schedule-dotted-divider" />
 
       <div className="qb-year-section">
         <p className="qb-year-section-label">Academic Year</p>

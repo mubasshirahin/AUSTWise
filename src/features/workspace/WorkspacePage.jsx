@@ -42,9 +42,10 @@ function formatDate(dateStr) {
 }
 
 function getStatusColor(status) {
+  // Semantic only: green for completed work, amber for pending, muted otherwise.
   switch (status) {
     case 'TURNED_IN': return 'var(--accent-emerald)';
-    case 'RETURNED': return 'var(--accent-blue)';
+    case 'RETURNED': return 'var(--accent-amber)';
     case 'NEW': return 'var(--accent-amber)';
     default: return 'var(--text-secondary)';
   }
@@ -111,19 +112,8 @@ function getMaterialTypeLabel(materials) {
 }
 
 function getMaterialColor(materials) {
-  if (!materials || materials.length === 0) return 'var(--accent-blue)';
-  const mat = materials[0];
-  if (mat.driveFile) {
-    const mime = mat.driveFile.driveFile?.mimeType || '';
-    if (mime.startsWith('image/')) return 'var(--accent-cyan)';
-    if (mime === 'application/pdf') return 'var(--accent-rose)';
-    if (mime.includes('video/')) return 'var(--accent-purple)';
-    return 'var(--accent-blue)';
-  }
-  if (mat.youtubeVideo) return 'var(--accent-purple)';
-  if (mat.link) return 'var(--accent-emerald)';
-  if (mat.form) return 'var(--accent-amber)';
-  return 'var(--accent-blue)';
+  // Material type is conveyed by the icon + label, not color — all use the brand accent.
+  return 'var(--accent-amber)';
 }
 
 function getMaterialLink(materials) {
@@ -147,16 +137,8 @@ function getMaterialTitle(materials) {
 }
 
 function generateAvatarColor(email) {
-  let hash = 0;
-  for (let i = 0; i < email.length; i++) {
-    hash = email.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const colors = [
-    'var(--accent-blue)', 'var(--accent-purple)', 'var(--accent-emerald)',
-    'var(--accent-rose)', 'var(--accent-amber)', 'var(--accent-cyan)',
-    '#7c3aed', '#0891b2', '#d946ef', '#ea580c',
-  ];
-  return colors[Math.abs(hash) % colors.length];
+  // Account identity is shown via initials — avatars use the brand accent consistently.
+  return 'var(--accent-amber)';
 }
 
 // ─── Load accounts from localStorage (with cleanups) ───
@@ -793,38 +775,36 @@ export default function WorkspacePage() {
 
   return (
     <div className="workspace-page animate-fadeIn">
-      {/* Hero Header */}
-      <header className="page-hero">
-        <div className="page-hero-content">
-          <div className="page-hero-title-row">
-            <div className="page-hero-icon">
-              <ExternalLink size={24} />
-            </div>
-            <div>
-              <h1 className="page-hero-title">
-                <span className="page-hero-title-highlight">Workspace</span>
-              </h1>
-              <p className="page-hero-subtitle">
-                Connect multiple Google Classroom accounts and choose which courses to track.
-              </p>
-            </div>
+      {/* Masthead */}
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <ExternalLink size={20} strokeWidth={2.2} />
+          </div>
+          <div>
+            <span className="schedule-overline">Productivity</span>
+            <div className="schedule-title">Workspace</div>
+            <span className="schedule-subtitle">Connect multiple Google Classroom accounts and choose which courses to track.</span>
           </div>
         </div>
-      </header>
+        <div className="schedule-masthead-center" />
+      </div>
+
+      <div className="schedule-dotted-divider" style={{ marginTop: 0 }} />
 
       {/* Quick Stats Row */}
       {accounts.length > 0 && (
         <div className="workspace-stats-row animate-fadeInUp" style={{ animationDelay: '0.25s' }}>
           <div className="workspace-quick-stat-card">
             <div className="workspace-quick-stat-shine" aria-hidden="true" />
-            <div className="workspace-quick-stat-icon" style={{ background: 'var(--accent-blue-glow)', color: 'var(--accent-blue)' }}>
+            <div className="workspace-quick-stat-icon" style={{ background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)' }}>
               <Users size={18} />
             </div>
             <div className="workspace-quick-stat-body">
-              <span className="workspace-quick-stat-value" style={{ color: 'var(--accent-blue)' }}>{accounts.length}</span>
+              <span className="workspace-quick-stat-value" style={{ color: 'var(--accent-amber)' }}>{accounts.length}</span>
               <span className="workspace-quick-stat-label">Connected Accounts</span>
             </div>
-            <div className="workspace-quick-stat-bar" style={{ background: 'var(--accent-blue)' }} aria-hidden="true" />
+            <div className="workspace-quick-stat-bar" style={{ background: 'var(--accent-amber)' }} aria-hidden="true" />
           </div>
           <div className="workspace-quick-stat-card">
             <div className="workspace-quick-stat-shine" aria-hidden="true" />
@@ -839,14 +819,14 @@ export default function WorkspacePage() {
           </div>
           <div className="workspace-quick-stat-card">
             <div className="workspace-quick-stat-shine" aria-hidden="true" />
-            <div className="workspace-quick-stat-icon" style={{ background: 'var(--accent-emerald-glow)', color: 'var(--accent-emerald)' }}>
+            <div className="workspace-quick-stat-icon" style={{ background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)' }}>
               <ExternalLink size={18} />
             </div>
             <div className="workspace-quick-stat-body">
-              <span className="workspace-quick-stat-value" style={{ color: 'var(--accent-emerald)' }}>{accounts.reduce((sum, a) => sum + (a.courses || []).length, 0)}</span>
+              <span className="workspace-quick-stat-value" style={{ color: 'var(--accent-amber)' }}>{accounts.reduce((sum, a) => sum + (a.courses || []).length, 0)}</span>
               <span className="workspace-quick-stat-label">Total Courses</span>
             </div>
-            <div className="workspace-quick-stat-bar" style={{ background: 'var(--accent-emerald)' }} aria-hidden="true" />
+            <div className="workspace-quick-stat-bar" style={{ background: 'var(--accent-amber)' }} aria-hidden="true" />
           </div>
         </div>
       )}
@@ -900,7 +880,7 @@ export default function WorkspacePage() {
                 <div className="workspace-account-chip-info">
                   <span className="workspace-account-chip-name">{acc.name}</span>
                   {acc.email && <span className="workspace-account-chip-email">{acc.email}</span>}
-                  <span className="workspace-account-chip-count" style={{ color: !hasMaterialsAccess(acc) ? 'var(--accent-rose)' : isTokenExpired(acc) ? 'var(--accent-amber)' : 'var(--accent-blue)' }}>
+                  <span className="workspace-account-chip-count" style={{ color: !hasMaterialsAccess(acc) ? 'var(--accent-rose)' : isTokenExpired(acc) ? 'var(--accent-amber)' : 'var(--accent-amber)' }}>
                     {acc.selectedCount}/{acc.totalCourses} courses
                     {!hasMaterialsAccess(acc) ? ` · ⚠️ No materials` : isTokenExpired(acc) ? ` · 🔑 Expired` : ''}
                   </span>
@@ -1110,7 +1090,7 @@ export default function WorkspacePage() {
             <ChevronRight size={16} style={{ transform: 'rotate(180deg)' }} /> Back to Courses
           </button>
           <div className="workspace-course-header">
-            <div className="workspace-course-color" style={{ background: 'var(--accent-blue)' }} />
+            <div className="workspace-course-color" style={{ background: 'var(--accent-amber)' }} />
             <div>
               <h2 className="workspace-course-title">{selectedCourse.name}</h2>
               <p className="workspace-course-meta">
@@ -1170,7 +1150,7 @@ export default function WorkspacePage() {
             {/* ─── Right: Materials ─── */}
             <div className="workspace-pane workspace-pane-right">
               <div className="workspace-pane-header">
-                <div className="workspace-pane-header-icon" style={{ background: 'var(--accent-purple-glow)', color: 'var(--accent-purple)' }}>
+                <div className="workspace-pane-header-icon" style={{ background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)' }}>
                   <BookOpen size={14} />
                 </div>
                 <span className="workspace-pane-header-title">Materials</span>
@@ -1319,7 +1299,7 @@ export default function WorkspacePage() {
                       onClick={() => toggleCourseSelection(accKey, course.id)}
                     >
                       {hasNew && <span className="workspace-course-card-dot" />}
-                      <div className="workspace-course-card-color" style={{ background: isSelected ? 'var(--accent-blue)' : 'var(--border-primary)' }} />
+                      <div className="workspace-course-card-color" style={{ background: isSelected ? 'var(--accent-amber)' : 'var(--border-primary)' }} />
                       <div className="workspace-course-card-body">
                         <div className="workspace-course-card-toggle">
                           {isSelected ? <CheckSquare size={18} className="workspace-course-checked" /> : <Square size={18} className="workspace-course-unchecked" />}
@@ -1359,7 +1339,7 @@ export default function WorkspacePage() {
                       onClick={() => handleCourseClick(course)}
                     >
                       {hasNew && <span className="workspace-course-card-dot" />}
-                      <div className="workspace-course-card-color" style={{ background: generateAvatarColor(acc.email || accKey) }} />
+                      <div className="workspace-course-card-color" style={{ background: 'var(--accent-amber)' }} />
                       <div className="workspace-course-card-body">
                         <h3 className="workspace-course-card-title">{course.name}</h3>
                         {course.section && <span className="workspace-course-card-section">{course.section}</span>}

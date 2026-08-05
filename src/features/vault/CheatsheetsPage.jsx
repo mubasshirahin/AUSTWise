@@ -2,28 +2,27 @@ import { BookOpen } from 'lucide-react';
 import Cheatsheets from './Cheatsheets';
 import './Cheatsheets.css';
 import '../../components/PageHero.css';
+import './vault-tokens.css';
 
 export default function CheatsheetsPage() {
   return (
     <div className="csh-page animate-fadeIn">
-      {/* ── Hero ── */}
-      <header className="page-hero">
-        <div className="page-hero-content">
-          <div className="page-hero-title-row">
-            <div className="page-hero-icon">
-              <BookOpen size={24} />
-            </div>
-            <div>
-              <h1 className="page-hero-title">
-                <span className="page-hero-title-highlight">Cheat Sheets</span>
-              </h1>
-              <p className="page-hero-subtitle">
-                Quick-reference formula sheets across all departments and topics.
-              </p>
-            </div>
+      {/* ── Masthead ── */}
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <BookOpen size={20} strokeWidth={2.2} />
+          </div>
+          <div>
+            <span className="schedule-overline">Productivity</span>
+            <div className="schedule-title">Cheat Sheets</div>
+            <span className="schedule-subtitle">Quick-reference formula sheets across all departments and topics.</span>
           </div>
         </div>
-      </header>
+        <div className="schedule-masthead-center" />
+      </div>
+
+      <div className="schedule-dotted-divider" style={{ marginTop: 0 }} />
 
       {/* ── Cheatsheets ── */}
       <Cheatsheets vaultContext={{ course: null, courseName: 'All courses' }} />

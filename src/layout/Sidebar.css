@@ -140,10 +140,24 @@
 }
 
 .nav-item.active {
-  background: var(--accent-blue-glow);
+  background: var(--bg-tertiary);
   color: var(--accent-blue);
   font-weight: var(--fw-semibold);
-  box-shadow: inset 0 1px 0 rgba(111, 143, 232, 0.06), inset 0 -1px 0 rgba(111, 143, 232, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+/* Small left indicator bar on the selected nav item */
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  border-radius: var(--radius-full);
+  background: var(--accent-blue);
+  box-shadow: 0 0 8px var(--accent-blue-glow);
 }
 
 .nav-item.collapsed {
@@ -152,34 +166,40 @@
   gap: 0;
 }
 
-.sidebar-toggle-btn {
-  justify-content: center;
-  background: var(--bg-input) !important;
-  border-radius: var(--radius-lg) !important;
-  margin: 6px 8px !important;
-  width: calc(100% - 16px) !important;
-  padding: 10px !important;
-  transition: background var(--transition-fast), color var(--transition-fast), margin 0.35s cubic-bezier(0.22, 1, 0.36, 1), width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.nav-item.collapsed.sidebar-toggle-btn {
-  margin: 6px auto !important;
-  width: 36px !important;
-  padding: 8px !important;
-}
-
-.sidebar-toggle-btn:hover {
-  color: var(--accent-blue) !important;
-  transform: none !important;
-  background: var(--accent-blue-glow) !important;
-}
-
-.sidebar:not(.collapsed) .sidebar-toggle-btn {
-  animation: none !important;
-}
-
 .nav-item.collapsed:hover {
   transform: none;
+}
+
+/* Divider between the top and bottom nav groups */
+.sidebar-nav-divider {
+  height: 1px;
+  background: var(--border-secondary);
+  margin: var(--sp-2) var(--sp-3);
+}
+
+/* ── Collapse button — subtle gray circle with dark arrow ── */
+.sidebar-collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), opacity var(--transition-fast);
+  margin: 4px auto;
+}
+
+.sidebar-collapse-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-secondary);
+}
+
+.sidebar-collapse-btn.collapsed {
+  margin: 4px auto;
 }
 
 /* Staggered appear on open */
@@ -258,6 +278,146 @@
   color: #fff;
   font-size: 10px;
   font-weight: 700;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   PREMIUM "See Plans" BUTTON
+   ════════════════════════════════════════════════════════════════ */
+
+.nav-item-premium {
+  position: relative;
+  overflow: visible;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--accent-amber) 0%, var(--accent-amber-glow) 100%);
+  color: var(--text-inverse);
+  font-weight: var(--fw-semibold);
+  transform-origin: left center;
+  margin-top: 4px;
+  border: none;
+  box-shadow:
+    0 0 0 0 rgba(245, 158, 11, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transition:
+    background 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.3s ease,
+    color 0.3s ease;
+}
+
+.nav-item-premium::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: calc(var(--radius-lg) + 1px);
+  background: linear-gradient(135deg, var(--accent-amber) 0%, var(--accent-purple) 50%, var(--accent-amber) 100%);
+  opacity: 0;
+  z-index: -1;
+  transition: opacity 0.3s ease;
+  animation: premiumPulse 3s ease-in-out infinite;
+}
+
+.nav-item-premium:hover::before {
+  opacity: 0.5;
+}
+
+.nav-item-premium:hover {
+  background: linear-gradient(135deg, var(--accent-amber) 0%, var(--accent-orange) 100%);
+  color: var(--text-inverse);
+  transform: translateX(3px) scale(1.02);
+  box-shadow:
+    0 0 12px 4px rgba(245, 158, 11, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* Sparkle effect — multiple pseudo-elements positioned around */
+.nav-item-premium .nav-label::after,
+.nav-item-premium .nav-icon-wrapper svg {
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.8));
+}
+
+/* Floating sparkles */
+.nav-item-premium .sparkle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: var(--text-primary);
+  border-radius: 50%;
+  opacity: 0;
+  animation: floatSparkle 3s ease-in-out infinite;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.nav-item-premium:hover .sparkle {
+  opacity: 0.7;
+}
+
+/* Glow pulse animation */
+@keyframes premiumGlow {
+  0% {
+    box-shadow:
+      0 0 0 0px rgba(245, 158, 11, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+  50% {
+    box-shadow:
+      0 0 0 8px rgba(245, 158, 11, 0),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+  100% {
+    box-shadow:
+      0 0 0 0px rgba(245, 158, 11, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+}
+
+@keyframes floatSparkle {
+  0%, 100% {
+    transform: translate(0, 0) scale(0.8);
+    opacity: 0;
+  }
+  10% { opacity: 0.7; }
+  50% {
+    transform: translate(var(--tx, 10px), var(--ty, -10px)) scale(1);
+  }
+  90% { opacity: 0.4; }
+}
+
+/* Continuous pulse on idle */
+.nav-item-premium:not(:hover) {
+  animation: premiumPulse 4s ease-in-out infinite;
+}
+
+@keyframes premiumPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 0 rgba(245, 158, 11, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+  50% {
+    box-shadow:
+      0 0 0 6px rgba(245, 158, 11, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+}
+
+/* Collapsed state — keep it simpler */
+.nav-item-premium.collapsed {
+  margin: 0;
+  transform: scale(1.08);
+}
+
+.nav-item-premium.collapsed:hover {
+  transform: scale(1.14);
+}
+
+/* Active state */
+.nav-item-premium.active {
+  box-shadow:
+    0 0 0 2px rgba(245, 158, 11, 0.5),
+    0 0 16px 6px rgba(245, 158, 11, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  animation: none;
 }
 
 .nav-label {
@@ -375,8 +535,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--accent-blue);
-  transition: transform var(--transition-base), filter var(--transition-base), box-shadow var(--transition-base);
+  color: var(--text-primary);
+  transition: transform var(--transition-base), opacity var(--transition-base);
   padding: 0;
   overflow: hidden;
   cursor: pointer;
@@ -386,7 +546,7 @@
 
 .logo-icon:hover {
   transform: scale(1.08);
-  filter: brightness(1.05);
+  opacity: 0.85;
 }
 
 .logo-icon.clicked {
@@ -470,27 +630,21 @@
 .wc:nth-child(3) { --x: 20px; --y: -30px; --r: 45deg; }
 
 .wm-ust .wc {
-  animation: charUstSlide 15s ease-in-out infinite, textShimmer 6s ease-in-out infinite;
-  animation-delay: 0s, 0s;
+  color: var(--text-primary);
+  background: none;
+  -webkit-text-fill-color: currentColor;
 }
 
 .wm-ise .wc {
-  animation: charIseSlide 15s ease-in-out infinite, textShimmer 6s ease-in-out infinite;
-  animation-delay: 0s, 0s;
+  color: var(--text-tertiary);
+  background: none;
+  -webkit-text-fill-color: currentColor;
 }
 
 .wm-ust {
   top: 0px;
   left: -5px;
   margin-bottom: 2px;
-}
-
-.wm-ise .wc {
-  background: linear-gradient(90deg, #999999, #cccccc, #999999);
-  background-size: 200% 100%;
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
 }
 
 .wm-ise {

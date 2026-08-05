@@ -3,15 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import './CPHubPage.css';
 import '../../components/PageHero.css';
 
+// Platform identity is carried by name/logo, not color — the dot uses the
+// brand accent so the grid reads as one system.
 const PLATFORMS = [
-  { name: 'Codeforces', url: 'https://codeforces.com', color: '#1f8acb', desc: 'Contests & problem solving' },
-  { name: 'LeetCode', url: 'https://leetcode.com', color: '#ffa116', desc: 'Interview prep & DSA' },
-  { name: 'AtCoder', url: 'https://atcoder.jp', color: '#5a5a5a', desc: 'Japanese contest platform' },
-  { name: 'CodeChef', url: 'https://codechef.com', color: '#5b4636', desc: 'Monthly challenges' },
-  { name: 'HackerRank', url: 'https://hackerrank.com', color: '#00ea64', desc: 'Skill-based challenges' },
-  { name: 'CSES', url: 'https://cses.fi', color: '#9b59b6', desc: 'Problem set collection' },
-  { name: 'VJudge', url: 'https://vjudge.net', color: '#e74c3c', desc: 'Virtual contest judge' },
-  { name: 'StopStalk', url: 'https://stopstalk.com', color: '#3498db', desc: 'Track CP progress' },
+  { name: 'Codeforces', url: 'https://codeforces.com', desc: 'Contests & problem solving' },
+  { name: 'LeetCode', url: 'https://leetcode.com', desc: 'Interview prep & DSA' },
+  { name: 'AtCoder', url: 'https://atcoder.jp', desc: 'Japanese contest platform' },
+  { name: 'CodeChef', url: 'https://codechef.com', desc: 'Monthly challenges' },
+  { name: 'HackerRank', url: 'https://hackerrank.com', desc: 'Skill-based challenges' },
+  { name: 'CSES', url: 'https://cses.fi', desc: 'Problem set collection' },
+  { name: 'VJudge', url: 'https://vjudge.net', desc: 'Virtual contest judge' },
+  { name: 'StopStalk', url: 'https://stopstalk.com', desc: 'Track CP progress' },
 ];
 
 export default function CPHubPage() {
@@ -19,24 +21,22 @@ export default function CPHubPage() {
 
   return (
     <div className="cp-hub-page animate-fadeIn">
-      {/* ── Hero ── */}
-      <header className="page-hero">
-        <div className="page-hero-content">
-          <div className="page-hero-title-row">
-            <div className="page-hero-icon">
-              <Code2 size={24} />
-            </div>
-            <div>
-              <h1 className="page-hero-title">
-                <span className="page-hero-title-highlight">Code Pulse</span>
-              </h1>
-              <p className="page-hero-subtitle">
-                Your competitive programming launchpad — jump into contests, track progress, and level up.
-              </p>
-            </div>
+      {/* ── Masthead ── */}
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <Code2 size={20} strokeWidth={2.2} />
+          </div>
+          <div>
+            <span className="schedule-overline">Productivity</span>
+            <div className="schedule-title">Code Pulse</div>
+            <span className="schedule-subtitle">Your competitive programming launchpad — jump into contests, track progress, and level up.</span>
           </div>
         </div>
-      </header>
+        <div className="schedule-masthead-center" />
+      </div>
+
+      <div className="schedule-dotted-divider" style={{ marginTop: 0 }} />
 
       {/* ── Platform Cards ── */}
       <div className="cp-grid">
@@ -47,10 +47,10 @@ export default function CPHubPage() {
             target="_blank"
             rel="noopener noreferrer"
             className="cp-platform-card"
-            style={{ '--plat-color': platform.color }}
+            style={{ '--plat-color': 'var(--accent-amber)' }}
           >
             <div className="cp-platform-top">
-              <div className="cp-platform-dot" style={{ background: platform.color }} />
+              <div className="cp-platform-dot" style={{ background: 'var(--accent-amber)' }} />
               <h3 className="cp-platform-name">{platform.name}</h3>
               <ExternalLink size={14} className="cp-platform-ext" />
             </div>

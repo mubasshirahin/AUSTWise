@@ -20,13 +20,6 @@ function fetchCampusLocations() {
   return _campusApiPromise;
 }
 
-const floorTabs = (staticCampusFloors).map((f) => ({
-  id: f.floor,
-  label: f.floor,
-  icon: null,
-  desc: '',
-}));
-
 const zoomLevels = [
   { id: 'fit', label: 'Fit' },
   { id: '100', label: '100%' },
@@ -60,7 +53,7 @@ const getHotspotKey = (room, index) => `${room.id}-${index}`;
    reserved for status, not room categories. */
 const getRoomColor = (type) => 'var(--accent-blue)';
 
-function FloorShowcase({ floorData, selectedFloor }) {
+function FloorShowcase({ floorData, selectedFloor, floorTabs, onFloorChange }) {
   const [zoom, setZoom] = useState('fit');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedRoomId, setSelectedRoomId] = useState(null);
@@ -461,6 +454,17 @@ function FloorShowcase({ floorData, selectedFloor }) {
 
       <div className="schedule-dotted-divider" />
 
+      {/* ── Floor selector (boxed below the header divider) ── */}
+      <div className="floor-selector-box">
+        <GliderTabs
+          tabs={floorTabs}
+          activeTab={selectedFloor}
+          onChange={onFloorChange}
+          variant="dashboard"
+          compact
+        />
+      </div>
+
       <div className="floor-plan-workspace">
         <div className="floor-plan-main">
 
@@ -716,14 +720,12 @@ export default function InteractiveMap() {
 
   return (
     <div className="interactive-map-root interactive-map-root-plan">
-      <GliderTabs
-        tabs={floorTabs}
-        activeTab={selectedFloor}
-        onChange={(id) => setSelectedFloor(id)}
-        variant="dashboard"
+      <FloorShowcase
+        floorData={currentFloorData}
+        selectedFloor={selectedFloor}
+        floorTabs={floorTabs}
+        onFloorChange={setSelectedFloor}
       />
-
-      <FloorShowcase floorData={currentFloorData} selectedFloor={selectedFloor} />
     </div>
   );
 }

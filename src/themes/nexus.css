@@ -55,8 +55,8 @@
   --accent-blue-glow: rgba(16, 185, 129, 0.14);
   --accent-purple: #6366F1;       /* indigo-500 — supporting emphasis */
   --accent-purple-glow: rgba(99, 102, 241, 0.14);
-  --accent-amber: #F59E0B;        /* amber — reserved tertiary contrast */
-  --accent-amber-glow: rgba(245, 158, 11, 0.13);
+  --accent-amber: #10B981;        /* emerald-500 — PRIMARY / interactive */
+  --accent-amber-glow: rgba(16, 185, 129, 0.14);
   --accent-emerald: #10B981;      /* success — same as primary */
   --accent-emerald-glow: rgba(16, 185, 129, 0.14);
   --accent-rose: #FB7185;         /* soft alert rose */
@@ -197,14 +197,12 @@
   border-color: rgba(16, 185, 129, 0.28);
 }
 
-/* ─── Gradient border shell: emerald→indigo hairline on elevated hero cards ─── */
+/* ─── Solid surface for hero cards ─── */
 [data-theme="nexus"] .hero-panel,
 [data-theme="nexus"] .page-hero {
-  border: 1px solid transparent;
+  border: 1px solid var(--border-primary);
   border-radius: var(--radius-xl);
-  background:
-    linear-gradient(var(--bg-glass), var(--bg-glass)) padding-box,
-    linear-gradient(135deg, rgba(16, 185, 129, 0.45), rgba(99, 102, 241, 0.35)) border-box;
+  background: var(--bg-card);
 }
 
 /* ─── Buttons: emerald primary, indigo secondary, quiet ghost ─── */

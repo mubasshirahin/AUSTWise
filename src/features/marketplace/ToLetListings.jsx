@@ -155,23 +155,30 @@ export default function ToLetListings() {
   };
 
   return (
-    <div className="glass-card-static tolet-listings-container animate-fadeInUp">
-      <div className="flex justify-between items-center mb-6 flex-wrap gap-3">
-        <div className="flex items-center gap-2">
-          <div className="icon" style={{ backgroundColor: 'var(--accent-purple-glow)', color: 'var(--accent-purple)', padding: '6px', borderRadius: '8px' }}>
-            <Home size={18} />
+    <div className="tolet-listings-container animate-fadeInUp">
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <Home size={20} strokeWidth={2.2} />
           </div>
           <div>
-            <h2 className="section-title" style={{ fontSize: 'var(--fs-lg)', margin: 0 }}>ToLet Mama</h2>
-            <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>Student-posted seats, rooms, and flats near campus</p>
+            <span className="schedule-overline">Marketplace</span>
+            <div className="schedule-title">ToLet Mama</div>
+            <span className="schedule-subtitle">Student-posted seats, rooms, and flats near campus</span>
           </div>
         </div>
 
-        <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowForm((open) => !open)}>
-          {showForm ? <X size={14} /> : <Plus size={14} />}
-          {showForm ? 'Close' : 'Post To-Let'}
-        </button>
+        <div className="schedule-masthead-center" />
+
+        <div className="schedule-actions">
+          <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowForm((open) => !open)}>
+            {showForm ? <X size={14} /> : <Plus size={14} />}
+            {showForm ? 'Close' : 'Post To-Let'}
+          </button>
+        </div>
       </div>
+
+      <div className="schedule-dotted-divider" />
 
       {message && <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent-emerald)', marginBottom: '10px' }}>{message}</p>}
       {error && <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent-rose)', marginBottom: '10px' }}>{error}</p>}
@@ -222,8 +229,8 @@ export default function ToLetListings() {
                 <button
                   key={amenity}
                   type="button"
-                  className={`badge ${form.amenities.includes(amenity) ? 'badge-blue' : 'badge-blue'}`}
-                  style={{ cursor: 'pointer', opacity: form.amenities.includes(amenity) ? 1 : 0.45 }}
+                  className={`badge mp-amenity-toggle ${form.amenities.includes(amenity) ? 'active' : ''}`}
+                  style={{ cursor: 'pointer' }}
                   onClick={() => toggleAmenity(amenity)}
                 >
                   {amenity}
@@ -292,12 +299,12 @@ export default function ToLetListings() {
               </div>
               <div className="mp-card-body">
                 <div className="mp-card-header">
-                  <span className="mp-card-badge badge-purple">{lst.type} Space</span>
+                  <span className="mp-card-badge">{lst.type} Space</span>
                   <span className="mp-card-date">{formatPostedDate(lst.postedAt)}</span>
                 </div>
                 <h3 className="mp-card-title">{lst.title}</h3>
                 <p className="mp-card-location"><MapPin size={12} /> {lst.location}</p>
-                <span className="mp-card-badge badge-blue" style={{ alignSelf: 'flex-start' }}>{lst.environment || 'Male'}</span>
+                <span className="mp-card-badge" style={{ alignSelf: 'flex-start' }}>{lst.environment || 'Male'}</span>
                 {lst.description && <p className="mp-card-description">{lst.description}</p>}
                 {lst.utilities && <p className="mp-card-subtitle"><b>Utilities:</b> {lst.utilities}</p>}
                 <div className="mp-card-amenities">

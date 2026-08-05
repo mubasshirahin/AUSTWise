@@ -250,7 +250,7 @@ export default function RoutineCard() {
               >
                 <div className="schedule-day-top">
                   <div className="schedule-day-num-wrap">
-                    <div className="routine-class-code" style={{ color: accentColor }}>
+                    <div className="routine-class-code">
                       {cls.course}
                       {cls.biWeekly && <span className="routine-biweekly">*</span>}
                     </div>

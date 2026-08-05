@@ -30,18 +30,24 @@
   opacity: 0.8;
 }
 
+/* ─── Glider tabs bar (own card) ─── */
+.das-tabs-card {
+  padding: var(--sp-2);
+}
+
 /* ─── Hero Header ─── */
 
-/* ─── Study Streak Widget ─── */
+/* ── Study Streak Widget ── */
 .study-streak-widget {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 20px;
-  background: var(--bg-input);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md);
+  padding: 14px 20px;
+  background: var(--bg-card-hover);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-lg);
   cursor: pointer;
+  box-shadow: var(--shadow-lift);
   transition: border-color var(--transition-base), box-shadow var(--transition-base), transform var(--transition-base);
 }
 
@@ -58,7 +64,7 @@
 
 .study-streak-widget:hover {
   border-color: var(--accent-amber);
-  box-shadow: 0 0 16px rgba(247, 147, 26, 0.2);
+  box-shadow: var(--shadow-glow-amber);
   transform: translateY(-1px);
 }
 
@@ -74,6 +80,7 @@
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
   color: var(--accent-amber);
+  white-space: nowrap;
 }
 
 .streak-label {
@@ -303,38 +310,35 @@
   overflow: hidden;
   box-shadow:
     0 1px 0 0 rgba(255,255,255,0.04) inset,
-    var(--shadow-md);
+    var(--shadow-lift);
   animation: dashHeroIn 0.55s cubic-bezier(0.4, 0, 0.2, 1) both;
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .dash-hero:hover {
   border-color: var(--border-focus);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lift);
 }
+
 
 /* ─── Hero: Period palette overrides ─── */
 .dash-hero[data-period="morning"] {
   --hero-accent-a: var(--accent-amber, #fbbf24);
-  --hero-accent-b: var(--accent-orange, #f97316);
   --hero-orb-color: rgba(251, 191, 36, 0.18);
   --hero-orb-color-2: rgba(249, 115, 22, 0.12);
 }
 .dash-hero[data-period="afternoon"] {
   --hero-accent-a: var(--accent-blue, #f59e0b);
-  --hero-accent-b: var(--accent-cyan, #22d3ee);
   --hero-orb-color: rgba(245, 158, 11, 0.18);
   --hero-orb-color-2: rgba(34, 211, 238, 0.10);
 }
 .dash-hero[data-period="evening"] {
   --hero-accent-a: var(--accent-purple, #a78bfa);
-  --hero-accent-b: var(--accent-blue, #f59e0b);
   --hero-orb-color: rgba(167, 139, 250, 0.16);
   --hero-orb-color-2: rgba(245, 158, 11, 0.10);
 }
 .dash-hero[data-period="night"] {
   --hero-accent-a: var(--accent-orange, #f97316);
-  --hero-accent-b: var(--accent-amber, #fbbf24);
   --hero-orb-color: rgba(249, 115, 22, 0.14);
   --hero-orb-color-2: rgba(251, 191, 36, 0.10);
 }
@@ -654,6 +658,12 @@
   align-items: start;
 }
 
+/* Tighten the dead space between the masthead title and the stat cells */
+.quick-stats-widget .schedule-dotted-divider {
+  margin-top: 8px;
+  margin-bottom: 12px;
+}
+
 .quick-stats-grid .quick-stat-cell {
   animation: fadeInUp 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -680,8 +690,8 @@
   box-shadow: none;
 }
 .quick-stats-widget .quick-stat-cell.today {
-  border-color: color-mix(in srgb, var(--accent-blue) 45%, var(--border-primary));
-  background: color-mix(in srgb, var(--accent-blue) 4%, transparent);
+  border-color: color-mix(in srgb, var(--accent-blue) 40%, transparent);
+  background: rgba(245, 158, 11, 0.1);
   box-shadow: none;
 }
 .quick-stat-top {
@@ -766,6 +776,13 @@
   gap: var(--sp-3);
 }
 
+/* Consistent card height for balanced schedule rows */
+.routine-widget .routine-class-row {
+  min-height: 108px;
+  height: 108px;
+  justify-content: center;
+}
+
 .routine-widget .routine-list .schedule-day-card,
 .deadline-widget .deadline-list .schedule-day-card,
 .notice-widget .notice-list .schedule-day-card {
@@ -778,6 +795,7 @@
   font-weight: var(--fw-bold);
   letter-spacing: -0.01em;
   white-space: nowrap;
+  color: var(--text-primary);
 }
 .routine-biweekly {
   color: var(--accent-amber);
@@ -800,16 +818,17 @@
   flex-shrink: 0;
   font-size: 10px;
   font-weight: var(--fw-bold);
-  padding: 2px 7px;
+  padding: 2px 8px;
   border-radius: var(--radius-full);
 }
+/* Pastel Lab (soft blue) / Theory (soft violet) tags */
 .routine-type-badge.lab {
-  background: var(--accent-purple-glow);
-  color: var(--accent-purple);
+  background: rgba(96, 165, 250, 0.15);
+  color: #60A5FA;
 }
 .routine-type-badge.theory {
-  background: var(--accent-blue-glow);
-  color: var(--accent-blue);
+  background: rgba(167, 139, 250, 0.15);
+  color: #A78BFA;
 }
 .routine-class-meta {
   display: flex;
@@ -817,13 +836,18 @@
   gap: 10px;
   margin-top: 6px;
   font-size: 11px;
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
 }
 .routine-class-meta span {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   white-space: nowrap;
+}
+/* Time reads white for contrast; room + teacher stay muted */
+.routine-class-meta span:first-child {
+  color: var(--text-primary);
+  font-weight: var(--fw-semibold);
 }
 .routine-status-badge {
   font-size: 9px;
@@ -860,6 +884,30 @@
   white-space: nowrap;
   color: var(--accent-blue);
 }
+/* ─── Deadline timeline + row body ─── */
+.deadline-row {
+  position: relative;
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+}
+.deadline-timeline {
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  position: relative;
+  width: 2px;
+  background: var(--border-secondary);
+  border-radius: 2px;
+  overflow: visible;
+}
+.deadline-row-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 .deadline-title {
   font-size: var(--fs-sm);
   font-weight: var(--fw-medium);
@@ -872,7 +920,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 6px;
+  margin-top: 2px;
 }
 .deadline-countdown {
   display: inline-flex;
@@ -899,14 +947,24 @@
   background: var(--accent-emerald-glow);
   color: var(--accent-emerald);
 }
+/* Batch tags (A2/A3) — softer secondary blue */
 .deadline-tag.cal {
-  background: var(--accent-cyan-glow);
-  color: var(--accent-cyan);
+  background: rgba(96, 165, 250, 0.15);
+  color: #60A5FA;
 }
 .deadline-tag.urgent {
   background: var(--accent-rose-glow);
   color: var(--accent-rose);
   animation: urgentBadgePulse 1.5s ease-in-out infinite;
+}
+/* Semantic priority tags — red danger = HIGH, orange warning = MEDIUM */
+.deadline-tag.prio-high {
+  background: var(--accent-rose-glow);
+  color: var(--accent-rose);
+}
+.deadline-tag.prio-medium {
+  background: rgba(251, 191, 36, 0.15);
+  color: #FBBF24;
 }
 
 /* ─── Notice Board ─── */
@@ -920,6 +978,22 @@
 }
 .notice-row {
   cursor: pointer;
+}
+
+/* Post-notice button — small circular ghost with subtle gray border */
+.notice-widget .schedule-actions .schedule-nav-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--border-primary);
+  color: var(--text-tertiary);
+  transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+}
+.notice-widget .schedule-actions .schedule-nav-btn:hover {
+  color: var(--text-secondary);
+  border-color: var(--text-tertiary);
+  background: var(--bg-input);
 }
 .notice-tag {
   display: inline-flex;
@@ -962,6 +1036,30 @@
   font-style: italic;
   color: var(--text-tertiary);
 }
+
+/* Poster avatar + date hierarchy */
+.notice-author-avatar {
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-blue-glow);
+  color: var(--accent-blue);
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+}
+.notice-author-avatar-fallback {
+  color: var(--text-tertiary);
+  opacity: 0.7;
+}
+.notice-date {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
 .notice-toggle {
   display: inline-flex;
   align-items: center;
@@ -970,10 +1068,12 @@
   padding: 2px;
 }
 .notice-title {
-  font-size: 13px;
-  font-weight: var(--fw-semibold);
+  font-size: 14px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.01em;
   color: var(--text-primary);
   margin-top: 2px;
+  text-transform: uppercase;
 }
 .notice-preview {
   font-size: 11px;
@@ -2969,6 +3069,12 @@
   overflow: hidden;
   background: transparent;
 }
+
+/* Widget shells — subtle glow lift instead of heavy borders/shadows */
+.dashboard-page .glass-card-static.schedule-widget {
+  border-color: var(--border-primary);
+  box-shadow: var(--shadow-lift);
+}
 .schedule-masthead {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -3010,16 +3116,23 @@
 }
 
 /* Widget masthead icons mirror their matching GliderTab accent color */
-.quick-stats-widget .schedule-icon-tile { background: var(--accent-blue-glow); color: var(--accent-blue); }
-.weekly-planner .schedule-icon-tile { background: var(--accent-amber-glow); color: var(--accent-amber); }
-.week-schedule-widget .schedule-icon-tile { background: var(--accent-purple-glow); color: var(--accent-purple); }
-.exam-widget .schedule-icon-tile { background: var(--accent-amber-glow); color: var(--accent-amber); }
-.attendance-tracker-widget .schedule-icon-tile { background: var(--accent-amber-glow); color: var(--accent-amber); }
-.quick-stats-widget .schedule-icon-tile svg { filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-blue) 35%, transparent)); }
-.weekly-planner .schedule-icon-tile svg { filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-amber) 35%, transparent)); }
-.week-schedule-widget .schedule-icon-tile svg { filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-purple) 35%, transparent)); }
-.exam-widget .schedule-icon-tile svg { filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-amber) 35%, transparent)); }
-.attendance-tracker-widget .schedule-icon-tile svg { filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-amber) 35%, transparent)); }
+/* All widget header icons share the single theme accent (gold) so the box
+   headers read one consistent color, matching the GliderTab icons above. */
+.quick-stats-widget .schedule-icon-tile,
+.weekly-planner .schedule-icon-tile,
+.week-schedule-widget .schedule-icon-tile,
+.exam-widget .schedule-icon-tile,
+.attendance-tracker-widget .schedule-icon-tile {
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
+}
+.quick-stats-widget .schedule-icon-tile svg,
+.weekly-planner .schedule-icon-tile svg,
+.week-schedule-widget .schedule-icon-tile svg,
+.exam-widget .schedule-icon-tile svg,
+.attendance-tracker-widget .schedule-icon-tile svg {
+  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-amber) 35%, transparent));
+}
 .schedule-overline {
   font-size: 9px;
   font-weight: var(--fw-bold);

@@ -13,8 +13,8 @@ const MARKETPLACE_TAB_KEY = 'aust-marketplace-active-tab';
 
 const marketplaceTabs = [
   { id: 'exchange', label: 'AW Market', icon: ShoppingBag, color: 'amber', desc: 'Trade books & equipment' },
-  { id: 'tolet', label: 'ToLet Mama', icon: Home, color: 'purple', desc: 'Bachelor sharing hosts' },
-  { id: 'lost', label: 'Lost & Found', icon: Search, color: 'emerald', desc: 'Locate lost products' },
+  { id: 'tolet', label: 'ToLet Mama', icon: Home, color: 'amber', desc: 'Bachelor sharing hosts' },
+  { id: 'lost', label: 'Lost & Found', icon: Search, color: 'amber', desc: 'Locate lost products' },
 ];
 
 export default function MarketplacePage() {
@@ -41,51 +41,53 @@ export default function MarketplacePage() {
   return (
     <div className={`marketplace-page animate-fadeIn${isNewsprint ? ' marketplace-newsprint' : ''}`}>
       {isNewsprint ? (
-        <MarketplaceMasthead />
+        <>
+          <MarketplaceMasthead />
+          <div className="marketplace-content-area">
+            {renderActiveTab()}
+          </div>
+        </>
       ) : (
         <>
-          {/* ─── Dashboard-style Hero Header ─── */}
-          <header className="page-hero">
-            <div className="page-hero-content">
-              <div className="page-hero-title-row">
-                <div className="page-hero-icon">
-                  <ShoppingBag size={24} />
-                </div>
-                <div>
-                  <h1 className="page-hero-title">
-                    <span className="page-hero-title-highlight">Marketplace</span>
-                  </h1>
-                  <p className="page-hero-subtitle">
-                    Trade student equipment/books, find bachelor sharing hosts, locate lost products, and connect study buddies.
-                  </p>
-                </div>
+          {/* ── 1. Hero box (own card) ── */}
+          <header className="mp-hero">
+            <div className="mp-hero-content">
+              <div className="mp-hero-eyebrow">
+                <span className="mp-hero-period-icon">
+                  <ShoppingBag size={16} />
+                </span>
+                <span className="mp-hero-date-label">
+                  Student marketplace
+                </span>
               </div>
+              <h1 className="mp-hero-title">
+                Market<span className="mp-hero-name">place</span>
+              </h1>
+              <p className="mp-hero-subtitle">
+                Trade equipment &amp; books, find bachelor sharing hosts, locate lost products, and connect study buddies.
+              </p>
             </div>
           </header>
 
-          {/* ─── GliderTabs ─── */}
-          <GliderTabs
-            tabs={marketplaceTabs}
-            activeTab={activeTab}
-            onChange={handleTabChange}
-            variant="dashboard"
-          />
+          {/* ── 2. Glider tabs bar (own card) ── */}
+          <div className="glass-card-static mp-tabs-card">
+            <GliderTabs
+              tabs={marketplaceTabs}
+              activeTab={activeTab}
+              onChange={handleTabChange}
+              variant="dashboard"
+              compact
+            />
+          </div>
 
-          {/* ─── Section Header ─── */}
-          <div className="section-header">
-            <h2 className="section-title">
-              <span className="icon" style={{ background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)' }}>
-                <ShoppingBag size={16} />
-              </span>
-              Browse Listings
-            </h2>
+          {/* ── 3. Main content box (own card) ── */}
+          <div className="mp-content-card" key={activeTab}>
+            <div className="marketplace-content-area">
+              {renderActiveTab()}
+            </div>
           </div>
         </>
       )}
-
-      <div className="marketplace-content-area">
-        {renderActiveTab()}
-      </div>
     </div>
   );
 }

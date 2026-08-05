@@ -74,15 +74,23 @@ export default function AlumniDirectory() {
   };
 
   return (
-    <div className="glass-card-static animate-fadeInUp">
+    <div className="alumni-page">
       {/* Header section */}
-      <div className="alumni-header-section">
-        <div className="alumni-header-left">
-          <h2>Alumni Corner</h2>
-          <p>Registered AUST graduates, grouped by batch — oldest batches first</p>
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <GraduationCap size={20} strokeWidth={2.2} />
+          </div>
+          <div>
+            <span className="schedule-overline">Community</span>
+            <div className="schedule-title">Alumni Corner</div>
+            <span className="schedule-subtitle">Registered AUST graduates, grouped by batch — oldest batches first</span>
+          </div>
         </div>
 
-        <div className="alumni-controls">
+        <div className="schedule-masthead-center" />
+
+        <div className="schedule-actions">
           <select
             className="input alumni-select"
             value={selectedDept}
@@ -106,20 +114,22 @@ export default function AlumniDirectory() {
         </div>
       </div>
 
+      <div className="schedule-dotted-divider" style={{ marginTop: 0 }} />
+
       {/* Alumni self-service: toggle availability for direct messages. */}
       {isAlumniViewer && (
         <div
           className="open-for-talk-banner"
           style={{
-            borderColor: myOpenForTalk ? 'var(--accent-cyan)' : 'var(--border-primary)',
-            background: myOpenForTalk ? 'var(--accent-cyan-glow)' : 'var(--bg-input)',
+            borderColor: myOpenForTalk ? 'var(--accent-amber)' : 'var(--border-primary)',
+            background: myOpenForTalk ? 'var(--accent-amber-glow)' : 'var(--bg-input)',
           }}
         >
           <div className="flex items-center gap-3">
             <div
               className="open-for-talk-icon"
               style={{
-                background: myOpenForTalk ? 'var(--accent-cyan)' : 'var(--bg-secondary)',
+                background: myOpenForTalk ? 'var(--accent-amber)' : 'var(--bg-secondary)',
                 color: myOpenForTalk ? '#fff' : 'var(--text-tertiary)',
               }}
             >
@@ -163,7 +173,7 @@ export default function AlumniDirectory() {
             <div key={group.label}>
               {/* Batch header */}
               <div className="alumni-batch-header">
-                <span className="badge badge-cyan alumni-batch-badge">
+                <span className="badge badge-amber alumni-batch-badge">
                   {group.label}
                 </span>
                 <span className="alumni-batch-count">
@@ -178,8 +188,6 @@ export default function AlumniDirectory() {
                   const canMessage = al.openForTalk && !isMe && !isGuest;
                   return (
                     <div key={al.id} className="alumni-card">
-                      {/* Shine overlay — matches dashboard pattern */}
-                      <div className="card-shine" aria-hidden="true" />
                       <div className="alumni-card-top">
                         <div className="avatar" style={{ width: '40px', height: '40px', flexShrink: 0 }}>
                           {al.initials}
@@ -188,7 +196,7 @@ export default function AlumniDirectory() {
                           <h3 className="alumni-card-name">
                             {al.name}
                             {isMe && (
-                              <span className="badge badge-cyan" style={{ fontSize: '9px', marginLeft: '6px', padding: '1px 6px' }}>
+                              <span className="badge badge-amber" style={{ fontSize: '9px', marginLeft: '6px', padding: '1px 6px' }}>
                                 You
                               </span>
                             )}

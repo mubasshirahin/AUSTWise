@@ -106,31 +106,42 @@
 }
 
 /* Dashboard variant — accent glider glow */
-.glider-tabs-dashboard .glider-tabs-glider {
-  background: linear-gradient(135deg, var(--bg-card) 0%, color-mix(in srgb, var(--accent-blue) 8%, var(--bg-card)) 100%);
-  box-shadow:
-    var(--shadow-md),
-    0 0 0 1px color-mix(in srgb, var(--accent-blue) 20%, transparent);
+.glider-tabs-dashboard .glider-tabs-track {
+  background: color-mix(in srgb, var(--accent-amber) 4%, var(--bg-input));
+  border-color: color-mix(in srgb, var(--accent-amber) 12%, var(--border-primary));
 }
 
-/* Dashboard variant — soft accent tint per tab, mirroring the widget
-   masthead logos (glow background + colored icon, no glow shadow). */
+.glider-tabs-dashboard .glider-tabs-glider {
+  background: linear-gradient(135deg, var(--bg-card) 0%, color-mix(in srgb, var(--accent-amber) 8%, var(--bg-card)) 100%);
+  box-shadow:
+    var(--shadow-md),
+    0 0 0 1px color-mix(in srgb, var(--accent-amber) 20%, transparent);
+}
+
+/* Dashboard variant — tab icons all read the single brand accent.
+   Semantic accents (green/red/teal) are reserved for state, not tab identity. */
+.glider-tabs-dashboard .glider-tab .glider-tab-icon,
+.glider-tabs-dashboard .glider-tab.active .glider-tab-icon,
 .glider-tabs-dashboard .glider-tab-blue .glider-tab-icon,
-.glider-tabs-dashboard .glider-tab-blue.active .glider-tab-icon { background: var(--accent-blue-glow); color: var(--accent-blue); box-shadow: none; }
+.glider-tabs-dashboard .glider-tab-blue.active .glider-tab-icon,
 .glider-tabs-dashboard .glider-tab-cyan .glider-tab-icon,
-.glider-tabs-dashboard .glider-tab-cyan.active .glider-tab-icon { background: var(--accent-cyan-glow); color: var(--accent-cyan); box-shadow: none; }
+.glider-tabs-dashboard .glider-tab-cyan.active .glider-tab-icon,
 .glider-tabs-dashboard .glider-tab-purple .glider-tab-icon,
-.glider-tabs-dashboard .glider-tab-purple.active .glider-tab-icon { background: var(--accent-purple-glow); color: var(--accent-purple); box-shadow: none; }
+.glider-tabs-dashboard .glider-tab-purple.active .glider-tab-icon,
 .glider-tabs-dashboard .glider-tab-amber .glider-tab-icon,
-.glider-tabs-dashboard .glider-tab-amber.active .glider-tab-icon { background: var(--accent-amber-glow); color: var(--accent-amber); box-shadow: none; }
+.glider-tabs-dashboard .glider-tab-amber.active .glider-tab-icon,
 .glider-tabs-dashboard .glider-tab-emerald .glider-tab-icon,
-.glider-tabs-dashboard .glider-tab-emerald.active .glider-tab-icon { background: var(--accent-emerald-glow); color: var(--accent-emerald); box-shadow: none; }
+.glider-tabs-dashboard .glider-tab-emerald.active .glider-tab-icon,
 .glider-tabs-dashboard .glider-tab-rose .glider-tab-icon,
-.glider-tabs-dashboard .glider-tab-rose.active .glider-tab-icon { background: var(--accent-rose-glow); color: var(--accent-rose); box-shadow: none; }
+.glider-tabs-dashboard .glider-tab-rose.active .glider-tab-icon,
 .glider-tabs-dashboard .glider-tab-orange .glider-tab-icon,
-.glider-tabs-dashboard .glider-tab-orange.active .glider-tab-icon { background: var(--accent-orange-glow); color: var(--accent-orange); box-shadow: none; }
+.glider-tabs-dashboard .glider-tab-orange.active .glider-tab-icon {
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
+  box-shadow: none;
+}
 .glider-tabs-dashboard .glider-tab .glider-tab-icon svg {
-  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-blue) 35%, transparent));
+  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-amber) 35%, transparent));
 }
 
 .glider-tabs-compact .glider-tab {

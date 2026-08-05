@@ -192,15 +192,15 @@ export default function NoticeBoard() {
             >
               <div className="schedule-day-top">
                 <div className="schedule-day-num-wrap">
-                  <div className="schedule-day-count">{notice.date}</div>
+                  {notice.postedByName ? (
+                    <div className="notice-author-avatar" aria-hidden="true">
+                      {(notice.postedByName || 'A').charAt(0).toUpperCase()}
+                    </div>
+                  ) : (
+                    <UserRound size={14} className="notice-author-avatar-fallback" />
+                  )}
                 </div>
                 <div className="schedule-day-badges">
-                  {notice.postedByRole && (
-                    <span className="notice-tag role">
-                      <UserRound size={10} />
-                      {notice.postedByRole.toUpperCase()} · {notice.scope?.labSection || notice.scope?.section || ''}
-                    </span>
-                  )}
                   {notice.pinned && (
                     <span className="notice-tag pinned"><Pin size={10} /> PINNED</span>
                   )}
@@ -228,12 +228,16 @@ export default function NoticeBoard() {
               </div>
 
               <div className="notice-title">{notice.title}</div>
+              <div className="notice-date">{notice.date}</div>
 
               {isExpanded ? (
                 <div className="notice-details">
                   {notice.content}
                   {notice.postedByName && (
-                    <div className="notice-author">Posted by {notice.postedByName}</div>
+                    <div className="notice-author">
+                      {notice.postedByRole && <span>{notice.postedByRole.toUpperCase()} · </span>}
+                      {notice.scope?.labSection || notice.scope?.section || ''}
+                    </div>
                   )}
                 </div>
               ) : (

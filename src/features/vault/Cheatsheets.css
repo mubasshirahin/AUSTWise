@@ -71,7 +71,7 @@
   height: 280px;
   top: -120px;
   right: -60px;
-  background: radial-gradient(circle, rgba(245,158,11,0.14) 0%, transparent 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent-amber) 14%, transparent) 0%, transparent 70%);
 }
 
 .csh-hero-orb-2 {
@@ -79,7 +79,7 @@
   height: 200px;
   bottom: -80px;
   left: 4%;
-  background: radial-gradient(circle, rgba(245,158,11,0.08) 0%, transparent 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent-amber) 8%, transparent) 0%, transparent 70%);
   animation-delay: -4.5s;
 }
 
@@ -89,7 +89,7 @@
   top: 50%;
   left: 40%;
   transform: translateY(-50%);
-  background: radial-gradient(circle, rgba(245,158,11,0.06) 0%, transparent 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent-amber) 6%, transparent) 0%, transparent 70%);
   animation-delay: -2s;
   filter: blur(48px);
 }
@@ -176,7 +176,7 @@
   background: linear-gradient(
     135deg,
     var(--accent-amber) 0%,
-    var(--accent-cyan) 100%
+    var(--accent-amber) 100%
   );
   -webkit-background-clip: text;
   background-clip: text;

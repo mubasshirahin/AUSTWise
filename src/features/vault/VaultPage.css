@@ -9,6 +9,121 @@
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
+  padding-bottom: var(--sp-10);
+}
+
+/* ── 1. Hero box — its own card (matches dashboard hero) ── */
+.vl-hero {
+  position: relative;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-primary);
+  background: var(--bg-card);
+  overflow: hidden;
+  box-shadow: var(--shadow-lift);
+  animation: vlHeroIn 0.55s cubic-bezier(0.4, 0, 0.2, 1) both;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.vl-hero:hover {
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-lift);
+}
+
+
+@keyframes vlHeroIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.vl-hero-content {
+  position: relative;
+  padding: var(--sp-6) var(--sp-6) var(--sp-5);
+  z-index: 1;
+}
+
+.vl-hero-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+
+.vl-hero-period-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-md);
+  background: var(--accent-amber-glow);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 22%, transparent);
+  color: var(--accent-amber);
+  flex-shrink: 0;
+}
+
+.vl-hero-date-label {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.vl-hero-title {
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+  margin: 0 0 var(--sp-1);
+  color: var(--text-primary);
+}
+
+.vl-hero-name {
+  display: inline-block;
+  color: var(--accent-amber);
+}
+
+.vl-hero-subtitle {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-regular);
+  color: var(--text-secondary);
+  margin: 0;
+  max-width: 440px;
+  line-height: 1.6;
+}
+
+/* ── 2. Glider tabs bar (own card) ── */
+.vl-tabs-card {
+  padding: var(--sp-2);
+}
+
+/* ── 3. Main content box (own card) ── */
+.vl-content-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-5);
+  box-shadow: var(--shadow-lift);
+}
+
+.vl-content-card .vault-content-area {
+  animation: fadeInUp 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Sub-widget shells — subtle glow lift instead of heavy borders */
+.vault-page .glass-card-static.schedule-widget,
+.vault-page .glass-card-static {
+  border-color: var(--border-primary);
+  box-shadow: var(--shadow-lift);
+}
+
+@media (max-width: 640px) {
+  .vl-hero-content {
+    padding: var(--sp-4) var(--sp-3);
+  }
+  .vl-content-card {
+    padding: var(--sp-4);
+  }
 }
 
 /* ─── Hero: Shell ─── */
@@ -998,108 +1113,6 @@
   margin-left: auto;
 }
 
-/* ─── Resource Tab Slider ─── */
-.vault-resource-slider-wrap {
-  overflow-x: auto;
-  scrollbar-width: thin;
-  padding-bottom: 2px;
-}
-
-.vault-resource-slider {
-  --vault-tab-x: 0px;
-  --vault-tab-w: 120px;
-  position: relative;
-  display: flex;
-  gap: 6px;
-  padding: 6px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.07);
-  border-radius: 16px;
-  min-width: min-content;
-}
-
-.vault-resource-slider-glider {
-  position: absolute;
-  top: 6px;
-  left: 6px;
-  height: calc(100% - 12px);
-  width: var(--vault-tab-w);
-  transform: translateX(var(--vault-tab-x));
-  border-radius: 12px;
-  background: rgba(255,255,255,0.06);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.vault-resource-tab {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  border: none;
-  border-radius: 12px;
-  background: transparent;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: color 0.2s ease;
-  color: var(--text-secondary);
-}
-
-.vault-resource-tab:hover {
-  color: var(--text-primary);
-}
-
-.vault-resource-tab.active {
-  color: var(--text-primary);
-}
-
-.vault-resource-tab-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  transition: background 0.2s ease, color 0.2s ease;
-}
-
-.vault-resource-tab.active .vault-resource-tab-icon {
-  color: #fff;
-}
-
-.vault-resource-tab-blue.active .vault-resource-tab-icon { background: var(--accent-blue); }
-.vault-resource-tab-purple.active .vault-resource-tab-icon { background: var(--accent-purple); }
-.vault-resource-tab-emerald.active .vault-resource-tab-icon { background: var(--accent-emerald); }
-.vault-resource-tab-rose.active .vault-resource-tab-icon { background: var(--accent-rose); }
-.vault-resource-tab-amber.active .vault-resource-tab-icon { background: var(--accent-amber); }
-.vault-resource-tab-cyan.active .vault-resource-tab-icon { background: var(--accent-cyan); }
-
-.vault-resource-tab-text {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 1px;
-}
-
-.vault-resource-tab-label {
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold);
-}
-
-.vault-resource-tab-desc {
-  font-size: 10px;
-  color: var(--text-tertiary);
-  font-weight: var(--fw-medium);
-}
-
-.vault-resource-tab.active .vault-resource-tab-desc {
-  color: var(--text-secondary);
-}
-
 .vault-content-area {
   animation: vaultContentSwap 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
@@ -1557,14 +1570,6 @@
 
   .vault-context-pills {
     margin-left: 0;
-  }
-
-  .vault-resource-tab-desc {
-    display: none;
-  }
-
-  .vault-resource-tab {
-    padding: 10px 12px;
   }
 
   .vault-sem-slide {

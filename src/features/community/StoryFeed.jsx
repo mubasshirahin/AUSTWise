@@ -16,11 +16,14 @@ const getVisitorId = () => {
   return id;
 };
 
+// Categories share one monochrome treatment (brand amber via CSS) — color is
+// no longer a per-category identifier. Green/red/teal stay reserved for
+// semantic states only, so no hex values live here.
 const categoryMeta = {
-  confession: { Icon: MessageSquare, color: '#a855f7', label: 'Confession' },
-  funny:      { Icon: Smile, color: '#f59e0b', label: 'Funny' },
-  helpful:    { Icon: Lightbulb, color: '#10b981', label: 'Helpful' },
-  appreciation: { Icon: Heart, color: '#f43f5e', label: 'Appreciation' },
+  confession: { Icon: MessageSquare, label: 'Confession' },
+  funny:      { Icon: Smile, label: 'Funny' },
+  helpful:    { Icon: Lightbulb, label: 'Helpful' },
+  appreciation: { Icon: Heart, label: 'Appreciation' },
 };
 
 const reactionIcons = { laugh: Smile, heart: Heart, fire: Flame };
@@ -149,7 +152,25 @@ export default function StoryFeed() {
    */
 
   return (
-    <div className="glass-card-static story-feed-container animate-fadeInUp">
+    <div className="glass-card-static schedule-widget story-feed-container animate-fadeInUp">
+      {/* ── Masthead ── */}
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <MessageSquare size={20} strokeWidth={2.2} />
+          </div>
+          <div>
+            <span className="schedule-overline">Shadow</span>
+            <div className="schedule-title">Confessions Feed</div>
+            <span className="schedule-subtitle">Anonymous posts from the AUST community</span>
+          </div>
+        </div>
+        <div className="schedule-masthead-center" />
+        <div className="schedule-actions" />
+      </div>
+
+      <div className="schedule-dotted-divider" />
+
       {/* Create post form */}
       <form onSubmit={handlePostSubmit} className="story-feed-form">
         <div className="story-feed-form-header">
@@ -167,12 +188,7 @@ export default function StoryFeed() {
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className="story-feed-category-btn"
-                style={{
-                  borderColor: active ? meta.color : undefined,
-                  background: active ? meta.color + '20' : undefined,
-                  color: active ? meta.color : undefined,
-                }}
+                className={`story-feed-category-btn ${active ? 'active' : ''}`}
               >
                 <meta.Icon size={14} /> {meta.label}
               </button>
@@ -229,13 +245,7 @@ export default function StoryFeed() {
               {/* Shine overlay */}
               <div className="post-shine" aria-hidden="true" />
               <div className="story-feed-post-header">
-                <span
-                  className="story-feed-post-category"
-                  style={{
-                    background: meta.color + '20',
-                    color: meta.color,
-                  }}
-                >
+                <span className="story-feed-post-category">
                   <meta.Icon size={12} /> {post.category}
                 </span>
                 <span className="story-feed-post-author">{post.author || 'Anonymous'}</span>
@@ -252,16 +262,9 @@ export default function StoryFeed() {
                       <button
                         key={type}
                         onClick={() => handleReact(post.id, type)}
-                        className="story-feed-reaction-btn"
+                        className={`story-feed-reaction-btn ${hasReacted ? 'reacted' : ''}`}
                         disabled={hasReacted}
                         title={hasReacted ? 'You already voted' : `React with ${type}`}
-                        style={{
-                          background: hasReacted ? meta.color + '20' : undefined,
-                          color: hasReacted ? meta.color : undefined,
-                          fontWeight: hasReacted ? 600 : undefined,
-                          opacity: hasReacted ? 0.55 : 1,
-                          cursor: hasReacted ? 'default' : 'pointer',
-                        }}
                       >
                         <IconComponent size={14} /> {post.reactions[type]}
                       </button>

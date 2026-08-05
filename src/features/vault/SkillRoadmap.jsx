@@ -54,15 +54,27 @@ export default function SkillRoadmap({ vaultContext }) {
   };
 
   return (
-    <div className="glass-card-static skill-roadmaps animate-fadeInUp">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 className="section-title" style={{ fontSize: 'var(--fs-lg)', margin: 0 }}>Career Roadmaps</h2>
-          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
-            {courseName} — track skills and career milestones
-          </p>
+    <div className="glass-card-static schedule-widget skill-roadmaps animate-fadeInUp">
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <Route size={20} strokeWidth={2.2} />
+          </div>
+          <div>
+            <span className="schedule-overline">Vault</span>
+            <div className="schedule-title">Career Roadmaps</div>
+            <span className="schedule-subtitle">
+              {courseName} — track skills and career milestones
+            </span>
+          </div>
         </div>
+
+        <div className="schedule-masthead-center" />
+
+        <div className="schedule-actions" />
       </div>
+
+      <div className="schedule-dotted-divider" />
 
       {roadmaps.length === 0 ? (
         <div className="empty-state" style={{ padding: '32px 16px', textAlign: 'center' }}>

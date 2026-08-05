@@ -5,11 +5,116 @@
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
+  padding-bottom: var(--sp-10);
 
   /* Unified palette lives in campus-tokens.css (imported after this file).
      Amber is the one brand accent; blue/purple/orange/cyan collapse into it
      so category icons/cards stay monochrome. Rose (closed/urgent) and
      emerald (open/success) remain semantic. */
+}
+
+/* ── 1. Hero box — its own card (matches dashboard hero) ── */
+.cp-hero {
+  position: relative;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-primary);
+  background: var(--bg-card);
+  overflow: hidden;
+  box-shadow: var(--shadow-lift);
+  animation: cpHeroIn 0.55s cubic-bezier(0.4, 0, 0.2, 1) both;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.cp-hero:hover {
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-lift);
+}
+
+
+@keyframes cpHeroIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.cp-hero-content {
+  position: relative;
+  padding: var(--sp-6) var(--sp-6) var(--sp-5);
+  z-index: 1;
+}
+
+.cp-hero-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+
+.cp-hero-period-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-md);
+  background: var(--accent-amber-glow);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 22%, transparent);
+  color: var(--accent-amber);
+  flex-shrink: 0;
+}
+
+.cp-hero-date-label {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.cp-hero-title {
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+  margin: 0 0 var(--sp-1);
+  color: var(--text-primary);
+}
+
+.cp-hero-name {
+  display: inline-block;
+  color: var(--accent-amber);
+}
+
+.cp-hero-subtitle {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-regular);
+  color: var(--text-secondary);
+  margin: 0;
+  max-width: 440px;
+  line-height: 1.6;
+}
+
+/* ── 2. Glider tabs bar (own card) ── */
+.cp-tabs-card {
+  padding: var(--sp-2);
+}
+
+/* ── 3. Main content box (own card) ── */
+.cp-content-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-5);
+  box-shadow: var(--shadow-lift);
+}
+
+.cp-content-card .campus-content-area {
+  animation: fadeInUp 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Sub-widget shells — subtle glow lift instead of heavy borders */
+.campus-page .glass-card-static.schedule-widget {
+  border-color: var(--border-primary);
+  box-shadow: var(--shadow-lift);
 }
 
 .campus-tabs {
@@ -18,6 +123,15 @@
 
 .campus-content-area {
   animation: fadeInUp 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@media (max-width: 640px) {
+  .cp-hero-content {
+    padding: var(--sp-4) var(--sp-3);
+  }
+  .cp-content-card {
+    padding: var(--sp-4);
+  }
 }
 
 /* ─── Floor Map Root ─── */
@@ -140,10 +254,10 @@
   flex-wrap: wrap;
   gap: var(--sp-3);
   padding: var(--sp-3) var(--sp-4);
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.07);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
-  box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+  box-shadow: var(--shadow-lift);
 }
 
 .floor-plan-toolbar-label {
@@ -245,14 +359,14 @@
 /* ─── Large image viewport ─── */
 .floor-plan-viewport {
   position: relative;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.07);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
   border-radius: var(--radius-xl);
   overflow: auto;
   min-height: min(78vh, 820px);
   max-height: min(85vh, 900px);
   padding: var(--sp-4);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  box-shadow: var(--shadow-lift);
   -webkit-overflow-scrolling: touch;
 }
 
@@ -861,10 +975,10 @@
 
 .floor-plan-sidebar-card {
   padding: var(--sp-4) var(--sp-5);
-  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  box-shadow: var(--shadow-lift);
 }
 
 .floor-plan-sidebar-card:first-child {
@@ -929,8 +1043,8 @@
   width: 100%;
   padding: var(--sp-3);
   border-radius: var(--radius-md);
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
   transition: border-color 0.2s ease, transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
   cursor: pointer;
   text-align: left;
@@ -1033,10 +1147,10 @@
 
 .map-legend-card {
   padding: var(--sp-4) var(--sp-5);
-  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  box-shadow: var(--shadow-lift);
 }
 
 /* ─── Faculty Cards ─── */
@@ -1048,10 +1162,10 @@
 
 .faculty-card {
   padding: var(--sp-4) var(--sp-5);
-  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  box-shadow: var(--shadow-lift);
   transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
   cursor: pointer;
 }
@@ -1071,10 +1185,10 @@
 
 .library-zone-card {
   padding: var(--sp-4) var(--sp-5);
-  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  box-shadow: var(--shadow-lift);
   transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
 }
 
@@ -1093,10 +1207,10 @@
 
 .canteen-item-card {
   padding: var(--sp-4) var(--sp-5);
-  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  box-shadow: var(--shadow-lift);
   display: flex;
   align-items: center;
   justify-content: space-between;

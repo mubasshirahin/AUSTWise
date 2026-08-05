@@ -1,5 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════
-   DAILY LIFE HUB
+   DAILY LIFE HUB — Aura widget language (3 separate boxes)
+   Matches the Dashboard: a hero box, a glider-tab bar, and the
+   main content box — each its own card, not one combined box.
    ═══════════════════════════════════════════════════════════════ */
 
 .daily-life-page {
@@ -10,28 +12,137 @@
   max-width: 1200px;
   margin: 0 auto;
   padding-bottom: var(--sp-10);
-
-  --page-hero-icon-bg:        var(--accent-amber-glow);
-  --page-hero-icon-color:     var(--accent-amber);
-  --page-hero-gradient-start: var(--accent-amber);
 }
 
-/* ── Tab content ── */
-.daily-life-tab-content {
+/* ── 1. Hero box — its own card ── */
+.dl-hero {
+  position: relative;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-primary);
+  background: var(--bg-card);
+  overflow: hidden;
+  box-shadow: var(--shadow-lift);
+  animation: dlHeroIn 0.55s cubic-bezier(0.4, 0, 0.2, 1) both;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.dl-hero:hover {
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-lift);
+}
+
+
+.dl-hero-content {
+  position: relative;
+  padding: var(--sp-6) var(--sp-6) var(--sp-5);
+  z-index: 1;
+}
+
+.dl-hero-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+
+.dl-hero-period-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-md);
+  background: var(--accent-amber-glow);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 22%, transparent);
+  color: var(--accent-amber);
+  flex-shrink: 0;
+}
+
+.dl-hero-date-label {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.dl-hero-title {
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+  margin: 0 0 var(--sp-1);
+  color: var(--text-primary);
+}
+
+.dl-hero-name {
+  display: inline-block;
+  color: var(--accent-amber);
+}
+
+.dl-hero-subtitle {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-regular);
+  color: var(--text-secondary);
+  margin: 0;
+  max-width: 440px;
+  line-height: 1.6;
+}
+
+/* ── 2. Glider tabs bar (own card) ── */
+.daily-life-tabs {
+  margin-bottom: var(--sp-5);
+}
+
+.dl-tabs-card {
+  padding: var(--sp-2);
+}
+
+/* ── 3. Main content box ── */
+.dl-content-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-5);
+  box-shadow: var(--shadow-lift);
+}
+
+.dl-content-card .daily-life-tab-content {
   animation: dlFadeIn 0.22s ease both;
 }
 
 /* Hide the nested page-hero of sub-pages */
-.daily-life-tab-content .page-hero {
+.dl-content-card .daily-life-tab-content .page-hero {
   display: none;
 }
 
 /* Suppress double fade from sub-page wrappers */
-.daily-life-tab-content .animate-fadeIn {
+.dl-content-card .daily-life-tab-content .animate-fadeIn {
   animation: none;
+}
+
+/* Sub-page widget shells — subtle glow lift instead of heavy borders */
+.daily-life-page .glass-card-static.schedule-widget {
+  border-color: var(--border-primary);
+  box-shadow: var(--shadow-lift);
 }
 
 @keyframes dlFadeIn {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0);   }
+}
+
+@keyframes dlIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .dl-hero-content {
+    padding: var(--sp-4) var(--sp-3);
+  }
+  .dl-content-card {
+    padding: var(--sp-4);
+  }
 }

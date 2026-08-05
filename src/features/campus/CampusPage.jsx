@@ -1,25 +1,22 @@
 import { useState } from 'react';
-import { Map, MapPin, Users, Library, UtensilsCrossed, Bus, Banknote, DoorOpen } from 'lucide-react';
+import { Map, MapPin, Users, Library, UtensilsCrossed, Bus, DoorOpen } from 'lucide-react';
 import InteractiveMap from './InteractiveMap';
 import FacultyStatus from './FacultyStatus';
 import LibraryPulse from './LibraryPulse';
 import CanteenMenu from './CanteenMenu';
 import BusTracker from './BusTracker';
-import AustBharaPage from '../aust-bhara/AustBharaPage';
 import EmptyClassroomPage from '../empty-classroom/EmptyClassroomPage';
 import GliderTabs from '../../components/GliderTabs';
 import './CampusPage.css';
-import '../../components/PageHero.css';
 import './campus-tokens.css';
 
 const campusTabs = [
-  { id: 'map',     label: 'Floor Map',        icon: MapPin,          color: 'amber', desc: '' },
-  { id: 'faculty', label: 'Faculty Status',   icon: Users,           color: 'amber', desc: 'Office hours' },
-  { id: 'library', label: 'Library Pulse',    icon: Library,         color: 'amber', desc: 'Occupancy' },
-  { id: 'canteen', label: 'Canteen Menu',     icon: UtensilsCrossed, color: 'amber', desc: "Today's menu" },
-  { id: 'bus',     label: 'Bus Tracker',      icon: Bus,             color: 'amber', desc: 'Shuttle routes' },
-  { id: 'bhara',     label: 'Bhara Koto',       icon: Banknote,        color: 'amber', desc: 'Fee tracker' },
-  { id: 'classroom', label: 'Free Rooms',   icon: DoorOpen,         color: 'amber', desc: 'Find available rooms' },
+  { id: 'map',       label: 'Floor Map',      icon: MapPin,          color: 'amber', desc: '' },
+  { id: 'faculty',   label: 'Faculty Status', icon: Users,           color: 'amber', desc: 'Office hours' },
+  { id: 'library',   label: 'Library Pulse',  icon: Library,         color: 'amber', desc: 'Occupancy' },
+  { id: 'canteen',   label: 'Canteen Menu',   icon: UtensilsCrossed, color: 'amber', desc: "Today's menu" },
+  { id: 'bus',       label: 'Bus Tracker',    icon: Bus,             color: 'amber', desc: 'Shuttle routes' },
+  { id: 'classroom', label: 'Free Rooms',     icon: DoorOpen,        color: 'amber', desc: 'Find available rooms' },
 ];
 
 const CAMPUS_TAB_KEY = 'aust-campus-active-tab';
@@ -41,7 +38,6 @@ export default function CampusPage() {
       case 'library': return <LibraryPulse />;
       case 'canteen': return <CanteenMenu />;
       case 'bus': return <BusTracker />;
-      case 'bhara': return <AustBharaPage />;
       case 'classroom': return <EmptyClassroomPage />;
       default: return <InteractiveMap />;
     }
@@ -49,34 +45,43 @@ export default function CampusPage() {
 
   return (
     <div className="campus-page animate-fadeIn">
-      <header className="page-hero">
-        <div className="page-hero-content">
-          <div className="page-hero-title-row">
-            <div className="page-hero-icon">
-              <Map size={24} />
-            </div>
-            <div>
-              <h1 className="page-hero-title">
-                <span className="page-hero-title-highlight">InsideAUST</span>
-              </h1>
-              <p className="page-hero-subtitle">
-                Navigate buildings, review faculty office hours, and check live canteen/library occupancy.
-              </p>
-            </div>
+
+      {/* ── 1. Hero box (own card) ── */}
+      <header className="cp-hero">
+        <div className="cp-hero-content">
+          <div className="cp-hero-eyebrow">
+            <span className="cp-hero-period-icon">
+              <Map size={16} />
+            </span>
+            <span className="cp-hero-date-label">
+              Campus · live updates
+            </span>
           </div>
+          <h1 className="cp-hero-title">
+            Inside<span className="cp-hero-name">AUST</span>
+          </h1>
+          <p className="cp-hero-subtitle">
+            Navigate buildings, review faculty office hours, and check live canteen/library occupancy.
+          </p>
         </div>
       </header>
 
-      <GliderTabs
-        tabs={campusTabs}
-        activeTab={activeTab}
-        onChange={handleTabChange}
-        variant="dashboard"
-        compact
-      />
+      {/* ── 2. Glider tabs bar (own card) ── */}
+      <div className="glass-card-static cp-tabs-card">
+        <GliderTabs
+          tabs={campusTabs}
+          activeTab={activeTab}
+          onChange={handleTabChange}
+          variant="dashboard"
+          compact
+        />
+      </div>
 
-      <div className="campus-content-area" key={activeTab}>
-        {renderActiveTab()}
+      {/* ── 3. Main content box (own card) ── */}
+      <div className="cp-content-card" key={activeTab}>
+        <div className="campus-content-area">
+          {renderActiveTab()}
+        </div>
       </div>
     </div>
   );

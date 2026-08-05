@@ -1,8 +1,10 @@
 import { useState, useCallback, useMemo } from 'react';
+import { NotebookPen } from 'lucide-react';
 import Notebook from './Notebook';
 import NotebookLibrary from './NotebookLibrary';
 import './Notebook.css';
 import './VaultPage.css';
+import './vault-tokens.css';
 
 // Standalone Notebook page — the user's notes live entirely in their own
 // localStorage. `aust-notebook-index` holds a flat list of items (folders and
@@ -171,30 +173,54 @@ export default function NotebookPage() {
   }, []);
 
   return (
-    <div className="vault-page animate-fadeIn">
-      {openNote ? (
-        <Notebook
-          vaultContext={DEFAULT_CONTEXT}
-          batch={null}
-          noteKey={openNote.id}
-          title={openNote.title}
-          onBack={() => setOpenNote(null)}
-          onSaved={() => handleSaved(openNote.id)}
-        />
-      ) : (
-        <NotebookLibrary
-          items={items}
-          currentFolderId={currentFolderId}
-          noteCounts={noteCounts}
-          onOpenNote={setOpenNote}
-          onOpenFolder={handleOpenFolder}
-          onNavigateTo={handleNavigateTo}
-          onCreateNote={handleCreateNote}
-          onCreateFolder={handleCreateFolder}
-          onRename={handleRename}
-          onDelete={handleDelete}
-        />
-      )}
+    <div className="vault-page notebook-page animate-fadeIn">
+
+      {/* ── 1. Hero box (own card) ── */}
+      <header className="nb-hero">
+        <div className="nb-hero-content">
+          <div className="nb-hero-eyebrow">
+            <span className="nb-hero-period-icon">
+              <NotebookPen size={16} />
+            </span>
+            <span className="nb-hero-date-label">
+              Your notes &amp; library
+            </span>
+          </div>
+          <h1 className="nb-hero-title">
+            Note<span className="nb-hero-name">book</span>
+          </h1>
+          <p className="nb-hero-subtitle">
+            {openNote ? openNote.title : 'Organize folders, notes and study material — everything lives in your browser.'}
+          </p>
+        </div>
+      </header>
+
+      {/* ── 2. Main content box (own card) ── */}
+      <div className="nb-content-card">
+        {openNote ? (
+          <Notebook
+            vaultContext={DEFAULT_CONTEXT}
+            batch={null}
+            noteKey={openNote.id}
+            title={openNote.title}
+            onBack={() => setOpenNote(null)}
+            onSaved={() => handleSaved(openNote.id)}
+          />
+        ) : (
+          <NotebookLibrary
+            items={items}
+            currentFolderId={currentFolderId}
+            noteCounts={noteCounts}
+            onOpenNote={setOpenNote}
+            onOpenFolder={handleOpenFolder}
+            onNavigateTo={handleNavigateTo}
+            onCreateNote={handleCreateNote}
+            onCreateFolder={handleCreateFolder}
+            onRename={handleRename}
+            onDelete={handleDelete}
+          />
+        )}
+      </div>
     </div>
   );
 }

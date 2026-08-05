@@ -5,25 +5,161 @@
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
+  padding-bottom: var(--sp-10);
 
-  /* Unified palette — amber is the one brand accent; blue/purple/cyan
-     collapse into it so category icons/cards stay monochrome. */
-  --accent-blue: #f5a623;
-  --accent-blue-glow: rgba(245, 166, 35, 0.14);
-  --accent-purple: #f5a623;
-  --accent-purple-glow: rgba(245, 166, 35, 0.14);
-  --accent-orange: #f5a623;
-  --accent-orange-glow: rgba(245, 166, 35, 0.14);
-  --accent-cyan: #f5a623;
-  --accent-cyan-glow: rgba(245, 166, 35, 0.14);
-
-  --page-hero-icon-bg: var(--accent-amber-glow);
-  --page-hero-icon-color: var(--accent-amber);
-  --page-hero-gradient-start: var(--accent-amber);
+  /* Aura palette — scoped to the Marketplace hub. Legacy aliases collapse
+     into the gold primary; semantic accents keep their meaning. */
+  --accent-blue: #F59E0B;
+  --accent-blue-glow: rgba(245, 158, 11, 0.14);
+  --accent-amber: #F59E0B;
+  --accent-amber-glow: rgba(245, 158, 11, 0.14);
+  --accent-orange: #F59E0B;
+  --accent-orange-glow: rgba(245, 158, 11, 0.14);
+  --accent-purple: #A78BFA;
+  --accent-purple-glow: rgba(167, 139, 250, 0.14);
+  --accent-cyan: #60A5FA;
+  --accent-cyan-glow: rgba(96, 165, 250, 0.14);
+  --accent-info: #60A5FA;
+  --accent-info-glow: rgba(96, 165, 250, 0.14);
+  --accent-emerald: #34D399;
+  --accent-emerald-glow: rgba(52, 211, 153, 0.14);
+  --accent-rose: #F87171;
+  --accent-rose-glow: rgba(248, 113, 113, 0.14);
+  --bg-primary: #0A0A0C;
+  --bg-secondary: #1B1B1F;
+  --bg-card: #1B1B1F;
+  --bg-card-hover: #232329;
+  --bg-tertiary: #1E1E26;
+  --bg-input: #1B1B1F;
+  --border-primary: #2A2A35;
+  --border-secondary: rgba(42, 42, 53, 0.6);
+  --border-focus: rgba(245, 158, 11, 0.5);
+  --text-primary: #FFFFFF;
+  --text-secondary: #E2E8F0;
+  --text-tertiary: #94A3B8;
+  --shadow-sm: 0 1px 2px rgba(255, 255, 255, 0.02);
+  --shadow-md: 0 6px 18px rgba(255, 255, 255, 0.03);
+  --shadow-popper: 0 8px 24px rgba(255, 255, 255, 0.04);
+  --shadow-lift: 0 4px 20px rgba(255, 255, 255, 0.03);
+  --shadow-glow-amber: 0 0 24px rgba(245, 158, 11, 0.14);
+  --hero-accent-a: #F59E0B;
+  --page-hero-icon-bg: rgba(245, 158, 11, 0.14);
+  --page-hero-icon-color: #F59E0B;
+  --page-hero-gradient-start: #F59E0B;
 }
 
-.marketplace-content-area {
+/* ── 1. Hero box — its own card (matches dashboard hero) ── */
+.mp-hero {
+  position: relative;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-primary);
+  background: var(--bg-card);
+  overflow: hidden;
+  box-shadow: var(--shadow-lift);
+  animation: mpHeroIn 0.55s cubic-bezier(0.4, 0, 0.2, 1) both;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.mp-hero:hover {
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-lift);
+}
+
+
+@keyframes mpHeroIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.mp-hero-content {
+  position: relative;
+  padding: var(--sp-6) var(--sp-6) var(--sp-5);
+  z-index: 1;
+}
+
+.mp-hero-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+
+.mp-hero-period-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-md);
+  background: var(--accent-amber-glow);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 22%, transparent);
+  color: var(--accent-amber);
+  flex-shrink: 0;
+}
+
+.mp-hero-date-label {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.mp-hero-title {
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+  margin: 0 0 var(--sp-1);
+  color: var(--text-primary);
+}
+
+.mp-hero-name {
+  display: inline-block;
+  color: var(--accent-amber);
+}
+
+.mp-hero-subtitle {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-regular);
+  color: var(--text-secondary);
+  margin: 0;
+  max-width: 440px;
+  line-height: 1.6;
+}
+
+/* ── 2. Glider tabs bar (own card) ── */
+.mp-tabs-card {
+  padding: var(--sp-2);
+}
+
+/* ── 3. Main content box (own card) ── */
+.mp-content-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-5);
+  box-shadow: var(--shadow-lift);
+  min-height: 400px;
+}
+
+.mp-content-card .marketplace-content-area {
   animation: fadeInUp 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Sub-widget shells — glow lift instead of heavy borders */
+.marketplace-page .glass-card-static {
+  border-color: var(--border-primary);
+  box-shadow: var(--shadow-lift);
+}
+
+@media (max-width: 640px) {
+  .mp-hero-content {
+    padding: var(--sp-4) var(--sp-3);
+  }
+  .mp-content-card {
+    padding: var(--sp-4);
+  }
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
@@ -151,7 +287,7 @@
   height: 260px;
   top: -100px;
   right: -50px;
-  background: radial-gradient(circle, rgba(245,158,11,0.14) 0%, transparent 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent-amber) 14%, transparent) 0%, transparent 70%);
 }
 
 .marketplace-hero-orb-2 {
@@ -159,7 +295,7 @@
   height: 180px;
   bottom: -70px;
   left: 6%;
-  background: radial-gradient(circle, rgba(167,139,250,0.08) 0%, transparent 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent-amber) 8%, transparent) 0%, transparent 70%);
   animation-delay: -4.5s;
 }
 
@@ -261,10 +397,8 @@
 
 /* ─── Unified Marketplace Card — Glass-morphism ─── */
 .mp-card {
-  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255,255,255,0.07);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
   border-radius: var(--radius-xl);
   box-shadow: 0 4px 20px rgba(0,0,0,0.14);
   display: flex;
@@ -282,8 +416,8 @@
 .mp-card-image {
   width: 100%;
   height: 160px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -326,8 +460,16 @@
   letter-spacing: 0.06em;
   padding: 2px 8px;
   border-radius: var(--radius-full);
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
   white-space: nowrap;
+}
+
+.mp-card-badge-success {
+  background: color-mix(in srgb, var(--accent-emerald) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-emerald) 22%, transparent);
+  color: var(--accent-emerald);
 }
 
 .mp-card-date {
@@ -371,9 +513,27 @@
   font-size: 0.58rem;
   padding: 1px 6px;
   border-radius: var(--radius-full);
-  background: rgba(255,255,255,0.04);
+  background: var(--bg-tertiary);
   color: var(--text-secondary);
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid var(--border-primary);
+}
+
+/* Amenity picker toggles — neutral surface by default, primary accent when
+   selected. No per-category color rotation. */
+.mp-amenity-toggle {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+  opacity: 0.55;
+  transition: opacity var(--transition-fast), background var(--transition-fast),
+    border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.mp-amenity-toggle.active {
+  background: var(--accent-amber-glow);
+  border-color: color-mix(in srgb, var(--accent-amber) 22%, transparent);
+  color: var(--accent-amber);
+  opacity: 1;
 }
 
 .mp-card-description {
@@ -390,7 +550,7 @@
 .mp-card-price {
   font-size: var(--fs-lg);
   font-weight: var(--fw-bold);
-  color: var(--accent-cyan);
+  color: var(--text-primary);
   margin-top: var(--sp-1);
 }
 
@@ -403,14 +563,12 @@
 
 .mp-card-footer {
   padding: var(--sp-3) var(--sp-4);
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid var(--border-primary);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-2);
-  background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.005) 100%);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: var(--bg-secondary);
 }
 
 .mp-card-seller {
@@ -496,17 +654,16 @@
 
 .mp-response-contact {
   font-size: 0.65rem;
-  color: var(--accent-blue);
+  color: var(--accent-amber);
   font-weight: var(--fw-bold);
   margin-top: 4px;
 }
 
-.mp-card-type-lost {
-  border-left: 3px solid var(--accent-rose);
-}
-
+/* Lost / Found are category markers, not alert states — keep their card
+   edge neutral per the unified palette. */
+.mp-card-type-lost,
 .mp-card-type-found {
-  border-left: 3px solid var(--accent-emerald);
+  border-left: 3px solid var(--border-primary);
 }
 
 .mp-card-availability {
@@ -518,6 +675,8 @@
   border-radius: var(--radius-full);
 }
 
+/* "Available" is a positive/open state → success accent. "Occupied" is
+   simply closed, not urgent → neutral surface, never rose. */
 .mp-card-available {
   background: color-mix(in srgb, var(--accent-emerald) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent-emerald) 22%, transparent);
@@ -525,9 +684,9 @@
 }
 
 .mp-card-occupied {
-  background: color-mix(in srgb, var(--accent-rose) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent-rose) 22%, transparent);
-  color: var(--accent-rose);
+  background: var(--bg-secondary);
+  border-color: var(--border-primary);
+  color: var(--text-secondary);
 }
 
 .mp-card-claimed-overlay {

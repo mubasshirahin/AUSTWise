@@ -17,15 +17,27 @@ export default function PlaylistPlayer({ vaultContext }) {
   }, [coursePlaylists]);
 
   return (
-    <div className="glass-card-static playlists-container animate-fadeInUp">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 className="section-title" style={{ fontSize: 'var(--fs-lg)', margin: 0 }}>YouTube Playlists</h2>
-          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
-            {courseName} — curated lecture videos and references
-          </p>
+    <div className="glass-card-static schedule-widget playlists-container animate-fadeInUp">
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <Video size={20} strokeWidth={2.2} />
+          </div>
+          <div>
+            <span className="schedule-overline">Vault</span>
+            <div className="schedule-title">YouTube Playlists</div>
+            <span className="schedule-subtitle">
+              {courseName} — curated lecture videos and references
+            </span>
+          </div>
         </div>
+
+        <div className="schedule-masthead-center" />
+
+        <div className="schedule-actions" />
       </div>
+
+      <div className="schedule-dotted-divider" />
 
       {coursePlaylists.length === 0 ? (
         <div className="empty-state" style={{ padding: '32px 16px', textAlign: 'center' }}>
@@ -111,7 +123,7 @@ export default function PlaylistPlayer({ vaultContext }) {
           >
             {selectedPlaylist ? (
               <div style={{ textAlign: 'center', color: '#fff', zIndex: 2, padding: '24px' }}>
-                <Video size={64} style={{ color: '#ff0000', margin: '0 auto 16px auto', display: 'block' }} />
+                <Video size={64} style={{ color: 'var(--accent-blue)', margin: '0 auto 16px auto', display: 'block' }} />
                 <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold' }}>{selectedPlaylist.title}</h3>
                 <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: '4px' }}>
                   Curated content by {selectedPlaylist.channel}

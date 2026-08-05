@@ -1,0 +1,87 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   SHADOW — AURA PALETTE
+   ────────────────────────────────────────────────────────────────────────────
+   Central token layer for the Shadow section. Scoped to `.shadow-page`
+   so it does not leak into the rest of the app, and imported AFTER the other
+   shadow stylesheets so it wins the cascade for every descendant component
+   (Confessions Feed, Course Reviews, Buzz, Shadow Chat).
+
+   Matches the Dashboard "Aura" design system:
+     1. Primary accent gold (#F59E0B) — key actionables, selected states.
+     2. Cyber blue (#60A5FA) secondary (info/progress), soft violet (#A78BFA)
+        tertiary (icons/tags).
+     3. Deep charcoal surfaces (#0A0A0C / #1B1B1F / #1E1E26) with subtle
+        translucent borders (#2A2A35).
+     4. White primary, warm off-white body, clean gray muted text.
+     5. Semantic only: mint green success, amber warning, red danger.
+     6. Box/card surfaces share the sidebar background (#1B1B1F).
+   ════════════════════════════════════════════════════════════════════════════ */
+.shadow-page {
+  /* ─── Primary accent (gold) — the brand color ─── */
+  --accent-blue: #F59E0B;
+  --accent-blue-glow: rgba(245, 158, 11, 0.14);
+  --accent-amber: #F59E0B;
+  --accent-amber-glow: rgba(245, 158, 11, 0.14);
+  --accent-orange: #F59E0B;
+  --accent-orange-glow: rgba(245, 158, 11, 0.14);
+
+  /* ─── Secondary accent (cyber blue) — info / progress / toggles ─── */
+  --accent-cyan: #60A5FA;
+  --accent-cyan-glow: rgba(96, 165, 250, 0.14);
+  --accent-info: #60A5FA;
+  --accent-info-glow: rgba(96, 165, 250, 0.14);
+
+  /* ─── Tertiary accent (soft violet) — icons / tags / "New" badges ─── */
+  --accent-purple: #A78BFA;
+  --accent-purple-glow: rgba(167, 139, 250, 0.14);
+
+  /* ─── Semantic accents — ONLY used when they mean something ─── */
+  --accent-emerald: #34D399;                     /* success / completed */
+  --accent-emerald-glow: rgba(52, 211, 153, 0.14);
+  --accent-rose: #F87171;                        /* urgent / overdue / danger */
+  --accent-rose-glow: rgba(248, 113, 113, 0.14);
+
+  --danger: #F87171;
+  --warning: #FBBF24;
+  --success: #34D399;
+  --info: #60A5FA;
+
+  /* ─── Surfaces — cards share the sidebar background ─── */
+  --bg-primary: #0A0A0C;
+  --bg-secondary: #1B1B1F;
+  --bg-tertiary: #1E1E26;
+  --bg-card: #1B1B1F;
+  --bg-card-hover: #232329;
+  --bg-glass: rgba(27, 27, 31, 0.85);
+  --bg-glass-heavy: rgba(10, 10, 12, 0.92);
+  --bg-input: #1B1B1F;
+  --bg-hover: #232329;
+
+  /* ─── Borders / dividers — subtle translucent ─── */
+  --border-primary: #2A2A35;
+  --border-secondary: rgba(42, 42, 53, 0.6);
+  --border-focus: rgba(245, 158, 11, 0.5);
+
+  /* ─── Text — white / warm off-white / clean gray ─── */
+  --text-primary: #FFFFFF;
+  --text-secondary: #E2E8F0;
+  --text-tertiary: #94A3B8;
+  --text-inverse: #0A0A0C;
+
+  /* ─── Shadows — no black, subtle glow lift ─── */
+  --shadow-sm: 0 1px 2px rgba(255, 255, 255, 0.02);
+  --shadow-md: 0 6px 18px rgba(255, 255, 255, 0.03);
+  --shadow-lg: 0 12px 28px rgba(255, 255, 255, 0.04);
+  --shadow-xl: 0 18px 44px rgba(255, 255, 255, 0.05);
+  --shadow-popper: 0 8px 24px rgba(255, 255, 255, 0.04);
+  --shadow-glow-blue: 0 0 24px rgba(96, 165, 250, 0.14);
+  --shadow-glow-purple: 0 0 24px rgba(167, 139, 250, 0.13);
+  --shadow-glow-amber: 0 0 24px rgba(245, 158, 11, 0.14);
+  --shadow-lift: 0 4px 20px rgba(255, 255, 255, 0.03);
+
+  /* ─── Hero accent (gold primary) ─── */
+  --hero-accent-a: #F59E0B;
+  --page-hero-icon-bg: rgba(245, 158, 11, 0.14);
+  --page-hero-icon-color: #F59E0B;
+  --page-hero-gradient-start: #F59E0B;
+}

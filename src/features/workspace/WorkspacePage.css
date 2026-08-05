@@ -9,9 +9,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-5);
-  --page-hero-icon-bg: var(--accent-blue-glow);
-  --page-hero-icon-color: var(--accent-blue);
-  --page-hero-gradient-start: var(--accent-blue);
+  --page-hero-icon-bg: var(--accent-amber-glow);
+  --page-hero-icon-color: var(--accent-amber);
+  --page-hero-gradient-start: var(--accent-amber);
 }
 
 /* ─── Hero Header (matches Dashboard / Messages premium pattern) ─── */
@@ -41,8 +41,8 @@
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(color-mix(in srgb, var(--accent-blue) 6%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--accent-blue) 6%, transparent) 1px, transparent 1px);
+    linear-gradient(color-mix(in srgb, var(--accent-amber) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--accent-amber) 6%, transparent) 1px, transparent 1px);
   background-size: 32px 32px;
   mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
 }
@@ -60,7 +60,7 @@
   height: 240px;
   top: -90px;
   right: -30px;
-  background: radial-gradient(circle, var(--accent-blue) 0%, transparent 70%);
+  background: radial-gradient(circle, var(--accent-amber) 0%, transparent 70%);
 }
 
 .workspace-hero-orb-2 {
@@ -68,7 +68,7 @@
   height: 200px;
   bottom: -70px;
   left: 8%;
-  background: radial-gradient(circle, var(--accent-purple) 0%, transparent 70%);
+  background: radial-gradient(circle, var(--accent-amber) 0%, transparent 70%);
   animation-delay: -3.5s;
 }
 
@@ -97,7 +97,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--accent-blue), #3b82f6);
+  background: linear-gradient(135deg, var(--accent-amber), var(--accent-amber));
   color: #fff;
   animation: workspaceIconFloat 3s ease-in-out infinite;
 }
@@ -117,7 +117,7 @@
 }
 
 .workspace-hero-title-highlight {
-  background: linear-gradient(135deg, var(--accent-blue), #3b82f6, var(--accent-purple));
+  background: linear-gradient(135deg, var(--accent-amber), var(--accent-amber));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -304,8 +304,8 @@
 }
 
 .workspace-account-chip:hover {
-  border-color: var(--accent-blue);
-  background: var(--accent-blue-glow);
+  border-color: var(--accent-amber);
+  background: var(--accent-amber-glow);
 }
 
 .workspace-account-avatar {
@@ -354,7 +354,7 @@
 
 .workspace-account-chip-count {
   font-size: 8px;
-  color: var(--accent-blue);
+  color: var(--accent-amber);
   font-weight: var(--fw-medium);
 }
 
@@ -385,10 +385,10 @@
   align-items: center;
   gap: var(--sp-1);
   padding: var(--sp-2) var(--sp-3);
-  background: var(--accent-blue-glow);
-  border: 1px dashed var(--accent-blue);
+  background: var(--accent-amber-glow);
+  border: 1px dashed var(--accent-amber);
   border-radius: var(--radius-full);
-  color: var(--accent-blue);
+  color: var(--accent-amber);
   font-size: var(--fs-xs);
   font-weight: var(--fw-medium);
   cursor: pointer;
@@ -398,7 +398,7 @@
 }
 
 .workspace-account-add-btn:hover:not(:disabled) {
-  background: var(--accent-blue);
+  background: var(--accent-amber);
   color: #fff;
   border-style: solid;
 }
@@ -445,9 +445,9 @@
 }
 
 .workspace-btn-secondary:hover {
-  border-color: var(--accent-blue);
-  background: var(--accent-blue-glow);
-  color: var(--accent-blue);
+  border-color: var(--accent-amber);
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
 }
 
 .workspace-btn-ghost {
@@ -457,14 +457,14 @@
 }
 
 .workspace-btn-ghost:hover {
-  color: var(--accent-blue);
-  background: var(--accent-blue-glow);
+  color: var(--accent-amber);
+  background: var(--accent-amber-glow);
 }
 
 .workspace-btn-active {
-  background: var(--accent-emerald-glow);
-  border: 1px solid var(--accent-emerald);
-  color: var(--accent-emerald);
+  background: var(--accent-amber-glow);
+  border: 1px solid var(--accent-amber);
+  color: var(--accent-amber);
 }
 
 .workspace-btn-active:hover {
@@ -506,8 +506,8 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 30% 20%, var(--accent-blue-glow) 0%, transparent 60%),
-    radial-gradient(circle at 70% 80%, var(--accent-purple-glow) 0%, transparent 60%);
+    radial-gradient(circle at 30% 20%, var(--accent-amber-glow) 0%, transparent 60%),
+    radial-gradient(circle at 70% 80%, var(--accent-amber-glow) 0%, transparent 60%);
   opacity: 0.5;
   pointer-events: none;
 }
@@ -521,8 +521,8 @@
   width: 72px;
   height: 72px;
   border-radius: var(--radius-full);
-  background: var(--accent-blue-glow);
-  color: var(--accent-blue);
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -558,7 +558,7 @@
   align-items: center;
   gap: var(--sp-2);
   padding: var(--sp-3) var(--sp-6);
-  background: var(--accent-blue);
+  background: var(--accent-amber);
   color: #fff;
   border: none;
   border-radius: var(--radius-md);
@@ -575,7 +575,7 @@
 .workspace-connect-btn:hover:not(:disabled) {
   filter: brightness(1.1);
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  box-shadow: var(--shadow-glow-amber);
 }
 
 .workspace-connect-btn:active:not(:disabled) { transform: translateY(0) scale(0.98); }
@@ -622,10 +622,10 @@
   align-items: center;
   gap: var(--sp-3);
   padding: var(--sp-3) var(--sp-4);
-  background: var(--accent-purple-glow);
-  border: 1px solid var(--accent-purple);
+  background: var(--accent-amber-glow);
+  border: 1px solid var(--accent-amber);
   border-radius: var(--radius-md);
-  color: var(--accent-purple);
+  color: var(--accent-amber);
   font-size: var(--fs-sm);
 }
 
@@ -734,7 +734,7 @@
 }
 
 .workspace-course-card:hover {
-  border-color: var(--accent-blue);
+  border-color: var(--accent-amber);
   box-shadow: 0 8px 24px rgba(0,0,0,0.08);
   transform: translateY(-3px);
 }
@@ -749,7 +749,7 @@
 
 .workspace-course-card-hidden:hover {
   opacity: 0.75;
-  border-color: var(--accent-blue);
+  border-color: var(--accent-amber);
   transform: translateY(-2px);
 }
 
@@ -775,7 +775,7 @@
 
 .workspace-course-card-section {
   font-size: var(--fs-xs);
-  color: var(--accent-blue);
+  color: var(--accent-amber);
   font-weight: var(--fw-medium);
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -817,7 +817,7 @@
 }
 
 .workspace-course-checked {
-  color: var(--accent-emerald);
+  color: var(--accent-amber);
 }
 
 .workspace-course-unchecked {
@@ -836,7 +836,7 @@
 }
 
 .workspace-course-card:not(.workspace-course-card-hidden) .workspace-course-card-toggle-label {
-  color: var(--accent-emerald);
+  color: var(--accent-amber);
 }
 
 .workspace-course-card-footer {
@@ -850,7 +850,7 @@
   gap: var(--sp-1);
   font-size: var(--fs-xs);
   font-weight: var(--fw-semibold);
-  color: var(--accent-blue);
+  color: var(--accent-amber);
   transition: gap var(--transition-fast);
 }
 
@@ -865,7 +865,7 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--accent-rose);
+  background: var(--accent-amber);
   border: 2px solid var(--bg-primary, #fff);
   z-index: 1;
   pointer-events: none;
@@ -899,9 +899,9 @@
 }
 
 .workspace-back-btn:hover {
-  border-color: var(--accent-blue);
-  color: var(--accent-blue);
-  background: var(--accent-blue-glow);
+  border-color: var(--accent-amber);
+  color: var(--accent-amber);
+  background: var(--accent-amber-glow);
 }
 
 .workspace-course-header {
@@ -1153,8 +1153,8 @@
 
 .workspace-material-item:hover .workspace-material-item-expand:hover {
   opacity: 1;
-  color: var(--accent-blue);
-  background: var(--accent-blue-glow);
+  color: var(--accent-amber);
+  background: var(--accent-amber-glow);
 }
 
 .workspace-material-item-meta {
@@ -1225,7 +1225,7 @@
 }
 
 .workspace-material-item-assignment:hover {
-  border-left-color: var(--accent-blue);
+  border-left-color: var(--accent-amber);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -1479,14 +1479,14 @@
   padding: var(--sp-3);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-primary);
-  border-left: 3px solid var(--accent-blue);
+  border-left: 3px solid var(--accent-amber);
   text-decoration: none;
   transition: all var(--transition-fast);
 }
 
 .workspace-material-modal-attachment:hover {
   background: var(--bg-input);
-  border-color: var(--accent-blue);
+  border-color: var(--accent-amber);
   transform: translateX(3px);
   box-shadow: 0 4px 12px rgba(0,0,0,0.06);
 }
@@ -1531,7 +1531,7 @@
 }
 
 .workspace-material-modal-attachment:hover .workspace-material-modal-attachment-link {
-  color: var(--accent-blue);
+  color: var(--accent-amber);
 }
 
 .workspace-material-modal-footer {

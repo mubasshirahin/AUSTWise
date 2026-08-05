@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import './Sidebar.css';
 
+// Top nav — primary campus tools.
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/daily-life', label: 'Daily Life', icon: Home },
@@ -24,11 +25,14 @@ const navItems = [
   { path: '/messages', label: 'ConnectBox', icon: MessageSquare },
   { path: '/productivity', label: 'Productivity', icon: Zap },
   { path: '/marketplace', label: 'Marketplace', icon: ShoppingBag },
+];
+
+// Bottom nav — secondary/utility items, separated by a divider.
+const bottomNavItems = [
   { path: '/chill-zone', label: 'DownTime', icon: Coffee },
   { path: '/settings', label: 'Settings', icon: Settings },
   { path: '/shadow', label: 'Shadow', icon: Moon },
   { path: '/pro', label: 'See Plans', icon: Crown },
-  { id: 'toggle', label: 'Collapse', icon: ChevronLeft },
 ];
 
 export default function Sidebar({ collapsed, onToggle }) {
@@ -46,6 +50,7 @@ export default function Sidebar({ collapsed, onToggle }) {
 
 
   let navList = [...navItems];
+  let bottomList = [...bottomNavItems];
   if (user?.role === 'admin' || user?.role === 'moderator') {
     // For admin users, show Admin Panel related navigation
     navList = [
@@ -60,66 +65,91 @@ export default function Sidebar({ collapsed, onToggle }) {
       { path: '/admin/applications', label: 'Applications', icon: FileText },
       { path: '/admin/cr-sr-directory', label: 'CR/SR Directory', icon: FolderOpen },
       { path: '/messages', label: 'ConnectBox', icon: MessageSquare },
-      { path: '/settings', label: 'Settings', icon: Settings },
       { path: '/daily-life', label: 'Daily Life', icon: Home },
       { path: '/productivity', label: 'Productivity', icon: Zap },
       { path: '/notebook', label: 'Notebook', icon: NotebookPen },
-      { id: 'toggle', label: 'Collapse', icon: ChevronLeft },
     ];
+    bottomList = [{ path: '/settings', label: 'Settings', icon: Settings }];
   }
+
+  const renderNavItem = (item) => {
+    const isPro = item.path === '/pro';
+    const baseClass = `nav-item ${collapsed ? 'collapsed' : ''}`;
+    const extraClass = isPro ? ' nav-item-premium' : '';
+
+    const sparklePositions = [
+      { top: '10%', left: '-8px' },
+      { top: '30%', right: '-6px' },
+      { top: '70%', left: '-10px' },
+      { top: '50%', right: '-8px' },
+      { top: '85%', right: '-5px' },
+    ];
+
+    return (
+      <NavLink
+        key={item.path}
+        to={item.path}
+        className={({ isActive }) =>
+          `${baseClass}${extraClass}${isActive ? ' active' : ''}`
+        }
+        end={item.path === '/'}
+      >
+        <div className="nav-icon-wrapper">
+          <item.icon size={20} />
+          {item.path === '/messages' && unread > 0 && (
+            <span className="nav-badge">{unread > 99 ? '99+' : unread}</span>
+          )}
+        </div>
+        {!collapsed && (
+          <span className="nav-label">
+            {item.label}
+            {item.path === '/messages' && unread > 0 && (
+              <span className="nav-badge-inline">{unread > 99 ? '99+' : unread}</span>
+            )}
+          </span>
+        )}
+        {collapsed && <div className="nav-tooltip">{item.label}</div>}
+        {isPro && !collapsed &&
+          sparklePositions.map((pos, i) => (
+            <span
+              key={i}
+              className="sparkle"
+              style={{
+                top: pos.top,
+                left: pos.left,
+                right: pos.right,
+                animationDelay: `${i * 0.3}s`,
+              }}
+            />
+          ))
+        }
+      </NavLink>
+    );
+  };
 
   return (
     <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-header" />
 
       <nav className="sidebar-nav">
-        {navList.map((item) => {
-          if (item.id === 'toggle') {
-            const ToggleIcon = collapsed ? ChevronRight : ChevronLeft;
-            return (
-              <button
-                key="toggle"
-                type="button"
-                className={`nav-item sidebar-toggle-btn ${collapsed ? 'collapsed' : ''}`}
-                onClick={onToggle}
-                style={{ width: '100%', border: 'none', cursor: 'pointer', background: 'transparent' }}
-              >
-                <div className="nav-icon-wrapper">
-                  <ToggleIcon size={20} />
-                </div>
-              </button>
-            );
-          }
-          return (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) =>
-                `nav-item ${isActive ? 'active' : ''} ${collapsed ? 'collapsed' : ''}`
-              }
-              end={item.path === '/'}
-            >
-              <div className="nav-icon-wrapper">
-                <item.icon size={20} />
-                {item.path === '/messages' && unread > 0 && (
-                  <span className="nav-badge">{unread > 99 ? '99+' : unread}</span>
-                )}
-              </div>
-              {!collapsed && (
-                <span className="nav-label">
-                  {item.label}
-                  {item.path === '/messages' && unread > 0 && (
-                    <span className="nav-badge-inline">{unread > 99 ? '99+' : unread}</span>
-                  )}
-                </span>
-              )}
-              {collapsed && <div className="nav-tooltip">{item.label}</div>}
-            </NavLink>
-          );
-        })}
+        {navList.map(renderNavItem)}
+
+        {bottomList.length > 0 && <div className="sidebar-nav-divider" />}
+
+        {bottomList.map(renderNavItem)}
       </nav>
 
       <div className="sidebar-footer">
+        <button
+          type="button"
+          className={`sidebar-collapse-btn${collapsed ? ' collapsed' : ''}`}
+          onClick={onToggle}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={collapsed ? 'Expand' : 'Collapse'}
+        >
+          {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+        </button>
+
         {!isAuthenticated && (
           <button
             type="button"

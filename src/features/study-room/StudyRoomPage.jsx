@@ -8,10 +8,11 @@ import {
 import './StudyRoomPage.css';
 import '../../components/PageHero.css';
 
+// All timer modes share the brand accent — mode is communicated by label, not color.
 const TIMER_MODES = [
-  { id: 'pomodoro', label: 'Focus', duration: 25 * 60, icon: Brain, color: 'var(--accent-rose)' },
-  { id: 'shortBreak', label: 'Short Break', duration: 5 * 60, icon: Coffee, color: 'var(--accent-emerald)' },
-  { id: 'longBreak', label: 'Long Break', duration: 15 * 60, icon: Coffee, color: 'var(--accent-blue)' },
+  { id: 'pomodoro', label: 'Focus', duration: 25 * 60, icon: Brain, color: 'var(--accent-amber)' },
+  { id: 'shortBreak', label: 'Short Break', duration: 5 * 60, icon: Coffee, color: 'var(--accent-amber)' },
+  { id: 'longBreak', label: 'Long Break', duration: 15 * 60, icon: Coffee, color: 'var(--accent-amber)' },
 ];
 
 const AMBIENT_SOUNDS = [
@@ -143,31 +144,31 @@ export default function StudyRoomPage() {
 
   return (
     <div className="study-room-page animate-fadeIn">
-      {/* ── Hero ── */}
-      <header className="page-hero">
-        <div className="page-hero-content">
-          <div className="page-hero-title-row">
-            <div className="page-hero-icon">
-              <School size={24} />
-            </div>
-            <div>
-              <h1 className="page-hero-title">
-                <span className="page-hero-title-highlight">Study Room</span>
-              </h1>
-              <p className="page-hero-subtitle">
-                Your focused study sanctuary — timer, ambient sounds, and tips to boost productivity.
-              </p>
-            </div>
-            <button
-              className="sr-zen-btn"
-              onClick={() => navigate('/zen')}
-            >
-              <Maximize2 size={16} />
-              <span>Enter Zen Mode</span>
-            </button>
+      {/* ── Masthead ── */}
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <School size={20} strokeWidth={2.2} />
+          </div>
+          <div>
+            <span className="schedule-overline">Productivity</span>
+            <div className="schedule-title">Study Room</div>
+            <span className="schedule-subtitle">Your focused study sanctuary — timer, ambient sounds, and tips to boost productivity.</span>
           </div>
         </div>
-      </header>
+        <div className="schedule-masthead-center" />
+        <div className="schedule-actions">
+          <button
+            className="sr-zen-btn"
+            onClick={() => navigate('/zen')}
+          >
+            <Maximize2 size={16} />
+            <span>Enter Zen Mode</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="schedule-dotted-divider" style={{ marginTop: 0 }} />
 
       <div className="sr-layout">
         {/* ── Left Column: Timer ── */}
@@ -207,7 +208,7 @@ export default function StudyRoomPage() {
                 fill="none"
                 strokeWidth="6"
                 strokeLinecap="round"
-                stroke={currentMode?.color || 'var(--accent-rose)'}
+                stroke={currentMode?.color || 'var(--accent-amber)'}
                 style={{
                   strokeDasharray: `${2 * Math.PI * 88}`,
                   strokeDashoffset: `${2 * Math.PI * 88 * (1 - progress / 100)}`,
@@ -231,7 +232,7 @@ export default function StudyRoomPage() {
             <button
               className="sr-btn sr-btn-primary"
               onClick={toggleTimer}
-              style={{ background: currentMode?.color || 'var(--accent-rose)' }}
+              style={{ background: currentMode?.color || 'var(--accent-amber)' }}
             >
               {isRunning ? <Pause size={20} /> : <Play size={20} />}
               <span>{isRunning ? 'Pause' : timeLeft === 0 ? 'Restart' : 'Start'}</span>
@@ -283,7 +284,7 @@ export default function StudyRoomPage() {
           {/* Ambient Sounds */}
           <div className="sr-card">
             <div className="sr-card-header">
-              <div className="sr-card-header-icon" style={{ background: 'var(--accent-purple-glow)', color: 'var(--accent-purple)' }}>
+              <div className="sr-card-header-icon" style={{ background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)' }}>
                 {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
               </div>
               <div>
@@ -338,7 +339,7 @@ export default function StudyRoomPage() {
           {/* Quick Stats */}
           <div className="sr-card">
             <div className="sr-card-header">
-              <div className="sr-card-header-icon" style={{ background: 'var(--accent-emerald-glow)', color: 'var(--accent-emerald)' }}>
+              <div className="sr-card-header-icon" style={{ background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)' }}>
                 <Timer size={16} />
               </div>
               <div>

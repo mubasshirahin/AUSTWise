@@ -5,23 +5,22 @@ import '../../components/PageHero.css';
 export default function RoastCVPage() {
   return (
     <div className="roastcv-page animate-fadeIn">
-      <header className="page-hero">
-        <div className="page-hero-content">
-          <div className="page-hero-title-row">
-            <div className="page-hero-icon">
-              <Flame size={24} />
-            </div>
-            <div>
-              <h1 className="page-hero-title">
-                <span className="page-hero-title-highlight">Roast CV</span>
-              </h1>
-              <p className="page-hero-subtitle">
-                Upload your CV and get brutally honest, AI-powered feedback to land your dream job.
-              </p>
-            </div>
+      {/* ── Masthead ── */}
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <Flame size={20} strokeWidth={2.2} />
+          </div>
+          <div>
+            <span className="schedule-overline">Productivity</span>
+            <div className="schedule-title">Roast CV</div>
+            <span className="schedule-subtitle">Upload your CV and get brutally honest, AI-powered feedback to land your dream job.</span>
           </div>
         </div>
-      </header>
+        <div className="schedule-masthead-center" />
+      </div>
+
+      <div className="schedule-dotted-divider" style={{ marginTop: 0 }} />
       <div className="roastcv-coming-soon">
         <div className="roastcv-cs-card">
           <FileBadge size={32} strokeWidth={1.5} />

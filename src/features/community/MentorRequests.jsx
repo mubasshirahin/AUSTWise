@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MessageSquarePlus, X, Send, UserCheck, Trash2, Mail } from 'lucide-react';
+import { MessageSquarePlus, X, UserCheck, Trash2, Mail } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
   listMentorRequests,
@@ -90,25 +90,30 @@ export default function MentorRequests() {
   };
 
   return (
-    <div className="glass-card-static animate-fadeInUp" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      <div className="flex justify-between items-center flex-wrap gap-3">
-        <div className="flex items-center gap-2">
-          <div className="icon" style={{ backgroundColor: 'var(--accent-amber-glow)', color: 'var(--accent-amber)', padding: '6px', borderRadius: '8px' }}>
-            <MessageSquarePlus size={18} />
+    <div className="mentor-page">
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <MessageSquarePlus size={20} strokeWidth={2.2} />
           </div>
           <div>
-            <h2 className="section-title" style={{ fontSize: 'var(--fs-lg)', margin: 0 }}>Find a Mentor</h2>
-            <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
-              Need help with a topic? Post what you need and mentors will respond.
-            </p>
+            <span className="schedule-overline">Community</span>
+            <div className="schedule-title">Find a Mentor</div>
+            <span className="schedule-subtitle">Need help with a topic? Post what you need and mentors will respond.</span>
           </div>
         </div>
 
-        <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowForm((open) => !open)}>
-          {showForm ? <X size={14} /> : <MessageSquarePlus size={14} />}
-          {showForm ? 'Cancel' : 'Post Request'}
-        </button>
+        <div className="schedule-masthead-center" />
+
+        <div className="schedule-actions">
+          <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowForm((open) => !open)}>
+            {showForm ? <X size={14} /> : <MessageSquarePlus size={14} />}
+            {showForm ? 'Cancel' : 'Post Request'}
+          </button>
+        </div>
       </div>
+
+      <div className="schedule-dotted-divider" style={{ marginTop: 0 }} />
 
       {message && (
         <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent-emerald)', padding: '8px 12px', background: 'var(--bg-input)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-primary)' }}>
@@ -157,8 +162,12 @@ export default function MentorRequests() {
         </div>
       ) : (
         <div className="mentor-request-grid">
-          {requests.map((req) => (
-            <div key={req.id} className="glass-card-static" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {requests.map((req) => {
+            // Density by mentor response count — 0 → emerald · 1 → cyan · 2 → amber · 3+ → rose
+            const responseCount = (req.responses || []).length;
+            const densityClass = responseCount >= 3 ? 'is-rose' : responseCount === 2 ? 'is-amber' : responseCount === 1 ? 'is-cyan' : 'is-emerald';
+            return (
+            <div key={req.id} className={`community-cell mentor-req-card ${densityClass}`}>
                 <div className="flex justify-between items-start flex-wrap gap-3">
                   <div className="flex gap-3 items-start">
                     <div className="avatar sm" style={{ width: '36px', height: '36px' }}>
@@ -171,7 +180,7 @@ export default function MentorRequests() {
                           • Batch {req.batch} • {req.department}
                         </span>
                       </h3>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '6px', padding: '3px 10px', borderRadius: 'var(--radius-full)', background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)', fontSize: '11px', fontWeight: 'bold' }}>
+                      <div className="mentor-req-topic">
                         <UserCheck size={12} />
                         {req.topic}
                       </div>
@@ -185,11 +194,18 @@ export default function MentorRequests() {
                       </p>
                     </div>
                   </div>
-                  {(user?.role === 'admin' || req.contributorId === user?.id) && (
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => handleDelete(req)} style={{ color: 'var(--accent-rose)', padding: '4px 8px' }}>
-                      <Trash2 size={14} />
-                    </button>
-                  )}
+                  <div className="mentor-req-head-right">
+                    {responseCount > 0 && (
+                      <span className={`sv-count${responseCount >= 3 ? ' hot' : ''}`} title={`${responseCount} response${responseCount !== 1 ? 's' : ''}`}>
+                        {responseCount}
+                      </span>
+                    )}
+                    {(user?.role === 'admin' || req.contributorId === user?.id) && (
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => handleDelete(req)} style={{ color: 'var(--accent-rose)', padding: '4px 8px' }}>
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
               {req.responses && req.responses.length > 0 && (
@@ -207,7 +223,7 @@ export default function MentorRequests() {
                       </div>
                       <p style={{ marginTop: '4px' }}>{res.message}</p>
                       {res.contact && (
-                        <p style={{ fontSize: '10px', color: 'var(--accent-blue)', marginTop: '4px', fontWeight: 'bold' }}>
+                        <p style={{ fontSize: '10px', color: 'var(--accent-amber)', marginTop: '4px', fontWeight: 'bold' }}>
                           Contact: {res.contact}
                         </p>
                       )}
@@ -225,7 +241,8 @@ export default function MentorRequests() {
                 <Mail size={12} /> Respond as Mentor
               </button>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

@@ -195,7 +195,7 @@ export default function Cheatsheets({ vaultContext }) {
             color: 'var(--text-primary)',
           }}>
             <span style={{
-              background: 'linear-gradient(135deg, var(--accent-amber) 0%, var(--accent-cyan) 100%)',
+              background: 'linear-gradient(135deg, var(--accent-amber) 0%, var(--accent-amber) 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
@@ -637,7 +637,7 @@ export default function Cheatsheets({ vaultContext }) {
                           <code style={{
                             fontFamily: "'Cascadia Code', 'Fira Code', monospace",
                             fontSize: '11px',
-                            color: 'var(--accent-cyan)',
+                            color: 'var(--accent-amber)',
                             wordBreak: 'break-all',
                             lineHeight: '1.5',
                             flex: 1,

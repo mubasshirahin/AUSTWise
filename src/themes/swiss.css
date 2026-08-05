@@ -52,8 +52,8 @@
   --accent-blue-glow:   rgba(255, 48, 0, 0.08);
   --accent-purple:      #000000;               /* collapses to ink */
   --accent-purple-glow: rgba(0, 0, 0, 0.06);
-  --accent-amber:       #000000;               /* collapses to ink */
-  --accent-amber-glow:  rgba(0, 0, 0, 0.06);
+  --accent-amber:       #FF3000;               /* Swiss Red — PRIMARY interactive */
+  --accent-amber-glow:  rgba(255, 48, 0, 0.08);
   --accent-emerald:     #333333;               /* success = dark gray */
   --accent-emerald-glow:rgba(0, 0, 0, 0.05);
   --accent-rose:        #FF3000;               /* errors share Swiss Red */

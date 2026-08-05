@@ -106,17 +106,6 @@
   box-shadow: var(--shadow-md);
 }
 
-.about-hero-bg-grid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(color-mix(in srgb, var(--accent-blue) 6%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--accent-blue) 6%, transparent) 1px, transparent 1px);
-  background-size: 40px 40px;
-  mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
-  pointer-events: none;
-}
-
 .about-hero-content {
   position: relative;
   z-index: 1;

@@ -73,47 +73,52 @@
      rich dark-to-black gradients, and glowing card edges.
      ───────────────────────────────────────────────────────────────────── */
 [data-theme="dark"] {
-  --bg-primary: #08090a;
-  --bg-secondary: #111113;
-  --bg-tertiary: #1a1a1d;
-  --bg-card: #121214;
-  --bg-card-hover: #18181b;
-  --bg-glass: rgba(17, 17, 19, 0.85);
-  --bg-glass-heavy: rgba(17, 17, 19, 0.92);
-  --bg-input: #1a1a1d;
+  /* Unified palette — amber/orange (#F5A623) is the single brand accent.
+     Semantic green (#3ECF8E) / red (#F0554A) / teal (#3AC1D9) are reserved
+     for success / urgent / info states only, never category decoration. */
+  --bg-primary: #0E0E10;
+  --bg-secondary: #1B1B1F;
+  --bg-tertiary: #222227;
+  --bg-card: #1B1B1F;
+  --bg-card-hover: #232329;
+  --bg-glass: rgba(27, 27, 31, 0.85);
+  --bg-glass-heavy: rgba(27, 27, 31, 0.92);
+  --bg-input: #222227;
 
-  --text-primary: #fafafa;
-  --text-secondary: #a1a1aa;
-  --text-tertiary: #71717a;
-  --text-inverse: #09090b;
+  --text-primary: #F2F2F3;
+  --text-secondary: #9A9AA0;
+  --text-tertiary: #6E6E75;
+  --text-inverse: #0E0E10;
 
-  --border-primary: rgba(244, 244, 245, 0.08);
-  --border-secondary: rgba(244, 244, 245, 0.045);
-  --border-focus: rgba(245, 158, 11, 0.45);
+  --border-primary: #2A2A2E;
+  --border-secondary: rgba(42, 42, 46, 0.6);
+  --border-focus: rgba(245, 166, 35, 0.5);
 
-  /* Vibrant orange-gold accent palette */
-  --accent-blue: #f59e0b;
-  --accent-blue-glow: rgba(245, 158, 11, 0.14);
+  /* Brand accent palette — every interactive/primary element reads amber */
+  --accent-blue: #F5A623;
+  --accent-blue-glow: rgba(245, 166, 35, 0.14);
   --accent-purple: #8b7e74;
   --accent-purple-glow: rgba(139, 126, 116, 0.13);
-  --accent-amber: #f59e0b;
-  --accent-amber-glow: rgba(245, 158, 11, 0.14);
-  --accent-emerald: #34d399;
-  --accent-emerald-glow: rgba(52, 211, 153, 0.13);
-  --accent-rose: #fb7185;
-  --accent-rose-glow: rgba(251, 113, 133, 0.13);
-  --accent-cyan: #22d3ee;
-  --accent-cyan-glow: rgba(34, 211, 238, 0.13);
+  --accent-amber: #F5A623;
+  --accent-amber-glow: rgba(245, 166, 35, 0.14);
+  --accent-emerald: #3ECF8E;
+  --accent-emerald-glow: rgba(62, 207, 142, 0.13);
+  --accent-rose: #F0554A;
+  --accent-rose-glow: rgba(240, 85, 74, 0.13);
+  --accent-cyan: #3AC1D9;
+  --accent-cyan-glow: rgba(58, 193, 217, 0.13);
+  --accent-info: #3AC1D9;
+  --accent-info-glow: rgba(58, 193, 217, 0.13);
   --accent-orange: #f97316;
   --accent-orange-glow: rgba(249, 115, 22, 0.14);
 
-  /* Warmer, richer gradients */
-  --gradient-primary: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #f97316 100%);
-  --gradient-secondary: linear-gradient(135deg, #1c1c1f 0%, #111113 100%);
-  --gradient-accent: linear-gradient(135deg, #f59e0b 0%, #22d3ee 100%);
-  --gradient-warm: linear-gradient(135deg, #f97316 0%, #fb7185 100%);
-  --gradient-success: linear-gradient(135deg, #34d399 0%, #22d3ee 100%);
-  --gradient-glass: linear-gradient(135deg, rgba(245, 158, 11, 0.07) 0%, rgba(34, 211, 238, 0.03) 100%);
+  /* Gradients — all built from the unified palette */
+  --gradient-primary: linear-gradient(135deg, #F9B93C 0%, #F5A623 50%, #E07A16 100%);
+  --gradient-secondary: linear-gradient(135deg, #1c1c1f 0%, #0E0E10 100%);
+  --gradient-accent: linear-gradient(135deg, #F5A623 0%, #3AC1D9 100%);
+  --gradient-warm: linear-gradient(135deg, #E07A16 0%, #F0554A 100%);
+  --gradient-success: linear-gradient(135deg, #3ECF8E 0%, #3AC1D9 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(245, 166, 35, 0.07) 0%, rgba(58, 193, 217, 0.03) 100%);
 
   /* Shadows with ambient glow */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
@@ -121,23 +126,23 @@
   --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.22);
   --shadow-xl: 0 18px 44px rgba(0, 0, 0, 0.28);
   --shadow-popper: 0 8px 24px rgba(0, 0, 0, 0.32);
-  --shadow-glow-blue: 0 0 24px rgba(245, 158, 11, 0.14);
+  --shadow-glow-blue: 0 0 24px rgba(245, 166, 35, 0.14);
   --shadow-glow-purple: 0 0 24px rgba(139, 126, 116, 0.12);
-  --shadow-glow-amber: 0 0 24px rgba(245, 158, 11, 0.14);
+  --shadow-glow-amber: 0 0 24px rgba(245, 166, 35, 0.14);
 
   --scrollbar-track: #0f0f12;
-  --scrollbar-thumb: #27272a;
+  --scrollbar-thumb: #2A2A2E;
   --scrollbar-thumb-hover: #52525b;
 
-  --status-online: #34d399;
-  --status-away: #f59e0b;
+  --status-online: #3ECF8E;
+  --status-away: #F5A623;
   --status-offline: #71717a;
-  --status-busy: #fb7185;
+  --status-busy: #F0554A;
 
-  --danger: #ef4444;
-  --warning: #f59e0b;
-  --success: #34d399;
-  --info: #22d3ee;
+  --danger: #F0554A;
+  --warning: #F5A623;
+  --success: #3ECF8E;
+  --info: #3AC1D9;
 }
 
   /* ─── Light Theme ─── */
@@ -164,8 +169,8 @@
   --accent-blue-glow: rgba(122, 101, 61, 0.11);
   --accent-purple: #766d61;
   --accent-purple-glow: rgba(118, 109, 97, 0.1);
-  --accent-amber: #9a6f32;
-  --accent-amber-glow: rgba(154, 111, 50, 0.11);
+  --accent-amber: #7a653d;
+  --accent-amber-glow: rgba(122, 101, 61, 0.11);
   --accent-emerald: #3f7b63;
   --accent-emerald-glow: rgba(63, 123, 99, 0.1);
   --accent-rose: #9a5b5f;
@@ -245,8 +250,8 @@
   --accent-blue-glow: rgba(204, 0, 0, 0.08);
   --accent-purple: #111111;
   --accent-purple-glow: #e5e5e0;
-  --accent-amber: #111111;
-  --accent-amber-glow: #e5e5e0;
+  --accent-amber: #cc0000;
+  --accent-amber-glow: rgba(204, 0, 0, 0.08);
   --accent-emerald: #111111;
   --accent-emerald-glow: #e5e5e0;
   --accent-rose: #cc0000;
@@ -336,8 +341,8 @@
   --accent-blue-glow: rgba(0, 255, 136, 0.13);
   --accent-purple: #ff00ff;
   --accent-purple-glow: rgba(255, 0, 255, 0.13);
-  --accent-amber: #00d4ff;
-  --accent-amber-glow: rgba(0, 212, 255, 0.13);
+  --accent-amber: #00ff88;
+  --accent-amber-glow: rgba(0, 255, 136, 0.13);
   --accent-emerald: #00ff88;
   --accent-emerald-glow: rgba(0, 255, 136, 0.13);
   --accent-rose: #ff3366;
@@ -445,8 +450,8 @@
   --accent-blue-glow: rgba(255, 77, 77, 0.10);
   --accent-purple: #2d5da1;         /* blue ballpoint */
   --accent-purple-glow: rgba(45, 93, 161, 0.10);
-  --accent-amber: #fff9c4;          /* post-it yellow */
-  --accent-amber-glow: rgba(255, 249, 196, 0.35);
+  --accent-amber: #ff4d4d;          /* correction red (primary) */
+  --accent-amber-glow: rgba(255, 77, 77, 0.10);
   --accent-emerald: #2d2d2d;        /* pencil (repeat) */
   --accent-emerald-glow: rgba(45, 45, 45, 0.06);
   --accent-rose: #ff4d4d;           /* correction red (repeat) */
@@ -3016,4 +3021,112 @@ select.input {
 }
 [data-theme="minimalist-monochrome"] .auth-card::after {
   display: none;
+}
+
+/* ─── Shared schedule-widget masthead (global base for sub-tab widgets) ─── */
+.schedule-masthead {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--sp-3);
+  padding-top: 4px;
+}
+.schedule-masthead-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.schedule-title-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.schedule-icon-tile {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
+  transition: transform 0.3s cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+.schedule-icon-tile:hover {
+  transform: scale(1.08);
+}
+.schedule-icon-tile svg {
+  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-amber) 35%, transparent));
+}
+.schedule-overline {
+  font-size: 9px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  display: block;
+}
+.schedule-title {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  margin: 2px 0 0;
+  line-height: 1.2;
+}
+.schedule-subtitle {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
+  display: block;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+.schedule-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.schedule-stats {
+  display: flex;
+  gap: 18px;
+}
+.schedule-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.schedule-stat-value {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+.schedule-stat-label {
+  font-size: 9px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 2px;
+}
+@media (max-width: 1000px) {
+  .schedule-masthead {
+    grid-template-columns: 1fr auto;
+  }
+  .schedule-masthead-center {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+  .schedule-actions {
+    justify-content: flex-end;
+  }
 }

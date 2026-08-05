@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Target, Users, Search, PlusCircle, CheckCircle, X,
   Calendar, Award, User, ExternalLink, ChevronDown, ChevronUp,
@@ -86,45 +86,48 @@ export default function ClubPortal() {
 
   return (
     <div className="clubs-page">
-      {/* ── Header Card ── */}
-      <header className="clubs-header-card">
-        <div className="clubs-header-bg" />
-        <div className="clubs-header-content">
-          <div className="clubs-header-left">
-            <div className="clubs-header-icon">
-              <Target size={24} />
-            </div>
-            <div>
-              <h2 className="clubs-header-title">Clubs Hub</h2>
-              <p className="clubs-header-subtitle">
-                Explore {clubs.length} active AUST student clubs — discover your passion, connect with peers, and build your campus life
-              </p>
-            </div>
+      {/* ── Masthead ── */}
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="clubs-header-icon">
+            <Target size={24} />
+          </div>
+          <div>
+            <span className="schedule-overline">Community</span>
+            <h2 className="clubs-header-title">Clubs Hub</h2>
+            <p className="clubs-header-subtitle">
+              Explore {clubs.length} active AUST student clubs — discover your passion, connect with peers, and build your campus life
+            </p>
           </div>
         </div>
 
-        {/* Stats row */}
-        <div className="clubs-stats-row">
-          <div className="clubs-stat-chip">
-            <Hash size={14} />
-            <span><strong>{stats.total}</strong> Clubs</span>
-          </div>
-          <div className="clubs-stat-chip">
-            <Users size={14} />
-            <span><strong>{stats.totalMembers.toLocaleString()}</strong> Total Members</span>
-          </div>
-          <div className="clubs-stat-chip clubs-stat-joined">
-            <Star size={14} />
-            <span><strong>{stats.joinedCount}</strong> Joined</span>
-          </div>
-          {stats.joinedCount > 0 && (
-            <div className="clubs-stat-chip">
-              <TrendingUp size={14} />
-              <span><strong>{stats.joinedMembers.toLocaleString()}</strong> Network Reach</span>
+        <div className="schedule-masthead-center">
+          <div className="schedule-stats">
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{stats.total}</span>
+              <span className="schedule-stat-label">Clubs</span>
             </div>
-          )}
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{stats.totalMembers.toLocaleString()}</span>
+              <span className="schedule-stat-label">Members</span>
+            </div>
+            <div className="schedule-stat">
+              <span className="schedule-stat-value schedule-stat-joined">{stats.joinedCount}</span>
+              <span className="schedule-stat-label">Joined</span>
+            </div>
+            {stats.joinedCount > 0 && (
+              <div className="schedule-stat">
+                <span className="schedule-stat-value">{stats.joinedMembers.toLocaleString()}</span>
+                <span className="schedule-stat-label">Network Reach</span>
+              </div>
+            )}
+          </div>
         </div>
-      </header>
+
+        <div className="schedule-actions" />
+      </div>
+
+      <div className="schedule-dotted-divider" style={{ marginTop: 0 }} />
 
       {/* ── Controls Bar ── */}
       <div className="clubs-controls">
@@ -173,26 +176,31 @@ export default function ClubPortal() {
             const Icon = getIconComponent(club.icon);
             const isExpanded = expandedClub === club.id;
 
+            // "Load" indicator: a club's reach is the number of social links.
+            // 0 → emerald · 1 → cyan · 2 → amber · 3+ → rose (matches sv-cell density).
+            const socialCount = Object.values(club.socialLinks || {}).filter(Boolean).length;
+            const densityClass = socialCount >= 3 ? 'is-rose' : socialCount === 2 ? 'is-amber' : socialCount === 1 ? 'is-cyan' : 'is-emerald';
+
             return (
               <div
                 key={club.id}
-                className={`clubs-card animate-fadeInUp ${club.joined ? 'clubs-card-joined' : ''}`}
+                className={`clubs-card animate-fadeInUp ${club.joined ? 'clubs-card-joined' : ''} ${densityClass}`}
                 style={{ animationDelay: `${(idx % 6) * 60}ms` }}
               >
-                {/* Top accent bar */}
-                <div className="clubs-card-accent" style={{ background: club.color }} />
+                {/* Top accent bar is hidden in CSS — density lives on the left border */}
+                <div className="clubs-card-accent" />
 
                 <div className="clubs-card-body">
                   {/* Logo + header */}
                   <div className="clubs-card-head">
-                    <div className="clubs-card-logo" style={{ background: `${club.color}1A`, color: club.color }}>
+                    <div className="clubs-card-logo" style={{ background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)' }}>
                       <Icon size={22} />
                     </div>
                     <div className="clubs-card-head-text">
                       <h3 className="clubs-card-name">{club.name}</h3>
                       <span className="clubs-card-acronym">{club.acronym}</span>
                     </div>
-                    <span className="clubs-card-badge" style={{ background: `${club.color}18`, color: club.color }}>
+                    <span className="clubs-card-badge">
                       {club.members.toLocaleString()}
                       <Users size={12} />
                     </span>
@@ -267,7 +275,6 @@ export default function ClubPortal() {
                   <button
                     className={`clubs-join-btn ${club.joined ? 'joined' : ''}`}
                     onClick={() => handleJoinToggle(club.id)}
-                    style={{ '--club-accent': club.color }}
                   >
                     {club.joined ? (
                       <><CheckCircle size={15} /> Joined</>

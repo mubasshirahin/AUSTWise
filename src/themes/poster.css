@@ -50,8 +50,8 @@
   --accent-blue-glow: rgba(255, 61, 0, 0.12);
   --accent-purple: #8B7E74;    /* muted taupe */
   --accent-purple-glow: rgba(139, 126, 116, 0.11);
-  --accent-amber: #D4A574;     /* soft gold */
-  --accent-amber-glow: rgba(212, 165, 116, 0.11);
+  --accent-amber: #FF3D00;     /* PRIMARY — vermillion for all interactive */
+  --accent-amber-glow: rgba(255, 61, 0, 0.12);
   --accent-emerald: #5A8B72;   /* muted green */
   --accent-emerald-glow: rgba(90, 139, 114, 0.11);
   --accent-rose: #C67373;      /* muted rose */

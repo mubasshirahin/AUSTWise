@@ -6,6 +6,120 @@
   opacity: 0.5;
 }
 
+/* ═══════════════════════════════════════════════════════════
+   NOTEBOOK PAGE — Aura hero box + content card
+   Matches the dashboard 3-box pattern: hero box on top, then
+   the content (library / canvas) in its own card below.
+   ═══════════════════════════════════════════════════════════ */
+
+.notebook-page {
+  padding-bottom: var(--sp-10);
+}
+
+/* ── 1. Hero box ── */
+.nb-hero {
+  position: relative;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-primary);
+  background: var(--bg-card);
+  overflow: hidden;
+  box-shadow: var(--shadow-lift);
+  animation: nbHeroIn 0.55s cubic-bezier(0.4, 0, 0.2, 1) both;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.nb-hero:hover {
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-lift);
+}
+
+
+@keyframes nbHeroIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.nb-hero-content {
+  position: relative;
+  padding: var(--sp-6) var(--sp-6) var(--sp-5);
+  z-index: 1;
+}
+
+.nb-hero-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+
+.nb-hero-period-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-md);
+  background: var(--accent-amber-glow);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 22%, transparent);
+  color: var(--accent-amber);
+  flex-shrink: 0;
+}
+
+.nb-hero-date-label {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.nb-hero-title {
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+  margin: 0 0 var(--sp-1);
+  color: var(--text-primary);
+}
+
+.nb-hero-name {
+  display: inline-block;
+  color: var(--accent-amber);
+}
+
+.nb-hero-subtitle {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-regular);
+  color: var(--text-secondary);
+  margin: 0;
+  max-width: 440px;
+  line-height: 1.6;
+}
+
+/* ── 2. Content box ── */
+.nb-content-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-5);
+  box-shadow: var(--shadow-lift);
+}
+
+/* Nested widgets inside the content card get a transparent inner shell */
+.nb-content-card .glass-card-static.schedule-widget {
+  background: transparent;
+  box-shadow: none;
+}
+
+@media (max-width: 640px) {
+  .nb-hero-content {
+    padding: var(--sp-4) var(--sp-3);
+  }
+  .nb-content-card {
+    padding: var(--sp-4);
+  }
+}
+
 /* ─── Canvas ─── */
 .nb-canvas-wrap {
   position: relative;
@@ -325,8 +439,8 @@
 }
 
 @keyframes nb-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(59,130,246,0.25); }
-  50% { box-shadow: 0 0 0 6px rgba(59,130,246,0.08); }
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-blue) 25%, transparent); }
+  50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent-blue) 8%, transparent); }
 }
 
 /* ─── Draw mode ─── */
@@ -433,23 +547,24 @@
    Brand accent (amber) is the ONLY decorative color; green/red/teal are
    reserved purely for their semantic meaning (success / urgent / info). */
 :root {
-  --nb-accent:       #F5A623;   /* brand — CTAs, active nav, primary icons */
-  --nb-accent-soft:  rgba(245, 166, 35, 0.16);
-  --nb-bg:           #0E0E10;   /* page / shell background */
+  --nb-accent:       #F59E0B;   /* brand gold — CTAs, active nav, primary icons */
+  --nb-accent-soft:  rgba(245, 158, 11, 0.16);
+  --nb-bg:           #0A0A0C;   /* page / shell background */
   --nb-surface:      #1B1B1F;   /* cards, inputs, raised panels */
-  --nb-surface-raise:#26262B;
-  --nb-border:       #2A2A2E;
-  --nb-text:         #F2F2F3;
-  --nb-muted:        #9A9AA0;
-  --nb-success:      #3ECF8E;   /* completed / positive ONLY */
-  --nb-danger:       #F0554A;   /* urgent / enemies / overdue ONLY */
-  --nb-info:         #3AC1D9;   /* info badges ONLY (sparse) */
+  --nb-surface-raise:#232329;
+  --nb-border:       #2A2A35;
+  --nb-text:         #FFFFFF;
+  --nb-muted:        #E2E8F0;
+  --nb-success:      #34D399;   /* completed / positive ONLY */
+  --nb-danger:       #F87171;   /* urgent / enemies / overdue ONLY */
+  --nb-info:         #60A5FA;   /* info badges ONLY (sparse) */
 }
 
 .nb-widget {
   overflow: hidden;
   background: var(--nb-bg);
   border: 1px solid var(--nb-border);
+  box-shadow: var(--shadow-lift);
   /* Map the whole themed surface to the unified palette so everything inside
      the Notebook (masthead, nav, cards, menus, canvas chrome) is consistent. */
   --bg-card: var(--nb-surface);

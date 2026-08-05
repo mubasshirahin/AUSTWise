@@ -186,7 +186,6 @@ export default function AboutUs() {
 
       {/* ─── Hero Section ─── */}
       <section className="about-hero">
-        <div className="about-hero-bg-grid" aria-hidden="true" />
         <div className="about-hero-content">
           {/* Avatar with animated glow ring */}
           <div className="about-avatar-wrapper">

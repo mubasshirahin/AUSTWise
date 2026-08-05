@@ -2,8 +2,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   MessageSquare, Send, ArrowLeft, Inbox, Mail, Search, X,
-  Check, CheckCheck, Users, MessageCircle, Wifi, WifiOff, SmilePlus,
-  ChevronUp, ChevronDown, Edit3, Trash2, Bell, BellOff, Reply,
+  Check, CheckCheck, WifiOff, SmilePlus, ChevronUp, ChevronDown,
+  ChevronLeft, ChevronRight, MoreVertical, Edit3, Trash2, Bell, BellOff, Reply,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -25,8 +25,8 @@ import useWebSocket from '../../hooks/useWebSocket';
 import useMessageNotifications from '../../hooks/useMessageNotifications';
 import { getAccountById } from '../../utils/authStorage';
 import { sanitizeUserInput, MAX_TEXT_LENGTH } from '../../utils/sanitize';
+import '../campus/SemesterViewWidget.css';
 import './MessagesPage.css';
-import '../../components/PageHero.css';
 
 /* ─── Emoji Reactions ─── */
 const REACTION_EMOJIS = getDefaultReactions();
@@ -768,30 +768,6 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
   );
 }
 
-/* ─── Quick Stats Card ─── */
-function QuickStatCard({ icon: Icon, value, label, color, bg, accent, delay }) {
-  return (
-    <div
-      className="messages-quick-stat-card animate-fadeInUp"
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      <div className="messages-quick-stat-shine" aria-hidden="true" />
-      <div className="messages-quick-stat-icon" style={{ background: bg, color }}>
-        <Icon size={18} />
-      </div>
-      <div className="messages-quick-stat-body">
-        <span className="messages-quick-stat-value" style={{ color }}>{value}</span>
-        <span className="messages-quick-stat-label">{label}</span>
-      </div>
-      <div
-        className="messages-quick-stat-bar"
-        style={{ background: color }}
-        aria-hidden="true"
-      />
-    </div>
-  );
-}
-
 export default function MessagesPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -803,6 +779,18 @@ export default function MessagesPage() {
   const [activePeerId, setActivePeerId] = useState(searchParams.get('peer') || '');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMode, setFilterMode] = useState('all');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  // Close the ⋮ dropdown when clicking outside
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [menuOpen]);
   const [peerTyping, setPeerTyping] = useState(false);
   const messageStatusListenersRef = useRef(new Set());
   const reactionListenersRef = useRef(new Set());
@@ -989,135 +977,208 @@ export default function MessagesPage() {
 
   const activePeer = conversations.find((c) => c.peerId === activePeerId)?.peer;
 
-  if (!currentUserId) {
+  const onlineChatCount = useMemo(
+    () => conversations.filter((c) => onlineUsers.includes(c.peerId)).length,
+    [conversations, onlineUsers]
+  );
+
+  const handleNotifToggle = async () => {
+    if (notifPermission !== 'granted') {
+      const result = await requestNotifPermission();
+      if (result !== 'granted') return;
+    }
+    toggleNotifEnabled();
+  };
+
+  // Prev/next navigation through the filtered conversation list
+  const navigateConversation = (dir) => {
+    const list = filteredConversations;
+    if (list.length === 0) return;
+    const idx = list.findIndex((c) => c.peerId === activePeerId);
+    const next = idx === -1 ? (dir > 0 ? 0 : list.length - 1) : (idx + dir + list.length) % list.length;
+    openConversation(list[next].peerId);
+  };
+
+  // Pill label — position of the active conversation within the filtered list
+  const pillLabel = useMemo(() => {
+    const idx = filteredConversations.findIndex((c) => c.peerId === activePeerId);
+    if (idx === -1) return filteredConversations.length === 0 ? '0 / 0' : `0 / ${filteredConversations.length}`;
+    return `${idx + 1} / ${filteredConversations.length}`;
+  }, [filteredConversations, activePeerId]);
+
+  // Single shared conversation-cell renderer — used by every list mode
+  // (All / Unread / search results) so cells look identical everywhere.
+  const renderConversationCell = (c) => {
+    const isActive = c.peerId === activePeerId;
+    const isOnline = onlineUsers.includes(c.peerId);
+    const unread = c.unread || 0;
+    const densityClass = unread >= 3 ? 'is-rose' : unread === 2 ? 'is-amber' : unread === 1 ? 'is-cyan' : 'is-emerald';
     return (
-      <div className="messages-page-wrapper animate-fadeIn">
-        <header className="page-hero">
-          <div className="page-hero-content">
-            <div className="page-hero-title-row">
-              <div className="page-hero-icon">
-                <Mail size={24} />
-              </div>
-              <div>
-                <h1 className="page-hero-title">
-                  <span className="page-hero-title-highlight">Messages</span>
-                </h1>
-                <p className="page-hero-subtitle">
-                  Chat with alumni, classmates, and mentors — stay connected with the AUST community.
-                </p>
-              </div>
+      <button
+        key={c.conversationId}
+        type="button"
+        className={`sv-cell conversation-cell ${densityClass}${isActive ? ' active' : ''}${unread > 0 ? ' has-unread' : ''}`}
+        onClick={() => openConversation(c.peerId)}
+      >
+        {unread > 0 && <span className={`sv-count${unread >= 3 ? ' hot' : ''}`}>{unread}</span>}
+        <div className="conv-cell-main">
+          <div className="avatar-wrapper">
+            <div className="avatar">{c.peer.initials}</div>
+            <span className={`avatar-status-dot ${isOnline ? 'online' : 'offline'}`} />
+          </div>
+          <div className="conv-cell-body">
+            <div className="conv-cell-top">
+              <span className="sv-cell-title conv-name">{c.peer.name}</span>
+              <span className="conv-time">{formatConversationTime(c.lastTimestamp)}</span>
+            </div>
+            <div className="conv-preview">
+              {c.lastMessage.fromId === currentUserId && (
+                <CheckCheck size={11} className="preview-status" />
+              )}
+              {c.lastMessage.text}
             </div>
           </div>
-        </header>
+        </div>
+      </button>
+    );
+  };
 
-        <div className="glass-card-static messages-empty animate-fadeInUp">
-          <div className="messages-empty-icon">
-            <MessageSquare size={24} />
+  if (!currentUserId) {
+    return (
+      <div className="messages-page animate-fadeIn">
+        <header className="ms-hero">
+          <div className="ms-hero-content">
+            <div className="ms-hero-eyebrow">
+              <span className="ms-hero-period-icon"><Mail size={16} /></span>
+              <span className="ms-hero-date-label">ConnectBox</span>
+            </div>
+            <h1 className="ms-hero-title">
+              Connect<span className="ms-hero-name">Box</span>
+            </h1>
+            <p className="ms-hero-subtitle">Chat with alumni, classmates &amp; mentors.</p>
           </div>
-          <h3>Login to view messages</h3>
-          <p>You need an account to use the inbox.</p>
-          <button className="btn btn-primary" onClick={() => navigate('/login')}>
-            Login / Sign up
-          </button>
+        </header>
+        <div className="ms-content-card">
+          <div className="sv-empty">
+            <MessageSquare size={38} className="sv-empty-icon" />
+            <h3>Login to view messages</h3>
+            <p>You need an account to use the inbox.</p>
+            <button className="btn btn-primary" onClick={() => navigate('/login')}>
+              Login / Sign up
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="messages-page-wrapper animate-fadeIn">
-      <header className="page-hero">
-        <div className="page-hero-content">
-          <div className="page-hero-title-row">
-            <div className="page-hero-icon">
-              <Mail size={24} />
-            </div>
-            <div>
-              <h1 className="page-hero-title">
-                <span className="page-hero-title-highlight">Messages</span>
-              </h1>
-              <p className="page-hero-subtitle">
-                Chat with alumni, classmates, and mentors — stay connected with the AUST community.
-              </p>
-            </div>
+    <div className="messages-page animate-fadeIn">
+
+      {/* ── 1. Hero box (own card) ── */}
+      <header className="ms-hero">
+        <div className="ms-hero-content">
+          <div className="ms-hero-eyebrow">
+            <span className="ms-hero-period-icon"><Mail size={16} /></span>
+            <span className="ms-hero-date-label">Community · ConnectBox</span>
           </div>
+          <h1 className="ms-hero-title">
+            Connect<span className="ms-hero-name">Box</span>
+          </h1>
+          <p className="ms-hero-subtitle">
+            {unreadTotal > 0
+              ? `${unreadTotal} unread · ${conversations.length} chats · ${onlineChatCount} online`
+              : `${conversations.length} chats · ${onlineChatCount} online`}
+          </p>
         </div>
       </header>
 
-      {!wsConnected && currentUserId && (
-        <div className="connection-status-banner">
-          <WifiOff size={14} />
-          <span>Reconnecting to real-time messaging...</span>
-        </div>
-      )}
+      {/* ── 2. Toolbar box — filters, nav, stats ── */}
+      <div className="glass-card-static ms-toolbar-card">
+        <div className="ms-toolbar">
+          <div className="schedule-stats">
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{conversations.length}</span>
+              <span className="schedule-stat-label">chats</span>
+            </div>
+            <div className="schedule-stat">
+              <span className="schedule-stat-value" style={{ color: unreadTotal > 0 ? 'var(--accent-rose)' : undefined }}>
+                {unreadTotal}
+              </span>
+              <span className="schedule-stat-label">unread</span>
+            </div>
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{onlineChatCount}</span>
+              <span className="schedule-stat-label">online</span>
+            </div>
+          </div>
 
-      <div className="messages-stats-row">
-        <QuickStatCard
-          icon={MessageCircle}
-          value={conversations.length}
-          label="Total Conversations"
-          color="var(--accent-cyan)"
-          bg="var(--accent-cyan-glow)"
-          accent="cyan"
-          delay={0}
-        />
-        <QuickStatCard
-          icon={Inbox}
-          value={unreadTotal}
-          label="Unread Messages"
-          color={unreadTotal > 0 ? 'var(--accent-rose)' : 'var(--text-tertiary)'}
-          bg={unreadTotal > 0 ? 'var(--accent-rose-glow)' : 'var(--bg-tertiary)'}
-          accent="rose"
-          delay={80}
-        />
-        <QuickStatCard
-          icon={Users}
-          value={conversations.filter(c => c.unread > 0).length}
-          label="Active Chats"
-          color="var(--accent-amber)"
-          bg="var(--accent-amber-glow)"
-          accent="amber"
-          delay={160}
-        />
-      </div>
-
-      <div className="section-header">
-        <h2 className="section-title">
-          <span className="icon" style={{ background: 'var(--accent-cyan-glow)', color: 'var(--accent-cyan)' }}>
-            <MessageSquare size={16} />
-          </span>
-          Inbox
-          {unreadTotal > 0 && (
-            <span className="badge badge-cyan" style={{ fontSize: '11px', marginLeft: '8px' }}>
-              {unreadTotal} new
-            </span>
-          )}
-          {wsConnected && (
-            <span className="badge badge-emerald" style={{ fontSize: '10px', marginLeft: '6px', padding: '2px 7px' }}>
-              <Wifi size={10} style={{ marginRight: '3px' }} />
-              Live
-            </span>
-          )}
-          {notifSupported && (
-            <button
-              type="button"
-              className={`notif-toggle-btn ${notifEnabled ? '' : 'notif-off'}`}
-              onClick={async () => {
-                if (notifPermission !== 'granted') {
-                  const result = await requestNotifPermission();
-                  if (result !== 'granted') return;
-                }
-                toggleNotifEnabled();
-              }}
-              title={notifEnabled ? 'Notifications on' : 'Notifications off'}
-            >
-              {notifEnabled ? <Bell size={14} /> : <BellOff size={14} />}
+          <div className="schedule-week-nav">
+            <button className="schedule-nav-btn" onClick={() => navigateConversation(-1)} title="Previous conversation" aria-label="Previous conversation">
+              <ChevronLeft size={20} />
             </button>
-          )}
-        </h2>
+            <div className="schedule-week-pill">
+              <span className="schedule-week-pill-value">{pillLabel}</span>
+            </div>
+            <button className="schedule-nav-btn" onClick={() => navigateConversation(1)} title="Next conversation" aria-label="Next conversation">
+              <ChevronRight size={20} />
+            </button>
+          </div>
+
+          <div className="export-dropdown" ref={menuRef}>
+            <button
+              className="schedule-nav-btn"
+              onClick={() => setMenuOpen((o) => !o)}
+              title="Options"
+              aria-haspopup="true"
+              aria-expanded={menuOpen}
+            >
+              <MoreVertical size={18} />
+            </button>
+            {menuOpen && (
+              <div className="export-menu" role="menu">
+                <button
+                  className={`export-menu-item${filterMode === 'all' ? ' menu-active' : ''}`}
+                  onClick={() => { setFilterMode('all'); setMenuOpen(false); }}
+                  role="menuitem"
+                >
+                  <Inbox size={14} /> All conversations
+                  {filterMode === 'all' && <Check size={14} className="menu-check" />}
+                </button>
+                <button
+                  className={`export-menu-item${filterMode === 'unread' ? ' menu-active' : ''}`}
+                  onClick={() => { setFilterMode('unread'); setMenuOpen(false); }}
+                  role="menuitem"
+                >
+                  <Mail size={14} /> Unread only
+                  {filterMode === 'unread' && <Check size={14} className="menu-check" />}
+                </button>
+                <div className="export-menu-sep" />
+                {notifSupported && (
+                  <button
+                    className={`export-menu-item${notifEnabled ? ' menu-active' : ''}`}
+                    onClick={handleNotifToggle}
+                    role="menuitem"
+                  >
+                    {notifEnabled ? <Bell size={14} /> : <BellOff size={14} />} Browser notifications
+                    {notifEnabled && <Check size={14} className="menu-check" />}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      <div className="glass-card-static messages-page animate-fadeInUp">
+      {/* ── 3. Main content box (own card) ── */}
+      <div className="ms-content-card">
+        {!wsConnected && currentUserId && (
+          <div className="connection-status-banner">
+            <WifiOff size={14} />
+            <span>Reconnecting to real-time messaging...</span>
+          </div>
+        )}
+
         <div className="messages-layout">
           <aside className={`messages-list ${activePeerId ? 'hidden-mobile' : ''}`}>
             <div className="messages-search-wrapper">
@@ -1140,77 +1201,27 @@ export default function MessagesPage() {
               </div>
             </div>
 
-            <div className="messages-filter-tabs">
-              <button
-                type="button"
-                className={`messages-filter-tab ${filterMode === 'all' ? 'active' : ''}`}
-                onClick={() => setFilterMode('all')}
-              >
-                All
-              </button>
-              <button
-                type="button"
-                className={`messages-filter-tab ${filterMode === 'unread' ? 'active' : ''}`}
-                onClick={() => setFilterMode('unread')}
-              >
-                Unread {unreadTotal > 0 && `(${unreadTotal})`}
-              </button>
-            </div>
-
             <div className="conversation-items">
               {filteredConversations.length === 0 ? (
-                <div className="messages-empty small">
-                  <div className="messages-empty-icon"><Inbox size={20} /></div>
-                  <p>{filterMode === 'unread' ? 'No unread messages' : 'No conversations yet.'}</p>
-                  <span>
+                <div className="sv-empty small">
+                  <Inbox size={28} className="sv-empty-icon" />
+                  <h3>{filterMode === 'unread' ? 'No unread messages' : 'No conversations yet'}</h3>
+                  <p>
                     {filterMode === 'unread'
                       ? 'All messages are read. Great job!'
                       : 'Message an alumnus or classmate to start a conversation.'}
-                  </span>
+                  </p>
                 </div>
               ) : (
-                filteredConversations.map((c) => {
-                  const isActive = c.peerId === activePeerId;
-                  const isOnline = onlineUsers.includes(c.peerId);
-                  return (
-                    <button
-                      key={c.conversationId}
-                      type="button"
-                      className={`conversation-item ${isActive ? 'active' : ''}`}
-                      onClick={() => openConversation(c.peerId)}
-                    >
-                      <div className="avatar-wrapper">
-                        <div className="avatar" style={{ background: 'var(--accent-cyan)' }}>
-                          {c.peer.initials}
-                        </div>
-                        <span className={`avatar-status-dot ${isOnline ? 'online' : 'offline'}`} />
-                      </div>
-                      <div className="conversation-item-body">
-                        <div className="conversation-item-top">
-                          <span className="conversation-name">{c.peer.name}</span>
-                          <span className="conversation-time">{formatConversationTime(c.lastTimestamp)}</span>
-                        </div>
-                        <div className="conversation-item-bottom">
-                          <span className="conversation-preview">
-                            {c.lastMessage.fromId === currentUserId && (
-                              <span className="preview-status delivered"><CheckCheck size={11} /></span>
-                            )}
-                            {c.lastMessage.text}
-                          </span>
-                          {c.unread > 0 && <span className="unread-badge">{c.unread}</span>}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })
+                filteredConversations.map(renderConversationCell)
               )}
             </div>
           </aside>
 
           <section className={`messages-chat ${!activePeerId ? 'hidden-mobile' : ''}`}>
             {!activePeerId ? (
-              <div className="messages-empty">
-                <div className="messages-empty-icon"><MessageSquare size={24} /></div>
+              <div className="sv-empty">
+                <MessageSquare size={32} className="sv-empty-icon" />
                 <h3>Select a conversation</h3>
                 <p>Pick a chat from the left to start messaging.</p>
               </div>

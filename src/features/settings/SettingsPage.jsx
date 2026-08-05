@@ -598,40 +598,49 @@ export default function SettingsPage() {
 
   return (
     <div className="settings-page animate-fadeIn">
-      <header className="page-hero">
-        <div className="page-hero-content">
-          <div className="page-hero-title-row">
-            <div className="page-hero-icon">
-              <Settings size={24} />
-            </div>
-            <div>
-              <h1 className="page-hero-title">
-                <span className="page-hero-title-highlight">Settings</span>
-              </h1>
-              <p className="page-hero-subtitle">
-                Manage your profile, choose a theme, configure notifications, and more.
-              </p>
-            </div>
-            {isAuthenticated && (
-              <div className="settings-hero-status-row">
-                <span className="settings-hero-status-dot" />
-                <span className="settings-hero-status-text">
-                  {profilePercent === 100 ? 'Profile complete' : `Profile ${profilePercent}% complete`}
-                </span>
-              </div>
-            )}
+
+      {/* ── 1. Hero box (own card) ── */}
+      <header className="st-hero">
+        <div className="st-hero-content">
+          <div className="st-hero-eyebrow">
+            <span className="st-hero-period-icon">
+              <Settings size={16} />
+            </span>
+            <span className="st-hero-date-label">
+              Account &amp; preferences
+            </span>
           </div>
+          <h1 className="st-hero-title">
+            Sett<span className="st-hero-name">ings</span>
+          </h1>
+          <p className="st-hero-subtitle">
+            Manage your profile, choose a theme, configure notifications, and more.
+          </p>
+          {isAuthenticated && (
+            <div className="st-hero-status">
+              <span className="st-hero-status-dot" />
+              <span className="st-hero-status-text">
+                {profilePercent === 100 ? 'Profile complete' : `Profile ${profilePercent}% complete`}
+              </span>
+            </div>
+          )}
         </div>
       </header>
 
-      <GliderTabs
-        tabs={settingsTabs}
-        activeTab={activeSubTab}
-        onChange={handleSetActiveSubTab}
-        variant="dashboard"
-      />
+      {/* ── 2. Tabs bar (own card) ── */}
+      <div className="glass-card-static st-tabs-card">
+        <GliderTabs
+          tabs={settingsTabs}
+          activeTab={activeSubTab}
+          onChange={handleSetActiveSubTab}
+          variant="dashboard"
+          compact
+        />
+      </div>
 
-      <div className="settings-panel">
+      {/* ── 3. Main content box (own card) ── */}
+      <div className="st-content-card" key={activeSubTab}>
+        <div className="settings-panel">
           {activeSubTab === 'profile' && (
             <div className="animate-fadeIn">
               <div className="profile-panel-header">
@@ -1970,5 +1979,6 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
+    </div>
   );
 }

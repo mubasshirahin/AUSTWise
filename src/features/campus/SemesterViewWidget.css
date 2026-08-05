@@ -175,6 +175,23 @@
   margin: 14px 0 20px;
 }
 
+/* ─── Floor selector box (below the header divider) ─── */
+.floor-selector-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+
+.floor-selector-box .glider-tabs-track {
+  width: 100%;
+}
+
+.floor-selector-box .glider-tabs-wrap {
+  overflow-x: auto;
+}
+
 /* ─── ⋮ dropdown menu ─── */
 .sv-widget .export-dropdown {
   position: relative;

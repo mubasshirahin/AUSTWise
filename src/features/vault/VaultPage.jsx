@@ -8,7 +8,6 @@ import GliderTabs from '../../components/GliderTabs';
 import { loadVaultSelection, saveVaultSelection } from './vaultSelectionStorage';
 import './VaultPage.css';
 import './VaultBatchSelector.css';
-import '../../components/PageHero.css';
 import './vault-tokens.css';
 
 function getSelectionStep(department, yearSem, batch) {
@@ -173,37 +172,47 @@ export default function VaultPage() {
 
   return (
     <div className="vault-page animate-fadeIn">
-      <header className="page-hero">
-        <div className="page-hero-content">
-          <div className="page-hero-title-row">
-            <div className="page-hero-icon">
-              <Archive size={24} />
-            </div>
-            <div>
-              <h1 className="page-hero-title">
-                <span className="page-hero-title-highlight">Vault</span>
-              </h1>
-              <p className="page-hero-subtitle">
-                {vaultTab === 'carbon-vault'
-                  ? 'Monitor your semester resource emissions'
-                  : (isReady
-                    ? `${department} — Semester ${yearSem} · ${batch.batchName}`
-                    : 'Pick your semester. Unlock lecture notes, papers & more.')}
-              </p>
-            </div>
+
+      {/* ── 1. Hero box (own card) ── */}
+      <header className="vl-hero">
+        <div className="vl-hero-content">
+          <div className="vl-hero-eyebrow">
+            <span className="vl-hero-period-icon">
+              <Archive size={16} />
+            </span>
+            <span className="vl-hero-date-label">
+              Resource vault
+            </span>
           </div>
+          <h1 className="vl-hero-title">
+            Resource<span className="vl-hero-name"> Vault</span>
+          </h1>
+          <p className="vl-hero-subtitle">
+            {vaultTab === 'carbon-vault'
+              ? 'Monitor your semester resource emissions'
+              : (isReady
+                ? `${department} — Semester ${yearSem} · ${batch.batchName}`
+                : 'Pick the semester. Unlock lecture notes, papers & more.')}
+          </p>
         </div>
       </header>
 
-      <GliderTabs
-        tabs={vaultTabs}
-        activeTab={vaultTab}
-        onChange={setVaultTab}
-        variant="dashboard"
-      />
+      {/* ── 2. Glider tabs bar (own card) ── */}
+      <div className="glass-card-static vl-tabs-card">
+        <GliderTabs
+          tabs={vaultTabs}
+          activeTab={vaultTab}
+          onChange={setVaultTab}
+          variant="dashboard"
+          compact
+        />
+      </div>
 
-      <div className="vault-content-area" key={vaultTab}>
-        {renderVaultContent()}
+      {/* ── 3. Main content box (own card) ── */}
+      <div className="vl-content-card" key={vaultTab}>
+        <div className="vault-content-area">
+          {renderVaultContent()}
+        </div>
       </div>
     </div>
   );

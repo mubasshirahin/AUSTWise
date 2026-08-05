@@ -1976,17 +1976,19 @@ export default function MaterialFolders({ vaultContext }) {
   return (
     <div className="mf-container animate-fadeInUp">
       {/* ─── Header ─── */}
-      <div className="mf-header">
-        <div className="mf-header-left">
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
           <div className="mf-header-icon">
             <BookOpen size={22} />
           </div>
           <div className="mf-header-info">
+            <span className="schedule-overline">Vault</span>
             <h2>Lecture Notes</h2>
             <p>{isSemesterMode ? `Semester ${yearSem}` : courseName} — Google Drive materials</p>
           </div>
         </div>
-        <div className="mf-header-right">
+        <div className="schedule-masthead-center" />
+        <div className="schedule-actions">
           {folderUrl && !isEditing && (
             <>
               <button className="btn btn-ghost btn-sm" onClick={handleRefresh} disabled={loading} title="Refresh">
@@ -1999,6 +2001,8 @@ export default function MaterialFolders({ vaultContext }) {
           )}
         </div>
       </div>
+
+      <div className="schedule-dotted-divider" />
 
       {/* ─── Stats Bar ─── */}
       {!isEditing && allFiles.length > 0 && (

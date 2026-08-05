@@ -53,14 +53,6 @@ function resizeImage(file, maxSize = 400) {
   });
 }
 
-const categoryColors = {
-  Books: 'badge-blue',
-  'Lab Equipment': 'badge-purple',
-  Stationery: 'badge-amber',
-  Electronics: 'badge-emerald',
-  Other: 'badge',
-};
-
 export default function ExchangeKits() {
   const { user } = useAuth();
   const [items, setItems] = useState(() => listExchangeItems());
@@ -146,31 +138,38 @@ export default function ExchangeKits() {
   };
 
   return (
-    <div className="glass-card-static exchange-kits-container animate-fadeInUp">
-      <div className="flex justify-between items-center mb-6 flex-wrap gap-3">
-        <div className="flex items-center gap-2">
-          <div className="icon" style={{ backgroundColor: 'var(--accent-blue-glow)', color: 'var(--accent-blue)', padding: '6px', borderRadius: '8px' }}>
-            <ShoppingCart size={18} />
+    <div className="exchange-kits-container animate-fadeInUp">
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <ShoppingCart size={20} strokeWidth={2.2} />
           </div>
           <div>
-            <h2 className="section-title" style={{ fontSize: 'var(--fs-lg)', margin: 0 }}>AW Market</h2>
-            <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>Peer-to-peer listings from AUST students</p>
+            <span className="schedule-overline">Marketplace</span>
+            <div className="schedule-title">AW Market</div>
+            <span className="schedule-subtitle">Peer-to-peer listings from AUST students</span>
           </div>
         </div>
 
-        <button
-          type="button"
-          className="btn btn-primary btn-sm"
-          onClick={() => {
-            setShowForm((open) => !open);
-            setError('');
-            setMessage('');
-          }}
-        >
-          {showForm ? <X size={14} /> : <Plus size={14} />}
-          {showForm ? 'Close' : 'Sell Product'}
-        </button>
+        <div className="schedule-masthead-center" />
+
+        <div className="schedule-actions">
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={() => {
+              setShowForm((open) => !open);
+              setError('');
+              setMessage('');
+            }}
+          >
+            {showForm ? <X size={14} /> : <Plus size={14} />}
+            {showForm ? 'Close' : 'Sell Product'}
+          </button>
+        </div>
       </div>
+
+      <div className="schedule-dotted-divider" />
 
       {message && <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent-emerald)', marginBottom: '10px' }}>{message}</p>}
       {error && <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent-rose)', marginBottom: '10px' }}>{error}</p>}
@@ -260,7 +259,7 @@ export default function ExchangeKits() {
               </div>
               <div className="mp-card-body">
                 <div className="mp-card-header">
-                  <span className={`mp-card-badge ${categoryColors[item.category] || 'badge'}`}>{item.category}</span>
+                  <span className="mp-card-badge">{item.category}</span>
                   <span className="mp-card-date">{formatPostedDate(item.postedAt)}</span>
                 </div>
                 <h3 className="mp-card-title">{item.title}</h3>

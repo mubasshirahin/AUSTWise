@@ -50,8 +50,8 @@
   --accent-blue-glow: rgba(255, 71, 87, 0.18);
   --accent-purple: #5b6472;    /* graphite */
   --accent-purple-glow: rgba(91, 100, 114, 0.16);
-  --accent-amber: #b26a2b;     /* powder-coat clay */
-  --accent-amber-glow: rgba(178, 106, 43, 0.16);
+  --accent-amber: #ff4757;     /* Braun red / safety orange — PRIMARY */
+  --accent-amber-glow: rgba(255, 71, 87, 0.18);
   --accent-emerald: #3f8a6e;   /* status green */
   --accent-emerald-glow: rgba(63, 138, 110, 0.16);
   --accent-rose: #ff4757;      /* alert = the same red */

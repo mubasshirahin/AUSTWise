@@ -150,23 +150,24 @@ export default function CourseReview() {
   };
 
   return (
-    <div className="course-reviews-container animate-fadeInUp" style={{
-      background: 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)',
-      backdropFilter: 'blur(16px)',
-      WebkitBackdropFilter: 'blur(16px)',
-      border: '1px solid rgba(255,255,255,0.08)',
-      borderRadius: 'var(--radius-xl)',
-      padding: 'var(--sp-5)',
-      boxShadow: '0 4px 28px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.06)',
-    }}>
-      <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-        <div>
-          <h2 className="section-title" style={{ fontSize: 'var(--fs-lg)', margin: 0 }}>Course Reviews</h2>
-          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
-            Live student ratings — averages update when you and others submit reviews.
-          </p>
+    <div className="course-reviews-container animate-fadeInUp">
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <MessageSquare size={20} strokeWidth={2.2} />
+          </div>
+          <div>
+            <span className="schedule-overline">Analytics</span>
+            <div className="schedule-title">Course Reviews</div>
+            <span className="schedule-subtitle">
+              Live student ratings — averages update when you and others submit reviews.
+            </span>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+
+        <div className="schedule-masthead-center" />
+
+        <div className="schedule-actions">
           <div className="search-box" style={{ width: '220px' }}>
             <input
               type="text"
@@ -204,6 +205,8 @@ export default function CourseReview() {
           </button>
         </div>
       </div>
+
+      <div className="schedule-dotted-divider" />
 
       {formMessage && (
         <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent-emerald)', marginBottom: '12px' }}>{formMessage}</p>
@@ -317,8 +320,8 @@ export default function CourseReview() {
                     setFormError('');
                   }}
                   style={{
-                    background: isSelected ? 'var(--accent-blue-glow)' : 'rgba(255,255,255,0.04)',
-                    border: isSelected ? '1px solid var(--accent-blue)' : '1px solid var(--border-primary)',
+                    background: isSelected ? 'var(--accent-amber-glow)' : 'var(--bg-card)',
+                    border: isSelected ? '1px solid color-mix(in srgb, var(--accent-amber) 45%, transparent)' : '1px solid var(--border-primary)',
                     borderRadius: 'var(--radius-lg)',
                     padding: '16px',
                     cursor: 'pointer',
@@ -358,8 +361,8 @@ export default function CourseReview() {
             display: 'flex',
             flexDirection: 'column',
             justifyContent: selectedCourse ? 'flex-start' : 'center',
-            background: 'rgba(255,255,255,0.02)',
-            border: '1px solid rgba(255,255,255,0.08)',
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border-primary)',
           }}
         >
           {selectedCourse ? (
@@ -417,7 +420,8 @@ export default function CourseReview() {
                       <div
                         key={comment.id}
                         style={{
-                          background: 'rgba(255,255,255,0.04)',
+                          background: 'var(--bg-tertiary)',
+                          border: '1px solid var(--border-primary)',
                           borderRadius: 'var(--radius-md)',
                           padding: '10px 12px',
                         }}

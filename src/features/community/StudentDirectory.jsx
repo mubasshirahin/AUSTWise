@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Users, Search, Filter, ChevronDown, ChevronRight,
   GraduationCap, BookOpen, Layers,
@@ -20,16 +20,8 @@ function extractStudentId(student) {
 
 const DEPARTMENTS = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'];
 
-const deptColors = {
-  CSE: '#2196F3',
-  EEE: '#FF5722',
-  CE: '#4CAF50',
-  ME: '#FFC107',
-  IPE: '#9C27B0',
-  TE: '#00BCD4',
-  ARCH: '#E91E63',
-  BBA: '#3F51B5',
-};
+// No per-department colors: all department icons/avatars share the single
+// brand accent (amber) via theme tokens, keeping the directory monochrome.
 
 const LAB_ORDER = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 const SECTION_ORDER = ['A', 'B', 'C'];
@@ -210,33 +202,38 @@ export default function StudentDirectory() {
 
   return (
     <div className="student-dir">
-      {/* Header */}
-      <div className="student-dir-header-card">
-        <div className="student-dir-header-bg" />
-        <div className="student-dir-header-content">
-          <div className="student-dir-header-left">
-            <div className="student-dir-header-icon">
-              <GraduationCap size={26} />
+      {/* Masthead */}
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="student-dir-header-icon">
+            <GraduationCap size={26} />
+          </div>
+          <div>
+            <span className="schedule-overline">Community</span>
+            <h2 className="student-dir-header-title">Student Directory</h2>
+            <p className="student-dir-header-subtitle">
+              Browse students across all departments and semesters. SR, CR, and student lists sorted by ID.
+            </p>
+          </div>
+        </div>
+
+        <div className="schedule-masthead-center">
+          <div className="schedule-stats">
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{availableDepts.length}</span>
+              <span className="schedule-stat-label">Departments</span>
             </div>
-            <div>
-              <h2 className="student-dir-header-title">Student Directory</h2>
-              <p className="student-dir-header-subtitle">
-                Browse students across all departments and semesters. SR, CR, and student lists sorted by ID.
-              </p>
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{totalStudents}</span>
+              <span className="schedule-stat-label">Students</span>
             </div>
           </div>
         </div>
-        <div className="student-dir-stats-row">
-          <div className="student-dir-stat-chip">
-            <School size={14} />
-            <strong>{availableDepts.length}</strong> Departments
-          </div>
-          <div className="student-dir-stat-chip">
-            <Users size={14} />
-            <strong>{totalStudents}</strong> Students
-          </div>
-        </div>
+
+        <div className="schedule-actions" />
       </div>
+
+      <div className="schedule-dotted-divider" style={{ marginTop: 0 }} />
 
       {/* Controls */}
       <div className="student-dir-controls">
@@ -305,7 +302,7 @@ export default function StudentDirectory() {
           return (
             <div key={dept} className="student-dir-dept-section">
               <div className="student-dir-dept-header">
-                <div className="student-dir-dept-icon" style={{ background: `${deptColors[dept]}1A`, color: deptColors[dept] }}>
+                <div className="student-dir-dept-icon" style={{ background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)' }}>
                   <BookOpen size={18} />
                 </div>
                 <div className="student-dir-dept-info">
@@ -332,6 +329,8 @@ export default function StudentDirectory() {
                   const data = filteredGrouped[dept][sem];
                   const { srs, crs, regulars } = data;
                   const totalInSem = data.srs.length + data.crs.length + data.regulars.length;
+                  // Density by student count — 0 → emerald · 1 → cyan · 2 → amber · 3+ → rose
+                  const densityClass = totalInSem >= 3 ? 'is-rose' : totalInSem === 2 ? 'is-amber' : totalInSem === 1 ? 'is-cyan' : 'is-emerald';
 
                   // Map SRs to slots
                   const srSlotMap = {};
@@ -348,7 +347,7 @@ export default function StudentDirectory() {
                   }
 
                   return (
-                    <div key={semKey} className="student-dir-sem-card">
+                    <div key={semKey} className={`student-dir-sem-card ${densityClass}`}>
                       <button
                         className="student-dir-sem-header"
                         onClick={() => toggleSem(dept, sem)}
@@ -362,9 +361,11 @@ export default function StudentDirectory() {
                           </span>
                         </div>
                         <div className="student-dir-sem-header-right">
-                          <span className="student-dir-sem-count">
-                            {totalInSem} student{totalInSem !== 1 ? 's' : ''}
-                          </span>
+                          {totalInSem > 0 && (
+                            <span className={`sv-count${totalInSem >= 3 ? ' hot' : ''}`} title={`${totalInSem} student${totalInSem !== 1 ? 's' : ''}`}>
+                              {totalInSem}
+                            </span>
+                          )}
                         </div>
                       </button>
 
@@ -467,8 +468,8 @@ export default function StudentDirectory() {
                                       <tr key={student.id} className="student-dir-table-row">
                                         <td className="stu-td-name">
                                           <span className="student-dir-student-avatar" style={{
-                                            background: student.avatar ? 'transparent' : `${deptColors[dept]}1A`,
-                                            color: deptColors[dept],
+                                            background: student.avatar ? 'transparent' : 'var(--accent-amber-glow)',
+                                            color: 'var(--accent-amber)',
                                             width: '28px',
                                             height: '28px',
                                             fontSize: '9px',

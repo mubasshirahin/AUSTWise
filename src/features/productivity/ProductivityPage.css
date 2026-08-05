@@ -1,5 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════
-   PRODUCTIVITY HUB
+   PRODUCTIVITY HUB — Aura design language
+   Matches the dashboard 3-box pattern: hero box, tabs box, and the
+   main content box. Theme variables only — no hardcoded colors.
    ═══════════════════════════════════════════════════════════════ */
 
 .productivity-page {
@@ -11,30 +13,245 @@
   margin: 0 auto;
   padding-bottom: var(--sp-10);
 
-  /* Page-hero accent */
-  --page-hero-icon-bg:        var(--accent-amber-glow);
-  --page-hero-icon-color:     var(--accent-amber);
-  --page-hero-gradient-start: var(--accent-amber);
+  /* Aura palette — scoped to the Productivity hub */
+  --accent-blue: #F59E0B;
+  --accent-blue-glow: rgba(245, 158, 11, 0.14);
+  --accent-amber: #F59E0B;
+  --accent-amber-glow: rgba(245, 158, 11, 0.14);
+  --accent-orange: #F59E0B;
+  --accent-orange-glow: rgba(245, 158, 11, 0.14);
+  --accent-info: #60A5FA;
+  --accent-info-glow: rgba(96, 165, 250, 0.14);
+  --accent-purple: #A78BFA;
+  --accent-purple-glow: rgba(167, 139, 250, 0.14);
+  --accent-emerald: #34D399;
+  --accent-emerald-glow: rgba(52, 211, 153, 0.14);
+  --accent-rose: #F87171;
+  --accent-rose-glow: rgba(248, 113, 113, 0.14);
+  --bg-primary: #0A0A0C;
+  --bg-secondary: #1B1B1F;
+  --bg-card: #1B1B1F;
+  --bg-card-hover: #232329;
+  --bg-tertiary: #1E1E26;
+  --bg-input: #1B1B1F;
+  --border-primary: #2A2A35;
+  --border-secondary: rgba(42, 42, 53, 0.6);
+  --border-focus: rgba(245, 158, 11, 0.5);
+  --text-primary: #FFFFFF;
+  --text-secondary: #E2E8F0;
+  --text-tertiary: #94A3B8;
+  --shadow-sm: 0 1px 2px rgba(255, 255, 255, 0.02);
+  --shadow-md: 0 6px 18px rgba(255, 255, 255, 0.03);
+  --shadow-lg: 0 12px 28px rgba(255, 255, 255, 0.04);
+  --shadow-popper: 0 8px 24px rgba(255, 255, 255, 0.04);
+  --shadow-lift: 0 4px 20px rgba(255, 255, 255, 0.03);
+  --hero-accent-a: #F59E0B;
 }
 
-/* ── Tab content wrapper ── */
-/* Sub-pages rendered inside tabs should NOT show their own hero headers */
-.productivity-tab-content {
+/* ── 1. Hero box — its own card (matches dashboard hero) ── */
+.pr-hero {
+  position: relative;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-primary);
+  background: var(--bg-card);
+  overflow: hidden;
+  box-shadow: var(--shadow-lift);
+  animation: prHeroIn 0.55s cubic-bezier(0.4, 0, 0.2, 1) both;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.pr-hero:hover {
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-lift);
+}
+
+
+@keyframes prHeroIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.pr-hero-content {
+  position: relative;
+  padding: var(--sp-6) var(--sp-6) var(--sp-5);
+  z-index: 1;
+}
+
+.pr-hero-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+
+.pr-hero-period-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-md);
+  background: var(--accent-amber-glow);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 22%, transparent);
+  color: var(--accent-amber);
+  flex-shrink: 0;
+}
+
+.pr-hero-date-label {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.pr-hero-title {
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+  margin: 0 0 var(--sp-1);
+  color: var(--text-primary);
+}
+
+.pr-hero-name {
+  display: inline-block;
+  color: var(--accent-amber);
+}
+
+.pr-hero-subtitle {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-regular);
+  color: var(--text-secondary);
+  margin: 0;
+  max-width: 440px;
+  line-height: 1.6;
+}
+
+/* ── 2. Glider tabs bar (own card) ── */
+.pr-tabs-card {
+  padding: var(--sp-2);
+}
+
+.pr-tabs-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.pr-tabs-row .glider-tabs-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.pr-more-btn {
+  flex-shrink: 0;
+}
+
+.pr-tabs-card .schedule-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.pr-tabs-card .schedule-nav-btn:hover {
+  border-color: var(--border-focus);
+  color: var(--text-primary);
+}
+
+.pr-tabs-card .export-dropdown {
+  position: relative;
+}
+
+.pr-tabs-card .export-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 200px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popper);
+  z-index: 40;
+  overflow: hidden;
+}
+
+.pr-tabs-card .export-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: background var(--transition-base);
+}
+
+.pr-tabs-card .export-menu-item.menu-active {
+  color: var(--accent-amber);
+  background: var(--accent-amber-glow);
+  font-weight: var(--fw-semibold);
+}
+
+.pr-tabs-card .export-menu-item:hover {
+  background: var(--bg-input);
+}
+
+.pr-tabs-card .menu-check {
+  margin-left: auto;
+  color: var(--accent-amber);
+}
+
+/* ── 3. Main content box (own card) ── */
+.pr-content-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-5);
+  box-shadow: var(--shadow-lift);
+  min-height: 400px;
+}
+
+/* Sub-pages inside the content box should NOT show their own hero headers */
+.pr-content-card .productivity-tab-content {
   animation: ptFadeIn 0.22s ease both;
 }
 
-/* Strip the top page-hero margin/padding that sub-pages add
-   since we already have our own hero */
-.productivity-tab-content .animate-fadeIn {
+.pr-content-card .productivity-tab-content .animate-fadeIn {
   animation: none; /* avoid double fade */
 }
 
-/* Hide the nested page-hero inside sub-pages so only our hub header shows */
-.productivity-tab-content .page-hero {
+.pr-content-card .productivity-tab-content .page-hero {
   display: none;
 }
 
 @keyframes ptFadeIn {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0);   }
+}
+
+/* Nested widget shells — glow lift instead of heavy borders */
+.productivity-page .glass-card-static.schedule-widget {
+  border-color: var(--border-primary);
+  box-shadow: var(--shadow-lift);
+}
+
+@media (max-width: 640px) {
+  .pr-hero-content {
+    padding: var(--sp-4) var(--sp-3);
+  }
+  .pr-content-card {
+    padding: var(--sp-4);
+  }
 }

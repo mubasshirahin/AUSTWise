@@ -7,22 +7,21 @@ import CoverPageGeneratorPage from '../cover-page-generator/CoverPageGeneratorPa
 import MessMealTrackerPage from './MessMealTrackerPage';
 import BharaKoto from './BharaKoto';
 import './DailyLifePage.css';
-import '../../components/PageHero.css';
 import './daily-life-tokens.css';
 
 const TABS = [
   { id: 'exam-checklist',       label: 'Exam Checklist',      icon: ClipboardCheck, color: 'amber', desc: 'Exam prep'          },
   { id: 'cover-page-generator', label: 'Cover Page',          icon: NotebookPen,    color: 'amber', desc: 'Generate cover page'},
-  { id: 'money-tracker',        label: 'TiyaHodeJargoi',       icon: DollarSign,     color: 'amber', desc: 'Expenses & budget'  },
-  { id: 'mess-meal',            label: 'Mess Meal',           icon: UtensilsCrossed,color: 'amber', desc: 'Meal planner'       },
   { id: 'bhara-koto',           label: 'Bhara Koto',          icon: Banknote,       color: 'amber', desc: 'Fare estimator'     },
+  { id: 'money-tracker',        label: 'TiyaHodeJargoi',      icon: DollarSign,     color: 'amber', desc: 'Expenses & budget'  },
+  { id: 'mess-meal',            label: 'Mess Meal',           icon: UtensilsCrossed,color: 'amber', desc: 'Meal planner'       },
 ];
 
 const STORAGE_KEY = 'daily-life-active-tab';
 
 export default function DailyLifePage() {
   const [activeTab, setActiveTab] = useState(
-    () => localStorage.getItem(STORAGE_KEY) || 'money-tracker'
+    () => localStorage.getItem(STORAGE_KEY) || 'exam-checklist'
   );
 
   const handleTabChange = (tab) => {
@@ -43,37 +42,43 @@ export default function DailyLifePage() {
 
   return (
     <div className="daily-life-page animate-fadeIn">
-      {/* ── Hero ── */}
-      <header className="page-hero">
-        <div className="page-hero-content">
-          <div className="page-hero-title-row">
-            <div className="page-hero-icon">
-              <Home size={24} />
-            </div>
-            <div>
-              <h1 className="page-hero-title">
-                <span className="page-hero-title-highlight">Daily Life</span>
-              </h1>
-              <p className="page-hero-subtitle">
-                Manage finances, prep for exams, and generate cover pages.
-              </p>
-            </div>
+
+      {/* ── 1. Hero box (own card, matches dashboard hero) ── */}
+      <header className="dl-hero">
+        <div className="dl-hero-content">
+          <div className="dl-hero-eyebrow">
+            <span className="dl-hero-period-icon">
+              <Home size={16} />
+            </span>
+            <span className="dl-hero-date-label">
+              Daily essentials · tools hub
+            </span>
           </div>
+          <h1 className="dl-hero-title">
+            Daily<span className="dl-hero-name"> Life</span>
+          </h1>
+          <p className="dl-hero-subtitle">
+            Exam prep, cover pages, fare estimates, budget tracking and meal planning — all in one place.
+          </p>
         </div>
       </header>
 
-      {/* ── Glider Tabs ── */}
-      <GliderTabs
-        tabs={TABS}
-        activeTab={activeTab}
-        onChange={handleTabChange}
-        variant="dashboard"
-        compact
-      />
+      {/* ── 2. Glider tabs bar (own card) ── */}
+      <div className="glass-card-static dl-tabs-card">
+        <GliderTabs
+          tabs={TABS}
+          activeTab={activeTab}
+          onChange={handleTabChange}
+          variant="dashboard"
+          compact
+        />
+      </div>
 
-      {/* ── Tab Content ── */}
-      <div className="daily-life-tab-content" key={activeTab}>
-        {renderTab()}
+      {/* ── 3. Main content box (own card) ── */}
+      <div className="dl-content-card" key={activeTab}>
+        <div className="daily-life-tab-content">
+          {renderTab()}
+        </div>
       </div>
     </div>
   );

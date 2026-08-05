@@ -13,11 +13,11 @@ const POSTS_KEY = 'aust-buzz-posts';
 const VOTES_KEY = 'aust-buzz-votes'; // { [postOrCommentId]: 1 | -1 }
 
 const CHANNELS = [
-  { id: 'general',    label: 'General',    color: '#f59e0b' },
-  { id: 'academic',   label: 'Academic',   color: '#3b82f6' },
-  { id: 'confession', label: 'Confession', color: '#a855f7' },
-  { id: 'campus',     label: 'Campus',     color: '#10b981' },
-  { id: 'memes',      label: 'Memes',      color: '#f43f5e' },
+  { id: 'general',    label: 'General' },
+  { id: 'academic',   label: 'Academic' },
+  { id: 'confession', label: 'Confession' },
+  { id: 'campus',     label: 'Campus' },
+  { id: 'memes',      label: 'Memes' },
 ];
 
 const channelMeta = (id) => CHANNELS.find((c) => c.id === id) || CHANNELS[0];
@@ -180,7 +180,6 @@ export default function AustedditPage() {
               key={c.id}
               type="button"
               className={`buzz-channel-chip ${channel === c.id ? 'active' : ''}`}
-              style={channel === c.id ? { borderColor: c.color, background: c.color + '20', color: c.color } : undefined}
               onClick={() => setChannel(c.id)}
             >
               <Hash size={12} /> {c.label}
@@ -275,7 +274,7 @@ export default function AustedditPage() {
               {/* Post content */}
               <div className="buzz-post-main">
                 <div className="buzz-post-meta">
-                  <span className="buzz-post-channel" style={{ background: meta.color + '20', color: meta.color }}>
+                  <span className="buzz-post-channel">
                     <Hash size={11} /> {meta.label}
                   </span>
                   <span className="buzz-post-author">{post.author}</span>

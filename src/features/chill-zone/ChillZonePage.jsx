@@ -9,12 +9,13 @@ import MediaTracker from './tabs/MediaTracker';
 import './ChillZonePage.css';
 import '../../components/PageHero.css';
 
+// All tabs share the single brand accent (gold) — no per-category color rotation.
 const TABS = [
-  { id: 'organizing',  label: 'Organizing Area',  icon: LayoutGrid,             color: 'blue',   desc: 'Plan & organize'  },
-  { id: 'media',       label: 'Media Tracker',    icon: Film,                   color: 'cyan',   desc: 'Movies & more'    },
-  { id: 'rumour',      label: 'Rumour or Real',   icon: MessageCircleQuestion,  color: 'rose',   desc: 'Fact or fiction'  },
-  { id: 'trivia',      label: 'Trivia',           icon: Brain,                  color: 'purple', desc: 'Test your brain'  },
-  { id: 'gaming',      label: 'Gaming Zone',      icon: Gamepad2,               color: 'emerald',desc: 'Mini games'       },
+  { id: 'organizing',  label: 'Organizing Area',  icon: LayoutGrid,             color: 'amber', desc: 'Plan & organize'  },
+  { id: 'media',       label: 'Media Tracker',    icon: Film,                   color: 'amber', desc: 'Movies & more'    },
+  { id: 'rumour',      label: 'Rumour or Real',   icon: MessageCircleQuestion,  color: 'amber', desc: 'Fact or fiction'  },
+  { id: 'trivia',      label: 'Trivia',           icon: Brain,                  color: 'amber', desc: 'Test your brain'  },
+  { id: 'gaming',      label: 'Gaming Zone',      icon: Gamepad2,               color: 'amber', desc: 'Mini games'       },
 ];
 
 const STORAGE_KEY = 'chill-zone-active-tab';
@@ -42,37 +43,43 @@ export default function ChillZonePage() {
 
   return (
     <div className="chill-page animate-fadeIn">
-      {/* ── Hero ── */}
-      <header className="page-hero">
-        <div className="page-hero-content">
-          <div className="page-hero-title-row">
-            <div className="page-hero-icon">
-              <Coffee size={24} />
-            </div>
-            <div>
-              <h1 className="page-hero-title">
-                <span className="page-hero-title-highlight">DownTime</span>
-              </h1>
-              <p className="page-hero-subtitle">
-                Take a break — organize, debate rumours, test trivia, and game with fellow AUSTians.
-              </p>
-            </div>
+
+      {/* ── 1. Hero box (own card) ── */}
+      <header className="cz-hero">
+        <div className="cz-hero-content">
+          <div className="cz-hero-eyebrow">
+            <span className="cz-hero-period-icon">
+              <Coffee size={16} />
+            </span>
+            <span className="cz-hero-date-label">
+              Take a break
+            </span>
           </div>
+          <h1 className="cz-hero-title">
+            Down<span className="cz-hero-name">Time</span>
+          </h1>
+          <p className="cz-hero-subtitle">
+            Organize, debate rumours, test trivia, and game with fellow AUSTians.
+          </p>
         </div>
       </header>
 
-      {/* ── Glider Tabs ── */}
-      <GliderTabs
-        tabs={TABS}
-        activeTab={activeTab}
-        onChange={handleTabChange}
-        variant="dashboard"
-        compact
-      />
+      {/* ── 2. Glider tabs bar (own card) ── */}
+      <div className="glass-card-static cz-tabs-card">
+        <GliderTabs
+          tabs={TABS}
+          activeTab={activeTab}
+          onChange={handleTabChange}
+          variant="dashboard"
+          compact
+        />
+      </div>
 
-      {/* ── Tab Content ── */}
-      <div className="chill-tab-content" key={activeTab}>
-        {renderTab()}
+      {/* ── 3. Main content box (own card) ── */}
+      <div className="cz-content-card" key={activeTab}>
+        <div className="chill-tab-content">
+          {renderTab()}
+        </div>
       </div>
     </div>
   );
