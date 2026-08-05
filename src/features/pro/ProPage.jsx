@@ -88,8 +88,8 @@ const PLANS = [
   },
 ];
 
-// ─── Feature Matrix ───
-const FEATURE_MATRIX = [
+// ─── Feature Comparison Data ───
+const COMPARISON_FEATURES = [
   {
     category: 'Core Experience',
     features: [
