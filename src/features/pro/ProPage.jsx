@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Sparkles, Check, X, Crown, Star, Zap,
-  ArrowRight, Gift, Rocket, Shield, Infinity as InfinityIcon,
-  BarChart3, Archive, Brain, Palette, Lock, FileDown,
-  Terminal, Code, Database, Cloud, Users, Activity,
-  ChevronDown, ChevronUp, MonitorSmartphone,
+  ArrowRight, Gift, Shield, Infinity as InfinityIcon,
+  BarChart3, Archive, Brain, Palette,
+  Cloud, Users, Activity,
+  ChevronDown,
 } from 'lucide-react';
 import './ProPage.css';
 
@@ -264,12 +264,12 @@ function useReveal(ref) {
 }
 
 // ─── 3D Tilt Card ───
-function TiltCard({ className, children, maxTilt = 6 }) {
+function TiltCard({ className, children, maxTilt = 6, deckIndex, onClick, isTop = true }) {
   const ref = useRef(null);
 
   const handleMove = (e) => {
     const el = ref.current;
-    if (!el) return;
+    if (!el || !isTop) return; // tilt only the front card
     const rect = el.getBoundingClientRect();
     const px = (e.clientX - rect.left) / rect.width;
     const py = (e.clientY - rect.top) / rect.height;
@@ -294,282 +294,13 @@ function TiltCard({ className, children, maxTilt = 6 }) {
       className={`pro-tilt ${className || ''}`}
       onMouseMove={handleMove}
       onMouseLeave={handleLeave}
-      style={{ '--px': 0.5, '--py': 0.5, '--rx': '0deg', '--ry': '0deg' }}
+      onClick={onClick}
+      style={{ '--px': 0.5, '--py': 0.5, '--rx': '0deg', '--ry': '0deg', '--deck': deckIndex }}
     >
       {children}
     </div>
   );
 }
-
-// ─── Terminal Demo Widget ───
-function TerminalDemo() {
-  const [lines, setLines] = useState([]);
-  const [lineIndex, setLineIndex] = useState(0);
-  const [inputValue, setInputValue] = useState('');
-  const terminalLines = [
-    '$ austedwise --analyze --semester 2',
-    '> Fetching grade data...',
-    '> Processing 4 courses...',
-    '> Predicted CGPA: 3.82 (+0.18)',
-    '> Recommendations:',
-    '  • CSE-210: Focus on midterm (current: 72%)',
-    '  • MAT-220: Assignment due next week',
-    '> Exporting report to vault...',
-    '$ _',
-  ];
-
-  useEffect(() => {
-    if (lineIndex < terminalLines.length) {
-      const timer = setTimeout(() => {
-        setLines((prev) => [...prev, terminalLines[lineIndex]]);
-        setLineIndex((prev) => prev + 1);
-      }, 250 + Math.random() * 250);
-      return () => clearTimeout(timer);
-    }
-  }, [lineIndex]);
-
-  return (
-    <div className="pro-demo pro-demo-terminal">
-      <div className="pro-demo-label">
-        <Code size={14} />
-        <span>Live Preview · AI Analytics</span>
-      </div>
-      <div className="pro-terminal">
-        <div className="pro-terminal-header">
-          <span className="pro-terminal-dot dot-red" />
-          <span className="pro-terminal-dot dot-amber" />
-          <span className="pro-terminal-dot dot-emerald" />
-          <span className="pro-terminal-title">austedwise-pro</span>
-        </div>
-        <div className="pro-terminal-body">
-          {lines.map((line, i) => (
-            <div
-              key={i}
-              className={`pro-terminal-line ${line.includes('Predicted') ? 'success' : ''} ${
-                line.includes('Recommendations') ? 'highlight' : ''
-              }`}
-            >
-              {line}
-            </div>
-          ))}
-          <div className="pro-terminal-input-line">
-            <span className="pro-terminal-prompt">$</span>
-            <input
-              type="text"
-              className="pro-terminal-input"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Type a command..."
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Vault Storage Demo ───
-function VaultDemo() {
-  const [selected, setSelected] = useState('pro');
-
-  const plans = [
-    { id: 'free', name: 'Node', size: '500MB', used: 85, color: 'var(--accent-amber)' },
-    { id: 'pro', name: 'Helix', size: '5GB', used: 12, color: 'var(--accent-emerald)' },
-    { id: 'apex', name: 'Apex', size: '∞', used: 0, color: 'var(--accent-cyan)' },
-  ];
-
-  const current = plans.find((p) => p.id === selected);
-
-  return (
-    <div className="pro-demo pro-demo-vault">
-      <div className="pro-demo-label">
-        <Archive size={14} />
-        <span>Demo · Vault Storage</span>
-      </div>
-      <div className="pro-vault-grid">
-        <div className="pro-vault-bar">
-          <div className="pro-vault-fill" style={{ width: `${current.used}%`, background: current.color }} />
-        </div>
-        <div className="pro-vault-info">
-          <span className="pro-vault-size">{current.size} total</span>
-          <span className="pro-vault-used">{current.used}% used</span>
-        </div>
-      </div>
-      <div className="pro-vault-switcher">
-        {plans.map((p) => (
-          <button
-            key={p.id}
-            className={`pro-vault-btn ${selected === p.id ? 'active' : ''}`}
-            onClick={() => setSelected(p.id)}
-            style={{
-              '--btn-color': p.color,
-              '--btn-bg': selected === p.id ? p.color : 'transparent',
-              '--btn-text': selected === p.id ? 'var(--text-primary)' : p.color,
-            }}
-          >
-            {p.name}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── Savings Calculator ───
-function SavingsCalc() {
-  const [billing, setBilling] = useState('yearly');
-  const [animateKey, setAnimateKey] = useState(0);
-
-  const calculate = () => {
-    if (billing === 'monthly') {
-      return { perMonth: 50, perYear: 600, saved: 0, perDay: 1.67 };
-    }
-    return { perMonth: 40, perYear: 480, saved: 120, perDay: 1.33 };
-  };
-
-  const { perMonth, perYear, saved, perDay } = calculate();
-
-  useEffect(() => {
-    setAnimateKey((prev) => prev + 1);
-  }, [billing]);
-
-  return (
-    <div className="pro-demo pro-demo-savings">
-      <div className="pro-demo-label">
-        <Activity size={14} />
-        <span>Demo · Savings Calculator</span>
-      </div>
-      <div className="pro-savings-content">
-        <div className="pro-savings-toggle">
-          <button
-            className={`${billing === 'monthly' ? 'active' : ''}`}
-            onClick={() => setBilling('monthly')}
-          >
-            Monthly
-          </button>
-          <button
-            className={`${billing === 'yearly' ? 'active' : ''}`}
-            onClick={() => setBilling('yearly')}
-          >
-            Yearly
-          </button>
-        </div>
-
-        <div className="pro-savings-grid">
-          <div className="pro-savings-stat">
-            <span className="pro-savings-label">Per Month</span>
-            <span className="pro-savings-value">৳{perMonth}</span>
-          </div>
-          <div className="pro-savings-stat">
-            <span className="pro-savings-label">Per Year</span>
-            <span className="pro-savings-value">৳{perYear}</span>
-          </div>
-          <div className="pro-savings-stat highlight">
-            <span className="pro-savings-label">Per Day</span>
-            <span className="pro-savings-value" key={animateKey}>
-              ৳{perDay.toFixed(2)}
-            </span>
-          </div>
-        </div>
-
-        {saved > 0 && (
-          <div className="pro-savings-badge">
-            Save ৳{saved} with yearly billing
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Export Demo ───
-function ExportDemo() {
-  const [format, setFormat] = useState('PDF');
-
-  const handleExport = () => {
-    const formats = ['PDF', 'Excel', 'CSV'];
-    const next = formats[(formats.indexOf(format) + 1) % formats.length];
-    setFormat(next);
-  };
-
-  return (
-    <div className="pro-demo pro-demo-export">
-      <div className="pro-demo-label">
-        <FileDown size={14} />
-        <span>Demo · Data Export</span>
-      </div>
-      <div className="pro-export-screen">
-        <div className="pro-export-row">
-          <span className="pro-export-file">cgpa_report.{format.toLowerCase()}</span>
-          <span className="pro-export-size">2.4 MB</span>
-        </div>
-        <div className="pro-export-row">
-          <span className="pro-export-file">routine.{format.toLowerCase()}</span>
-          <span className="pro-export-size">1.1 MB</span>
-        </div>
-        <div className="pro-export-row">
-          <span className="pro-export-file">vault_summary.{format.toLowerCase()}</span>
-          <span className="pro-export-size">890 KB</span>
-        </div>
-      </div>
-      <button className="pro-export-btn" onClick={handleExport}>
-        <FileDown size={14} />
-        Export as {format}
-      </button>
-    </div>
-  );
-}
-
-// ─── Theme Showcase ──
-function ThemeShowcase() {
-  const themes = [
-    { name: 'Nexus', desc: 'Command center', color: 'var(--accent-emerald)' },
-    { name: 'Cyberpunk', desc: 'Neon terminal', color: 'var(--accent-cyan)' },
-    { name: 'Art Deco', desc: 'Gatsby gold', color: 'var(--accent-amber)' },
-    { name: 'Bitcoin DeFi', desc: 'Blockchain orange', color: 'var(--accent-orange)' },
-    { name: 'Midnight', desc: 'Cool slate', color: 'var(--accent-cyan)' },
-    { name: 'Poster', desc: 'Vermillion pop', color: 'var(--accent-rose)' },
-  ];
-  const [hovered, setHovered] = useState(null);
-
-  return (
-    <div className="pro-demo pro-demo-themes">
-      <div className="pro-demo-label">
-        <Palette size={14} />
-        <span>Demo · Premium Themes</span>
-      </div>
-      <div className="pro-theme-showcase">
-        <div className="pro-theme-preview">
-          <div
-            className="pro-theme-swatch"
-            style={{ background: hovered !== null ? themes[hovered].color : 'var(--accent-amber)' }}
-          />
-          <div className="pro-theme-name">
-            {hovered !== null ? themes[hovered].name : 'Choose a theme'}
-          </div>
-          <div className="pro-theme-desc">
-            {hovered !== null ? themes[hovered].desc : '6 exclusive themes wait for you'}
-          </div>
-        </div>
-        <div className="pro-theme-list">
-          {themes.map((theme, i) => (
-            <div
-              key={theme.name}
-              className={`pro-theme-item ${hovered === i ? 'active' : ''}`}
-              onMouseEnter={() => setHovered(i)}
-              onMouseLeave={() => setHovered(null)}
-            >
-              <div className="pro-theme-item-swatch" style={{ background: theme.color }} />
-              <span className="pro-theme-item-name">{theme.name}</span>
-              <Lock size={11} className="pro-theme-item-lock" />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── FAQ Accordion ───
 function FaqAccordion() {
   const [openId, setOpenId] = useState(null);
@@ -626,7 +357,7 @@ function TestimonialList() {
 }
 
 // ─── Pricing Card ───
-function PricingCard({ plan, billing, isCurrent, onSelect }) {
+function PricingCard({ plan, billing, isCurrent, onSelect, isTop, deckIndex, onBringToFront }) {
   const Icon = plan.icon;
   const activePrice = billing === 'yearly' ? plan.price.yearly : plan.price.monthly;
   const originalPrice = plan.originalPrice
@@ -637,8 +368,32 @@ function PricingCard({ plan, billing, isCurrent, onSelect }) {
 
   const isFree = plan.id === 'free';
 
+  // Clicking a stacked (non-top) card brings it to the front.
+  // The front card is only cycled via its grip handle or the deck arrows.
+  const handleBodyClick = () => {
+    if (!isTop) onBringToFront();
+  };
+
   return (
-    <TiltCard className={`pro-card ${plan.featured ? 'featured' : ''} ${plan.iconClass}`}>
+    <TiltCard
+      className={`pro-card ${plan.featured ? 'featured' : ''} ${plan.iconClass} ${isTop ? 'top' : ''}`}
+      deckIndex={deckIndex}
+      onClick={handleBodyClick}
+    >
+      {isTop && (
+        <button
+          className="pro-card-grip"
+          aria-label={`Move ${plan.name} to the back`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onBringToFront();
+          }}
+        >
+          <span className="pro-card-grip-line" />
+          <span className="pro-card-grip-line" />
+          <span className="pro-card-grip-line" />
+        </button>
+      )}
       {plan.badge && (
         <div className="pro-card-badge">
           <Gift size={10} style={{ marginRight: 4 }} />
@@ -704,7 +459,15 @@ function PricingCard({ plan, billing, isCurrent, onSelect }) {
       <div className="pro-card-cta">
         <button
           className={`pro-cta-btn ${plan.ctaClass}`}
-          onClick={() => onSelect(plan.id)}
+          onClick={(e) => {
+            if (!isTop) {
+              // Not in front yet — bring to front instead of acting on a hidden card
+              e.stopPropagation();
+              onBringToFront();
+              return;
+            }
+            onSelect(plan.id);
+          }}
           disabled={isCurrent}
           style={isCurrent ? { opacity: 0.7, cursor: 'default' } : {}}
         >
@@ -750,22 +513,23 @@ function StatCounter({ icon: Icon, value, label, suffix = '' }) {
 
 // ─── Main Page ───
 export default function ProPage() {
-  const [billing, setBilling] = useState('yearly');
+  // Fixed yearly billing — the toggle was removed; prices show the yearly rate
+  const billing = 'yearly';
   const [showModal, setShowModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [upgradeState, setUpgradeState] = useState('pick');
   const [currentPlan, setCurrentPlan] = useState(() => localStorage.getItem('austwise_plan') || 'free');
+  // Card deck order — PLANS[id] in front-to-back stacking order
+  const [deckOrder, setDeckOrder] = useState(() => PLANS.map((p) => p.id));
 
   const heroRef = useRef(null);
   const pricingRef = useRef(null);
-  const featuresRef = useRef(null);
   const benefitsRef = useRef(null);
   const compareRef = useRef(null);
   const faqRef = useRef(null);
 
   useReveal(heroRef);
   useReveal(pricingRef);
-  useReveal(featuresRef);
   useReveal(benefitsRef);
   useReveal(compareRef);
   useReveal(faqRef);
@@ -799,6 +563,26 @@ export default function ProPage() {
     if (value === false) return <X size={14} className="cross" />;
     return <span className="highlight">{value}</span>;
   };
+
+  // Rotate the deck: move card at given index to the back (front card advances).
+  // Bring a specific card to the front by cycling until it is first.
+  const handleMoveCard = (planId) => {
+    const from = deckOrder.indexOf(planId);
+    if (from === -1) return;
+    const idOne = deckOrder[0];
+    if (planId === idOne) {
+      // Front card moved away → send it to the back, next comes to front
+      setDeckOrder([...deckOrder.slice(1), idOne]);
+    } else {
+      // Pull the chosen card to the front, preserving the others' relative order
+      setDeckOrder([planId, ...deckOrder.filter((id) => id !== planId)]);
+    }
+  };
+
+  const prevCard = () => handleMoveCard(deckOrder[deckOrder.length - 1]);
+  const nextCard = () => handleMoveCard(deckOrder[0]);
+
+  const deckPlans = deckOrder.map((id) => PLANS.find((p) => p.id === id)).filter(Boolean);
 
   return (
     <div className="pro-page">
@@ -858,77 +642,45 @@ export default function ProPage() {
         </div>
       </section>
 
-      {/* ═══════════ BILLING TOGGLE ═══════════ */}
-      <div className="pro-billing-row" id="pricing">
-        <div className="pro-billing-toggle" role="group" aria-label="Billing period">
+      {/* ═══════════ PRICING DECK ═══════════ */}
+      <div ref={pricingRef} className="pro-deck-wrap pro-reveal" id="pricing">
+        <div className="pro-deck" role="group" aria-label="Plans">
+          {deckPlans.map((plan, i) => (
+            <PricingCard
+              key={plan.id}
+              plan={plan}
+              billing={billing}
+              isCurrent={currentPlan === plan.id}
+              isTop={i === 0}
+              deckIndex={i}
+              onSelect={handleSelectPlan}
+              onBringToFront={() => handleMoveCard(plan.id)}
+            />
+          ))}
+        </div>
+
+        {/* Deck controls */}
+        <div className="pro-deck-controls">
           <button
-            className={`pro-billing-btn ${billing === 'monthly' ? 'active' : ''}`}
-            onClick={() => setBilling('monthly')}
+            className="pro-deck-nav"
+            aria-label="Previous plan"
+            onClick={prevCard}
           >
-            Monthly
+            <ArrowRight size={18} className="flip-x" />
           </button>
+          <div className="pro-deck-caption">
+            <span className="pro-deck-name">{deckPlans[0].name}</span>
+            <span className="pro-deck-hint">Move the front card to cycle</span>
+          </div>
           <button
-            className={`pro-billing-btn ${billing === 'yearly' ? 'active' : ''}`}
-            onClick={() => setBilling('yearly')}
+            className="pro-deck-nav"
+            aria-label="Next plan"
+            onClick={nextCard}
           >
-            Yearly
-            <span className="pro-billing-save">Save 20%</span>
+            <ArrowRight size={18} />
           </button>
-          <span className={`pro-billing-thumb ${billing === 'yearly' ? 'right' : ''}`} aria-hidden="true" />
         </div>
-        <span className="pro-billing-note">
-          {billing === 'yearly'
-            ? 'Yearly billing — save ৳160/year on Helix'
-            : 'Switch to yearly and save 20%'}
-        </span>
       </div>
-
-      {/* ═══════════ PRICING CARDS ═══════════ */}
-      <div ref={pricingRef} className="pro-pricing-grid pro-reveal">
-        {PLANS.map((plan) => (
-          <PricingCard
-            key={plan.id}
-            plan={plan}
-            billing={billing}
-            isCurrent={currentPlan === plan.id}
-            onSelect={handleSelectPlan}
-          />
-        ))}
-      </div>
-
-      {/* ═══════════ INTERACTIVE DEMOS ═══════════ */}
-      <section ref={featuresRef} className="pro-demos-section pro-reveal">
-        <div className="pro-section-header">
-          <div className="pro-section-badge">
-            <Sparkles size={12} />
-            <span>Experience Premium</span>
-          </div>
-          <h2 className="pro-section-title">
-            Live <span className="pro-section-highlight">Feature Demos</span>
-          </h2>
-          <p className="pro-section-desc">
-            Interact with these live previews — no subscription required.
-          </p>
-        </div>
-
-        <div className="pro-demos-grid">
-          <div className="pro-demo-card">
-            <TerminalDemo />
-          </div>
-          <div className="pro-demo-card">
-            <VaultDemo />
-          </div>
-          <div className="pro-demo-card">
-            <SavingsCalc />
-          </div>
-          <div className="pro-demo-card">
-            <ExportDemo />
-          </div>
-          <div className="pro-demo-card">
-            <ThemeShowcase />
-          </div>
-        </div>
-      </section>
 
       {/* ═══════════ WHY PREMIUM ═══════════ */}
       <section ref={benefitsRef} className="pro-benefits-section pro-reveal">
