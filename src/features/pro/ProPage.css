@@ -158,47 +158,7 @@
   line-height: 1.6;
 }
 
-/* ─── Hero Stats ─── */
-.pro-hero-stats {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 36px;
-  margin: 28px auto 20px;
-  flex-wrap: wrap;
-}
-
-.pro-stat-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: var(--fs-sm);
-  color: var(--text-tertiary);
-}
-
-.pro-stat-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-md);
-  background: var(--accent-amber-glow);
-  color: var(--accent-amber);
-}
-
-.pro-stat-value {
-  font-size: var(--fs-xl);
-  font-weight: var(--fw-bold);
-  color: var(--text-primary);
-  font-variant-numeric: tabular-nums;
-}
-
-.pro-stat-label {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
+/* (hero stats removed — replaced by feature-badge row in Design System Polish block) */
 
 /* ─── Hero Actions ─── */
 .pro-hero-actions {
@@ -686,6 +646,219 @@
 }
 .pro-card-amount .period {
   font-size: 0.75rem;
+}
+
+/* ════════════════════════════════════════════════════════
+   AUSTWise Pro — Pricing Card Interior
+   Feature rows, CTA buttons, price extras, card typography
+   ════════════════════════════════════════════════════════ */
+
+/* ─── Card typography ─── */
+.pro-card-name {
+  font-size: var(--fs-xl);
+  letter-spacing: -0.02em;
+}
+
+.pro-card.featured .pro-card-name {
+  background: linear-gradient(90deg, var(--accent-amber), var(--accent-orange));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.pro-card-subtitle {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.pro-card-amount-num {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+/* ─── Feature list — row boxes ─── */
+.pro-card-features {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 24px 16px;
+  flex: 1;
+}
+
+.pro-feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 5px 8px;
+  border-radius: var(--radius-md);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  line-height: 1.45;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  animation: proFeatureIn 0.4s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+@keyframes proFeatureIn {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.pro-feature-item:hover {
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
+
+.pro-feature-item.disabled {
+  opacity: 0.38;
+}
+
+.pro-feature-item.disabled:hover {
+  opacity: 0.55;
+  background: transparent;
+}
+
+.pro-feature-check {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--accent-emerald);
+}
+
+.pro-feature-check.plus {
+  color: var(--accent-amber);
+  filter: drop-shadow(0 0 4px var(--accent-amber-glow));
+}
+
+.pro-feature-check.muted {
+  color: var(--text-tertiary);
+  opacity: 0.6;
+}
+
+.pro-feature-highlight {
+  color: var(--accent-amber);
+}
+
+/* ─── Price extras ─── */
+.pro-card-original-price {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.pro-strike {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in srgb, var(--text-tertiary) 55%, transparent);
+}
+
+.pro-save-pill {
+  font-size: 10px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--accent-emerald-glow);
+  color: var(--accent-emerald);
+  animation: proSavePulse 2s ease-in-out infinite;
+}
+
+@keyframes proSavePulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.06); }
+}
+
+.pro-card-perday {
+  margin-top: 6px;
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* ─── CTA button — box ─── */
+.pro-card-cta {
+  padding: 4px 24px 24px;
+  margin-top: auto;
+}
+
+.pro-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  font-family: var(--font-primary);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.01em;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: transform var(--transition-base), box-shadow var(--transition-base),
+              background var(--transition-base), border-color var(--transition-base), color var(--transition-base);
+  position: relative;
+  overflow: hidden;
+}
+
+.pro-cta-btn:focus-visible {
+  outline: 2px solid var(--accent-amber);
+  outline-offset: 2px;
+}
+
+.pro-cta-btn:active {
+  transform: scale(0.98);
+}
+
+.pro-cta-btn:disabled {
+  opacity: 0.62;
+  cursor: default;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Node — foundation */
+.pro-cta-btn.node {
+  background: var(--bg-input);
+  border-color: var(--border-primary);
+}
+
+.pro-cta-btn.node:hover:not(:disabled) {
+  border-color: var(--accent-amber);
+  color: var(--accent-amber);
+  background: var(--accent-amber-glow);
+}
+
+/* Helix — most popular, amber */
+.pro-cta-btn.helix {
+  background: linear-gradient(135deg, var(--accent-amber), var(--accent-orange));
+  border-color: color-mix(in srgb, var(--accent-amber) 40%, transparent);
+  color: var(--text-inverse);
+  box-shadow: 0 6px 18px -6px color-mix(in srgb, var(--accent-amber) 45%, transparent);
+}
+
+.pro-cta-btn.helix:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px -8px color-mix(in srgb, var(--accent-amber) 55%, transparent);
+}
+
+/* Apex — full suite, emerald */
+.pro-cta-btn.apex {
+  background: linear-gradient(135deg, var(--accent-emerald), var(--accent-cyan));
+  border-color: color-mix(in srgb, var(--accent-emerald) 40%, transparent);
+  color: var(--text-inverse);
+  box-shadow: 0 6px 18px -6px color-mix(in srgb, var(--accent-emerald) 45%, transparent);
+}
+
+.pro-cta-btn.apex:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px -8px color-mix(in srgb, var(--accent-emerald) 55%, transparent);
 }
 
 /* ─── Benefits Section ─── */
@@ -1194,9 +1367,6 @@
   .pro-hero {
     padding: 40px 24px 36px;
   }
-  .pro-hero-stats {
-    gap: 24px;
-  }
   .pro-cta-card {
     padding: 36px 24px;
   }
@@ -1212,9 +1382,6 @@
   }
   .pro-compare-cell {
     padding: 8px 10px;
-  }
-  .pro-hero-stats {
-    gap: 16px;
   }
   .pro-hero-actions {
     flex-direction: column;
@@ -1241,8 +1408,643 @@
   .pro-billing-thumb { transition: none; }
   .pro-card-shine { animation: none; }
   .pro-card-badge { animation: none; }
+  .pro-feature-item { animation: none; }
   .pro-save-pill { animation: none; }
   .pro-reco-pill { animation: none; }
   .pro-spinner-ring { animation: none; border-top-color: var(--accent-amber); }
   .pro-loading-bar span { animation: none; width: 60%; }
+}
+
+/* ════════════════════════════════════════════════════════
+   AUSTWise Pro — Premium Enhancement Layer
+   Adaptive to every theme via CSS variables + color-mix()
+   ════════════════════════════════════════════════════════ */
+
+.pro-page {
+  gap: 56px;
+  padding-top: 40px;
+}
+
+/* ─── Section headers — gradient rule + animated highlight ─── */
+.pro-section-header { position: relative; }
+
+.pro-section-header::after {
+  content: '';
+  display: block;
+  width: 72px;
+  height: 3px;
+  margin: 16px auto 0;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, transparent, var(--accent-amber), var(--accent-orange), transparent);
+  opacity: 0.75;
+}
+
+.pro-section-highlight {
+  background: linear-gradient(90deg, var(--accent-amber), var(--accent-orange) 50%, var(--accent-amber) 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: proGradientShift 6s ease-in-out infinite;
+}
+
+.pro-section-badge,
+.pro-hero-badge {
+  box-shadow: 0 0 18px color-mix(in srgb, var(--accent-amber) 22%, transparent);
+}
+
+@keyframes proGradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+/* ─── Hero — floating aurora orb + shimmering title ─── */
+.pro-hero::after {
+  content: '';
+  position: absolute;
+  top: -140px;
+  right: -120px;
+  width: 440px;
+  height: 440px;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent-amber) 20%, transparent), transparent 65%);
+  filter: blur(24px);
+  pointer-events: none;
+  animation: proOrbFloat 9s ease-in-out infinite;
+}
+
+@keyframes proOrbFloat {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(-26px, 24px, 0) scale(1.07); }
+}
+
+.pro-hero-highlight {
+  background: linear-gradient(120deg, var(--accent-amber), var(--accent-orange) 45%, var(--accent-amber) 90%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 18px color-mix(in srgb, var(--accent-amber) 30%, transparent));
+  animation: proGradientShift 5s linear infinite;
+}
+
+.pro-hero-subtitle {
+  font-size: var(--fs-md);
+  letter-spacing: 0.01em;
+}
+
+.pro-hero-chip {
+  backdrop-filter: blur(6px);
+  background: color-mix(in srgb, var(--bg-card) 72%, transparent);
+  border-color: color-mix(in srgb, var(--accent-amber) 18%, transparent);
+  transition: all 0.25s ease;
+}
+.pro-hero-chip:hover {
+  color: var(--accent-amber);
+  border-color: color-mix(in srgb, var(--accent-amber) 42%, transparent);
+  transform: translateY(-2px);
+}
+
+/* ─── Pricing deck ─── */
+.pro-deck-name {
+  text-shadow: 0 0 14px color-mix(in srgb, var(--accent-amber) 35%, transparent);
+  letter-spacing: 0.02em;
+}
+
+.pro-deck .pro-tilt:first-child {
+  box-shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.6),
+              0 0 44px color-mix(in srgb, var(--accent-amber) 12%, transparent);
+}
+
+/* Card surface — subtle gradient + cursor-follow glare */
+.pro-card {
+  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-secondary) 100%);
+}
+.pro-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    240px circle at var(--px, 50%) var(--py, 50%),
+    color-mix(in srgb, var(--accent-amber) 9%, transparent),
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.pro-card:hover::after { opacity: 1; }
+
+.pro-card.featured {
+  animation: proCardGlowPulse 4.2s ease-in-out infinite;
+}
+.pro-card.featured:hover {
+  animation: none;
+  box-shadow: 0 0 36px color-mix(in srgb, var(--accent-amber) 18%, transparent);
+}
+
+@keyframes proCardGlowPulse {
+  0%, 100% { box-shadow: 0 18px 48px -20px rgba(0, 0, 0, 0.55),
+                         0 0 18px color-mix(in srgb, var(--accent-amber) 10%, transparent); }
+  50%      { box-shadow: 0 18px 48px -20px rgba(0, 0, 0, 0.55),
+                         0 0 32px color-mix(in srgb, var(--accent-amber) 22%, transparent); }
+}
+
+/* Price — gradient number */
+.pro-card-amount {
+  font-size: 2.4rem;
+  background: linear-gradient(180deg, var(--text-primary), var(--text-secondary));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.pro-card-amount .currency,
+.pro-card-amount .period {
+  -webkit-text-fill-color: var(--text-tertiary);
+}
+.pro-card-amount.free-amount {
+  background: linear-gradient(120deg, var(--accent-amber), var(--accent-orange));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* CTA button — gradient + shine sweep */
+.pro-btn-primary {
+  background: linear-gradient(135deg, var(--accent-amber), var(--accent-orange));
+  border: none;
+  position: relative;
+  overflow: hidden;
+}
+.pro-btn-primary::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -70%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+  transform: skewX(-20deg);
+  pointer-events: none;
+  transition: left 0.55s ease;
+}
+.pro-btn-primary:hover::after { left: 130%; }
+
+/* ─── Benefits grid — glowing icon chips + hover lift ─── */
+.pro-benefit-card {
+  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-secondary) 100%);
+}
+.pro-benefit-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 15%;
+  right: 15%;
+  height: 2px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, transparent, var(--accent-amber), transparent);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.pro-benefit-card:hover::before { opacity: 1; }
+.pro-benefit-card:hover {
+  border-color: color-mix(in srgb, var(--accent-amber) 45%, transparent);
+  box-shadow: 0 14px 44px -12px color-mix(in srgb, var(--accent-amber) 28%, transparent),
+              var(--shadow-lg);
+}
+
+.pro-benefit-icon {
+  position: relative;
+}
+.pro-benefit-icon::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 16px;
+  z-index: -1;
+  filter: blur(5px);
+  opacity: 0.55;
+  background: radial-gradient(circle, color-mix(in srgb, currentColor 22%, transparent), transparent 70%);
+}
+
+/* ─── Comparison — hover tint + slide ─── */
+.pro-compare-row:not(.header):hover {
+  background: color-mix(in srgb, var(--accent-amber) 5%, transparent);
+  transform: translateX(3px);
+}
+
+/* ─── Testimonials — quote glyph + gradient top bar ─── */
+.pro-testimonial-card {
+  position: relative;
+  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-secondary) 100%);
+}
+.pro-testimonial-card::before {
+  content: '“';
+  position: absolute;
+  top: 4px;
+  right: 16px;
+  font-size: 54px;
+  line-height: 1;
+  font-family: Georgia, serif;
+  color: color-mix(in srgb, var(--accent-amber) 25%, transparent);
+  pointer-events: none;
+}
+.pro-testimonial-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent-amber), var(--accent-orange), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.pro-testimonial-card:hover::after { opacity: 1; }
+.pro-testimonial-card:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--accent-amber) 32%, transparent);
+  box-shadow: 0 16px 44px -14px color-mix(in srgb, var(--accent-amber) 26%, transparent),
+              var(--shadow-md);
+}
+
+/* ─── Bottom CTA — breathing aurora + floating crown ─── */
+.pro-cta-card {
+  background: linear-gradient(160deg,
+    color-mix(in srgb, var(--accent-amber) 9%, var(--bg-card)) 0%,
+    var(--bg-card) 48%,
+    color-mix(in srgb, var(--accent-emerald) 7%, var(--bg-card)) 100%);
+  border-color: color-mix(in srgb, var(--accent-amber) 22%, transparent);
+}
+.pro-cta-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(560px circle at 15% 0%, color-mix(in srgb, var(--accent-amber) 12%, transparent), transparent 60%),
+    radial-gradient(480px circle at 90% 100%, color-mix(in srgb, var(--accent-emerald) 10%, transparent), transparent 60%);
+  animation: proCtaBreath 6s ease-in-out infinite;
+}
+@keyframes proCtaBreath {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+.pro-cta-crown {
+  animation: proCrownFloat 3.4s ease-in-out infinite;
+}
+@keyframes proCrownFloat {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50%      { transform: translateY(-6px) rotate(4deg); }
+}
+
+/* ─── FAQ — accent glow when open ─── */
+.pro-faq-question.open {
+  color: var(--accent-amber);
+}
+.pro-faq-item:has(.pro-faq-question.open) {
+  border-color: color-mix(in srgb, var(--accent-amber) 38%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--accent-amber) 8%, transparent);
+}
+
+/* ─── Payment modal — glass + glow ─── */
+.pro-payment-overlay {
+  background: color-mix(in srgb, #000 62%, transparent);
+  backdrop-filter: blur(10px);
+}
+.pro-payment-modal {
+  background: color-mix(in srgb, var(--bg-secondary) 94%, transparent);
+  backdrop-filter: blur(16px);
+  border-color: color-mix(in srgb, var(--accent-amber) 22%, transparent);
+  box-shadow: 0 24px 80px -20px rgba(0, 0, 0, 0.7),
+              0 0 44px color-mix(in srgb, var(--accent-amber) 12%, transparent);
+}
+.pro-modal-plan.selected {
+  box-shadow: 0 0 0 1px var(--accent-amber),
+              0 8px 24px -8px color-mix(in srgb, var(--accent-amber) 32%, transparent);
+}
+
+/* ─── Reduced motion (premium layer) ─── */
+@media (prefers-reduced-motion: reduce) {
+  .pro-section-highlight,
+  .pro-hero-highlight { animation: none; }
+  .pro-section-badge,
+  .pro-hero-badge { box-shadow: none; }
+  .pro-hero::after { animation: none; }
+  .pro-hero-chip:hover { transform: none; }
+  .pro-card.featured { animation: none; }
+  .pro-btn-primary::after { transition: none; }
+  .pro-cta-card::after { animation: none; }
+  .pro-cta-crown { animation: none; }
+  .pro-compare-row:not(.header):hover { transform: none; }
+}
+
+/* ════════════════════════════════════════════════════════
+   Plans as a side-by-side grid (replaces the sticky deck)
+   ════════════════════════════════════════════════════════ */
+
+.pro-deck-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px;
+  align-items: stretch;
+  max-width: 100%;
+  perspective: none;
+}
+
+.pro-deck-grid .pro-tilt {
+  position: relative;
+  top: auto;
+  margin-bottom: 0;
+  z-index: 1;
+}
+
+/* Undo the stacked-deck dimming — every card is full brightness */
+.pro-deck-grid .pro-tilt:nth-child(n+2) { filter: none; }
+.pro-deck-grid .pro-tilt:not(:first-child):hover {
+  filter: none;
+  border-color: inherit;
+}
+
+.pro-deck-grid .pro-tilt:first-child {
+  z-index: 1;
+  cursor: default;
+}
+.pro-deck-grid .pro-tilt:first-child:active { cursor: default; }
+
+/* Grip handle & deck nav controls no longer make sense in a grid */
+.pro-card-grip { display: none; }
+.pro-deck-wrap .pro-deck-controls { display: none; }
+
+@media (max-width: 900px) {
+  .pro-deck-grid {
+    grid-template-columns: 1fr;
+    max-width: 440px;
+    gap: 16px;
+  }
+}
+
+/* ════════════════════════════════════════════════════════
+   AUSTWise Pro — "See Plans" Design System Polish
+   Hero + pricing cards aligned to the Aura dark tokens
+   ════════════════════════════════════════════════════════ */
+
+/* ─── Page backdrop — faint dot-grid texture ─── */
+.pro-page {
+  position: relative;
+}
+.pro-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--text-primary) 5%, transparent) 1px, transparent 1px);
+  background-size: 26px 26px;
+  opacity: 0.35;
+}
+
+/* ─── Hero — centered, max-width content in a glowing card ─── */
+.pro-hero {
+  max-width: 700px;
+  margin: 0 auto;
+  border-radius: var(--radius-2xl);
+  background:
+    radial-gradient(120% 90% at 50% -10%, color-mix(in srgb, var(--accent-amber) 9%, transparent) 0%, transparent 55%),
+    var(--bg-secondary);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 18%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent-amber) 6%, transparent),
+    0 24px 60px -24px color-mix(in srgb, var(--accent-amber) 14%, transparent),
+    var(--shadow-lg);
+  padding: 64px 44px 52px;
+}
+
+.pro-hero-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Pill badge — dark translucent, thin gold border, gold text */
+.pro-hero-badge {
+  background: color-mix(in srgb, var(--bg-input) 72%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 40%, transparent);
+  color: var(--accent-amber);
+  padding: 6px 16px;
+  border-radius: var(--radius-full);
+  backdrop-filter: blur(6px);
+}
+
+/* Heading — two lines: white then gold, extra-bold */
+.pro-hero-title {
+  font-size: clamp(2.1rem, 5vw, 3rem);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+
+.pro-hero-highlight {
+  background: linear-gradient(120deg, var(--accent-amber) 0%, var(--accent-orange) 60%, var(--accent-amber) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Subheading — muted, max-width, comfortable leading */
+.pro-hero-subtitle {
+  font-size: var(--fs-md);
+  color: var(--text-secondary);
+  max-width: 600px;
+  line-height: 1.7;
+  margin: 0 auto 8px;
+}
+
+/* Feature badges — icon + text, dot separators */
+.pro-hero-features {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  flex-wrap: wrap;
+  margin: 22px auto 26px;
+}
+
+.pro-hero-feature {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 16px;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+.pro-hero-feature svg {
+  color: var(--accent-amber);
+}
+.pro-hero-feature + .pro-hero-feature {
+  border-left: 1px solid var(--border-secondary);
+}
+
+/* CTA buttons */
+.pro-hero-actions {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.pro-btn-primary {
+  border-radius: var(--radius-full);
+  padding: 13px 26px;
+  font-weight: var(--fw-bold);
+  box-shadow: 0 10px 30px -10px color-mix(in srgb, var(--accent-amber) 55%, transparent);
+}
+
+.pro-btn-secondary {
+  border-radius: var(--radius-full);
+  padding: 13px 26px;
+  font-weight: var(--fw-semibold);
+  background: transparent;
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+}
+
+/* Trust pills — tiny, translucent, rounded-full */
+.pro-hero-chips {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.pro-hero-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-primary);
+  background: color-mix(in srgb, var(--bg-input) 60%, transparent);
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: var(--fw-medium);
+}
+.pro-hero-chip svg {
+  color: var(--accent-amber);
+}
+
+/* ─── Pricing cards — 3-col equal grid, dark boxes ─── */
+.pro-deck-grid {
+  gap: 24px;
+}
+
+.pro-deck-grid .pro-card {
+  background: linear-gradient(180deg, var(--bg-card) 0%, color-mix(in srgb, var(--bg-card) 88%, var(--bg-primary)) 100%);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-xl);
+  padding-top: 0;
+  overflow: hidden;
+}
+
+/* Most popular card — gold border/glow, elevated */
+.pro-card.featured {
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 55%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent-amber) 12%, transparent),
+    0 24px 60px -20px color-mix(in srgb, var(--accent-amber) 30%, transparent),
+    var(--shadow-xl);
+}
+
+/* MOST POPULAR ribbon — full-width, gold bg, dark text */
+.pro-card-badge {
+  top: 0;
+  left: 0;
+  right: 0;
+  transform: none;
+  border-radius: 0;
+  padding: 7px 12px;
+  background: linear-gradient(90deg, var(--accent-amber), var(--accent-orange));
+  color: var(--text-inverse);
+  font-size: 10px;
+  font-weight: var(--fw-black);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-shadow: none;
+  animation: none;
+}
+.pro-card.featured .pro-card-badge {
+  color: var(--text-inverse);
+}
+
+/* Card interior spacing — generous ~32px */
+.pro-card-header {
+  padding: 34px 28px 18px;
+}
+.pro-card-name {
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.02em;
+}
+.pro-card-subtitle {
+  font-size: var(--fs-sm);
+  color: var(--text-tertiary);
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-weight: var(--fw-regular);
+}
+
+/* Horizontal divider after subtitle */
+.pro-card-divider {
+  height: 1px;
+  margin: 0 28px;
+  background: linear-gradient(90deg, transparent, var(--border-primary), transparent);
+}
+
+/* Price block — relax the heavy top/bottom borders, add spacing */
+.pro-card-price {
+  padding: 20px 28px 14px;
+  border-top: none;
+  border-bottom: none;
+}
+.pro-card-amount {
+  font-size: 2.5rem;
+}
+.pro-card-amount .currency {
+  color: var(--accent-amber);
+  font-size: 1.05rem;
+}
+.pro-card-amount .period {
+  color: var(--text-tertiary);
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 900px) {
+  .pro-hero {
+    padding: 44px 24px 40px;
+  }
+}
+
+@media (max-width: 600px) {
+  .pro-hero {
+    padding: 34px 18px 32px;
+    border-radius: var(--radius-lg);
+  }
+  .pro-hero-feature {
+    padding: 0 10px;
+  }
+}
+
+/* ─── Reduced motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  .pro-hero-feature {
+    transition: none;
+  }
 }

@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Sparkles, Check, X, Crown, Star, Zap,
   ArrowRight, Gift, Shield, Infinity as InfinityIcon,
   BarChart3, Archive, Brain, Palette,
-  Cloud, Users, Activity,
+  Cloud,
   ChevronDown,
 } from 'lucide-react';
 import './ProPage.css';
@@ -207,43 +207,6 @@ const FAQ_DATA = [
   },
 ];
 
-// ─── Animated Count-up Hook ───
-function useCountUp(target, duration = 800, startOn = false) {
-  const [display, setDisplay] = useState(0);
-  const ref = useRef(null);
-  const hasRun = useRef(false);
-
-  useEffect(() => {
-    if (!startOn) return;
-    const el = ref.current;
-    if (!el || hasRun.current) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !hasRun.current) {
-          hasRun.current = true;
-          const from = 0;
-          const to = target;
-          const start = performance.now();
-          const tick = (now) => {
-            const p = Math.min((now - start) / duration, 1);
-            const eased = 1 - Math.pow(1 - p, 3);
-            setDisplay(Math.round(from + (to - from) * eased));
-            if (p < 1) requestAnimationFrame(tick);
-          };
-          requestAnimationFrame(tick);
-          observer.unobserve(el);
-        }
-      },
-      { threshold: 0.3 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [target, duration, startOn]);
-
-  return { display, ref };
-}
-
 // ─── Reveal-on-scroll Hook ───
 function useReveal(ref) {
   useEffect(() => {
@@ -371,7 +334,7 @@ function PricingCard({ plan, billing, isCurrent, onSelect, isTop, deckIndex, onB
   // Clicking a stacked (non-top) card brings it to the front.
   // The front card is only cycled via its grip handle or the deck arrows.
   const handleBodyClick = () => {
-    if (!isTop) onBringToFront();
+    if (!isTop && onBringToFront) onBringToFront();
   };
 
   return (
@@ -396,7 +359,7 @@ function PricingCard({ plan, billing, isCurrent, onSelect, isTop, deckIndex, onB
       )}
       {plan.badge && (
         <div className="pro-card-badge">
-          <Gift size={10} style={{ marginRight: 4 }} />
+          <Gift size={10} />
           {plan.badge}
         </div>
       )}
@@ -408,6 +371,8 @@ function PricingCard({ plan, billing, isCurrent, onSelect, isTop, deckIndex, onB
         <div className="pro-card-name">{plan.name}</div>
         <div className="pro-card-subtitle">{plan.subtitle}</div>
       </div>
+
+      <div className="pro-card-divider" aria-hidden="true" />
 
       <div className="pro-card-price">
         <div className={`pro-card-amount ${isFree ? 'free-amount' : ''}`}>
@@ -460,7 +425,7 @@ function PricingCard({ plan, billing, isCurrent, onSelect, isTop, deckIndex, onB
         <button
           className={`pro-cta-btn ${plan.ctaClass}`}
           onClick={(e) => {
-            if (!isTop) {
+            if (!isTop && onBringToFront) {
               // Not in front yet — bring to front instead of acting on a hidden card
               e.stopPropagation();
               onBringToFront();
@@ -493,24 +458,6 @@ function PricingCard({ plan, billing, isCurrent, onSelect, isTop, deckIndex, onB
   );
 }
 
-// ─── Stats Counter ───
-function StatCounter({ icon: Icon, value, label, suffix = '' }) {
-  const { display, ref } = useCountUp(value, 1200);
-
-  return (
-    <div ref={ref} className="pro-stat-item">
-      <div className="pro-stat-icon">
-        <Icon size={18} />
-      </div>
-      <div className="pro-stat-value">
-        {display}
-        {suffix}
-      </div>
-      <div className="pro-stat-label">{label}</div>
-    </div>
-  );
-}
-
 // ─── Main Page ───
 export default function ProPage() {
   // Fixed yearly billing — the toggle was removed; prices show the yearly rate
@@ -519,8 +466,6 @@ export default function ProPage() {
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [upgradeState, setUpgradeState] = useState('pick');
   const [currentPlan, setCurrentPlan] = useState(() => localStorage.getItem('austwise_plan') || 'free');
-  // Card deck order — PLANS[id] in front-to-back stacking order
-  const [deckOrder, setDeckOrder] = useState(() => PLANS.map((p) => p.id));
 
   const heroRef = useRef(null);
   const pricingRef = useRef(null);
@@ -564,25 +509,7 @@ export default function ProPage() {
     return <span className="highlight">{value}</span>;
   };
 
-  // Rotate the deck: move card at given index to the back (front card advances).
-  // Bring a specific card to the front by cycling until it is first.
-  const handleMoveCard = (planId) => {
-    const from = deckOrder.indexOf(planId);
-    if (from === -1) return;
-    const idOne = deckOrder[0];
-    if (planId === idOne) {
-      // Front card moved away → send it to the back, next comes to front
-      setDeckOrder([...deckOrder.slice(1), idOne]);
-    } else {
-      // Pull the chosen card to the front, preserving the others' relative order
-      setDeckOrder([planId, ...deckOrder.filter((id) => id !== planId)]);
-    }
-  };
-
-  const prevCard = () => handleMoveCard(deckOrder[deckOrder.length - 1]);
-  const nextCard = () => handleMoveCard(deckOrder[0]);
-
-  const deckPlans = deckOrder.map((id) => PLANS.find((p) => p.id === id)).filter(Boolean);
+  // Rotate helpers were removed — plans render side by side in a grid.
 
   return (
     <div className="pro-page">
@@ -607,10 +534,19 @@ export default function ProPage() {
             Built exclusively for AUST students.
           </p>
 
-          <div className="pro-hero-stats">
-            <StatCounter icon={Users} value={2400} label="Premium Users" suffix="+" />
-            <StatCounter icon={Star} value={4.9} label="User Rating" suffix="" />
-            <StatCounter icon={Activity} value={40} label="Premium Features" suffix="+" />
+          <div className="pro-hero-features">
+            <span className="pro-hero-feature">
+              <Shield size={14} />
+              <span>Built for AUST students</span>
+            </span>
+            <span className="pro-hero-feature">
+              <InfinityIcon size={14} />
+              <span>Cancel anytime</span>
+            </span>
+            <span className="pro-hero-feature">
+              <Gift size={14} />
+              <span>7-day free trial</span>
+            </span>
           </div>
 
           <div className="pro-hero-actions">
@@ -628,7 +564,7 @@ export default function ProPage() {
           <div className="pro-hero-chips">
             <span className="pro-hero-chip">
               <Shield size={12} />
-              <span>No hidden fees</span>
+              <span>Built for AUST students</span>
             </span>
             <span className="pro-hero-chip">
               <InfinityIcon size={12} />
@@ -642,45 +578,39 @@ export default function ProPage() {
         </div>
       </section>
 
-      {/* ═══════════ PRICING DECK ═══════════ */}
+      {/* ═══════════ PRICING ═══════════ */}
       <div ref={pricingRef} className="pro-deck-wrap pro-reveal" id="pricing">
-        <div className="pro-deck" role="group" aria-label="Plans">
-          {deckPlans.map((plan, i) => (
+        <div className="pro-deck pro-deck-grid" role="group" aria-label="Plans">
+          {PLANS.map((plan, i) => (
             <PricingCard
               key={plan.id}
               plan={plan}
               billing={billing}
               isCurrent={currentPlan === plan.id}
-              isTop={i === 0}
+              isTop
               deckIndex={i}
               onSelect={handleSelectPlan}
-              onBringToFront={() => handleMoveCard(plan.id)}
             />
           ))}
         </div>
-
-        {/* Deck controls */}
-        <div className="pro-deck-controls">
-          <button
-            className="pro-deck-nav"
-            aria-label="Previous plan"
-            onClick={prevCard}
-          >
-            <ArrowRight size={18} className="flip-x" />
-          </button>
-          <div className="pro-deck-caption">
-            <span className="pro-deck-name">{deckPlans[0].name}</span>
-            <span className="pro-deck-hint">Move the front card to cycle</span>
-          </div>
-          <button
-            className="pro-deck-nav"
-            aria-label="Next plan"
-            onClick={nextCard}
-          >
-            <ArrowRight size={18} />
-          </button>
-        </div>
       </div>
+
+      {/* ═══════════ FAQ ═══════════ */}
+      <section ref={faqRef} className="pro-faq-section pro-reveal">
+        <div className="pro-section-header">
+          <div className="pro-section-badge">
+            <Shield size={12} />
+            <span>Questions?</span>
+          </div>
+          <h2 className="pro-section-title">
+            Frequently Asked <span className="pro-section-highlight">Questions</span>
+          </h2>
+          <p className="pro-section-desc">
+            Everything you need to know before upgrading.
+          </p>
+        </div>
+        <FaqAccordion />
+      </section>
 
       {/* ═══════════ WHY PREMIUM ═══════════ */}
       <section ref={benefitsRef} className="pro-benefits-section pro-reveal">
@@ -797,23 +727,6 @@ export default function ProPage() {
             Choose Your Plan <ArrowRight size={16} />
           </button>
         </div>
-      </section>
-
-      {/* ═══════════ FAQ ═══════════ */}
-      <section ref={faqRef} className="pro-faq-section pro-reveal">
-        <div className="pro-section-header">
-          <div className="pro-section-badge">
-            <Shield size={12} />
-            <span>Questions?</span>
-          </div>
-          <h2 className="pro-section-title">
-            Frequently Asked <span className="pro-section-highlight">Questions</span>
-          </h2>
-          <p className="pro-section-desc">
-            Everything you need to know before upgrading.
-          </p>
-        </div>
-        <FaqAccordion />
       </section>
 
       {/* ═══════════ PAYMENT MODAL ═══════════ */}

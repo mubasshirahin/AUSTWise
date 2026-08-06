@@ -329,6 +329,44 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
+/* Active "See Plans" — gold rounded glow box with gold text/icon.
+   Overrides the shared blue .nav-item.active treatment so the item
+   keeps its premium identity while clearly reading as selected. */
+.nav-item-premium.active {
+  background: color-mix(in srgb, var(--accent-amber) 13%, var(--bg-primary));
+  color: var(--accent-amber);
+  font-weight: var(--fw-semibold);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent-amber) 55%, transparent),
+    0 0 20px color-mix(in srgb, var(--accent-amber) 28%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.nav-item-premium.active::before {
+  inset: 0;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  opacity: 1;
+  animation: none;
+  box-shadow: none;
+}
+
+.nav-item-premium.active:hover {
+  background: color-mix(in srgb, var(--accent-amber) 17%, var(--bg-primary));
+  color: var(--accent-amber);
+  transform: translateX(3px);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent-amber) 68%, transparent),
+    0 0 26px color-mix(in srgb, var(--accent-amber) 36%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.nav-item-premium.active .nav-icon-wrapper svg,
+.nav-item-premium.active .nav-label {
+  color: var(--accent-amber);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent-amber) 55%, transparent));
+}
+
 /* Sparkle effect — multiple pseudo-elements positioned around */
 .nav-item-premium .nav-label::after,
 .nav-item-premium .nav-icon-wrapper svg {

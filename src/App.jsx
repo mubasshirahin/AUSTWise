@@ -106,6 +106,12 @@ function AppContent() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const location = useLocation();
 
+  // Reset scroll to top on route change so new pages always open at the top
+  // instead of inheriting the previous page's scroll position.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
   return (
     <RoutineProvider>
       <QuotePopup />

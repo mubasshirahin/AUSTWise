@@ -47,3 +47,4 @@ server.log
 
 # Library occupancy presence data (runtime state)
 .library_presence.json
+.aider*
