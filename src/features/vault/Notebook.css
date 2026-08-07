@@ -253,9 +253,25 @@
   position: absolute;
   z-index: 2; /* keep items above the connection/drawing lines */
   cursor: grab;
-  border-radius: 0;
+}
+.nb-canvas-item:hover {
+  z-index: 10;
+}
+.nb-canvas-item:active {
+  cursor: grabbing;
+}
+
+/* Shape layer: carries the box background/border/glow. Shapes (border-radius)
+   are applied HERE, not on the item, so the delete/edit buttons and resize
+   handle stay visible and clickable even with rounded/curved corners. */
+.nb-item-shape {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  border-radius: 0;
   background: var(--bg-card);
   border: 1px solid color-mix(in srgb, var(--accent-blue) 45%, transparent);
   box-shadow:
@@ -263,33 +279,57 @@
     0 0 12px -2px color-mix(in srgb, var(--accent-blue) 40%, transparent),
     0 0 28px -6px color-mix(in srgb, var(--accent-blue) 22%, transparent),
     0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
-
-.nb-canvas-item:hover {
+.nb-canvas-item:hover .nb-item-shape {
   border-color: color-mix(in srgb, var(--accent-blue) 70%, transparent);
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--accent-blue) 18%, transparent),
     0 0 18px -2px color-mix(in srgb, var(--accent-blue) 65%, transparent),
     0 0 42px -8px color-mix(in srgb, var(--accent-blue) 38%, transparent),
     0 4px 14px rgba(0, 0, 0, 0.12);
-  z-index: 10;
 }
-
-.nb-canvas-item.connect-target:hover {
+.nb-canvas-item.connect-target:hover .nb-item-shape {
   border-color: color-mix(in srgb, var(--accent-rose) 70%, transparent);
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--accent-rose) 18%, transparent),
     0 4px 16px rgba(0,0,0,0.1),
     0 0 16px -2px color-mix(in srgb, var(--accent-rose) 55%, transparent);
 }
-
-.nb-canvas-item:active {
-  cursor: grabbing;
+.nb-canvas-item:active .nb-item-shape {
   border-color: color-mix(in srgb, var(--accent-blue) 65%, transparent);
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--accent-blue) 16%, transparent),
     0 2px 8px rgba(0,0,0,0.08),
     0 0 14px -2px color-mix(in srgb, var(--accent-blue) 50%, transparent);
+}
+
+/* Star marker items: no box chrome — just the gold star glyph */
+.nb-canvas-item.is-star .nb-item-shape {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+.nb-canvas.star-active {
+  cursor: crosshair;
+}
+.nb-canvas-star {
+  padding: 5px;
+  filter: drop-shadow(0 2px 6px rgba(245, 166, 35, 0.45));
+}
+
+/* Ghost star that follows the cursor while star mode is on */
+.nb-star-ghost {
+  position: absolute;
+  z-index: 5;
+  opacity: 0.5;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 8px rgba(245, 166, 35, 0.55));
+  animation: nbGhostPulse 1.1s ease-in-out infinite;
+}
+@keyframes nbGhostPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.07); }
 }
 
 .nb-canvas-text {
@@ -316,6 +356,14 @@
 .nb-canvas-text:not(.editing) {
   cursor: grab;
   user-select: none;
+}
+
+/* Text inside clipped/curved shapes is centred in the inscribed area */
+.nb-canvas-text.nb-text-centered {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .nb-canvas-del {
@@ -375,6 +423,31 @@
   color: #1a1305;
 }
 
+/* ─── Shape-aware control placement ───
+   Corners of clipped/curved shapes are empty space, so the delete/pencil/
+   resize controls are tucked INSIDE the visible shape instead of floating
+   over the transparent corners. */
+/* circle / oval → controls inside the ellipse near the bottom */
+.nb-canvas-item.shape-circle .nb-canvas-del,
+.nb-canvas-item.shape-oval .nb-canvas-del {
+  left: 29%;
+  right: auto;
+  top: auto;
+  bottom: 29%;
+}
+.nb-canvas-item.shape-circle .nb-canvas-edit,
+.nb-canvas-item.shape-oval .nb-canvas-edit {
+  left: 29%;
+  right: auto;
+  top: auto;
+  bottom: calc(29% + 26px);
+}
+.nb-canvas-item.shape-circle .nb-resize-handle,
+.nb-canvas-item.shape-oval .nb-resize-handle {
+  right: 29%;
+  bottom: 29%;
+}
+
 .nb-item-edit-menu {
   position: absolute;
   z-index: 9999;
@@ -431,6 +504,65 @@
   padding: 0;
 }
 
+/* ─── Shape picker (pencil edit menu) ─── */
+.nb-item-edit-label.shapes-label {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-primary);
+}
+.nb-item-edit-shapes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+.nb-item-shape-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+}
+.nb-item-shape-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-focus);
+  transform: scale(1.06);
+}
+.nb-item-shape-btn:active { transform: scale(0.94); }
+.nb-item-shape-btn.active {
+  background: color-mix(in srgb, var(--accent-amber) 12%, transparent);
+  border-color: var(--accent-amber);
+}
+.nb-item-shape-icon {
+  display: block;
+  box-sizing: border-box;
+  width: 16px;
+  height: 12px;
+  border: 2px solid var(--text-secondary);
+}
+.nb-item-shape-icon.shape-rounded { border-radius: 4px; }
+.nb-item-shape-icon.shape-circle {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+.nb-item-shape-icon.shape-oval {
+  width: 18px;
+  border-radius: 50%;
+}
+.nb-item-shape-btn {
+  color: var(--text-secondary);
+}
+.nb-item-shape-btn.active {
+  color: var(--accent-amber);
+}
+.nb-item-shape-btn.active .nb-item-shape-icon {
+  border-color: var(--accent-amber);
+}
+
 /* ─── Real-time resize handle ─── */
 .nb-resize-handle {
   position: absolute;
@@ -463,7 +595,7 @@
 }
 
 /* Highlight the box while resizing */
-.nb-canvas-item.resizing {
+.nb-canvas-item.resizing .nb-item-shape {
   border-color: color-mix(in srgb, var(--accent-blue) 90%, transparent);
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--accent-blue) 25%, transparent),
@@ -486,7 +618,7 @@
   opacity: 0.8;
 }
 
-.nb-canvas-item.connecting {
+.nb-canvas-item.connecting .nb-item-shape {
   box-shadow: 0 0 0 2px var(--accent-blue), 0 0 16px var(--accent-blue-glow);
 }
 
@@ -594,6 +726,8 @@
 
 .nb-canvas-item.connect-target {
   cursor: crosshair;
+}
+.nb-canvas-item.connect-target .nb-item-shape {
   animation: nb-pulse 1s infinite;
 }
 
@@ -718,13 +852,14 @@
 .nb-canvas.nb-exporting .nb-item-edit-menu,
 .nb-canvas.nb-exporting .nb-canvas-del,
 .nb-canvas.nb-exporting .nb-canvas-empty-hint,
-.nb-canvas.nb-exporting .nb-resize-handle {
+.nb-canvas.nb-exporting .nb-resize-handle,
+.nb-canvas.nb-exporting .nb-star-ghost {
   display: none !important;
 }
 
 /* html2canvas can't parse color-mix()/gradients on modern CSS — fall back to
    plain colors during capture so the export never fails silently. */
-.nb-canvas.nb-exporting .nb-canvas-item {
+.nb-canvas.nb-exporting .nb-item-shape {
   background: var(--bg-card);
   border: 1px solid var(--border-primary);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
@@ -734,8 +869,8 @@
   box-shadow: none;
 }
 
-.nb-canvas.nb-exporting .nb-canvas-item.connecting,
-.nb-canvas.nb-exporting .nb-canvas-item.connect-target {
+.nb-canvas.nb-exporting .nb-canvas-item.connecting .nb-item-shape,
+.nb-canvas.nb-exporting .nb-canvas-item.connect-target .nb-item-shape {
   box-shadow: none !important;
   animation: none !important;
 }

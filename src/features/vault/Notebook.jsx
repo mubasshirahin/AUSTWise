@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, Fragment } from 'react';
-import { ImageIcon, Trash2, Move, Type, Check, Link2, Link2Off, Download, MoreVertical, NotebookPen, ZoomIn, ZoomOut, Pencil } from 'lucide-react';
+import { ImageIcon, Trash2, Move, Type, Check, Link2, Link2Off, Download, MoreVertical, NotebookPen, ZoomIn, ZoomOut, Pencil, Star } from 'lucide-react';
 import html2canvas from 'html2canvas-pro';
 import jsPDF from 'jspdf';
 
@@ -101,6 +101,20 @@ const bottomSpot = (w, h, items, areaW) => {
   return { x: Math.min(anchorX, maxX), y: maxBottom + margin };
 }
 
+// Sharp 5-point star (lucide's Star icon has soft/rounded corners — this
+// polygon has crisp, pointed corners for marking important items).
+const SharpStar = ({ color = '#F5A623', ...rest }) => (
+  <svg viewBox="0 0 100 100" preserveAspectRatio="none" {...rest}>
+    <polygon
+      points="50,0 61.2,34.6 97.6,34.5 68.1,55.9 79.4,90.5 50,69 20.6,90.5 31.9,55.9 2.4,34.5 38.8,34.6"
+      fill={color}
+      stroke={color}
+      strokeWidth="2"
+      strokeLinejoin="miter"
+    />
+  </svg>
+);
+
 export default function Notebook({ vaultContext, batch, noteKey, title, path, onBack, onSaved, onPathCrumb }) {
   const { department, yearSem } = vaultContext;
   // noteKey (from the Notebook library) gives every note its own storage slot:
@@ -147,6 +161,8 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
   const [editItemId, setEditItemId] = useState(null); // which item's edit menu is open
   const [drawMode, setDrawMode] = useState(false);
   const [drawPhase, setDrawPhase] = useState('idle'); // idle | placing | done
+  const [starMode, setStarMode] = useState(false); // click canvas to place a star
+  const [starGhost, setStarGhost] = useState(null); // ghost star following the cursor while star mode is on
   const [drawStart, setDrawStart] = useState(null);
   const [manualLines, setManualLines] = useState([]);
   const [drawPreview, setDrawPreview] = useState(null);
@@ -535,6 +551,7 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
       if (e.key === 'Escape') {
         setSelectedLineId(null);
         setSelectedConnId(null);
+        setStarMode(false);
       }
     };
     window.addEventListener('keydown', onEsc);
@@ -542,7 +559,7 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
   }, []);
 
   const startDrag = (e, id) => {
-    if (drawMode) return;
+    if (drawMode || starMode) return;
     const item = items.find(i => i.id === id);
     if (!item) return;
     dragStartState.current = stateRef.current;
@@ -552,7 +569,7 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
 
   // ─── Real-time resize (drag the corner handle) ───
   const startResize = (e, id) => {
-    if (drawMode) return;
+    if (drawMode || starMode) return;
     const item = items.find(i => i.id === id);
     if (!item) return;
     e.stopPropagation(); // don't start a move-drag / connect
@@ -636,6 +653,7 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
   const toggleConnectMode = () => {
     setConnectFrom(prev => prev === null ? 'ready' : null);
     setDrawMode(false);
+    setStarMode(false);
     setSelectedLineId(null);
     setSelectedConnId(null);
   };
@@ -694,11 +712,25 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
   const shapeStyle = (s) => {
     switch (s) {
       case 'rounded': return { borderRadius: 16 };
-      case 'circle': return { borderRadius: '50%', aspectRatio: '1 / 1' };
+      case 'circle': return { borderRadius: '50%' };
       case 'oval': return { borderRadius: '50%' };
-      case 'triangle': return { clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' };
-      case 'hexagon': return { clipPath: 'polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%)' };
       default: return { borderRadius: 0 };
+    }
+  };
+
+  // Largest rectangle that fits fully inside each shape. Text auto-sizes to
+  // this box so it never spills out of the curved edge (circle/oval).
+  const shapeTextBox = (shape, w, h) => {
+    switch (shape) {
+      case 'circle':
+      case 'oval': {
+        // Inscribed rectangle of an ellipse ≈ 0.707 × each axis, centred
+        const cw = w * 0.707;
+        const ch = h * 0.707;
+        return { x: (w - cw) / 2, y: (h - ch) / 2, w: cw, h: ch };
+      }
+      default:
+        return { x: 0, y: 0, w, h };
     }
   };
 
@@ -713,8 +745,6 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
     { key: 'rounded', label: 'Rounded' },
     { key: 'circle', label: 'Circle' },
     { key: 'oval', label: 'Oval' },
-    { key: 'triangle', label: 'Triangle' },
-    { key: 'hexagon', label: 'Hexagon' },
   ];
 
   // ─── Manual drawing ───
@@ -769,6 +799,35 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
 
   const toggleDrawMode = () => {
     setDrawMode(prev => !prev);
+    setStarMode(false);
+    setDrawPhase('idle');
+    setDrawStart(null);
+    setDrawPreview(null);
+    setConnectFrom(null);
+    setSelectedLineId(null);
+    setSelectedConnId(null);
+  };
+
+  // ─── Star marker (double-click the canvas to mark something important) ───
+  const addStar = (x, y) => {
+    pushUndo();
+    const size = 40;
+    setItems(prev => [...prev, {
+      id: Date.now(),
+      type: 'star',
+      x: Math.max(0, x - size / 2),
+      y: Math.max(0, y - size / 2),
+      w: size,
+      h: size,
+      borderColor: '#F5A623',
+    }]);
+    markDirty();
+  };
+
+  const toggleStarMode = () => {
+    setStarMode(prev => !prev);
+    setStarGhost(null);
+    setDrawMode(false);
     setDrawPhase('idle');
     setDrawStart(null);
     setDrawPreview(null);
@@ -827,7 +886,16 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
       minX = Math.min(minX, x); minY = Math.min(minY, y);
       maxX = Math.max(maxX, x + (w || 0)); maxY = Math.max(maxY, y + (h || 0));
     };
-    items.forEach(i => include(i.x || 0, i.y || 0, i.w || 0, i.h || 0));
+    items.forEach(i => {
+      // Circle items render as a square (height follows width), so export
+      // bounds must use the widest dimension or the bottom edge gets clipped.
+      if (i.shape === 'circle') {
+        const d = Math.max(i.w || 0, i.h || 0);
+        include(i.x || 0, i.y || 0, d, d);
+      } else {
+        include(i.x || 0, i.y || 0, i.w || 0, i.h || 0);
+      }
+    });
     manualLines.forEach(l => {
       minX = Math.min(minX, l.x1, l.x2); minY = Math.min(minY, l.y1, l.y2);
       maxX = Math.max(maxX, l.x1, l.x2); maxY = Math.max(maxY, l.y1, l.y2);
@@ -1094,6 +1162,13 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
       {connectFrom && connectFrom !== 'ready' && (
         <div className="nb-connect-hint">Click another item to connect</div>
       )}
+      {starMode && (
+        <div className="nb-draw-bar">
+          <span className="nb-draw-label">Star</span>
+          <Star size={14} fill="#F5A623" stroke="#F5A623" />
+          <span className="nb-draw-hint">Left-click place · Right-click cancel</span>
+        </div>
+      )}
 
       <input ref={canvasFileRef} type="file" accept="image/*" style={{ display: 'none' }}
         onChange={e => { const f = e.target.files?.[0]; if (f) addCanvasImage(f); e.target.value = ''; }} />
@@ -1109,14 +1184,18 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
       >
         <div
           ref={canvasRef}
-          className={`nb-canvas ${drawMode ? 'draw-active' : ''}`}
+          className={`nb-canvas ${drawMode ? 'draw-active' : ''} ${starMode ? 'star-active' : ''}`}
           tabIndex={-1}
           onPaste={handleCanvasPaste}
           onDrop={handleCanvasDrop}
           onDragOver={handleCanvasDragOver}
-          onMouseMove={(e) => { onDrawMouseMove(e); onCanvasMouseMove(e); }}
+          onMouseMove={(e) => {
+            onDrawMouseMove(e);
+            onCanvasMouseMove(e);
+            if (starMode) setStarGhost(getCanvasPoint(e));
+          }}
           onMouseUp={stopDrag}
-          onMouseLeave={stopDrag}
+          onMouseLeave={(e) => { stopDrag(e); if (starMode) setStarGhost(null); }}
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               lastCanvasPoint.current = getCanvasPoint(e);
@@ -1128,8 +1207,21 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
               canvasRef.current?.focus({ preventScroll: true });
             }
             if (drawMode) { handleDrawClick(e); return; }
+            // Star mode: a ghost star follows the cursor — one click drops it.
+            if (starMode) {
+              const pt = getCanvasPoint(e);
+              addStar(pt.x, pt.y);
+              return;
+            }
           }}
           onContextMenu={(e) => {
+            if (starMode) {
+              // Right-click cancels star mode (exit the stamp tool)
+              e.preventDefault();
+              setStarMode(false);
+              setStarGhost(null);
+              return;
+            }
             if (!drawMode) return; // keep the browser menu outside draw mode
             e.preventDefault();
             if (drawPhase === 'placing') {
@@ -1434,42 +1526,74 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
             );
           })}
 
-          {items.map(item => (
-            <div
-              key={item.id}
-              className={`nb-canvas-item ${selectedItemId === item.id ? 'selected' : ''} ${connectFrom === item.id ? 'connecting' : ''} ${connectFrom && connectFrom !== 'ready' && connectFrom !== item.id ? 'connect-target' : ''} ${resizingId === item.id ? 'resizing' : ''}`}
-              data-item-id={item.id}
-              style={{ left: item.x, top: item.y, width: item.w, height: item.h, borderColor: item.borderColor || undefined }}
-              onMouseDown={(e) => { setSelectedItemId(item.id); if (connectFrom) { e.stopPropagation(); handleItemClick(item.id); } else { startDrag(e, item.id); } }}
-            >
-              {item.type === 'image' ? (
-                <img src={item.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'fill', pointerEvents: 'none' }} />
-              ) : (
-                <div
-                  className={`nb-canvas-text ${editingId === item.id ? 'editing' : ''}`}
-                  style={{ fontSize: `${fitFontSize(item.content, item.w - 20, item.h - 20)}px` }}
-                  contentEditable={editingId === item.id}
-                  suppressContentEditableWarning
-                  onInput={(e) => { if (editingId === item.id) { editedSessionRef.current = true; sizeToContent(item.id, e.currentTarget); } }}
-                  onBlur={(e) => { updateItemContent(item.id, e.currentTarget.textContent); if (editedSessionRef.current) sizeToContent(item.id, e.currentTarget); editedSessionRef.current = false; setEditingId(null); }}
-                  onDoubleClick={(e) => { e.stopPropagation(); editedSessionRef.current = false; setEditingId(item.id); }}
-                >
-                  {item.content}
+          {items.map(item => {
+            const isCircle = item.shape === 'circle';
+            const boxH = isCircle ? item.w : item.h;
+            // Largest rectangle fully inside the shape — text auto-fits to it
+            // so it never overflows the clipped area.
+            const tb = shapeTextBox(item.shape, item.w, boxH);
+            const shapeClass = item.shape && item.shape !== 'rect' ? ` shape-${item.shape}` : '';
+            const textW = Math.max(1, tb.w - 20);
+            const textH = Math.max(1, tb.h - 20);
+
+            return (
+              <div
+                key={item.id}
+                className={`nb-canvas-item${shapeClass}${item.type === 'star' ? ' is-star' : ''} ${selectedItemId === item.id ? 'selected' : ''} ${connectFrom === item.id ? 'connecting' : ''} ${connectFrom && connectFrom !== 'ready' && connectFrom !== item.id ? 'connect-target' : ''} ${resizingId === item.id ? 'resizing' : ''}`}
+                data-item-id={item.id}
+                style={{ left: item.x, top: item.y, width: item.w, height: boxH }}
+                onMouseDown={(e) => { setSelectedItemId(item.id); if (connectFrom) { e.stopPropagation(); handleItemClick(item.id); } else { startDrag(e, item.id); } }}
+              >
+                {/* Shape layer: border-radius / clip-path live here (not on the
+                    item) so the delete/edit buttons and resize handle stay fully
+                    clickable even with rounded/curved corners. */}
+                <div className="nb-item-shape" style={{ ...shapeStyle(item.shape), borderColor: item.borderColor || undefined }}>
+                  {item.type === 'star' ? (
+                    <SharpStar
+                      className="nb-canvas-star"
+                      color={item.borderColor || '#F5A623'}
+                      style={{ width: '100%', height: '100%' }}
+                    />
+                  ) : item.type === 'image' ? (
+                    <img src={item.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'fill', pointerEvents: 'none' }} />
+                  ) : (
+                    <div
+                      className={`nb-canvas-text ${editingId === item.id ? 'editing' : ''}${shapeClass ? ' nb-text-centered' : ''}`}
+                      style={{
+                        position: 'absolute',
+                        left: tb.x,
+                        top: tb.y,
+                        width: tb.w,
+                        height: tb.h,
+                        fontSize: `${fitFontSize(item.content, textW, textH)}px`,
+                      }}
+                      contentEditable={editingId === item.id}
+                      suppressContentEditableWarning
+                      onInput={(e) => { if (editingId === item.id) { editedSessionRef.current = true; sizeToContent(item.id, e.currentTarget); } }}
+                      onBlur={(e) => { updateItemContent(item.id, e.currentTarget.textContent); if (editedSessionRef.current) sizeToContent(item.id, e.currentTarget); editedSessionRef.current = false; setEditingId(null); }}
+                      onDoubleClick={(e) => {
+                        if (starMode) return; // bubble up so the canvas places a star instead
+                        e.stopPropagation();
+                        editedSessionRef.current = false;
+                        setEditingId(item.id);
+                      }}
+                    >
+                      {item.content}
+                    </div>
+                  )}
                 </div>
-              )}
-              <button className="nb-canvas-del" onClick={(e) => { e.stopPropagation(); deleteItem(item.id); if (editItemId === item.id) setEditItemId(null); if (selectedItemId === item.id) setSelectedItemId(null); }}
-                onMouseDown={e => e.stopPropagation()}>
-                <Trash2 size={12} />
-              </button>
-              {selectedItemId === item.id && (
+                <button className="nb-canvas-del" onClick={(e) => { e.stopPropagation(); deleteItem(item.id); if (editItemId === item.id) setEditItemId(null); if (selectedItemId === item.id) setSelectedItemId(null); }}
+                  onMouseDown={e => e.stopPropagation()}>
+                  <Trash2 size={12} />
+                </button>
                 <button className="nb-canvas-edit" title="Edit box" onClick={(e) => { e.stopPropagation(); setEditItemId(editItemId === item.id ? null : item.id); }}
                   onMouseDown={e => e.stopPropagation()}>
                   <Pencil size={13} />
                 </button>
-              )}
-              <div className="nb-resize-handle" title="Resize" onMouseDown={(e) => startResize(e, item.id)} />
-            </div>
-          ))}
+                <div className="nb-resize-handle" title="Resize" onMouseDown={(e) => startResize(e, item.id)} />
+              </div>
+            );
+          })}
 
           {(() => {
             const editItem = items.find(i => i.id === editItemId);
@@ -1489,9 +1613,32 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
                     onChange={(e) => setItemBorderColor(editItem.id, e.target.value)} title="Custom colour" />
                   <span>Custom</span>
                 </div>
+                <div className="nb-item-edit-label shapes-label">Shape</div>
+                <div className="nb-item-edit-shapes">
+                  {SHAPES.map(s => (
+                    <button
+                      key={s.key}
+                      className={`nb-item-shape-btn ${(editItem.shape || 'rect') === s.key ? 'active' : ''}`}
+                      onClick={() => setItemShape(editItem.id, s.key)}
+                      title={s.label}
+                    >
+                      <span className={`nb-item-shape-icon shape-${s.key}`} />
+                    </button>
+                  ))}
+                </div>
               </div>
             );
           })()}
+
+          {/* Ghost star — previews where a click will drop a star */}
+          {starMode && starGhost && (
+            <div
+              className="nb-star-ghost"
+              style={{ left: starGhost.x - 20, top: starGhost.y - 20, width: 40, height: 40 }}
+            >
+              <SharpStar style={{ width: '100%', height: '100%' }} />
+            </div>
+          )}
         </div>
 
         {items.length === 0 && !drawMode && (
@@ -1519,6 +1666,9 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
         </button>
         <button className="nb-float-btn" onClick={addTextBox} title="Add text box">
           <Type size={18} />
+        </button>
+        <button className={`nb-float-btn${starMode ? ' active' : ''}`} onClick={toggleStarMode} title="Star stamp — left-click place · right-click cancel">
+          <Star size={18} />
         </button>
       </div>
     </div>
