@@ -39,9 +39,7 @@ import {
 import {
   trackUserPresence,
   getLivePulse,
-  isInsideGeofence,
-  seedDummyUsers,
-  clearDummyUsers
+  isInsideGeofence
 } from './liveLibraryDB.mjs';
 import { initializeDatabase, resetDatabase, query, sql } from './db.mjs';
 import { handleOAuthRequest } from './socialOAuth.mjs';
@@ -1115,28 +1113,6 @@ server.on('request', async (req, res) => {
     return;
   }
 
-  // ── Dev-only: seed/clear dummy users to preview the heatmap ──
-
-  if (req.url.startsWith('/api/library/dev-seed') && req.method === 'GET') {
-    try {
-      const count = Number(new URL(req.url, 'http://x').searchParams.get('count') || 1);
-      const result = await seedDummyUsers(count);
-      sendJson(res, 200, { success: true, ...result });
-    } catch (error) {
-      sendJson(res, 500, { success: false, error: error.message || 'Seed failed.' });
-    }
-    return;
-  }
-
-  if (req.url.startsWith('/api/library/dev-clear') && req.method === 'GET') {
-    try {
-      const result = await clearDummyUsers();
-      sendJson(res, 200, { success: true, ...result });
-    } catch (error) {
-      sendJson(res, 500, { success: false, error: error.message || 'Clear failed.' });
-    }
-    return;
-  }
 
   // ========== Invitation Endpoints ==========
 

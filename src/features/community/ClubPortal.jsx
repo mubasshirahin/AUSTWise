@@ -1,10 +1,10 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import {
-  Target, Users, Search, PlusCircle, CheckCircle, X,
+  Target, Users, PlusCircle, CheckCircle,
   Calendar, Award, User, ExternalLink, ChevronDown, ChevronUp,
   Code, Trophy, Bot, Music, Palette, Camera, Heart, Gamepad2,
   BookOpen, Leaf, Briefcase, MessageCircle, Shield,
-  Star, Sparkles, TrendingUp, Clock, Hash,
+  Sparkles, Clock,
 } from 'lucide-react';
 import { clubsData } from '../../data/mockData';
 
@@ -27,21 +27,7 @@ const clubIcons = {
 
 export default function ClubPortal() {
   const [clubs, setClubs] = useState(clubsData);
-  const [searchQuery, setSearchQuery] = useState('');
   const [expandedClub, setExpandedClub] = useState(null);
-  const searchRef = useRef(null);
-
-  // Keyboard shortcut: Ctrl/Cmd + K to focus search
-  useEffect(() => {
-    const handler = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        searchRef.current?.focus();
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
 
   const handleJoinToggle = (clubId) => {
     setClubs(prev => prev.map(c => {
@@ -51,22 +37,6 @@ export default function ClubPortal() {
       return c;
     }));
   };
-
-  const filteredClubs = useMemo(() => {
-    let result = [...clubs];
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(c =>
-        c.name.toLowerCase().includes(q) ||
-        c.acronym.toLowerCase().includes(q) ||
-        c.description.toLowerCase().includes(q) ||
-        c.focus.some(f => f.toLowerCase().includes(q))
-      );
-    }
-
-    return result;
-  }, [clubs, searchQuery]);
 
   const stats = useMemo(() => ({
     total: clubs.length,
@@ -129,50 +99,18 @@ export default function ClubPortal() {
 
       <div className="schedule-dotted-divider" style={{ marginTop: 0 }} />
 
-      {/* ── Controls Bar ── */}
-      <div className="clubs-controls">
-        <div className="clubs-search">
-          <Search size={16} />
-          <input
-            ref={searchRef}
-            type="text"
-            className="clubs-search-input"
-            placeholder="Search clubs by name, keyword, or focus area..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-          />
-          {searchQuery && (
-            <button className="clubs-search-clear" onClick={() => setSearchQuery('')}>
-              <X size={14} />
-            </button>
-          )}
-          <kbd className="clubs-search-kbd">Ctrl+K</kbd>
-        </div>
-
-
-      </div>
-
       {/* ── Clubs Grid ── */}
-      {filteredClubs.length === 0 ? (
+      {clubs.length === 0 ? (
         <div className="clubs-empty">
           <div className="clubs-empty-icon">
-            <Search size={32} />
+            <Target size={32} />
           </div>
           <h3>No clubs found</h3>
-          <p>
-            {searchQuery
-              ? `No results for "${searchQuery}". Try a different search term.`
-              : 'No clubs match your search.'}
-          </p>
-          {searchQuery && (
-            <button className="btn btn-primary" onClick={() => { setSearchQuery(''); }}>
-              <X size={16} /> Clear Filters
-            </button>
-          )}
+          <p>Check back soon — new clubs are being added.</p>
         </div>
       ) : (
         <div className="clubs-grid stagger-children">
-          {filteredClubs.map((club, idx) => {
+          {clubs.map((club, idx) => {
             const Icon = getIconComponent(club.icon);
             const isExpanded = expandedClub === club.id;
 

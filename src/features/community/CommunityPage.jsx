@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import {
   Users, GraduationCap, Building2, UserPlus,
-  MoreVertical, Check, Shuffle,
 } from 'lucide-react';
 import GliderTabs from '../../components/GliderTabs';
 import AlumniDirectory from './AlumniDirectory';
@@ -26,31 +25,11 @@ export default function CommunityPage() {
   const [activeTab, setActiveTab] = useState(() => {
     return localStorage.getItem(COMMUNITY_TAB_KEY) || 'alumni';
   });
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef(null);
-
-  // Close the ⋮ dropdown when clicking outside
-  useEffect(() => {
-    if (!menuOpen) return;
-    const handler = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [menuOpen]);
-
   const activeMeta = communityTabs.find((t) => t.id === activeTab) || communityTabs[0];
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
-    setMenuOpen(false);
     localStorage.setItem(COMMUNITY_TAB_KEY, tab);
-  };
-
-  // Fun little "surprise me" action from the ⋮ menu.
-  const surpriseTab = () => {
-    const others = communityTabs.filter((t) => t.id !== activeTab);
-    handleTabChange(others[Math.floor(Math.random() * others.length)].id);
   };
 
   const renderActiveTab = () => {
@@ -96,47 +75,6 @@ export default function CommunityPage() {
             variant="dashboard"
             compact
           />
-          <div className="export-dropdown" ref={menuRef}>
-            <button
-              type="button"
-              className="schedule-nav-btn cm-more-btn"
-              onClick={() => setMenuOpen((o) => !o)}
-              title="Options"
-              aria-haspopup="true"
-              aria-expanded={menuOpen}
-            >
-              <MoreVertical size={18} />
-            </button>
-            {menuOpen && (
-              <div className="export-menu" role="menu">
-                {communityTabs.map((tab) => {
-                  const TabIcon = tab.icon;
-                  const isActive = tab.id === activeTab;
-                  return (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      className={`export-menu-item${isActive ? ' menu-active' : ''}`}
-                      onClick={() => handleTabChange(tab.id)}
-                      role="menuitem"
-                    >
-                      <TabIcon size={14} /> {tab.label}
-                      {isActive && <Check size={14} className="menu-check" />}
-                    </button>
-                  );
-                })}
-                <div className="export-menu-sep" />
-                <button
-                  type="button"
-                  className="export-menu-item"
-                  onClick={surpriseTab}
-                  role="menuitem"
-                >
-                  <Shuffle size={14} /> Surprise me
-                </button>
-              </div>
-            )}
-          </div>
         </div>
       </div>
 

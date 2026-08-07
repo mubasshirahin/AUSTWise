@@ -120,31 +120,28 @@
   line-height: 1.6;
 }
 
-/* ── 2. Toolbar box (own card) — stats + nav + ⋮ ── */
-.ms-toolbar-card {
-  padding: var(--sp-3) var(--sp-4);
+/* ── 2. Merged main box — Notebook-style masthead header + chat layout ──
+   The toolbar row was merged into the main content card, so the masthead
+   header now sits at the top of the content card (like the Notebook). */
+
+/* The global .schedule-masthead already brings the bordered amber-tinted
+   header panel; the divider follows right below, so drop its bottom margin. */
+.ms-content-card .ms-masthead {
+  margin-bottom: 0;
 }
 
-.ms-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-3);
-  flex-wrap: wrap;
-}
-
-.ms-toolbar .schedule-stats {
+.ms-content-card .schedule-stats {
   display: flex;
   gap: 18px;
 }
 
-.ms-toolbar .schedule-stat {
+.ms-content-card .schedule-stat {
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-.ms-toolbar .schedule-stat-value {
+.ms-content-card .schedule-stat-value {
   font-size: var(--fs-md);
   font-weight: var(--fw-bold);
   color: var(--text-primary);
@@ -152,7 +149,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.ms-toolbar .schedule-stat-label {
+.ms-content-card .schedule-stat-label {
   font-size: 9px;
   color: var(--text-tertiary);
   text-transform: uppercase;
@@ -160,13 +157,13 @@
   margin-top: 2px;
 }
 
-.ms-toolbar .schedule-week-nav {
+.ms-content-card .schedule-week-nav {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.ms-toolbar .schedule-nav-btn {
+.ms-content-card .schedule-nav-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -180,12 +177,12 @@
   transition: all var(--transition-base);
 }
 
-.ms-toolbar .schedule-nav-btn:hover:not(:disabled) {
+.ms-content-card .schedule-nav-btn:hover:not(:disabled) {
   border-color: var(--border-focus);
   color: var(--text-primary);
 }
 
-.ms-toolbar .schedule-week-pill {
+.ms-content-card .schedule-week-pill {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -196,7 +193,7 @@
   border: 1px solid var(--border-primary);
 }
 
-.ms-toolbar .schedule-week-pill-value {
+.ms-content-card .schedule-week-pill-value {
   font-size: var(--fs-md);
   font-weight: var(--fw-bold);
   color: var(--accent-amber);
@@ -204,11 +201,11 @@
   white-space: nowrap;
 }
 
-.ms-toolbar .export-dropdown {
+.ms-content-card .export-dropdown {
   position: relative;
 }
 
-.ms-toolbar .export-menu {
+.ms-content-card .export-menu {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
@@ -221,7 +218,7 @@
   overflow: hidden;
 }
 
-.ms-toolbar .export-menu-item {
+.ms-content-card .export-menu-item {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
@@ -235,28 +232,59 @@
   transition: background var(--transition-base);
 }
 
-.ms-toolbar .export-menu-item.menu-active {
+.ms-content-card .export-menu-item.menu-active {
   color: var(--accent-amber);
   background: var(--accent-amber-glow);
   font-weight: var(--fw-semibold);
 }
 
-.ms-toolbar .export-menu-item:hover {
+.ms-content-card .export-menu-item:hover {
   background: var(--bg-input);
 }
 
-.ms-toolbar .menu-check {
+.ms-content-card .menu-check {
   margin-left: auto;
   color: var(--accent-amber);
 }
 
-.ms-toolbar .export-menu-sep {
+.ms-content-card .export-menu-sep {
   height: 1px;
   background: var(--border-primary);
   margin: 4px 8px;
 }
 
-/* ── 3. Main content box (own card) ── */
+/* Narrow screens — title + actions on the first row, stats drop below */
+@media (max-width: 720px) {
+  .ms-content-card .ms-masthead {
+    grid-template-columns: 1fr auto;
+  }
+
+  .ms-content-card .ms-masthead .schedule-actions {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .ms-content-card .ms-masthead .schedule-masthead-center {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: flex-start;
+    padding-top: 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .ms-content-card .ms-masthead .schedule-subtitle {
+    display: none;
+  }
+
+  /* Reclaim vertical space on small phones — the hero subtitle already
+     shows the chats / unread / online counts. */
+  .ms-content-card .ms-masthead .schedule-masthead-center {
+    display: none;
+  }
+}
+
+/* ── 3. Main content box (own card) — masthead + chat layout ── */
 .ms-content-card {
   background: var(--bg-card);
   border: 1px solid var(--border-primary);
@@ -264,6 +292,9 @@
   padding: var(--sp-5);
   box-shadow: var(--shadow-lift);
   min-height: 480px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 @media (max-width: 640px) {
@@ -1561,6 +1592,13 @@ mark.chat-highlight {
   .messages-page {
     height: calc(100vh - 130px);
     min-height: 520px;
+  }
+
+  /* Merged box fills the remaining viewport height; the chat area scrolls
+     internally instead of pushing the page past the fixed height. */
+  .ms-content-card {
+    flex: 1;
+    min-height: 0;
   }
 
   .messages-list {

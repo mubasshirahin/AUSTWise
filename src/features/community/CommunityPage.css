@@ -144,9 +144,6 @@
   min-width: 0;
 }
 
-.cm-more-btn {
-  flex-shrink: 0;
-}
 
 /* Sub-tab mastheads (Alumni, Clubs, Students, Mentors) reuse the shared
    schedule-masthead base; keep the "joined" stat readable with the
@@ -971,38 +968,18 @@
   width: 100%;
 }
 
-/* Header — compact title block */
-.student-dir-header-card {
-  position: relative;
-}
-
-.student-dir-header-bg {
-  display: none;
-}
-
-.student-dir-header-content {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  flex-wrap: wrap;
-}
-
-.student-dir-header-left {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-}
-
+/* ── Masthead icon ── */
 .student-dir-header-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-md);
-  background: var(--accent-blue-glow);
-  color: var(--accent-blue);
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-lg);
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-amber) 18%, transparent);
 }
 
 .student-dir-header-title {
@@ -1020,43 +997,7 @@
   line-height: 1.5;
 }
 
-.student-dir-stats-row {
-  display: flex;
-  gap: var(--sp-5);
-  flex-wrap: wrap;
-  margin-top: var(--sp-3);
-}
-
-.student-dir-stat-chip {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  background: none;
-  border: none;
-  padding: 0;
-}
-
-.student-dir-stat-chip svg {
-  display: none;
-}
-
-.student-dir-stat-chip strong {
-  font-size: var(--fs-md);
-  font-weight: var(--fw-bold);
-  color: var(--text-primary);
-  line-height: 1.2;
-  font-variant-numeric: tabular-nums;
-}
-
-.student-dir-stat-chip span {
-  font-size: 9px;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-/* Controls */
+/* ── Filter bar ── */
 .student-dir-controls {
   display: flex;
   align-items: center;
@@ -1064,101 +1005,24 @@
   flex-wrap: wrap;
 }
 
-.student-dir-search {
-  position: relative;
-  flex: 1;
-  min-width: 220px;
-}
-
-.student-dir-search svg {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--text-tertiary);
-  pointer-events: none;
-  width: 16px;
-  height: 16px;
-}
-
-.student-dir-search-input {
-  width: 100%;
-  padding: 9px 60px 9px 40px;
-  background: var(--bg-input);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md);
-  font-size: var(--fs-sm);
-  color: var(--text-primary);
-  transition: border-color var(--transition-base);
-  outline: none;
-}
-
-.student-dir-search-input:focus {
-  border-color: var(--accent-blue);
-}
-
-.student-dir-search-input::placeholder {
-  color: var(--text-tertiary);
-}
-
-.student-dir-search-clear {
-  position: absolute;
-  right: 36px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--text-tertiary);
-  padding: 2px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color var(--transition-fast);
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-
-.student-dir-search-clear:hover {
-  color: var(--text-primary);
-}
-
-.student-dir-search-kbd {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  padding: 2px 6px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-primary);
-  border-radius: 4px;
-  font-size: 10px;
-  font-family: inherit;
-  color: var(--text-tertiary);
-  pointer-events: none;
-  line-height: 1.4;
-}
-
-.student-dir-controls-right {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  flex-wrap: wrap;
-}
-
 .student-dir-filter-group {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px;
+  padding: 5px;
   background: var(--bg-input);
   border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   overflow-x: auto;
   max-width: 100%;
+  scrollbar-width: none;
 }
+
+.student-dir-filter-group::-webkit-scrollbar { display: none; }
 
 .student-dir-filter-group > svg:first-child {
   color: var(--text-tertiary);
-  margin-left: 4px;
+  margin: 0 2px 0 8px;
   flex-shrink: 0;
   width: 14px;
   height: 14px;
@@ -1167,11 +1031,11 @@
 .student-dir-filter-btn {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 5px 10px;
+  gap: 6px;
+  padding: 6px 13px;
   font-size: var(--fs-xs);
-  font-weight: var(--fw-medium);
-  border-radius: 6px;
+  font-weight: var(--fw-semibold);
+  border-radius: var(--radius-full);
   color: var(--text-secondary);
   transition: all var(--transition-fast);
   white-space: nowrap;
@@ -1187,12 +1051,60 @@
 }
 
 .student-dir-filter-btn.active {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  box-shadow: var(--shadow-sm);
+  background: var(--accent-amber);
+  color: #1a1305;
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--accent-amber) 40%, transparent);
 }
 
-/* Department sections */
+.student-dir-filter-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-full);
+  background: var(--bg-secondary);
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.student-dir-filter-btn.active .student-dir-filter-count {
+  background: rgba(26, 19, 5, 0.14);
+  color: #1a1305;
+}
+
+.student-dir-clear-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  background: none;
+  border: 1px solid var(--border-primary);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.student-dir-clear-filter:hover {
+  color: var(--accent-rose);
+  border-color: var(--accent-rose);
+  background: var(--accent-rose-glow);
+}
+
+/* ── Department sections ── */
+.student-dir-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
 .student-dir-dept-section {
   background: var(--bg-card);
   border: 1px solid var(--border-primary);
@@ -1212,12 +1124,16 @@
   gap: var(--sp-3);
   padding: var(--sp-4);
   border-bottom: 1px solid var(--border-secondary);
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--accent-amber) 5%, transparent), transparent 45%);
 }
 
 .student-dir-dept-icon {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: var(--radius-md);
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1244,7 +1160,156 @@
   display: block;
 }
 
-/* Semester rows — density-colored (student count) */
+.student-dir-dept-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: var(--radius-full);
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  color: var(--accent-amber);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+/* ── Department Executive Slots (VP · GS) ── */
+.student-dir-exec-section {
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--border-secondary);
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--accent-amber) 4%, transparent), transparent 40%);
+}
+
+.student-dir-exec-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: var(--sp-3);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.student-dir-exec-label svg {
+  color: var(--accent-amber);
+  flex-shrink: 0;
+}
+
+.student-dir-exec-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--sp-3);
+}
+
+.student-dir-exec-slot {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-left-width: 3px;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.student-dir-exec-slot:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.student-dir-exec-slot.vacant {
+  border-style: dashed;
+  opacity: 0.55;
+}
+
+.student-dir-exec-slot.vacant:hover {
+  border-color: var(--border-primary);
+  box-shadow: none;
+  transform: none;
+}
+
+.student-dir-exec-slot:first-child {
+  border-left-color: var(--accent-amber);
+}
+
+.student-dir-exec-slot:first-child:hover {
+  border-color: var(--accent-amber);
+}
+
+.student-dir-exec-slot:last-child {
+  border-left-color: var(--accent-emerald);
+}
+
+.student-dir-exec-slot:last-child:hover {
+  border-color: var(--accent-emerald);
+}
+
+.student-dir-exec-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stu-avatar-vp {
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
+}
+
+.stu-avatar-gs {
+  background: var(--accent-emerald-glow);
+  color: var(--accent-emerald);
+}
+
+.stu-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.stu-badge.badge-vp {
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 25%, transparent);
+}
+
+.stu-badge.badge-gs {
+  background: var(--accent-emerald-glow);
+  color: var(--accent-emerald);
+  border: 1px solid color-mix(in srgb, var(--accent-emerald) 25%, transparent);
+}
+
+.stu-badge.stu-badge-sr {
+  background: color-mix(in srgb, #60A5FA 14%, transparent);
+  color: #60A5FA;
+  border: 1px solid color-mix(in srgb, #60A5FA 28%, transparent);
+}
+
+.stu-badge.stu-badge-cr {
+  background: color-mix(in srgb, #A78BFA 14%, transparent);
+  color: #A78BFA;
+  border: 1px solid color-mix(in srgb, #A78BFA 28%, transparent);
+}
+
+/* ── Semester rows ── */
 .student-dir-sem-list {
   display: flex;
   flex-direction: column;
@@ -1259,22 +1324,129 @@
   border-bottom: none;
 }
 
+.student-dir-sem-head-row {
+  display: flex;
+  align-items: stretch;
+}
+
 .student-dir-sem-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-3);
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   padding: var(--sp-3) var(--sp-4);
   background: none;
   border: none;
-  border-left: 2px solid transparent;
+  border-left: 3px solid transparent;
   cursor: pointer;
   color: var(--text-primary);
   transition: background var(--transition-fast);
   font-family: inherit;
   font-size: inherit;
   text-align: left;
+}
+
+/* ── Per-semester export (JPG / PDF) ── */
+.student-dir-sem-export {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--sp-2);
+  border-left: 1px solid var(--border-secondary);
+  flex-shrink: 0;
+}
+
+.student-dir-export-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.student-dir-export-trigger:hover {
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
+  border-color: color-mix(in srgb, var(--accent-amber) 25%, transparent);
+}
+
+.student-dir-export-trigger:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.student-dir-export-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 4px;
+  z-index: 40;
+  min-width: 148px;
+  padding: 5px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.45);
+  animation: scaleIn 0.16s ease;
+}
+
+/* Last semester card in a dept — the dept section clips below it, so the
+   menu opens upward instead of being cut off. */
+.student-dir-sem-export.opens-up .student-dir-export-menu {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+
+.student-dir-export-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.student-dir-export-item svg {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.student-dir-export-item:hover {
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
+}
+
+.student-dir-export-item:hover svg {
+  color: var(--accent-amber);
+}
+
+.student-dir-export-item:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.student-dir-export-trigger .spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .student-dir-sem-header:hover {
@@ -1284,7 +1456,7 @@
 .student-dir-sem-header-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   color: var(--text-secondary);
   font-size: var(--fs-sm);
   font-weight: var(--fw-semibold);
@@ -1305,6 +1477,26 @@
   gap: var(--sp-2);
 }
 
+.student-dir-sem-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: var(--radius-full);
+  background: var(--bg-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.student-dir-sem-count.hot {
+  background: var(--accent-rose-glow);
+  color: var(--accent-rose);
+}
+
 .student-dir-sem-card.is-emerald .student-dir-sem-header { border-left-color: var(--accent-emerald); }
 .student-dir-sem-card.is-cyan     .student-dir-sem-header { border-left-color: var(--accent-cyan); }
 .student-dir-sem-card.is-amber    .student-dir-sem-header { border-left-color: var(--accent-amber); }
@@ -1319,9 +1511,11 @@
   padding: var(--sp-4) var(--sp-5);
   border-top: 1px solid var(--border-secondary);
   animation: fadeInUp 0.25s ease forwards;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent-amber) 3%, transparent), transparent 30%);
 }
 
-/* Role sections (SR, CR, Students) */
+/* ── Role sections (SR, CR, Students) ── */
 .student-dir-role-section {
   margin-bottom: var(--sp-5);
 }
@@ -1339,7 +1533,7 @@
   font-weight: var(--fw-bold);
   color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
 }
 
 .student-dir-role-label svg {
@@ -1360,7 +1554,7 @@
   padding: var(--sp-3);
   background: var(--bg-card);
   border: 1px solid var(--border-primary);
-  border-left-width: 2px;
+  border-left-width: 3px;
   border-radius: var(--radius-md);
   transition: all var(--transition-fast);
 }
@@ -1428,7 +1622,9 @@
 }
 
 .student-dir-slot-name {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: var(--fs-sm);
   font-weight: var(--fw-semibold);
   color: var(--text-primary);
@@ -1454,7 +1650,7 @@
   margin-top: 1px;
 }
 
-/* Student table */
+/* ── Student table ── */
 .student-dir-table-wrapper {
   overflow-x: auto;
   border: 1px solid var(--border-primary);
@@ -1505,6 +1701,10 @@
   background: var(--bg-input);
 }
 
+.student-dir-table-row.is-me {
+  background: color-mix(in srgb, var(--accent-amber) 5%, transparent);
+}
+
 .student-dir-table td {
   padding: 8px 12px;
   vertical-align: middle;
@@ -1523,6 +1723,58 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.student-dir-you-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--accent-amber);
+  color: #1a1305;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+/* Role badges shown next to SRs / CRs inside the class list table */
+.student-dir-role-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.student-dir-role-badge.is-vp {
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 28%, transparent);
+}
+
+.student-dir-role-badge.is-gs {
+  background: var(--accent-emerald-glow);
+  color: var(--accent-emerald);
+  border: 1px solid color-mix(in srgb, var(--accent-emerald) 28%, transparent);
+}
+
+.student-dir-role-badge.is-sr {
+  background: color-mix(in srgb, #60A5FA 14%, transparent);
+  color: #60A5FA;
+  border: 1px solid color-mix(in srgb, #60A5FA 28%, transparent);
+}
+
+.student-dir-role-badge.is-cr {
+  background: color-mix(in srgb, #A78BFA 14%, transparent);
+  color: #A78BFA;
+  border: 1px solid color-mix(in srgb, #A78BFA 28%, transparent);
 }
 
 .stu-td-id code,
@@ -1590,6 +1842,7 @@
   border-radius: var(--radius-md);
 }
 
+/* ── Empty state ── */
 .student-dir-empty {
   display: flex;
   flex-direction: column;
@@ -1705,19 +1958,16 @@
 
   .alumni-select,
   .alumni-search,
-  .clubs-search,
-  .student-dir-search {
+  .clubs-search {
     width: 100%;
     min-width: 0;
   }
 
-  .clubs-search-kbd,
-  .student-dir-search-kbd {
+  .clubs-search-kbd {
     display: none;
   }
 
-  .clubs-header-content,
-  .student-dir-header-content {
+  .clubs-header-content {
     align-items: flex-start;
   }
 
@@ -1728,6 +1978,10 @@
 
 @media (max-width: 600px) {
   .student-dir-slot-row {
+    grid-template-columns: 1fr;
+  }
+
+  .student-dir-exec-row {
     grid-template-columns: 1fr;
   }
 

@@ -190,7 +190,9 @@ export default function AlumniDirectory() {
                     <div key={al.id} className="alumni-card">
                       <div className="alumni-card-top">
                         <div className="avatar" style={{ width: '40px', height: '40px', flexShrink: 0 }}>
-                          {al.initials}
+                          {al.avatar ? (
+                            <img src={al.avatar} alt="" />
+                          ) : al.initials}
                         </div>
                         <div className="alumni-card-info">
                           <h3 className="alumni-card-name">

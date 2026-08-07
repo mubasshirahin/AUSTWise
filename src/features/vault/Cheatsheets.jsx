@@ -3,7 +3,7 @@ import {
   Copy, Check, BookOpen, Star, Plus, X, Trash2,
   Monitor, Zap, Building2, Cog, Factory, Scissors,
   Building, BarChart3, Calculator, Atom, FlaskConical,
-  Search, Filter,
+  Search,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -55,14 +55,18 @@ const deptMeta = {
 
 const emptyForm = { title: '', category: '', course: '', formulas: '' };
 
-/* ─── Shared premium inline style factories ─── */
-const premiumCard = {
-  background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%)',
-  backdropFilter: 'blur(16px)',
-  WebkitBackdropFilter: 'blur(16px)',
-  border: '1px solid rgba(255,255,255,0.08)',
-  borderRadius: 'var(--radius-xl)',
-  boxShadow: '0 4px 24px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.05)',
+/* ─── Shared inline style factories ─── */
+/* Clean card (matching the rest of the app) — no gradient glow. The
+   Notebook-style masthead header lives at the top of this same box. */
+const cheatsheetsCard = {
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border-primary)',
+  borderRadius: 'var(--radius-lg)',
+  boxShadow: 'var(--shadow-lift)',
+  padding: 'var(--sp-5)',
+  display: 'flex',
+  flexDirection: 'column',
+  minWidth: 0,
 };
 
 const premiumInput = {
@@ -94,7 +98,7 @@ const pillBase = {
 };
 
 export default function Cheatsheets({ vaultContext }) {
-  const { course, courseName } = vaultContext;
+  const { course } = vaultContext;
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin' || user?.role === 'moderator';
   const canAdd = true;
@@ -183,31 +187,26 @@ export default function Cheatsheets({ vaultContext }) {
   const favCount = favorites.size;
 
   return (
-    <div className="cheatsheets-container animate-fadeIn" style={premiumCard}>
-      {/* ── Header ── */}
-      <div className="flex justify-between items-center mb-5 flex-wrap gap-4" style={{ padding: 'var(--sp-5) var(--sp-5) 0' }}>
-        <div>
-          <h2 style={{
-            fontSize: 'var(--fs-xl)',
-            fontWeight: 800,
-            letterSpacing: '-0.025em',
-            margin: '0 0 2px',
-            color: 'var(--text-primary)',
-          }}>
-            <span style={{
-              background: 'linear-gradient(135deg, var(--accent-amber) 0%, var(--accent-amber) 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-            }}>
-              Cheatsheets
-            </span>
-          </h2>
-          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: 0 }}>
-            {courseName} &mdash; quick formula sheets and references
-          </p>
+    <div className="cheatsheets-container animate-fadeIn" style={cheatsheetsCard}>
+      {/* ── Masthead header — Notebook style, merged into the top of this box ── */}
+      <div className="schedule-masthead" style={{ marginBottom: 0 }}>
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <BookOpen size={20} strokeWidth={2.2} />
+          </div>
+          <div>
+            <span className="schedule-overline">Productivity</span>
+            <div className="schedule-title">Cheat Sheets</div>
+            <span className="schedule-subtitle">Quick-reference formula sheets across all departments and topics.</span>
+          </div>
         </div>
+        <div className="schedule-masthead-center" />
+      </div>
 
+      <div className="schedule-dotted-divider" />
+
+      {/* ── Action buttons row ── */}
+      <div className="flex items-center justify-end gap-2 flex-wrap" style={{ padding: 'var(--sp-3) 0 0', marginBottom: 'var(--sp-4)' }}>
         {/* Action buttons */}
         <div className="flex items-center gap-2 flex-wrap">
           <button
@@ -278,7 +277,7 @@ export default function Cheatsheets({ vaultContext }) {
         <form
           onSubmit={handleAddSubmit}
           style={{
-            margin: '0 var(--sp-5) var(--sp-5)',
+            margin: '0 0 var(--sp-5)',
             background: 'rgba(0,0,0,0.15)',
             border: '1px solid rgba(255,255,255,0.06)',
             borderRadius: 'var(--radius-lg)',
@@ -353,18 +352,7 @@ export default function Cheatsheets({ vaultContext }) {
       )}
 
       {/* ── Department filter — Glowing step-tracker pills ── */}
-      <div style={{ padding: '0 var(--sp-5)', marginBottom: 'var(--sp-4)' }}>
-        <p style={{
-          fontSize: '10px',
-          fontWeight: 600,
-          color: 'var(--text-tertiary)',
-          marginBottom: '8px',
-          textTransform: 'uppercase',
-          letterSpacing: '0.07em',
-        }}>
-          <Filter size={10} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
-          Department
-        </p>
+      <div style={{ marginBottom: 'var(--sp-4)' }}>
         <div className="flex gap-1.5 overflow-x-auto pb-1 flex-wrap">
           <button
             onClick={() => { setActiveDept('All'); setActiveCategory('All'); }}
@@ -412,7 +400,7 @@ export default function Cheatsheets({ vaultContext }) {
 
       {/* ── Category filter chips ── */}
       {filteredByDept.length > 0 && availableCategories.length > 1 && (
-        <div style={{ padding: '0 var(--sp-5)', marginBottom: 'var(--sp-4)' }}>
+        <div style={{ marginBottom: 'var(--sp-4)' }}>
           <p style={{
             fontSize: '10px',
             fontWeight: 600,
@@ -450,7 +438,7 @@ export default function Cheatsheets({ vaultContext }) {
       )}
 
       {/* ── Content area ── */}
-      <div style={{ padding: '0 var(--sp-5) var(--sp-5)' }}>
+      <div>
         {filteredCheatsheets.length === 0 ? (
           <div style={{
             padding: '56px 16px',

@@ -213,9 +213,15 @@ function loadAccounts() {
     const raw = localStorage.getItem(accountsKey);
     let list = raw ? JSON.parse(raw) : [];
 
-    // Remove leftover dummy/DEV accounts that were previously seeded
+    // Remove leftover dummy/DEV/QA accounts that were previously seeded or
+    // synced during testing (e.g. "QA Verify", "qa-free-…@aust.edu").
     const before = list.length;
-    list = list.filter(acc => !acc.id?.startsWith('DEV-') && !acc.id?.startsWith('ALU-DEMO-'));
+    const isDummy = (acc) =>
+      acc.id?.startsWith('DEV-') ||
+      acc.id?.startsWith('ALU-DEMO-') ||
+      /^QA(\s|$)/i.test(String(acc.name || '').trim()) ||
+      /^qa-[\w-]*@/i.test(String(acc.email || '').trim());
+    list = list.filter(acc => !isDummy(acc));
     if (list.length !== before) {
       localStorage.setItem(accountsKey, JSON.stringify(list));
     }
@@ -234,6 +240,17 @@ function loadAccounts() {
         initials: 'AR',
         createdAt: new Date().toISOString(),
       });
+      localStorage.setItem(accountsKey, JSON.stringify(list));
+    }
+
+    // Keep only real accounts on this browser: the default admin plus the
+    // account of whoever is signed in right now (if anyone). Everything else
+    // is leftover test/sync data (demo students, old QA/Google-test logins)
+    // that should never appear in public directories like the Student Directory.
+    const currentId = getCurrentUserId();
+    const beforeFilter = list.length;
+    list = list.filter(acc => (currentId && acc.id === currentId) || acc.role === 'admin');
+    if (list.length !== beforeFilter) {
       localStorage.setItem(accountsKey, JSON.stringify(list));
     }
 
@@ -586,6 +603,8 @@ export function getRoleLabel(role) {
   if (role === 'moderator') return 'Moderator';
   if (role === 'cr') return 'Class Representative (CR)';
   if (role === 'sr') return 'Student Representative (SR)';
+  if (role === 'vp') return 'Vice President';
+  if (role === 'gs') return 'General Secretary';
   if (role === 'senior') return 'Senior';
   return 'Student';
 }
@@ -598,6 +617,8 @@ export function getRoleBadgeClass(role) {
     case 'alumni': return 'badge-cyan';
     case 'cr': return 'badge-amber';
     case 'sr': return 'badge-emerald';
+    case 'vp': return 'badge-amber';
+    case 'gs': return 'badge-emerald';
     case 'senior': return 'badge-purple';
     default: return 'badge-blue';
   }

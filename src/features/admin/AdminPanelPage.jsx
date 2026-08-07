@@ -343,7 +343,7 @@ export default function AdminPanelPage() {
 
   // Get role stats
   const getRoleStats = () => {
-    const stats = { student: 0, faculty: 0, alumni: 0, admin: 0, cr: 0, sr: 0 };
+    const stats = { student: 0, faculty: 0, alumni: 0, admin: 0, cr: 0, sr: 0, vp: 0, gs: 0 };
     accounts.forEach(acc => {
       if (stats[acc.role] !== undefined) {
         stats[acc.role]++;
@@ -1176,6 +1176,8 @@ export default function AdminPanelPage() {
                       <option value="student">Student</option>
                       <option value="cr">Class Representative (CR)</option>
                       <option value="sr">Student Representative (SR)</option>
+                      <option value="vp">Vice President (VP)</option>
+                      <option value="gs">General Secretary (GS)</option>
                       <option value="faculty">Faculty</option>
                       <option value="alumni">Alumni</option>
                       {editingUser !== 'ADM-001' && <option value="admin">Admin</option>}
@@ -1193,7 +1195,7 @@ export default function AdminPanelPage() {
                   </div>
                 </div>
 
-                {(editFormData.role === 'student' || editFormData.role === 'cr' || editFormData.role === 'sr' || editFormData.role === 'alumni') && (
+                {(editFormData.role === 'student' || editFormData.role === 'cr' || editFormData.role === 'sr' || editFormData.role === 'vp' || editFormData.role === 'gs' || editFormData.role === 'alumni') && (
                   <div className="grid-2" style={{ gap: '12px' }}>
                     <div>
                       <label className="input-label">Batch Number</label>
@@ -1254,7 +1256,7 @@ export default function AdminPanelPage() {
                   </div>
                 </div>
 
-                {(editFormData.role === 'student' || editFormData.role === 'cr' || editFormData.role === 'sr') && (
+                {(editFormData.role === 'student' || editFormData.role === 'cr' || editFormData.role === 'sr' || editFormData.role === 'vp' || editFormData.role === 'gs') && (
                   <div className="grid-2" style={{ gap: '12px' }}>
                     <div>
                       <label className="input-label">Section</label>
@@ -1353,6 +1355,8 @@ export default function AdminPanelPage() {
                     <option value="student">Student</option>
                     <option value="cr">Class Representative (CR)</option>
                     <option value="sr">Student Representative (SR)</option>
+                    <option value="vp">Vice President (VP)</option>
+                    <option value="gs">General Secretary (GS)</option>
                     <option value="faculty">Faculty</option>
                     <option value="alumni">Alumni</option>
                     <option value="admin">Admin</option>

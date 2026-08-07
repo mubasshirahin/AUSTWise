@@ -1093,85 +1093,103 @@ export default function MessagesPage() {
         </div>
       </header>
 
-      {/* ── 2. Toolbar box — filters, nav, stats ── */}
-      <div className="glass-card-static ms-toolbar-card">
-        <div className="ms-toolbar">
-          <div className="schedule-stats">
-            <div className="schedule-stat">
-              <span className="schedule-stat-value">{conversations.length}</span>
-              <span className="schedule-stat-label">chats</span>
+      {/* ── 2. Main box — masthead header + chat layout (one card) ── */}
+      <div className="ms-content-card">
+        {/* Masthead header */}
+        <div className="schedule-masthead ms-masthead">
+          {/* Left: title block */}
+          <div className="schedule-title-block">
+            <div className="schedule-icon-tile">
+              <MessageSquare size={20} strokeWidth={2.2} />
             </div>
-            <div className="schedule-stat">
-              <span className="schedule-stat-value" style={{ color: unreadTotal > 0 ? 'var(--accent-rose)' : undefined }}>
-                {unreadTotal}
-              </span>
-              <span className="schedule-stat-label">unread</span>
-            </div>
-            <div className="schedule-stat">
-              <span className="schedule-stat-value">{onlineChatCount}</span>
-              <span className="schedule-stat-label">online</span>
+            <div>
+              <span className="schedule-overline">Community</span>
+              <div className="schedule-title">ConnectBox</div>
+              <span className="schedule-subtitle">Inbox &amp; filters</span>
             </div>
           </div>
 
-          <div className="schedule-week-nav">
-            <button className="schedule-nav-btn" onClick={() => navigateConversation(-1)} title="Previous conversation" aria-label="Previous conversation">
-              <ChevronLeft size={20} />
-            </button>
-            <div className="schedule-week-pill">
-              <span className="schedule-week-pill-value">{pillLabel}</span>
+          {/* Center: stats */}
+          <div className="schedule-masthead-center">
+            <div className="schedule-stats">
+              <div className="schedule-stat">
+                <span className="schedule-stat-value">{conversations.length}</span>
+                <span className="schedule-stat-label">chats</span>
+              </div>
+              <div className="schedule-stat">
+                <span className="schedule-stat-value" style={{ color: unreadTotal > 0 ? 'var(--accent-rose)' : undefined }}>
+                  {unreadTotal}
+                </span>
+                <span className="schedule-stat-label">unread</span>
+              </div>
+              <div className="schedule-stat">
+                <span className="schedule-stat-value">{onlineChatCount}</span>
+                <span className="schedule-stat-label">online</span>
+              </div>
             </div>
-            <button className="schedule-nav-btn" onClick={() => navigateConversation(1)} title="Next conversation" aria-label="Next conversation">
-              <ChevronRight size={20} />
-            </button>
           </div>
 
-          <div className="export-dropdown" ref={menuRef}>
-            <button
-              className="schedule-nav-btn"
-              onClick={() => setMenuOpen((o) => !o)}
-              title="Options"
-              aria-haspopup="true"
-              aria-expanded={menuOpen}
-            >
-              <MoreVertical size={18} />
-            </button>
-            {menuOpen && (
-              <div className="export-menu" role="menu">
-                <button
-                  className={`export-menu-item${filterMode === 'all' ? ' menu-active' : ''}`}
-                  onClick={() => { setFilterMode('all'); setMenuOpen(false); }}
-                  role="menuitem"
-                >
-                  <Inbox size={14} /> All conversations
-                  {filterMode === 'all' && <Check size={14} className="menu-check" />}
-                </button>
-                <button
-                  className={`export-menu-item${filterMode === 'unread' ? ' menu-active' : ''}`}
-                  onClick={() => { setFilterMode('unread'); setMenuOpen(false); }}
-                  role="menuitem"
-                >
-                  <Mail size={14} /> Unread only
-                  {filterMode === 'unread' && <Check size={14} className="menu-check" />}
-                </button>
-                <div className="export-menu-sep" />
-                {notifSupported && (
+          {/* Right: nav + ⋮ menu */}
+          <div className="schedule-actions">
+            <div className="schedule-week-nav">
+              <button className="schedule-nav-btn" onClick={() => navigateConversation(-1)} title="Previous conversation" aria-label="Previous conversation">
+                <ChevronLeft size={20} />
+              </button>
+              <div className="schedule-week-pill">
+                <span className="schedule-week-pill-value">{pillLabel}</span>
+              </div>
+              <button className="schedule-nav-btn" onClick={() => navigateConversation(1)} title="Next conversation" aria-label="Next conversation">
+                <ChevronRight size={20} />
+              </button>
+            </div>
+
+            <div className="export-dropdown" ref={menuRef}>
+              <button
+                className="schedule-nav-btn"
+                onClick={() => setMenuOpen((o) => !o)}
+                title="Options"
+                aria-haspopup="true"
+                aria-expanded={menuOpen}
+              >
+                <MoreVertical size={18} />
+              </button>
+              {menuOpen && (
+                <div className="export-menu" role="menu">
                   <button
-                    className={`export-menu-item${notifEnabled ? ' menu-active' : ''}`}
-                    onClick={handleNotifToggle}
+                    className={`export-menu-item${filterMode === 'all' ? ' menu-active' : ''}`}
+                    onClick={() => { setFilterMode('all'); setMenuOpen(false); }}
                     role="menuitem"
                   >
-                    {notifEnabled ? <Bell size={14} /> : <BellOff size={14} />} Browser notifications
-                    {notifEnabled && <Check size={14} className="menu-check" />}
+                    <Inbox size={14} /> All conversations
+                    {filterMode === 'all' && <Check size={14} className="menu-check" />}
                   </button>
-                )}
-              </div>
-            )}
+                  <button
+                    className={`export-menu-item${filterMode === 'unread' ? ' menu-active' : ''}`}
+                    onClick={() => { setFilterMode('unread'); setMenuOpen(false); }}
+                    role="menuitem"
+                  >
+                    <Mail size={14} /> Unread only
+                    {filterMode === 'unread' && <Check size={14} className="menu-check" />}
+                  </button>
+                  <div className="export-menu-sep" />
+                  {notifSupported && (
+                    <button
+                      className={`export-menu-item${notifEnabled ? ' menu-active' : ''}`}
+                      onClick={handleNotifToggle}
+                      role="menuitem"
+                    >
+                      {notifEnabled ? <Bell size={14} /> : <BellOff size={14} />} Browser notifications
+                      {notifEnabled && <Check size={14} className="menu-check" />}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* ── 3. Main content box (own card) ── */}
-      <div className="ms-content-card">
+        <div className="schedule-dotted-divider" />
+
         {!wsConnected && currentUserId && (
           <div className="connection-status-banner">
             <WifiOff size={14} />
