@@ -146,8 +146,8 @@ export default function DeadlineTicker() {
 
       <div className="deadline-list">
         {displayDeadlines.length === 0 ? (
-          <div className="schedule-empty" style={{ padding: '28px 0' }}>
-            <Hourglass size={22} style={{ opacity: 0.3, marginBottom: '6px' }} />
+          <div className="schedule-empty" style={{ padding: '2px 0 12px' }}>
+            <Hourglass size={16} style={{ opacity: 0.3 }} />
             No upcoming deadlines
           </div>
         ) : displayDeadlines.map((dl, idx) => {

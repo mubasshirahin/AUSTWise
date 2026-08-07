@@ -62,7 +62,7 @@ export default function ChangelogPage() {
         <h2>v1.0 — January 2024</h2>
         <ul>
           <li>Initial launch of AUSTWise</li>
-          <li>Dashboard with CGPA Bol</li>
+          <li>Dashboard with CGPA Calculator</li>
           <li>Resource Vault with 500+ past papers</li>
           <li>Basic community features</li>
         </ul>

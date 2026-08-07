@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Shield, BellRing, Coffee, Activity, Users, Trash2, Plus, Check, AlertCircle, Eye, Edit3, Search, X, Save, User, FileText, CheckCircle2, XCircle, Clock3, ClipboardList, CalendarDays } from 'lucide-react';
-import { notices, canteenData, libraryData } from '../../data/mockData';
+import { Shield, BellRing, Coffee, Activity, Users, Trash2, Plus, Check, AlertCircle, Eye, Edit3, Search, X, Save, User, FileText, CheckCircle2, XCircle, Clock3, ClipboardList, CalendarDays, Mic, CalendarClock, Ban } from 'lucide-react';
+import { notices, canteenData, libraryData, getAuditoriumEvent, setAuditoriumEvent, defaultAuditoriumEvent } from '../../data/mockData';
 import { getRoleLabel, getRoleBadgeClass, updateAccountProfile, getAccountById, getAllRoleApplications, reviewRoleApplication, getAccountById as getUserById, resetAllLocalData } from '../../utils/authStorage';
 import { loadTemplates, saveTemplates, addTemplate, updateTemplate, deleteTemplate } from '../../utils/routineTemplates';
 import RoutineTemplatesPanel from './RoutineTemplatesPanel';
@@ -23,6 +23,7 @@ export default function AdminPanelPage() {
     if (path === '/admin/cr-sr-directory') return 'representatives';
     if (path === '/admin/templates') return 'templates';
     if (path === '/admin/transcript-templates') return 'transcript-templates';
+    if (path === '/admin/auditorium') return 'auditorium';
     if (path === '/admin/cheatsheets') return 'cheatsheets';
     if (path === '/admin/campus-map') return 'campus-map';
     return 'overview';
@@ -47,6 +48,7 @@ export default function AdminPanelPage() {
       'representatives': '/admin/cr-sr-directory',
       'templates': '/admin/templates',
       'transcript-templates': '/admin/transcript-templates',
+      'auditorium': '/admin/auditorium',
       'cheatsheets': '/admin/cheatsheets',
       'campus-map': '/admin/campus-map'
     };
@@ -83,12 +85,6 @@ export default function AdminPanelPage() {
   const [libraryInfo, setLibraryInfo] = useState({
     totalSeats: 120,
     occupied: 0,
-    zones: [
-      { name: 'Silent Zone', seats: 40, occupied: 0, noise: 'quiet' },
-      { name: 'Group Study', seats: 30, occupied: 0, noise: 'moderate' },
-      { name: 'Computer Lab', seats: 20, occupied: 0, noise: 'quiet' },
-      { name: 'Reading Area', seats: 30, occupied: 0, noise: 'quiet' }
-    ],
     peakHours: []
   });
 
@@ -271,24 +267,6 @@ export default function AdminPanelPage() {
   const handleUpdateLibraryOccupied = (value) => {
     const occupiedVal = Math.min(Math.max(0, Number(value)), libraryInfo.totalSeats);
     const updated = { ...libraryInfo, occupied: occupiedVal };
-    setLibraryInfo(updated);
-    localStorage.setItem('aust-library-data', JSON.stringify(updated));
-  };
-
-  // Update Library Zone
-  const handleUpdateLibraryZone = (idx, value) => {
-    const zones = [...libraryInfo.zones];
-    const seatLimit = zones[idx].seats;
-    const occupiedVal = Math.min(Math.max(0, Number(value)), seatLimit);
-    zones[idx] = { ...zones[idx], occupied: occupiedVal };
-
-    const newTotalOccupied = zones.reduce((sum, zone) => sum + zone.occupied, 0);
-
-    const updated = { 
-      ...libraryInfo, 
-      zones,
-      occupied: Math.min(newTotalOccupied, libraryInfo.totalSeats)
-    };
     setLibraryInfo(updated);
     localStorage.setItem('aust-library-data', JSON.stringify(updated));
   };
@@ -648,25 +626,6 @@ export default function AdminPanelPage() {
                   </div>
                 </div>
 
-                <div style={{ borderTop: '1px solid var(--border-primary)', paddingTop: '12px' }}>
-                  <label className="input-label" style={{ display: 'block', marginBottom: '8px', fontSize: 'var(--fs-xs)' }}>Zones Breakdown (Occupied Seats)</label>
-                  <div className="grid-2" style={{ gap: '8px' }}>
-                    {libraryInfo.zones.map((zone, idx) => (
-                      <div key={zone.name} className="flex flex-col gap-1">
-                        <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{zone.name}</span>
-                        <input 
-                          type="number" 
-                          min="0" 
-                          max={zone.seats}
-                          value={zone.occupied} 
-                          onChange={(e) => handleUpdateLibraryZone(idx, e.target.value)}
-                          className="input"
-                          style={{ padding: '6px 10px', fontSize: 'var(--fs-xs)' }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -1066,46 +1025,6 @@ export default function AdminPanelPage() {
                 </div>
               </div>
 
-              <div style={{ borderTop: '1px solid var(--border-primary)', paddingTop: '20px' }}>
-                <h4 style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '12px' }}>Occupancy by Study Zone</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {libraryInfo.zones.map((zone, idx) => (
-                    <div key={zone.name} className="flex justify-between items-center p-3" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-md)' }}>
-                      <div>
-                        <p style={{ fontSize: '13px', fontWeight: 'bold', margin: 0 }}>{zone.name}</p>
-                        <p style={{ fontSize: '10px', color: 'var(--text-tertiary)', margin: 0 }}>Limit: {zone.seats} seats</p>
-                      </div>
-                      
-                      <div className="flex items-center gap-3">
-                        <input 
-                          type="number" 
-                          min="0"
-                          max={zone.seats}
-                          value={zone.occupied}
-                          onChange={(e) => handleUpdateLibraryZone(idx, e.target.value)}
-                          className="input"
-                          style={{ width: '80px', padding: '6px 10px', textAlign: 'center' }}
-                        />
-                        <select 
-                          value={zone.noise}
-                          onChange={(e) => {
-                            const zones = [...libraryInfo.zones];
-                            zones[idx] = { ...zones[idx], noise: e.target.value };
-                            const updated = { ...libraryInfo, zones };
-                            setLibraryInfo(updated);
-                            localStorage.setItem('aust-library-data', JSON.stringify(updated));
-                          }}
-                          className="input"
-                          style={{ width: '110px', padding: '5px 8px', fontSize: 'var(--fs-xs)' }}
-                        >
-                          <option value="quiet">Quiet</option>
-                          <option value="moderate">Moderate</option>
-                        </select>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
         )}
@@ -1698,7 +1617,7 @@ export default function AdminPanelPage() {
                               <div className="avatar" style={{ width: 36, height: 36, fontSize: '12px', flexShrink: 0 }}>
                                 {rep.name?.charAt(0)?.toUpperCase() || 'R'}
                               </div>
-                              <div style={{ minWidth: 0 }}>
+                              <div style={{ minWidth: 0, flex: 1 }}>
                                 <p style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rep.name}</p>
                                 <p style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
                                   {rep.section && `Section ${rep.section}`}
@@ -1748,7 +1667,7 @@ export default function AdminPanelPage() {
                               <div className="avatar" style={{ width: 36, height: 36, fontSize: '12px', flexShrink: 0 }}>
                                 {rep.name?.charAt(0)?.toUpperCase() || 'R'}
                               </div>
-                              <div style={{ minWidth: 0 }}>
+                              <div style={{ minWidth: 0, flex: 1 }}>
                                 <p style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rep.name}</p>
                                 <p style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
                                   {rep.section && `Section ${rep.section}`}
@@ -1913,11 +1832,211 @@ export default function AdminPanelPage() {
           </div>
         )}
 
+        {/* AUDITORIUM ADMIN PANEL */}
+        {activeTab === 'auditorium' && <AdminAuditoriumPanel />}
+
         {/* CHEATSHEETS ADMIN PANEL */}
         {activeTab === 'cheatsheets' && <AdminCheatsheetsPanel />}
 
         {/* CAMPUS MAP ADMIN PANEL */}
         {activeTab === 'campus-map' && <AdminCampusMapPanel />}
+      </div>
+    </div>
+  );
+}
+
+// ─── M.H Khan Auditorium Admin Panel ─────────────────────────────────────
+// Lets admins schedule a seminar/event for the auditorium. The event is
+// persisted to localStorage ('aust-auditorium-event') and reflected on the
+// Free Rooms page (Ground Floor) via the 'auditorium-updated' event.
+function AdminAuditoriumPanel() {
+  const [evt, setEvt] = useState(() => getAuditoriumEvent());
+  const [savedMsg, setSavedMsg] = useState('');
+
+  const update = (patch) => setEvt((e) => ({ ...e, ...patch }));
+
+  const handleSave = (e) => {
+    e.preventDefault();
+    if (evt.status !== 'none' && !evt.title.trim()) {
+      setSavedMsg({ type: 'error', text: 'Event title is required when a seminar is scheduled.' });
+      return;
+    }
+    setAuditoriumEvent(evt);
+    setSavedMsg({ type: 'success', text: 'Saved! The Free Rooms page now reflects this event.' });
+  };
+
+  const handleClear = () => {
+    const cleared = { ...defaultAuditoriumEvent };
+    setEvt(cleared);
+    setAuditoriumEvent(cleared);
+    setSavedMsg({ type: 'success', text: 'Cleared. Auditorium is now available (Free).' });
+  };
+
+  const statusOptions = [
+    { id: 'none', label: 'No Event', desc: 'Auditorium shows as Free / available' },
+    { id: 'upcoming', label: 'Upcoming', desc: 'Event scheduled — shows as Busy' },
+    { id: 'ongoing', label: 'In Progress', desc: 'Happening now — shows as Busy' },
+  ];
+
+  return (
+    <div className="grid-2" style={{ gridTemplateColumns: '1fr 1fr', alignItems: 'start' }}>
+      {/* Event form */}
+      <div className="glass-card-static">
+        <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Mic size={16} style={{ color: 'var(--accent-purple)' }} /> M.H Khan Auditorium
+        </h3>
+        <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+          Schedule a seminar or event. It appears live on the Free Rooms page (Ground Floor).
+        </p>
+
+        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div>
+            <label className="input-label">Event Title *</label>
+            <input
+              type="text"
+              value={evt.title}
+              onChange={(e) => update({ title: e.target.value })}
+              className="input"
+              placeholder="e.g., Tech Talk: AI in 2026"
+              disabled={evt.status === 'none'}
+            />
+          </div>
+
+          <div className="grid-2" style={{ gap: '10px' }}>
+            <div>
+              <label className="input-label">Date</label>
+              <input
+                type="date"
+                value={evt.date}
+                onChange={(e) => update({ date: e.target.value })}
+                className="input"
+                disabled={evt.status === 'none'}
+              />
+            </div>
+            <div>
+              <label className="input-label">Time</label>
+              <input
+                type="text"
+                value={evt.time}
+                onChange={(e) => update({ time: e.target.value })}
+                className="input"
+                placeholder="e.g., 10:00 AM – 12:00 PM"
+                disabled={evt.status === 'none'}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="input-label">Speaker / Organizer</label>
+            <input
+              type="text"
+              value={evt.speaker}
+              onChange={(e) => update({ speaker: e.target.value })}
+              className="input"
+              placeholder="e.g., Dr. Rahman, CSE Dept"
+              disabled={evt.status === 'none'}
+            />
+          </div>
+
+          <div>
+            <label className="input-label">Description</label>
+            <textarea
+              value={evt.description}
+              onChange={(e) => update({ description: e.target.value })}
+              className="input"
+              style={{ minHeight: '80px', resize: 'vertical' }}
+              placeholder="Short summary of the seminar…"
+              disabled={evt.status === 'none'}
+            />
+          </div>
+
+          <div>
+            <label className="input-label" style={{ display: 'block', marginBottom: '6px' }}>Status</label>
+            <div className="flex gap-2">
+              {statusOptions.map((opt) => (
+                <button
+                  type="button"
+                  key={opt.id}
+                  className={`btn btn-sm flex-1 ${evt.status === opt.id ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => update({ status: opt.id })}
+                  title={opt.desc}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <p style={{ fontSize: '10px', color: 'var(--text-tertiary)', margin: '6px 0 0' }}>
+              {statusOptions.find((o) => o.id === evt.status)?.desc}
+            </p>
+          </div>
+
+          {savedMsg && (
+            <p style={{ fontSize: 'var(--fs-xs)', fontWeight: 'bold', color: savedMsg.type === 'success' ? 'var(--accent-emerald)' : 'var(--accent-rose)' }}>
+              {savedMsg.text}
+            </p>
+          )}
+
+          <div className="flex gap-2">
+            <button type="submit" className="btn btn-primary flex-1" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              <Save size={14} /> Save Event
+            </button>
+            <button type="button" className="btn btn-secondary" onClick={handleClear} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-rose)' }}>
+              <Ban size={14} /> Clear
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Live preview */}
+      <div className="glass-card-static">
+        <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <CalendarClock size={16} style={{ color: 'var(--accent-cyan)' }} /> Current Auditorium Status
+        </h3>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div
+            style={{
+              padding: '14px 16px',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--bg-input)',
+              border: `1px solid ${evt.status === 'none' ? 'var(--accent-emerald)' : 'var(--accent-purple)'}`,
+              borderLeft: `3px solid ${evt.status === 'none' ? 'var(--accent-emerald)' : 'var(--accent-purple)'}`,
+            }}
+          >
+            <div className="flex justify-between items-center" style={{ marginBottom: '6px' }}>
+              <strong style={{ fontSize: '13px' }}>M.H Khan Auditorium</strong>
+              <span
+                className="badge"
+                style={{
+                  fontSize: '9px',
+                  background: evt.status === 'none' ? 'var(--accent-emerald-glow)' : 'var(--accent-purple)',
+                  color: evt.status === 'none' ? 'var(--accent-emerald)' : '#fff',
+                }}
+              >
+                {evt.status === 'none' ? 'FREE' : evt.status === 'ongoing' ? 'IN PROGRESS' : 'UPCOMING'}
+              </span>
+            </div>
+            {evt.status === 'none' ? (
+              <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent-emerald)', margin: 0 }}>
+                Available · No event scheduled
+              </p>
+            ) : (
+              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+                <p style={{ margin: '0 0 2px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{evt.title || 'Untitled event'}</p>
+                {evt.speaker && <p style={{ margin: 0 }}>Speaker: {evt.speaker}</p>}
+                <p style={{ margin: 0 }}>
+                  {[evt.date && new Date(evt.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), evt.time].filter(Boolean).join(' · ') || 'Date / time TBD'}
+                </p>
+                {evt.description && <p style={{ margin: '4px 0 0' }}>{evt.description}</p>}
+              </div>
+            )}
+          </div>
+
+          <p style={{ fontSize: '10px', color: 'var(--text-tertiary)', lineHeight: '1.5' }}>
+            Students on the Free Rooms page will see this card on the Ground Floor.
+            Set status to <strong>No Event</strong> when the auditorium is free for self-study.
+          </p>
+        </div>
       </div>
     </div>
   );

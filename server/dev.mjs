@@ -36,6 +36,13 @@ import {
   recordCheckOut,
   getOccupancy
 } from './libraryDB.mjs';
+import {
+  trackUserPresence,
+  getLivePulse,
+  isInsideGeofence,
+  seedDummyUsers,
+  clearDummyUsers
+} from './liveLibraryDB.mjs';
 import { initializeDatabase, resetDatabase, query, sql } from './db.mjs';
 import { handleOAuthRequest } from './socialOAuth.mjs';
 import { handleAuthRoute, readTokenCookie } from './auth.mjs';
@@ -74,6 +81,9 @@ import {
   upsertSharedRoutine,
   deleteSharedRoutineBySlot,
   getSharedRoutineStats,
+  listRoomBookings,
+  computeRoomAvailabilityServer,
+  serverRoomCatalog,
 } from './prisma.js';
 import {
   ensureUploadsDir,
@@ -1054,6 +1064,80 @@ server.on('request', async (req, res) => {
     return;
   }
 
+  // ── Live geofence occupancy (user_id based real-time tracking) ──
+
+  // POST /api/library/track — UPSERT a user's inside/outside state via MERGE.
+  // isInside is optional; when omitted (or no lat/lng), the server only flips
+  // the flag using the already-verified value. When lat/lng are present the
+  // server re-verifies the geofence before trusting the client.
+  if (req.url === '/api/library/track' && req.method === 'POST') {
+    try {
+      const { userId, isInside, lat, lng } = await readJsonBody(req);
+      let verified = isInside;
+      if (lat !== undefined && lng !== undefined) {
+        const check = isInsideGeofence(Number(lat), Number(lng));
+        verified = check.inside;
+        if (verified !== !!isInside) {
+          sendJson(res, 200, {
+            success: true,
+            clientClaimed: !!isInside,
+            verified,
+            distance: check.distance,
+            radius: Number(process.env.LIBRARY_RADIUS_M || 60),
+            note: 'Position re-verified server-side; client flag was overridden.',
+          });
+          return;
+        }
+      }
+      const result = await trackUserPresence(userId, verified, Number(lat), Number(lng));
+      sendJson(res, 200, { success: true, verified, ...result });
+    } catch (error) {
+      sendJson(res, 400, {
+        success: false,
+        error: error.message || 'Unable to update presence.',
+      });
+    }
+    return;
+  }
+
+  // GET /api/library/pulse — real-time occupancy snapshot (count users inside
+  // with a heartbeat within the last 5 minutes).
+  if (req.url === '/api/library/pulse' && req.method === 'GET') {
+    try {
+      const result = await getLivePulse();
+      sendJson(res, 200, { success: true, ...result });
+    } catch (error) {
+      sendJson(res, 500, {
+        success: false,
+        error: error.message || 'Failed to get live pulse.',
+      });
+    }
+    return;
+  }
+
+  // ── Dev-only: seed/clear dummy users to preview the heatmap ──
+
+  if (req.url.startsWith('/api/library/dev-seed') && req.method === 'GET') {
+    try {
+      const count = Number(new URL(req.url, 'http://x').searchParams.get('count') || 1);
+      const result = await seedDummyUsers(count);
+      sendJson(res, 200, { success: true, ...result });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Seed failed.' });
+    }
+    return;
+  }
+
+  if (req.url.startsWith('/api/library/dev-clear') && req.method === 'GET') {
+    try {
+      const result = await clearDummyUsers();
+      sendJson(res, 200, { success: true, ...result });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Clear failed.' });
+    }
+    return;
+  }
+
   // ========== Invitation Endpoints ==========
 
   // Create a new invitation (admin only)
@@ -1617,6 +1701,35 @@ server.on('request', async (req, res) => {
       sendJson(res, 200, { success: true, stats });
     } catch (error) {
       sendJson(res, 500, { success: false, error: error.message || 'Failed to get shared routine stats.' });
+    }
+    return;
+  }
+
+  // ========== Room / Lab Availability (Free Rooms) ==========
+
+  // GET /api/rooms/availability?day=Sunday&time=10:30
+  // Live busy/free state derived from CR-published routines.
+  if (req.url.startsWith('/api/rooms/availability') && req.method === 'GET') {
+    try {
+      const url = new URL(req.url, `http://${req.headers.host}`);
+      const day = url.searchParams.get('day') || '';
+      const time = url.searchParams.get('time') || '';
+      const bookings = await listRoomBookings();
+      const floors = computeRoomAvailabilityServer(serverRoomCatalog, bookings, day, time);
+      const allRooms = floors.flatMap((f) => f.rooms);
+      const free = allRooms.filter((r) => r.status === 'free').length;
+      const busy = allRooms.filter((r) => r.status === 'busy').length;
+      sendJson(res, 200, {
+        success: true,
+        day,
+        time,
+        building: serverRoomCatalog.building,
+        floors,
+        totals: { free, busy, total: free + busy },
+        crShared: bookings.length > 0,
+      });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to compute room availability.' });
     }
     return;
   }
@@ -2212,6 +2325,8 @@ server.listen(port, '0.0.0.0', () => {
   console.log('  POST /api/library/checkin              - GPS check-in / heartbeat');
   console.log('  POST /api/library/checkout             - Leave the library');
   console.log('  GET  /api/library/occupancy            - Live occupancy count');
+  console.log('  POST /api/library/track                - Geofence UPSERT (MERGE)');
+  console.log('  GET  /api/library/pulse                - Real-time occupancy pulse');
   console.log('');
   console.log('Invitation Endpoints:');
   console.log('  POST /api/invites                      - Create invitation');

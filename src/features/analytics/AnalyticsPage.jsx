@@ -12,7 +12,7 @@ import './analytics-tokens.css';
 const TAB_KEY = 'analyticsActiveTab';
 
 const gradeLabTabs = [
-  { id: 'cgpagraph', label: 'CGPA Bol', icon: TrendingUp, color: 'amber', desc: 'Grade trends' },
+  { id: 'cgpagraph', label: 'CGPA Calculator', icon: TrendingUp, color: 'amber', desc: 'Grade trends' },
   { id: 'semestertracker', label: 'Semester View', icon: Layers, color: 'amber', desc: 'Per-semester' },
   { id: 'heatmap', label: 'Dept Heatmap', icon: Grid3x3, color: 'amber', desc: 'Avg CGPA' },
   { id: 'bestworst', label: 'Best & Worst', icon: Trophy, color: 'amber', desc: 'Course poll' },

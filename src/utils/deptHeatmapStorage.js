@@ -48,7 +48,7 @@ function saveSubmissions(submissions) {
   localStorage.setItem(submissionsKey, JSON.stringify(submissions));
 }
 
-/** Completed semester CGPA values from CGPA Bol storage. */
+/** Completed semester CGPA values from CGPA Calculator storage. */
 export function getSemesterCgpasFromTracker() {
   try {
     const results = getUserStorageItem('semesterResults');
@@ -108,7 +108,7 @@ function removeCurrentContribution(department) {
   saveSubmissions(submissions);
 }
 
-/** Push this device's CGPA Bol data into the anonymous heatmap pool. */
+/** Push this device's CGPA Calculator data into the anonymous heatmap pool. */
 export function syncHeatmapFromTracker() {
   const user = loadUserProfile();
   const department = user?.department;

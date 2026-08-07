@@ -1418,6 +1418,10 @@
   white-space: nowrap;
 }
 .schedule-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   font-size: 10px;
   color: var(--text-tertiary);
   text-align: center;
@@ -1774,6 +1778,70 @@
 
 .load-routine-btn > svg {
   flex-shrink: 0;
+}
+
+/* ─── Special CR-only Share Routine button (Routine masthead) ───
+   Only rendered for CRs. Publishing auto-feeds Load Routine + Free Rooms. */
+.cr-publish-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  white-space: nowrap;
+  line-height: 1;
+  min-width: 132px;
+  padding: 9px 16px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent-emerald) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-emerald) 35%, var(--border-primary));
+  color: var(--accent-emerald);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-sm);
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.cr-publish-btn:hover {
+  border-color: color-mix(in srgb, var(--accent-emerald) 60%, var(--border-primary));
+  background: color-mix(in srgb, var(--accent-emerald) 16%, transparent);
+  transform: translateY(-1px);
+}
+
+.cr-publish-btn:active {
+  transform: scale(0.98);
+}
+
+.cr-publish-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-emerald) 60%, transparent);
+  outline-offset: 2px;
+}
+
+.cr-publish-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Shared state — the routine is live, everyone can see it */
+.cr-publish-btn.is-shared {
+  background: color-mix(in srgb, var(--accent-emerald) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent-emerald) 55%, var(--border-primary));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-emerald) 12%, transparent);
+}
+
+.cr-publish-btn > svg {
+  flex-shrink: 0;
+}
+
+/* Tighten the masthead center when both buttons sit side by side */
+.schedule-masthead-center {
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 720px) {
+  .cr-publish-btn { min-width: 120px; padding: 8px 12px; }
 }
 
 .weekly-table-wrap {

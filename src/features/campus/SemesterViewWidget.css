@@ -17,10 +17,15 @@
 
 .sv-widget .schedule-masthead {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: var(--sp-3);
   padding-top: 4px;
+}
+
+/* Library stats row — center the middle stats block */
+.library-widget .schedule-masthead {
+  grid-template-columns: 1fr auto 1fr;
 }
 
 .sv-widget .schedule-masthead-center {
@@ -389,11 +394,6 @@
 @media (max-width: 1000px) {
   .sv-widget .schedule-masthead {
     grid-template-columns: 1fr auto;
-  }
-  .sv-widget .schedule-masthead-center {
-    grid-column: 1 / -1;
-    order: 3;
-    justify-content: flex-start;
   }
   .sv-widget .schedule-actions {
     justify-content: flex-end;

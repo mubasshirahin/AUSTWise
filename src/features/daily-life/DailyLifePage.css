@@ -14,6 +14,12 @@
   padding-bottom: var(--sp-10);
 }
 
+/* Cover Page Generator tab — wide editor so the live preview can show the
+   cover at its full page size instead of a small letterboxed box. */
+.daily-life-page:has(.cpgen-widget) {
+  max-width: 1440px;
+}
+
 /* ── 1. Hero box — its own card ── */
 .dl-hero {
   position: relative;

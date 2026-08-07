@@ -13,7 +13,7 @@ const TABS = [
   { id: 'exam-checklist',       label: 'Exam Checklist',      icon: ClipboardCheck, color: 'amber', desc: 'Exam prep'          },
   { id: 'cover-page-generator', label: 'Cover Page',          icon: NotebookPen,    color: 'amber', desc: 'Generate cover page'},
   { id: 'bhara-koto',           label: 'Bhara Koto',          icon: Banknote,       color: 'amber', desc: 'Fare estimator'     },
-  { id: 'money-tracker',        label: 'TiyaHodeJargoi',      icon: DollarSign,     color: 'amber', desc: 'Expenses & budget'  },
+  { id: 'money-tracker',        label: 'TakaGeloKoi',         icon: DollarSign,     color: 'amber', desc: 'Expenses & budget'  },
   { id: 'mess-meal',            label: 'Mess Meal',           icon: UtensilsCrossed,color: 'amber', desc: 'Meal planner'       },
 ];
 

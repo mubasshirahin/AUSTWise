@@ -20,7 +20,7 @@ export default function PricingPage() {
         <h2>Free Plan</h2>
         <p>All core features are completely free for AUST students, faculty, and staff:</p>
         <ul>
-          <li>Dashboard with CGPA Bol and schedule view</li>
+          <li>Dashboard with CGPA Calculator and schedule view</li>
           <li>Grade Lab with interactive analytics</li>
           <li>Resource Vault with 1,200+ past papers</li>
           <li>Campus Hub with floor maps and live data</li>

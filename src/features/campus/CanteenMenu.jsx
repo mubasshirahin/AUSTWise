@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Coffee, Flame, Star, MessageSquare, AlertTriangle, Plus, X, Info, MoreVertical, Check } from 'lucide-react';
-import { canteenData } from '../../data/mockData';
+import { canteenData, currentDayOfWeek } from '../../data/mockData';
 import {
   getReviewSummary,
   getReviewsForFood,
@@ -310,7 +310,9 @@ export default function CanteenMenu() {
 
   const currentSlot = useMemo(() => getCurrentTimeSlot(), []);
 
-  const autoStatus = currentSlot.status === 'Hard Shutdown' ? 'closed' : 'open';
+  // Closed all day Friday & Saturday regardless of the crowd slot
+  const isWeekend = currentDayOfWeek() === 'Friday' || currentDayOfWeek() === 'Saturday';
+  const autoStatus = isWeekend ? 'closed' : (currentSlot.status === 'Hard Shutdown' ? 'closed' : 'open');
   const effectiveStatus = canteenInfo.statusMode === 'auto' ? autoStatus : canteenInfo.status;
   const effectiveCrowdSlot = canteenInfo.crowdMode === 'auto' ? currentSlot : null;
   const isOpen = effectiveStatus === 'open';

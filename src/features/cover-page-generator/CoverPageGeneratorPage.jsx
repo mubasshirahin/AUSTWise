@@ -18,7 +18,8 @@ function formatDate(date) {
   return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-// ─── A4 dimensions at 96dpi (210mm × 297mm) ───
+// ─── A4 dimensions at 96dpi (210mm × 2
+// 97mm) ───
 const A4_W = 794;
 const A4_H = 1123;
 
@@ -39,17 +40,17 @@ function loadCoverForm() {
   }
 }
 
-// ─── Fit A4 sheet into the preview frame ───
+// ─── Fit A4 sheet into the preview frame (sized by width so the
+//     cover renders at its full page size when the panel is wide enough) ───
 function useCoverScale(frameRef) {
-  const [coverScale, setCoverScale] = useState(0.4);
+  const [coverScale, setCoverScale] = useState(1);
   useEffect(() => {
     const frame = frameRef.current;
     if (!frame) return undefined;
     const compute = () => {
       const w = frame.clientWidth;
-      const h = frame.clientHeight;
-      if (!w || !h) return;
-      const scale = Math.min((w - 56) / A4_W, (h - 72) / A4_H);
+      if (!w) return;
+      const scale = (w - 20) / A4_W;
       setCoverScale(scale > 0 ? Math.min(scale, 1) : 0.1);
     };
     compute();
@@ -490,40 +491,6 @@ export default function CoverPageGeneratorPage() {
               <UserPlus size={13} /> Add Member
             </button>
           </div>
-
-          {/* ─── Profile Info (Read-only) ─── */}
-          <div className="cpgen-profile-card">
-            <div className="cpgen-profile-header">
-              <User size={14} />
-              <span>Your Profile</span>
-            </div>
-            <div className="cpgen-profile-grid">
-              <div className="cpgen-profile-item">
-                <span className="cpgen-profile-label">Name</span>
-                <span className="cpgen-profile-value">{studentName || '—'}</span>
-              </div>
-              <div className="cpgen-profile-item">
-                <span className="cpgen-profile-label">ID</span>
-                <span className="cpgen-profile-value">{studentId || '—'}</span>
-              </div>
-              <div className="cpgen-profile-item">
-                <span className="cpgen-profile-label">Department</span>
-                <span className="cpgen-profile-value">{department || '—'}</span>
-              </div>
-              <div className="cpgen-profile-item">
-                <span className="cpgen-profile-label">Semester</span>
-                <span className="cpgen-profile-value">{semester || '—'}</span>
-              </div>
-              <div className="cpgen-profile-item">
-                <span className="cpgen-profile-label">Batch</span>
-                <span className="cpgen-profile-value">{batch || '—'}</span>
-              </div>
-              <div className="cpgen-profile-item">
-                <span className="cpgen-profile-label">Section</span>
-                <span className="cpgen-profile-value">{section || '—'}</span>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* ─── Preview Panel ─── */}
@@ -581,6 +548,44 @@ export default function CoverPageGeneratorPage() {
                 <p>Fill in the course code and title to see your cover page preview</p>
               </div>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Profile Info (Read-only) — full-width, below the editor ─── */}
+      <div className="cpgen-profile-card">
+        <div className="cpgen-profile-header">
+          <User size={14} />
+          <span>Your Profile</span>
+        </div>
+        <div className="cpgen-profile-grid">
+          <div className="cpgen-profile-item">
+            <span className="cpgen-profile-label">Name</span>
+            <span className="cpgen-profile-value">{studentName || '—'}</span>
+          </div>
+          <div className="cpgen-profile-item">
+            <span className="cpgen-profile-label">ID</span>
+            <span className="cpgen-profile-value">{studentId || '—'}</span>
+          </div>
+          <div className="cpgen-profile-item">
+            <span className="cpgen-profile-label">Department</span>
+            <span className="cpgen-profile-value">{department || '—'}</span>
+          </div>
+          <div className="cpgen-profile-item">
+            <span className="cpgen-profile-label">Semester</span>
+            <span className="cpgen-profile-value">{semester || '—'}</span>
+          </div>
+          <div className="cpgen-profile-item">
+            <span className="cpgen-profile-label">Batch</span>
+            <span className="cpgen-profile-value">{batch || '—'}</span>
+          </div>
+          <div className="cpgen-profile-item">
+            <span className="cpgen-profile-label">Section</span>
+            <span className="cpgen-profile-value">{section || '—'}</span>
+          </div>
+          <div className="cpgen-profile-item cpgen-profile-item--wide">
+            <span className="cpgen-profile-label">Lab Group</span>
+            <span className="cpgen-profile-value">{labGroup || '—'}</span>
           </div>
         </div>
       </div>

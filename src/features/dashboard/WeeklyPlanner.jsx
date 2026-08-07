@@ -55,7 +55,8 @@ export default function WeeklyPlanner() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  // Keep the shared-routine counter fresh on the toolbar.
+  // Keep the shared-routine counter fresh on the toolbar, and (for CRs) load
+  // the published list so the masthead Share button reflects the live state.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -64,8 +65,16 @@ export default function WeeklyPlanner() {
         const data = await res.json();
         if (!cancelled && data.stats) setSharedStats(data.stats);
       } catch { /* server not reachable — keep defaults */ }
+      if (!cancelled && isCR) {
+        try {
+          const listRes = await fetch('/api/routines/shared', { credentials: 'same-origin' });
+          const listData = await listRes.json();
+          if (!cancelled && listData.routines) setSharedRoutines(listData.routines);
+        } catch { /* keep empty list */ }
+      }
     })();
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const [availableTemplates, setAvailableTemplates] = useState([]);
@@ -297,6 +306,8 @@ export default function WeeklyPlanner() {
         body: JSON.stringify({ routine, weekDays }),
       });
       setShareMsg('Routine shared ✓');
+      // Tell any open Free Rooms page to recompute availability right away.
+      window.dispatchEvent(new Event('routine-updated'));
       await refreshSharedRoutines();
     } catch (e) {
       setShareMsg(e.message || 'Sharing failed — try again');
@@ -312,6 +323,7 @@ export default function WeeklyPlanner() {
     try {
       await sharedApi('/api/routines/shared', { method: 'DELETE' });
       setShareMsg('Routine removed from load list');
+      window.dispatchEvent(new Event('routine-updated'));
       await refreshSharedRoutines();
     } catch (e) {
       setShareMsg(e.message || 'Failed to remove — try again');
@@ -581,6 +593,23 @@ export default function WeeklyPlanner() {
              <Download size={14} />
              <span>Load Routine</span>
            </button>
+
+           {/* Special CR-only Share Routine button.
+               Publishing one routine automatically feeds BOTH the Load Routine
+               list and the Free Rooms availability (derived server-side). */}
+           {isCR && (
+             <button
+               className={`btn btn-sm cr-publish-btn${myShared ? ' is-shared' : ''}`}
+               disabled={shareBusy}
+               onClick={() => { if (myShared) handleUnshareRoutine(); else handleShareRoutine(); }}
+               title={myShared
+                 ? 'Your routine is live — every student can load it and Free Rooms shows your rooms as busy. Click to remove.'
+                 : 'Publish your routine — it automatically appears in Load Routine and Free Rooms for everyone.'}
+             >
+               {shareBusy ? <Loader2 size={14} className="spin" /> : myShared ? <Check size={14} /> : <Share2 size={14} />}
+               <span>{myShared ? 'Routine Live ✓' : 'Share Routine'}</span>
+             </button>
+           )}
          </div>
 
          {/* Right: 3-dot menu (export / reset / ramadan / share) */}
@@ -611,20 +640,6 @@ export default function WeeklyPlanner() {
                    </div>
                  </button>
 
-                 {isCR && (
-                   <>
-                     <div className="export-menu-sep" />
-                     <button
-                       className="export-menu-item"
-                       disabled={shareBusy}
-                       onClick={() => { if (myShared) handleUnshareRoutine(); else handleShareRoutine(); setShowMenu(false); }}
-                       title={myShared ? 'Your routine is shared — click to remove it from the load list' : 'Publish your routine so other students can load it'}
-                     >
-                       {shareBusy ? <Loader2 size={14} className="spin" /> : <Share2 size={14} />}
-                       {myShared ? 'Unshare routine' : 'Share routine'}
-                     </button>
-                   </>
-                 )}
                </div>
              )}
            </div>

@@ -32,7 +32,7 @@ export default function BlogPage() {
 
         <h2>A Fresh Start: New Semester, New Features</h2>
         <p className="info-page-meta">November 2024 · 4 min read</p>
-        <p>As a new semester begins, we are rolling out features designed to make your academic life easier. From the improved CGPA Bol to the new marketplace for textbooks and housing, AUSTWise has everything you need to start the semester strong.</p>
+        <p>As a new semester begins, we are rolling out features designed to make your academic life easier. From the improved CGPA Calculator to the new marketplace for textbooks and housing, AUSTWise has everything you need to start the semester strong.</p>
 
         <hr />
 

@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   ZoomIn, Maximize2, Minimize2,
-  MapPin, Compass, Move, RotateCcw, MoreVertical, Check,
+  Compass, MoreVertical, Check,
 } from 'lucide-react';
 import { campusFloors as staticCampusFloors } from '../../data/mockData';
 import GliderTabs from '../../components/GliderTabs';
@@ -22,9 +22,6 @@ function fetchCampusLocations() {
 
 const zoomLevels = [
   { id: 'fit', label: 'Fit' },
-  { id: '100', label: '100%' },
-  { id: '125', label: '125%' },
-  { id: '150', label: '150%' },
 ];
 
 const roomTypeLabels = {
@@ -114,22 +111,6 @@ function FloorShowcase({ floorData, selectedFloor, floorTabs, onFloorChange }) {
     setSelectedRoomId(null);
     setSelectedHotspotKey(null);
     setSelectedZone(null);
-  }, []);
-
-  const handleLocationClick = useCallback((room) => {
-    setSelectedRoomId((prev) => {
-      const next = prev === room.id ? null : room.id;
-      setSelectedHotspotKey(next ? getHotspotKey(room, 0) : null);
-      if (next) {
-        requestAnimationFrame(() => {
-          const hotspotEl = hotspotRefs.current[getHotspotKey(room, 0)];
-          if (hotspotEl && viewportRef.current) {
-            hotspotEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-          }
-        });
-      }
-      return next;
-    });
   }, []);
 
   const handleHotspotPointerDown = (e, room, hotspot, hotspotKey) => {
@@ -364,27 +345,8 @@ function FloorShowcase({ floorData, selectedFloor, floorTabs, onFloorChange }) {
             <span className="schedule-overline">Campus</span>
             <div className="schedule-title">{selectedFloor} Floor Plan</div>
             <span className="schedule-subtitle">
-              AUST {selectedFloor.toLowerCase()} floor · click Key Locations to highlight areas
+              AUST {selectedFloor.toLowerCase()} floor · click locations to highlight areas
             </span>
-          </div>
-        </div>
-
-        <div className="schedule-masthead-center">
-          <div className="schedule-stats">
-            <div className="schedule-stat">
-              <span className="schedule-stat-value">{floorData.rooms.length}</span>
-              <span className="schedule-stat-label">Rooms</span>
-            </div>
-            <div className="schedule-stat">
-              <span className="schedule-stat-value">
-                {floorData.rooms.filter(r => r.type === 'classroom' || r.type === 'lab').length}
-              </span>
-              <span className="schedule-stat-label">Classes / Labs</span>
-            </div>
-            <div className="schedule-stat">
-              <span className="schedule-stat-value" style={{ textTransform: 'capitalize' }}>{floorView}</span>
-              <span className="schedule-stat-label">View</span>
-            </div>
           </div>
         </div>
 
@@ -429,15 +391,6 @@ function FloorShowcase({ floorData, selectedFloor, floorTabs, onFloorChange }) {
                     {zoom === level.id && <Check size={14} className="menu-check" />}
                   </button>
                 ))}
-                <div className="export-menu-sep" />
-                <button
-                  className={`export-menu-item${editMode ? ' menu-active' : ''}`}
-                  onClick={() => { setEditMode(p => !p); setMenuOpen(false); }}
-                  role="menuitem"
-                >
-                  <Move size={14} /> {editMode ? 'Exit Edit Mode' : 'Edit Positions'}
-                  {editMode && <Check size={14} className="menu-check" />}
-                </button>
                 <button
                   className="export-menu-item"
                   onClick={() => { toggleFullscreen(); setMenuOpen(false); }}
@@ -582,118 +535,11 @@ function FloorShowcase({ floorData, selectedFloor, floorTabs, onFloorChange }) {
                         )}
                       </div>
                     );
-                  }))}
+                  }                ))}
               </div>
             </div>
-            <p className="floor-plan-hint">
-              {isInteractiveFloor && selectedZone
-                ? 'Click the zone again or press Clear to reset the map'
-                : selectedRoomId
-                  ? 'Tap the same location again or click anywhere to clear'
-                  : isInteractiveFloor
-                    ? 'Click any colored zone on the map to highlight it'
-                    : 'Click a Key Location to glow it on the map · Scroll or pinch to explore'}
-            </p>
           </div>
         </div>
-
-        <aside className="floor-plan-sidebar">
-          <div className="floor-plan-sidebar-card">
-            <h3 className="floor-plan-sidebar-title">
-              <MapPin size={16} />
-              Key Locations
-            </h3>
-            <p className="floor-plan-sidebar-desc">Tap to highlight on the map</p>
-            <ul className="floor-plan-location-list">
-              {floorData.rooms.map((room) => (
-                <li key={room.id}>
-                  <button
-                    type="button"
-                    className={`floor-plan-location-item ${selectedRoomId === room.id ? 'active' : ''}`}
-                    onClick={() => handleLocationClick(room)}
-                  >
-                    <span className={`floor-plan-location-dot floor-plan-dot-${room.type}`} />
-                    <div>
-                      <span className="floor-plan-location-id">{room.id}</span>
-                      <span className="floor-plan-location-name">{room.name}</span>
-                      <span className="floor-plan-location-type">
-                        {roomTypeLabels[room.type] || room.type}
-                      </span>
-                    </div>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="floor-plan-sidebar-card floor-plan-tips">
-            <h3 className="floor-plan-sidebar-title">Quick Tips</h3>
-            <ul className="floor-plan-tips-list">
-              <li>Click same location again or anywhere to <strong>clear</strong> glow</li>
-              <li>Use <strong>125%</strong> or <strong>150%</strong> to read labels clearly</li>
-              <li>Tap <strong>Fullscreen</strong> for a bigger view</li>
-              {editMode && (
-                <li style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed rgba(255,255,255,0.08)' }}>
-                  <strong>Edit mode:</strong> Drag box to move. Drag corners to resize. Use top handle to rotate.
-                  <button
-                    type="button"
-                    className="btn btn-sm"
-                    style={{ marginTop: '6px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '11px', padding: '4px 8px', background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}
-                    onClick={resetPositions}
-                  >
-                    <RotateCcw size={12} /> Reset All Positions
-                  </button>
-                </li>
-              )}
-            </ul>
-          </div>
-
-          {editMode && editingPos && editingRoom && (
-            <div className="floor-plan-sidebar-card floor-plan-editor">
-              <h3 className="floor-plan-sidebar-title">
-                <Move size={16} />
-                Adjust: {editingRoom.name} ({selectedRoomId})
-              </h3>
-              <div className="floor-plan-editor-grid">
-                {['left', 'top', 'width', 'height'].map((field) => (
-                  <label key={field} className="floor-plan-editor-row">
-                    <span className="floor-plan-editor-label">{field}</span>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      step="0.5"
-                      value={editingPos[field]}
-                      onChange={(e) => updatePosition(selectedHotspotKey, editingHotspot, field, e.target.value)}
-                      className="floor-plan-editor-range"
-                    />
-                    <span className="floor-plan-editor-value">
-                      {Math.round(editingPos[field] * 10) / 10}%
-                    </span>
-                  </label>
-                ))}
-                <label className="floor-plan-editor-row">
-                  <span className="floor-plan-editor-label">rotate</span>
-                  <input
-                    type="range"
-                    min="-180"
-                    max="180"
-                    step="1"
-                    value={editingRotation}
-                    onChange={(e) => updateRotation(selectedHotspotKey, e.target.value)}
-                    className="floor-plan-editor-range"
-                  />
-                  <span className="floor-plan-editor-value">
-                    {editingRotation}deg
-                  </span>
-                </label>
-              </div>
-              <p className="floor-plan-editor-hint">
-                Drag the box to move it. Drag corner handles to resize. Drag the top circle to rotate.
-              </p>
-            </div>
-          )}
-        </aside>
       </div>
     </div>
   );

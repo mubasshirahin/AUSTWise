@@ -654,7 +654,7 @@ export default function ResultTable({ onResultsChange }) {
 
   return (
     <div className="cgpa-transcript">
-      {/* Section head — title + ⋮ menu (matches CGPA Bol masthead) */}
+      {/* Section head — title + ⋮ menu (matches CGPA Calculator masthead) */}
       <div className="schedule-masthead">
         <div className="schedule-title-block">
           <div className="schedule-icon-tile">

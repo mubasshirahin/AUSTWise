@@ -8,7 +8,7 @@ import {
   LogIn, Shield, Eye, Megaphone, Utensils,
   Library, FileText, FolderOpen, FileSpreadsheet,
   ChevronLeft, ChevronRight, Crown,
-  NotebookPen, Coffee,
+  NotebookPen, Coffee, Mic,
   Zap, Home, Moon
 } from 'lucide-react';
 import './Sidebar.css';
@@ -64,6 +64,7 @@ export default function Sidebar({ collapsed, onToggle }) {
       { path: '/admin/users', label: 'Users', icon: Users },
       { path: '/admin/applications', label: 'Applications', icon: FileText },
       { path: '/admin/cr-sr-directory', label: 'CR/SR Directory', icon: FolderOpen },
+      { path: '/admin/auditorium', label: 'Auditorium', icon: Mic },
       { path: '/messages', label: 'ConnectBox', icon: MessageSquare },
       { path: '/daily-life', label: 'Daily Life', icon: Home },
       { path: '/productivity', label: 'Productivity', icon: Zap },

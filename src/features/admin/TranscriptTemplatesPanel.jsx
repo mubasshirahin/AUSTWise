@@ -267,7 +267,7 @@ export default function TranscriptTemplatesPanel() {
                 </div>
               </div>
 
-              {/* Courses - Table Style like CGPA Bol */}
+              {/* Courses - Table Style like CGPA Calculator */}
               <div style={{ borderTop: '1px solid var(--border-primary)', paddingTop: '12px' }}>
                 <div className="flex justify-between items-center mb-3">
                   <label className="input-label" style={{ margin: 0 }}>Courses</label>

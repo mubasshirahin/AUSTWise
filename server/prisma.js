@@ -193,7 +193,7 @@ export { _prisma as prisma, _prismaAvailable as prismaAvailable };
 const LIBRARY_LAT = Number(process.env.LIBRARY_LAT || 23.7634);
 const LIBRARY_LNG = Number(process.env.LIBRARY_LNG || 90.4074);
 const LIBRARY_RADIUS_M = Number(process.env.LIBRARY_RADIUS_M || 80);
-const LIBRARY_CAPACITY = Number(process.env.LIBRARY_CAPACITY || 120);
+const LIBRARY_CAPACITY = Number(process.env.LIBRARY_CAPACITY || 350);
 
 function haversineMeters(lat1, lng1, lat2, lng2) {
   const R = 6371000;
@@ -1213,3 +1213,136 @@ export async function getSharedRoutineStats() {
   const list = await listSharedRoutines();
   return { shared: list.length, total: SHARED_ROUTINE_TOTAL_SLOTS };
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Room / Lab Availability (Free Rooms)
+//
+// Availability is *derived* from the routines CRs have published. Each shared
+// routine's JSON is keyed by day and each class carries { course, name, room,
+// teacher, time }. We flatten every (roomId, day, time, course, teacher) into
+// bookings, then compute which rooms are busy for a given day + time.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Normalize a class time string like "08:00 - 08:50" into { start: '08:00', end: '08:50' }
+export function parseClassTime(timeStr) {
+  if (!timeStr) return null;
+  const m = String(timeStr).match(/(\d{1,2}:\d{2})\s*[-–—]\s*(\d{1,2}:\d{2})/);
+  if (!m) return null;
+  const pad = (s) => s.length === 4 ? `0${s}` : s;
+  return { start: pad(m[1]), end: pad(m[2]) };
+}
+
+function toMinutes(hhmm) {
+  if (!hhmm) return null;
+  const [h, m] = hhmm.split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  return h * 60 + m;
+}
+
+function timeOverlaps(aStart, aEnd, bStart, bEnd) {
+  return toMinutes(aStart) < toMinutes(bEnd) && toMinutes(bStart) < toMinutes(aEnd);
+}
+
+// Flatten every shared routine into room bookings.
+// Returns [{ roomId, day, time, course, courseName, teacher, dept, semester, section }]
+export async function listRoomBookings() {
+  const routines = await listSharedRoutines();
+  const bookings = [];
+  for (const r of routines) {
+    const routine = typeof r.routine === 'string' ? safeJson(r.routine, {}) : (r.routine || {});
+    for (const day of Object.keys(routine)) {
+      const classes = routine[day];
+      if (!Array.isArray(classes)) continue;
+      for (const cls of classes) {
+        const roomId = cls.room || cls.roomId || '';
+        if (!roomId) continue;
+        const t = parseClassTime(cls.time);
+        if (!t) continue;
+        bookings.push({
+          roomId: String(roomId).trim(),
+          day,
+          start: t.start,
+          end: t.end,
+          time: `${t.start} - ${t.end}`,
+          course: cls.course || '',
+          courseName: cls.name || '',
+          teacher: cls.teacher || '',
+          dept: r.department || '',
+          semester: r.yearSemester || '',
+          section: r.section || '',
+          labSection: r.labSection || '',
+        });
+      }
+    }
+  }
+  return bookings;
+}
+
+// Which bookings are active for a given day + time? ('' time = treat as busy)
+export function activeRoomBookings(bookings, day, time) {
+  if (!day || !time) return bookings;
+  return bookings.filter((b) => {
+    if (b.day !== day) return false;
+    return timeOverlaps(b.start, b.end, time, time);
+  });
+}
+
+// Given the room catalog + bookings + a day/time, build the same shape the
+// client already consumes: floors[].rooms[] with status + details.
+export function computeRoomAvailabilityServer(roomCatalog, bookings, day, time) {
+  const active = activeRoomBookings(bookings, day, time);
+  return roomCatalog.floors.map((floor) => ({
+    ...floor,
+    rooms: floor.rooms.map((room) => {
+      const b = active.find((bk) => bk.roomId === room.id);
+      if (!b) return { ...room, status: 'free', details: null };
+      return {
+        ...room,
+        status: 'busy',
+        details: {
+          dept: b.dept,
+          semester: b.semester,
+          section: b.section ? `${b.section}${b.labSection ? `-${b.labSection}` : ''}` : (b.labSection || ''),
+          course: b.course,
+          courseName: b.courseName,
+          teacher: b.teacher,
+          time: b.time,
+        },
+      };
+    }),
+  }));
+}
+
+function safeJson(str, fallback) {
+  try { return JSON.parse(str); } catch { return fallback; }
+}
+
+// Room catalog (mirrors src/data/mockData.js roomCatalog so the server can
+// compute availability without importing browser code).
+function makeBlockRooms(prefix) {
+  const rooms = [];
+  for (let n = 3; n <= 7; n += 1) rooms.push({ id: `${prefix}A0${n}`, name: `Room ${prefix}A0${n}`, type: 'classroom' });
+  for (let n = 1; n <= 8; n += 1) rooms.push({ id: `${prefix}B0${n}`, name: `Lab ${prefix}B0${n}`, type: 'lab' });
+  for (let n = 3; n <= 7; n += 1) rooms.push({ id: `${prefix}C0${n}`, name: `Room ${prefix}C0${n}`, type: 'classroom' });
+  return rooms;
+}
+
+export const serverRoomCatalog = {
+  building: 'Campus Floors',
+  floors: [
+    { id: 'ground', label: 'Ground Floor', rooms: [
+      { id: 'CANTEEN', name: 'Canteen', type: 'canteen' },
+      { id: 'MHA', name: 'M.H Khan Auditorium', type: 'auditorium' },
+    ]},
+    { id: '1st', label: '1st Floor', rooms: makeBlockRooms('1') },
+    { id: '2nd', label: '2nd Floor', rooms: makeBlockRooms('2') },
+    { id: '3rd', label: '3rd Floor', rooms: makeBlockRooms('3') },
+    { id: '4th', label: '4th Floor', rooms: makeBlockRooms('4') },
+    { id: '5th', label: '5th Floor', rooms: makeBlockRooms('5') },
+    { id: '6th', label: '6th Floor', rooms: makeBlockRooms('6') },
+    { id: '7th', label: '7th Floor', rooms: makeBlockRooms('7') },
+    { id: 'fm', label: 'FM Lab (Basement)', rooms: [
+      { id: 'FM-01', name: 'FM Lab', type: 'lab' },
+    ]},
+  ],
+};

@@ -141,6 +141,30 @@ export async function initializeDatabase() {
     END
   `);
 
+  // Create live library occupancy table (real-time geofence occupancy)
+  await p.request().query(`
+    IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[live_library_occupancy]') AND type in (N'U'))
+    BEGIN
+      CREATE TABLE live_library_occupancy (
+        id            INT             IDENTITY(1,1) PRIMARY KEY,
+        user_id       INT             NOT NULL,
+        is_inside     BIT             NOT NULL DEFAULT 0,
+        lat           FLOAT           NULL,
+        lng           FLOAT           NULL,
+        last_updated  DATETIME2       NOT NULL DEFAULT GETDATE(),
+        CONSTRAINT UQ_live_library_occupancy_user UNIQUE (user_id)
+      );
+    END
+  `);
+
+  // Backfill lat/lng columns on existing installs (idempotent).
+  await p.request().query(`
+    IF COL_LENGTH('dbo.live_library_occupancy', 'lat') IS NULL
+      ALTER TABLE live_library_occupancy ADD lat FLOAT NULL;
+    IF COL_LENGTH('dbo.live_library_occupancy', 'lng') IS NULL
+      ALTER TABLE live_library_occupancy ADD lng FLOAT NULL;
+  `);
+
   // Create Invitations table
   await p.request().query(`
     IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Invitations]') AND type in (N'U'))

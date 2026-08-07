@@ -9,56 +9,6 @@
   padding-bottom: var(--sp-10);
 }
 
-/* ── Check-in / check-out action button ── */
-.lib-action-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 16px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-primary);
-  background: var(--bg-card);
-  color: var(--text-secondary);
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-semibold);
-  font-family: inherit;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.2s ease;
-}
-
-.lib-action-btn:hover {
-  border-color: var(--accent-rose);
-  color: var(--accent-rose);
-  background: var(--accent-rose-glow);
-}
-
-.lib-action-btn.primary {
-  background: var(--accent-blue);
-  border-color: var(--accent-blue);
-  color: var(--color-white, #fff);
-}
-
-.lib-action-btn.primary:hover {
-  opacity: 0.88;
-  border-color: var(--accent-blue);
-  color: var(--color-white, #fff);
-}
-
-.lib-action-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* ── Status line ── */
-.lib-status-text {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  margin: 0 0 var(--sp-4);
-  line-height: 1.5;
-}
-
 /* ── Occupancy cell ── */
 .lib-occ-cell {
   min-height: 84px;
@@ -126,29 +76,163 @@
   color: var(--text-tertiary);
 }
 
+.lib-chart-live {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-amber);
+}
+
+.lib-chart-live .lib-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-amber);
+  box-shadow: 0 0 6px var(--accent-amber);
+  animation: lib-live-blink 1.6s ease-in-out infinite;
+}
+
+@keyframes lib-live-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
 .lib-chart-body {
-  height: 240px;
+  height: 460px;
   padding: var(--sp-4);
 }
 
-/* ── Zones grid ── */
-.lib-zones-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
-  gap: var(--sp-3);
+/* ── Live Heatmap ── */
+.lib-heatmap-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
 }
 
-.lib-zone-cell {
-  min-height: 110px;
-}
-
-.lib-zone-emoji {
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius-md);
+.lib-heatmap-head {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 8px;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  color: var(--accent-blue);
+  letter-spacing: 0.04em;
+}
+
+.lib-heatmap-count {
+  margin-left: auto;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  color: var(--accent-emerald);
+}
+
+.lib-heatmap-map {
+  height: 520px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-primary);
+  overflow: hidden;
+  background: var(--bg-secondary);
+}
+
+.lib-heatmap-map .leaflet-control-attribution {
+  font-size: 9px;
+}
+
+.lib-heat-marker-pin {
+  width: 20px;
+  height: 20px;
+  background: var(--accent-rose);
+  border: 2px solid #fff;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: 0 0 8px var(--accent-rose);
+}
+
+.lib-heatmap-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lib-heatmap-legend-bar {
+  width: 100%;
+  height: 10px;
+  border-radius: 5px;
+  border: 1px solid var(--border-primary);
+}
+
+.lib-heatmap-legend-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.02em;
+}
+
+.lib-heatmap-legend-note {
+  font-size: 9px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.02em;
+  margin: 0;
+}
+
+/* ── Leaflet zoom controls (dark theme friendly) ── */
+.lib-heatmap-map .leaflet-bar {
+  border: 1px solid var(--border-primary);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+.lib-heatmap-map .leaflet-bar a {
+  width: 34px;
+  height: 34px;
+  line-height: 34px;
+  font-size: 20px;
+  background: var(--bg-card, #1e293b);
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.lib-heatmap-map .leaflet-bar a:hover {
+  background: var(--accent-blue-glow);
+  color: var(--accent-blue);
+}
+
+.lib-heatmap-map .leaflet-bar a.leaflet-disabled {
+  opacity: 0.4;
+}
+
+/* ── Dev dummy-user buttons ── */
+.lib-heatmap-dev {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: 8px;
+}
+
+.lib-heatmap-dev-btn {
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
   background: var(--bg-input);
   color: var(--accent-blue);
+  border: 1px solid var(--accent-blue);
+  transition: all var(--transition-base);
+}
+
+.lib-heatmap-dev-btn:hover:not(:disabled) {
+  background: var(--accent-blue-glow);
+}
+
+.lib-heatmap-dev-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

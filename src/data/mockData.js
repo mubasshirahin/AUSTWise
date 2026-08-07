@@ -169,19 +169,277 @@ export const campusFloors = [
   ]},
 ];
 
+// ─────────────────────────────────────────────────────────────
+// Free Room / Lab availability across all 9 floors + FM Lab basement.
+// Availability is computed live from `sharedRoutines` — a schedule of
+// room bookings shared by Class Representatives. A room is 'busy' if
+// a routine entry covers roomId + day + time.
+// ─────────────────────────────────────────────────────────────
+
+// Each floor has the same block structure as the 7th floor:
+//   A Block: 5 rooms  (XA03 – XA07)   · Classrooms
+//   B Block: 8 rooms  (XB01 – XB08)   · Labs
+//   C Block: 5 rooms  (XC03 – XC07)   · Classrooms
+// (Ground floor + FM Lab basement keep their own rooms.)
+function makeBlockRooms(prefix) {
+  const a = [];
+  for (let n = 3; n <= 7; n += 1) a.push({ id: `${prefix}A0${n}`, name: `Room ${prefix}A0${n}`, type: 'classroom' });
+  const b = [];
+  for (let n = 1; n <= 8; n += 1) b.push({ id: `${prefix}B0${n}`, name: `Lab ${prefix}B0${n}`, type: 'lab' });
+  const c = [];
+  for (let n = 3; n <= 7; n += 1) c.push({ id: `${prefix}C0${n}`, name: `Room ${prefix}C0${n}`, type: 'classroom' });
+  return [...a, ...b, ...c];
+}
+
+export const roomCatalog = {
+  building: 'Campus Floors',
+  floors: [
+    { id: 'ground', label: 'Ground Floor', rooms: [
+      { id: 'CANTEEN', name: 'Canteen', type: 'canteen' },
+      { id: 'MHA', name: 'M.H Khan Auditorium', type: 'auditorium' },
+    ]},
+    { id: '1st', label: '1st Floor', rooms: makeBlockRooms('1') },
+    { id: '2nd', label: '2nd Floor', rooms: makeBlockRooms('2') },
+    { id: '3rd', label: '3rd Floor', rooms: makeBlockRooms('3') },
+    { id: '4th', label: '4th Floor', rooms: makeBlockRooms('4') },
+    { id: '5th', label: '5th Floor', rooms: makeBlockRooms('5') },
+    { id: '6th', label: '6th Floor', rooms: makeBlockRooms('6') },
+    { id: '7th', label: '7th Floor', rooms: makeBlockRooms('7') },
+    { id: 'fm', label: 'FM Lab (Basement)', rooms: [
+      { id: 'FM-01', name: 'FM Lab', type: 'lab' },
+    ]},
+  ],
+};
+
+// Schedule of room bookings shared by Class Representatives.
+// Each entry: { roomId, day, time, dept, semester, section, course, courseName, teacher }
+// Empty until a CR shares their routine via the "Share Routine" button.
+export const sharedRoutines = [];
+
+// ── Live availability helpers ───────────────────────────────
+const WEEK_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+export const currentDayOfWeek = () => WEEK_DAYS[new Date().getDay()];
+
+export const currentTimeString = () => {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+};
+
+function timeInRange(range, current) {
+  if (!range || !current) return true;
+  // Accept both "08:00 – 09:40" (en-dash) and "08:00 - 09:40" (hyphen)
+  const m = String(range).match(/(\d{1,2}:\d{2})\s*[-–—]\s*(\d{1,2}:\d{2})/);
+  if (!m) return true;
+  const [sh, sm] = m[1].split(':').map(Number);
+  const [eh, em] = m[2].split(':').map(Number);
+  const [ch, cm] = current.split(':').map(Number);
+  const curMin = ch * 60 + cm;
+  return curMin >= sh * 60 + sm && curMin <= eh * 60 + em;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Ground-floor special venues.
+//   • Canteen — open/closed follows the canteen menu hours
+//     (07:00 – 19:00, mirrors CanteenMenu crowd slots).
+//   • M.H Khan Auditorium — busy when an admin schedules a seminar
+//     (event persisted in localStorage 'aust-auditorium-event').
+// ─────────────────────────────────────────────────────────────
+
+const CANTEEN_OPEN_WINDOW = '08:00 - 18:00';
+const CANTEEN_DEFAULT_HOURS = '8:00 AM - 6:00 PM';
+
+export function getCanteenStatus(time, day) {
+  let hours = CANTEEN_DEFAULT_HOURS;
+  let statusMode = 'auto';
+  let manualStatus = 'open';
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = JSON.parse(localStorage.getItem('aust-canteen-data'));
+      if (stored) {
+        if (stored.hours) hours = stored.hours;
+        if (stored.statusMode) statusMode = stored.statusMode;
+        if (stored.status) manualStatus = stored.status;
+      }
+    } catch { /* ignore */ }
+  }
+  // Closed all day on Friday and Saturday; otherwise open 8am – 6pm.
+  const weekendOff = day === 'Friday' || day === 'Saturday';
+  let open;
+  if (weekendOff) {
+    open = false;
+  } else if (statusMode === 'manual') {
+    open = manualStatus === 'open';
+  } else {
+    open = timeInRange(CANTEEN_OPEN_WINDOW, time);
+  }
+  return { open, hours };
+}
+
+export const defaultAuditoriumEvent = {
+  title: '',
+  date: '',
+  time: '',
+  speaker: '',
+  description: '',
+  status: 'none', // 'none' | 'upcoming' | 'ongoing'
+};
+
+export function getAuditoriumEvent() {
+  if (typeof window === 'undefined') return { ...defaultAuditoriumEvent };
+  try {
+    const stored = JSON.parse(localStorage.getItem('aust-auditorium-event'));
+    return stored ? { ...defaultAuditoriumEvent, ...stored } : { ...defaultAuditoriumEvent };
+  } catch {
+    return { ...defaultAuditoriumEvent };
+  }
+}
+
+export function setAuditoriumEvent(evt) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem('aust-auditorium-event', JSON.stringify(evt));
+  window.dispatchEvent(new Event('auditorium-updated'));
+}
+
+// Routines shared by CRs via the CR/SR directory (persisted in localStorage)
+export function getSharedRoutines() {
+  if (typeof window === 'undefined') return sharedRoutines;
+  try {
+    const stored = JSON.parse(localStorage.getItem('aust-shared-routines') || '[]');
+    return [...sharedRoutines, ...stored];
+  } catch {
+    return sharedRoutines;
+  }
+}
+
+export function getRoomStatus(roomId, day, time) {
+  // Canteen — open/closed follows the canteen menu hours
+  if (roomId === 'CANTEEN') {
+    const { open, hours } = getCanteenStatus(time, day);
+    return {
+      status: open ? 'free' : 'busy',
+      details: { venue: 'canteen', open, hours },
+    };
+  }
+
+  // M.H Khan Auditorium — busy when an admin event is scheduled/happening
+  if (roomId === 'MHA') {
+    const evt = getAuditoriumEvent();
+    const active = evt && evt.status !== 'none' && evt.title.trim();
+    if (!active) return { status: 'free', details: { venue: 'auditorium' } };
+    return { status: 'busy', details: { venue: 'auditorium', event: evt } };
+  }
+
+  const entry = getSharedRoutines().find(
+    (r) => r.roomId === roomId && r.day === day && timeInRange(r.time, time)
+  );
+  if (!entry) return { status: 'free' };
+  return {
+    status: 'busy',
+    details: {
+      dept: entry.dept,
+      semester: entry.semester,
+      section: entry.section,
+      course: entry.course,
+      courseName: entry.courseName,
+      teacher: entry.teacher,
+      time: entry.time,
+    },
+  };
+}
+
+// Apply the special ground-floor venue statuses to a set of floors
+// (server-fetched or locally built). Canteen uses the *real* current time so
+// its open/closed state always matches the Canteen Menu page; the auditorium
+// reflects the event the admin scheduled in the Admin Panel.
+function overlayVenueStatus(floors) {
+  return floors.map((floor) => ({
+    ...floor,
+    rooms: floor.rooms.map((room) => {
+      if (room.id === 'CANTEEN') {
+        const { status, details } = getRoomStatus('CANTEEN', currentDayOfWeek(), currentTimeString());
+        return { ...room, status, details };
+      }
+      if (room.id === 'MHA') {
+        const { status, details } = getRoomStatus('MHA', '', '');
+        return { ...room, status, details };
+      }
+      return room;
+    }),
+  }));
+}
+
+export function computeRoomAvailability(day, time, baseFloors) {
+  // Overlay local-only bookings on top of an existing (e.g. server-fetched)
+  // set of floors. `baseFloors` rooms keep their status unless a local booking
+  // marks them busy.
+  const source = baseFloors && baseFloors.length
+    ? baseFloors
+    : roomCatalog.floors.map((floor) => ({
+        ...floor,
+        rooms: floor.rooms.map((room) => {
+          const { status, details } = getRoomStatus(room.id, day, time);
+          return { ...room, status, details: details || null };
+        }),
+      }));
+  const withVenues = overlayVenueStatus(source);
+  const localShared = (typeof window !== 'undefined'
+    ? JSON.parse(localStorage.getItem('aust-shared-routines') || '[]')
+    : []);
+  if (!localShared.length) return withVenues;
+  return withVenues.map((floor) => ({
+    ...floor,
+    rooms: floor.rooms.map((room) => {
+      const entry = localShared.find(
+        (r) => r.roomId === room.id && r.day === day && timeInRange(r.time, time)
+      );
+      if (!entry) return room;
+      return {
+        ...room,
+        status: 'busy',
+        details: {
+          dept: entry.dept,
+          semester: entry.semester,
+          section: entry.section,
+          course: entry.course,
+          courseName: entry.courseName,
+          teacher: entry.teacher,
+          time: entry.time,
+        },
+      };
+    }),
+  }));
+}
+
+// Demo floors: simulate Sunday mid-morning for demo purposes
+// (most rooms are booked on Sunday, so you see realistic busy/free states).
+// The canteen room additionally reflects the *real* current time so its
+// open/closed state always matches the canteen menu page.
+export function computeDemoAvailability() {
+  return computeRoomAvailability('Sunday', '10:30');
+}
+
+// Default: simulate Sunday mid-morning for demo purposes
+export const freeRoomData = {
+  building: roomCatalog.building,
+  floors: computeDemoAvailability(),
+};
+
+// Mutable list for user-submitted routines (from CR share button)
+export const userRoutines = [];
+
+export const addRoutineEntry = (entry) => {
+  sharedRoutines.push(entry);
+  userRoutines.push(entry);
+};
+
 export const examSeats = [];
 
 export const facultyData = [];
 
 export const libraryData = {
-  totalSeats: 120,
+  totalSeats: 350,
   occupied: 0,
-  zones: [
-    { name: 'Silent Zone', seats: 40, occupied: 0, noise: 'quiet' },
-    { name: 'Group Study', seats: 30, occupied: 0, noise: 'moderate' },
-    { name: 'Computer Lab', seats: 20, occupied: 0, noise: 'quiet' },
-    { name: 'Reading Area', seats: 30, occupied: 0, noise: 'quiet' },
-  ],
   peakHours: [
     { hour: '8AM', occupancy: 18 }, { hour: '9AM', occupancy: 32 }, { hour: '10AM', occupancy: 55 },
     { hour: '11AM', occupancy: 68 }, { hour: '12PM', occupancy: 74 }, { hour: '1PM', occupancy: 46 },

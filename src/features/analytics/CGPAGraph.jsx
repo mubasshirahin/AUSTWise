@@ -219,7 +219,7 @@ export default function CGPAGraph() {
 
   return (
     <>
-      {/* ─── Box 1: CGPA Bol (masthead + chart) ─── */}
+      {/* ─── Box 1: CGPA Calculator (masthead + chart) ─── */}
       <div className="glass-card-static schedule-widget cgpa-bol-widget animate-fadeInUp">
         {/* ─── Masthead: 3-col grid (title | stats | actions) ─── */}
         <div className="schedule-masthead">
@@ -229,7 +229,7 @@ export default function CGPAGraph() {
             </div>
             <div>
               <span className="schedule-overline">Grade Lab</span>
-              <p className="schedule-title">CGPA Bol</p>
+              <p className="schedule-title">CGPA Calculator</p>
               <span className="schedule-subtitle">
                 {user?.department
                   ? `${user.department}${user?.yearSemester ? ` · ${user.yearSemester}` : ''}`
@@ -266,7 +266,7 @@ export default function CGPAGraph() {
           <div className="cgpa-empty">
             <TrendingUp size={42} />
             <h3>No grade data yet</h3>
-            <p>Add your semester results below to build your CGPA Bol.</p>
+            <p>Add your semester results below to build your CGPA Calculator.</p>
           </div>
         )}
 

@@ -4,7 +4,7 @@ import { readJson, writeJson } from './jsonDB.mjs';
 const LIBRARY_LAT = Number(process.env.LIBRARY_LAT || 23.7634);
 const LIBRARY_LNG = Number(process.env.LIBRARY_LNG || 90.4074);
 const LIBRARY_RADIUS_M = Number(process.env.LIBRARY_RADIUS_M || 80);
-const LIBRARY_CAPACITY = Number(process.env.LIBRARY_CAPACITY || 120);
+const LIBRARY_CAPACITY = Number(process.env.LIBRARY_CAPACITY || 350);
 
 let useJsonFallback = !process.env.DB_PASSWORD;
 

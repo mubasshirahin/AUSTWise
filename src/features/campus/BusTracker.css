@@ -9,6 +9,27 @@
   padding-bottom: var(--sp-10);
 }
 
+/* Masthead: 3 balanced columns so the stats sit truly centered
+   (title | Routes/Stops/Next Bus | Add Bus). */
+.bus-widget .schedule-masthead {
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--sp-3);
+  padding-top: 4px;
+}
+
+.bus-widget .schedule-actions {
+  justify-content: flex-end;
+}
+
+.bus-widget .schedule-masthead-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
 /* ─── Add button (empty state) ─── */
 .bus-add-btn {
   display: inline-flex;
@@ -117,7 +138,57 @@
 }
 
 .bus-tracker-search-result-item svg {
+  flex-shrink: 0;
+}
+
+.bus-tracker-search-result-icon {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+  flex-shrink: 0;
+}
+
+.bus-tracker-search-result-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bus-tracker-search-result-name {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bus-tracker-search-result-stops {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bus-tracker-search-result-stops svg {
   color: var(--accent-blue);
+}
+
+.bus-tracker-search-result-arrow {
+  margin-left: auto;
+  color: var(--text-tertiary);
   flex-shrink: 0;
 }
 
@@ -131,9 +202,19 @@
   white-space: nowrap;
 }
 
-/* ─── Route nav (prev / pill / next) ─── */
-.bus-route-nav {
+/* ─── Route switcher bar: To Campus left, prev/pill/next right ─── */
+.bus-widget .schedule-week-nav.bus-route-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin-bottom: var(--sp-3);
+}
+
+.bus-route-switch-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .bus-route-pill {
@@ -325,9 +406,22 @@
 
 /* ─── Timeline ─── */
 .bus-tracker-timeline {
+  position: relative;
   padding: var(--sp-5);
   display: flex;
   flex-direction: column;
+}
+
+/* Shared rail — ONE continuous line measured from source dot center to
+   destination dot center, so it never overruns below the destination.
+   Every stop sits on this single tree-trunk line. */
+.bus-tracker-timeline-rail {
+  position: absolute;
+  width: 5px;
+  border-radius: 3px;
+  opacity: 0.35;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .bus-tracker-timeline-stop {
@@ -335,49 +429,48 @@
   align-items: flex-start;
   gap: var(--sp-4);
   position: relative;
+  z-index: 1;
 }
 
+/* Marker column — dots sit on the shared rail */
 .bus-tracker-timeline-marker {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: 16px;
-  width: 16px;
-  padding-top: 4px;
+  min-width: 38px;
+  width: 38px;
+  padding-top: 6px;
 }
 
 .bus-tracker-timeline-dot {
-  width: 12px;
-  height: 12px;
-  min-width: 12px;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
   border-radius: 50%;
-  border: 2.5px solid var(--border-primary);
+  border: 3px solid var(--border-primary);
   background: var(--bg-input);
-  z-index: 1;
+  z-index: 2;
   transition: all 0.3s ease;
 }
 
+/* Source & destination get bigger, bolder nodes */
+.bus-tracker-timeline-stop.first .bus-tracker-timeline-dot,
 .bus-tracker-timeline-stop.last .bus-tracker-timeline-dot {
-  width: 16px;
-  height: 16px;
-  min-width: 16px;
-  border-width: 3px;
-  box-shadow: 0 0 12px color-mix(in srgb, var(--accent-blue) 30%, transparent);
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  border-width: 3.5px;
 }
 
-.bus-tracker-timeline-line {
-  width: 2px;
-  flex: 1;
-  min-height: 28px;
-  margin: -2px 0;
-  background: var(--border-primary);
+.bus-tracker-timeline-stop.last .bus-tracker-timeline-dot {
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent-blue) 30%, transparent);
 }
 
 .bus-tracker-stop-info {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  padding: 2px 0 24px;
+  padding: 6px 0 26px;
   flex: 1;
 }
 
@@ -394,6 +487,13 @@
   gap: 5px;
 }
 
+/* Source & destination names are larger */
+.bus-tracker-timeline-stop.first .bus-tracker-stop-name,
+.bus-tracker-timeline-stop.last .bus-tracker-stop-name {
+  font-size: var(--fs-base);
+  font-weight: var(--fw-bold);
+}
+
 .bus-tracker-stop-time {
   font-size: 11px;
   color: var(--text-tertiary);
@@ -406,15 +506,21 @@
   line-height: 1.4;
 }
 
-.bus-tracker-route-start-badge {
+.bus-tracker-route-start-badge,
+.bus-tracker-route-end-badge {
   font-size: 9px;
   font-weight: var(--fw-bold);
   padding: 2px 10px;
   border-radius: var(--radius-full);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  margin-top: 2px;
+  margin-top: 4px;
   flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.bus-tracker-route-end-badge {
+  color: #fff;
 }
 
 /* ─── Tips ─── */

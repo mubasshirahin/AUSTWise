@@ -13,7 +13,7 @@ export default function MoneyTrackerPage() {
           </div>
           <div>
             <span className="schedule-overline">Daily Life</span>
-            <p className="schedule-title">TiyaHodeJargoi</p>
+            <p className="schedule-title">TakaGeloKoi</p>
             <span className="schedule-subtitle">Expenses &amp; budget</span>
           </div>
         </div>

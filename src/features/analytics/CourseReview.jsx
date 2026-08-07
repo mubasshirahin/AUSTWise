@@ -225,7 +225,7 @@ export default function CourseReview() {
 
           {trackerCourses.length > 0 && (
             <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Pick from CGPA Bol (optional)</span>
+              <span style={{ color: 'var(--text-secondary)' }}>Pick from CGPA Calculator (optional)</span>
               <select className="input" defaultValue="" onChange={applyTrackerCourse}>
                 <option value="">Select a course...</option>
                 {trackerCourses.map((course) => (
@@ -305,7 +305,7 @@ export default function CourseReview() {
               <MessageSquare size={36} />
               <h3 style={{ fontSize: 'var(--fs-md)', marginTop: '8px' }}>No reviews yet</h3>
               <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
-                Be the first to rate a course. Use <strong>Add Review</strong> or import a course from your CGPA Bol.
+                Be the first to rate a course. Use <strong>Add Review</strong> or import a course from your CGPA Calculator.
               </p>
             </div>
           ) : (

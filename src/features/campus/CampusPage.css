@@ -95,7 +95,52 @@
 
 /* ── 2. Glider tabs bar (own card) ── */
 .cp-tabs-card {
+  position: relative;
   padding: var(--sp-2);
+  padding-bottom: calc(var(--sp-2) + 10px);
+  border: 1px solid var(--border-primary);
+  border-bottom: none;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Designed divider — gradient hairline that fades at the edges
+   (replaces the plain 1px bottom border under the tabs). */
+.cp-tabs-card::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    var(--border-primary) 10%,
+    var(--border-primary) 90%,
+    transparent 100%);
+}
+
+/* Soft amber glow seated on the divider, echoing the tab glider pill. */
+.cp-tabs-card::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -1px;
+  width: 220px;
+  height: 6px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  background: radial-gradient(ellipse at center,
+    color-mix(in srgb, var(--accent-amber) 24%, transparent),
+    transparent 70%);
+  filter: blur(3px);
+  animation: cp-line-breathe 4.5s ease-in-out infinite;
+}
+
+@keyframes cp-line-breathe {
+  0%, 100% { opacity: 0.55; transform: translateX(-50%) scaleX(0.92); }
+  50%      { opacity: 0.95; transform: translateX(-50%) scaleX(1.06); }
 }
 
 /* ── 3. Main content box (own card) ── */
@@ -236,7 +281,7 @@
 /* ─── Workspace layout ─── */
 .floor-plan-workspace {
   display: grid;
-  grid-template-columns: 1fr 280px;
+  grid-template-columns: 1fr;
   gap: var(--sp-5);
   align-items: start;
 }
@@ -377,33 +422,6 @@
 .floor-plan-zoom-fit .floor-plan-image {
   width: 100%;
   max-width: 100%;
-}
-
-.floor-plan-zoom-100 .floor-plan-image-frame {
-  min-width: 100%;
-}
-
-.floor-plan-zoom-100 .floor-plan-image {
-  width: 100%;
-  max-width: none;
-}
-
-.floor-plan-zoom-125 .floor-plan-image-frame {
-  min-width: 125%;
-  width: 125%;
-}
-
-.floor-plan-zoom-125 .floor-plan-image {
-  width: 100%;
-}
-
-.floor-plan-zoom-150 .floor-plan-image-frame {
-  min-width: 150%;
-  width: 150%;
-}
-
-.floor-plan-zoom-150 .floor-plan-image {
-  width: 100%;
 }
 
 .floor-plan-viewport:fullscreen {
@@ -1176,28 +1194,6 @@
   transform: translateY(-2px);
 }
 
-/* ─── Library Pulse ─── */
-.library-zones-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--sp-4);
-}
-
-.library-zone-card {
-  padding: var(--sp-4) var(--sp-5);
-  background: var(--bg-card);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lift);
-  transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
-}
-
-.library-zone-card:hover {
-  box-shadow: 0 8px 28px -8px color-mix(in srgb, var(--accent-emerald) 14%, transparent);
-  border-color: color-mix(in srgb, var(--accent-emerald) 25%, transparent);
-  transform: translateY(-2px);
-}
-
 /* ─── Canteen Menu ─── */
 .canteen-menu-grid {
   display: grid;
@@ -1312,14 +1308,6 @@
     grid-template-columns: 1fr;
   }
 
-  .floor-plan-sidebar {
-    position: static;
-  }
-
-  .floor-plan-sidebar-card:first-child {
-    max-height: 45vh;
-  }
-
   .floor-plan-viewport {
     min-height: 60vh;
     max-height: 70vh;
@@ -1363,8 +1351,7 @@
     justify-content: flex-start;
   }
 
-  .faculty-grid,
-  .library-zones-grid {
+  .faculty-grid {
     grid-template-columns: 1fr;
   }
 }

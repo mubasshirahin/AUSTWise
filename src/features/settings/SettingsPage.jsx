@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useRoutine } from '../../context/RoutineContext';
-import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, Sparkles, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu } from 'lucide-react';
+import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, Sparkles, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin } from 'lucide-react';
 import AboutUs from './AboutUs';
 import LinkedAccountsSection from './LinkedAccountsSection';
 import GliderTabs from '../../components/GliderTabs';
@@ -188,6 +188,11 @@ export default function SettingsPage() {
     return null; // null = checking, false = not registered, true = registered
   });
   
+  // Library location tracking toggle
+  const [libraryTracking, setLibraryTracking] = useState(() => {
+    return localStorage.getItem('library_tracking_enabled') === 'true';
+  });
+  
   // Webhook status
   const [webhookInfo, setWebhookInfo] = useState(null);
   const [webhookLoading, setWebhookLoading] = useState(false);
@@ -213,6 +218,10 @@ export default function SettingsPage() {
   useEffect(() => {
     localStorage.setItem('telegram_notifications_enabled', telegramEnabled.toString());
   }, [telegramEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem('library_tracking_enabled', libraryTracking ? 'true' : 'false');
+  }, [libraryTracking]);
 
   useEffect(() => {
     localStorage.setItem('telegram_chat_id', telegramChatId);
@@ -1462,6 +1471,37 @@ export default function SettingsPage() {
                   </div>
                 </div>
               )}
+
+              <div style={{ height: '1px', background: 'var(--border-primary)', margin: '16px 0' }} />
+              <h3 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', marginBottom: '4px' }}>Library Location Tracking</h3>
+              <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+                Automatically share your presence to power the live Library Occupancy Pulse.
+              </p>
+
+              <div className="flex justify-between items-center p-4" style={{ background: 'var(--bg-input)', borderRadius: 'var(--radius-lg)' }}>
+                <div className="flex items-center gap-3">
+                  <MapPin size={20} style={{ color: libraryTracking ? 'var(--accent-emerald)' : 'var(--text-tertiary)' }} />
+                  <div>
+                    <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold' }}>Enable location tracking</h4>
+                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                      {libraryTracking
+                        ? 'Active — the library will count you when you are within 60m'
+                        : 'Off — you are not counted in the live occupancy count'}
+                    </p>
+                  </div>
+                </div>
+                <div
+                  className={`toggle-switch ${libraryTracking ? 'active' : ''}`}
+                  onClick={() => setLibraryTracking(!libraryTracking)}
+                />
+              </div>
+
+              <div className="flex items-center gap-3 p-4" style={{ background: 'var(--accent-blue-glow)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--accent-blue)' }}>
+                <ShieldCheck size={18} style={{ color: 'var(--accent-blue)', flexShrink: 0 }} />
+                <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                  Location is only used while the app is open to determine if you are inside the library geofence. Nothing is stored on this device and you can turn this off any time.
+                </p>
+              </div>
             </div>
           )}
 

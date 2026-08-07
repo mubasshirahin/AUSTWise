@@ -602,7 +602,7 @@
   margin-top: var(--sp-4);
 }
 
-/* ─── Semester Breakdown — separate card from CGPA Bol ─── */
+/* ─── Semester Breakdown — separate card from CGPA Calculator ─── */
 .cgpa-breakdown-box {
   margin-top: var(--sp-4);
 }
@@ -612,7 +612,7 @@
 }
 
 /* Let the flex gap of .cgpa-transcript handle spacing around the divider
-   so it matches the CGPA Bol box (no double-spacing from divider margins). */
+   so it matches the CGPA Calculator box (no double-spacing from divider margins). */
 .cgpa-breakdown-box .cgpa-transcript .schedule-dotted-divider {
   margin: 0;
 }
@@ -1056,7 +1056,7 @@
   padding: var(--sp-4) var(--sp-5) var(--sp-5);
 }
 
-/* ── CGPA Bol: semester cell stagger ── */
+/* ── CGPA Calculator: semester cell stagger ── */
 .cgpa-sem-list .schedule-day-card:nth-child(1) { animation: dash-enter-card 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.04s both; }
 .cgpa-sem-list .schedule-day-card:nth-child(2) { animation: dash-enter-card 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both; }
 .cgpa-sem-list .schedule-day-card:nth-child(3) { animation: dash-enter-card 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both; }

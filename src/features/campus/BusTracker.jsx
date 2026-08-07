@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import {
   Bus,
   MapPin,
-  Clock,
   Search,
   Navigation,
   AlertCircle,
@@ -15,8 +14,6 @@ import {
   Edit3,
   ChevronLeft,
   ChevronRight,
-  MoreVertical,
-  Check,
 } from 'lucide-react';
 import './SemesterViewWidget.css';
 import './BusTracker.css';
@@ -50,14 +47,6 @@ function genId() {
 function toMinutes(timeStr) {
   const [h, m] = timeStr.split(':').map(Number);
   return h * 60 + m;
-}
-
-function formatMinutes(min) {
-  if (min <= 0) return 'Now';
-  if (min < 60) return `${min}m`;
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
 function getNextDeparture(times) {
@@ -96,30 +85,17 @@ function getAllTodayTimes(route) {
   return { departures: sched.departures, returns: sched.returns };
 }
 
-function getAllStops(routes) {
-  const stops = [];
-  for (const route of routes) {
-    for (const stop of route.stops) {
-      if (!stops.find(s => s.name === stop.name)) {
-        stops.push({ name: stop.name, routeId: route.id, routeName: route.name });
-      }
-    }
-    for (const stop of route.returnStops) {
-      if (!stops.find(s => s.name === stop.name)) {
-        stops.push({ name: stop.name, routeId: route.id, routeName: route.name });
-      }
-    }
-  }
-  return stops;
-}
-
 // ─── Default Form State ───
+
+// All buses share the app's theme accent color (no per-bus color choice)
+const ACCENT = 'var(--accent-blue)';
+const ACCENT_SOFT = 'var(--accent-blue-glow)';
+const ACCENT_FADED = 'color-mix(in srgb, var(--accent-blue) 30%, transparent)';
 
 const EMPTY_STOP = { name: '', time: '', direction: 'to-campus', details: '' };
 
 const INITIAL_FORM_STATE = {
   name: '',
-  color: '#06b6d4',
   stops: [{ name: '', time: '', direction: 'to-campus' }],
   returnStops: [{ name: '', time: '', direction: 'from-campus' }],
 };
@@ -137,24 +113,18 @@ export default function BusTracker() {
   const [editingBusId, setEditingBusId] = useState(null);
   const [form, setForm] = useState(INITIAL_FORM_STATE);
   const [formErrors, setFormErrors] = useState({});
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef(null);
+
+  // One shared rail — measured to span exactly first→last dot centers
+  const timelineRef = useRef(null);
+  const firstDotRef = useRef(null);
+  const lastDotRef = useRef(null);
+  const [rail, setRail] = useState(null);
 
   // Tick every 30s to refresh countdowns
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(id);
   }, []);
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    if (!menuOpen) return;
-    function handleOutside(e) {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
-    }
-    document.addEventListener('mousedown', handleOutside);
-    return () => document.removeEventListener('mousedown', handleOutside);
-  }, [menuOpen]);
 
   // Reset form when modal closes
   useEffect(() => {
@@ -198,6 +168,38 @@ export default function BusTracker() {
     [direction, selectedRoute]
   );
 
+  // One shared rail — measured to span exactly first→last dot centers
+  useEffect(() => {
+    const tl = timelineRef.current;
+    if (!tl || currentDirectionStops.length < 2) {
+      setRail(null);
+      return undefined;
+    }
+    const measure = () => {
+      const f = firstDotRef.current;
+      const l = lastDotRef.current;
+      if (!f || !l) return;
+      const tlRect = tl.getBoundingClientRect();
+      const fRect = f.getBoundingClientRect();
+      const lRect = l.getBoundingClientRect();
+      const top = fRect.top - tlRect.top + fRect.height / 2;
+      const bottom = lRect.top - tlRect.top + lRect.height / 2;
+      setRail({
+        top,
+        left: fRect.left - tlRect.left + fRect.width / 2 - 2.5,
+        height: Math.max(0, bottom - top),
+      });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(tl);
+    window.addEventListener('resize', measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [currentDirectionStops]);
+
   const currentDirectionTimes = useMemo(
     () => {
       const routeId = selectedRoute?.id;
@@ -211,13 +213,16 @@ export default function BusTracker() {
     [currentDirectionTimes]
   );
 
-  const allStops = useMemo(() => getAllStops(routes), [routes]);
-
   const searchResults = useMemo(() => {
     if (!search.trim()) return [];
     const q = search.toLowerCase();
-    return allStops.filter(s => s.name.toLowerCase().includes(q));
-  }, [search, allStops]);
+    return routes
+      .map(route => ({
+        route,
+        matches: [...route.stops, ...route.returnStops].filter(s => s.name.toLowerCase().includes(q)),
+      }))
+      .filter(r => r.matches.length > 0);
+  }, [search, routes]);
 
   const isTodayActive = useMemo(() => {
     const day = new Date().getDay();
@@ -269,8 +274,6 @@ export default function BusTracker() {
     if (!form.name.trim()) errors.name = 'Bus name is required';
     const validStops = form.stops.filter(s => s.name.trim() && s.time.trim());
     if (validStops.length === 0) errors.stops = 'At least one stop is required';
-    const validReturnStops = form.returnStops.filter(s => s.name.trim() && s.time.trim());
-    if (validReturnStops.length === 0) errors.returnStops = 'At least one return stop is required';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   }, [form]);
@@ -301,8 +304,6 @@ export default function BusTracker() {
     const newBus = {
       id: editingBusId || genId(),
       name: form.name.trim(),
-      color: form.color,
-      bg: form.color + '1F',
       icon,
       stops: validStops,
       returnStops: validReturnStops,
@@ -326,7 +327,6 @@ export default function BusTracker() {
     setEditingBusId(bus.id);
     setForm({
       name: bus.name,
-      color: bus.color,
       stops: bus.stops.length > 0
         ? bus.stops.map(s => ({ name: s.name, time: s.time, direction: 'to-campus', details: s.details || '' }))
         : [{ name: '', time: '', direction: 'to-campus', details: '' }],
@@ -385,38 +385,12 @@ export default function BusTracker() {
         </div>
 
         <div className="schedule-actions">
-          <div className="export-dropdown" ref={menuRef}>
-            <button className="schedule-nav-btn" onClick={() => setMenuOpen((o) => !o)} title="Options" aria-haspopup="true" aria-expanded={menuOpen}>
-              <MoreVertical size={18} />
-            </button>
-            {menuOpen && (
-              <div className="export-menu" role="menu">
-                <button
-                  className="export-menu-item"
-                  onClick={() => { setMenuOpen(false); setEditingBusId(null); setForm(INITIAL_FORM_STATE); setShowAddModal(true); }}
-                  role="menuitem"
-                >
-                  <Plus size={14} /> Add Bus
-                </button>
-                {routes.length > 0 && (
-                  <>
-                    <div className="export-menu-sep" />
-                    {routes.map(route => (
-                      <button
-                        key={route.id}
-                        className={`export-menu-item${activeRoute === route.id ? ' menu-active' : ''}`}
-                        onClick={() => { setMenuOpen(false); setActiveRoute(route.id); }}
-                        role="menuitem"
-                      >
-                        {route.name}
-                        {activeRoute === route.id && <Check size={14} className="menu-check" />}
-                      </button>
-                    ))}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+          <button
+            className="bus-add-btn"
+            onClick={() => { setEditingBusId(null); setForm(INITIAL_FORM_STATE); setShowAddModal(true); }}
+          >
+            <Plus size={14} /> Add Bus
+          </button>
         </div>
       </div>
 
@@ -442,19 +416,27 @@ export default function BusTracker() {
       {/* ─── Search Results Overlay ─── */}
       {search.trim() && searchResults.length > 0 && (
         <div className="bus-tracker-search-results">
-          {searchResults.slice(0, 8).map((stop, i) => (
+          {searchResults.map(({ route, matches }) => (
             <button
-              key={`${stop.routeId}-${stop.name}-${i}`}
+              key={route.id}
               className="bus-tracker-search-result-item"
               onClick={() => {
-                setActiveRoute(stop.routeId);
+                setActiveRoute(route.id);
                 setSearch('');
                 setView('route');
               }}
             >
-              <MapPin size={13} />
-              <span>{stop.name}</span>
-              <span className="bus-tracker-search-result-route">{stop.routeName}</span>
+              <span className="bus-tracker-search-result-icon" style={{ background: ACCENT, color: '#fff' }}>
+                {route.icon}
+              </span>
+              <span className="bus-tracker-search-result-info">
+                <span className="bus-tracker-search-result-name">{route.name}</span>
+                <span className="bus-tracker-search-result-stops">
+                  <MapPin size={11} />
+                  {matches.map(m => m.name).join(' · ')}
+                </span>
+              </span>
+              <ChevronRight size={15} className="bus-tracker-search-result-arrow" />
             </button>
           ))}
         </div>
@@ -475,63 +457,35 @@ export default function BusTracker() {
       {/* ─── Route Navigation + Details ─── */}
       {!search.trim() && routes.length > 0 && (
         <>
-          {/* Route nav: prev / pill / next */}
+          {/* Route switcher bar: To Campus on left, prev/pill/next on right */}
           <div className="schedule-week-nav bus-route-nav">
-            <button className="schedule-nav-btn" onClick={() => navigateRoute(-1)} title="Previous route">
-              <ChevronLeft size={20} />
-            </button>
-            <div className="schedule-week-pill bus-route-pill">
-              <span className="bus-route-pill-icon" style={{ background: selectedRoute.color }}>
-                {selectedRoute.icon}
-              </span>
-              <span className="schedule-week-pill-value bus-route-pill-name">{selectedRoute.name}</span>
-            </div>
-            <button className="schedule-nav-btn" onClick={() => navigateRoute(1)} title="Next route">
-              <ChevronRight size={20} />
-            </button>
-          </div>
-
-          {/* ─── Direction Toggle & Next Bus ─── */}
-          <div className="bus-tracker-info-bar">
             <button className="bus-tracker-direction-btn" onClick={toggleDirection}>
               <Navigation size={13} />
               {direction === 'to-campus' ? 'To Campus' : 'From Campus'}
               <RefreshCw size={11} className="bus-tracker-direction-icon" />
             </button>
-
-            <div className="bus-tracker-next-bus">
-              <Clock size={13} />
-              {nextDeparture.time ? (
-                <>
-                  Next: <strong>{nextDeparture.time}</strong>
-                  <span className="bus-tracker-next-countdown">
-                    ({formatMinutes(nextDeparture.minutesUntil)})
-                  </span>
-                </>
-              ) : (
-                <span className="bus-tracker-no-service">No scheduled service today</span>
-              )}
+            <div className="bus-route-switch-group">
+              <button className="schedule-nav-btn" onClick={() => navigateRoute(-1)} title="Previous route">
+                <ChevronLeft size={20} />
+              </button>
+              <div className="schedule-week-pill bus-route-pill">
+                <span className="bus-route-pill-icon" style={{ background: ACCENT }}>
+                  {selectedRoute.icon}
+                </span>
+                <span className="schedule-week-pill-value bus-route-pill-name">{selectedRoute.name}</span>
+              </div>
+              <button className="schedule-nav-btn" onClick={() => navigateRoute(1)} title="Next route">
+                <ChevronRight size={20} />
+              </button>
             </div>
           </div>
-
-          {/* ─── Schedule Chip ─── */}
-          {selectedRoute?.id && todayTimes[selectedRoute.id] && (
-            <div className="bus-tracker-schedule-chips">
-              <span className="bus-tracker-schedule-chip">
-                Departures: {todayTimes[selectedRoute.id].departures.join(', ')}
-              </span>
-              <span className="bus-tracker-schedule-chip">
-                Returns: {todayTimes[selectedRoute.id].returns.join(', ')}
-              </span>
-            </div>
-          )}
 
           {/* ─── Route Details with Timeline ─── */}
           <div className="bus-tracker-route-detail">
             <div className="bus-tracker-route-header">
               <span
                 className="bus-tracker-route-badge"
-                style={{ background: selectedRoute.bg, color: selectedRoute.color, borderColor: selectedRoute.color }}
+                style={{ background: ACCENT_SOFT, color: ACCENT, borderColor: ACCENT }}
               >
                 <Bus size={12} strokeWidth={2.5} />
                 {selectedRoute.name}
@@ -557,30 +511,37 @@ export default function BusTracker() {
               </span>
             </div>
 
-            <div className="bus-tracker-timeline">
-              {currentDirectionStops.map((stop, idx) => {
+            <div className="bus-tracker-timeline" ref={timelineRef}>
+              {rail && (
+                <div
+                  className="bus-tracker-timeline-rail"
+                  style={{
+                    top: rail.top,
+                    left: rail.left,
+                    height: rail.height,
+                    background: ACCENT_FADED,
+                  }}
+                />
+              )}
+              {currentDirectionStops.map((stop, index) => {
+                const idx = index;
                 const isLast = idx === currentDirectionStops.length - 1;
                 const isFirst = idx === 0;
                 return (
                   <div key={idx} className={`bus-tracker-timeline-stop ${isLast ? 'last' : ''} ${isFirst ? 'first' : ''}`}>
                     <div className="bus-tracker-timeline-marker">
                       <div
+                        ref={isFirst ? firstDotRef : isLast ? lastDotRef : undefined}
                         className="bus-tracker-timeline-dot"
                         style={{
-                          background: isLast ? selectedRoute.color : undefined,
-                          borderColor: selectedRoute.color,
+                          background: (isFirst || isLast) ? ACCENT : undefined,
+                          borderColor: ACCENT,
                         }}
                       />
-                      {!isLast && (
-                        <div
-                          className="bus-tracker-timeline-line"
-                          style={{ background: selectedRoute.color + '33' }}
-                        />
-                      )}
                     </div>
                     <div className="bus-tracker-stop-info">
                       <span className="bus-tracker-stop-name">
-                        {isLast && <MapPin size={11} style={{ color: selectedRoute.color }} />}
+                        {isLast && <MapPin size={11} style={{ color: ACCENT }} />}
                         {stop.name}
                       </span>
                       <span className="bus-tracker-stop-time">{stop.time}</span>
@@ -591,9 +552,17 @@ export default function BusTracker() {
                     {isFirst && (
                       <span
                         className="bus-tracker-route-start-badge"
-                        style={{ background: selectedRoute.bg, color: selectedRoute.color }}
+                        style={{ background: ACCENT_SOFT, color: ACCENT }}
                       >
                         Start
+                      </span>
+                    )}
+                    {isLast && (
+                      <span
+                        className="bus-tracker-route-end-badge"
+                        style={{ background: ACCENT }}
+                      >
+                        Destination
                       </span>
                     )}
                   </div>
@@ -605,9 +574,7 @@ export default function BusTracker() {
           {/* ─── Tips Footer ─── */}
           <div className="bus-tracker-tips">
             <AlertCircle size={12} />
-            <span>
-              Use the ← / → buttons to switch routes. Times are approximate and subject to traffic.
-            </span>
+            <span>Times are not fixed — subject to traffic.</span>
           </div>
         </>
       )}
@@ -639,28 +606,6 @@ export default function BusTracker() {
                   onChange={e => updateForm({ name: e.target.value })}
                 />
                 {formErrors.name && <span className="bus-tracker-form-error">{formErrors.name}</span>}
-              </div>
-
-              {/* Color */}
-              <div className="bus-tracker-form-group">
-                <label className="bus-tracker-form-label">Route Color</label>
-                <div className="bus-tracker-color-picker">
-                  {['#06b6d4', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444', '#ec4899', '#f97316', '#3b82f6', '#14b8a6', '#a855f7'].map(c => (
-                    <button
-                      key={c}
-                      className={`bus-tracker-color-swatch ${form.color === c ? 'active' : ''}`}
-                      style={{ background: c }}
-                      onClick={() => updateForm({ color: c })}
-                    />
-                  ))}
-                  <input
-                    type="color"
-                    className="bus-tracker-color-custom"
-                    value={form.color}
-                    onChange={e => updateForm({ color: e.target.value })}
-                    title="Custom color"
-                  />
-                </div>
               </div>
 
               {/* Stops (To Campus) */}

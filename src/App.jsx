@@ -153,6 +153,7 @@ function AppContent() {
                 <Route path="/admin/users" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
                 <Route path="/admin/applications" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
                 <Route path="/admin/cr-sr-directory" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
+                <Route path="/admin/auditorium" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
                 <Route path="/workspace" element={<WorkspacePage />} />
                 <Route path="/study-room" element={<StudyRoomPage />} />
                 <Route path="/exam-checklist" element={<ExamChecklistPage />} />
@@ -207,7 +208,7 @@ function AppShell() {
     '/study-room': 'Study Time',
     '/exam-checklist': 'Exam Checklist',
     '/cp-hub': 'Code Pulse',
-    '/money-tracker': 'TiyaHodeJargoi',
+    '/money-tracker': 'TakaGeloKoi',
 
     '/cover-page-generator': 'Cover Page Generator',
     '/chill-zone': 'DownTime',
