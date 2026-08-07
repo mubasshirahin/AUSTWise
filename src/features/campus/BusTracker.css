@@ -9,6 +9,38 @@
   padding-bottom: var(--sp-10);
 }
 
+/* Masthead icon tile — amber to match the app brand accent. */
+.bus-widget .schedule-icon-tile {
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
+}
+
+.bus-widget .schedule-icon-tile svg {
+  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-amber) 35%, transparent));
+}
+
+/* Masthead box — soft glass panel, mirrors the Free Rooms header. */
+.bus-widget .schedule-masthead {
+  position: relative;
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--accent-amber) 7%, transparent), transparent 42%);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-4);
+  box-shadow: var(--shadow-sm);
+}
+
+.bus-widget .schedule-masthead::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 24px;
+  right: 24px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent-amber) 55%, transparent), transparent);
+  opacity: 0.6;
+}
+
 /* Masthead: 3 balanced columns so the stats sit truly centered
    (title | Routes/Stops/Next Bus | Add Bus). */
 .bus-widget .schedule-masthead {
@@ -37,7 +69,7 @@
   gap: 6px;
   padding: 7px 16px;
   border-radius: var(--radius-md);
-  background: var(--accent-blue);
+  background: var(--accent-amber);
   border: none;
   color: var(--text-inverse);
   font-size: 12px;
@@ -86,7 +118,7 @@
 }
 
 .bus-tracker-search-input:focus {
-  border-color: var(--accent-blue);
+  border-color: var(--accent-amber);
 }
 
 .bus-tracker-search-clear {
@@ -183,7 +215,7 @@
 }
 
 .bus-tracker-search-result-stops svg {
-  color: var(--accent-blue);
+  color: var(--accent-amber);
 }
 
 .bus-tracker-search-result-arrow {
@@ -274,9 +306,9 @@
 }
 
 .bus-tracker-direction-btn:hover {
-  border-color: var(--accent-blue);
-  color: var(--accent-blue);
-  background: var(--accent-blue-glow);
+  border-color: var(--accent-amber);
+  color: var(--accent-amber);
+  background: var(--accent-amber-glow);
 }
 
 .bus-tracker-direction-icon {
@@ -297,15 +329,15 @@
 }
 
 .bus-tracker-next-bus strong {
-  color: var(--accent-blue);
+  color: var(--accent-amber);
   font-weight: var(--fw-bold);
 }
 
 .bus-tracker-next-countdown {
   padding: 2px 8px;
   border-radius: var(--radius-full);
-  background: var(--accent-blue-glow);
-  color: var(--accent-blue);
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
   font-size: 10px;
   font-weight: var(--fw-bold);
 }
@@ -385,9 +417,9 @@
 }
 
 .bus-tracker-tab-action-btn:hover {
-  color: var(--accent-blue);
-  border-color: color-mix(in srgb, var(--accent-blue) 40%, transparent);
-  background: var(--accent-blue-glow);
+  color: var(--accent-amber);
+  border-color: color-mix(in srgb, var(--accent-amber) 40%, transparent);
+  background: var(--accent-amber-glow);
 }
 
 .bus-tracker-tab-action-btn.danger:hover {
@@ -463,7 +495,7 @@
 }
 
 .bus-tracker-timeline-stop.last .bus-tracker-timeline-dot {
-  box-shadow: 0 0 14px color-mix(in srgb, var(--accent-blue) 30%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent-amber) 30%, transparent);
 }
 
 .bus-tracker-stop-info {
@@ -541,7 +573,7 @@
 .bus-tracker-tips svg {
   flex-shrink: 0;
   margin-top: 2px;
-  color: var(--accent-blue);
+  color: var(--accent-amber);
 }
 
 /* ═══════════════════════════════════════
@@ -672,7 +704,7 @@
   gap: 6px;
   padding: 8px 22px;
   border-radius: var(--radius-md);
-  background: var(--accent-blue);
+  background: var(--accent-amber);
   border: none;
   color: var(--text-inverse);
   font-size: 13px;
@@ -731,7 +763,7 @@
 }
 
 .bus-tracker-form-input:focus {
-  border-color: var(--accent-blue);
+  border-color: var(--accent-amber);
 }
 
 .bus-tracker-form-input.error {
@@ -873,9 +905,9 @@
 }
 
 .bus-tracker-add-stop-btn:hover {
-  color: var(--accent-blue);
-  border-color: color-mix(in srgb, var(--accent-blue) 35%, transparent);
-  background: var(--accent-blue-glow);
+  color: var(--accent-amber);
+  border-color: color-mix(in srgb, var(--accent-amber) 35%, transparent);
+  background: var(--accent-amber-glow);
 }
 
 /* ─── Responsive ─── */

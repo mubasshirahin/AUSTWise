@@ -604,7 +604,7 @@ export default function SemesterTracker() {
           </div>
           <div>
             <span className="schedule-overline">Per-Semester</span>
-            <p className="schedule-title">Semester View</p>
+            <p className="schedule-title">Semester Wise</p>
             <span className="schedule-subtitle">
               {user?.department
                 ? `${user.department} · ${formatSemesterLabel(selectedSemester)}`

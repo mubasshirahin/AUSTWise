@@ -88,9 +88,9 @@ function getAllTodayTimes(route) {
 // ─── Default Form State ───
 
 // All buses share the app's theme accent color (no per-bus color choice)
-const ACCENT = 'var(--accent-blue)';
-const ACCENT_SOFT = 'var(--accent-blue-glow)';
-const ACCENT_FADED = 'color-mix(in srgb, var(--accent-blue) 30%, transparent)';
+const ACCENT = 'var(--accent-amber)';
+const ACCENT_SOFT = 'var(--accent-amber-glow)';
+const ACCENT_FADED = 'color-mix(in srgb, var(--accent-amber) 30%, transparent)';
 
 const EMPTY_STOP = { name: '', time: '', direction: 'to-campus', details: '' };
 

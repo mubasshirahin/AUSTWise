@@ -343,9 +343,9 @@ function FloorShowcase({ floorData, selectedFloor, floorTabs, onFloorChange }) {
           </div>
           <div>
             <span className="schedule-overline">Campus</span>
-            <div className="schedule-title">{selectedFloor} Floor Plan</div>
+            <div className="schedule-title">Floor Map</div>
             <span className="schedule-subtitle">
-              AUST {selectedFloor.toLowerCase()} floor · click locations to highlight areas
+              AUST {selectedFloor.toLowerCase()} floor
             </span>
           </div>
         </div>

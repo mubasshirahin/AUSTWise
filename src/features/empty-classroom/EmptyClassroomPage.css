@@ -9,8 +9,8 @@
 }
 
 .ecf-widget .ecf-icon-tile {
-  background: var(--accent-cyan-glow);
-  color: var(--accent-cyan);
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
 }
 
 /* Masthead stats — green/red text */
@@ -83,8 +83,8 @@
 }
 
 .ecf-search-input:focus {
-  border-color: var(--accent-cyan);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-cyan) 18%, transparent);
+  border-color: var(--accent-amber);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-amber) 18%, transparent);
 }
 
 .ecf-search-clear {
@@ -171,7 +171,7 @@
 
 .ecf-status-tab.active {
   background: var(--bg-card);
-  color: var(--accent-blue);
+  color: var(--accent-amber);
   box-shadow: var(--shadow-sm);
 }
 
@@ -263,9 +263,9 @@
 }
 
 .ecf-floor-toggle:hover {
-  color: var(--accent-cyan);
-  border-color: var(--accent-cyan);
-  background: var(--accent-cyan-glow);
+  color: var(--accent-amber);
+  border-color: var(--accent-amber);
+  background: var(--accent-amber-glow);
   transform: translateY(-1px);
 }
 
@@ -287,7 +287,7 @@
 }
 
 .ecf-floor-label:hover {
-  color: var(--accent-cyan);
+  color: var(--accent-amber);
 }
 
 /* Collapsed floor: fade the rooms out */
@@ -350,7 +350,7 @@
   font-weight: var(--fw-bold);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--accent-cyan);
+  color: var(--accent-amber);
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -361,8 +361,8 @@
   width: 8px;
   height: 8px;
   border-radius: 2px;
-  background: var(--accent-cyan);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--accent-cyan) 45%, transparent);
+  background: var(--accent-amber);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent-amber) 45%, transparent);
 }
 
 .ecf-block-badge {
@@ -557,7 +557,7 @@
 .ecf-masthead {
   position: relative;
   background:
-    linear-gradient(120deg, color-mix(in srgb, var(--accent-cyan) 7%, transparent), transparent 42%);
+    linear-gradient(120deg, color-mix(in srgb, var(--accent-amber) 7%, transparent), transparent 42%);
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
   padding: var(--sp-4);
@@ -572,7 +572,7 @@
   left: 24px;
   right: 24px;
   height: 1px;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent-cyan) 55%, transparent), transparent);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent-amber) 55%, transparent), transparent);
   opacity: 0.6;
 }
 
@@ -603,7 +603,7 @@
 
 .ecf-status-tab.active {
   background: linear-gradient(180deg, var(--bg-card), var(--bg-secondary));
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--text-tertiary) 18%, transparent), 0 0 0 1px color-mix(in srgb, var(--accent-blue) 14%, transparent);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--text-tertiary) 18%, transparent), 0 0 0 1px color-mix(in srgb, var(--accent-amber) 14%, transparent);
 }
 
 .ecf-status-tab.active[data-status="free"] {
@@ -627,7 +627,7 @@
 }
 
 .ecf-floor:hover {
-  border-color: color-mix(in srgb, var(--accent-cyan) 32%, var(--border-primary));
+  border-color: color-mix(in srgb, var(--accent-amber) 32%, var(--border-primary));
   box-shadow: var(--shadow-lift);
   transform: translateY(-2px);
 }
@@ -646,7 +646,7 @@
 .ecf-floor-label {
   font-size: 12px;
   letter-spacing: 0.1em;
-  color: var(--accent-cyan);
+  color: var(--accent-amber);
 }
 
 .ecf-floor-label::before {
@@ -656,8 +656,8 @@
   height: 10px;
   border-radius: 3px;
   margin-right: 8px;
-  background: linear-gradient(135deg, var(--accent-cyan), color-mix(in srgb, var(--accent-cyan) 55%, var(--accent-blue)));
-  box-shadow: 0 0 10px color-mix(in srgb, var(--accent-cyan) 45%, transparent);
+  background: linear-gradient(135deg, var(--accent-amber), var(--accent-amber));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent-amber) 45%, transparent);
   vertical-align: -1px;
 }
 
@@ -669,7 +669,7 @@
 .ecf-block {
   background:
     linear-gradient(160deg, color-mix(in srgb, var(--bg-secondary) 82%, transparent), var(--bg-card) 60%);
-  border: 1px solid color-mix(in srgb, var(--accent-cyan) 16%, var(--border-primary));
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 16%, var(--border-primary));
   border-radius: var(--radius-lg);
   padding: var(--sp-4);
   box-shadow:
@@ -679,20 +679,20 @@
 }
 
 .ecf-block:hover {
-  border-color: color-mix(in srgb, var(--accent-cyan) 35%, var(--border-primary));
+  border-color: color-mix(in srgb, var(--accent-amber) 35%, var(--border-primary));
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, var(--bg-card-hover) 60%, transparent),
-    0 6px 18px color-mix(in srgb, var(--accent-cyan) 12%, transparent);
+    0 6px 18px color-mix(in srgb, var(--accent-amber) 12%, transparent);
 }
 
 .ecf-block-title {
   font-size: 11px;
-  color: var(--accent-cyan);
+  color: var(--accent-amber);
 }
 
 .ecf-block-title::before {
-  background: linear-gradient(135deg, var(--accent-cyan), color-mix(in srgb, var(--accent-cyan) 45%, var(--accent-blue)));
-  box-shadow: 0 0 10px color-mix(in srgb, var(--accent-cyan) 50%, transparent);
+  background: linear-gradient(135deg, var(--accent-amber), var(--accent-amber));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent-amber) 50%, transparent);
 }
 
 /* Room cards — premium micro-cards */
@@ -709,7 +709,7 @@
 
 .ecf-card:hover {
   transform: translateY(-4px);
-  border-color: color-mix(in srgb, var(--accent-cyan) 26%, var(--border-primary));
+  border-color: color-mix(in srgb, var(--accent-amber) 26%, var(--border-primary));
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, var(--bg-card-hover) 50%, transparent),
     0 10px 26px color-mix(in srgb, var(--text-tertiary) 16%, transparent);

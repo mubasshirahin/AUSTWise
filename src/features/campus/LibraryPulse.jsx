@@ -149,30 +149,8 @@ export default function LibraryPulse() {
           </div>
           <div>
             <span className="schedule-overline">Campus</span>
-            <div className="schedule-title">Library Occupancy Pulse</div>
-            <span className="schedule-subtitle">Live crowd level across the library</span>
-            {tracking.enabled && (
-              <span className="schedule-subtitle" style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                <span
-                  className="lib-live-dot"
-                  style={{
-                    width: 7,
-                    height: 7,
-                    borderRadius: '50%',
-                    background: tracking.inside ? 'var(--accent-emerald)' : tracking.watching ? 'var(--accent-blue)' : 'var(--accent-amber)',
-                    boxShadow: '0 0 6px currentColor',
-                    display: 'inline-block',
-                  }}
-                />
-                {tracking.error
-                  ? 'Location unavailable — not counting you'
-                  : tracking.inside
-                    ? 'You are inside the library'
-                    : tracking.watching
-                      ? 'Live tracking active'
-                      : 'Tracking active'}
-              </span>
-            )}
+            <div className="schedule-title">Library Pulse</div>
+            <span className="schedule-subtitle">Live crowd level</span>
           </div>
         </div>
 
@@ -190,13 +168,33 @@ export default function LibraryPulse() {
               <span className="schedule-stat-value">{occupancyPercentage}%</span>
               <span className="schedule-stat-label">Full</span>
             </div>
-            <div className="schedule-stat">
+<div className="schedule-stat">
               <span className="schedule-stat-value">{occupancy.reporting}</span>
               <span className="schedule-stat-label">Tracking</span>
             </div>
           </div>
         </div>
 
+        {/* ── Tracking status on the right ── */}
+        {tracking.enabled && (
+          <div className="schedule-actions lib-track-wrap">
+            <span className="lib-track-status">
+              <span
+                className="lib-live-dot"
+                style={{
+                  background: tracking.inside ? 'var(--accent-emerald)' : tracking.watching ? 'var(--accent-blue)' : 'var(--accent-amber)',
+                }}
+              />
+              {tracking.error
+                ? 'Location unavailable'
+                : tracking.inside
+                  ? 'You are inside'
+                  : tracking.watching
+                    ? 'Live tracking active'
+                    : 'Tracking active'}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* ── Hourly Peak Chart (real-time) ── */}

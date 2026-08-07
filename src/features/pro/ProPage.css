@@ -82,11 +82,25 @@
   overflow: hidden;
   border-radius: var(--radius-xl);
   border: 1px solid var(--border-primary);
-  background: var(--bg-card);
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--accent-amber) 7%, transparent), transparent 42%),
+    var(--bg-card);
   padding: 56px 40px 48px;
   text-align: center;
   box-shadow: var(--shadow-lift);
   animation: proHeroIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.pro-hero::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 24px;
+  right: 24px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent-amber) 55%, transparent), transparent);
+  opacity: 0.6;
+  pointer-events: none;
 }
 
 @keyframes proHeroIn {

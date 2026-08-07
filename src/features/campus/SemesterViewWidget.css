@@ -390,7 +390,42 @@
   margin: 0;
 }
 
-/* ─── Responsive: collapse masthead under 1000px ─── */
+/* ─── Floor Map masthead — amber glass panel + icon tile ─── */
+.floor-map-widget .schedule-icon-tile {
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
+}
+
+.floor-map-widget .schedule-icon-tile svg {
+  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-amber) 35%, transparent));
+}
+
+.floor-map-widget .schedule-masthead {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--sp-3);
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--accent-amber) 7%, transparent), transparent 42%);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-4);
+  box-shadow: var(--shadow-sm);
+}
+
+.floor-map-widget .schedule-masthead::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 24px;
+  right: 24px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent-amber) 55%, transparent), transparent);
+  opacity: 0.6;
+}
+
+/* Responsive: collapse masthead under 1000px */
 @media (max-width: 1000px) {
   .sv-widget .schedule-masthead {
     grid-template-columns: 1fr auto;

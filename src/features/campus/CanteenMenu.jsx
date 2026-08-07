@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Coffee, Flame, Star, MessageSquare, AlertTriangle, Plus, X, Info, MoreVertical, Check } from 'lucide-react';
+import { Coffee, Flame, Star, MessageSquare, AlertTriangle, Plus, X, Info, MoreVertical, Check, Search, Trash2 } from 'lucide-react';
 import { canteenData, currentDayOfWeek } from '../../data/mockData';
 import {
   getReviewSummary,
@@ -93,7 +93,7 @@ function StarPicker({ value, onChange }) {
 }
 
 // ─── Food card ───
-function FoodCard({ food }) {
+function FoodCard({ food, onDelete }) {
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [feedbackVersion, setFeedbackVersion] = useState(0);
 
@@ -125,11 +125,16 @@ function FoodCard({ food }) {
 
       <p className="canteen-food-price">৳ {food.price}</p>
 
-      <div className="canteen-food-footer">
-        <span className={`canteen-stock-status ${food.available ? 'in-stock' : 'out-of-stock'}`}>
-          {food.available ? 'In Stock' : 'Stock Out'}
-        </span>
-      </div>
+      {onDelete && (
+        <button
+          className="canteen-remove-btn"
+          onClick={onDelete}
+          title="Remove this item"
+          aria-label={`Remove ${food.name}`}
+        >
+          <Trash2 size={11} />
+        </button>
+      )}
 
       <button
         className="canteen-feedback-toggle"
@@ -272,6 +277,8 @@ function FoodFeedback({ food, onChanged }) {
 // ─── Main Component ───
 export default function CanteenMenu() {
   const [activeCategory, setActiveCategory] = useState('All');
+  const [menuSearch, setMenuSearch] = useState('');
+  const [priceFilter, setPriceFilter] = useState('all');
   const [canteenInfo, setCanteenInfo] = useState(() => {
     try {
       const stored = localStorage.getItem('aust-canteen-data');
@@ -324,8 +331,23 @@ export default function CanteenMenu() {
 
   const filteredMenu = useMemo(() => {
     const menuList = canteenInfo.menu || [];
-    return menuList.filter(item => activeCategory === 'All' || item.category === activeCategory);
-  }, [activeCategory, canteenInfo]);
+    const q = menuSearch.trim().toLowerCase();
+    const inPriceRange = (p) => {
+      switch (priceFilter) {
+        case 'under50': return p < 50;
+        case '50-100': return p >= 50 && p <= 100;
+        case '100-150': return p > 100 && p <= 150;
+        case '150plus': return p > 150;
+        default: return true;
+      }
+    };
+    return menuList
+      .filter(item => item.available)
+      .filter(item => activeCategory === 'All' || item.category === activeCategory)
+      .filter(item => inPriceRange(Number(item.price)))
+      .filter(item => !q || `${item.name} ${item.category}`.toLowerCase().includes(q))
+      .sort((a, b) => getReviewSummary(b.id).average - getReviewSummary(a.id).average);
+  }, [activeCategory, canteenInfo, menuSearch, priceFilter]);
 
   const handleAddItem = (e) => {
     e.preventDefault();
@@ -349,6 +371,15 @@ export default function CanteenMenu() {
     setShowAddForm(false);
   };
 
+  const handleDeleteFood = (food) => {
+    const updated = {
+      ...canteenInfo,
+      menu: (canteenInfo.menu || []).filter(item => item !== food),
+    };
+    setCanteenInfo(updated);
+    localStorage.setItem('aust-canteen-data', JSON.stringify(updated));
+  };
+
   const getCrowdColor = () => {
     if (!isOpen) return 'var(--text-tertiary)';
     if (canteenInfo.crowdLevel >= 75) return 'var(--accent-rose)';
@@ -369,8 +400,8 @@ export default function CanteenMenu() {
           </div>
           <div>
             <span className="schedule-overline">Campus</span>
-            <div className="schedule-title">Canteen Food Menu &amp; Crowd</div>
-            <span className="schedule-subtitle">Live crowd indices, timings &amp; popular picks</span>
+            <div className="schedule-title">Canteen Menu</div>
+            <span className="schedule-subtitle">Daily menu &amp; popular picks</span>
           </div>
         </div>
 
@@ -381,12 +412,6 @@ export default function CanteenMenu() {
                 {isOpen ? 'OPEN' : 'CLOSED'}
               </span>
               <span className="schedule-stat-label">Status</span>
-            </div>
-            <div className="schedule-stat">
-              <span className="schedule-stat-value" style={{ color: getCrowdColor() }}>
-                {effectiveCrowdSlot ? effectiveCrowdSlot.icon : `${canteenInfo.crowdLevel}%`}
-              </span>
-              <span className="schedule-stat-label">{effectiveCrowdSlot ? effectiveCrowdSlot.level : crowdLabel}</span>
             </div>
             <div className="schedule-stat">
               <span className="schedule-stat-value">{canteenInfo.menu ? canteenInfo.menu.length : 0}</span>
@@ -447,6 +472,54 @@ export default function CanteenMenu() {
           ))}
         </div>
       )}
+
+      {/* ── Item search ── */}
+      <div className="canteen-search">
+        <Search size={14} className="canteen-search-icon" />
+        <input
+          type="text"
+          className="canteen-search-input"
+          placeholder="Search food items…"
+          value={menuSearch}
+          onChange={(e) => setMenuSearch(e.target.value)}
+        />
+        {menuSearch && (
+          <button className="canteen-search-clear" onClick={() => setMenuSearch('')}>
+            <X size={13} />
+          </button>
+        )}
+      </div>
+
+      {/* ── Filter bar: category + price range ── */}
+      <div className="canteen-filterbar">
+        <select
+          className="canteen-filter-select"
+          value={activeCategory}
+          onChange={(e) => setActiveCategory(e.target.value)}
+          aria-label="Filter by category"
+        >
+          {categories.map(cat => (
+            <option key={cat} value={cat}>{cat}</option>
+          ))}
+        </select>
+        <select
+          className="canteen-filter-select"
+          value={priceFilter}
+          onChange={(e) => setPriceFilter(e.target.value)}
+          aria-label="Filter by price range"
+        >
+          <option value="all">Any price</option>
+          <option value="under50">Under ৳50</option>
+          <option value="50-100">৳50 – ৳100</option>
+          <option value="100-150">৳100 – ৳150</option>
+          <option value="150plus">৳150 +</option>
+        </select>
+        {activeCategory !== 'All' && (
+          <button className="canteen-filter-clear" onClick={() => setActiveCategory('All')}>
+            <X size={12} /> {activeCategory}
+          </button>
+        )}
+      </div>
 
       {/* ── Current slot indicator ── */}
       {effectiveCrowdSlot && (
@@ -509,17 +582,13 @@ export default function CanteenMenu() {
       {filteredMenu.length === 0 ? (
         <div className="sv-empty">
           <Coffee size={38} className="sv-empty-icon" />
-          <h3>{!isOpen ? 'Canteen Closed' : 'No Menu Items'}</h3>
-          <p>
-            {!isOpen
-              ? 'The canteen is currently closed. Menu will return when it reopens.'
-              : 'No menu items available in this category yet.'}
-          </p>
+          <h3>No Menu Items</h3>
+          <p>No menu items available in this category yet.</p>
         </div>
       ) : (
         <div className="canteen-grid">
           {filteredMenu.map(food => (
-            <FoodCard key={food.id} food={food} />
+            <FoodCard key={food.id} food={food} onDelete={() => handleDeleteFood(food)} />
           ))}
         </div>
       )}

@@ -24,11 +24,25 @@
   position: relative;
   border-radius: var(--radius-xl);
   border: 1px solid var(--border-primary);
-  background: var(--bg-card);
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--accent-amber) 7%, transparent), transparent 42%),
+    var(--bg-card);
   overflow: hidden;
   box-shadow: var(--shadow-lift);
   animation: shHeroIn 0.55s cubic-bezier(0.4, 0, 0.2, 1) both;
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.sh-hero::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 24px;
+  right: 24px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent-amber) 55%, transparent), transparent);
+  opacity: 0.6;
+  pointer-events: none;
 }
 
 .sh-hero:hover {
