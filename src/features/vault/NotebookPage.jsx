@@ -172,6 +172,20 @@ export default function NotebookPage() {
     });
   }, []);
 
+  // Breadcrumb path (id + title) from Home down to the open note's folder.
+  const openNotePath = useMemo(() => {
+    if (!openNote) return [];
+    const chain = [];
+    let cur = items.find(i => i.id === openNote.parentId);
+    while (cur) { chain.unshift({ id: cur.id, title: cur.title }); cur = cur.parentId ? items.find(i => i.id === cur.parentId) : null; }
+    return chain;
+  }, [openNote, items]);
+
+  const handlePathCrumb = useCallback((id) => {
+    setOpenNote(null);
+    handleNavigateTo(id);
+  }, []);
+
   return (
     <div className="vault-page notebook-page animate-fadeIn">
 
@@ -203,7 +217,9 @@ export default function NotebookPage() {
             batch={null}
             noteKey={openNote.id}
             title={openNote.title}
+            path={openNotePath}
             onBack={() => setOpenNote(null)}
+            onPathCrumb={handlePathCrumb}
             onSaved={() => handleSaved(openNote.id)}
           />
         ) : (

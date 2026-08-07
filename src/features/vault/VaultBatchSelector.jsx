@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { Plus, X, Users, Check, Link, Unlink } from 'lucide-react';
 import { getBatchConfigs, addBatchConfig, updateBatchDriveUrl } from '../../utils/vaultBatchStorage';
 import { extractFolderId } from '../../utils/googleDrive';
+import VaultMasthead from './VaultMasthead';
 
-export default function VaultBatchSelector({ department, yearSem, onSelectBatch }) {
+export default function VaultBatchSelector({ department, yearSem, onSelectBatch, progress }) {
   const [batches, setBatches] = useState(() => getBatchConfigs(department, yearSem));
   const [showForm, setShowForm] = useState(batches.length === 0);
   const [batchNo, setBatchNo] = useState('');
@@ -60,10 +61,9 @@ export default function VaultBatchSelector({ department, yearSem, onSelectBatch 
 
   return (
     <div className="vb-selector">
-      <div className="vb-header">
-        <Users size={18} />
-        <span>Select your Batch</span>
-      </div>
+      <VaultMasthead department={department} yearSem={yearSem} />
+
+      {progress}
 
       <div className="vb-list">
         {[...batches].reverse().map(batch => (

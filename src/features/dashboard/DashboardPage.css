@@ -305,33 +305,14 @@
 .dash-hero {
   position: relative;
   border-radius: var(--radius-xl);
-  border: 1px solid var(--border-primary);
-  background:
-    linear-gradient(120deg, color-mix(in srgb, var(--accent-amber) 7%, transparent), transparent 42%),
-    var(--bg-card);
+  background: var(--bg-card);
   overflow: hidden;
-  box-shadow:
-    0 1px 0 0 rgba(255,255,255,0.04) inset,
-    var(--shadow-lift);
   animation: dashHeroIn 0.55s cubic-bezier(0.4, 0, 0.2, 1) both;
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-.dash-hero::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 24px;
-  right: 24px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent-amber) 55%, transparent), transparent);
-  opacity: 0.6;
-  pointer-events: none;
-}
-
 .dash-hero:hover {
   border-color: var(--border-focus);
-  box-shadow: var(--shadow-lift);
 }
 
 
@@ -397,10 +378,7 @@
 }
 
 .dash-hero-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(72px);
-  animation: dashFloat 10s ease-in-out infinite;
+  display: none;
 }
 
 .dash-hero-orb-1 {

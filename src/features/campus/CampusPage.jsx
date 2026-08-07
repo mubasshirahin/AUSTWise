@@ -61,7 +61,7 @@ export default function CampusPage() {
             Inside<span className="cp-hero-name">AUST</span>
           </h1>
           <p className="cp-hero-subtitle">
-            Navigate buildings, review faculty office hours, and check live canteen/library occupancy.
+            Navigate buildings, check live canteen &amp; library traffic.
           </p>
         </div>
       </header>

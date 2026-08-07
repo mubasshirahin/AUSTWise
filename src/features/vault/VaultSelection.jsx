@@ -9,6 +9,7 @@ import {
   getYearSemOptions,
 } from './vaultUtils';
 import AddVaultCourse from './AddVaultCourse';
+import VaultMasthead from './VaultMasthead';
 
 const deptAccents = {
   CSE: 'vault-dept-cse',
@@ -30,6 +31,7 @@ export default function VaultSelection({
   onSelectCourse,
   onBackToDepartments,
   onBackToSemesters,
+  progress,
 }) {
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -50,17 +52,9 @@ export default function VaultSelection({
   if (!department) {
     return (
       <section className="vault-panel vault-panel-enter">
-        <div className="vault-panel-header">
-          <div className="vault-panel-heading">
-            <div className="vault-panel-icon vault-panel-icon-purple">
-              <Building2 size={20} />
-            </div>
-            <div>
-              <h2 className="vault-panel-title">Select Department</h2>
-              <p className="vault-panel-desc">Choose where you study — resources load by department</p>
-            </div>
-          </div>
-        </div>
+        <VaultMasthead department={department} yearSem={yearSem} />
+
+        {progress}
 
         <div className="vault-dept-grid">
           {heatmapDepartments.map((dept, index) => {
@@ -93,27 +87,9 @@ export default function VaultSelection({
   if (!yearSem) {
     return (
       <section className="vault-panel vault-panel-enter">
-        <div className="vault-panel-header">
-          <div className="vault-panel-heading">
-            <button
-              type="button"
-              className="vault-back-btn"
-              onClick={onBackToDepartments}
-              title="Back to departments"
-            >
-              <ArrowLeft size={16} />
-            </button>
-            <div className="vault-panel-icon vault-panel-icon-blue">
-              <GraduationCap size={20} />
-            </div>
-            <div>
-              <h2 className="vault-panel-title">Select Semester</h2>
-              <p className="vault-panel-desc">
-                <span className={`vault-inline-badge ${deptAccents[department]}`}>{department}</span>
-                {departmentLabels[department]}
-              </p>
-            </div>
-          </div>          </div>
+        <VaultMasthead department={department} yearSem={yearSem} />
+
+        {progress}
 
         <div className="vault-sem-slider-wrap">
           <div className="vault-sem-slider">

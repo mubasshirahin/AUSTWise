@@ -16,31 +16,14 @@
 .vl-hero {
   position: relative;
   border-radius: var(--radius-xl);
-  border: 1px solid var(--border-primary);
-  background:
-    linear-gradient(120deg, color-mix(in srgb, var(--accent-amber) 7%, transparent), transparent 42%),
-    var(--bg-card);
+  background: var(--bg-card);
   overflow: hidden;
-  box-shadow: var(--shadow-lift);
   animation: vlHeroIn 0.55s cubic-bezier(0.4, 0, 0.2, 1) both;
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-.vl-hero::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 24px;
-  right: 24px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent-amber) 55%, transparent), transparent);
-  opacity: 0.6;
-  pointer-events: none;
-}
-
 .vl-hero:hover {
   border-color: var(--border-focus);
-  box-shadow: var(--shadow-lift);
 }
 
 
@@ -443,17 +426,20 @@
 
 /* ─── Selection Box ─── */
 .vault-selection-box {
-  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
   border-radius: var(--radius-xl);
   padding: var(--sp-5) var(--sp-6);
-  box-shadow: 0 4px 28px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.06);
   display: flex;
   flex-direction: column;
   gap: var(--sp-5);
   animation: vaultPanelIn 0.45s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.vault-masthead-divider,
+.vault-page .schedule-dotted-divider {
+  border-top: 1px dashed var(--border-primary);
+  margin: 12px 0 16px;
 }
 
 .vault-selection-box .vault-step-progress {
@@ -488,13 +474,10 @@
 
 /* ─── Selection Panels ─── */
 .vault-panel {
-  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
   border-radius: var(--radius-xl);
   padding: var(--sp-5) var(--sp-6);
-  box-shadow: 0 4px 28px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.06);
 }
 
 .vault-panel-enter {
@@ -1140,12 +1123,9 @@
   padding: 80px 24px 64px;
   text-align: center;
   color: var(--text-secondary);
-  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
   border-radius: var(--radius-xl);
-  box-shadow: 0 4px 28px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.06);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
 }
 
 .vault-coming-soon svg {

@@ -58,7 +58,7 @@ export default function DailyLifePage() {
             Daily<span className="dl-hero-name"> Life</span>
           </h1>
           <p className="dl-hero-subtitle">
-            Exam prep, cover pages, fare estimates, budget tracking and meal planning — all in one place.
+            Exam prep, budgets &amp; meals — all in one place.
           </p>
         </div>
       </header>

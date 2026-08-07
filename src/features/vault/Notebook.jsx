@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, Fragment } from 'react';
-import { ImageIcon, Trash2, Move, Type, Check, Link2, Link2Off, Download, MoreVertical, NotebookPen, ZoomIn, ZoomOut, ArrowLeft } from 'lucide-react';
+import { ImageIcon, Trash2, Move, Type, Check, Link2, Link2Off, Download, MoreVertical, NotebookPen, ZoomIn, ZoomOut, Pencil } from 'lucide-react';
 import html2canvas from 'html2canvas-pro';
 import jsPDF from 'jspdf';
 
@@ -32,7 +32,76 @@ function resolveThemeVar(name, fallback) {
   }
 }
 
-export default function Notebook({ vaultContext, batch, noteKey, title, onBack, onSaved }) {
+function fitFontSize(text, width, height) {
+  if (typeof document === 'undefined' || !text) return 24;
+  const el = document.createElement('span');
+  el.style.position = 'absolute';
+  el.style.visibility = 'hidden';
+  el.style.left = '-9999px';
+  el.style.whiteSpace = 'pre-wrap';
+  el.style.wordBreak = 'break-word';
+  el.style.width = `${Math.max(1, width)}px`;
+  el.style.lineHeight = '1.4';
+  el.style.fontFamily = 'inherit';
+  el.textContent = text;
+  document.body.appendChild(el);
+  const fit = (px) => { el.style.fontSize = `${px}px`; return el.getBoundingClientRect().height; };
+  let lo = 8, hi = 600, best = 24;
+  for (let i = 0; i < 24; i++) {
+    const mid = Math.round((lo + hi) / 2);
+    if (fit(mid) <= height) { best = mid; lo = mid + 1; }
+    else { hi = mid - 1; }
+  }
+  document.body.removeChild(el);
+  return best;
+}
+
+// Find the closest point where a new rect (w×h) does not overlap any existing
+// item. Returns { x, y } in canvas coords, or a centering fallback.
+function findFreeSpot(w, h, items, areaW, areaH) {
+  const margin = 12;
+  const maxX = Math.max(0, (areaW || 1000) - w - margin);
+  const maxY = Math.max(0, (areaH || 600) - h - margin);
+  const cx = maxX / 2 + w / 2;
+  const cy = maxY / 2 + h / 2;
+
+  const overlaps = (x, y) => {
+    const r = { x, y, w, h };
+    for (const it of items) {
+      const a = { x: it.x, y: it.y, w: it.w, h: it.h };
+      if (r.x < a.x + a.w && r.x + r.w > a.x && r.y < a.y + a.h && r.y + r.h > a.y) return true;
+    }
+    return false;
+  };
+
+  let best = null;
+  let bestDist = Infinity;
+  for (let gy = margin; gy <= maxY; gy += 40) {
+    for (let gx = margin; gx <= maxX; gx += 40) {
+      if (overlaps(gx, gy)) continue;
+      const dx = gx + w / 2 - cx;
+      const dy = gy + h / 2 - cy;
+      const d = dx * dx + dy * dy;
+      if (d < bestDist) { bestDist = d; best = { x: gx, y: gy }; }
+    }
+  }
+  if (best) return best;
+  return { x: cx - w / 2, y: cy - h / 2 };
+}
+
+const bottomSpot = (w, h, items, areaW) => {
+  const margin = 12;
+  if (items.length === 0) return { x: margin, y: margin };
+  let maxBottom = -Infinity, anchorX = margin;
+  for (const it of items) {
+    const bottom = it.y + it.h;
+    if (bottom > maxBottom) { maxBottom = bottom; anchorX = it.x; }
+  }
+  const maxX = Math.max(0, (areaW || 1000) - w - margin);
+  return { x: Math.min(anchorX, maxX), y: maxBottom + margin };
+}
+
+export default function Notebook({ vaultContext, batch, noteKey, title, path, onBack, onSaved, onPathCrumb }) {
   const { department, yearSem } = vaultContext;
   // noteKey (from the Notebook library) gives every note its own storage slot:
   // `aust-notebook-<noteKey>`. Without it we fall back to the legacy single
@@ -73,6 +142,9 @@ export default function Notebook({ vaultContext, batch, noteKey, title, onBack, 
   const editedSessionRef = useRef(false); // true once the user typed during the current edit session
   const [connections, setConnections] = useState([]);
   const [connectFrom, setConnectFrom] = useState(null);
+  const [boxColor, setBoxColor] = useState('#F5A623');
+  const [selectedItemId, setSelectedItemId] = useState(null);
+  const [editItemId, setEditItemId] = useState(null); // which item's edit menu is open
   const [drawMode, setDrawMode] = useState(false);
   const [drawPhase, setDrawPhase] = useState('idle'); // idle | placing | done
   const [drawStart, setDrawStart] = useState(null);
@@ -184,15 +256,19 @@ export default function Notebook({ vaultContext, batch, noteKey, title, onBack, 
     const reader = new FileReader();
     reader.onload = (ev) => {
       pushUndo();
-      setItems(prev => [...prev, {
-        id: Date.now(),
-        type: 'image',
-        src: ev.target.result,
-        x: 100 + Math.random() * 200,
-        y: 100 + Math.random() * 200,
-        w: 300,
-        h: 200,
-      }]);
+      setItems(prev => {
+        const spot = bottomSpot(300, 200, prev, wrapSize.w ? wrapSize.w / canvasZoom : 1000);
+        return [...prev, {
+          id: Date.now(),
+          type: 'image',
+          src: ev.target.result,
+          x: spot.x,
+          y: spot.y,
+          w: 300,
+          h: 200,
+          borderColor: boxColor,
+        }];
+      });
       markDirty();
     };
     reader.readAsDataURL(file);
@@ -200,15 +276,19 @@ export default function Notebook({ vaultContext, batch, noteKey, title, onBack, 
 
   const addTextBox = () => {
     pushUndo();
-    setItems(prev => [...prev, {
-      id: Date.now(),
-      type: 'text',
-      content: 'Double-click to edit',
-      x: 100 + Math.random() * 200,
-      y: 100 + Math.random() * 200,
-      w: 200,
-      h: 60,
-    }]);
+    setItems(prev => {
+      const spot = bottomSpot(200, 60, prev, wrapSize.w ? wrapSize.w / canvasZoom : 1000);
+      return [...prev, {
+        id: Date.now(),
+        type: 'text',
+        content: 'Double-click to edit',
+        x: spot.x,
+        y: spot.y,
+        w: 200,
+        h: 60,
+        borderColor: boxColor,
+      }];
+    });
     setEditingId(null);
     markDirty();
   };
@@ -267,6 +347,7 @@ export default function Notebook({ vaultContext, batch, noteKey, title, onBack, 
             y: pos.y,
             w,
             h,
+            borderColor: boxColor,
           }]);
           flash('Image pasted to canvas');
           setSaved(false);
@@ -326,6 +407,7 @@ export default function Notebook({ vaultContext, batch, noteKey, title, onBack, 
           y: pos.y,
           w: 200,
           h: 60,
+          borderColor: boxColor,
         }]);
         requestAnimationFrame(() => {
           const el = canvasRef.current?.querySelector(`[data-item-id="${newId}"] .nb-canvas-text`);
@@ -603,6 +685,38 @@ export default function Notebook({ vaultContext, batch, noteKey, title, onBack, 
     markDirty();
   };
 
+  const setItemBorderColor = (id, color) => {
+    pushUndo();
+    setItems(prev => prev.map(i => (i.id === id ? { ...i, borderColor: color } : i)));
+    markDirty();
+  };
+
+  const shapeStyle = (s) => {
+    switch (s) {
+      case 'rounded': return { borderRadius: 16 };
+      case 'circle': return { borderRadius: '50%', aspectRatio: '1 / 1' };
+      case 'oval': return { borderRadius: '50%' };
+      case 'triangle': return { clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' };
+      case 'hexagon': return { clipPath: 'polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%)' };
+      default: return { borderRadius: 0 };
+    }
+  };
+
+  const setItemShape = (id, shape) => {
+    pushUndo();
+    setItems(prev => prev.map(i => (i.id === id ? { ...i, shape } : i)));
+    markDirty();
+  };
+
+  const SHAPES = [
+    { key: 'rect', label: 'Rectangle' },
+    { key: 'rounded', label: 'Rounded' },
+    { key: 'circle', label: 'Circle' },
+    { key: 'oval', label: 'Oval' },
+    { key: 'triangle', label: 'Triangle' },
+    { key: 'hexagon', label: 'Hexagon' },
+  ];
+
   // ─── Manual drawing ───
   const getCanvasPoint = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
@@ -846,15 +960,6 @@ export default function Notebook({ vaultContext, batch, noteKey, title, onBack, 
   return (
     <div className="glass-card-static schedule-widget nb-widget animate-fadeInUp">
 
-      {onBack && (
-        <div className="nb-backbar">
-          <button className="schedule-nav-btn" onClick={onBack} title="Back to notes">
-            <ArrowLeft size={16} />
-          </button>
-          <span className="nb-backbar-title">{title || 'Note'}</span>
-        </div>
-      )}
-
       {/* ── Masthead ── */}
       <div className="schedule-masthead">
         {/* Left: title block */}
@@ -864,7 +969,7 @@ export default function Notebook({ vaultContext, batch, noteKey, title, onBack, 
           </div>
           <div>
             <span className="schedule-overline">Study Canvas</span>
-            <div className="schedule-title">Batch Notebook</div>
+            <div className="schedule-title">Notebook</div>
             <span className="schedule-subtitle">Paste Ctrl+V · drag &amp; drop images</span>
           </div>
         </div>
@@ -947,6 +1052,21 @@ export default function Notebook({ vaultContext, batch, noteKey, title, onBack, 
 
       <div className="schedule-dotted-divider" />
 
+      {(title || (path && path.length > 0)) && (
+        <div className="nb-location-bar">
+          <div className="nb-location-crumbs">
+            <button className="nb-location-crumb" onClick={() => onPathCrumb?.(null)}>Home</button>
+            {(path || []).map((p, i) => (
+              <span key={p.id || i} className="nb-location-seg">
+                <span className="nb-location-sep">›</span>
+                <button className="nb-location-crumb" onClick={() => onPathCrumb?.(p.id)}>{p.title}</button>
+              </span>
+            ))}
+          </div>
+          {title && <span className="nb-location-title">{title}</span>}
+        </div>
+      )}
+
       {/* Contextual draw toolbar (shown while Draw mode is on) */}
       {drawMode && (
         <div className="nb-draw-bar">
@@ -1003,6 +1123,8 @@ export default function Notebook({ vaultContext, batch, noteKey, title, onBack, 
               setConnectFrom(null);
               setSelectedLineId(null);
               setSelectedConnId(null);
+              setSelectedItemId(null);
+              setEditItemId(null);
               canvasRef.current?.focus({ preventScroll: true });
             }
             if (drawMode) { handleDrawClick(e); return; }
@@ -1173,6 +1295,10 @@ export default function Notebook({ vaultContext, batch, noteKey, title, onBack, 
             const angle = Math.atan2(dy, dx) * 180 / Math.PI;
             const col = lineColor;
             const isSolid = lineStyle === 'solid';
+            const norm = ((angle % 360) + 360) % 360;
+            const straightDeg = Math.round(norm / 90) * 90;
+            const isStraight = Math.abs(straightDeg - norm) <= 1.5;
+            const guideDeg = straightDeg % 360;
             return (
               <div style={{ position: 'absolute', pointerEvents: 'none', zIndex: 0, opacity: 0.6 }}>
                 <div style={{
@@ -1188,6 +1314,34 @@ export default function Notebook({ vaultContext, batch, noteKey, title, onBack, 
                   transformOrigin: '0 0',
                   transform: `rotate(${angle}deg)`,
                 }} />
+                {isStraight && (
+                  <>
+                    <div style={{
+                      position: 'absolute',
+                      left: drawStart.x,
+                      top: drawStart.y - 1,
+                      width: len + 24,
+                      height: 0,
+                      borderTop: '2px dotted rgba(245,166,35,0.95)',
+                      transformOrigin: '0 0',
+                      transform: `rotate(${angle}deg)`,
+                    }} />
+                    <span style={{
+                      position: 'absolute',
+                      left: drawStart.x - 11,
+                      top: drawStart.y - 28,
+                      padding: '1px 5px',
+                      borderRadius: 4,
+                      background: 'rgba(245,166,35,0.18)',
+                      color: '#f5a623',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: 0.5,
+                      whiteSpace: 'nowrap',
+                      filter: 'brightness(1.1)',
+                    }}>{guideDeg}°</span>
+                  </>
+                )}
                 <div style={{
                   position: 'absolute',
                   left: drawStart.x - 4,
@@ -1283,16 +1437,17 @@ export default function Notebook({ vaultContext, batch, noteKey, title, onBack, 
           {items.map(item => (
             <div
               key={item.id}
-              className={`nb-canvas-item ${connectFrom === item.id ? 'connecting' : ''} ${connectFrom && connectFrom !== 'ready' && connectFrom !== item.id ? 'connect-target' : ''} ${resizingId === item.id ? 'resizing' : ''}`}
+              className={`nb-canvas-item ${selectedItemId === item.id ? 'selected' : ''} ${connectFrom === item.id ? 'connecting' : ''} ${connectFrom && connectFrom !== 'ready' && connectFrom !== item.id ? 'connect-target' : ''} ${resizingId === item.id ? 'resizing' : ''}`}
               data-item-id={item.id}
-              style={{ left: item.x, top: item.y, width: item.w, height: item.h }}
-              onMouseDown={(e) => { if (connectFrom) { e.stopPropagation(); handleItemClick(item.id); } else { startDrag(e, item.id); } }}
+              style={{ left: item.x, top: item.y, width: item.w, height: item.h, borderColor: item.borderColor || undefined }}
+              onMouseDown={(e) => { setSelectedItemId(item.id); if (connectFrom) { e.stopPropagation(); handleItemClick(item.id); } else { startDrag(e, item.id); } }}
             >
               {item.type === 'image' ? (
-                <img src={item.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
+                <img src={item.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'fill', pointerEvents: 'none' }} />
               ) : (
                 <div
                   className={`nb-canvas-text ${editingId === item.id ? 'editing' : ''}`}
+                  style={{ fontSize: `${fitFontSize(item.content, item.w - 20, item.h - 20)}px` }}
                   contentEditable={editingId === item.id}
                   suppressContentEditableWarning
                   onInput={(e) => { if (editingId === item.id) { editedSessionRef.current = true; sizeToContent(item.id, e.currentTarget); } }}
@@ -1302,25 +1457,69 @@ export default function Notebook({ vaultContext, batch, noteKey, title, onBack, 
                   {item.content}
                 </div>
               )}
-              <button className="nb-canvas-del" onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }}
+              <button className="nb-canvas-del" onClick={(e) => { e.stopPropagation(); deleteItem(item.id); if (editItemId === item.id) setEditItemId(null); if (selectedItemId === item.id) setSelectedItemId(null); }}
                 onMouseDown={e => e.stopPropagation()}>
                 <Trash2 size={12} />
               </button>
+              {selectedItemId === item.id && (
+                <button className="nb-canvas-edit" title="Edit box" onClick={(e) => { e.stopPropagation(); setEditItemId(editItemId === item.id ? null : item.id); }}
+                  onMouseDown={e => e.stopPropagation()}>
+                  <Pencil size={13} />
+                </button>
+              )}
               <div className="nb-resize-handle" title="Resize" onMouseDown={(e) => startResize(e, item.id)} />
             </div>
           ))}
 
-          {items.length === 0 && !drawMode && (
-            <div className="nb-canvas-empty-hint">
-              <ImageIcon size={22} />
-              <span>Paste a screenshot, image or text with <kbd>Ctrl</kbd>+<kbd>V</kbd>, or drag &amp; drop an image</span>
-            </div>
-          )}
+          {(() => {
+            const editItem = items.find(i => i.id === editItemId);
+            if (!editItem) return null;
+            return (
+              <div className="nb-item-edit-menu" onMouseDown={e => e.stopPropagation()}
+                style={{ left: editItem.x + editItem.w - 4, top: editItem.y + 34 }}>
+                <div className="nb-item-edit-label">Border colour</div>
+                <div className="nb-item-edit-swatches">
+                  {['#F5A623', '#3b82f6', '#22c55e', '#ef4444', '#a855f7', '#f97316', '#22d3ee', '#ec4899', '#fafafa', '#a1a1aa'].map(c => (
+                    <button key={c} className={`nb-item-swatch ${(editItem.borderColor || '#F5A623') === c ? 'active' : ''}`}
+                      style={{ background: c }} onClick={() => setItemBorderColor(editItem.id, c)} title={c} />
+                  ))}
+                </div>
+                <div className="nb-item-edit-wheel">
+                  <input type="color" value={editItem.borderColor || '#F5A623'}
+                    onChange={(e) => setItemBorderColor(editItem.id, e.target.value)} title="Custom colour" />
+                  <span>Custom</span>
+                </div>
+              </div>
+            );
+          })()}
         </div>
+
+        {items.length === 0 && !drawMode && (
+          <div className="nb-canvas-empty-hint">
+            <ImageIcon size={22} />
+            <span>Paste a screenshot, image or text with <kbd>Ctrl</kbd>+<kbd>V</kbd>, or drag &amp; drop an image</span>
+          </div>
+        )}
 
         {pasteFlash && (
           <div className="nb-paste-flash">{pasteFlash}</div>
         )}
+      </div>
+
+      <div className="nb-float-tool" role="toolbar" aria-label="Canvas tools">
+        <button className={`nb-float-btn${drawMode ? ' active' : ''}`} onClick={toggleDrawMode} title="Draw line">
+          <Move size={18} />
+        </button>
+        <button className={`nb-float-btn${connectFrom ? ' active' : ''}`} onClick={toggleConnectMode} title="Connect items">
+          {connectFrom ? <Link2Off size={18} /> : <Link2 size={18} />}
+        </button>
+        <span className="nb-float-sep" />
+        <button className="nb-float-btn" onClick={() => canvasFileRef.current?.click()} title="Add image">
+          <ImageIcon size={18} />
+        </button>
+        <button className="nb-float-btn" onClick={addTextBox} title="Add text box">
+          <Type size={18} />
+        </button>
       </div>
     </div>
   );

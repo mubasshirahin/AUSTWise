@@ -163,17 +163,6 @@ export default function NotebookLibrary({
 
         <div className="schedule-actions">
           <div className="schedule-week-nav">
-            <button
-              className="schedule-nav-btn"
-              onClick={() => onNavigateTo(currentFolder ? currentFolder.parentId : null)}
-              disabled={!currentFolder}
-              title="Go up"
-            >
-              <ChevronUp size={16} />
-            </button>
-            <div className="schedule-week-pill" onClick={() => onNavigateTo(null)}>
-              <span className="schedule-week-pill-value">{currentFolder ? currentFolder.title : 'All Notes'}</span>
-            </div>
             <button className="schedule-nav-btn" onClick={() => onNavigateTo(null)} title="Home">
               <Home size={16} />
             </button>

@@ -127,10 +127,14 @@
 }
 
 .st-hero-status {
+  position: absolute;
+  top: 50%;
+  right: var(--sp-6);
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--sp-2);
-  margin-top: var(--sp-3);
 }
 
 .st-hero-status-dot {

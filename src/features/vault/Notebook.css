@@ -6,6 +6,81 @@
   opacity: 0.5;
 }
 
+.nb-draw-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 14px 0;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
+}
+
+.nb-location-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 8px 4px;
+  margin-bottom: 5px;
+}
+.nb-location-crumbs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+.nb-location-seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.nb-location-sep {
+  color: var(--text-tertiary);
+  margin: 0 3px;
+  font-size: 12px;
+}
+.nb-location-crumb {
+  border: none;
+  background: transparent;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.nb-location-crumb:hover {
+  background: var(--bg-hover);
+  color: var(--accent-amber);
+}
+.nb-location-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-primary);
+  padding-left: 10px;
+  border-left: 1px solid var(--border-primary);
+}
+
+.nb-draw-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-secondary);
+  padding-right: 4px;
+}
+
+.nb-draw-hint {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
 /* ═══════════════════════════════════════════════════════════
    NOTEBOOK PAGE — Aura hero box + content card
    Matches the dashboard 3-box pattern: hero box on top, then
@@ -20,31 +95,14 @@
 .nb-hero {
   position: relative;
   border-radius: var(--radius-xl);
-  border: 1px solid var(--border-primary);
-  background:
-    linear-gradient(120deg, color-mix(in srgb, var(--accent-amber) 7%, transparent), transparent 42%),
-    var(--bg-card);
+  background: var(--bg-card);
   overflow: hidden;
-  box-shadow: var(--shadow-lift);
   animation: nbHeroIn 0.55s cubic-bezier(0.4, 0, 0.2, 1) both;
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-.nb-hero::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 24px;
-  right: 24px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent-amber) 55%, transparent), transparent);
-  opacity: 0.6;
-  pointer-events: none;
-}
-
 .nb-hero:hover {
   border-color: var(--border-focus);
-  box-shadow: var(--shadow-lift);
 }
 
 
@@ -195,10 +253,10 @@
   position: absolute;
   z-index: 2; /* keep items above the connection/drawing lines */
   cursor: grab;
-  border-radius: 10px;
+  border-radius: 0;
   overflow: hidden;
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
-  background: linear-gradient(160deg, color-mix(in srgb, var(--accent-blue) 9%, var(--bg-card)) 0%, var(--bg-card) 62%);
+  background: var(--bg-card);
   border: 1px solid color-mix(in srgb, var(--accent-blue) 45%, transparent);
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--accent-blue) 10%, transparent),
@@ -237,11 +295,11 @@
 .nb-canvas-text {
   width: 100%;
   height: 100%;
-  padding: 10px 14px;
+  padding: 10px; /* uniform 10px margin gap on all sides */
   font-size: var(--fs-sm);
   color: var(--text-primary);
   outline: none;
-  overflow: visible;
+  overflow: hidden;
   word-wrap: break-word;
   white-space: pre-wrap; /* keep line breaks from pasted multi-line text */
 }
@@ -284,6 +342,93 @@
 
 .nb-canvas-del:hover {
   background: var(--accent-rose);
+}
+
+.nb-canvas-item.selected {
+  outline: 2px dashed color-mix(in srgb, var(--accent-amber) 80%, transparent);
+  outline-offset: 2px;
+}
+
+.nb-canvas-edit {
+  position: absolute;
+  top: 4px;
+  right: 30px;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+  backdrop-filter: blur(4px);
+}
+.nb-canvas-item.selected .nb-canvas-edit,
+.nb-canvas-item:hover .nb-canvas-edit {
+  display: flex;
+}
+.nb-canvas-edit:hover {
+  background: var(--accent-amber);
+  color: #1a1305;
+}
+
+.nb-item-edit-menu {
+  position: absolute;
+  z-index: 9999;
+  width: 190px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+}
+.nb-item-edit-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-tertiary);
+  margin-bottom: 8px;
+}
+.nb-item-edit-swatches {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+.nb-item-swatch {
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+.nb-item-swatch:hover { transform: scale(1.15); }
+.nb-item-swatch.active {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 1px;
+}
+.nb-item-edit-wheel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-primary);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.nb-item-edit-wheel input[type="color"] {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border-primary);
+  border-radius: 6px;
+  background: var(--bg-input);
+  cursor: pointer;
+  padding: 0;
 }
 
 /* ─── Real-time resize handle ─── */
@@ -468,8 +613,7 @@
 }
 
 /* ─── Paste (Ctrl+V) ─── */
-.nb-paste-flash {
-  position: absolute;
+.nb-paste-flash {  position: absolute;
   top: 14px;
   left: 50%;
   transform: translateX(-50%);
@@ -485,6 +629,50 @@
   animation: fadeInUp 0.25s ease;
   pointer-events: none;
   white-space: nowrap;
+}
+
+.nb-float-tool {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(6px);
+}
+.nb-float-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+.nb-float-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.nb-float-btn:active { transform: scale(0.92); }
+.nb-float-btn.active {
+  background: var(--accent-amber);
+  color: #1a1305;
+}
+.nb-float-sep {
+  width: 1px;
+  height: 22px;
+  background: var(--border);
+  margin: 0 2px;
 }
 
 .nb-canvas-empty-hint {
@@ -526,6 +714,8 @@
 .nb-canvas.nb-exporting .nb-line-hit,
 .nb-canvas.nb-exporting .nb-line-options,
 .nb-canvas.nb-exporting .nb-line-arrow,
+.nb-canvas.nb-exporting .nb-canvas-edit,
+.nb-canvas.nb-exporting .nb-item-edit-menu,
 .nb-canvas.nb-exporting .nb-canvas-del,
 .nb-canvas.nb-exporting .nb-canvas-empty-hint,
 .nb-canvas.nb-exporting .nb-resize-handle {
@@ -603,11 +793,28 @@
 
 /* ─── Masthead ─── */
 .nb-widget .schedule-masthead {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: var(--sp-3);
-  padding-top: 4px;
+  padding: var(--sp-4);
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--accent-amber) 7%, transparent), transparent 42%);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.nb-widget .schedule-masthead::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 24px;
+  right: 24px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent-amber) 55%, transparent), transparent);
+  opacity: 0.6;
+  pointer-events: none;
 }
 
 .nb-widget .schedule-masthead-center {
@@ -634,8 +841,8 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background: var(--accent-purple-glow, color-mix(in srgb, var(--accent-purple) 14%, transparent));
-  color: var(--accent-purple);
+  background: var(--accent-amber-glow, color-mix(in srgb, var(--accent-amber) 14%, transparent));
+  color: var(--accent-amber);
   transition: transform 0.3s cubic-bezier(0.34, 1.3, 0.64, 1);
 }
 
@@ -644,7 +851,7 @@
 }
 
 .nb-widget .schedule-icon-tile svg {
-  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-purple) 35%, transparent));
+  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-amber) 35%, transparent));
 }
 
 .nb-widget .schedule-overline {

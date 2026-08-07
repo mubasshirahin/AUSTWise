@@ -28,6 +28,7 @@ import {
   removeAnnotation,
 } from '../../utils/annotationsStorage';
 import { updateBatchDriveUrl } from '../../utils/vaultBatchStorage';
+import VaultMasthead from './VaultMasthead';
 import { useAuth } from '../../context/AuthContext';
 import './MaterialFolders.css';
 
@@ -1585,11 +1586,7 @@ function UploadLectureNotes({ vaultContext }) {
         </div>
       )}
 
-      {notes.length === 0 && !uploading && (
-        <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
-          No lecture notes uploaded yet for this course.
-        </p>
-      )}
+      {notes.length === 0 && !uploading && null}
     </div>
   );
 }
@@ -1597,7 +1594,7 @@ function UploadLectureNotes({ vaultContext }) {
 /* ═══════════════════════════════════════════════════════════════════════
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════════════════════ */
-export default function MaterialFolders({ vaultContext }) {
+export default function MaterialFolders({ vaultContext, progress }) {
   const { course, courseName, department, yearSem, batch } = vaultContext;
   const isSemesterMode = !course; // No course selected — use semester-level folder
 
@@ -1975,32 +1972,9 @@ export default function MaterialFolders({ vaultContext }) {
      ═══════════════════════════════════════════════════════════════════ */
   return (
     <div className="mf-container animate-fadeInUp">
-      {/* ─── Header ─── */}
-      <div className="schedule-masthead">
-        <div className="schedule-title-block">
-          <div className="mf-header-icon">
-            <BookOpen size={22} />
-          </div>
-          <div className="mf-header-info">
-            <span className="schedule-overline">Vault</span>
-            <h2>Lecture Notes</h2>
-            <p>{isSemesterMode ? `Semester ${yearSem}` : courseName} — Google Drive materials</p>
-          </div>
-        </div>
-        <div className="schedule-masthead-center" />
-        <div className="schedule-actions">
-          {folderUrl && !isEditing && (
-            <>
-              <button className="btn btn-ghost btn-sm" onClick={handleRefresh} disabled={loading} title="Refresh">
-                <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-              </button>
-              <button className="btn btn-ghost btn-sm" onClick={() => setIsEditing(true)} title="Change folder">
-                <Link size={14} />
-              </button>
-            </>
-          )}
-        </div>
-      </div>
+      <VaultMasthead department={department} yearSem={yearSem} />
+
+      {progress}
 
       <div className="schedule-dotted-divider" />
 
@@ -2186,11 +2160,6 @@ export default function MaterialFolders({ vaultContext }) {
       ) : !isEditing ? (
         viewMode === 'grid' ? renderFileGrid() : renderFileList()
       ) : null}
-
-      {/* ─── Upload Lecture Notes Section ─── */}
-      {!isEditing && (
-        <UploadLectureNotes vaultContext={vaultContext} />
-      )}
 
       {/* ─── Preview Modal ─── */}
       {previewIndex >= 0 && previewFiles.length > 0 && (

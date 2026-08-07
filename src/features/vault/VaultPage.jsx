@@ -99,10 +99,26 @@ export default function VaultPage() {
   const renderVaultContent = () => {
     if (vaultTab === 'carbon-vault') {
       return (
-        <div className="vault-coming-soon">
-          <Cpu size={48} strokeWidth={1.5} />
-          <h3>Carbon Vault</h3>
-          <p>Your carbon footprint tracker for semester resources — coming soon!</p>
+        <div className="vault-coming-soon-wrap">
+          <div className="schedule-masthead">
+            <div className="schedule-title-block">
+              <div className="schedule-icon-tile">
+                <Cpu size={22} />
+              </div>
+              <div>
+                <span className="schedule-overline">Vault</span>
+                <p className="schedule-title">Carbon Vault</p>
+                <span className="schedule-subtitle">Your carbon footprint tracker</span>
+              </div>
+            </div>
+            <div className="schedule-masthead-center" />
+            <div className="schedule-actions" />
+          </div>
+          <div className="vault-coming-soon">
+            <Cpu size={48} strokeWidth={1.5} />
+            <h3>Carbon Vault</h3>
+            <p>Your carbon footprint tracker for semester resources — coming soon!</p>
+          </div>
         </div>
       );
     }
@@ -110,27 +126,36 @@ export default function VaultPage() {
     if (!isReady) {
       return (
         <div className="vault-selection-box">
-          <VaultStepProgress
-            currentStep={selectionStep}
-            onStepClick={handleStepNavigation}
-            transitioning={transitioning !== null}
-          />
           <div className={`vault-panel-content ${transitioning ? 'vault-panel-exit' : ''}`}>
             {selectionStep === 'batch' ? (
               <VaultBatchSelector
                 department={department}
                 yearSem={yearSem}
                 onSelectBatch={handleSelectBatch}
+                progress={
+                  <VaultStepProgress
+                    currentStep={selectionStep}
+                    onStepClick={handleStepNavigation}
+                    transitioning={transitioning !== null}
+                  />
+                }
               />
             ) : (
               <VaultSelection
-                department={department}
-                yearSem={yearSem}
-                onSelectDepartment={handleSelectDepartment}
-                onSelectYearSem={handleSelectYearSem}
-                onBackToDepartments={handleBackToDepartments}
-                onBackToSemesters={handleBackToSemesters}
-              />
+                  department={department}
+                  yearSem={yearSem}
+                  onSelectDepartment={handleSelectDepartment}
+                  onSelectYearSem={handleSelectYearSem}
+                  onBackToDepartments={handleBackToDepartments}
+                  onBackToSemesters={handleBackToSemesters}
+                  progress={
+                    <VaultStepProgress
+                      currentStep={selectionStep}
+                      onStepClick={handleStepNavigation}
+                      transitioning={transitioning !== null}
+                    />
+                  }
+                />
             )}
           </div>
         </div>
@@ -139,32 +164,17 @@ export default function VaultPage() {
 
     return (
       <div className="vault-workspace vault-workspace-enter">
-        <div className="vault-sem-context-bar">
-          <button
-            type="button"
-            className="vault-back-btn"
-            onClick={handleBackToBatches}
-            title="Change batch"
-          >
-            <ArrowLeft size={16} />
-          </button>
-          <div className="vault-sem-context-info">
-            <h2 className="vault-sem-context-title">{department} — Semester {yearSem}</h2>
-            <p className="vault-sem-context-sub">
-              <Users size={12} /> {batch.batchName} · Lecture notes & study materials
-            </p>
-          </div>
-          <button
-            type="button"
-            className="vault-change-sem-btn"
-            onClick={handleBackToBatches}
-          >
-            Change Batch
-          </button>
-        </div>
-
         <div className="vault-content-area">
-          <MaterialFolders vaultContext={vaultContext} />
+          <MaterialFolders
+            vaultContext={vaultContext}
+            progress={
+              <VaultStepProgress
+                currentStep="ready"
+                onStepClick={handleStepNavigation}
+                transitioning={transitioning !== null}
+              />
+            }
+          />
         </div>
       </div>
     );
