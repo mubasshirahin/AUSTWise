@@ -1,10 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import {
   Sparkles, Check, X, Crown, Star, Zap,
   ArrowRight, Gift, Shield, Infinity as InfinityIcon,
   BarChart3, Archive, Brain, Palette,
-  Cloud,
-  ChevronDown,
+  Cloud, ChevronDown,
 } from 'lucide-react';
 import './ProPage.css';
 
@@ -20,8 +19,7 @@ const PLANS = [
     icon: Star,
     iconClass: 'node',
     ctaClass: 'node',
-    ctaText: 'Current',
-    accent: 'var(--accent-amber)',
+    ctaText: 'Get Started',
     features: [
       { text: 'Dashboard & CGPA tracking', included: true },
       { text: 'Class routine management', included: true },
@@ -49,7 +47,6 @@ const PLANS = [
     ctaText: 'Get Helix',
     badge: 'Most Popular',
     featured: true,
-    accent: 'var(--accent-amber)',
     features: [
       { text: 'Everything in Node', included: true },
       { text: 'Ad-free experience', included: true },
@@ -73,7 +70,6 @@ const PLANS = [
     iconClass: 'apex',
     ctaClass: 'apex',
     ctaText: 'Go Apex',
-    accent: 'var(--accent-emerald)',
     features: [
       { text: 'Everything in Helix', included: true },
       { text: 'AI-powered study assistant', included: true, highlight: true },
@@ -156,7 +152,7 @@ const BENEFITS = [
 ];
 
 // ─── Testimonials ───
-const testimonials = [
+const TESTIMONIALS = [
   {
     quote: 'AUSTWise Pro changed how I study. The analytics helped me raise my CGPA from 3.32 to 3.71 in one semester.',
     name: 'Fahim Rahman',
@@ -207,71 +203,12 @@ const FAQ_DATA = [
   },
 ];
 
-// ─── Reveal-on-scroll Hook ───
-function useReveal(ref) {
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          el.classList.add('pro-revealed');
-          observer.unobserve(el);
-        }
-      },
-      { threshold: 0.1 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [ref]);
-}
-
-// ─── 3D Tilt Card ───
-function TiltCard({ className, children, maxTilt = 6, deckIndex, onClick, isTop = true }) {
-  const ref = useRef(null);
-
-  const handleMove = (e) => {
-    const el = ref.current;
-    if (!el || !isTop) return; // tilt only the front card
-    const rect = el.getBoundingClientRect();
-    const px = (e.clientX - rect.left) / rect.width;
-    const py = (e.clientY - rect.top) / rect.height;
-    el.style.setProperty('--px', px);
-    el.style.setProperty('--py', py);
-    el.style.setProperty('--rx', `${(py - 0.5) * -maxTilt}deg`);
-    el.style.setProperty('--ry', `${(px - 0.5) * maxTilt}deg`);
-  };
-
-  const handleLeave = () => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.setProperty('--rx', '0deg');
-    el.style.setProperty('--ry', '0deg');
-    el.style.setProperty('--px', '0.5');
-    el.style.setProperty('--py', '0.5');
-  };
-
-  return (
-    <div
-      ref={ref}
-      className={`pro-tilt ${className || ''}`}
-      onMouseMove={handleMove}
-      onMouseLeave={handleLeave}
-      onClick={onClick}
-      style={{ '--px': 0.5, '--py': 0.5, '--rx': '0deg', '--ry': '0deg', '--deck': deckIndex }}
-    >
-      {children}
-    </div>
-  );
-}
 // ─── FAQ Accordion ───
 function FaqAccordion() {
   const [openId, setOpenId] = useState(null);
-  const ref = useRef(null);
-  useReveal(ref);
 
   return (
-    <div ref={ref} className="pro-faq pro-reveal">
+    <div className="pro-faq">
       {FAQ_DATA.map((item, idx) => (
         <div key={idx} className="pro-faq-item">
           <button
@@ -279,10 +216,7 @@ function FaqAccordion() {
             onClick={() => setOpenId(openId === idx ? null : idx)}
           >
             <span>{item.question}</span>
-            <ChevronDown
-              size={18}
-              className={`pro-faq-icon ${openId === idx ? 'open' : ''}`}
-            />
+            <ChevronDown size={18} />
           </button>
           <div className={`pro-faq-answer ${openId === idx ? 'open' : ''}`}>
             <p>{item.answer}</p>
@@ -295,146 +229,96 @@ function FaqAccordion() {
 
 // ─── Testimonial List ───
 function TestimonialList() {
-  const ref = useRef(null);
-  useReveal(ref);
-
   return (
-    <div ref={ref} className="pro-testimonials pro-reveal">
-      <div className="pro-testimonial-grid">
-        {testimonials.map((t, i) => (
-          <div key={i} className="pro-testimonial-card" style={{ animationDelay: `${i * 100}ms` }}>
-            <div className="pro-testimonial-stars">★★★★★</div>
-            <p className="pro-testimonial-quote">"{t.quote}"</p>
-            <div className="pro-testimonial-user">
-              <img src={t.avatar} alt={t.name} className="pro-testimonial-avatar" />
-              <div className="pro-testimonial-info">
-                <div className="pro-testimonial-name">{t.name}</div>
-                <div className="pro-testimonial-role">{t.role}</div>
-              </div>
+    <div className="pro-testimonial-grid">
+      {TESTIMONIALS.map((t, i) => (
+        <div key={i} className="pro-testimonial">
+          <div className="pro-testimonial-stars">★★★★★</div>
+          <p className="pro-testimonial-quote">"{t.quote}"</p>
+          <div className="pro-testimonial-user">
+            <img src={t.avatar} alt={t.name} className="pro-testimonial-avatar" />
+            <div className="pro-testimonial-info">
+              <div className="pro-testimonial-name">{t.name}</div>
+              <div className="pro-testimonial-role">{t.role}</div>
             </div>
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </div>
   );
 }
 
 // ─── Pricing Card ───
-function PricingCard({ plan, billing, isCurrent, onSelect, isTop, deckIndex, onBringToFront }) {
+function PricingCard({ plan, billing, isCurrent, onSelect }) {
   const Icon = plan.icon;
   const activePrice = billing === 'yearly' ? plan.price.yearly : plan.price.monthly;
   const originalPrice = plan.originalPrice
-    ? billing === 'yearly'
-      ? plan.originalPrice.yearly
-      : plan.originalPrice.monthly
+    ? billing === 'yearly' ? plan.originalPrice.yearly : plan.originalPrice.monthly
     : null;
-
   const isFree = plan.id === 'free';
 
-  // Clicking a stacked (non-top) card brings it to the front.
-  // The front card is only cycled via its grip handle or the deck arrows.
-  const handleBodyClick = () => {
-    if (!isTop && onBringToFront) onBringToFront();
-  };
-
   return (
-    <TiltCard
-      className={`pro-card ${plan.featured ? 'featured' : ''} ${plan.iconClass} ${isTop ? 'top' : ''}`}
-      deckIndex={deckIndex}
-      onClick={handleBodyClick}
-    >
-      {isTop && (
-        <button
-          className="pro-card-grip"
-          aria-label={`Move ${plan.name} to the back`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onBringToFront();
-          }}
-        >
-          <span className="pro-card-grip-line" />
-          <span className="pro-card-grip-line" />
-          <span className="pro-card-grip-line" />
-        </button>
-      )}
+    <div className={`pro-plan ${plan.featured ? 'featured' : ''}`}>
       {plan.badge && (
-        <div className="pro-card-badge">
-          <Gift size={10} />
+        <div className="pro-plan-ribbon">
+          <Gift size={11} />
           {plan.badge}
         </div>
       )}
 
-      <div className="pro-card-header">
-        <div className={`pro-card-icon ${plan.iconClass}`}>
-          <Icon size={32} />
+      <div className="pro-plan-header">
+        <div className={`pro-plan-icon ${plan.iconClass}`}>
+          <Icon size={24} />
         </div>
-        <div className="pro-card-name">{plan.name}</div>
-        <div className="pro-card-subtitle">{plan.subtitle}</div>
+        <div className="pro-plan-name">{plan.name}</div>
+        <div className="pro-plan-subtitle">{plan.subtitle}</div>
       </div>
 
-      <div className="pro-card-divider" aria-hidden="true" />
-
-      <div className="pro-card-price">
-        <div className={`pro-card-amount ${isFree ? 'free-amount' : ''}`}>
-          {isFree ? (
-            'Free'
-          ) : (
-            <>
-              <span className="currency">৳</span>
-              <span className="pro-card-amount-num">{activePrice}</span>
-              <span className="period">{plan.period}</span>
-            </>
-          )}
-        </div>
-
-        {originalPrice && (
-          <div className="pro-card-original-price">
-            <span className="pro-strike">৳{originalPrice}/month</span>
-            <span className="pro-save-pill">Save 20%</span>
-          </div>
-        )}
-
-        {!isFree && (
-          <div className="pro-card-perday">
-            ≈ ৳{(activePrice / 30).toFixed(1)}/day
-          </div>
+      <div className="pro-plan-price">
+        {isFree ? (
+          <div className="pro-plan-amount free-amount">Free</div>
+        ) : (
+          <>
+            <div className="pro-plan-amount">
+              <span className="cur">৳</span>
+              <span className="num">{activePrice}</span>
+              <span className="per">{plan.period}</span>
+            </div>
+            {originalPrice && (
+              <div className="pro-plan-original">
+                <span className="pro-strike">৳{originalPrice}/month</span>
+                <span className="pro-save">Save 20%</span>
+              </div>
+            )}
+            <div className="pro-plan-perday">≈ ৳{(activePrice / 30).toFixed(1)}/day</div>
+          </>
         )}
       </div>
 
-      <div className="pro-card-features">
+      <div className="pro-plan-features">
         {plan.features.map((feature, i) => (
           <div
             key={i}
-            className={`pro-feature-item ${!feature.included ? 'disabled' : ''}`}
-            style={{ animationDelay: `${i * 30}ms` }}
+            className={`pro-plan-feature ${!feature.included ? 'off' : ''} ${feature.highlight ? 'hl' : ''}`}
           >
             {feature.included ? (
-              <Check size={14} className={`pro-feature-check ${feature.highlight ? 'plus' : ''}`} />
+              <Check size={14} className="on" />
             ) : (
-              <X size={14} className="pro-feature-check muted" />
+              <X size={14} className="off" />
             )}
             <span>
               {feature.text}
-              {feature.highlight && <span className="pro-feature-highlight"> ★</span>}
+              {feature.highlight && <em> ★</em>}
             </span>
           </div>
         ))}
       </div>
 
-      <div className="pro-card-cta">
+      <div className="pro-plan-cta">
         <button
-          className={`pro-cta-btn ${plan.ctaClass}`}
-          onClick={(e) => {
-            if (!isTop && onBringToFront) {
-              // Not in front yet — bring to front instead of acting on a hidden card
-              e.stopPropagation();
-              onBringToFront();
-              return;
-            }
-            onSelect(plan.id);
-          }}
+          className={`pro-cta ${plan.ctaClass}`}
+          onClick={() => onSelect(plan.id)}
           disabled={isCurrent}
-          style={isCurrent ? { opacity: 0.7, cursor: 'default' } : {}}
         >
           {isCurrent ? (
             <>
@@ -454,30 +338,17 @@ function PricingCard({ plan, billing, isCurrent, onSelect, isTop, deckIndex, onB
           )}
         </button>
       </div>
-    </TiltCard>
+    </div>
   );
 }
 
 // ─── Main Page ───
 export default function ProPage() {
-  // Fixed yearly billing — the toggle was removed; prices show the yearly rate
-  const billing = 'yearly';
+  const [billing, setBilling] = useState('yearly');
   const [showModal, setShowModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [upgradeState, setUpgradeState] = useState('pick');
   const [currentPlan, setCurrentPlan] = useState(() => localStorage.getItem('austwise_plan') || 'free');
-
-  const heroRef = useRef(null);
-  const pricingRef = useRef(null);
-  const benefitsRef = useRef(null);
-  const compareRef = useRef(null);
-  const faqRef = useRef(null);
-
-  useReveal(heroRef);
-  useReveal(pricingRef);
-  useReveal(benefitsRef);
-  useReveal(compareRef);
-  useReveal(faqRef);
 
   const handleSelectPlan = (planId) => {
     if (planId === 'free') return;
@@ -509,111 +380,79 @@ export default function ProPage() {
     return <span className="highlight">{value}</span>;
   };
 
-  // Rotate helpers were removed — plans render side by side in a grid.
-
   return (
     <div className="pro-page">
-      {/* ═══════════ HERO ═══════════ */}
-      <section ref={heroRef} className="pro-hero pro-reveal">
-        <div className="pro-hero-grid" aria-hidden="true" />
-
-        <div className="pro-hero-content">
-          <div className="pro-hero-badge">
-            <Sparkles size={12} />
-            <span>Premium from ৳40/month</span>
+      {/* ═══════════ MASTHEAD ═══════════ */}
+      <header className="glass-card-static pro-masthead">
+        <div className="schedule-masthead">
+          <div className="schedule-title-block">
+            <div className="schedule-icon-tile">
+              <Crown size={22} strokeWidth={2.2} />
+            </div>
+            <div>
+              <span className="schedule-overline">See Plans</span>
+              <p className="schedule-title">Premium Subscriptions</p>
+              <span className="schedule-subtitle">Node gets you started, Helix unlocks the toolkit, Apex adds AI mastery.</span>
+            </div>
           </div>
-
-          <h1 className="pro-hero-title">
-            Go Beyond the <br />
-            <span className="pro-hero-highlight">Standard Experience</span>
-          </h1>
-
-          <p className="pro-hero-subtitle">
-            Three tiers, one goal — your academic advantage. Node gets you started,
-            Helix unlocks the full toolkit, and Apex adds AI-powered mastery.
-            Built exclusively for AUST students.
-          </p>
-
-          <div className="pro-hero-features">
-            <span className="pro-hero-feature">
-              <Shield size={14} />
-              <span>Built for AUST students</span>
-            </span>
-            <span className="pro-hero-feature">
-              <InfinityIcon size={14} />
-              <span>Cancel anytime</span>
-            </span>
-            <span className="pro-hero-feature">
-              <Gift size={14} />
-              <span>7-day free trial</span>
-            </span>
-          </div>
-
-          <div className="pro-hero-actions">
-            <button
-              className="pro-btn pro-btn-primary pro-btn-lg"
-              onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
-            >
-              Explore Plans <ArrowRight size={16} />
-            </button>
-            <a href="#comparison" className="pro-btn pro-btn-secondary pro-btn-lg">
-              Compare Features <ChevronDown size={16} />
-            </a>
-          </div>
-
-          <div className="pro-hero-chips">
-            <span className="pro-hero-chip">
-              <Shield size={12} />
-              <span>Built for AUST students</span>
-            </span>
-            <span className="pro-hero-chip">
-              <InfinityIcon size={12} />
-              <span>Cancel anytime</span>
-            </span>
-            <span className="pro-hero-chip">
-              <Gift size={12} />
-              <span>7-day free trial</span>
-            </span>
+          <div className="pro-stats">
+            <div className="pro-stat">
+              <strong>2,400+</strong>
+              <span>Students</span>
+            </div>
+            <div className="pro-stat">
+              <strong>7-day</strong>
+              <span>Free trial</span>
+            </div>
+            <div className="pro-stat">
+              <strong>৳40</strong>
+              <span>From /month</span>
+            </div>
           </div>
         </div>
-      </section>
+      </header>
+
+      {/* ═══════════ BILLING TOGGLE ═══════════ */}
+      <div className="pro-billing-row">
+        <div className="pro-billing-toggle">
+          <span className={`pro-billing-thumb ${billing === 'monthly' ? 'right' : ''}`} />
+          <button
+            className={`pro-billing-btn ${billing === 'monthly' ? 'active' : ''}`}
+            onClick={() => setBilling('monthly')}
+          >
+            Monthly
+          </button>
+          <button
+            className={`pro-billing-btn ${billing === 'yearly' ? 'active' : ''}`}
+            onClick={() => setBilling('yearly')}
+          >
+            Yearly
+            <span className="pro-billing-save">Save 20%</span>
+          </button>
+        </div>
+        <span className="pro-billing-note">
+          <InfinityIcon size={13} />
+          Cancel anytime
+        </span>
+      </div>
 
       {/* ═══════════ PRICING ═══════════ */}
-      <div ref={pricingRef} className="pro-deck-wrap pro-reveal" id="pricing">
-        <div className="pro-deck pro-deck-grid" role="group" aria-label="Plans">
-          {PLANS.map((plan, i) => (
+      <section id="pricing" className="pro-section">
+        <div className="pro-pricing-grid">
+          {PLANS.map((plan) => (
             <PricingCard
               key={plan.id}
               plan={plan}
               billing={billing}
               isCurrent={currentPlan === plan.id}
-              isTop
-              deckIndex={i}
               onSelect={handleSelectPlan}
             />
           ))}
         </div>
-      </div>
-
-      {/* ═══════════ FAQ ═══════════ */}
-      <section ref={faqRef} className="pro-faq-section pro-reveal">
-        <div className="pro-section-header">
-          <div className="pro-section-badge">
-            <Shield size={12} />
-            <span>Questions?</span>
-          </div>
-          <h2 className="pro-section-title">
-            Frequently Asked <span className="pro-section-highlight">Questions</span>
-          </h2>
-          <p className="pro-section-desc">
-            Everything you need to know before upgrading.
-          </p>
-        </div>
-        <FaqAccordion />
       </section>
 
       {/* ═══════════ WHY PREMIUM ═══════════ */}
-      <section ref={benefitsRef} className="pro-benefits-section pro-reveal">
+      <section className="pro-section">
         <div className="pro-section-header">
           <div className="pro-section-badge">
             <Crown size={12} />
@@ -630,23 +469,20 @@ export default function ProPage() {
           {BENEFITS.map((b, i) => {
             const Icon = b.icon;
             return (
-              <TiltCard key={i} className="pro-benefit-card" maxTilt={5}>
-                <div
-                  className="pro-benefit-icon"
-                  style={{ background: b.glow, color: b.color }}
-                >
-                  <Icon size={26} />
+              <div key={i} className="pro-benefit">
+                <div className="pro-benefit-icon" style={{ background: b.glow, color: b.color }}>
+                  <Icon size={24} />
                 </div>
                 <h3 className="pro-benefit-title">{b.title}</h3>
                 <p className="pro-benefit-desc">{b.desc}</p>
-              </TiltCard>
+              </div>
             );
           })}
         </div>
       </section>
 
       {/* ═══════════ COMPARISON ═══════════ */}
-      <section ref={compareRef} id="comparison" className="pro-comparison-section pro-reveal">
+      <section id="comparison" className="pro-section">
         <div className="pro-section-header">
           <div className="pro-section-badge">
             <BarChart3 size={12} />
@@ -660,68 +496,95 @@ export default function ProPage() {
           </p>
         </div>
 
-        <div className="pro-comparison-table">
-          <div className="pro-compare-row header">
-            <div className="pro-compare-cell">Feature</div>
-            <div className="pro-compare-cell pro-compare-plan-head">
+        <div className="glass-card-static pro-comparison">
+          <div className="pro-cmp-row header">
+            <div className="pro-cmp-cell">Feature</div>
+            <div className="pro-cmp-cell plan-head">
               <Star size={12} />
               <span>Node</span>
             </div>
-            <div className="pro-compare-cell pro-compare-plan-head pro-reco">
+            <div className="pro-cmp-cell plan-head reco">
               <Crown size={12} />
               <span>Helix</span>
               <span className="pro-reco-pill">Popular</span>
             </div>
-            <div className="pro-compare-cell pro-compare-plan-head">
+            <div className="pro-cmp-cell plan-head">
               <Zap size={12} />
               <span>Apex</span>
             </div>
           </div>
           {COMPARISON_FEATURES[0].features.map((feature, i) => (
-            <div key={i} className="pro-compare-row" style={{ animationDelay: `${i * 30}ms` }}>
-              <div className="pro-compare-cell">{feature.name}</div>
-              <div className="pro-compare-cell">{renderCheck(feature.free)}</div>
-              <div className="pro-compare-cell pro-reco">{renderCheck(feature.pro)}</div>
-              <div className="pro-compare-cell">{renderCheck(feature.premium)}</div>
+            <div key={i} className="pro-cmp-row">
+              <div className="pro-cmp-cell">{feature.name}</div>
+              <div className="pro-cmp-cell">{renderCheck(feature.free)}</div>
+              <div className="pro-cmp-cell reco">{renderCheck(feature.pro)}</div>
+              <div className="pro-cmp-cell">{renderCheck(feature.premium)}</div>
             </div>
           ))}
         </div>
       </section>
 
       {/* ═══════════ TESTIMONIALS ═══════════ */}
-      <section className="pro-testimonials-section pro-reveal">
+      <section className="pro-section">
         <div className="pro-section-header">
           <div className="pro-section-badge">
-            <Gift size={12} />
+            <Sparkles size={12} />
             <span>Student Stories</span>
           </div>
           <h2 className="pro-section-title">
             What <span className="pro-section-highlight">Students</span> Are Saying
           </h2>
           <p className="pro-section-desc">
-            Join 2,400+ premium users who\'ve upgraded their academic game.
+            Join 2,400+ premium users who've upgraded their academic game.
           </p>
         </div>
         <TestimonialList />
       </section>
 
+      {/* ═══════════ FAQ ═══════════ */}
+      <section className="pro-section">
+        <div className="pro-section-header">
+          <div className="pro-section-badge">
+            <Shield size={12} />
+            <span>Questions?</span>
+          </div>
+          <h2 className="pro-section-title">
+            Frequently Asked <span className="pro-section-highlight">Questions</span>
+          </h2>
+          <p className="pro-section-desc">
+            Everything you need to know before upgrading.
+          </p>
+        </div>
+        <FaqAccordion />
+      </section>
+
       {/* ═══════════ BOTTOM CTA ═══════════ */}
-      <section className="pro-bottom-cta pro-reveal">
-        <div className="pro-cta-card">
-          <div className="pro-cta-visual" aria-hidden="true">
-            <Crown size={48} className="pro-cta-crown" />
+      <section className="pro-bottom">
+        <div className="glass-card-static pro-cta-card">
+          <div className="pro-cta-crown" aria-hidden="true">
+            <Crown size={40} />
           </div>
           <h3 className="pro-cta-title">Ready to Go Premium?</h3>
           <p className="pro-cta-desc">
             Your support keeps AUSTWise running and improving. Every subscription
             funds new features that make education better for every AUST student.
           </p>
-          <div className="pro-cta-guarantee">
-            <Shield size={14} />
-            <span>7-day money-back guarantee · Cancel anytime</span>
+          <div className="pro-cta-chips">
+            <span className="pro-cta-chip">
+              <Shield size={12} />
+              7-day money-back guarantee
+            </span>
+            <span className="pro-cta-chip">
+              <InfinityIcon size={12} />
+              Cancel anytime
+            </span>
+            <span className="pro-cta-chip">
+              <Gift size={12} />
+              Built for AUST students
+            </span>
           </div>
           <button
-            className="pro-btn pro-btn-primary pro-btn-lg"
+            className="pro-btn-primary"
             onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
           >
             Choose Your Plan <ArrowRight size={16} />
@@ -732,15 +595,12 @@ export default function ProPage() {
       {/* ═══════════ PAYMENT MODAL ═══════════ */}
       {showModal && selectedPlan && (
         <div className="pro-payment-overlay" onClick={closeModal}>
-          <div
-            className="pro-payment-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="pro-payment-modal" onClick={(e) => e.stopPropagation()}>
             {upgradeState === 'pick' && (
               <>
                 <div className="pro-modal-header">
                   <div className="pro-modal-icon upgrade">
-                    <Crown size={32} />
+                    <Crown size={30} />
                   </div>
                   <h3>Upgrade Your Plan</h3>
                   <p>Choose your subscription to unlock premium features.</p>
@@ -767,9 +627,7 @@ export default function ProPage() {
                           <Icon size={20} style={{ color: plan.id === 'pro' ? 'var(--accent-amber)' : 'var(--accent-emerald)' }} />
                           <div>
                             <div className="pro-modal-plan-name">{plan.name}</div>
-                            <div className="pro-modal-plan-price">
-                              ৳{price}{period}
-                            </div>
+                            <div className="pro-modal-plan-price">৳{price}{period}</div>
                           </div>
                         </div>
                         <div className="pro-modal-plan-tag">{plan.ctaText}</div>
@@ -779,10 +637,8 @@ export default function ProPage() {
                 </div>
 
                 <div className="pro-modal-actions">
-                  <button className="pro-btn pro-btn-secondary" onClick={closeModal}>
-                    Cancel
-                  </button>
-                  <button className="pro-btn pro-btn-primary" onClick={handleUpgrade}>
+                  <button className="pro-btn-secondary" onClick={closeModal}>Cancel</button>
+                  <button className="pro-btn-primary" onClick={handleUpgrade}>
                     <Crown size={16} />
                     Upgrade Now
                   </button>
@@ -792,27 +648,21 @@ export default function ProPage() {
 
             {upgradeState === 'loading' && (
               <div className="pro-modal-state">
-                <div className="pro-modal-spinner">
-                  <div className="pro-spinner-ring">
-                    <div className="pro-spinner" />
-                  </div>
-                </div>
+                <div className="pro-spinner-ring" />
                 <h3>Activating {PLANS.find((p) => p.id === selectedPlan)?.name}…</h3>
                 <p>Wiring up your premium features.</p>
-                <div className="pro-loading-bar">
-                  <span style={{ width: '60%' }} />
-                </div>
+                <div className="pro-loading-bar"><span /></div>
               </div>
             )}
 
             {upgradeState === 'success' && (
               <div className="pro-modal-state">
                 <div className="pro-modal-icon success">
-                  <Crown size={30} />
+                  <Crown size={28} />
                 </div>
                 <h3>Welcome to {PLANS.find((p) => p.id === selectedPlan)?.name}!</h3>
                 <p>You're all set. Enjoy your premium AUSTWise experience.</p>
-                <button className="pro-btn pro-btn-primary" onClick={closeModal}>
+                <button className="pro-btn-primary" onClick={closeModal}>
                   <Check size={16} />
                   Done
                 </button>
