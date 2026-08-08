@@ -25,13 +25,13 @@ const navItems = [
   { path: '/messages', label: 'ConnectBox', icon: MessageSquare },
   { path: '/productivity', label: 'Productivity', icon: Zap },
   { path: '/marketplace', label: 'Marketplace', icon: ShoppingBag },
+  { path: '/chill-zone', label: 'DownTime', icon: Coffee },
+  { path: '/shadow', label: 'Shadow', icon: Moon },
 ];
 
 // Bottom nav — secondary/utility items, separated by a divider.
 const bottomNavItems = [
-  { path: '/chill-zone', label: 'DownTime', icon: Coffee },
   { path: '/settings', label: 'Settings', icon: Settings },
-  { path: '/shadow', label: 'Shadow', icon: Moon },
   { path: '/pro', label: 'See Plans', icon: Crown },
 ];
 

@@ -575,18 +575,15 @@
   align-items: center;
   gap: var(--sp-4);
   padding: var(--sp-4);
-  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
-  transition: border-color 0.24s ease, box-shadow 0.24s ease;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.24s ease;
 }
 
 .profile-editor:hover {
-  border-color: color-mix(in srgb, var(--accent-purple) 22%, var(--border-primary));
-  box-shadow: 0 8px 24px -6px color-mix(in srgb, var(--accent-purple) 12%, transparent);
+  border-color: var(--border-focus);
 }
 
 .profile-photo-picker {

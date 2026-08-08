@@ -321,12 +321,13 @@
 }
 
 .nav-item-premium:hover {
-  background: linear-gradient(135deg, var(--accent-amber) 0%, var(--accent-orange) 100%);
+  background: linear-gradient(135deg, var(--accent-amber) 0%, color-mix(in srgb, var(--accent-amber) 65%, white) 100%);
   color: var(--text-inverse);
-  transform: translateX(3px) scale(1.02);
+  transform: translateY(-2px) scale(1.03);
   box-shadow:
-    0 0 12px 4px rgba(245, 158, 11, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    0 6px 22px -4px color-mix(in srgb, var(--accent-amber) 45%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent-amber) 40%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
 /* Active "See Plans" — gold rounded glow box with gold text/icon.
@@ -354,9 +355,10 @@
 .nav-item-premium.active:hover {
   background: color-mix(in srgb, var(--accent-amber) 17%, var(--bg-primary));
   color: var(--accent-amber);
-  transform: translateX(3px);
+  transform: translateY(-1px);
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--accent-amber) 68%, transparent),
+    0 6px 22px -4px color-mix(in srgb, var(--accent-amber) 50%, transparent),
     0 0 26px color-mix(in srgb, var(--accent-amber) 36%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
@@ -495,7 +497,7 @@
 
 .sidebar-footer {
   padding: var(--sp-4) var(--sp-3);
-  padding-top: var(--sp-5);
+  padding-top: var(--sp-1);
 }
 
 .logout-btn {
