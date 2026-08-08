@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   MessageCircle, ArrowBigUp, ArrowBigDown, Hash, Send,
-  RefreshCw, CornerDownRight, Ghost,
+  RefreshCw, CornerDownRight, Ghost, Plus, X,
 } from 'lucide-react';
 import {
   getShadowIdentity, regenerateShadowNickname, shadowInitials,
@@ -58,6 +58,7 @@ export default function AustedditPage() {
   const [channel, setChannel] = useState('general');
   const [activeChannel, setActiveChannel] = useState('all');
   const [sort, setSort] = useState('hot'); // hot | new
+  const [composerOpen, setComposerOpen] = useState(false);
   const [openComments, setOpenComments] = useState({}); // { [postId]: true }
   const [commentDrafts, setCommentDrafts] = useState({}); // { [postId]: string }
 
@@ -164,50 +165,72 @@ export default function AustedditPage() {
           <div className="buzz-avatar">{shadowInitials(identity.nickname)}</div>
           <div className="buzz-identity-info">
             <span className="buzz-identity-label"><Ghost size={11} /> Posting as</span>
-            <span className="buzz-identity-name">{identity.nickname}</span>
+            <div className="buzz-identity-name-row">
+              <span className="buzz-identity-name">{identity.nickname}</span>
+              <button type="button" className="buzz-regen-btn" onClick={handleRegenerate} title="Get a new nickname" aria-label="Get a new nickname">
+                <RefreshCw size={13} />
+              </button>
+            </div>
           </div>
         </div>
-        <button type="button" className="buzz-regen-btn" onClick={handleRegenerate} title="Get a new nickname">
-          <RefreshCw size={13} /> New name
+        <button
+          type="button"
+          className="buzz-fab"
+          onClick={() => setComposerOpen((o) => !o)}
+          aria-label={composerOpen ? 'Close composer' : 'Create a post'}
+          title={composerOpen ? 'Close composer' : 'Create a post'}
+        >
+          {composerOpen ? <X size={16} /> : <Plus size={16} />}
         </button>
       </div>
 
-      {/* ── Composer ── */}
-      <form className="buzz-composer" onSubmit={handleCreatePost}>
-        <div className="buzz-channel-row">
-          {CHANNELS.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              className={`buzz-channel-chip ${channel === c.id ? 'active' : ''}`}
-              onClick={() => setChannel(c.id)}
-            >
-              <Hash size={12} /> {c.label}
-            </button>
-          ))}
-        </div>
-        <input
-          className="buzz-title-input"
-          placeholder="Title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          maxLength={160}
-        />
-        <textarea
-          className="buzz-body-input"
-          placeholder="Share your thoughts anonymously…"
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          rows={3}
-          maxLength={2000}
-        />
-        <div className="buzz-composer-footer">
-          <span className="buzz-composer-hint">Keep it civil. Everyone's anonymous.</span>
-          <button type="submit" className="buzz-post-btn" disabled={!title.trim() && !body.trim()}>
-            Post <Send size={13} />
-          </button>
-        </div>
-      </form>
+      {/* ── Composer (hidden until the + button is pressed) ── */}
+      {composerOpen && (
+        <form className="buzz-composer" onSubmit={handleCreatePost}>
+          <div className="buzz-channel-row">
+            {CHANNELS.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                className={`buzz-channel-chip ${channel === c.id ? 'active' : ''}`}
+                onClick={() => setChannel(c.id)}
+              >
+                <Hash size={12} /> {c.label}
+              </button>
+            ))}
+          </div>
+          <input
+            className="buzz-title-input"
+            placeholder="Title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={160}
+          />
+          <textarea
+            className="buzz-body-input"
+            placeholder="Share your thoughts anonymously…"
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            rows={3}
+            maxLength={2000}
+          />
+          <div className="buzz-composer-footer">
+            <span className="buzz-composer-hint">Keep it civil. Everyone's anonymous.</span>
+            <div className="buzz-composer-actions">
+              <button
+                type="button"
+                className="buzz-composer-close"
+                onClick={() => setComposerOpen(false)}
+              >
+                <X size={13} /> Close
+              </button>
+              <button type="submit" className="buzz-post-btn" disabled={!title.trim() && !body.trim()}>
+                Post <Send size={13} />
+              </button>
+            </div>
+          </div>
+        </form>
+      )}
 
       {/* ── Filter / sort bar ── */}
       <div className="buzz-toolbar">

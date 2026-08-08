@@ -16,10 +16,11 @@
 .buzz-avatar{width:38px;height:38px;min-width:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;letter-spacing:.02em;color:var(--accent-amber);background:var(--accent-amber-glow);box-shadow:0 0 0 1px color-mix(in srgb,var(--accent-amber) 25%,transparent)}
 .buzz-identity-info{display:flex;flex-direction:column;gap:2px;min-width:0}
 .buzz-identity-label{display:inline-flex;align-items:center;gap:5px;font-size:.64rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text-tertiary)}
+.buzz-identity-name-row{display:flex;align-items:center;gap:7px;min-width:0}
 .buzz-identity-name{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.92rem;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.buzz-regen-btn{flex-shrink:0;display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--accent-amber) 30%,transparent);background:color-mix(in srgb,var(--accent-amber) 8%,transparent);color:var(--accent-amber);font-size:.76rem;font-weight:600;cursor:pointer;transition:all .18s ease}
-.buzz-regen-btn:hover{background:color-mix(in srgb,var(--accent-amber) 16%,transparent)}
-.buzz-regen-btn:active{transform:scale(.96)}
+.buzz-regen-btn{flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border-radius:var(--radius-sm);border:1px solid color-mix(in srgb,var(--accent-amber) 30%,transparent);background:color-mix(in srgb,var(--accent-amber) 8%,transparent);color:var(--accent-amber);cursor:pointer;transition:all .18s ease}
+.buzz-regen-btn:hover{background:color-mix(in srgb,var(--accent-amber) 16%,transparent);color:var(--accent-amber)}
+.buzz-regen-btn:active{transform:scale(.92);rotate:-90deg}
 
 /* Composer */
 .buzz-composer{display:flex;flex-direction:column;gap:var(--sp-3);padding:var(--sp-4);margin-bottom:var(--sp-4);border:1px solid var(--border-primary);border-radius:var(--radius-lg);background:var(--bg-card)}
@@ -31,11 +32,19 @@
 .buzz-title-input:focus,.buzz-body-input:focus,.buzz-comment-input:focus{outline:none;border-color:color-mix(in srgb,var(--accent-amber) 45%,transparent)}
 .buzz-title-input{font-weight:600}
 .buzz-body-input{resize:vertical;line-height:1.55}
-.buzz-composer-footer{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3)}
+.buzz-composer-footer{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);flex-wrap:wrap}
 .buzz-composer-hint{font-size:.72rem;color:var(--text-tertiary)}
+.buzz-composer-actions{display:flex;align-items:center;gap:8px}
+.buzz-composer-close{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:var(--radius-md);border:1px solid var(--border-primary);background:transparent;color:var(--text-secondary);font-size:.8rem;font-weight:600;cursor:pointer;transition:all .18s ease}
+.buzz-composer-close:hover{background:var(--bg-hover);color:var(--text-primary)}
 .buzz-post-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius-md);border:1px solid color-mix(in srgb,var(--accent-amber) 38%,var(--border-primary));background:color-mix(in srgb,var(--accent-amber) 12%,transparent);color:var(--accent-amber);font-size:.82rem;font-weight:700;cursor:pointer;transition:all .18s ease}
 .buzz-post-btn:hover:not(:disabled){filter:brightness(1.08)}
 .buzz-post-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* Compose button (right side of the identity bar) */
+.buzz-fab{flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border:none;border-radius:50%;background:var(--accent-amber);color:#fff;cursor:pointer;box-shadow:var(--shadow-md);transition:transform .2s ease,box-shadow .2s ease}
+.buzz-fab:hover{transform:translateY(-2px) scale(1.05);box-shadow:0 10px 22px color-mix(in srgb,var(--accent-amber) 40%,transparent)}
+.buzz-fab:active{transform:scale(.95)}
 
 /* Toolbar */
 .buzz-toolbar{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);margin-bottom:var(--sp-3);flex-wrap:wrap}
