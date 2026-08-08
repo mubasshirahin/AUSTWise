@@ -603,7 +603,7 @@ export default function SemesterTracker() {
             <Layers size={20} strokeWidth={2.2} />
           </div>
           <div>
-            <span className="schedule-overline">Per-Semester</span>
+            <span className="schedule-overline">Grade Lab</span>
             <p className="schedule-title">Semester Wise</p>
             <span className="schedule-subtitle">
               {user?.department

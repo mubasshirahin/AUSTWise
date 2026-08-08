@@ -17,7 +17,7 @@ export default function VaultMasthead({
           </div>
           <div>
             <span className="schedule-overline">
-              {department ? `${department} — Semester ${yearSem || '—'}` : 'Vault'}
+              Resource Vault
             </span>
             <p className="schedule-title">{title}</p>
             <span className="schedule-subtitle">{subtitle}</span>

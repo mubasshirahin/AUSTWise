@@ -106,9 +106,9 @@ export default function VaultPage() {
                 <Cpu size={22} />
               </div>
               <div>
-                <span className="schedule-overline">Vault</span>
+                <span className="schedule-overline">Resource Vault</span>
                 <p className="schedule-title">Carbon Vault</p>
-                <span className="schedule-subtitle">Your carbon footprint tracker</span>
+                <span className="schedule-subtitle">Organized notes</span>
               </div>
             </div>
             <div className="schedule-masthead-center" />

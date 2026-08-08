@@ -151,7 +151,7 @@ export default function ExamTracker() {
             <BookOpen size={20} />
           </div>
           <div>
-            <span className="schedule-overline">Exam Tracker</span>
+            <span className="schedule-overline">Dashboard</span>
             <p className="schedule-title">Zero Hour</p>
             <span className="schedule-subtitle">
               {user?.department || 'AUST'}

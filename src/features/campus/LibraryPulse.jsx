@@ -148,7 +148,7 @@ export default function LibraryPulse() {
             <Library size={20} strokeWidth={2.2} />
           </div>
           <div>
-            <span className="schedule-overline">Campus</span>
+            <span className="schedule-overline">Inside AUST</span>
             <div className="schedule-title">Library Pulse</div>
             <span className="schedule-subtitle">Live crowd level</span>
           </div>

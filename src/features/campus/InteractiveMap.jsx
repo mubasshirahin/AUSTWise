@@ -342,7 +342,7 @@ function FloorShowcase({ floorData, selectedFloor, floorTabs, onFloorChange }) {
             <Compass size={20} strokeWidth={2.2} />
           </div>
           <div>
-            <span className="schedule-overline">Campus</span>
+            <span className="schedule-overline">Inside AUST</span>
             <div className="schedule-title">Floor Map</div>
             <span className="schedule-subtitle">
               AUST {selectedFloor.toLowerCase()} floor

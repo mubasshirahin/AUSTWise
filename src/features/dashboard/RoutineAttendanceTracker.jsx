@@ -490,12 +490,12 @@ export default function RoutineAttendanceTracker() {
             <Percent size={20} />
           </div>
           <div>
-            <span className="schedule-overline">Semester Progress</span>
+            <span className="schedule-overline">Dashboard</span>
             <p className="schedule-title">Attendance Tracker</p>
             <span className="schedule-subtitle">
               {isEnabled
                 ? `${SEMESTER_WEEKS}-week semester · ${courseList.length} courses`
-                : 'Track your attendance across the semester'}
+                : 'Track your attendance'}
             </span>
           </div>
         </div>

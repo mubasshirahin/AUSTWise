@@ -399,7 +399,7 @@ export default function CanteenMenu() {
             <Coffee size={20} strokeWidth={2.2} />
           </div>
           <div>
-            <span className="schedule-overline">Campus</span>
+            <span className="schedule-overline">Inside AUST</span>
             <div className="schedule-title">Canteen Menu</div>
             <span className="schedule-subtitle">Daily menu &amp; popular picks</span>
           </div>

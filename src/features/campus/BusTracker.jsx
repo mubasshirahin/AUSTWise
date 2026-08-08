@@ -357,7 +357,7 @@ export default function BusTracker() {
             <Bus size={20} strokeWidth={2.2} />
           </div>
           <div>
-            <span className="schedule-overline">Campus</span>
+            <span className="schedule-overline">Inside AUST</span>
             <div className="schedule-title">Bus Tracker</div>
             <span className="schedule-subtitle">
               {isTodayActive ? 'Shuttle service active today' : 'No service today (Friday)'}

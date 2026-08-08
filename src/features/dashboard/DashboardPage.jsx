@@ -515,7 +515,7 @@ function QuickStats() {
             <BarChart3 size={20} />
           </div>
           <div>
-            <span className="schedule-overline">Semester Overview</span>
+            <span className="schedule-overline">Dashboard</span>
             <p className="schedule-title">Quick Stats</p>
             <span className="schedule-subtitle">CGPA · attendance · deadlines · credits</span>
           </div>

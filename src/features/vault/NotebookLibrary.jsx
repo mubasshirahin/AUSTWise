@@ -140,8 +140,8 @@ export default function NotebookLibrary({
             <StickyNote size={20} strokeWidth={2.2} />
           </div>
           <div>
-            <span className="schedule-overline">Local Vault</span>
-            <p className="schedule-title">Notebook</p>
+            <span className="schedule-overline">Notebook</span>
+            <p className="schedule-title">Local Vault</p>
             <span className="schedule-subtitle">
               {currentFolder ? crumbs.map(c => c.title).join(' › ') : 'Notes, folders & whiteboards'}
             </span>

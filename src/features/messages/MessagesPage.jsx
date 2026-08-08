@@ -1103,8 +1103,8 @@ export default function MessagesPage() {
               <MessageSquare size={20} strokeWidth={2.2} />
             </div>
             <div>
-              <span className="schedule-overline">Community</span>
-              <div className="schedule-title">ConnectBox</div>
+              <span className="schedule-overline">ConnectBox</span>
+              <div className="schedule-title">Messages</div>
               <span className="schedule-subtitle">Inbox &amp; filters</span>
             </div>
           </div>

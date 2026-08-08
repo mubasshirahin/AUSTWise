@@ -577,7 +577,7 @@ export default function WeeklyPlanner() {
              <CalendarDays size={20} />
            </div>
            <div>
-             <span className="schedule-overline">Weekly Schedule</span>
+             <span className="schedule-overline">Dashboard</span>
              <p className="schedule-title">Routine</p>
              <span className="schedule-subtitle">Tap a class to edit</span>
            </div>

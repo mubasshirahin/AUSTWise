@@ -209,7 +209,7 @@ export default function EmptyClassroomPage() {
             <DoorOpen size={20} strokeWidth={2.2} />
           </div>
           <div>
-            <span className="schedule-overline">Campus · {freeRoomData.building}</span>
+            <span className="schedule-overline">Inside AUST</span>
             <div className="schedule-title">Free Rooms</div>
             <span className="schedule-subtitle">Live availability across all floors</span>
           </div>

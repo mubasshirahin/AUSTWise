@@ -496,7 +496,7 @@ export default function WeekSchedule() {
             <Calendar size={30} />
           </div>
           <div>
-            <span className="schedule-overline">14-Week View</span>
+            <span className="schedule-overline">Dashboard</span>
             <p className="schedule-title">Semester View</p>
             <span className="schedule-subtitle">
               {user?.department || 'AUST'}
