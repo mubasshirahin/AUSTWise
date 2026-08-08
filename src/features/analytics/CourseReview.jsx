@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Star, MessageSquare, ThumbsUp, ArrowUpDown, Send, Plus, X } from 'lucide-react';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
 import { sanitizeUserInput, MAX_TEXT_LENGTH, MAX_TITLE_LENGTH } from '../../utils/sanitize';
@@ -150,14 +150,14 @@ export default function CourseReview() {
   };
 
   return (
-    <div className="course-reviews-container animate-fadeInUp">
+    <>
       <div className="schedule-masthead">
         <div className="schedule-title-block">
           <div className="schedule-icon-tile">
             <MessageSquare size={20} strokeWidth={2.2} />
           </div>
           <div>
-            <span className="schedule-overline">Analytics</span>
+            <span className="schedule-overline">Shadow</span>
             <div className="schedule-title">Course Reviews</div>
             <span className="schedule-subtitle">
               Live student ratings — averages update when you and others submit reviews.
@@ -206,7 +206,9 @@ export default function CourseReview() {
         </div>
       </div>
 
-      <div className="schedule-dotted-divider" />
+      <div className="schedule-dotted-divider shadow-repeat-divider" />
+
+      <div className="course-reviews-container animate-fadeInUp">
 
       {formMessage && (
         <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent-emerald)', marginBottom: '12px' }}>{formMessage}</p>
@@ -461,5 +463,6 @@ export default function CourseReview() {
         </div>
       </div>
     </div>
+    </>
   );
 }

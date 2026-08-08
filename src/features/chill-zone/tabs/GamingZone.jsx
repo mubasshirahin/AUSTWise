@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import {
-  Calendar, Sparkles,
+  Calendar, Sparkles, Gamepad2,
 } from 'lucide-react';
 import './GamingZone.css';
+import './ChillMasthead.css';
 
 /* ══════════════════════════════════════════════════════════════════
    WATCH PARTY / GAME NIGHT EVENTS
@@ -57,7 +58,25 @@ function EventCard({ event }) {
 
 export default function GamingZone() {
   return (
-    <div className="gz">
+    <div className="gz cz-mst">
+      {/* ── Masthead (matches Mess Meal Tracker header) ── */}
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <Gamepad2 size={20} strokeWidth={2.2} />
+          </div>
+          <div>
+            <span className="schedule-overline">DownTime</span>
+            <p className="schedule-title">Gaming Zone</p>
+            <span className="schedule-subtitle">Mini games &amp; game nights</span>
+          </div>
+        </div>
+
+        <div className="schedule-masthead-center" />
+      </div>
+
+      <div className="schedule-dotted-divider" />
+
       {/* ═══ Watch Parties / Game Nights ═══ */}
       <div className="gz-events-section">
         <SectionTitle icon={Calendar}>Watch Party &amp; Game Night Planner</SectionTitle>

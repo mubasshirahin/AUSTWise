@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  Moon, Eye, Star, Shield, Send, User, Timer, MessageSquare, MessageCircle,
+  Moon, Eye, Star, Shield, Send, User, Timer, MessageSquare,
   Loader2, AlertTriangle, Wifi, WifiOff, Zap,
 } from 'lucide-react';
 import CourseReview from '../analytics/CourseReview';
-import StoryFeed from '../community/StoryFeed';
 import BuzzPage from '../austeddit/AustedditPage';
 import GliderTabs from '../../components/GliderTabs';
 import './ShadowPage.css';
@@ -20,6 +19,26 @@ function formatTime(seconds) {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+// Shared subtab masthead.
+function ShadowMasthead({ icon: Icon, title, subtitle, actions }) {
+  return (
+    <div className="schedule-masthead">
+      <div className="schedule-title-block">
+        <div className="schedule-icon-tile">
+          <Icon size={20} strokeWidth={2.2} />
+        </div>
+        <div>
+          <span className="schedule-overline">Shadow</span>
+          <p className="schedule-title">{title}</p>
+          <span className="schedule-subtitle">{subtitle}</span>
+        </div>
+      </div>
+      <div className="schedule-masthead-center" />
+      <div className="schedule-actions">{actions}</div>
+    </div>
+  );
 }
 
 export default function ShadowPage() {
@@ -266,7 +285,7 @@ export default function ShadowPage() {
             Shadow<span className="sh-hero-name"> Mode</span>
           </h1>
           <p className="sh-hero-subtitle">
-            Anonymous confessions, course reviews, and 10-minute anonymous chats — no login required.
+            Anonymous course reviews and 10-minute anonymous chats — no login required.
           </p>
         </div>
       </header>
@@ -301,7 +320,6 @@ export default function ShadowPage() {
       <div className="glass-card-static sh-tabs-card">
         <GliderTabs
           tabs={[
-            { id: 'feed',    label: 'Confessions Feed', desc: 'Anonymous posts',        color: 'amber',  icon: MessageCircle },
             { id: 'reviews', label: 'Course Reviews',   desc: 'Anonymous feedback',     color: 'amber',  icon: Star          },
             { id: 'chat',    label: 'Shadow Chat',      desc: '10-min anonymous match', color: 'amber',  icon: MessageSquare },
             { id: 'buzz',    label: 'Buzz',             desc: 'AUST forum',             color: 'amber',  icon: Zap           },
@@ -317,51 +335,25 @@ export default function ShadowPage() {
       <div className="sh-content-card" key={activeTab}>
         <div className="shadow-content-area">
           {activeTab === 'buzz' ? (
-            <BuzzPage />
+            <>
+              <ShadowMasthead
+                icon={Zap}
+                title="Buzz"
+                subtitle="AUST forum — anonymous posts"
+              />
+              <div className="schedule-dotted-divider shadow-repeat-divider" />
+              <BuzzPage />
+            </>
           ) : activeTab === 'reviews' ? (
-            <>
-              <div className="section-header">
-                <h2 className="section-title">
-                  <span className="icon" style={{ background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)' }}>
-                    <Star size={16} />
-                  </span>
-                  Course Reviews
-                </h2>
-                <p className="section-subtitle">Anonymous feedback shared by the AUST community</p>
-              </div>
-              <CourseReview />
-            </>
-          ) : activeTab === 'feed' ? (
-            <>
-              <div className="section-header">
-                <h2 className="section-title">
-                  <span className="icon" style={{ background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)' }}>
-                    <MessageCircle size={16} />
-                  </span>
-                  Confessions Feed
-                </h2>
-                <p className="section-subtitle">Anonymous posts shared by the AUST community</p>
-              </div>
-              <StoryFeed />
-            </>
+            <CourseReview />
           ) : (
-            <section className="shadow-chat-card">
-              <div className="shadow-chat-header">
-                <div className="shadow-chat-header-left">
-                  <div className="shadow-chat-header-icon">
-                    <MessageSquare size={18} />
-                  </div>
-                  <div>
-                    <h2 className="shadow-chat-title">
-                      <span className="shadow-chat-title-accent">Shadow</span> Chat
-                    </h2>
-                    <p className="shadow-chat-subtitle">
-                      Match with a stranger for a 10-minute anonymous conversation.
-                    </p>
-                  </div>
-                </div>
-                <div className="shadow-chat-status">
-                  {wsConnected ? (
+            <>
+              <ShadowMasthead
+                icon={MessageSquare}
+                title="Shadow Chat"
+                subtitle="Match with a stranger for a 10-minute anonymous conversation."
+                actions={
+                  wsConnected ? (
                     <span className="shadow-chat-status-badge badge-live">
                       <Wifi size={10} /> Connected
                     </span>
@@ -369,9 +361,11 @@ export default function ShadowPage() {
                     <span className="shadow-chat-status-badge badge-urgent">
                       <WifiOff size={10} /> Disconnected
                     </span>
-                  )}
-                </div>
-              </div>
+                  )
+                }
+              />
+              <div className="schedule-dotted-divider shadow-repeat-divider" />
+            <section className="shadow-chat-card">
               <div className="shadow-chat-body">
             {/* Idle state */}
             {chatState === 'idle' && (
@@ -503,6 +497,7 @@ export default function ShadowPage() {
             )}
               </div>
             </section>
+            </>
           )}
         </div>
       </div>

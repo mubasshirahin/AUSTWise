@@ -5,6 +5,7 @@ import {
   Key, Loader2, AlertCircle,
 } from 'lucide-react';
 import './MediaTracker.css';
+import './ChillMasthead.css';
 
 /* ─── Constants ─── */
 
@@ -464,7 +465,53 @@ export default function MediaTracker() {
   const needsApiKey = !hasApiKeys && (activeCat === 'movies' || activeCat === 'series' || activeCat === 'games');
 
   return (
-    <div className="media-tracker">
+    <div className="media-tracker cz-mst">
+      {/* ── Masthead (matches Mess Meal Tracker header) ── */}
+      <div className="schedule-masthead">
+        <div className="schedule-title-block">
+          <div className="schedule-icon-tile">
+            <Film size={20} strokeWidth={2.2} />
+          </div>
+          <div>
+            <span className="schedule-overline">DownTime</span>
+            <p className="schedule-title">Media Tracker</p>
+            <span className="schedule-subtitle">Movies, series, anime &amp; games</span>
+          </div>
+        </div>
+
+        <div className="schedule-masthead-center">
+          <div className="media-stats">
+            <span className="media-stat">
+              <span className="media-stat-dot" style={{ background: 'var(--accent-blue)' }} />
+              {stats.watching} watching
+            </span>
+            <span className="media-stat">
+              <span className="media-stat-dot" style={{ background: 'var(--accent-emerald)' }} />
+              {stats.completed} done
+            </span>
+            <span className="media-stat">
+              <span className="media-stat-dot" style={{ background: 'var(--accent-amber)' }} />
+              {stats.planning} planned
+            </span>
+            <span className="media-stat">Total: {stats.total}</span>
+          </div>
+        </div>
+
+        <div className="schedule-actions">
+          <button type="button" className="schedule-nav-btn" title="Set API Keys"
+            onClick={() => setShowApiSettings(true)}>
+            <Key size={14} />
+          </button>
+          <button type="button" className="media-add-btn" data-cat={activeCat}
+            onClick={() => { setEditingItem(null); setShowForm(true); }}>
+            <Plus size={16} />
+            Add {singularLabel(activeCat)}
+          </button>
+        </div>
+      </div>
+
+      <div className="schedule-dotted-divider" />
+
       {/* ── Category sub-tabs ── */}
       <div className="media-category-tabs">
         {CATEGORIES.map((cat) => {
@@ -492,38 +539,6 @@ export default function MediaTracker() {
           </button>
         </div>
       )}
-
-      {/* ── Header row ── */}
-      <div className="media-header-row">
-        <div className="media-stats">
-          <span className="media-stat">
-            <span className="media-stat-dot" style={{ background: 'var(--accent-blue)' }} />
-            {stats.watching} watching
-          </span>
-          <span className="media-stat">
-            <span className="media-stat-dot" style={{ background: 'var(--accent-emerald)' }} />
-            {stats.completed} done
-          </span>
-          <span className="media-stat">
-            <span className="media-stat-dot" style={{ background: 'var(--accent-amber)' }} />
-            {stats.planning} planned
-          </span>
-          <span className="media-stat">Total: {stats.total}</span>
-        </div>
-
-        <div style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center' }}>
-          <button type="button" className="media-api-key-btn"
-            onClick={() => setShowApiSettings(true)}
-            title="Set API Keys">
-            <Key size={14} />
-          </button>
-          <button type="button" className="media-add-btn" data-cat={activeCat}
-            onClick={() => { setEditingItem(null); setShowForm(true); }}>
-            <Plus size={16} />
-            Add {singularLabel(activeCat)}
-          </button>
-        </div>
-      </div>
 
       {/* ── Filter & Search ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)', flexWrap: 'wrap' }}>

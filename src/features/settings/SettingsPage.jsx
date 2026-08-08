@@ -122,6 +122,25 @@ const lightThemes = [
 
 const themeOptions = [...darkThemes, ...lightThemes];
 
+// Shared subtab masthead — same style as the Identity masthead.
+function SettingsMasthead({ icon: Icon, title, subtitle }) {
+  return (
+    <div className="profile-panel-header schedule-masthead">
+      <div className="schedule-title-block">
+        <div className="schedule-icon-tile">
+          <Icon size={20} strokeWidth={2.2} />
+        </div>
+        <div>
+          <span className="schedule-overline">Settings</span>
+          <p className="schedule-title">{title}</p>
+          <span className="schedule-subtitle">{subtitle}</span>
+        </div>
+      </div>
+      <div className="schedule-masthead-center" />
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { user, isAuthenticated, updateUser, logout } = useAuth();
@@ -652,11 +671,20 @@ export default function SettingsPage() {
         <div className="settings-panel">
           {activeSubTab === 'profile' && (
             <div className="animate-fadeIn">
-              <div className="profile-panel-header">
-                <div>
-                  <h3>Identity</h3>
-                  <p>Update your identity and academic info together.</p>
+              <div className="profile-panel-header schedule-masthead">
+                <div className="schedule-title-block">
+                  <div className="schedule-icon-tile">
+                    <User size={20} strokeWidth={2.2} />
+                  </div>
+                  <div>
+                    <span className="schedule-overline">Settings</span>
+                    <p className="schedule-title">Identity</p>
+                    <span className="schedule-subtitle">Identity &amp; academic info</span>
+                  </div>
                 </div>
+
+                <div className="schedule-masthead-center" />
+
                 <div className="profile-save-actions">
                   <div className="profile-completion-circle" title={`${profilePercent}% complete`}>
                     <svg viewBox="0 0 36 36">
@@ -675,7 +703,9 @@ export default function SettingsPage() {
                   </button>
                 </div>
               </div>
-              
+
+              <div className="schedule-dotted-divider" />
+
               <div className="profile-content-stack">
                 <div className="profile-editor">
                   <label className={`profile-photo-picker ${!isEditingProfile ? 'is-locked' : ''}`}>
@@ -920,7 +950,8 @@ export default function SettingsPage() {
 
           {activeSubTab === 'theme' && (
             <div className="animate-fadeIn">
-              <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', marginBottom: '16px' }}>Theme Configurations</h3>
+              <SettingsMasthead icon={Settings} title="UI" subtitle="Themes &amp; appearance" />
+              <div className="schedule-dotted-divider" />
 
               <div className="p-4" style={{ background: 'var(--bg-input)', borderRadius: 'var(--radius-lg)' }}>
                 <div style={{ marginBottom: '14px' }}>
@@ -1021,12 +1052,8 @@ export default function SettingsPage() {
 
           {activeSubTab === 'notifications' && (
             <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', marginBottom: '4px' }}>Browser Notifications</h3>
-                <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
-                  Get browser alerts before your next class starts or when a deadline is approaching.
-                </p>
-              </div>
+              <SettingsMasthead icon={Bell} title="Notify Me" subtitle="Alerts &amp; reminders" />
+              <div className="schedule-dotted-divider" />
 
               {!supported && (
                 <div className="flex items-center gap-3 p-4" style={{ background: 'var(--accent-rose-glow)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--accent-rose)' }}>
@@ -1506,15 +1533,17 @@ export default function SettingsPage() {
           )}
 
           {activeSubTab === 'about' && (
-            <AboutUs />
+            <div className="animate-fadeIn">
+              <SettingsMasthead icon={Info} title="Credentials" subtitle="Developer credentials &amp; info" />
+              <div className="schedule-dotted-divider" />
+              <AboutUs />
+            </div>
           )}
 
           {activeSubTab === 'roleApplication' && isAuthenticated && (
             <div className="animate-fadeIn">
-              <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', marginBottom: '4px' }}>Apply for CR / SR Position</h3>
-              <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: '20px' }}>
-                Submit your application to become a Class Representative (CR) or Student Representative (SR). Admin will review and approve your application.
-              </p>
+              <SettingsMasthead icon={GraduationCap} title="Apply for CR/SR" subtitle="Leadership roles" />
+              <div className="schedule-dotted-divider" />
 
               {applicationMessage && (
                 <div className={`p-4 mb-4 ${applicationMessage.includes('success') || applicationMessage.includes('successfully') ? 'success' : 'error'}`} style={{ 
@@ -1889,10 +1918,8 @@ export default function SettingsPage() {
 
           {activeSubTab === 'invite' && isAuthenticated && user?.role === 'admin' && (
             <div className="animate-fadeIn">
-              <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', marginBottom: '4px' }}>Invite Member</h3>
-              <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: '20px' }}>
-                Send an invitation to Faculty or Alumni members. They will receive a secure link to create their account.
-              </p>
+              <SettingsMasthead icon={Send} title="Invite Member" subtitle="Send invites" />
+              <div className="schedule-dotted-divider" />
 
               {/* Invite Form */}
               <div style={{ background: 'var(--bg-input)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-lg)', padding: '20px', marginBottom: '24px' }}>

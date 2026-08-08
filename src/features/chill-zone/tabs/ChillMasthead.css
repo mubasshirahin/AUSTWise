@@ -1,0 +1,135 @@
+/* ============================================
+   ChillZone tab masthead — shared across tabs
+   Matches MessMealTracker (mm-widget) masthead
+   design language; scoped under .cz-mst.
+   ============================================ */
+
+.cz-mst {
+  overflow: hidden;
+  background: transparent;
+  width: 100%;
+}
+
+.oz-tab .cz-coming-card,
+.cz-mst .cz-coming-card {
+  margin: 0 auto;
+}
+
+/* Organizing Area — pull the masthead up (less top gap) */
+.oz-tab {
+  padding-top: 0;
+}
+
+/* ════════════════════════════════════════════════════
+   MASTHEAD — scoped to .cz-mst so styles are
+   self-contained even without DashboardPage.css.
+   ════════════════════════════════════════════════════ */
+.cz-mst .schedule-masthead {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--sp-3);
+  position: relative;
+  margin-bottom: 20px;
+  padding: var(--sp-4);
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--accent-amber) 7%, transparent), transparent 42%);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.cz-mst .schedule-masthead::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 24px;
+  right: 24px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent-amber) 55%, transparent), transparent);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.cz-mst .schedule-masthead-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.cz-mst .schedule-title-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.cz-mst .schedule-icon-tile {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
+  transition: transform 0.3s cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+
+.cz-mst .schedule-icon-tile:hover {
+  transform: scale(1.08) rotate(-3deg);
+}
+
+.cz-mst .schedule-icon-tile svg {
+  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-amber) 35%, transparent));
+}
+
+.cz-mst .schedule-overline {
+  font-size: 9px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  display: block;
+}
+
+.cz-mst .schedule-title {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  margin: 2px 0 0;
+  line-height: 1.2;
+}
+
+.cz-mst .schedule-subtitle {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
+  display: block;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.cz-mst .schedule-dotted-divider {
+  border-top: 1px dashed var(--border-primary);
+  margin: 14px 0 20px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 1000px) {
+  .cz-mst .schedule-masthead {
+    grid-template-columns: 1fr auto;
+  }
+
+  .cz-mst .schedule-masthead-center {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+}
