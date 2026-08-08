@@ -344,7 +344,7 @@ function PricingCard({ plan, billing, isCurrent, onSelect }) {
 
 // ─── Main Page ───
 export default function ProPage() {
-  const [billing, setBilling] = useState('yearly');
+  const billing = 'yearly';
   const [showModal, setShowModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [upgradeState, setUpgradeState] = useState('pick');
@@ -411,30 +411,6 @@ export default function ProPage() {
           </div>
         </div>
       </header>
-
-      {/* ═══════════ BILLING TOGGLE ═══════════ */}
-      <div className="pro-billing-row">
-        <div className="pro-billing-toggle">
-          <span className={`pro-billing-thumb ${billing === 'monthly' ? 'right' : ''}`} />
-          <button
-            className={`pro-billing-btn ${billing === 'monthly' ? 'active' : ''}`}
-            onClick={() => setBilling('monthly')}
-          >
-            Monthly
-          </button>
-          <button
-            className={`pro-billing-btn ${billing === 'yearly' ? 'active' : ''}`}
-            onClick={() => setBilling('yearly')}
-          >
-            Yearly
-            <span className="pro-billing-save">Save 20%</span>
-          </button>
-        </div>
-        <span className="pro-billing-note">
-          <InfinityIcon size={13} />
-          Cancel anytime
-        </span>
-      </div>
 
       {/* ═══════════ PRICING ═══════════ */}
       <section id="pricing" className="pro-section">
