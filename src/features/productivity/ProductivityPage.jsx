@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { Zap, ScrollText, Code2, School, ExternalLink, Flame, MoreVertical, Check } from 'lucide-react';
+import { useState } from 'react';
+import { Zap, ScrollText, Code2, School, ExternalLink, Flame } from 'lucide-react';
 import GliderTabs from '../../components/GliderTabs';
 import CheatsheetsPage from '../vault/CheatsheetsPage';
 import CPHubPage from '../cp-hub/CPHubPage';
@@ -23,26 +23,9 @@ export default function ProductivityPage() {
   const [activeTab, setActiveTab] = useState(
     () => localStorage.getItem(STORAGE_KEY) || 'study-room'
   );
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef(null);
-
-  // Close the ⋮ menu on outside click.
-  useEffect(() => {
-    const handleClick = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
-
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     localStorage.setItem(STORAGE_KEY, tab);
-  };
-
-  const selectTool = (tab) => {
-    handleTabChange(tab);
-    setMenuOpen(false);
   };
 
   const renderTab = () => {
@@ -89,29 +72,6 @@ export default function ProductivityPage() {
             variant="dashboard"
             compact
           />
-          <div className="export-dropdown" ref={menuRef}>
-            <button className="schedule-nav-btn pr-more-btn" onClick={() => setMenuOpen((v) => !v)} aria-label="More options" aria-haspopup="true">
-              <MoreVertical size={18} />
-            </button>
-            {menuOpen && (
-              <div className="export-menu">
-                {TABS.map((t) => {
-                  const Icon = t.icon;
-                  const isActive = activeTab === t.id;
-                  return (
-                    <button
-                      key={t.id}
-                      className={`export-menu-item${isActive ? ' menu-active' : ''}`}
-                      onClick={() => selectTool(t.id)}
-                    >
-                      <Icon size={14} /> {t.label}
-                      {isActive && <Check size={14} className="menu-check" />}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
