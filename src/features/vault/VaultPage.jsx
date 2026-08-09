@@ -1,10 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Archive, ArrowLeft, Users, HardDrive, Cpu } from 'lucide-react';
 import VaultSelection from './VaultSelection';
 import VaultStepProgress from './VaultStepProgress';
 import VaultBatchSelector from './VaultBatchSelector';
 import MaterialFolders from './MaterialFolders';
 import GliderTabs from '../../components/GliderTabs';
+import useTabUrlState from '../../hooks/useTabUrlState';
 import { loadVaultSelection, saveVaultSelection } from './vaultSelectionStorage';
 import './VaultPage.css';
 import './VaultBatchSelector.css';
@@ -22,9 +24,16 @@ export default function VaultPage() {
   const [department, setDepartment] = useState(initialSelection.department);
   const [yearSem, setYearSem] = useState(initialSelection.yearSem);
   const [batch, setBatch] = useState(null);
+  const [searchParams] = useSearchParams();
   const [vaultTab, setVaultTab] = useState(() => {
     const saved = loadVaultSelection();
-    return saved?.vaultTab || 'batch-drive';
+    return searchParams.get('tab') || saved?.vaultTab || 'batch-drive';
+  });
+
+  const handleVaultTabChange = useTabUrlState({
+    storageKey: 'aust-vault-active-tab',
+    defaultValue: 'batch-drive',
+    onChange: setVaultTab,
   });
   const [transitioning, setTransitioning] = useState(null);
 
@@ -212,7 +221,7 @@ export default function VaultPage() {
         <GliderTabs
           tabs={vaultTabs}
           activeTab={vaultTab}
-          onChange={setVaultTab}
+          onChange={handleVaultTabChange}
           variant="dashboard"
           compact
         />

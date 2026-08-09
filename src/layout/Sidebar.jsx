@@ -55,7 +55,6 @@ export default function Sidebar({ collapsed, onToggle }) {
     // For admin users, show Admin Panel related navigation
     navList = [
       { path: '/admin', label: 'Admin Panel', icon: Shield },
-      { path: '/templates', label: 'Routine Templates', icon: CalendarDays },
       { path: '/admin/transcript-templates', label: 'Transcript Templates', icon: FileSpreadsheet },
       { path: '/admin/overview', label: 'Overview', icon: Eye },
       { path: '/admin/notice-board', label: 'Notice Board', icon: Megaphone },

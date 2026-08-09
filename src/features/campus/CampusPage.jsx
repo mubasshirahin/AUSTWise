@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Map, MapPin, Users, Library, UtensilsCrossed, Bus, DoorOpen } from 'lucide-react';
 import InteractiveMap from './InteractiveMap';
 import FacultyStatus from './FacultyStatus';
@@ -7,6 +8,7 @@ import CanteenMenu from './CanteenMenu';
 import BusTracker from './BusTracker';
 import EmptyClassroomPage from '../empty-classroom/EmptyClassroomPage';
 import GliderTabs from '../../components/GliderTabs';
+import useTabUrlState from '../../hooks/useTabUrlState';
 import './CampusPage.css';
 import './campus-tokens.css';
 
@@ -22,14 +24,16 @@ const campusTabs = [
 const CAMPUS_TAB_KEY = 'aust-campus-active-tab';
 
 export default function CampusPage() {
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => {
-    return localStorage.getItem(CAMPUS_TAB_KEY) || 'map';
+    return searchParams.get('tab') || localStorage.getItem(CAMPUS_TAB_KEY) || 'map';
   });
 
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    localStorage.setItem(CAMPUS_TAB_KEY, tab);
-  };
+  const handleTabChange = useTabUrlState({
+    storageKey: CAMPUS_TAB_KEY,
+    defaultValue: 'map',
+    onChange: setActiveTab,
+  });
 
   const renderActiveTab = () => {
     switch (activeTab) {

@@ -1,14 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useRoutine } from '../../context/RoutineContext';
-import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, Sparkles, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin } from 'lucide-react';
+import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, Sparkles, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, History, Cpu, MapPin, Trash2 } from 'lucide-react';
 import AboutUs from './AboutUs';
 import LinkedAccountsSection from './LinkedAccountsSection';
 import GliderTabs from '../../components/GliderTabs';
 import { useNotifications } from '../../hooks/useNotifications';
-import { submitRoleApplication, getApplicationsByUserId, getUserApplicationStatus, checkSlotVacancy, getSlotVacancyMap, resignFromRole, deleteAccountById } from '../../utils/authStorage';
+import { submitRoleApplication, getApplicationsByUserId, getUserApplicationStatus, checkSlotVacancy, getSlotVacancyMap, resignFromRole, deleteAccountById, createAwid } from '../../utils/authStorage';
 import './SettingsPage.css';
 import '../../components/PageHero.css';
 
@@ -59,6 +59,15 @@ const getBatchOptions = (department) => {
 const getYearSemesterShortName = (yearSemester) => {
   const match = yearSemester.match(/Year (\d+) - Semester (\d+)/);
   return match ? `${match[1]}.${match[2]}` : yearSemester;
+};
+
+const formatAppDate = (iso) => {
+  if (!iso) return '';
+  try {
+    return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch {
+    return '';
+  }
 };
 
 const getInitials = (name) => {
@@ -149,8 +158,26 @@ export default function SettingsPage() {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeSubTab, setActiveSubTab] = useState(() => {
-    return searchParams.get('tab') || 'profile';
+    const tab = searchParams.get('tab');
+    return ['profile', 'theme', 'notifications', 'about', 'invite'].includes(tab) ? tab : 'profile';
   });
+
+  // AWID (AUSTWise ID) is the app-generated identifier — always separate
+  // from the student ID. Fall back to a freshly generated AWID instead of
+  // ever reusing the student ID (which is what made both look identical).
+  const displayAwid = useMemo(
+    () => user.awid || createAwid(user.department),
+    [user.awid, user.department]
+  );
+
+  // Persist the generated AWID once so it stays stable for accounts that
+  // don't have one yet (localStorage/social auth flows).
+  useEffect(() => {
+    if (isAuthenticated && user.id && !user.awid) {
+      updateUser({ awid: displayAwid });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayAwid, isAuthenticated, user.id]);
 
   // Sync activeSubTab to URL search params so refresh preserves the tab
   const handleSetActiveSubTab = useCallback((tab) => {
@@ -163,7 +190,6 @@ export default function SettingsPage() {
     { id: 'theme', label: 'UI', icon: Settings, desc: 'Themes & appearance', color: 'purple' },
     { id: 'notifications', label: 'Notify Me', icon: Bell, desc: 'Alerts & reminders', color: 'amber' },
     { id: 'about', label: 'Credentials', icon: Info, desc: 'Developer credentials & info', color: 'emerald' },
-    ...(isAuthenticated ? [{ id: 'roleApplication', label: 'Apply for CR/SR', icon: GraduationCap, desc: 'Leadership roles', color: 'rose' }] : []),
     ...(isAuthenticated && user?.role === 'admin' ? [{ id: 'invite', label: 'Invite Member', icon: Send, desc: 'Send invites', color: 'cyan' }] : []),
   ];
 
@@ -188,6 +214,8 @@ export default function SettingsPage() {
   const [resignConfirm, setResignConfirm] = useState(false);
   const [resigning, setResigning] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteTypedConfirm, setDeleteTypedConfirm] = useState('');
+  const [showApplyForm, setShowApplyForm] = useState(false);
   const [yearSemTouched, setYearSemTouched] = useState(false);
   
   // Telegram notification settings
@@ -468,6 +496,7 @@ export default function SettingsPage() {
       });
       setApplicationMessage('Application submitted successfully! Admin will review it soon.');
       setRoleApplicationForm({ appliedRole: 'cr', targetLabSection: '', targetSection: '' });
+      setShowApplyForm(false);
       
       // Refresh status & vacancy
       const status = getUserApplicationStatus(user.id);
@@ -725,7 +754,7 @@ export default function SettingsPage() {
                   </label>
                   <div>
                     <h4 style={{ fontSize: 'var(--fs-lg)', fontWeight: 'bold' }}>{profileDetails.name || user.name}</h4>
-                    <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>ID: {profileDetails.id || user.id}</p>
+                    <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>AWID: <strong style={{ color: 'var(--accent-purple)' }}>{displayAwid}</strong></p>
                   </div>
                 </div>
 
@@ -785,18 +814,12 @@ export default function SettingsPage() {
                 ) : (
                   <div className="profile-read-grid">
                     <div>
-                      <span>AWID</span>
-                      <strong style={{ fontSize: '10px', opacity: 0.7 }}>{user.awid || user.id || 'N/A'}</strong>
-                      <span className="profile-read-sub-label">Student ID</span>
+                      <span>Student ID</span>
                       <strong>{profileDetails.id || 'Not set'}</strong>
                       <span className="profile-read-sub-label">Email</span>
                       <strong>{profileDetails.email || 'Not set'}</strong>
                       <span className="profile-read-sub-label">Blood Group</span>
                       <strong>{profileDetails.bloodGroup || 'Not set'}</strong>
-                    </div>
-                    <div>
-                      <span>Name</span>
-                      <strong>{profileDetails.name || 'Not set'}</strong>
                     </div>
                   </div>
                 )}
@@ -811,16 +834,16 @@ export default function SettingsPage() {
                     <strong>{visibleBatchName}</strong>
                   </div>
                   <div>
+                    <span>Year-Sem</span>
+                    <strong>{quickProfile.yearSemester ? getYearSemesterShortName(quickProfile.yearSemester) : 'Not selected'}</strong>
+                  </div>
+                  <div>
                     <span>Section</span>
                     <strong>{quickProfile.section || 'Not selected'}</strong>
                   </div>
                   <div>
                     <span>Lab Group</span>
                     <strong>{quickProfile.labSection || 'Not selected'}</strong>
-                  </div>
-                  <div>
-                    <span>Year-Sem</span>
-                    <strong>{quickProfile.yearSemester ? getYearSemesterShortName(quickProfile.yearSemester) : 'Not selected'}</strong>
                   </div>
                 </div>
 
@@ -849,102 +872,6 @@ export default function SettingsPage() {
                   </div>
                 )}
               </div>
-
-              {/* Prominent Apply for CR/SR CTA - for all authenticated users */}
-              {isAuthenticated && !isEditingProfile && (
-                <div style={{
-                  marginTop: '16px',
-                  padding: '20px 24px',
-                  background: 'linear-gradient(135deg, var(--accent-amber-glow) 0%, var(--bg-card) 100%)',
-                  border: '1px solid var(--accent-amber)',
-                  borderRadius: 'var(--radius-lg)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '16px',
-                  flexWrap: 'wrap',
-                }}>
-                  <div>
-                    <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', color: 'var(--accent-amber)', margin: 0 }}>
-                      🎓 Apply for CR / SR Position
-                    </h4>
-                    <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
-                      Become a Class Representative (CR) or Student Representative (SR) for your batch.
-                    </p>
-                  </div>
-                  <button
-                    className="btn btn-primary"
-                    onClick={() => handleSetActiveSubTab('roleApplication')}
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}
-                  >
-                    <GraduationCap size={16} /> Apply Now
-                  </button>
-                </div>
-              )}
-
-              {!isEditingProfile && (
-                <div style={{
-                  marginTop: '24px',
-                  paddingTop: '20px',
-                  borderTop: '1px solid var(--border-primary)',
-                }}>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '16px',
-                    flexWrap: 'wrap',
-                  }}>
-                    <div>
-                      <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', color: 'var(--accent-rose)', margin: 0 }}>
-                        Delete Account
-                      </h4>
-                      <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
-                        Permanently remove your account and all associated data.
-                      </p>
-                    </div>
-                    {!deleteConfirm ? (
-                      <button
-                        className="btn btn-sm"
-                        style={{
-                          background: 'var(--accent-rose-glow)',
-                          color: 'var(--accent-rose)',
-                          border: '1px solid var(--accent-rose)',
-                          whiteSpace: 'nowrap',
-                        }}
-                        onClick={() => setDeleteConfirm(true)}
-                      >
-                        Delete Account
-                      </button>
-                    ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent-rose)' }}>Are you sure?</span>
-                        <button
-                          className="btn btn-sm"
-                          style={{
-                            background: 'var(--accent-rose)',
-                            color: '#fff',
-                            border: 'none',
-                            whiteSpace: 'nowrap',
-                          }}
-                          onClick={() => {
-                            if (user?.id) deleteAccountById(user.id);
-                            logout();
-                          }}
-                        >
-                          Yes, Delete
-                        </button>
-                        <button
-                          className="btn btn-sm btn-secondary"
-                          onClick={() => setDeleteConfirm(false)}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
@@ -1540,13 +1467,214 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {activeSubTab === 'roleApplication' && isAuthenticated && (
+          {activeSubTab === 'invite' && isAuthenticated && user?.role === 'admin' && (
             <div className="animate-fadeIn">
-              <SettingsMasthead icon={GraduationCap} title="Apply for CR/SR" subtitle="Leadership roles" />
+              <SettingsMasthead icon={Send} title="Invite Member" subtitle="Send invites" />
               <div className="schedule-dotted-divider" />
 
+              {/* Invite Form */}
+              <div style={{ background: 'var(--bg-input)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-lg)', padding: '20px', marginBottom: '24px' }}>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                  <div style={{ flex: '0 0 140px' }}>
+                    <label style={{ fontSize: 'var(--fs-xs)', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>Role</label>
+                    <select
+                      value={inviteRole}
+                      onChange={(e) => setInviteRole(e.target.value)}
+                      style={{ width: '100%', padding: '8px 10px', background: 'var(--bg-card)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', fontSize: 'var(--fs-sm)' }}
+                    >
+                      <option value="alumni">Alumni</option>
+                      <option value="faculty">Faculty</option>
+                    </select>
+                  </div>
+                  <div style={{ flex: 1, minWidth: '200px' }}>
+                    <label style={{ fontSize: 'var(--fs-xs)', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>Email</label>
+                    <input
+                      className="input"
+                      type="email"
+                      value={emailInput}
+                      onChange={(e) => setEmailInput(e.target.value)}
+                      placeholder="alumni@example.com"
+                      onKeyDown={(e) => { if (e.key === 'Enter') sendInvite(); }}
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                  <button
+                    className="btn btn-primary"
+                    onClick={sendInvite}
+                    disabled={inviteSending}
+                    style={{ height: '38px', whiteSpace: 'nowrap' }}
+                  >
+                    {inviteSending ? 'Sending...' : 'Send Invite'}
+                  </button>
+                </div>
+
+                {inviteMsg && (
+                  <div style={{
+                    marginTop: '12px',
+                    padding: '8px 12px',
+                    fontSize: 'var(--fs-xs)',
+                    borderRadius: 'var(--radius-sm)',
+                    background: inviteMsgType === 'success' ? 'var(--accent-emerald-glow)' : 'var(--accent-rose-glow)',
+                    border: `1px solid ${inviteMsgType === 'success' ? 'var(--accent-emerald)' : 'var(--accent-rose)'}`,
+                    color: inviteMsgType === 'success' ? 'var(--accent-emerald)' : 'var(--accent-rose)',
+                  }}>
+                    {inviteMsg}
+                  </div>
+                )}
+              </div>
+
+              {/* Invitation History */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', margin: 0 }}>Invitation History</h4>
+                </div>
+
+                {invitations.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-tertiary)', fontSize: 'var(--fs-sm)' }}>
+                    No invitations sent yet.
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--fs-xs)' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1px solid var(--border-primary)' }}>
+                            <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 'bold' }}>Email</th>
+                            <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 'bold' }}>Role</th>
+                            <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 'bold' }}>Status</th>
+                            <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 'bold' }}>Sent</th>
+                            <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 'bold' }}>Accepted</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {invitations.map((inv) => (
+                            <tr key={inv.Id} style={{ borderBottom: '1px solid var(--border-secondary)' }}>
+                              <td style={{ padding: '8px 10px', fontFamily: 'var(--font-mono)', fontSize: '11px' }}>{inv.Email}</td>
+                              <td style={{ padding: '8px 10px', textTransform: 'capitalize' }}>{inv.Role}</td>
+                              <td style={{ padding: '8px 10px' }}>
+                                <span className={`badge ${inv.Status === 'accepted' ? 'badge-emerald' : inv.Status === 'expired' ? 'badge-rose' : 'badge-blue'}`} style={{ fontSize: '9px' }}>
+                                  {inv.Status === 'accepted' ? 'Accepted' : inv.Status === 'expired' ? 'Expired' : 'Pending'}
+                                </span>
+                              </td>
+                              <td style={{ padding: '8px 10px', color: 'var(--text-tertiary)', fontSize: '11px' }}>
+                                {new Date(inv.CreatedAt).toLocaleDateString()}
+                              </td>
+                              <td style={{ padding: '8px 10px', color: 'var(--text-tertiary)', fontSize: '11px' }}>
+                                {inv.AcceptedAt ? new Date(inv.AcceptedAt).toLocaleDateString() : '—'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Pagination */}
+                    {inviteTotalPages > 1 && (
+                      <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '16px' }}>
+                        {Array.from({ length: inviteTotalPages }, (_, i) => i + 1).map((p) => (
+                          <button
+                            key={p}
+                            onClick={() => setInvitePage(p)}
+                            style={{
+                              width: '30px', height: '30px',
+                              border: `1px solid ${p === invitePage ? 'var(--border-focus)' : 'var(--border-primary)'}`,
+                              borderRadius: 'var(--radius-sm)',
+                              background: p === invitePage ? 'var(--accent-blue-glow)' : 'transparent',
+                              color: p === invitePage ? 'var(--accent-blue)' : 'var(--text-secondary)',
+                              fontWeight: p === invitePage ? 'bold' : 'normal',
+                              cursor: 'pointer', fontSize: 'var(--fs-xs)',
+                            }}
+                          >
+                            {p}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── 4. CR / SR Leadership (own card, below the content box) ── */}
+{activeSubTab === 'profile' && isAuthenticated && !isEditingProfile && (
+            <div className="st-cr-sr-cta" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-5)', boxShadow: 'var(--shadow-lift)' }}>
+              <div className="animate-fadeIn">
+              {/* One-line status bar */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                  <span style={{
+                    width: 34, height: 34, borderRadius: 'var(--radius-full)', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'var(--accent-amber-glow)',
+                    color: applicationStatus?.hasActiveRole ? 'var(--accent-emerald)' : 'var(--accent-amber)',
+                  }}>
+                    {applicationStatus?.hasActiveRole ? <ShieldCheck size={16} /> : applicationStatus?.hasPending ? <Clock3 size={16} /> : <GraduationCap size={16} />}
+                  </span>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', margin: 0, whiteSpace: 'nowrap' }}>
+                      {applicationStatus?.hasActiveRole
+                        ? `You're the ${applicationStatus.activeRole === 'cr' ? 'Class Representative (CR)' : 'Student Representative (SR)'}`
+                        : 'CR / SR Leadership'}
+                    </p>
+                    <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '420px' }}>
+                      {applicationStatus?.hasActiveRole
+                        ? `${user?.department} • ${applicationStatus.activeRole === 'cr' ? `Lab ${user?.labSection}` : `Section ${user?.section}`}`
+                        : applicationStatus?.hasPending
+                          ? `Applied for ${applicationStatus.pendingApplication.appliedRole === 'cr' ? 'CR' : 'SR'} · ${formatAppDate(applicationStatus.pendingApplication.createdAt)} · Awaiting review`
+                          : allChangesReady
+                            ? 'CR/SR positions are open for your batch'
+                            : 'Complete your academic details to apply'}
+                    </p>
+                  </div>
+                </div>
+
+                {applicationStatus?.hasActiveRole ? (
+                  <button
+                    className="btn btn-sm"
+                    onClick={() => setResignConfirm(true)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '6px',
+                      background: 'var(--accent-rose-glow)', border: '1px solid var(--accent-rose)',
+                      color: 'var(--accent-rose)', fontWeight: 'bold', fontSize: '12px',
+                      cursor: 'pointer', whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Resign / Step Down
+                  </button>
+                ) : applicationStatus?.hasPending ? (
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                    padding: '5px 12px', borderRadius: 'var(--radius-full)',
+                    background: 'var(--accent-amber-glow)', border: '1px solid var(--accent-amber)',
+                    color: 'var(--accent-amber)', fontSize: '11px', fontWeight: 'bold', whiteSpace: 'nowrap',
+                  }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-amber)' }} />
+                    Pending Review
+                  </span>
+                ) : allChangesReady ? (
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={() => setShowApplyForm((v) => !v)}
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
+                  >
+                    <GraduationCap size={14} /> {showApplyForm ? 'Close' : 'Apply Now'}
+                  </button>
+                ) : (
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => setIsEditingProfile(true)}
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
+                  >
+                    <Pencil size={14} /> Complete Profile
+                  </button>
+                )}
+              </div>
+
               {applicationMessage && (
-                <div className={`p-4 mb-4 ${applicationMessage.includes('success') || applicationMessage.includes('successfully') ? 'success' : 'error'}`} style={{ 
+                <div className="p-4" style={{ 
                   background: applicationMessage.includes('success') || applicationMessage.includes('successfully') ? 'var(--accent-emerald-glow)' : 'var(--accent-rose-glow)',
                   border: `1px solid ${applicationMessage.includes('success') || applicationMessage.includes('successfully') ? 'var(--accent-emerald)' : 'var(--accent-rose)'}`,
                   borderRadius: 'var(--radius-lg)',
@@ -1554,78 +1682,17 @@ export default function SettingsPage() {
                   color: applicationMessage.includes('success') || applicationMessage.includes('successfully') ? 'var(--accent-emerald)' : 'var(--accent-rose)',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px'
+                  gap: '8px',
+                  marginTop: '14px',
                 }}>
                   {applicationMessage.includes('success') || applicationMessage.includes('successfully') ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
                   {applicationMessage}
                 </div>
               )}
 
-              {/* Application Status */}
-              {applicationStatus && (
-                <div className="mb-6">
-                  <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', marginBottom: '12px' }}>Your Application Status</h4>
-                  
-                  {applicationStatus.hasActiveRole && (
-                    <div className="p-4" style={{ background: 'var(--accent-emerald-glow)', border: '1px solid var(--accent-emerald)', borderRadius: 'var(--radius-lg)' }}>
-                      <div className="flex items-center gap-3">
-                        <CheckCircle2 size={20} style={{ color: 'var(--accent-emerald)' }} />
-                        <div style={{ flex: 1 }}>
-                          <p style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', color: 'var(--accent-emerald)' }}>
-                            You are currently a {applicationStatus.activeRole === 'cr' ? 'Class Representative (CR)' : 'Student Representative (SR)'}
-                          </p>
-                          <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                            {user?.department} • Semester {user?.semester} • {applicationStatus.activeRole === 'cr' ? `Lab ${user?.labSection}` : `Section ${user?.section}`}
-                          </p>
-                        </div>
-                        <button
-                          className="btn btn-sm"
-                          onClick={() => setResignConfirm(true)}
-                          style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: '6px',
-                            background: 'var(--accent-rose-glow)',
-                            border: '1px solid var(--accent-rose)',
-                            color: 'var(--accent-rose)',
-                            padding: '6px 14px',
-                            borderRadius: 'var(--radius-md)',
-                            fontWeight: 'bold',
-                            fontSize: '12px',
-                            cursor: 'pointer',
-                            transition: 'all 0.15s ease',
-                          }}
-                          onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-rose)'}
-                          onMouseLeave={e => e.currentTarget.style.background = 'var(--accent-rose-glow)'}
-                        >
-                          Resign / Step Down
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {applicationStatus.hasPending && !applicationStatus.hasActiveRole && (
-                    <div className="p-4" style={{ background: 'var(--accent-amber-glow)', border: '1px solid var(--accent-amber)', borderRadius: 'var(--radius-lg)' }}>
-                      <div className="flex items-center gap-3">
-                        <Clock3 size={20} style={{ color: 'var(--accent-amber)' }} />
-                        <div>
-                          <p style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', color: 'var(--accent-amber)' }}>Application Pending Review</p>
-                          <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                            You applied for {applicationStatus.pendingApplication.appliedRole === 'cr' ? 'CR' : 'SR'} on {new Date(applicationStatus.pendingApplication.createdAt).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {!applicationStatus.hasPending && !applicationStatus.hasActiveRole && (
-                    <div className="p-4" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-lg)' }}>
-                      <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>You don't have any pending or active applications.</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
+              {/* Apply area — expands from the one-line bar */}
+              {showApplyForm && (
+                <>
               {/* Profile Completion Check */}
               {(!applicationStatus?.hasPending && !applicationStatus?.hasActiveRole) && !allChangesReady && (
                 <div className="glass-card-static" style={{ border: '1px solid var(--accent-amber)', borderRadius: 'var(--radius-lg)', padding: '20px', background: 'var(--accent-amber-glow)' }}>
@@ -1772,6 +1839,8 @@ export default function SettingsPage() {
                   </button>
                 </form>
               )}
+                </>
+              )}
 
               {/* Resign Confirmation Dialog */}
               {resignConfirm && (
@@ -1878,33 +1947,43 @@ export default function SettingsPage() {
 
               {/* Application History */}
               {userApplications.length > 0 && (
-                <div className="mt-8">
-                  <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', marginBottom: '12px' }}>Application History</h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ marginTop: '20px', paddingTop: '18px', borderTop: '1px solid var(--border-primary)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+                    <History size={14} style={{ color: 'var(--text-tertiary)' }} />
+                    <h4 style={{ fontSize: 'var(--fs-xs)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)', margin: 0 }}>
+                      Application History
+                    </h4>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {userApplications.map(app => (
-                      <div key={app.id} className="p-4" style={{ 
-                        background: 'var(--bg-input)', 
+                      <div key={app.id} style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        gap: '10px', flexWrap: 'wrap',
+                        padding: '12px 16px',
+                        background: 'var(--bg-input)',
                         border: `1px solid ${app.status === 'approved' ? 'var(--accent-emerald)' : app.status === 'rejected' ? 'var(--accent-rose)' : 'var(--border-primary)'}`,
-                        borderRadius: 'var(--radius-lg)'
+                        borderRadius: 'var(--radius-md)',
                       }}>
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className={`badge ${app.appliedRole === 'cr' ? 'badge-amber' : 'badge-emerald'}`} style={{ fontSize: '10px' }}>
-                                {app.appliedRole === 'cr' ? 'CR' : 'SR'}
-                              </span>
-                              <span className={`badge ${app.status === 'approved' ? 'badge-emerald' : app.status === 'rejected' ? 'badge-rose' : 'badge-blue'}`} style={{ fontSize: '10px' }}>
-                                {app.status.toUpperCase()}
-                              </span>
-                            </div>
-                            <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                              Applied on {new Date(app.createdAt).toLocaleDateString()}
-                              {app.reviewedAt && ` • Reviewed on ${new Date(app.reviewedAt).toLocaleDateString()}`}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span className={`badge ${app.appliedRole === 'cr' ? 'badge-amber' : 'badge-emerald'}`} style={{ fontSize: '10px' }}>
+                            {app.appliedRole === 'cr' ? 'CR' : 'SR'}
+                          </span>
+                          <span className={`badge ${app.status === 'approved' ? 'badge-emerald' : app.status === 'rejected' ? 'badge-rose' : 'badge-blue'}`} style={{ fontSize: '10px' }}>
+                            {app.status === 'approved' ? 'Approved' : app.status === 'rejected' ? 'Rejected' : 'Pending'}
+                          </span>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-primary)', fontWeight: 'bold', margin: 0 }}>
+                            {formatAppDate(app.createdAt)}
+                          </p>
+                          {app.reviewedAt && (
+                            <p style={{ fontSize: '10px', color: 'var(--text-tertiary)', margin: '2px 0 0' }}>
+                              Reviewed {formatAppDate(app.reviewedAt)}
                             </p>
-                          </div>
+                          )}
                         </div>
                         {app.statement && (
-                          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: '8px', fontStyle: 'italic' }}>
+                          <p style={{ flexBasis: '100%', fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: '6px 0 0', fontStyle: 'italic' }}>
                             "{app.statement}"
                           </p>
                         )}
@@ -1914,138 +1993,114 @@ export default function SettingsPage() {
                 </div>
               )}
             </div>
-          )}
-
-          {activeSubTab === 'invite' && isAuthenticated && user?.role === 'admin' && (
-            <div className="animate-fadeIn">
-              <SettingsMasthead icon={Send} title="Invite Member" subtitle="Send invites" />
-              <div className="schedule-dotted-divider" />
-
-              {/* Invite Form */}
-              <div style={{ background: 'var(--bg-input)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-lg)', padding: '20px', marginBottom: '24px' }}>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                  <div style={{ flex: '0 0 140px' }}>
-                    <label style={{ fontSize: 'var(--fs-xs)', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>Role</label>
-                    <select
-                      value={inviteRole}
-                      onChange={(e) => setInviteRole(e.target.value)}
-                      style={{ width: '100%', padding: '8px 10px', background: 'var(--bg-card)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', fontSize: 'var(--fs-sm)' }}
-                    >
-                      <option value="alumni">Alumni</option>
-                      <option value="faculty">Faculty</option>
-                    </select>
-                  </div>
-                  <div style={{ flex: 1, minWidth: '200px' }}>
-                    <label style={{ fontSize: 'var(--fs-xs)', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>Email</label>
-                    <input
-                      className="input"
-                      type="email"
-                      value={emailInput}
-                      onChange={(e) => setEmailInput(e.target.value)}
-                      placeholder="alumni@example.com"
-                      onKeyDown={(e) => { if (e.key === 'Enter') sendInvite(); }}
-                      style={{ width: '100%' }}
-                    />
-                  </div>
-                  <button
-                    className="btn btn-primary"
-                    onClick={sendInvite}
-                    disabled={inviteSending}
-                    style={{ height: '38px', whiteSpace: 'nowrap' }}
-                  >
-                    {inviteSending ? 'Sending...' : 'Send Invite'}
-                  </button>
-                </div>
-
-                {inviteMsg && (
-                  <div style={{
-                    marginTop: '12px',
-                    padding: '8px 12px',
-                    fontSize: 'var(--fs-xs)',
-                    borderRadius: 'var(--radius-sm)',
-                    background: inviteMsgType === 'success' ? 'var(--accent-emerald-glow)' : 'var(--accent-rose-glow)',
-                    border: `1px solid ${inviteMsgType === 'success' ? 'var(--accent-emerald)' : 'var(--accent-rose)'}`,
-                    color: inviteMsgType === 'success' ? 'var(--accent-emerald)' : 'var(--accent-rose)',
-                  }}>
-                    {inviteMsg}
-                  </div>
-                )}
-              </div>
-
-              {/* Invitation History */}
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', margin: 0 }}>Invitation History</h4>
-                </div>
-
-                {invitations.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-tertiary)', fontSize: 'var(--fs-sm)' }}>
-                    No invitations sent yet.
-                  </div>
-                ) : (
-                  <>
-                    <div style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--fs-xs)' }}>
-                        <thead>
-                          <tr style={{ borderBottom: '1px solid var(--border-primary)' }}>
-                            <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 'bold' }}>Email</th>
-                            <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 'bold' }}>Role</th>
-                            <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 'bold' }}>Status</th>
-                            <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 'bold' }}>Sent</th>
-                            <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 'bold' }}>Accepted</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {invitations.map((inv) => (
-                            <tr key={inv.Id} style={{ borderBottom: '1px solid var(--border-secondary)' }}>
-                              <td style={{ padding: '8px 10px', fontFamily: 'var(--font-mono)', fontSize: '11px' }}>{inv.Email}</td>
-                              <td style={{ padding: '8px 10px', textTransform: 'capitalize' }}>{inv.Role}</td>
-                              <td style={{ padding: '8px 10px' }}>
-                                <span className={`badge ${inv.Status === 'accepted' ? 'badge-emerald' : inv.Status === 'expired' ? 'badge-rose' : 'badge-blue'}`} style={{ fontSize: '9px' }}>
-                                  {inv.Status === 'accepted' ? 'Accepted' : inv.Status === 'expired' ? 'Expired' : 'Pending'}
-                                </span>
-                              </td>
-                              <td style={{ padding: '8px 10px', color: 'var(--text-tertiary)', fontSize: '11px' }}>
-                                {new Date(inv.CreatedAt).toLocaleDateString()}
-                              </td>
-                              <td style={{ padding: '8px 10px', color: 'var(--text-tertiary)', fontSize: '11px' }}>
-                                {inv.AcceptedAt ? new Date(inv.AcceptedAt).toLocaleDateString() : '—'}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Pagination */}
-                    {inviteTotalPages > 1 && (
-                      <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '16px' }}>
-                        {Array.from({ length: inviteTotalPages }, (_, i) => i + 1).map((p) => (
-                          <button
-                            key={p}
-                            onClick={() => setInvitePage(p)}
-                            style={{
-                              width: '30px', height: '30px',
-                              border: `1px solid ${p === invitePage ? 'var(--border-focus)' : 'var(--border-primary)'}`,
-                              borderRadius: 'var(--radius-sm)',
-                              background: p === invitePage ? 'var(--accent-blue-glow)' : 'transparent',
-                              color: p === invitePage ? 'var(--accent-blue)' : 'var(--text-secondary)',
-                              fontWeight: p === invitePage ? 'bold' : 'normal',
-                              cursor: 'pointer', fontSize: 'var(--fs-xs)',
-                            }}
-                          >
-                            {p}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
             </div>
           )}
+
+      {/* ── 5. Delete Account (own card, below the CR/SR card) ── */}
+      {activeSubTab === 'profile' && isAuthenticated && !isEditingProfile && (
+        <div className="st-delete-account" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-5)', boxShadow: 'var(--shadow-lift)' }}>
+          <div className="animate-fadeIn">
+            {!deleteConfirm ? (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '16px',
+                flexWrap: 'wrap',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                  <span style={{
+                    width: 34, height: 34, borderRadius: 'var(--radius-full)', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'var(--accent-rose-glow)', color: 'var(--accent-rose)',
+                  }}>
+                    <Trash2 size={16} />
+                  </span>
+                  <div style={{ minWidth: 0 }}>
+                    <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', color: 'var(--accent-rose)', margin: 0 }}>
+                      Delete Account
+                    </h4>
+                    <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
+                      Permanently remove your account and all associated data.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  className="btn btn-sm"
+                  style={{
+                    background: 'var(--accent-rose-glow)',
+                    color: 'var(--accent-rose)',
+                    border: '1px solid var(--accent-rose)',
+                    whiteSpace: 'nowrap',
+                  }}
+                  onClick={() => { setDeleteConfirm(true); setDeleteTypedConfirm(''); }}
+                >
+                  Delete Account
+                </button>
+              </div>
+            ) : (
+              <div style={{
+                background: 'var(--bg-input)',
+                border: '1px solid var(--accent-rose)',
+                borderRadius: 'var(--radius-lg)',
+                padding: '24px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px',
+              }}>
+                <div>
+                  <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', color: 'var(--accent-rose)', margin: '0 0 8px' }}>
+                    Type <code style={{ background: 'var(--accent-rose-glow)', padding: '2px 8px', borderRadius: '6px', fontFamily: 'var(--font-mono)' }}>BYEBYE AUSTWISE</code> to confirm
+                  </h4>
+                  <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: 0 }}>
+                    This action is irreversible. All your data will be permanently removed.
+                  </p>
+                </div>
+
+                <input
+                  type="text"
+                  value={deleteTypedConfirm}
+                  onChange={(e) => setDeleteTypedConfirm(e.target.value)}
+                  placeholder="BYEBYE AUSTWISE"
+                  className="input"
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    textTransform: 'uppercase',
+                    borderColor: deleteTypedConfirm === 'BYEBYE AUSTWISE' ? 'var(--accent-emerald)' : 'var(--border-primary)',
+                  }}
+                />
+
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => { setDeleteConfirm(false); setDeleteTypedConfirm(''); }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="btn btn-sm"
+                    disabled={deleteTypedConfirm !== 'BYEBYE AUSTWISE'}
+                    style={{
+                      background: deleteTypedConfirm === 'BYEBYE AUSTWISE' ? 'var(--accent-rose)' : 'var(--accent-rose-glow)',
+                      color: '#fff',
+                      border: 'none',
+                      whiteSpace: 'nowrap',
+                      opacity: deleteTypedConfirm === 'BYEBYE AUSTWISE' ? 1 : 0.6,
+                      cursor: deleteTypedConfirm === 'BYEBYE AUSTWISE' ? 'pointer' : 'not-allowed',
+                    }}
+                    onClick={() => {
+                      if (user?.id) deleteAccountById(user.id);
+                      logout();
+                    }}
+                  >
+                    Yes, Delete My Account
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

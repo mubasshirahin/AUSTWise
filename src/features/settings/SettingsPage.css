@@ -724,7 +724,7 @@
 
 .profile-read-grid {
   display: grid;
-  grid-template-columns: 1.25fr 1fr;
+  grid-template-columns: 1fr;
   gap: var(--sp-3);
 }
 
@@ -826,7 +826,8 @@
 }
 .profile-linked-social-list {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-start;
   gap: var(--sp-2);
 }
 

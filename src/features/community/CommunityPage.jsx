@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Users, GraduationCap, Building2, UserPlus,
 } from 'lucide-react';
 import GliderTabs from '../../components/GliderTabs';
+import useTabUrlState from '../../hooks/useTabUrlState';
 import AlumniDirectory from './AlumniDirectory';
 import ClubPortal from './ClubPortal';
 import StudentDirectory from './StudentDirectory';
@@ -22,15 +24,17 @@ const communityTabs = [
 ];
 
 export default function CommunityPage() {
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => {
-    return localStorage.getItem(COMMUNITY_TAB_KEY) || 'alumni';
+    return searchParams.get('tab') || localStorage.getItem(COMMUNITY_TAB_KEY) || 'alumni';
   });
   const activeMeta = communityTabs.find((t) => t.id === activeTab) || communityTabs[0];
 
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    localStorage.setItem(COMMUNITY_TAB_KEY, tab);
-  };
+  const handleTabChange = useTabUrlState({
+    storageKey: COMMUNITY_TAB_KEY,
+    defaultValue: 'alumni',
+    onChange: setActiveTab,
+  });
 
   const renderActiveTab = () => {
     switch (activeTab) {

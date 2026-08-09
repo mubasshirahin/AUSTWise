@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { TrendingUp, Layers, Grid3x3, Trophy, FlaskConical, GitBranch } from 'lucide-react';
 import CGPAGraph from './CGPAGraph';
 import SemesterTracker from './SemesterTracker';
@@ -6,6 +7,7 @@ import DeptHeatmap from './DeptHeatmap';
 import CoursePoll from './CoursePoll';
 import PrerequisiteTree from './PrerequisiteTree';
 import GliderTabs from '../../components/GliderTabs';
+import useTabUrlState from '../../hooks/useTabUrlState';
 import './AnalyticsPage.css';
 import './analytics-tokens.css';
 
@@ -20,14 +22,16 @@ const gradeLabTabs = [
 ];
 
 export default function AnalyticsPage() {
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => {
-    return localStorage.getItem(TAB_KEY) || 'cgpagraph';
+    return searchParams.get('tab') || localStorage.getItem(TAB_KEY) || 'cgpagraph';
   });
 
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    localStorage.setItem(TAB_KEY, tab);
-  };
+  const handleTabChange = useTabUrlState({
+    storageKey: TAB_KEY,
+    defaultValue: 'cgpagraph',
+    onChange: setActiveTab,
+  });
 
   const renderActiveTab = () => {
     switch (activeTab) {

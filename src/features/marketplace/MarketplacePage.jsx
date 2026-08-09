@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ShoppingBag, Home, Search } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import ExchangeKits from './ExchangeKits';
 import ToLetListings from './ToLetListings';
 import LostAndFound from './LostAndFound';
 import GliderTabs from '../../components/GliderTabs';
+import useTabUrlState from '../../hooks/useTabUrlState';
 import MarketplaceMasthead from './MarketplaceMasthead';
 import './MarketplacePage.css';
 import '../../components/PageHero.css';
@@ -20,14 +22,16 @@ const marketplaceTabs = [
 export default function MarketplacePage() {
   const { theme } = useTheme();
   const isNewsprint = theme === 'newsprint';
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => {
-    return localStorage.getItem(MARKETPLACE_TAB_KEY) || 'exchange';
+    return searchParams.get('tab') || localStorage.getItem(MARKETPLACE_TAB_KEY) || 'exchange';
   });
 
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    localStorage.setItem(MARKETPLACE_TAB_KEY, tab);
-  };
+  const handleTabChange = useTabUrlState({
+    storageKey: MARKETPLACE_TAB_KEY,
+    defaultValue: 'exchange',
+    onChange: setActiveTab,
+  });
 
   const renderActiveTab = () => {
     switch (activeTab) {

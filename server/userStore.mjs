@@ -27,6 +27,39 @@ async function writeUsers(users) {
   await writeFile(DB_PATH, JSON.stringify(users, null, 2));
 }
 
+/**
+ * Generate a unique AUSTWise ID (AWID) for a user, e.g. STU-CSE-AW000042.
+ * AWID is the app's internal identifier and is deliberately separate from
+ * the university student ID (which is derived from the email address).
+ */
+function generateAwid(users, department) {
+  const dept = String(department || 'GEN').toUpperCase().replace(/[^A-Z0-9]/g, '') || 'GEN';
+  const existing = users.filter((u) => u.awid && u.awid.includes(`-${dept}-AW`));
+  const maxNum = existing.reduce((max, u) => {
+    const match = String(u.awid).match(/AW(\d+)$/);
+    return match ? Math.max(max, parseInt(match[1], 10)) : max;
+  }, 0);
+  const nextNum = String(maxNum + 1).padStart(6, '0');
+  return `STU-${dept}-AW${nextNum}`;
+}
+
+/**
+ * Backfill AWIDs for users created before AWID generation existed, so
+ * every account ends up with a unique app ID distinct from the student ID.
+ */
+export async function ensureAllAwids() {
+  const users = await readUsers();
+  let changed = false;
+  for (const user of users) {
+    if (!user.awid) {
+      user.awid = generateAwid(users, user.department);
+      changed = true;
+    }
+  }
+  if (changed) await writeUsers(users);
+  return changed;
+}
+
 /** Seed a default admin account if no admin exists */
 export async function seedDefaultAdmin() {
   const users = await readUsers();
@@ -137,6 +170,7 @@ export async function createUser(payload) {
   const rnd = Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 6).toUpperCase();
   const prefix = { student: 'STU', faculty: 'FAC', alumni: 'ALU', admin: 'ADM', cr: 'CR', sr: 'SR', senior: 'SNR', moderator: 'MOD' }[role] || 'USR';
   const id = `${prefix}-${rnd}`;
+  const awid = generateAwid(users, department);
 
   // Extract student ID from email prefix
   const emailPrefix = email.split('@')[0] || '';
@@ -146,6 +180,7 @@ export async function createUser(payload) {
 
   const user = {
     id,
+    awid,
     email,
     name,
     password: hash,
@@ -232,5 +267,6 @@ export async function deleteUserById(id) {
   return true;
 }
 
-// Seed admin on first import
+// Seed admin and backfill AWIDs on first import
 seedDefaultAdmin().catch(() => {});
+ensureAllAwids().catch(() => {});

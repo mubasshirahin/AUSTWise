@@ -25,7 +25,6 @@ import QuotePopup from './features/dashboard/QuotePopup';
 import FloatingBackground from './components/FloatingBackground';
 
 const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage'));
-const RoutineTemplatesPage = lazy(() => import('./features/dashboard/RoutineTemplatesPage'));
 const TranscriptTemplatesPage = lazy(() => import('./features/dashboard/TranscriptTemplatesPage'));
 const AnalyticsPage = lazy(() => import('./features/analytics/AnalyticsPage'));
 const VaultPage = lazy(() => import('./features/vault/VaultPage'));
@@ -134,7 +133,6 @@ function AppContent() {
             }>
               <Routes>
                 <Route path="/" element={<AdminRoute />} />
-                <Route path="/templates" element={<RoutineTemplatesPage />} />
                 <Route path="/admin/transcript-templates" element={<TranscriptTemplatesPage />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
                 <Route path="/vault" element={<VaultPage />} />
@@ -190,7 +188,6 @@ function AppShell() {
 
   const pageTitles = {
     '/dashboard': 'Dashboard',
-    '/templates': 'Routine Templates',
     '/analytics': 'Grade Lab',
     '/vault': 'Vault',
     '/notebook': 'Notebook',
