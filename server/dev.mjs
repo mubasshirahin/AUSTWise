@@ -1626,7 +1626,7 @@ server.on('request', async (req, res) => {
             status: p.status,
             lastSeenAt: p.lastSeenAt || (u.lastSeenAt ? new Date(u.lastSeenAt).getTime() : null),
             cgpa: showCgpa && u.cgpa > 0 ? Number(u.cgpa) : null,
-            attendancePct: showAttendance && u.attendancePct ? Number(u.attendancePct) : null,
+            attendancePct: showAttendance && u.attendancePct != null ? Number(u.attendancePct) : null,
             privacy: {
               showCgpa,
               showAttendance,
@@ -1661,6 +1661,32 @@ server.on('request', async (req, res) => {
       sendJson(res, 200, { success: true, privacy: next, user: updated });
     } catch (error) {
       sendJson(res, 500, { success: false, error: error.message || 'Failed to update privacy settings.' });
+    }
+    return;
+  }
+
+  // POST /api/presence/attendance — sync the user's attendance percentage to
+  // their record so the Active Members popup can show a real value when the
+  // "Show my attendance" privacy toggle is enabled.
+  if (req.url === '/api/presence/attendance' && req.method === 'POST') {
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    try {
+      const body = await readJsonBody(req);
+      const pct = Number(body.attendancePct);
+      if (typeof body.attendancePct !== 'number' || Number.isNaN(pct) || pct < 0 || pct > 100) {
+        sendJson(res, 400, { success: false, error: 'attendancePct must be a number between 0 and 100.' });
+        return;
+      }
+      const user = await getUserById(auth.id);
+      if (!user) {
+        sendJson(res, 404, { success: false, error: 'User not found.' });
+        return;
+      }
+      const updated = await updateUserProfile(auth.id, { attendancePct: Math.round(pct * 10) / 10 });
+      sendJson(res, 200, { success: true, user: updated });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to update attendance.' });
     }
     return;
   }

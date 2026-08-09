@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useRoutine } from '../../context/RoutineContext';
-import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, Sparkles, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2, History } from 'lucide-react';
+import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, Sparkles, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2 } from 'lucide-react';
 import AboutUs from './AboutUs';
 import LinkedAccountsSection from './LinkedAccountsSection';
 import GliderTabs from '../../components/GliderTabs';
@@ -244,7 +244,9 @@ export default function SettingsPage() {
         setPrivacyMsg('Saved');
         updateUser({ privacy: data.privacy });
       } else {
-        setPrivacyMsg(data.error || 'Failed to save.');
+        setPrivacyMsg(data.error === 'Authentication required.'
+          ? 'Log in to change privacy settings.'
+          : (data.error || 'Failed to save.'));
         setPrivacySettings(prev => ({ ...prev, [key]: !value }));
       }
     } catch {
@@ -1726,15 +1728,18 @@ export default function SettingsPage() {
                     Resign / Step Down
                   </button>
                 ) : applicationStatus?.hasPending ? (
-                  <span style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '6px',
-                    padding: '5px 12px', borderRadius: 'var(--radius-full)',
-                    background: 'var(--accent-amber-glow)', border: '1px solid var(--accent-amber)',
-                    color: 'var(--accent-amber)', fontSize: '11px', fontWeight: 'bold', whiteSpace: 'nowrap',
-                  }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-amber)' }} />
-                    Pending Review
-                  </span>
+                  <button
+                    className="btn btn-sm"
+                    onClick={() => setWithdrawConfirm(true)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '6px',
+                      background: 'var(--accent-amber-glow)', border: '1px solid var(--accent-amber)',
+                      color: 'var(--accent-amber)', fontWeight: 'bold', fontSize: '12px',
+                      cursor: 'pointer', whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <Clock3 size={14} /> Withdraw Request
+                  </button>
                 ) : allChangesReady ? (
                   <button
                     className="btn btn-primary btn-sm"
@@ -1771,8 +1776,8 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              {/* Apply area — expands from the one-line bar */}
-              {showApplyForm && (
+              {/* Apply area — expands from the one-line bar (hidden once applied/active) */}
+              {showApplyForm && !applicationStatus?.hasPending && !applicationStatus?.hasActiveRole && (
                 <>
               {/* Profile Completion Check */}
               {(!applicationStatus?.hasPending && !applicationStatus?.hasActiveRole) && !allChangesReady && (
@@ -2026,53 +2031,105 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              {/* Application History */}
-              {userApplications.length > 0 && (
-                <div style={{ marginTop: '20px', paddingTop: '18px', borderTop: '1px solid var(--border-primary)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
-                    <History size={14} style={{ color: 'var(--text-tertiary)' }} />
-                    <h4 style={{ fontSize: 'var(--fs-xs)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)', margin: 0 }}>
-                      Application History
-                    </h4>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {userApplications.map(app => (
-                      <div key={app.id} style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        gap: '10px', flexWrap: 'wrap',
-                        padding: '12px 16px',
-                        background: 'var(--bg-input)',
-                        border: `1px solid ${app.status === 'approved' ? 'var(--accent-emerald)' : app.status === 'rejected' ? 'var(--accent-rose)' : 'var(--border-primary)'}`,
-                        borderRadius: 'var(--radius-md)',
+              {/* Withdraw Confirmation Dialog */}
+              {withdrawConfirm && (
+                <div style={{
+                  position: 'fixed',
+                  top: 0, left: 0, right: 0, bottom: 0,
+                  background: 'rgba(0,0,0,0.6)',
+                  backdropFilter: 'blur(4px)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 1000,
+                  padding: '16px',
+                }}
+                  onClick={() => setWithdrawConfirm(false)}
+                >
+                  <div
+                    onClick={e => e.stopPropagation()}
+                    style={{
+                      maxWidth: '440px',
+                      width: '100%',
+                      background: 'var(--bg-secondary)',
+                      border: '1px solid var(--border-primary)',
+                      borderRadius: 'var(--radius-lg)',
+                      padding: '28px 24px',
+                      boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                      <div style={{
+                        width: '44px', height: '44px',
+                        borderRadius: 'var(--radius-full)',
+                        background: 'var(--accent-amber-glow)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'var(--accent-amber)',
+                        flexShrink: 0,
                       }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                          <span className={`badge ${app.appliedRole === 'cr' ? 'badge-amber' : 'badge-emerald'}`} style={{ fontSize: '10px' }}>
-                            {app.appliedRole === 'cr' ? 'CR' : 'SR'}
-                          </span>
-                          <span className={`badge ${app.status === 'approved' ? 'badge-emerald' : app.status === 'rejected' ? 'badge-rose' : 'badge-blue'}`} style={{ fontSize: '10px' }}>
-                            {app.status === 'approved' ? 'Approved' : app.status === 'rejected' ? 'Rejected' : 'Pending'}
-                          </span>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-primary)', fontWeight: 'bold', margin: 0 }}>
-                            {formatAppDate(app.createdAt)}
-                          </p>
-                          {app.reviewedAt && (
-                            <p style={{ fontSize: '10px', color: 'var(--text-tertiary)', margin: '2px 0 0' }}>
-                              Reviewed {formatAppDate(app.reviewedAt)}
-                            </p>
-                          )}
-                        </div>
-                        {app.statement && (
-                          <p style={{ flexBasis: '100%', fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: '6px 0 0', fontStyle: 'italic' }}>
-                            "{app.statement}"
-                          </p>
-                        )}
+                        <Clock3 size={22} />
                       </div>
-                    ))}
+                      <div>
+                        <h4 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', margin: 0 }}>Withdraw Application?</h4>
+                        <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
+                          Applied for {applicationStatus?.pendingApplication?.appliedRole === 'cr' ? 'CR' : 'SR'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 20px' }}>
+                      Are you sure you want to withdraw your pending application? You can re-apply later.
+                    </p>
+
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button
+                        className="btn btn-secondary flex-1"
+                        onClick={() => setWithdrawConfirm(false)}
+                        disabled={withdrawing}
+                      >
+                        Keep Application
+                      </button>
+                      <button
+                        className="btn flex-1"
+                        onClick={async () => {
+                          setWithdrawing(true);
+                          try {
+                            await withdrawApplication(user.id);
+                            setApplicationMessage('Application withdrawn successfully. You can re-apply anytime.');
+                            setWithdrawConfirm(false);
+                            setShowApplyForm(false);
+                            const status = getUserApplicationStatus(user.id);
+                            setApplicationStatus(status);
+                            const applications = getApplicationsByUserId(user.id);
+                            setUserApplications(applications);
+                            const map = getSlotVacancyMap(user.department, user.semester || 1);
+                            setVacancyMap(map);
+                          } catch (err) {
+                            setApplicationMessage(err.message || 'Failed to withdraw application.');
+                          } finally {
+                            setWithdrawing(false);
+                            setTimeout(() => setApplicationMessage(''), 5000);
+                          }
+                        }}
+                        style={{
+                          background: 'var(--accent-amber)',
+                          border: 'none',
+                          color: '#fff',
+                          fontWeight: 'bold',
+                          opacity: withdrawing ? 0.6 : 1,
+                          cursor: withdrawing ? 'not-allowed' : 'pointer',
+                        }}
+                        disabled={withdrawing}
+                      >
+                        {withdrawing ? 'Withdrawing...' : 'Yes, Withdraw'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
+
             </div>
             </div>
           )}

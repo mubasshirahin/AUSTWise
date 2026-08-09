@@ -303,6 +303,27 @@ export default function RoutineAttendanceTracker() {
 
   useEffect(() => { try { localStorage.setItem('aust-attendance-overall-average', String(overallStats.average)); } catch {} }, [overallStats.average]);
 
+  // ── Server sync ──
+  // Push the computed overall attendance % to the server so the Active
+  // Members popup can reveal a real value when "Show my attendance" is on.
+  const syncedAverageRef = useRef(null);
+  useEffect(() => {
+    if (!isEnabled || overallStats.totalClasses === 0) return;
+    // Only sync when there's actual marked data — a fresh tracker would
+    // otherwise report a misleading 0%.
+    if (overallStats.totalAttended + overallStats.totalAbsent === 0) return;
+    if (syncedAverageRef.current === overallStats.average) return;
+    fetch('/api/presence/attendance', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ attendancePct: overallStats.average }),
+    }).then((res) => {
+      // Only remember a successful sync so failures get retried later.
+      if (res.ok) syncedAverageRef.current = overallStats.average;
+    }).catch(() => {});
+  }, [isEnabled, overallStats.average, overallStats.totalAttended, overallStats.totalAbsent, overallStats.totalClasses]);
+
   // ---------- Present / Absent toggle buttons ----------
   const ToggleBtn = ({ sessionId, courseKey, currentStatus, targetStatus, label, icon: Icon, disabled }) => {
     const isActive = currentStatus === targetStatus;
