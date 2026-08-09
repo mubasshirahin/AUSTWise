@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Home, DollarSign, ClipboardCheck, NotebookPen, UtensilsCrossed, Banknote } from 'lucide-react';
 import GliderTabs from '../../components/GliderTabs';
+import useTabUrlState from '../../hooks/useTabUrlState';
 import MoneyTrackerPage from '../money-tracker/MoneyTrackerPage';
 import ExamChecklistPage from '../exam-checklist/ExamChecklistPage';
 import CoverPageGeneratorPage from '../cover-page-generator/CoverPageGeneratorPage';
@@ -20,14 +22,16 @@ const TABS = [
 const STORAGE_KEY = 'daily-life-active-tab';
 
 export default function DailyLifePage() {
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(
-    () => localStorage.getItem(STORAGE_KEY) || 'exam-checklist'
+    () => searchParams.get('tab') || localStorage.getItem(STORAGE_KEY) || 'exam-checklist'
   );
 
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    localStorage.setItem(STORAGE_KEY, tab);
-  };
+  const handleTabChange = useTabUrlState({
+    storageKey: STORAGE_KEY,
+    defaultValue: 'exam-checklist',
+    onChange: setActiveTab,
+  });
 
   const renderTab = () => {
     switch (activeTab) {

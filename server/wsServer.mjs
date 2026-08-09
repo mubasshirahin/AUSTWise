@@ -19,6 +19,57 @@ const userClients = new Map();
 const conversationSubscribers = new Map();
 // Map: userId -> Set<conversationId>
 const userSubscriptions = new Map();
+// Map: userId -> { status: 'online' | 'idle', lastSeenAt }
+const presenceState = new Map();
+
+const IDLE_AFTER_MS = 5 * 60 * 1000;      // 5 minutes of silence -> idle
+const PRESENCE_SWEEP_MS = 30 * 1000;      // sweep every 30s
+let presenceSweepTimer = null;
+
+/** Snapshot of current presence for all known users (plain object) */
+export function getPresenceMap() {
+  const out = {};
+  for (const [userId, p] of presenceState) {
+    out[userId] = { status: p.status, lastSeenAt: p.lastSeenAt };
+  }
+  return out;
+}
+
+/** Record activity and flip idle->online if needed */
+function touchPresence(userId) {
+  if (!userId) return;
+  const prev = presenceState.get(userId);
+  const now = Date.now();
+  presenceState.set(userId, { status: 'online', lastSeenAt: now });
+  if (prev && prev.status === 'idle') {
+    broadcastPresence(userId, 'online', now);
+  }
+}
+
+/** Send a presence change to everyone (except the subject) */
+function broadcastPresence(userId, status, lastSeenAt) {
+  const data = { type: 'presence', payload: { userId, status, lastSeenAt: lastSeenAt || Date.now() } };
+  for (const [uid, clients] of userClients) {
+    if (uid && uid !== userId) {
+      for (const ws of clients) sendTo(ws, data);
+    }
+  }
+}
+
+/** Periodic sweep: online users with no activity in 5 min -> idle */
+function startPresenceSweep() {
+  if (presenceSweepTimer) return;
+  presenceSweepTimer = setInterval(() => {
+    const now = Date.now();
+    for (const [userId, p] of presenceState) {
+      if (p.status === 'online' && now - p.lastSeenAt > IDLE_AFTER_MS) {
+        presenceState.set(userId, { status: 'idle', lastSeenAt: p.lastSeenAt });
+        broadcastPresence(userId, 'idle', p.lastSeenAt);
+      }
+    }
+  }, PRESENCE_SWEEP_MS);
+  presenceSweepTimer.unref?.();
+}
 
 /* ─── Shadow Chat State ─── */
 let shadowQueue = []; // Array<{ ws, shadowId }>
@@ -113,6 +164,9 @@ export function createWSServer(httpServer) {
     let currentUserId = null;
     let shadowId = null;
 
+    // Start the idle-sweep loop on first connection (shared, idempotent)
+    startPresenceSweep();
+
     // Send a confirmation that connection is established
     sendTo(ws, { type: 'connected', payload: { serverTime: Date.now() } });
 
@@ -138,6 +192,15 @@ export function createWSServer(httpServer) {
       }
       userClients.get(userId).add(ws);
 
+      // Presence: mark online on first connection of this session
+      if (!presenceState.has(userId) || presenceState.get(userId).status === 'idle') {
+        const now = Date.now();
+        presenceState.set(userId, { status: 'online', lastSeenAt: now });
+        broadcastPresence(userId, 'online', now);
+      } else {
+        touchPresence(userId);
+      }
+
       // Broadcast online status
       broadcastOnlineStatus(userId, true);
 
@@ -150,6 +213,9 @@ export function createWSServer(httpServer) {
         if (uid) onlineUsers.push(uid);
       }
       sendTo(ws, { type: 'online-users', payload: { userIds: onlineUsers } });
+
+      // Presence snapshot: full map so the client can render statuses instantly
+      sendTo(ws, { type: 'presence-snapshot', payload: { presence: getPresenceMap() } });
       return true;
     }
 
@@ -192,7 +258,8 @@ export function createWSServer(httpServer) {
             break;
 
           case 'ping':
-            // Keep-alive, no response needed
+            // Keep-alive, no response needed — but counts as user activity
+            touchPresence(currentUserId);
             break;
 
           /* ─── Shadow Chat ─── */
@@ -281,8 +348,23 @@ export function createWSServer(httpServer) {
       }
       // Regular user cleanup
       if (currentUserId) {
-        broadcastOnlineStatus(currentUserId, false);
-        cleanupUser(currentUserId);
+        // Remove this socket from the user's client set FIRST so we can tell
+        // whether any other connections remain for this user.
+        const clients = userClients.get(currentUserId);
+        if (clients) {
+          clients.delete(ws);
+          if (clients.size === 0) userClients.delete(currentUserId);
+        }
+        const hasOtherClients = userClients.has(currentUserId);
+        // Only drop online status / presence / subscriptions when this was the
+        // LAST connection for the user — other open tabs keep them online.
+        if (!hasOtherClients) {
+          broadcastOnlineStatus(currentUserId, false);
+          const lastSeen = presenceState.get(currentUserId)?.lastSeenAt || Date.now();
+          presenceState.delete(currentUserId);
+          broadcastPresence(currentUserId, 'offline', lastSeen);
+          cleanupUser(currentUserId);
+        }
       }
     });
 
@@ -297,8 +379,19 @@ export function createWSServer(httpServer) {
       }
       // Regular user cleanup
       if (currentUserId) {
-        broadcastOnlineStatus(currentUserId, false);
-        cleanupUser(currentUserId);
+        const clients = userClients.get(currentUserId);
+        if (clients) {
+          clients.delete(ws);
+          if (clients.size === 0) userClients.delete(currentUserId);
+        }
+        const hasOtherClients = userClients.has(currentUserId);
+        if (!hasOtherClients) {
+          broadcastOnlineStatus(currentUserId, false);
+          const lastSeen = presenceState.get(currentUserId)?.lastSeenAt || Date.now();
+          presenceState.delete(currentUserId);
+          broadcastPresence(currentUserId, 'offline', lastSeen);
+          cleanupUser(currentUserId);
+        }
       }
     });
 

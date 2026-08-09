@@ -819,10 +819,8 @@ export function resignFromRole(userId) {
 
   const resignedRole = account.role;
 
-  // Update account role back to student
   updateAccountProfile(userId, { role: 'student' });
 
-  // Mark all approved applications for this role as resigned
   const applications = loadApplications();
   const updated = applications.map(app => {
     if (app.userId === userId && app.status === 'approved') {
@@ -833,6 +831,23 @@ export function resignFromRole(userId) {
   saveApplications(updated);
 
   return { resignedRole };
+}
+
+export function withdrawApplication(userId) {
+  const applications = loadApplications();
+  const pending = applications.find(app => app.userId === userId && app.status === 'pending');
+  if (!pending) {
+    throw new Error('No pending application found to withdraw.');
+  }
+
+  const updated = applications.map(app => {
+    if (app.id === pending.id) {
+      return { ...app, status: 'withdrawn', reviewedAt: new Date().toISOString() };
+    }
+    return app;
+  });
+  saveApplications(updated);
+  return updated.find(app => app.id === pending.id);
 }
 
 export function getUserApplicationStatus(userId) {

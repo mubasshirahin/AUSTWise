@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import RoutineCard from './RoutineCard';
 import ExamTracker from './ExamTracker';
@@ -15,6 +16,7 @@ import {
   Flame, X, Trophy, Medal, Award, Star, Target, Sparkles, Sun, BarChart3,
 } from 'lucide-react';
 import { getUserStorageItemWithGuestFallback, getCurrentUserId } from '../../utils/authStorage';
+import useTabUrlState from '../../hooks/useTabUrlState';
 import { useAuth } from '../../context/AuthContext';
 import './DashboardPage.css';
 import './dashboard-premium.css';
@@ -533,7 +535,10 @@ function QuickStats() {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const [focusMode, setFocusMode] = useState(() => {
+    const urlTab = searchParams.get('tab');
+    if (urlTab && FOCUS_SECTIONS[urlTab]) return urlTab;
     try {
       const stored = localStorage.getItem('aust-dashboard-focus');
       if (stored && FOCUS_SECTIONS[stored]) return stored;
@@ -542,10 +547,14 @@ export default function DashboardPage() {
   });
   const firstName = user?.name?.split(' ')[0] || 'Student';
 
-  const handleFocusChange = (mode) => {
-    setFocusMode(mode);
-    try { localStorage.setItem('aust-dashboard-focus', mode); } catch {}
-  };
+  const handleFocusChange = useTabUrlState({
+    storageKey: 'aust-dashboard-focus',
+    defaultValue: 'stats',
+    onChange: (mode) => {
+      setFocusMode(mode);
+      try { localStorage.setItem('aust-dashboard-focus', mode); } catch {}
+    },
+  });
 
   const profileIncomplete = user && (!user.department || !user.batch || !user.section || !user.yearSemester);
 

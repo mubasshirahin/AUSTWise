@@ -287,6 +287,11 @@
   color: var(--accent-blue);
 }
 
+.am-nav-toggle-active {
+  color: var(--accent-blue) !important;
+  background: var(--accent-blue-glow);
+}
+
 .topbar-profile-btn {
   display: flex;
   align-items: center;

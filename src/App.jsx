@@ -8,6 +8,7 @@ import Sidebar from './layout/Sidebar';
 import TopNavbar from './layout/TopNavbar';
 import SearchModal from './layout/SearchModal';
 import MobileNav from './layout/MobileNav';
+import ActiveMembersSidebar from './features/active-members/ActiveMembersSidebar';
 import AuthPage from './features/auth/AuthPage';
 import LandingPage from './features/landing/LandingPage';
 import TermsPage from './pages/TermsPage';
@@ -103,7 +104,23 @@ function ProtectedAdminRoute({ children }) {
 function AppContent() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(() => {
+    try { return localStorage.getItem('aust-members-open-v1') === 'true'; }
+    catch { return false; }
+  });
+  const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 1024);
   const location = useLocation();
+
+  // Track desktop/mobile breakpoint + persist the members panel preference
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 1024);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('aust-members-open-v1', String(membersOpen));
+  }, [membersOpen]);
 
   // Reset scroll to top on route change so new pages always open at the top
   // instead of inheriting the previous page's scroll position.
@@ -122,8 +139,13 @@ function AppContent() {
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
-        <div className={`main-content ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-          <TopNavbar onMenuClick={() => setSidebarCollapsed(!sidebarCollapsed)} onSearchOpen={setIsSearchOpen} />
+        <div className={`main-content ${sidebarCollapsed ? 'sidebar-collapsed' : ''}${membersOpen && isDesktop ? ' members-open' : ''}`}>
+          <TopNavbar
+            onMenuClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            onSearchOpen={setIsSearchOpen}
+            membersOpen={membersOpen}
+            onMembersToggle={() => setMembersOpen((o) => !o)}
+          />
           <div className="page-wrapper" key={location.pathname}>
             <Suspense fallback={
               <div className="page-loading">
@@ -175,6 +197,12 @@ function AppContent() {
             </Suspense>
           </div>
         </div>
+        <ActiveMembersSidebar
+          open={membersOpen}
+          isDesktop={isDesktop}
+          onClose={() => setMembersOpen(false)}
+          onToggle={() => setMembersOpen((o) => !o)}
+        />
         <MobileNav />
       </div>
     </RoutineProvider>

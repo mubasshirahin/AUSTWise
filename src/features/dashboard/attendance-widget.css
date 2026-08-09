@@ -426,6 +426,59 @@
 .att-toggle-pill.absent.active { border-color: var(--accent-rose); background: var(--accent-rose-glow); color: var(--accent-rose); font-weight: var(--fw-bold); }
 .att-toggle-pill.active { transform: scale(1.05); }
 .att-toggle-pill:active { transform: scale(0.95); }
+.att-toggle-pill.is-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ─── Expected attendance mark row ─── */
+.att-expected-mark-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  flex-wrap: wrap;
+}
+.att-expected-mark-label {
+  color: var(--text-tertiary);
+  font-weight: var(--fw-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 9px;
+}
+.att-expected-mark-value {
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.att-expected-mark-sep {
+  color: var(--text-tertiary);
+  opacity: 0.5;
+  font-size: 10px;
+}
+.att-expected-mark-input {
+  width: 56px;
+  padding: 2px 6px;
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 10px;
+  font-weight: var(--fw-bold);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.att-expected-mark-input:focus {
+  border-color: var(--accent-blue);
+}
 
 /* ─── Mini segment bar ─── */
 .att-minibar {

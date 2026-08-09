@@ -200,7 +200,12 @@ export async function createUser(payload) {
     openForTalk: false,
     linkedSocial: payload.linkedSocial || {},
     linkedAccounts: [],
-    cgpa: 0,
+    cgpa: payload.cgpa ?? 0,
+    attendancePct: payload.attendancePct ?? null,
+    privacy: {
+      showCgpa: payload.privacy?.showCgpa !== false,
+      showAttendance: payload.privacy?.showAttendance === true,
+    },
     creditsCompleted: 0,
     totalCredits: 160,
     bloodGroup: '',

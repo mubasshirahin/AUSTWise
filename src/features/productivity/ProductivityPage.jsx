@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Zap, ScrollText, Code2, School, ExternalLink, Flame } from 'lucide-react';
 import GliderTabs from '../../components/GliderTabs';
+import useTabUrlState from '../../hooks/useTabUrlState';
 import CheatsheetsPage from '../vault/CheatsheetsPage';
 import CPHubPage from '../cp-hub/CPHubPage';
 import StudyRoomPage from '../study-room/StudyRoomPage';
@@ -20,13 +22,15 @@ const TABS = [
 const STORAGE_KEY = 'productivity-active-tab';
 
 export default function ProductivityPage() {
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(
-    () => localStorage.getItem(STORAGE_KEY) || 'study-room'
+    () => searchParams.get('tab') || localStorage.getItem(STORAGE_KEY) || 'study-room'
   );
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    localStorage.setItem(STORAGE_KEY, tab);
-  };
+  const handleTabChange = useTabUrlState({
+    storageKey: STORAGE_KEY,
+    defaultValue: 'study-room',
+    onChange: setActiveTab,
+  });
 
   const renderTab = () => {
     switch (activeTab) {

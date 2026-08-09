@@ -67,8 +67,19 @@ export function AuthProvider({ children }) {
           setSessionUser(hydrated);
           localStorage.setItem(userStorageKey, JSON.stringify(hydrated));
         } else {
-          // Server says not authenticated — clear stale cache
-          localStorage.removeItem(userStorageKey);
+          // Server says not authenticated — keep the cached session (login
+          // writes it) so the app doesn't log the user out on every reload
+          // when the cookie is missing (e.g. no DB configured).
+          const cached = localStorage.getItem(userStorageKey);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed && parsed.id && parsed.id !== 'guest') {
+              const hydrated = hydrateUser(parsed);
+              setSessionUser(hydrated);
+            }
+          } else {
+            localStorage.removeItem(userStorageKey);
+          }
         }
       } catch (err) {
         // Server unreachable — fall back to cached user so the

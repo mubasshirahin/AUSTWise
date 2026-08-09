@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Moon, Eye, Star, Shield, Send, User, Timer, MessageSquare,
   Loader2, AlertTriangle, Wifi, WifiOff, Zap,
@@ -6,6 +7,7 @@ import {
 import CourseReview from '../analytics/CourseReview';
 import BuzzPage from '../austeddit/AustedditPage';
 import GliderTabs from '../../components/GliderTabs';
+import useTabUrlState from '../../hooks/useTabUrlState';
 import './ShadowPage.css';
 import './shadow-tokens.css';
 
@@ -63,7 +65,13 @@ export default function ShadowPage() {
   });
 
   /* ─── Tab state ─── */
-  const [activeTab, setActiveTab] = useState('reviews'); // reviews | chat
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'reviews'); // reviews | chat | buzz
+  const handleShadowTabChange = useTabUrlState({
+    storageKey: 'shadow-active-tab',
+    defaultValue: 'reviews',
+    onChange: setActiveTab,
+  });
 
   /* ─── Shadow Chat State ─── */
   const [chatState, setChatState] = useState('idle'); // idle | queued | matched | ended
@@ -325,7 +333,7 @@ export default function ShadowPage() {
             { id: 'buzz',    label: 'Buzz',             desc: 'AUST forum',             color: 'amber',  icon: Zap           },
           ]}
           activeTab={activeTab}
-          onChange={setActiveTab}
+          onChange={handleShadowTabChange}
           variant="dashboard"
           compact
         />

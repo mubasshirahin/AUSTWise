@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Coffee, LayoutGrid, MessageCircleQuestion, Brain, Gamepad2, Film } from 'lucide-react';
 import GliderTabs from '../../components/GliderTabs';
+import useTabUrlState from '../../hooks/useTabUrlState';
 import OrganizingArea from './tabs/OrganizingArea';
 import RumourOrReal from './tabs/RumourOrReal';
 import Trivia from './tabs/Trivia';
@@ -21,14 +23,16 @@ const TABS = [
 const STORAGE_KEY = 'chill-zone-active-tab';
 
 export default function ChillZonePage() {
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(
-    () => localStorage.getItem(STORAGE_KEY) || 'organizing'
+    () => searchParams.get('tab') || localStorage.getItem(STORAGE_KEY) || 'organizing'
   );
 
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    localStorage.setItem(STORAGE_KEY, tab);
-  };
+  const handleTabChange = useTabUrlState({
+    storageKey: STORAGE_KEY,
+    defaultValue: 'organizing',
+    onChange: setActiveTab,
+  });
 
   const renderTab = () => {
     switch (activeTab) {

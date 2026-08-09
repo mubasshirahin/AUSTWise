@@ -1503,3 +1503,85 @@
   color: var(--text-primary);
   border: 1px solid var(--border-primary);
 }
+
+/* ─── Member List Privacy ─── */
+.am-settings-privacy {
+  margin-top: var(--sp-5);
+  padding: var(--sp-4);
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.am-settings-privacy-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.am-settings-privacy-title {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.am-settings-privacy-title svg {
+  color: var(--accent-purple);
+  flex-shrink: 0;
+}
+
+.am-settings-privacy-title h4 {
+  font-size: var(--fs-sm);
+  font-weight: bold;
+}
+
+.am-settings-privacy-title p {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.am-settings-privacy-saving {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.am-settings-privacy-saved {
+  font-size: 10px;
+  color: var(--accent-emerald);
+  flex-shrink: 0;
+}
+
+.am-settings-privacy-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border-secondary);
+}
+
+.am-settings-privacy-row > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.am-settings-privacy-row strong {
+  font-size: var(--fs-xs);
+  color: var(--text-primary);
+}
+
+.am-settings-privacy-row span {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  line-height: 1.4;
+}

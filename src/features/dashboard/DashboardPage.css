@@ -710,6 +710,9 @@
 .quick-stat-icon.tone-emerald { color: var(--accent-emerald); background: var(--accent-emerald-glow); }
 .quick-stat-icon.tone-amber { color: var(--accent-amber); background: var(--accent-amber-glow); }
 .quick-stat-icon.tone-purple { color: var(--accent-purple); background: var(--accent-purple-glow); }
+
+.quick-stats-grid > div:nth-child(1) .quick-stat-icon.tone-blue { color: var(--accent-cyan); background: var(--accent-cyan-glow); }
+.quick-stats-grid > div:nth-child(3) .quick-stat-icon.tone-amber { color: var(--accent-rose); background: var(--accent-rose-glow); }
 .quick-stat-name {
   font-size: var(--fs-xs);
   font-weight: var(--fw-bold);

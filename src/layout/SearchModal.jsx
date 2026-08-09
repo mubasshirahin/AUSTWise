@@ -8,13 +8,56 @@ import './SearchModal.css';
 
 // Mirrors the sidebar: only pages reachable from the nav + their subpages.
 const searchItems = [
-  { label: 'Dashboard', path: '/', icon: LayoutDashboard, keywords: 'home dashboard' },
-  { label: 'Daily Life', path: '/daily-life', icon: Home, keywords: 'daily life meals transport schedule mess meal' },
+  {
+    label: 'Dashboard', path: '/', icon: LayoutDashboard, keywords: 'home dashboard',
+    subs: [
+      { id: 'stats', label: 'Quick Stats', keywords: 'quick stats cgpa metrics' },
+      { id: 'routine', label: 'Routine', keywords: 'routine weekly timetable' },
+      { id: 'calendar', label: 'Semester View', keywords: 'semester view 14 week calendar' },
+      { id: 'exams', label: 'Zero Hour', keywords: 'zero hour quiz mid final exams' },
+      { id: 'attendance', label: 'Attendance', keywords: 'attendance semester progress' },
+    ],
+  },
+  {
+    label: 'Daily Life', path: '/daily-life', icon: Home, keywords: 'daily life meals transport schedule mess meal',
+    subs: [
+      { id: 'exam-checklist', label: 'Exam Checklist', keywords: 'exam checklist prep' },
+      { id: 'cover-page-generator', label: 'Cover Page', keywords: 'cover page generator' },
+      { id: 'bhara-koto', label: 'Bhara Koto', keywords: 'bhara koto fare estimator rickshaw' },
+      { id: 'money-tracker', label: 'TakaGeloKoi', keywords: 'takagelokoi money tracker expenses budget' },
+      { id: 'mess-meal', label: 'Mess Meal', keywords: 'mess meal planner food' },
+    ],
+  },
   { label: 'Notebook', path: '/notebook', icon: NotebookPen, keywords: 'notebook notes canvas whiteboard editor writing' },
   { label: 'ConnectBox', path: '/messages', icon: MessageSquare, keywords: 'messages chat inbox dm' },
-  { label: 'Productivity', path: '/productivity', icon: Zap, keywords: 'productivity focus timer flows' },
-  { label: 'DownTime', path: '/chill-zone', icon: Coffee, keywords: 'downtime chill zone relax games' },
-  { label: 'Shadow', path: '/shadow', icon: Moon, keywords: 'shadow anonymous post' },
+  {
+    label: 'Productivity', path: '/productivity', icon: Zap, keywords: 'productivity focus timer flows',
+    subs: [
+      { id: 'study-room', label: 'Study Time', keywords: 'study time focus timer' },
+      { id: 'cheatsheets', label: 'Cheat Sheets', keywords: 'cheat sheets formulas quick reference' },
+      { id: 'cp-hub', label: 'Code Pulse', keywords: 'code pulse cp coding contests' },
+      { id: 'workspace', label: 'Workspace', keywords: 'workspace google classroom' },
+      { id: 'roast-cv', label: 'Roast CV', keywords: 'roast cv resume feedback' },
+    ],
+  },
+  {
+    label: 'DownTime', path: '/chill-zone', icon: Coffee, keywords: 'downtime chill zone relax games',
+    subs: [
+      { id: 'organizing', label: 'Organizing Area', keywords: 'organizing area plan organize' },
+      { id: 'media', label: 'Media Tracker', keywords: 'media tracker movies shows' },
+      { id: 'rumour', label: 'Rumour or Real', keywords: 'rumour or real fact fiction' },
+      { id: 'trivia', label: 'Trivia', keywords: 'trivia brain quiz' },
+      { id: 'gaming', label: 'Gaming Zone', keywords: 'gaming zone mini games' },
+    ],
+  },
+  {
+    label: 'Shadow', path: '/shadow', icon: Moon, keywords: 'shadow anonymous post',
+    subs: [
+      { id: 'reviews', label: 'Course Reviews', keywords: 'course reviews anonymous feedback' },
+      { id: 'chat', label: 'Shadow Chat', keywords: 'shadow chat anonymous match' },
+      { id: 'buzz', label: 'Buzz', keywords: 'buzz aust forum' },
+    ],
+  },
   { label: 'See Plans', path: '/pro', icon: Crown, keywords: 'pro plans pricing premium upgrade' },
   {
     label: 'Grade Lab', path: '/analytics', icon: GraduationCap, keywords: 'analytics grades cgpa grade',

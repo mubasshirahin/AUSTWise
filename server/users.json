@@ -29,6 +29,10 @@
     "linkedin": "",
     "discord": "",
     "createdAt": "2026-07-30T14:04:50.481Z",
-    "awid": "STU-ADMINDEPARTMENT-AW000001"
+    "awid": "STU-ADMINDEPARTMENT-AW000001",
+    "privacy": {
+      "showCgpa": true,
+      "showAttendance": false
+    }
   }
 ]

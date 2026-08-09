@@ -3,12 +3,12 @@ import { useSearchParams } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useRoutine } from '../../context/RoutineContext';
-import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, Sparkles, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, History, Cpu, MapPin, Trash2 } from 'lucide-react';
+import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, Sparkles, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2, History } from 'lucide-react';
 import AboutUs from './AboutUs';
 import LinkedAccountsSection from './LinkedAccountsSection';
 import GliderTabs from '../../components/GliderTabs';
 import { useNotifications } from '../../hooks/useNotifications';
-import { submitRoleApplication, getApplicationsByUserId, getUserApplicationStatus, checkSlotVacancy, getSlotVacancyMap, resignFromRole, deleteAccountById, createAwid } from '../../utils/authStorage';
+import { submitRoleApplication, getApplicationsByUserId, getUserApplicationStatus, checkSlotVacancy, getSlotVacancyMap, resignFromRole, withdrawApplication, deleteAccountById, createAwid } from '../../utils/authStorage';
 import './SettingsPage.css';
 import '../../components/PageHero.css';
 
@@ -213,10 +213,48 @@ export default function SettingsPage() {
   const [vacancyMap, setVacancyMap] = useState(null);
   const [resignConfirm, setResignConfirm] = useState(false);
   const [resigning, setResigning] = useState(false);
+  const [withdrawConfirm, setWithdrawConfirm] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteTypedConfirm, setDeleteTypedConfirm] = useState('');
   const [showApplyForm, setShowApplyForm] = useState(false);
   const [yearSemTouched, setYearSemTouched] = useState(false);
+
+  // Member-list privacy toggles (show CGPA / attendance to others)
+  const [privacySettings, setPrivacySettings] = useState(() => ({
+    showCgpa: user?.privacy?.showCgpa !== false,
+    showAttendance: user?.privacy?.showAttendance === true,
+  }));
+  const [privacySaving, setPrivacySaving] = useState(false);
+  const [privacyMsg, setPrivacyMsg] = useState('');
+
+  const savePrivacySetting = async (key, value) => {
+    const next = { ...privacySettings, [key]: value };
+    setPrivacySettings(next);
+    setPrivacySaving(true);
+    setPrivacyMsg('');
+    try {
+      const res = await fetch('/api/presence/privacy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(next),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPrivacyMsg('Saved');
+        updateUser({ privacy: data.privacy });
+      } else {
+        setPrivacyMsg(data.error || 'Failed to save.');
+        setPrivacySettings(prev => ({ ...prev, [key]: !value }));
+      }
+    } catch {
+      setPrivacyMsg('Network error.');
+      setPrivacySettings(prev => ({ ...prev, [key]: !value }));
+    } finally {
+      setPrivacySaving(false);
+      setTimeout(() => setPrivacyMsg(''), 2500);
+    }
+  };
   
   // Telegram notification settings
   const [telegramEnabled, setTelegramEnabled] = useState(() => {
@@ -848,6 +886,49 @@ export default function SettingsPage() {
                 </div>
 
                 <LinkedAccountsSection user={user} updateUser={updateUser} />
+
+                {/* Member-list privacy — controls what others see in Active Members */}
+                <div className="am-settings-privacy">
+                  <div className="am-settings-privacy-head">
+                    <div className="am-settings-privacy-title">
+                      <ShieldCheck size={16} />
+                      <div>
+                        <h4>Member List Privacy</h4>
+                        <p>Control what others see in the Active Members sidebar.</p>
+                      </div>
+                    </div>
+                    {privacySaving && <span className="am-settings-privacy-saving">Saving…</span>}
+                    {privacyMsg && <span className="am-settings-privacy-saved">{privacyMsg}</span>}
+                  </div>
+                  <div className="am-settings-privacy-row">
+                    <div>
+                      <strong>Show my CGPA</strong>
+                      <span>Display your current CGPA in your member profile popup.</span>
+                    </div>
+                    <div
+                      className={`toggle-switch ${privacySettings.showCgpa ? 'active' : ''}`}
+                      onClick={() => savePrivacySetting('showCgpa', !privacySettings.showCgpa)}
+                      role="switch"
+                      aria-checked={privacySettings.showCgpa}
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); savePrivacySetting('showCgpa', !privacySettings.showCgpa); } }}
+                    />
+                  </div>
+                  <div className="am-settings-privacy-row">
+                    <div>
+                      <strong>Show my attendance</strong>
+                      <span>Display your attendance percentage in your member profile popup.</span>
+                    </div>
+                    <div
+                      className={`toggle-switch ${privacySettings.showAttendance ? 'active' : ''}`}
+                      onClick={() => savePrivacySetting('showAttendance', !privacySettings.showAttendance)}
+                      role="switch"
+                      aria-checked={privacySettings.showAttendance}
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); savePrivacySetting('showAttendance', !privacySettings.showAttendance); } }}
+                    />
+                  </div>
+                </div>
 
                 {isEditingProfile && (
                   <div className="settings-quick-change">

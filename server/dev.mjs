@@ -45,7 +45,7 @@ import { initializeDatabase, resetDatabase, query, sql } from './db.mjs';
 import { handleOAuthRequest } from './socialOAuth.mjs';
 import { handleAuthRoute, readTokenCookie } from './auth.mjs';
 import { requireRole } from './middleware.mjs';
-import { getUserById } from './userStore.mjs';
+import { getUserById, getAllUsersSafe, updateUserProfile } from './userStore.mjs';
 import {
   listMarketplace,
   addMarketplaceListing,
@@ -93,7 +93,7 @@ import {
   MAX_SIZE_BYTES as NOTE_MAX_SIZE,
   UPLOADS_DIR,
 } from './vaultNotesDB.mjs';
-import { createWSServer, broadcastToAll } from './wsServer.mjs';
+import { createWSServer, broadcastToAll, getPresenceMap } from './wsServer.mjs';
 
 // Helper function to answer callback query
 async function answerCallbackQueryFn(botToken, callbackQueryId, text) {
@@ -1588,6 +1588,80 @@ server.on('request', async (req, res) => {
   // ========== Auth Endpoints (JWT + HttpOnly cookie) ==========
 
   if (await handleAuthRoute(req, res)) {
+    return;
+  }
+
+  // ========== Presence / Active Members ==========
+
+  // GET /api/presence/members — sanitized directory of every registered user
+  // with live presence (online/idle/offline) merged in, plus privacy-gated
+  // cgpa/attendance. PUBLIC — anyone (guest or logged in) can read the member
+  // list so the Active Members sidebar works without an account. Sensitive
+  // stats (CGPA/attendance) stay privacy-gated per user below.
+  if (req.url === '/api/presence/members' && req.method === 'GET') {
+    try {
+      const users = await getAllUsersSafe();
+      const presence = getPresenceMap();
+      const members = users
+        .filter(u => u.id && u.name && u.id !== 'guest')
+        .map(u => {
+          const p = presence[u.id] || { status: 'offline', lastSeenAt: null };
+          const privacy = u.privacy || {};
+          const showCgpa = privacy.showCgpa !== false;
+          const showAttendance = privacy.showAttendance === true;
+          return {
+            id: u.id,
+            name: u.name,
+            initials: String(u.name || 'AU').trim().split(/\s+/).slice(0, 2).map(x => x[0]?.toUpperCase()).join('') || 'AU',
+            avatar: u.avatar || null,
+            role: u.role || 'student',
+            department: u.department || '',
+            batch: u.batch || u.batchName || u.batchNo || '',
+            batchNo: u.batchNo || '',
+            batchName: u.batchName || '',
+            semester: u.semester ?? 1,
+            yearSemester: u.yearSemester || '',
+            section: u.section || '',
+            labSection: u.labSection || '',
+            status: p.status,
+            lastSeenAt: p.lastSeenAt || (u.lastSeenAt ? new Date(u.lastSeenAt).getTime() : null),
+            cgpa: showCgpa && u.cgpa > 0 ? Number(u.cgpa) : null,
+            attendancePct: showAttendance && u.attendancePct ? Number(u.attendancePct) : null,
+            privacy: {
+              showCgpa,
+              showAttendance,
+            },
+          };
+        });
+      sendJson(res, 200, { success: true, members });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to load members.' });
+    }
+    return;
+  }
+
+  // POST /api/presence/privacy — update the viewer's own privacy toggles
+  // ({ showCgpa, showAttendance }). Stored on the user record in users.json.
+  if (req.url === '/api/presence/privacy' && req.method === 'POST') {
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    try {
+      const body = await readJsonBody(req);
+      const user = await getUserById(auth.id);
+      if (!user) {
+        sendJson(res, 404, { success: false, error: 'User not found.' });
+        return;
+      }
+      const next = {
+        ...(user.privacy || {}),
+        showCgpa: typeof body.showCgpa === 'boolean' ? body.showCgpa : (user.privacy?.showCgpa !== false),
+        showAttendance: typeof body.showAttendance === 'boolean' ? body.showAttendance : (user.privacy?.showAttendance === true),
+      };
+      const updated = await updateUserProfile(auth.id, { privacy: next });
+      sendJson(res, 200, { success: true, privacy: next, user: updated });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to update privacy settings.' });
+    }
     return;
   }
 

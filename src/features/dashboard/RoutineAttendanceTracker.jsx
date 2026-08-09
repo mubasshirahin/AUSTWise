@@ -1,9 +1,8 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useRoutine } from '../../context/RoutineContext';
 import {
-  Percent, AlertTriangle,
-  Info, BookOpen, Trash2, Clock, MapPin, CheckCircle2, XCircle,
-  MoreVertical, Activity, Check,
+  Percent,
+  Info, BookOpen, Clock, MapPin, CheckCircle2, XCircle,
 } from 'lucide-react';
 import { setUserStorageItem, getUserStorageKey } from '../../utils/authStorage';
 import { getCalculatedAttendanceDates, getSemesterStartDate } from '../../utils/semesterDates';
@@ -65,11 +64,10 @@ export default function RoutineAttendanceTracker() {
   const [telegramAttendance,   setTelegramAttendance] = useState({});
   const [loadingTelegram,      setLoadingTelegram]    = useState(false);
 
-  const [showGuide,         setShowGuide]         = useState(false);
   const [expandedCourseKey, setExpandedCourseKey] = useState(null);
-  const [showMenu,          setShowMenu]          = useState(false);
+  const [manualEditCourses, setManualEditCourses] = useState({});
+  const [attendanceMarks, setAttendanceMarks] = useState({});
   const [inView,            setInView]            = useState(false);
-  const menuRef = useRef(null);
   const widgetRef = useRef(null);
 
   // Play the entrance animation only when the widget scrolls into view.
@@ -94,16 +92,6 @@ export default function RoutineAttendanceTracker() {
     observer.observe(el);
     const fallback = setTimeout(() => setInView(true), 1200);
     return () => { observer.disconnect(); clearTimeout(fallback); };
-  }, []);
-
-  useEffect(() => {
-    const handleClick = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setShowMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
   // ---------- Telegram sync ----------
@@ -187,17 +175,6 @@ export default function RoutineAttendanceTracker() {
   useEffect(() => { setUserStorageItem(storageKeyTypes.enabled,  isEnabled);      }, [isEnabled]);
   useEffect(() => { setUserStorageItem(storageKeyTypes.data,     attendanceData);  }, [attendanceData]);
   useEffect(() => { setUserStorageItem(storageKeyTypes.sessions, sessionMarks);    }, [sessionMarks]);
-
-  // ---------- Clear all ----------
-  const clearAllData = () => {
-    [storageKeyTypes.enabled, storageKeyTypes.data, storageKeyTypes.sessions].forEach(type => {
-      const key = getUserStorageKey(type);
-      if (key) localStorage.removeItem(key);
-    });
-    setAttendanceData({});
-    setSessionMarks({});
-    setIsEnabled(false);
-  };
 
   // ---------- Course structure ----------
   const courseStats = useMemo(() => {
@@ -327,13 +304,18 @@ export default function RoutineAttendanceTracker() {
   useEffect(() => { try { localStorage.setItem('aust-attendance-overall-average', String(overallStats.average)); } catch {} }, [overallStats.average]);
 
   // ---------- Present / Absent toggle buttons ----------
-  const ToggleBtn = ({ sessionId, courseKey, currentStatus, targetStatus, label, icon: Icon }) => {
+  const ToggleBtn = ({ sessionId, courseKey, currentStatus, targetStatus, label, icon: Icon, disabled }) => {
     const isActive = currentStatus === targetStatus;
     return (
       <button
-        className={`att-toggle-pill ${targetStatus}${isActive ? ' active' : ''}`}
-        onClick={(e) => { e.stopPropagation(); setSessionStatus(sessionId, courseKey, targetStatus); }}
-        title={isActive ? `Clear ${label}` : `Mark ${label}`}
+        className={`att-toggle-pill ${targetStatus}${isActive ? ' active' : ''}${disabled ? ' is-disabled' : ''}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (disabled) return;
+          setSessionStatus(sessionId, courseKey, targetStatus);
+        }}
+        disabled={disabled}
+        title={disabled ? 'Enable Manual Edit to mark attendance' : (isActive ? `Clear ${label}` : `Mark ${label}`)}
       >
         <Icon size={11} style={{ flexShrink: 0 }} />
         {label}
@@ -360,8 +342,10 @@ export default function RoutineAttendanceTracker() {
     const telegramTot  = typeof telegramData === 'object' ? (telegramData.total    || 0) : 0;
     const telegramAbs  = telegramTot - telegramAtt;
 
-    const attended     = Math.max(localAtt, telegramAtt);
-    const absent       = Math.max(absentMarks, telegramAbs);
+    const isManualEdit = !!manualEditCourses[stat.fullKey];
+
+    const attended     = isManualEdit ? localAtt : telegramAtt;
+    const absent       = isManualEdit ? absentMarks : telegramAbs;
     const totalMarked  = attended + absent;
     const unmarked     = Math.max(0, stat.totalSemesterClasses - totalMarked);
     const percentage   = stat.totalSemesterClasses > 0
@@ -370,6 +354,10 @@ export default function RoutineAttendanceTracker() {
 
     const neededTotal  = Math.ceil(stat.totalSemesterClasses * (MIN_ATTENDANCE / 100));
     const canMissThis  = Math.max(0, stat.totalSemesterClasses - neededTotal - absent);
+
+    const totalMarksForCourse = attendanceMarks[stat.fullKey] || 0;
+    const perClassMark = stat.totalSemesterClasses > 0 ? totalMarksForCourse / stat.totalSemesterClasses : 0;
+    const expectedMark = attended * perClassMark;
 
     const isExpanded   = expandedCourseKey === stat.fullKey;
 
@@ -432,7 +420,29 @@ export default function RoutineAttendanceTracker() {
                 <div className="att-instances-header">
                   <Clock size={12} />
                   {courseInstances.length} class sessions · {SEMESTER_WEEKS}-week semester
-                  <span className="att-instances-hint">Tap a row to mark Present / Absent</span>
+                  <button
+                    className={`manual-edit-toggle${isManualEdit ? ' active' : ''}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setManualEditCourses(prev => ({
+                        ...prev,
+                        [stat.fullKey]: !prev[stat.fullKey],
+                      }));
+                    }}
+                    style={{
+                      marginLeft: 'auto',
+                      fontSize: '10px',
+                      padding: '2px 8px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: `1px solid ${isManualEdit ? 'var(--accent-blue)' : 'var(--border-primary)'}`,
+                      background: isManualEdit ? 'var(--accent-blue-glow)' : 'transparent',
+                      color: isManualEdit ? 'var(--accent-blue)' : 'var(--text-tertiary)',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {isManualEdit ? 'Auto' : 'Manual Edit'}
+                  </button>
                 </div>
                 <div className="att-instances-list">
                   {courseInstances.map((inst, instIdx) => {
@@ -460,6 +470,7 @@ export default function RoutineAttendanceTracker() {
                             targetStatus="present"
                             label="Present"
                             icon={CheckCircle2}
+                            disabled={!isManualEdit}
                           />
                           <ToggleBtn
                             sessionId={inst.id}
@@ -468,6 +479,7 @@ export default function RoutineAttendanceTracker() {
                             targetStatus="absent"
                             label="Absent"
                             icon={XCircle}
+                            disabled={!isManualEdit}
                           />
                         </span>
                       </div>
@@ -476,6 +488,34 @@ export default function RoutineAttendanceTracker() {
                 </div>
               </div>
             )}
+
+            <div className="att-expected-mark-row">
+              <span className="att-expected-mark-label">Attendance Marks:</span>
+              <input
+                type="number"
+                className="att-expected-mark-input"
+                value={totalMarksForCourse || ''}
+                placeholder="e.g. 20"
+                onChange={(e) => {
+                  const val = Math.max(0, Number(e.target.value) || 0);
+                  setAttendanceMarks(prev => ({ ...prev, [stat.fullKey]: val }));
+                }}
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
+              />
+              {totalMarksForCourse > 0 && (
+                <>
+                  <span className="att-expected-mark-sep">|</span>
+                  <span className="att-expected-mark-label">Per class:</span>
+                  <span className="att-expected-mark-value">{perClassMark.toFixed(2)}</span>
+                  <span className="att-expected-mark-sep">|</span>
+                  <span className="att-expected-mark-label">Expected:</span>
+                  <span className="att-expected-mark-value" style={{ color: 'var(--accent-emerald)' }}>
+                    {expectedMark.toFixed(2)}
+                  </span>
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -505,22 +545,18 @@ export default function RoutineAttendanceTracker() {
             <div className="schedule-stat">
               <span
                 className="schedule-stat-value"
-                style={{ color: overallStats.average >= MIN_ATTENDANCE ? 'var(--accent-emerald)' : 'var(--accent-amber)' }}
+                style={{ color: isEnabled ? (overallStats.average >= MIN_ATTENDANCE ? 'var(--accent-emerald)' : 'var(--accent-amber)') : 'var(--text-tertiary)' }}
               >
-                {overallStats.average}%
+                {isEnabled ? `${overallStats.average}%` : '0%'}
               </span>
               <span className="schedule-stat-label">overall</span>
             </div>
             <div className="schedule-stat">
-              <span className="schedule-stat-value">{overallStats.totalCanMiss}</span>
-              <span className="schedule-stat-label">can miss</span>
-            </div>
-            <div className="schedule-stat">
               <span
                 className="schedule-stat-value"
-                style={{ color: overallStats.warningCount > 0 ? 'var(--accent-rose)' : undefined }}
+                style={{ color: isEnabled ? (overallStats.warningCount > 0 ? 'var(--accent-rose)' : undefined) : 'var(--text-tertiary)' }}
               >
-                {overallStats.warningCount}
+                {isEnabled ? overallStats.warningCount : 0}
               </span>
               <span className="schedule-stat-label">at risk</span>
             </div>
@@ -528,65 +564,19 @@ export default function RoutineAttendanceTracker() {
         </div>
 
         <div className="schedule-actions">
-          <div className="export-dropdown" ref={menuRef}>
-            <button className="schedule-nav-btn" onClick={() => setShowMenu(!showMenu)} aria-label="More options" aria-haspopup="true">
-              <MoreVertical size={18} />
-            </button>
-            {showMenu && (
-              <div className="export-menu">
-                <button
-                  className={`export-menu-item${isEnabled ? ' menu-active' : ''}`}
-                  onClick={() => { setIsEnabled(v => !v); setShowMenu(false); }}
-                >
-                  <Activity size={14} /> Tracking enabled {isEnabled && <Check size={14} className="menu-check" />}
-                </button>
-                <button
-                  className={`export-menu-item${showGuide ? ' menu-active' : ''}`}
-                  onClick={() => { setShowGuide(v => !v); setShowMenu(false); }}
-                >
-                  <Info size={14} /> Attendance guide {showGuide && <Check size={14} className="menu-check" />}
-                </button>
-                <div className="export-menu-sep" />
-                <button className="export-menu-item" onClick={() => { clearAllData(); setShowMenu(false); }}>
-                  <Trash2 size={14} /> Reset all data
-                </button>
-              </div>
-            )}
+          <div className="flex items-center gap-2">
+            <Info size={16} style={{ color: isEnabled ? 'var(--accent-blue)' : 'var(--text-tertiary)' }} />
+            <div
+              className={`toggle-switch${isEnabled ? ' active' : ''}`}
+              onClick={() => setIsEnabled(v => !v)}
+              role="switch"
+              aria-checked={isEnabled}
+            />
           </div>
         </div>
       </div>
 
       <div className="schedule-dotted-divider" />
-
-      {showGuide && (
-        <div className="att-guide-panel">
-          <div className="att-guide-title">
-            <AlertTriangle size={14} /> Why 75% Attendance?
-          </div>
-          <p>
-            AUST requires a <strong>minimum 75% attendance</strong> in each course to sit for semester exams.
-            Falling below means you may be <strong>restricted from appearing</strong>.
-          </p>
-          <div className="att-guide-stats">
-            <div className="att-guide-stat">
-              <span className="att-guide-stat-val">75%</span>
-              <span className="att-guide-stat-lbl">Minimum required</span>
-            </div>
-            <div className="att-guide-stat">
-              <span className="att-guide-stat-val">{overallStats.totalCanMiss}</span>
-              <span className="att-guide-stat-lbl">Classes you can still miss</span>
-            </div>
-            <div className="att-guide-stat">
-              <span className="att-guide-stat-val">{overallStats.warningCount}</span>
-              <span className="att-guide-stat-lbl">Course(s) at risk</span>
-            </div>
-          </div>
-          <p className="att-guide-tip">
-            Tip: Click each class session below to mark Present / Absent.
-            The aggregate updates automatically.
-          </p>
-        </div>
-      )}
 
       {isEnabled ? (
         <>

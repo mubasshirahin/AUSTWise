@@ -6,7 +6,7 @@ import {
   Search, Bell, BellRing, Sun, Moon, Menu, Newspaper, Terminal, Check, User,
   Clock, Hourglass, AlertTriangle, CalendarCheck, Info, CheckCheck, Trash2,
   Settings, LogOut, Sparkles, Gauge, MoonStar, Pen, PenTool, Zap,
-  Building2, Type, Grid2x2, Cpu,
+  Building2, Type, Grid2x2, Cpu, Users,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -63,7 +63,7 @@ const lightThemeOptions = [
   { id: 'minimalist-monochrome', label: 'Monochrome', icon: Pen },
 ];
 
-export default function TopNavbar({ onMenuClick, onSearchOpen }) {
+export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMembersToggle }) {
   const { theme, setTheme } = useTheme();
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
@@ -262,6 +262,18 @@ export default function TopNavbar({ onMenuClick, onSearchOpen }) {
       </div>
 
       <div className="topbar-right">
+        {/* Active members toggle — visible for everyone (member list is public) */}
+        <button
+          type="button"
+          className={`topbar-icon-btn am-nav-toggle${membersOpen ? ' am-nav-toggle-active' : ''}`}
+          onClick={() => onMembersToggle?.()}
+          aria-label={membersOpen ? 'Hide active members' : 'Show active members'}
+          aria-pressed={membersOpen}
+          title={membersOpen ? 'Hide who\'s online' : 'See who\'s online'}
+        >
+          <Users size={18} />
+        </button>
+
         <div className="notif-wrapper" ref={notifRef}>
           <button
             className="topbar-icon-btn"

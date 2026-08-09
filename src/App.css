@@ -1,3 +1,16 @@
+/* ─── Active Members right panel push (desktop) ─── */
+.main-content.members-open {
+  margin-right: var(--am-width, 280px);
+  width: calc(100% - var(--sidebar-width) - var(--am-width, 280px));
+  max-width: calc(100% - var(--sidebar-width) - var(--am-width, 280px));
+  transition: margin-left var(--transition-base), width var(--transition-base), max-width var(--transition-base), margin-right var(--transition-base);
+}
+
+.main-content.members-open.sidebar-collapsed {
+  width: calc(100% - var(--sidebar-collapsed) - var(--am-width, 280px));
+  max-width: calc(100% - var(--sidebar-collapsed) - var(--am-width, 280px));
+}
+
 /* ─── Auth Page Full-Screen Override ─── */
 .page-wrapper:has(.auth-page) {
   padding: 0;

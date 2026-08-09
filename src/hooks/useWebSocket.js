@@ -17,6 +17,8 @@ const PING_INTERVAL = 30000;
  * @param {function} options.onDelete - Called when peer deletes a message
  * @param {function} options.onEdit - Called when peer edits a message
  * @param {function} options.onOnlineUsers - Called with array of online user IDs
+ * @param {function} options.onPresence - Called with { userId, status, lastSeenAt } when a user's presence changes
+ * @param {function} options.onPresenceSnapshot - Called with { presence } object map on connect
  * @param {function} options.onConnectionChange - Called with boolean (connected/disconnected)
  */
 export default function useWebSocket(userId, options = {}) {
@@ -126,6 +128,14 @@ export default function useWebSocket(userId, options = {}) {
             case 'online-users':
               setOnlineUsers(payload.userIds || []);
               opts.onOnlineUsers?.(payload.userIds || []);
+              break;
+
+            case 'presence':
+              opts.onPresence?.(payload);
+              break;
+
+            case 'presence-snapshot':
+              opts.onPresenceSnapshot?.(payload.presence || {});
               break;
 
             case 'error':
