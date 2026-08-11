@@ -889,49 +889,6 @@ export default function SettingsPage() {
 
                 <LinkedAccountsSection user={user} updateUser={updateUser} />
 
-                {/* Member-list privacy — controls what others see in Active Members */}
-                <div className="am-settings-privacy">
-                  <div className="am-settings-privacy-head">
-                    <div className="am-settings-privacy-title">
-                      <ShieldCheck size={16} />
-                      <div>
-                        <h4>Member List Privacy</h4>
-                        <p>Control what others see in the Active Members sidebar.</p>
-                      </div>
-                    </div>
-                    {privacySaving && <span className="am-settings-privacy-saving">Saving…</span>}
-                    {privacyMsg && <span className="am-settings-privacy-saved">{privacyMsg}</span>}
-                  </div>
-                  <div className="am-settings-privacy-row">
-                    <div>
-                      <strong>Show my CGPA</strong>
-                      <span>Display your current CGPA in your member profile popup.</span>
-                    </div>
-                    <div
-                      className={`toggle-switch ${privacySettings.showCgpa ? 'active' : ''}`}
-                      onClick={() => savePrivacySetting('showCgpa', !privacySettings.showCgpa)}
-                      role="switch"
-                      aria-checked={privacySettings.showCgpa}
-                      tabIndex={0}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); savePrivacySetting('showCgpa', !privacySettings.showCgpa); } }}
-                    />
-                  </div>
-                  <div className="am-settings-privacy-row">
-                    <div>
-                      <strong>Show my attendance</strong>
-                      <span>Display your attendance percentage in your member profile popup.</span>
-                    </div>
-                    <div
-                      className={`toggle-switch ${privacySettings.showAttendance ? 'active' : ''}`}
-                      onClick={() => savePrivacySetting('showAttendance', !privacySettings.showAttendance)}
-                      role="switch"
-                      aria-checked={privacySettings.showAttendance}
-                      tabIndex={0}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); savePrivacySetting('showAttendance', !privacySettings.showAttendance); } }}
-                    />
-                  </div>
-                </div>
-
                 {isEditingProfile && (
                   <div className="settings-quick-change">
                     <div className="quick-change-header">
@@ -1538,6 +1495,50 @@ export default function SettingsPage() {
                 <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                   Location is only used while the app is open to determine if you are inside the library geofence. Nothing is stored on this device and you can turn this off any time.
                 </p>
+              </div>
+
+              <div style={{ height: '1px', background: 'var(--border-primary)', margin: '16px 0' }} />
+
+              <div className="am-settings-privacy">
+                <div className="am-settings-privacy-head">
+                  <div className="am-settings-privacy-title">
+                    <ShieldCheck size={16} />
+                    <div>
+                      <h4>Member List Privacy</h4>
+                      <p>Control what others see in the Active Members sidebar.</p>
+                    </div>
+                  </div>
+                  {privacySaving && <span className="am-settings-privacy-saving">Saving…</span>}
+                  {privacyMsg && <span className="am-settings-privacy-saved">{privacyMsg}</span>}
+                </div>
+                <div className="am-settings-privacy-row">
+                  <div>
+                    <strong>Show my CGPA</strong>
+                    <span>Display your current CGPA in your member profile popup.</span>
+                  </div>
+                  <div
+                    className={`toggle-switch ${privacySettings.showCgpa ? 'active' : ''}`}
+                    onClick={() => savePrivacySetting('showCgpa', !privacySettings.showCgpa)}
+                    role="switch"
+                    aria-checked={privacySettings.showCgpa}
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); savePrivacySetting('showCgpa', !privacySettings.showCgpa); } }}
+                  />
+                </div>
+                <div className="am-settings-privacy-row">
+                  <div>
+                    <strong>Show my attendance</strong>
+                    <span>Display your attendance percentage in your member profile popup.</span>
+                  </div>
+                  <div
+                    className={`toggle-switch ${privacySettings.showAttendance ? 'active' : ''}`}
+                    onClick={() => savePrivacySetting('showAttendance', !privacySettings.showAttendance)}
+                    role="switch"
+                    aria-checked={privacySettings.showAttendance}
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); savePrivacySetting('showAttendance', !privacySettings.showAttendance); } }}
+                  />
+                </div>
               </div>
             </div>
           )}
