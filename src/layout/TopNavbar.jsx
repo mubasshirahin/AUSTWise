@@ -6,7 +6,7 @@ import {
   Search, Bell, BellRing, Sun, Moon, Menu, Newspaper, Terminal, Check, User,
   Clock, Hourglass, AlertTriangle, CalendarCheck, Info, CheckCheck, Trash2,
   Settings, LogOut, Sparkles, Gauge, MoonStar, Pen, PenTool, Zap,
-  Building2, Type, Grid2x2, Cpu, Users,
+  Building2, Type, Grid2x2, Cpu, Users, Orbit,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -52,6 +52,7 @@ const darkThemeOptions = [
   { id: 'bitcoindefi', label: 'Bitcoin DeFi', icon: Zap },
   { id: 'art-deco', label: 'Art Deco', icon: Building2 },
   { id: 'poster', label: 'Bold Type', icon: Type },
+  { id: 'meshtopo', label: 'Mesh Topology', icon: Orbit },
 ];
 
 const lightThemeOptions = [

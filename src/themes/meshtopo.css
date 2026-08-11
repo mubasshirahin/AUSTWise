@@ -1,0 +1,367 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   MESH TOPOLOGY  —  "global mesh / neon-neo" theme
+   ────────────────────────────────────────────────────────────────────────────
+   Built from the Global-Mesh-Topology-Impact design system: a near-black
+   (#050505) full-bleed canvas, a single electric emerald primary (#10B981) as
+   the sole interactive accent, deep pine secondary (#022C22) and tertiary
+   (#112A1E) for supporting contrast, and muted zinc text (#71717A). Surfaces
+   read as glass with a gradient-border hairline shell, emerald ambient glow,
+   and a strong 4px grid rhythm. JetBrains Mono drives display hierarchy while
+   Inter carries the interface copy. Think premium command-console meets living
+   network mesh — neon-neo, restrained, meditative.
+
+   Architecture mirrors the per-theme convention in index.css / nexus.css: a
+   token remap the whole app reads from, plus a scoped personality layer. Only
+   one theme is ever active via the data-theme attribute.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Token remap ───────────────────────────────────────────────────────────── */
+[data-theme="meshtopo"] {
+  /* Typography — JetBrains Mono display, Inter body, mono labels */
+  --font-display: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  --font-code: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  --font-label: 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* Layered near-black — the "room" is a single deep void (#050505) */
+  --bg-primary: #050505;          /* deepest — the canvas */
+  --bg-secondary: #070B09;        /* slightly elevated surfaces */
+  --bg-tertiary: #0A0F0C;         /* elevated / muted surfaces, input wells */
+  --bg-card: rgba(10, 16, 12, 0.55);    /* glass — floats over the mesh */
+  --bg-card-hover: rgba(14, 22, 17, 0.78);
+  --bg-glass: rgba(7, 11, 9, 0.6);
+  --bg-glass-heavy: rgba(5, 5, 5, 0.88);
+  --bg-input: rgba(10, 16, 12, 0.6);
+
+  /* Type — zinc-neutral primary (per design #71717A), emerald secondary */
+  --text-primary: #A3A3A3;
+  --text-secondary: #10B981;      /* emerald-500 — the design's text-secondary */
+  --text-tertiary: #71717A;       /* zinc-500 — muted foundation */
+  --text-inverse: #050505;        /* dark ink on emerald */
+
+  /* Borders — hairline pine green (#112A1E family) */
+  --border-primary: rgba(17, 42, 30, 0.9);
+  --border-secondary: rgba(6, 78, 59, 0.55);
+  --border-focus: rgba(16, 185, 129, 0.6);
+
+  /* Accents — emerald is the PRIMARY interactive accent; pine supports */
+  --accent-blue: #10B981;         /* emerald-500 — PRIMARY / interactive */
+  --accent-blue-glow: rgba(16, 185, 129, 0.13);
+  --accent-purple: #10B981;       /* emerald-500 — supporting emphasis */
+  --accent-purple-glow: rgba(16, 185, 129, 0.13);
+  --accent-amber: #10B981;        /* emerald-500 — PRIMARY / interactive */
+  --accent-amber-glow: rgba(16, 185, 129, 0.13);
+  --accent-emerald: #10B981;      /* success — same as primary */
+  --accent-emerald-glow: rgba(16, 185, 129, 0.13);
+  --accent-rose: #FB7185;         /* soft alert rose */
+  --accent-rose-glow: rgba(251, 113, 133, 0.12);
+  --accent-cyan: #22D3EE;         /* cool teal for the odd telemetry chip */
+  --accent-cyan-glow: rgba(34, 211, 238, 0.11);
+  --accent-orange: #FB923C;       /* warm orange */
+  --accent-orange-glow: rgba(251, 146, 60, 0.12);
+
+  /* Gradients — emerald-led, pine-tinted, glassy */
+  --gradient-primary: linear-gradient(135deg, #10B981 0%, #064E3B 100%);
+  --gradient-secondary: linear-gradient(135deg, #0A0F0C 0%, #070B09 100%);
+  --gradient-accent: linear-gradient(135deg, #10B981 0%, #22D3EE 100%);
+  --gradient-warm: linear-gradient(135deg, #10B981 0%, #FB7185 100%);
+  --gradient-success: linear-gradient(135deg, #10B981 0%, #22D3EE 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(16, 185, 129, 0.06) 0%, rgba(255, 255, 255, 0.015) 100%);
+
+  /* Radius — tight 12px-anchored system, full pill for controls */
+  --radius-sm: 12px;
+  --radius-md: 12px;
+  --radius-lg: 12px;
+  --radius-xl: 12px;
+  --radius-2xl: 12px;
+  --radius-full: 9999px;
+
+  /* Elevation — glass-first depth + the signature emerald ambient glow */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.6);
+  --shadow-md: 0 8px 20px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 20px 40px -20px rgba(0, 0, 0, 0.8);
+  --shadow-xl: 0 24px 60px -24px rgba(0, 0, 0, 0.85);
+  --shadow-popper: 0 8px 24px rgba(0, 0, 0, 0.55);
+  --shadow-glow-blue: 0 0 8px rgba(16, 185, 129, 0.8);
+  --shadow-glow-purple: 0 0 8px rgba(16, 185, 129, 0.5);
+  --shadow-glow-amber: 0 0 6px rgba(16, 185, 129, 0.45);
+
+  /* Mesh-only primitives consumed by the personality layer below */
+  --mt-emerald: #10B981;
+  --mt-pine: #022C22;
+  --mt-pine-2: #112A1E;
+  --mt-void: #050505;
+  --mt-glow-sm: 0 0 8px rgba(16, 185, 129, 0.8);
+  --mt-glow-md: 0 0 12px rgba(16, 185, 129, 0.5), 0 0 4px rgba(16, 185, 129, 0.35);
+  --mt-border-glow: 0 0 0 1px rgba(16, 185, 129, 0.25), 0 0 12px rgba(16, 185, 129, 0.16);
+  --mt-blur: blur(4px);
+  --mt-grid-line: rgba(16, 185, 129, 0.05);
+
+  --scrollbar-track: #050505;
+  --scrollbar-thumb: #112A1E;
+  --scrollbar-thumb-hover: #064E3B;
+
+  --status-online: #10B981;
+  --status-away: #F59E0B;
+  --status-offline: #3F3F46;
+  --status-busy: #FB7185;
+
+  --danger: #FB7185;
+  --warning: #F59E0B;
+  --success: #10B981;
+  --info: #22D3EE;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   PERSONALITY LAYER  —  scoped to [data-theme="meshtopo"]
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── The room: pure black canvas + a strong 4px emerald grid field ─── */
+[data-theme="meshtopo"] body {
+  background-color: var(--bg-primary);
+  background-image:
+    radial-gradient(120% 90% at 50% 0%, rgba(16, 185, 129, 0.05) 0%, transparent 55%),
+    linear-gradient(180deg, transparent 0%, rgba(16, 185, 129, 0.04) 100%),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0px, transparent 36px,
+      var(--mt-grid-line) 36px, var(--mt-grid-line) 37px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0px, transparent 36px,
+      var(--mt-grid-line) 36px, var(--mt-grid-line) 37px
+    );
+  background-attachment: fixed;
+}
+
+/* ─── Typography: JetBrains Mono display hierarchy, mono labels ─── */
+[data-theme="meshtopo"] .page-title,
+[data-theme="meshtopo"] .section-title,
+[data-theme="meshtopo"] .stat-value,
+[data-theme="meshtopo"] h1,
+[data-theme="meshtopo"] h2,
+[data-theme="meshtopo"] h3 {
+  font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  letter-spacing: -0.025em;
+}
+[data-theme="meshtopo"] .stat-value,
+[data-theme="meshtopo"] .countdown-value,
+[data-theme="meshtopo"] .score-number {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "cv11" 1;
+}
+[data-theme="meshtopo"] .stat-label,
+[data-theme="meshtopo"] .countdown-label,
+[data-theme="meshtopo"] .badge,
+[data-theme="meshtopo"] .section-eyebrow {
+  font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ─── Cards: floating glass with a gradient hairline border shell ─── */
+[data-theme="meshtopo"] .glass-card,
+[data-theme="meshtopo"] .glass-card-static {
+  position: relative;
+  background: var(--bg-card);
+  -webkit-backdrop-filter: var(--mt-blur);
+  backdrop-filter: var(--mt-blur);
+  border: 1px solid rgba(17, 42, 30, 0.9);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+[data-theme="meshtopo"] .glass-card::before,
+[data-theme="meshtopo"] .glass-card-static::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: var(--radius-lg);
+  padding: 1px;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.10) 0%, rgba(0, 0, 0, 0) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+[data-theme="meshtopo"] .glass-card:hover {
+  background: var(--bg-card-hover);
+  border-color: rgba(6, 78, 59, 0.9);
+  box-shadow: var(--shadow-lg), 0 0 12px rgba(16, 185, 129, 0.05) inset;
+}
+
+[data-theme="meshtopo"] .card-list-item {
+  background: var(--bg-card);
+  -webkit-backdrop-filter: var(--mt-blur);
+  backdrop-filter: var(--mt-blur);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+}
+[data-theme="meshtopo"] .card-list-item:hover {
+  background: var(--bg-card-hover);
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+/* ─── Solid surface for hero cards ─── */
+[data-theme="meshtopo"] .hero-panel,
+[data-theme="meshtopo"] .page-hero {
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-xl);
+  background: var(--bg-card);
+}
+
+/* ─── Buttons: emerald primary, pine-tinted secondary, quiet ghost ─── */
+[data-theme="meshtopo"] .btn {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: var(--fw-semibold);
+  border-radius: var(--radius-md);
+  transition: background var(--transition-base), border-color var(--transition-base),
+              box-shadow var(--transition-base), transform 150ms ease-out, filter var(--transition-base);
+}
+[data-theme="meshtopo"] .btn:active { transform: scale(0.98); }
+
+[data-theme="meshtopo"] .btn-primary {
+  background: var(--mt-emerald);
+  color: var(--text-inverse);
+  border: none;
+  box-shadow: none;
+}
+[data-theme="meshtopo"] .btn-primary:hover {
+  filter: brightness(1.08);
+  box-shadow: var(--mt-glow-sm);
+}
+
+[data-theme="meshtopo"] .btn-secondary {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+[data-theme="meshtopo"] .btn-secondary:hover {
+  border-color: rgba(16, 185, 129, 0.55);
+  background: rgba(16, 185, 129, 0.08);
+  color: var(--mt-emerald);
+  box-shadow: var(--mt-glow-sm);
+}
+
+[data-theme="meshtopo"] .btn-ghost {
+  background: transparent;
+  color: var(--text-primary);
+}
+[data-theme="meshtopo"] .btn-ghost:hover {
+  background: rgba(16, 185, 129, 0.07);
+  color: var(--mt-emerald);
+}
+
+[data-theme="meshtopo"] .btn-danger {
+  background: var(--danger);
+  color: #050505;
+}
+[data-theme="meshtopo"] .btn-danger:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 0 12px rgba(251, 113, 133, 0.3);
+}
+
+/* ─── Inputs: glass wells with an emerald focus bloom ─── */
+[data-theme="meshtopo"] .input,
+[data-theme="meshtopo"] .search-box input {
+  background-color: var(--bg-input);
+  -webkit-backdrop-filter: var(--mt-blur);
+  backdrop-filter: var(--mt-blur);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+}
+[data-theme="meshtopo"] .input:focus,
+[data-theme="meshtopo"] .search-box input:focus {
+  border-color: rgba(16, 185, 129, 0.6);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.16), 0 0 14px rgba(16, 185, 129, 0.10);
+}
+[data-theme="meshtopo"] .input::placeholder,
+[data-theme="meshtopo"] .search-box input::placeholder { color: var(--text-tertiary); }
+
+/* ─── Tabs: quiet rail, emerald-lit active key ─── */
+[data-theme="meshtopo"] .tabs {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+}
+[data-theme="meshtopo"] .tab { color: var(--text-secondary); }
+[data-theme="meshtopo"] .tab:hover { background: rgba(16, 185, 129, 0.06); color: var(--text-primary); }
+[data-theme="meshtopo"] .tab.active {
+  background: var(--accent-blue-glow);
+  color: var(--mt-emerald);
+  box-shadow: var(--mt-glow-sm);
+}
+
+/* ─── Tags / badges: subtle glass chips with emerald emphasis ─── */
+[data-theme="meshtopo"] .tag {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+}
+[data-theme="meshtopo"] .tag:hover,
+[data-theme="meshtopo"] .tag.active {
+  background: var(--accent-blue-glow);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: var(--mt-emerald);
+}
+
+/* ─── Progress: emerald bar with a soft glow ─── */
+[data-theme="meshtopo"] .progress-bar { background: rgba(255, 255, 255, 0.05); }
+[data-theme="meshtopo"] .progress-bar-fill {
+  background: var(--gradient-primary);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+}
+
+/* ─── Toggle: track glows emerald when on ─── */
+[data-theme="meshtopo"] .toggle-switch { background: rgba(255, 255, 255, 0.07); border: 1px solid var(--border-primary); }
+[data-theme="meshtopo"] .toggle-switch.active {
+  background: var(--mt-emerald);
+  border-color: transparent;
+  box-shadow: var(--mt-glow-sm);
+}
+[data-theme="meshtopo"] .toggle-switch::after { background: #A3A3A3; }
+
+/* ─── Modal: heavy glass, lifted clear of the grid ─── */
+[data-theme="meshtopo"] .modal {
+  background: var(--bg-glass-heavy);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+}
+
+/* ─── Banner: glass strip with a coloured rule ─── */
+[data-theme="meshtopo"] .info-banner {
+  background: rgba(255, 255, 255, 0.02);
+  border-left: 3px solid currentColor;
+}
+
+/* ─── Focus: emerald ring, everywhere ─── */
+[data-theme="meshtopo"] :focus-visible {
+  outline: 2px solid var(--mt-emerald);
+  outline-offset: 2px;
+}
+
+/* ─── Scrollbar ─── */
+[data-theme="meshtopo"] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+[data-theme="meshtopo"] ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+[data-theme="meshtopo"] ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: var(--radius-full); }
+[data-theme="meshtopo"] ::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
+
+/* ─── Reduced motion: keep the glow, drop the pulse/scale ─── */
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="meshtopo"] .glass-card:hover,
+  [data-theme="meshtopo"] .glass-card-static:hover,
+  [data-theme="meshtopo"] .card-list-item:hover {
+    transform: none;
+  }
+  [data-theme="meshtopo"] .btn { transition: none; }
+  [data-theme="meshtopo"] .btn:active { transform: none; }
+}

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { GraduationCap, Briefcase, BookOpen, Monitor, Moon, Sun, Newspaper, Terminal, Sparkles, Gauge, MoonStar, Pen, PenTool, Building2, Check, Eye, EyeOff, Zap, Type, Grid2x2, Cpu, ArrowLeft } from 'lucide-react';
+import { GraduationCap, Briefcase, BookOpen, Monitor, Moon, Sun, Newspaper, Terminal, Sparkles, Gauge, MoonStar, Pen, PenTool, Building2, Check, Eye, EyeOff, Zap, Type, Grid2x2, Cpu, ArrowLeft, Orbit } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { getYearSemOptions } from '../../utils/semester';
@@ -28,6 +28,7 @@ const darkThemeOptions = [
   { id: 'art-deco',              label: 'Art Deco',   icon: Building2  },
   { id: 'poster',                label: 'Bold Type',  icon: Type       },
   { id: 'bitcoindefi',           label: 'Bitcoin Defi', icon: Zap      },
+  { id: 'meshtopo',              label: 'Mesh Topology', icon: Orbit   },
 ];
 
 const lightThemeOptions = [
@@ -100,6 +101,24 @@ export default function AuthPage() {
       localStorage.setItem('logoVariant', next);
       return next;
     });
+  };
+
+  // ─── 3D tilt — card leans with the cursor ───
+  const pageRef = useRef(null);
+  const handleTilt = (e) => {
+    const el = pageRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const nx = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
+    const ny = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
+    el.style.setProperty('--mx', nx.toFixed(3));
+    el.style.setProperty('--my', ny.toFixed(3));
+  };
+  const resetTilt = () => {
+    const el = pageRef.current;
+    if (!el) return;
+    el.style.setProperty('--mx', '0');
+    el.style.setProperty('--my', '0');
   };
 
   // ─── Typewriter ticker ───
@@ -499,6 +518,9 @@ export default function AuthPage() {
 
   return (
     <div
+      ref={pageRef}
+      onMouseMove={handleTilt}
+      onMouseLeave={resetTilt}
       className={`auth-page animate-fadeIn ${blueprintMode ? 'is-blueprint' : ''}`}
       style={{ '--pw-strength': energyIntensity }}
     >
@@ -562,6 +584,24 @@ export default function AuthPage() {
             <span className="auth-ticker-text">{tickerText}</span>
             <span className="auth-ticker-cursor" aria-hidden="true">|</span>
           </p>
+        </div>
+
+        {/* ─── Impact strip (PLACEHOLDER data — swap with real numbers) ─── */}
+        <div className="auth-impact">
+          <div className="auth-impact-item">
+            <strong>12K+</strong>
+            <span>Students</span>
+          </div>
+          <div className="auth-impact-sep" />
+          <div className="auth-impact-item">
+            <strong>200+</strong>
+            <span>Features</span>
+          </div>
+          <div className="auth-impact-sep" />
+          <div className="auth-impact-item">
+            <strong>24/7</strong>
+            <span>Uptime</span>
+          </div>
         </div>
 
         <div

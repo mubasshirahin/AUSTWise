@@ -10,6 +10,7 @@ import './themes/swiss.css'
 import './themes/poster.css'
 import './themes/dark-enhanced.css'
 import './themes/nexus.css'
+import './themes/meshtopo.css'
 import App from './App.jsx'
 
 createRoot(document.getElementById('root')).render(

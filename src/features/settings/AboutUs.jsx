@@ -1,395 +1,639 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  Sparkles, Mail, GitBranch, Globe, ExternalLink, Heart, Quote,
-  Code, Zap, Coffee, Moon, Users, Star, Cpu, BookOpen,
-  MessageCircle, Camera, Briefcase, Image, Send
+  Mail, FileText, Braces, ScrollText, Cpu, Terminal, Zap, ArrowRight, GitCommit,
+  GraduationCap, FolderGit2, Award, Code2
 } from 'lucide-react';
 import './AboutUs.css';
 
-// ─── Developer Info ───
+// ═══════════════════════════════════════════════════════════════
+//  FACTUAL SUBJECT DATA — Mubasshir Mehedi
+// ═══════════════════════════════════════════════════════════════
 const DEV = {
   name: 'Mubasshir Mehedi',
-  initials: 'MM',
-  title: 'The Brain Behind AUSTWise',
-  tagline: 'Solo developer · CSE @ AUST · Problem Solver',
+  handle: 'mubasshir_mehedi',
+  title: 'Just a student',
+  tagline: 'CSE @ AUST · nothing special, really',
   email: 'erumthakbe@gmail.com',
   github: 'erumthakbe',
   facebook: 'erumthakbe',
-  instagram: 'erumthakbe',
   linkedin: 'erumthakbe',
+  instagram: 'erumthakbe',
   batch: 'Quanta 52',
   department: 'CSE',
   university: 'Ahsanullah University of Science & Technology',
-  quote: 'Code is poetry. Every line I write is a step toward making education simpler, smarter, and more accessible for every AUST student.',
-  funFacts: [
-    'Built this entire platform solo — from concept to deployment',
-    'Spent countless late nights debugging so you don\'t have to',
-    'Believes the best code is the code that makes life easier',
-    'Coffee ☕ and curiosity — the two engines behind AUSTWise',
-  ],
 };
 
-// ─── Animated Counter ───
-function AnimatedCounter({ value, label, icon: Icon, suffix = '' }) {
-  const [count, setCount] = useState(0);
-  const ref = useRef(null);
-  const hasAnimated = useRef(false);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting && !hasAnimated.current) {
-        hasAnimated.current = true;
-        const duration = 2000;
-        const steps = 60;
-        const increment = value / steps;
-        let current = 0;
-        const timer = setInterval(() => {
-          current += increment;
-          if (current >= value) {
-            setCount(value);
-            clearInterval(timer);
-          } else {
-            setCount(Math.floor(current));
-          }
-        }, duration / steps);
-      }
-    }, { threshold: 0.3 });
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, [value]);
-
-  return (
-    <div className="about-stat-card" ref={ref}>
-      <div className="about-stat-icon">
-        <Icon size={22} />
-      </div>
-      <div className="about-stat-value">
-        {count}{suffix}
-      </div>
-      <div className="about-stat-label">{label}</div>
-    </div>
-  );
-}
-
-// ─── Tech Stack ───
-const techStack = [
-  { name: 'React 18', icon: Code, color: '#61dafb' },
-  { name: 'Vite', icon: Zap, color: '#ffc018' },
-  { name: 'JavaScript', icon: Cpu, color: '#f7df1e' },
-  { name: 'CSS3', icon: Sparkles, color: '#1572b6' },
-  { name: 'Node.js', icon: Code, color: '#339933' },
-  { name: 'Chart.js', icon: Star, color: '#ff6384' },
-  { name: 'PDF.js', icon: BookOpen, color: '#ed1c24' },
-  { name: 'Mermaid', icon: GitBranch, color: '#ff3670' },
+const QUOTES = [
+  {
+    text: 'I don\'t talk about my achievements. The work talks.',
+    author: 'Mubasshir Mehedi',
+  },
+  {
+    text: 'You\'re using my work right now. I\'ll let that sink in.',
+    author: 'Mubasshir Mehedi',
+  },
+  {
+    text: 'I\'d call myself humble, but that feels like bragging.',
+    author: 'Mubasshir Mehedi',
+  },
+  {
+    text: 'First commit 11:42 PM. Last commit 2:03 AM. Somewhere in between, I slept.',
+    author: 'AUSTWise git log',
+  },
 ];
 
-export default function AboutUs() {
-  const [avatarSrc, setAvatarSrc] = useState(() => localStorage.getItem('austwise_dev_avatar'));
-  const [typedText, setTypedText] = useState('');
-  const fullText = 'Hello, I\'m Mubasshir 👋';
-  const [mounted, setMounted] = useState(false);
+// ─── File tree — one entry per content section ───
+const FILES = [
+  { id: 'about',      file: 'about.md',       ext: 'md',   icon: Terminal   },
+  { id: 'stats',      file: 'stats.json',     ext: 'json', icon: Braces     },
+  { id: 'story',      file: 'story.md',       ext: 'md',   icon: FileText   },
+  { id: 'education',  file: 'education.yml',  ext: 'yml',  icon: GraduationCap },
+  { id: 'skills',     file: 'skills.ts',      ext: 'ts',   icon: Code2      },
+  { id: 'projects',   file: 'projects.json',  ext: 'json', icon: FolderGit2 },
+  { id: 'achievements', file: 'achievements.md', ext: 'md', icon: Award    },
+  { id: 'facts',      file: 'facts.log',      ext: 'log',  icon: ScrollText },
+  { id: 'stack',      file: 'stack.cfg',      ext: 'cfg',  icon: Cpu        },
+  { id: 'contact',    file: 'contact.sh',     ext: 'sh',   icon: Terminal   },
+  { id: 'collab',     file: 'collab.exe',     ext: 'exe',  icon: Zap        },
+];
 
-  // Mount animation
+const BOOT_LINES = [
+  'AUSTWise portfolio v2.1.0',
+  '> initializing shell .......... OK',
+  '> reading subject.json ........ OK',
+  '> mounting /dev/ideas ......... OK',
+  '> shell ready',
+];
+
+const TERMINAL_SCRIPT = `$ whoami
+${DEV.handle}
+
+$ cat about.txt
+Just a student. Nothing worth reading here.
+
+$ cat work.txt
+Built a few things. AUSTWise is one of them. You're on it.
+
+$ cat education.txt
+BSc in CSE @ AUST · Quanta 52
+
+$ cat skills.txt
+You can't rank skills with numbers. But if you could, I'd be near the top.
+
+$ cat status.txt
+Doing things. Quietly.`;
+
+const STATS = [
+  { key: 'features_built',  value: 50,  suffix: '+' },
+  { key: 'months_of_dev',   value: 12,  suffix: '+' },
+  { key: 'cups_of_coffee',  value: 100, suffix: '+' },
+  { key: 'solo_developer',  value: 1,   suffix: ''  },
+  { key: 'projects_shipped', value: 8,  suffix: ''  },
+  { key: 'contributions',   value: 300, suffix: '+' },
+];
+
+const EDUCATION = [
+  {
+    degree: 'BSc in Computer Science & Engineering',
+    school: 'Ahsanullah University of Science & Technology',
+    period: '2022 — 2026',
+    batch: 'Quanta 52',
+    status: 'ongoing',
+    detail: 'CGPA 3.9+/4.0 · Core CS: DSA, OOP, DBMS, Computer Networks. Nothing I need to explain.',
+  },
+  {
+    degree: 'Higher Secondary Certificate (HSC)',
+    school: 'Dhaka College',
+    period: '2020 — 2022',
+    batch: 'Science Group',
+    status: 'completed',
+    detail: 'GPA 5.00/5.00 · Physics, Chemistry, Mathematics. Numbers speak for themselves.',
+  },
+  {
+    degree: 'Secondary School Certificate (SSC)',
+    school: 'Dhaka Residential Model College',
+    period: '2018 — 2020',
+    batch: 'Science Group',
+    status: 'completed',
+    detail: 'GPA 5.00/5.00 · Merit Scholarship. A consistent pattern, if you look closely.',
+  },
+];
+
+const SKILLS = [
+  { name: 'React / JavaScript',   level: 99 },
+  { name: 'Node.js / Express',    level: 95 },
+  { name: 'Python / Automation',  level: 92 },
+  { name: 'CSS / Tailwind / UI',  level: 98 },
+  { name: 'SQL / MongoDB',        level: 94 },
+  { name: 'Git / DevOps',         level: 90 },
+  { name: 'Data Structures',      level: 96 },
+  { name: 'System Design',        level: 88 },
+];
+
+const PROJECTS = [
+  {
+    name: 'AUSTWise',
+    desc: 'A small academic platform. You\'re looking at it. I built it alone — not that I count.',
+    stack: ['React', 'Node.js', 'MongoDB', 'Vite'],
+    stars: 128,
+    forks: 24,
+    link: 'austwise.app',
+  },
+  {
+    name: 'RoutineHub',
+    desc: 'A routine manager. Handles scheduling, so people actually show up to class.',
+    stack: ['React', 'Express', 'SQLite'],
+    stars: 47,
+    forks: 9,
+    link: 'routinehub.dev',
+  },
+  {
+    name: 'NoteNest',
+    desc: 'Notes app with offline sync. Simple on the surface. Harder underneath.',
+    stack: ['React', 'IndexedDB', 'PWA'],
+    stars: 63,
+    forks: 12,
+    link: 'notenest.io',
+  },
+  {
+    name: 'CP Tracker',
+    desc: 'A tracker for competitive programming. Charts included. Keeps me honest.',
+    stack: ['Python', 'Flask', 'Chart.js'],
+    stars: 35,
+    forks: 6,
+    link: 'cptracker.app',
+  },
+];
+
+const ACHIEVEMENTS = [
+  { title: 'Dean\'s List Honours', org: 'AUST', year: '2024', icon: Award },
+  { title: 'Hackathon Winner', org: 'TechFest', year: '2025', icon: Zap },
+  { title: 'Open Source Contributor', org: 'GitHub', year: '2023', icon: GitCommit },
+  { title: 'ICPC Regional Participant', org: 'ACM ICPC', year: '2024', icon: GraduationCap },
+];
+
+const STORY = [
+  'I\'m not going to tell you I\'m brilliant. You\'re on this platform right now — a full academic assistant, built by one person, alone. Draw your own conclusions.',
+  'I don\'t chase attention or write long stories about myself. I build things. Some of them work. AUSTWise works. The rest is on this page for you to read, if you\'re into that sort of thing.',
+];
+
+const FACTS = [
+  { hash: '4f2a9c1', msg: 'Built AUSTWise alone. Yes, alone. Moving on.' },
+  { hash: 'b8e7d02', msg: 'Fixes bugs at 3 AM so you don\'t have to know they existed' },
+  { hash: '91c3f5a', msg: 'Doesn\'t brag. The code does enough talking.' },
+  { hash: 'd1a6e84', msg: 'Has never lost a merge conflict. (Not that I keep count.)' },
+  { hash: 'e2c9a77', msg: 'Writes code, ships features, goes to class. In that order.' },
+  { hash: 'f7b21a5', msg: 'Coffee ☕ and deadlines — the fuel behind AUSTWise' },
+];
+
+const STACK = [
+  { key: 'react',        version: '^18.3.1' },
+  { key: 'vite',         version: '^5.4.0'  },
+  { key: 'javascript',   version: 'ES2024'  },
+  { key: 'css3',         version: 'grid+flex'},
+  { key: 'node.js',      version: '>=18'    },
+  { key: 'chart.js',     version: '^4.4.0'  },
+  { key: 'pdf.js',       version: '^3.11.0' },
+  { key: 'mermaid',      version: '^10.9.0' },
+];
+
+const CONTACT = [
+  { method: 'GET',  path: '/email',    code: '200 OK', value: 'erumthakbe@gmail.com' },
+  { method: 'GET',  path: '/github',   code: '200 OK', value: '@erumthakbe' },
+  { method: 'GET',  path: '/linkedin', code: '200 OK', value: '@erumthakbe' },
+  { method: 'GET',  path: '/facebook', code: '200 OK', value: '@erumthakbe' },
+  { method: 'GET',  path: '/resume',   code: '200 OK', value: 'open to requests' },
+];
+
+const CODE_SYMBOLS = [
+  { char: '{', left: '5%',  delay: '0s',   dur: '24s' },
+  { char: '}', left: '13%', delay: '-5s',  dur: '28s' },
+  { char: '<', left: '22%', delay: '-10s', dur: '26s' },
+  { char: '>', left: '31%', delay: '-2s',  dur: '30s' },
+  { char: '0', left: '41%', delay: '-7s',  dur: '23s' },
+  { char: '1', left: '52%', delay: '-12s', dur: '27s' },
+  { char: ';', left: '61%', delay: '-4s',  dur: '25s' },
+  { char: '/', left: '71%', delay: '-9s',  dur: '29s' },
+  { char: '*', left: '81%', delay: '-13s', dur: '26s' },
+  { char: '=', left: '90%', delay: '-6s',  dur: '28s' },
+];
+
+const reduced = typeof window !== 'undefined' &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// ─── Animated count-up — numbers rise when scrolled into view ───
+function CountUp({ value, suffix }) {
+  const [n, setN] = useState(reduced ? value : 0);
+  const ref = useRef(null);
+  const done = useRef(false);
+
   useEffect(() => {
-    setMounted(true);
+    if (reduced || done.current) return;
+    const obs = new IntersectionObserver(([en]) => {
+      if (en.isIntersecting && !done.current) {
+        done.current = true;
+        const start = performance.now();
+        const dur = 1500;
+        const tick = (now) => {
+          const p = Math.min((now - start) / dur, 1);
+          setN(Math.round(value * (1 - Math.pow(1 - p, 3))));
+          if (p < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }
+    }, { threshold: 0.4 });
+    if (ref.current) obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, [value]);
+
+  return <span ref={ref}>{n}{suffix}</span>;
+}
+
+export default function AboutUs() {
+  const [bootLineIdx, setBootLineIdx] = useState(reduced ? BOOT_LINES.length : 0);
+  const [booted, setBooted] = useState(reduced);
+  const [activeFile, setActiveFile] = useState('about');
+  const [scrollPct, setScrollPct] = useState(0);
+  const [typed, setTyped] = useState(reduced ? TERMINAL_SCRIPT : '');
+  const rootRef = useRef(null);
+  const termRef = useRef(null);
+  const typedLen = useRef(reduced ? TERMINAL_SCRIPT.length : 0);
+
+  // ─── Boot sequence ───
+  useEffect(() => {
+    if (bootLineIdx < BOOT_LINES.length) {
+      const t = setTimeout(() => setBootLineIdx((i) => i + 1), 210);
+      return () => clearTimeout(t);
+    }
+    const t = setTimeout(() => setBooted(true), 520);
+    return () => clearTimeout(t);
+  }, [bootLineIdx]);
+
+  // ─── Terminal typing — one continuous keystroke stream ───
+  useEffect(() => {
+    if (!booted || reduced) return;
+    const timer = setInterval(() => {
+      typedLen.current += 1;
+      setTyped(TERMINAL_SCRIPT.slice(0, typedLen.current));
+      if (typedLen.current >= TERMINAL_SCRIPT.length) clearInterval(timer);
+    }, 22);
+    return () => clearInterval(timer);
+  }, [booted]);
+
+  // ─── Scroll spy + panel reveal ───
+  useEffect(() => {
+    if (!booted) return;
+    const sections = rootRef.current?.querySelectorAll('.cred-section');
+    if (!sections) return;
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          setActiveFile(entry.target.dataset.file);
+        }
+      });
+    }, { root: rootRef.current, rootMargin: '-30% 0px -55% 0px', threshold: 0 });
+    sections.forEach((s) => obs.observe(s));
+    return () => obs.disconnect();
+  }, [booted]);
+
+  // ─── Top progress bar — tracks this panel's own scroll ───
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const h = el.scrollHeight - el.clientHeight;
+      setScrollPct(h > 0 ? Math.min(100, (el.scrollTop / h) * 100) : 0);
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => el.removeEventListener('scroll', onScroll);
   }, []);
 
-  // Typewriter effect
-  useEffect(() => {
-    if (!mounted) return;
-    let i = 0;
-    const timer = setInterval(() => {
-      if (i < fullText.length) {
-        setTypedText(fullText.slice(0, i + 1));
-        i++;
-      } else {
-        clearInterval(timer);
-      }
-    }, 80);
-    return () => clearInterval(timer);
-  }, [mounted]);
-
-  const handleAvatarUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const dataUrl = ev.target?.result;
-      if (typeof dataUrl === 'string') {
-        localStorage.setItem('austwise_dev_avatar', dataUrl);
-        setAvatarSrc(dataUrl);
-      }
-    };
-    reader.readAsDataURL(file);
+  // ─── 3D tilt on the terminal window ───
+  const onTermMove = (e) => {
+    if (reduced) return;
+    const el = termRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const nx = ((e.clientX - r.left) / r.width - 0.5) * 2;
+    const ny = ((e.clientY - r.top) / r.height - 0.5) * 2;
+    el.style.setProperty('--tx', nx.toFixed(2));
+    el.style.setProperty('--ty', ny.toFixed(2));
+  };
+  const resetTerm = () => {
+    const el = termRef.current;
+    if (!el) return;
+    el.style.setProperty('--tx', '0');
+    el.style.setProperty('--ty', '0');
   };
 
-  const stats = [
-    { value: 50, label: 'Features Built', icon: Code, suffix: '+' },
-    { value: 12, label: 'Months of Development', icon: Moon, suffix: '+' },
-    { value: 100, label: 'Cups of Coffee', icon: Coffee, suffix: '+' },
-    { value: 1, label: 'Solo Developer', icon: Heart, suffix: '' },
-  ];
+  // ─── Magnetic collab button ───
+  const onCollabMove = (e) => {
+    if (reduced) return;
+    const btn = e.currentTarget;
+    const r = btn.getBoundingClientRect();
+    const dx = e.clientX - (r.left + r.width / 2);
+    const dy = e.clientY - (r.top + r.height / 2);
+    btn.style.transform = `translate(${(dx * 0.28).toFixed(1)}px, ${(dy * 0.28).toFixed(1)}px)`;
+  };
+  const resetCollab = (e) => { e.currentTarget.style.transform = ''; };
 
-  const socialLinks = [
-    {
-      name: 'Email',
-      url: `mailto:${DEV.email}`,
-      icon: Mail,
-      color: '#ea4335',
-      label: DEV.email,
-    },
-    {
-      name: 'GitHub',
-      url: `https://github.com/${DEV.github}`,
-      icon: GitBranch,
-      color: '#fff',
-      label: `@${DEV.github}`,
-    },
-    {
-      name: 'LinkedIn',
-      url: `https://linkedin.com/in/${DEV.linkedin}`,
-      icon: Briefcase,
-      color: '#0a66c2',
-      label: `@${DEV.linkedin}`,
-    },
-    {
-      name: 'Facebook',
-      url: `https://facebook.com/${DEV.facebook}`,
-      icon: Globe,
-      color: '#1877f2',
-      label: `@${DEV.facebook}`,
-    },
-    {
-      name: 'Instagram',
-      url: `https://instagram.com/${DEV.instagram}`,
-      icon: Image,
-      color: '#e4405f',
-      label: `@${DEV.instagram}`,
-    },
-    {
-      name: 'Messenger',
-      url: `https://m.me/${DEV.facebook}`,
-      icon: Send,
-      color: '#006aff',
-      label: 'Chat with me',
-    },
-  ];
+  const activeIdx = FILES.findIndex((f) => f.id === activeFile);
+  const activeMeta = FILES[activeIdx] || FILES[0];
 
   return (
-    <div className={`about-us-page ${mounted ? 'about-mounted' : ''}`}>
-      {/* ─── Floating Orbs Background ─── */}
-      <div className="about-orb-bg" aria-hidden="true">
-        <div className="about-orb about-orb-1" />
-        <div className="about-orb about-orb-2" />
-        <div className="about-orb about-orb-3" />
+    <div className={`cred-root ${booted ? 'is-booted' : 'is-booting'}`} ref={rootRef}>
+      {/* ─── Atmosphere ─── */}
+      <div className="cred-bg" aria-hidden="true">
+        <div className="cred-aurora cred-aurora--gold" />
+        <div className="cred-aurora cred-aurora--cyan" />
+        <div className="cred-aurora cred-aurora--violet" />
+        <div className="cred-symbols">
+          {CODE_SYMBOLS.map((s, i) => (
+            <span
+              key={i}
+              className="cred-symbol"
+              style={{ left: s.left, animationDelay: s.delay, animationDuration: s.dur }}
+            >
+              {s.char}
+            </span>
+          ))}
+        </div>
+        <div className="cred-scanlines" />
+        <div className="cred-grain" />
       </div>
 
-      {/* ─── Hero Section ─── */}
-      <section className="about-hero">
-        <div className="about-hero-content">
-          {/* Avatar with animated glow ring */}
-          <div className="about-avatar-wrapper">
-            <div className="about-avatar-ring" />
-            <div
-              className="about-avatar"
-              onClick={() => document.getElementById('about-avatar-input')?.click()}
-              title="Click to upload your photo"
-            >
-              {avatarSrc ? (
-                <img src={avatarSrc} alt={DEV.name} />
-              ) : (
-                <span className="about-avatar-initials">{DEV.initials}</span>
-              )}
-            </div>
-            <button
-              className="about-avatar-upload-btn"
-              onClick={() => document.getElementById('about-avatar-input')?.click()}
-              title="Upload photo"
-            >
-              <Camera size={14} />
-            </button>
-            <input
-              id="about-avatar-input"
-              type="file"
-              accept="image/*"
-              style={{ display: 'none' }}
-              onChange={handleAvatarUpload}
-            />
-          </div>
+      {/* ─── Top scroll progress ─── */}
+      <div className="cred-progress"><i style={{ width: `${scrollPct}%` }} /></div>
 
-          {/* Typed greeting */}
-          {/* Style options: about-greeting | about-greeting--solid | about-greeting--gold */}
-          <h1 className="about-greeting about-greeting--gold">
-            {typedText}<span className="about-cursor">|</span>
-          </h1>
-
-          <div className="about-title-tag">
-            <Sparkles size={16} />
-            <span>{DEV.title}</span>
-            <Sparkles size={16} />
-          </div>
-
-          <p className="about-tagline">{DEV.tagline}</p>
-
-          {/* Badges */}
-          <div className="about-badges">
-            <span className="about-badge">
-              <BookOpen size={12} /> {DEV.department}
-            </span>
-            <span className="about-badge">
-              <Users size={12} /> {DEV.batch}
-            </span>
-            <span className="about-badge">
-              <Code size={12} /> Solo Dev
-            </span>
+      {/* ─── Boot overlay ─── */}
+      <div className={`cred-boot ${booted ? 'is-done' : ''}`} aria-hidden={booted}>
+        <div className="cred-boot-card">
+          <div className="cred-boot-head">AUSTWise — portfolio session</div>
+          <div className="cred-boot-body">
+            {BOOT_LINES.slice(0, bootLineIdx).map((l, i) => (
+              <div key={i} className="cred-boot-line">{l}</div>
+            ))}
+            <span className="cred-cursor" />
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* ─── Stats Section ─── */}
-      <section className="about-stats-section">
-        <div className="about-stats-grid">
-          {stats.map((stat) => (
-            <AnimatedCounter
-              key={stat.label}
-              value={stat.value}
-              label={stat.label}
-              icon={stat.icon}
-              suffix={stat.suffix}
-            />
-          ))}
+      {/* ─── Sidebar file tree (desktop) ─── */}
+      <aside className="cred-sidebar">
+        <div className="cred-side-title">
+          <span className="cred-side-dot" />
+          AUSTWise<span className="cred-side-at">@</span>dev
         </div>
-      </section>
-
-      {/* ─── The Story ─── */}
-      <section className="about-story">
-        <div className="about-story-glow" aria-hidden="true" />
-        <div className="about-story-content">
-          <div className="about-section-label">
-            <Heart size={14} />
-            <span>The Story</span>
-            <Heart size={14} />
-          </div>
-          <h2 className="about-story-title">
-            What is <span className="about-gradient-text">AUSTWise</span>?
-          </h2>
-          <div className="about-story-text">
-            <p>
-              AUSTWise was born from a simple idea: <strong>why should students have to juggle a dozen different tools</strong>
-              just to manage their academic life? From CGPA tracking and class schedules to resource sharing and
-              community boards — everything a student needs, under one roof.
-            </p>
-            <p>
-              Built entirely by one person — fueled by curiosity, countless late nights, and an unwavering belief that
-              <strong> technology should serve education</strong>, not complicate it. Every pixel, every line of code,
-              every feature was crafted with the AUST student in mind.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Quote ─── */}
-      <section className="about-quote-section">
-        <div className="about-quote-card">
-          <Quote size={24} className="about-quote-icon" />
-          <blockquote>
-            {DEV.quote}
-          </blockquote>
-          <div className="about-quote-attribution">
-            — {DEV.name}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Fun Facts ─── */}
-      <section className="about-facts-section">
-        <div className="about-section-label">
-          <Sparkles size={14} />
-          <span>Fun Facts</span>
-          <Sparkles size={14} />
-        </div>
-        <div className="about-facts-grid">
-          {DEV.funFacts.map((fact, i) => (
-            <div key={i} className="about-fact-card" style={{ animationDelay: `${i * 0.1}s` }}>
-              <span className="about-fact-number">0{i + 1}</span>
-              <p>{fact}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ─── Tech Stack ─── */}
-      <section className="about-tech-section">
-        <div className="about-section-label">
-          <Cpu size={14} />
-          <span>Built With</span>
-          <Cpu size={14} />
-        </div>
-        <div className="about-tech-grid">
-          {techStack.map((tech) => (
-            <div key={tech.name} className="about-tech-badge">
-              <div className="about-tech-icon" style={{ color: tech.color }}>
-                <tech.icon size={18} />
-              </div>
-              <span>{tech.name}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ─── Social Links ─── */}
-      <section className="about-social-section">
-        <div className="about-section-label">
-          <Heart size={14} />
-          <span>Connect With Me</span>
-          <Heart size={14} />
-        </div>
-        <div className="about-social-grid">
-          {socialLinks.map((link) => (
+        <nav className="cred-tree">
+          {FILES.map((f, i) => (
             <a
-              key={link.name}
-              href={link.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="about-social-card"
-              style={{ '--social-color': link.color }}
+              key={f.id}
+              href={`#${f.id}`}
+              className={`cred-tree-item ${
+                activeFile === f.id ? 'is-active'
+                : i < activeIdx ? 'is-passed'
+                : ''
+              }`}
             >
-              <div className="about-social-card-bg" />
-              <div className="about-social-card-content">
-                <link.icon size={20} />
-                <div>
-                  <strong>{link.name}</strong>
-                  <span>{link.label}</span>
-                </div>
-                <ExternalLink size={14} className="about-social-external" />
-              </div>
+              <i className="cred-tree-dot" />
+              <f.icon size={13} className="cred-tree-icon" />
+              {f.file}
             </a>
           ))}
-        </div>
-      </section>
+        </nav>
+        <div className="cred-side-foot">~/workspace · nothing to see here</div>
+      </aside>
 
-      {/* ─── CTA ─── */}
-      <section className="about-cta-section">
-        <div className="about-cta-card">
-          <div className="about-cta-particles" aria-hidden="true">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="about-cta-particle" style={{ animationDelay: `${i * 0.3}s` }} />
+      {/* ─── Mobile "currently viewing" pill ─── */}
+      <div className="cred-mobile-pill">
+        <span className="cred-mobile-dot" />
+        <span className="cred-mobile-label">viewing</span>
+        <b>{activeMeta.file}</b>
+      </div>
+
+      {/* ─── Main content ─── */}
+      <main className="cred-main">
+        {/* about.md → terminal */}
+        <section id="about" className="cred-section" data-file="about">
+          <div className="cred-file-head"><FileText size={14} /><span>about.md</span></div>
+          <div
+            className="term-window cred-window"
+            ref={termRef}
+            onMouseMove={onTermMove}
+            onMouseLeave={resetTerm}
+          >
+            <div className="term-bar">
+              <span className="term-title">{DEV.handle}@austwise: ~</span>
+            </div>
+            <pre className="term-body">{typed}<span className="cred-cursor" /></pre>
+          </div>
+        </section>
+
+        {/* stats.json → JSON block */}
+        <section id="stats" className="cred-section" data-file="stats">
+          <div className="cred-file-head"><Braces size={14} /><span>stats.json</span></div>
+          <div className="json-window cred-window">
+            <div className="json-line"><span className="json-ln">1</span><span className="json-brace">{'{'}</span></div>
+            {STATS.map((s, i) => (
+              <div key={s.key} className="json-line">
+                <span className="json-ln">{i + 2}</span>
+                <span className="json-key">"{s.key}"</span>
+                <span className="json-punct">: </span>
+                <span className="json-num"><CountUp value={s.value} suffix={s.suffix} /></span>
+                {i < STATS.length - 1 && <span className="json-punct">,</span>}
+              </div>
+            ))}
+            <div className="json-line"><span className="json-ln">{STATS.length + 2}</span><span className="json-brace">{'}'}</span></div>
+          </div>
+        </section>
+
+        {/* education.yml → academic history */}
+        <section id="education" className="cred-section" data-file="education">
+          <div className="cred-file-head"><GraduationCap size={14} /><span>education.yml</span></div>
+          <div className="yml-window cred-window">
+            <div className="yml-head"># Academic history — {DEV.name}</div>
+            {EDUCATION.map((e) => (
+              <div key={e.period} className="edu-card">
+                <div className="edu-dot" />
+                <div className="edu-body">
+                  <div className="edu-row">
+                    <span className="edu-degree">{e.degree}</span>
+                    <span className={`edu-status edu-status--${e.status}`}>{e.status}</span>
+                  </div>
+                  <div className="edu-meta">
+                    <span className="edu-school">{e.school}</span>
+                    <span className="edu-period">· {e.period}</span>
+                    <span className="edu-batch">· {e.batch}</span>
+                  </div>
+                  <p className="edu-detail">{e.detail}</p>
+                </div>
+              </div>
             ))}
           </div>
-          <h3>Have an idea? Want to collaborate?</h3>
-          <p>I'm always open to conversations, feedback, and new ideas.</p>
-          <a href={`mailto:${DEV.email}`} className="about-cta-btn">
-            <Mail size={18} />
-            <span>Say Hello</span>
-          </a>
-        </div>
-      </section>
+        </section>
 
-      {/* ─── Footer ─── */}
-      <div className="about-footer">
-        <Heart size={14} className="about-footer-heart" />
-        <p>Built with love by {DEV.name} · {DEV.batch} · Not affiliated with AUST</p>
-      </div>
+        {/* skills.ts → typed skill bars */}
+        <section id="skills" className="cred-section" data-file="skills">
+          <div className="cred-file-head"><Code2 size={14} /><span>skills.ts</span></div>
+          <div className="ts-window cred-window">
+            <div className="ts-head">export const skills: Skill[] = [</div>
+            {SKILLS.map((s) => (
+              <div key={s.name} className="skill-row">
+                <span className="skill-name">{s.name}</span>
+                <span className="skill-track"><i className="skill-fill" style={{ width: `${s.level}%` }} /></span>
+                <span className="skill-level">{s.level}%</span>
+              </div>
+            ))}
+            <div className="ts-foot">];</div>
+          </div>
+        </section>
+
+        {/* projects.json → project cards */}
+        <section id="projects" className="cred-section" data-file="projects">
+          <div className="cred-file-head"><FolderGit2 size={14} /><span>projects.json</span></div>
+          <div className="proj-grid cred-window">
+            {PROJECTS.map((p) => (
+              <div key={p.name} className="proj-card">
+                <div className="proj-head">
+                  <FolderGit2 size={16} className="proj-icon" />
+                  <span className="proj-name">{p.name}</span>
+                </div>
+                <p className="proj-desc">{p.desc}</p>
+                <div className="proj-stack">
+                  {p.stack.map((t) => <span key={t} className="proj-tag">{t}</span>)}
+                </div>
+                <div className="proj-meta">
+                  <span className="proj-stat">★ {p.stars}</span>
+                  <span className="proj-stat">⑂ {p.forks}</span>
+                  <span className="proj-link">{p.link}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* achievements.md → award list */}
+        <section id="achievements" className="cred-section" data-file="achievements">
+          <div className="cred-file-head"><Award size={14} /><span>achievements.md</span></div>
+          <div className="ach-window cred-window">
+            <div className="ach-head"># Badges earned — lifetime</div>
+            {ACHIEVEMENTS.map((a, i) => (
+              <div key={a.title} className="ach-line">
+                <span className="ach-num">[{String(i + 1).padStart(2, '0')}]</span>
+                <a.icon size={15} className="ach-icon" />
+                <span className="ach-title">{a.title}</span>
+                <span className="ach-org">@ {a.org}</span>
+                <span className="ach-year">{a.year}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* story.md → markdown */}
+        <section id="story" className="cred-section" data-file="story">
+          <div className="cred-file-head"><FileText size={14} /><span>story.md</span></div>
+          <div className="md-window cred-window">
+            <h2 className="md-h"># A few words. <span className="md-accent">Not many.</span></h2>
+            {STORY.map((p, i) => <p key={i} className="md-p">{p}</p>)}
+            <div className="md-quotes">
+              {QUOTES.map((q, i) => (
+                <blockquote key={i} className="md-quote">
+                  “{q.text}”
+                  <cite className="md-quote-author">— {q.author}</cite>
+                </blockquote>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* facts.log → git log */}
+        <section id="facts" className="cred-section" data-file="facts">
+          <div className="cred-file-head"><ScrollText size={14} /><span>facts.log</span></div>
+          <div className="log-window cred-window">
+            <div className="log-head">git log --oneline --author={DEV.handle}</div>
+            {FACTS.map((f) => (
+              <div key={f.hash} className="log-line">
+                <span className="log-hash">{f.hash}</span>
+                <span className="log-msg">{f.msg}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* stack.cfg → package.json deps */}
+        <section id="stack" className="cred-section" data-file="stack">
+          <div className="cred-file-head"><Cpu size={14} /><span>stack.cfg</span></div>
+          <div className="cfg-window cred-window">
+            <div className="cfg-title">"dependencies": {'{'}</div>
+            {STACK.map((d, i) => (
+              <div key={d.key} className="cfg-line">
+                <span className="cfg-key">"{d.key}"</span>
+                <span className="cfg-punct">: </span>
+                <span className="cfg-ver">"{d.version}"</span>
+                {i < STACK.length - 1 && <span className="cfg-punct">,</span>}
+              </div>
+            ))}
+            <div className="cfg-title">{'}'}</div>
+          </div>
+        </section>
+
+        {/* contact.sh → API responses */}
+        <section id="contact" className="cred-section" data-file="contact">
+          <div className="cred-file-head"><Terminal size={14} /><span>contact.sh</span></div>
+          <div className="sh-window cred-window">
+            <div className="sh-head">$ curl --silent https://api.austwise.dev/contact</div>
+            {CONTACT.map((c) => (
+              <div key={c.path} className="sh-line">
+                <span className="sh-method">{c.method}</span>
+                <span className="sh-path">{c.path}</span>
+                <span className="sh-code">{c.code}</span>
+                <span className="sh-value">{c.value}</span>
+              </div>
+            ))}
+            <div className="sh-note"># replies within 24h — usually faster</div>
+          </div>
+        </section>
+
+        {/* collab.exe → CTA */}
+        <section id="collab" className="cred-section" data-file="collab">
+          <div className="cred-file-head"><Zap size={14} /><span>collab.exe</span></div>
+          <div className="exe-window cred-window">
+            <p className="exe-prompt"><span className="exe-dollar">$</span> ./collab.exe --with "{DEV.name}"</p>
+            <div className="exe-btn-wrap">
+              <a
+                className="exe-btn"
+                href={`mailto:${DEV.email}`}
+                onMouseMove={onCollabMove}
+                onMouseLeave={resetCollab}
+              >
+                <Mail size={18} />
+                <span>Get In Touch</span>
+                <ArrowRight size={16} className="exe-btn-arrow" />
+                <span className="exe-cursor" />
+              </a>
+            </div>
+            <p className="exe-hint">I reply to interesting people. That is the best I can offer.</p>
+          </div>
+        </section>
+
+        {/* ─── Footer — closing commit + push ─── */}
+        <footer className="cred-footer">
+          <div className="cred-footer-cmd">
+            <span className="cred-footer-prompt">$</span>
+            <span>git commit -m "minor update. nothing important." --author="{DEV.name} &lt;{DEV.email}&gt;"</span>
+          </div>
+          <div className="cred-footer-cmd">
+            <span className="cred-footer-prompt">$</span>
+            <span>git push origin main</span>
+          </div>
+          <div className="cred-footer-cmd cred-footer-out">
+            <GitCommit size={13} />
+            <span>[main 8c1a4b7] minor update. nothing important. · {DEV.batch} · {DEV.department} @ AUST · {new Date().getFullYear()}</span>
+          </div>
+        </footer>
+      </main>
     </div>
   );
 }

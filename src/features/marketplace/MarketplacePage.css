@@ -7,45 +7,16 @@
   margin: 0 auto;
   padding-bottom: var(--sp-10);
 
-  /* Aura palette — scoped to the Marketplace hub. Legacy aliases collapse
-     into the gold primary; semantic accents keep their meaning. */
-  --accent-blue: #F59E0B;
-  --accent-blue-glow: rgba(245, 158, 11, 0.14);
-  --accent-amber: #F59E0B;
-  --accent-amber-glow: rgba(245, 158, 11, 0.14);
-  --accent-orange: #F59E0B;
-  --accent-orange-glow: rgba(245, 158, 11, 0.14);
-  --accent-purple: #A78BFA;
-  --accent-purple-glow: rgba(167, 139, 250, 0.14);
-  --accent-cyan: #60A5FA;
-  --accent-cyan-glow: rgba(96, 165, 250, 0.14);
-  --accent-info: #60A5FA;
-  --accent-info-glow: rgba(96, 165, 250, 0.14);
-  --accent-emerald: #34D399;
-  --accent-emerald-glow: rgba(52, 211, 153, 0.14);
-  --accent-rose: #F87171;
-  --accent-rose-glow: rgba(248, 113, 113, 0.14);
-  --bg-primary: #0A0A0C;
-  --bg-secondary: #1B1B1F;
-  --bg-card: #1B1B1F;
-  --bg-card-hover: #232329;
-  --bg-tertiary: #1E1E26;
-  --bg-input: #1B1B1F;
-  --border-primary: #2A2A35;
-  --border-secondary: rgba(42, 42, 53, 0.6);
-  --border-focus: rgba(245, 158, 11, 0.5);
-  --text-primary: #FFFFFF;
-  --text-secondary: #E2E8F0;
-  --text-tertiary: #94A3B8;
-  --shadow-sm: 0 1px 2px rgba(255, 255, 255, 0.02);
-  --shadow-md: 0 6px 18px rgba(255, 255, 255, 0.03);
-  --shadow-popper: 0 8px 24px rgba(255, 255, 255, 0.04);
-  --shadow-lift: 0 4px 20px rgba(255, 255, 255, 0.03);
-  --shadow-glow-amber: 0 0 24px rgba(245, 158, 11, 0.14);
-  --hero-accent-a: #F59E0B;
-  --page-hero-icon-bg: rgba(245, 158, 11, 0.14);
-  --page-hero-icon-color: #F59E0B;
-  --page-hero-gradient-start: #F59E0B;
+  /* Page-specific aliases → active theme tokens. Surfaces, text, borders and
+     accents cascade from the [data-theme] palette like the sidebar, so the
+     Marketplace hub re-skins with every theme. */
+  --accent-info: var(--accent-cyan);
+  --accent-info-glow: var(--accent-cyan-glow);
+  --shadow-lift: var(--shadow-md);
+  --hero-accent-a: var(--accent-blue);
+  --page-hero-icon-bg: var(--accent-blue-glow);
+  --page-hero-icon-color: var(--accent-blue);
+  --page-hero-gradient-start: var(--accent-blue);
 }
 
 /* ── 1. Hero box — its own card (matches dashboard hero) ── */

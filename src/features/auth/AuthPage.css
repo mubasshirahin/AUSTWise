@@ -2263,3 +2263,111 @@
 [data-theme="newsprint"] .auth-brand-outside .topbar-logo-img {
   filter: none;
 }
+
+/* ═══════════════════════════════════════════════════════
+   PREMIUM 3D — Auth Page (mesh-topology / SaaS style)
+   Cursor-driven 3D tilt, hairline gradient frame, depth
+   glow, floating impact strip. Theme-aware via tokens.
+   ═══════════════════════════════════════════════════════ */
+
+/* 1 · 3D stage — whole page becomes a perspective scene */
+.auth-page {
+  perspective: 1200px;
+}
+
+.auth-shell {
+  transform-style: preserve-3d;
+}
+
+/* 2 · Depth glow behind the card (SaaS hero) */
+.auth-shell::before {
+  content: '';
+  position: absolute;
+  inset: 18% 8%;
+  background: radial-gradient(circle,
+    color-mix(in srgb, var(--accent-blue) 20%, transparent) 0%,
+    transparent 68%);
+  filter: blur(46px);
+  transform: translateZ(-60px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 3 · Brand + ticker float above the scene */
+.auth-brand-outside {
+  transform: translateZ(40px);
+}
+
+/* 4 · Impact stat strip — glass pill, mono numerals */
+.auth-impact {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin: 0 0 20px;
+  padding: 10px 20px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--bg-card) 72%, transparent);
+  border: 1px solid var(--border-primary);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transform: translateZ(30px);
+  box-shadow:
+    0 12px 30px -18px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px color-mix(in srgb, var(--accent-blue) 16%, transparent);
+}
+.auth-impact-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.15;
+}
+.auth-impact-item strong {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: linear-gradient(135deg, var(--accent-blue),
+    color-mix(in srgb, var(--accent-blue) 55%, var(--accent-purple)));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.auth-impact-item span {
+  font-size: 0.58rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--text-secondary);
+}
+.auth-impact-sep {
+  width: 1px;
+  height: 24px;
+  background: linear-gradient(to bottom, transparent, var(--border-primary), transparent);
+}
+
+/* 5 · Card — cursor tilt + hairline frame */
+.auth-card {
+  transform:
+    rotateX(calc(var(--my, 0) * -5deg))
+    rotateY(calc(var(--mx, 0) * 7deg));
+  transition:
+    transform 0.18s cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 0.3s ease;
+  will-change: transform;
+  box-shadow:
+    0 40px 80px -30px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 1px color-mix(in srgb, var(--accent-blue) 22%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 6%, transparent);
+}
+
+/* 6 · Reduced motion — kill 3D, keep the card flat */
+@media (prefers-reduced-motion: reduce) {
+  .auth-card,
+  .auth-impact,
+  .auth-brand-outside {
+    transform: none !important;
+    transition: none !important;
+  }
+  .auth-shell::before { display: none; }
+}

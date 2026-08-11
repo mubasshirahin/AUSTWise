@@ -12,7 +12,7 @@ import {
   Newspaper, Terminal, Gauge, MoonStar, Pen, PenTool,
   Building2, Type, Grid2x2, Cpu,
   ChevronLeft, Heart, ThumbsUp, Download, MessageCircle,
-  X, Search, Hash, Megaphone,
+  X, Search, Hash, Megaphone, Orbit,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import logoSilver from '../../assets/logo-silver.png';
@@ -1259,6 +1259,7 @@ const darkThemeOptions = [
   { id: 'bitcoindefi', label: 'Bitcoin DeFi', icon: Zap },
   { id: 'art-deco', label: 'Art Deco', icon: Building2 },
   { id: 'poster', label: 'Bold Type', icon: Type },
+  { id: 'meshtopo', label: 'Mesh Topology', icon: Orbit },
 ];
 
 const lightThemeOptions = [
