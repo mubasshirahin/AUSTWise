@@ -8,7 +8,7 @@
   position: relative;
   min-height: 100vh;
   width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip; /* clip (not hidden) so sticky children pin to the viewport */
   background: transparent;
   color: var(--text-primary);
   font-family: var(--font-primary);
@@ -1100,6 +1100,152 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 20px;
+}
+
+/* ─── Stacking Cards Deck (sticky fan) ─── */
+.stacking-deck {
+  position: relative;
+  max-width: 840px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  /* Each card stays in full flow height so the deck keeps scroll room and the
+     cards can accumulate into a fanned stack (sticky can't overlap siblings). */
+}
+
+.stacking-card {
+  --deck-top: 92px;   /* clears the fixed landing nav */
+  --deck-peek: 20px;  /* how much of the previous card peeks above the next */
+  position: sticky;
+  top: calc(var(--deck-top) + var(--deck-index) * var(--deck-peek));
+  height: clamp(340px, 52vh, 480px);
+  z-index: calc(var(--deck-index) + 1);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 30px 34px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.16);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.stacking-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: var(--card-accent);
+}
+
+.stacking-card::after {
+  content: '';
+  position: absolute;
+  top: -40%;
+  right: -18%;
+  width: 60%;
+  height: 130%;
+  background: radial-gradient(circle at 70% 30%, var(--card-glow) 0%, transparent 62%);
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.stacking-card-top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.stacking-card-icon {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+}
+
+.stacking-card-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.stacking-card-tagline {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+}
+
+.stacking-card-title {
+  font-size: 1.3rem;
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.01em;
+}
+
+.stacking-card-index {
+  margin-left: auto;
+  font-size: 2.3rem;
+  font-weight: var(--fw-bold);
+  line-height: 1;
+  color: var(--card-accent);
+  opacity: 0.35;
+}
+
+.stacking-card-desc {
+  position: relative;
+  z-index: 1;
+  max-width: 56ch;
+  font-size: 0.95rem;
+  line-height: 1.75;
+  color: var(--text-secondary);
+}
+
+.stacking-card-benefits {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: auto;
+}
+
+.stacking-card-benefit {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.stacking-card-check {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--card-accent) 14%, transparent);
+}
+
+@media (max-width: 640px) {
+  .stacking-card {
+    --deck-peek: 14px;
+    height: clamp(400px, 66vh, 480px);
+    padding: 24px 22px;
+  }
+  .stacking-card-title { font-size: 1.12rem; }
+  .stacking-card-index { font-size: 1.8rem; }
 }
 
 .landing-feature-card {

@@ -744,6 +744,55 @@ function FeatureCard({ feature, index }) {
   );
 }
 
+// ─── STACKING CARDS (deck that stacks as you scroll) ───
+// Curated "portfolio" of the core modules, shown as a sticky deck.
+const stackingFeatures = [
+  features[0], // Dashboard
+  features[1], // Grade Lab
+  features[2], // Resource Vault
+  features[3], // Campus Hub
+  features[4], // Community
+];
+
+function StackingCards({ items }) {
+  return (
+    <div className="stacking-deck">
+      {items.map((item, i) => {
+        const Icon = item.icon;
+        return (
+          <article
+            key={i}
+            className="stacking-card"
+            style={{ '--deck-index': i, '--card-accent': item.color, '--card-glow': item.glow }}
+          >
+            <div className="stacking-card-top">
+              <div className="stacking-card-icon" style={{ background: `${item.color}1A`, color: item.color }}>
+                <Icon size={22} />
+              </div>
+              <div className="stacking-card-head">
+                <span className="stacking-card-tagline">{item.tagline}</span>
+                <h3 className="stacking-card-title">{item.title}</h3>
+              </div>
+              <span className="stacking-card-index">{String(i + 1).padStart(2, '0')}</span>
+            </div>
+            <p className="stacking-card-desc">{item.description}</p>
+            <div className="stacking-card-benefits">
+              {item.benefits.slice(0, 3).map((b, j) => (
+                <div key={j} className="stacking-card-benefit">
+                  <span className="stacking-card-check" style={{ color: item.color }}>
+                    <Check size={12} strokeWidth={3} />
+                  </span>
+                  <span>{b}</span>
+                </div>
+              ))}
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── APP PREVIEW CAROUSEL (real app screens) ───
 const mockScreens = [
   {
@@ -1593,6 +1642,21 @@ export default function LandingPage() {
             <FeatureCard key={i} feature={feature} index={i} />
           ))}
         </div>
+      </section>
+
+      {/* ─── STACKING CARDS (sticky deck) ─── */}
+      <section className="landing-section landing-stacking-section">
+        <ScrollReveal>
+          <div className="landing-section-header">
+            <div className="landing-badge pulse-badge"><Layers size={12} /><span>The Portfolio</span></div>
+            <h2 className="landing-section-title">Your Campus Companion, <span className="landing-hero-highlight">One Card at a Time</span></h2>
+            <p className="landing-section-desc">
+              Keep scrolling — every core module stacks into a deck as you go, so the whole
+              AUSTWise experience builds up right in front of you.
+            </p>
+          </div>
+        </ScrollReveal>
+        <StackingCards items={stackingFeatures} />
       </section>
 
       {/* ─── APP PREVIEW CAROUSEL ─── */}

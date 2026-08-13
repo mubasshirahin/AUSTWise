@@ -529,7 +529,7 @@ body {
   min-height: 100vh;
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip; /* clip (not hidden) so sticky descendants pin to the viewport */
   transition: background var(--transition-slow), color var(--transition-slow);
 }
 
@@ -572,7 +572,7 @@ textarea {
   min-height: 100vh;
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip; /* clip (not hidden) so sticky descendants pin to the viewport */
 }
 
 a {
@@ -630,7 +630,7 @@ img {
   min-height: 100vh;
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip; /* clip (not hidden) so sticky descendants pin to the viewport */
 }
 
 .main-content {
