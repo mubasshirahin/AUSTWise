@@ -80,7 +80,7 @@ export function isInsideGeofence(lat, lng) {
 /**
  * Stable non-negative numeric key derived from any user/device id string, so
  * the INT-backed table works whether the app id is numeric ("12345") or not
- * ("ADM-001", "dev-xxxx").
+ * ("ADM-MSOP6VG6BVL4", "dev-xxxx").
  */
 function hashUserId(userId) {
   const str = String(userId);

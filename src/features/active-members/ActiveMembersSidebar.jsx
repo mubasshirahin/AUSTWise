@@ -72,11 +72,11 @@ function PresenceDot({ status, size }) {
 }
 
 /* ─── Member row ─── */
-function MemberRow({ member, onClick, isOffline }) {
+function MemberRow({ member, onClick, isOffline, isAdmin }) {
   return (
     <button
       type="button"
-      className={`am-member-row${isOffline ? ' am-row-offline' : ''}`}
+      className={`am-member-row${isOffline ? ' am-row-offline' : ''}${isAdmin ? ' am-row-admin' : ''}`}
       onClick={onClick}
       title={member.name}
     >
@@ -92,6 +92,7 @@ function MemberRow({ member, onClick, isOffline }) {
       </span>
       <span className="am-row-body">
         <span className="am-row-name">
+          {isAdmin && <span className="am-admin-crown-mini" aria-hidden="true">👑</span>}
           {member.name}
           {member.isYou && <span className="am-you">You</span>}
         </span>
@@ -107,13 +108,13 @@ function MemberRow({ member, onClick, isOffline }) {
 }
 
 /* ─── Collapsible group section ─── */
-function MemberGroup({ title, icon, count, children, defaultOpen, forceOpen, collapsed, onToggle }) {
+function MemberGroup({ title, icon, count, children, defaultOpen, forceOpen, collapsed, onToggle, className }) {
   // `collapsed` is true when the user has collapsed this group
   const isOpen = forceOpen || (collapsed !== undefined ? !collapsed : defaultOpen !== false);
   return (
-    <div className={`am-group${isOpen ? ' open' : ''}`}>
+    <div className={`am-group${isOpen ? ' open' : ''}${className ? ` ${className}` : ''}`}>
       <button type="button" className="am-group-head" onClick={onToggle}>
-        {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        {onToggle && (isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}
         {icon && <span className="am-group-icon">{icon}</span>}
         <span className="am-group-title">{title}</span>
         <span className="am-group-count">{count}</span>
@@ -379,20 +380,21 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
   // Online = everyone currently active (online/idle), with the signed-in user
   // always pinned in so you can see yourself ("You" row).
   const onlineMembers = useMemo(() => {
-    const list = members.filter((m) => m.status === 'online' || m.status === 'idle');
-    if (isAuthenticated && user?.id && !list.some((m) => m.id === user.id)) {
+    const list = members.filter((m) => (m.status === 'online' || m.status === 'idle') && m.role !== 'admin');
+    if (isAuthenticated && user?.id && user?.role !== 'admin' && !list.some((m) => m.id === user.id)) {
       list.push({ id: user.id, name: user.name, initials: user.initials, avatar: user.avatar, role: user.role, department: user.department, semester: user.semester, status: 'online', lastSeenAt: Date.now(), isYou: true });
     }
     return list.map((m) => (m.id === user?.id ? { ...m, isYou: true } : m));
   }, [members, user, isAuthenticated]);
 
-  // Presence-aware counts — include self so the badge tracks "who is online"
-  // live (onlineMembers already pins the signed-in user).
+  // Presence-aware counts — include self and online admins so the badge
+  // tracks "who is online" live (admins live in their own pinned section,
+  // so they're added back into the count here).
   const onlineCount = useMemo(
-    () => onlineMembers.length,
-    [onlineMembers]
+    () => onlineMembers.length + members.filter((m) => m.role === 'admin' && (m.status === 'online' || m.status === 'idle')).length,
+    [onlineMembers, members]
   );
-  const offlineMembers = useMemo(() => members.filter((m) => m.status === 'offline'), [members]);
+  const offlineMembers = useMemo(() => members.filter((m) => m.status === 'offline' && m.role !== 'admin'), [members]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -404,6 +406,16 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
     return list;
   }, [members, query]);
 
+  // Admins always live in their own pinned section at the very top — never
+  // mixed into the Online list, the role groups, or the Offline section.
+  // (Defined after `filtered` — it reads from it.)
+  const admins = useMemo(
+    () => filtered
+      .filter((m) => m.role === 'admin')
+      .map((m) => (m.id === user?.id ? { ...m, isYou: true } : m)),
+    [filtered, user]
+  );
+
   // Group the filtered list per active mode (offline users stay in their groups
   // for dept/batch/semester modes; for Role mode they move to the Offline section)
   const groups = useMemo(() => {
@@ -412,12 +424,13 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
         key: `role-${g.key}`,
         title: g.label,
         icon: g.icon,
-        members: filtered.filter((m) => roleGroupKey(m.role) === g.key && m.status !== 'offline'),
+        members: filtered.filter((m) => m.role !== 'admin' && roleGroupKey(m.role) === g.key && m.status !== 'offline'),
       })).filter((g) => g.members.length > 0);
     }
     if (mode === 'department') {
       const byDept = {};
       filtered.forEach((m) => {
+        if (m.role === 'admin') return; // admins pinned in their own section
         const k = m.department || 'Undeclared';
         (byDept[k] = byDept[k] || []).push(m);
       });
@@ -433,6 +446,7 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
     if (mode === 'batch') {
       const byBatch = {};
       filtered.forEach((m) => {
+        if (m.role === 'admin') return; // admins pinned in their own section
         const k = m.batchNo || (m.batch ? String(m.batch).replace(/^Batch\s*/i, '') : 'Other');
         (byBatch[k] = byBatch[k] || []).push(m);
       });
@@ -448,6 +462,7 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
     // semester
     const bySem = {};
     filtered.forEach((m) => {
+      if (m.role === 'admin') return; // admins pinned in their own section
       const k = m.semester ? String(m.semester) : 'Other';
       (bySem[k] = bySem[k] || []).push(m);
     });
@@ -561,6 +576,23 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
             </div>
           ) : (
             <>
+              {/* Admin section — pinned above everyone, always visible */}
+              {admins.length > 0 && (
+                <MemberGroup
+                  title="Admin"
+                  icon={<span className="am-admin-crown">👑</span>}
+                  count={admins.length}
+                  forceOpen
+                  className="am-group-admin"
+                >
+                  {admins.map((m) => (
+                    <span key={`adm-${m.id}`} ref={(el) => { rowRefs.current[`adm-${m.id}`] = el; }}>
+                      <MemberRow member={m} isOffline={m.status === 'offline'} isAdmin onClick={() => openPopover(m, `adm-${m.id}`)} />
+                    </span>
+                  ))}
+                </MemberGroup>
+              )}
+
               {/* Online section — active now (online + idle), own name pinned */}
               {onlineMembers.length > 0 && (
                 <MemberGroup

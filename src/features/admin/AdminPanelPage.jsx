@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Shield, BellRing, Coffee, Activity, Users, Trash2, Plus, Check, AlertCircle, Eye, Edit3, Search, X, Save, User, FileText, CheckCircle2, XCircle, Clock3, ClipboardList, CalendarDays, Mic, CalendarClock, Ban } from 'lucide-react';
 import { notices, canteenData, libraryData, getAuditoriumEvent, setAuditoriumEvent, defaultAuditoriumEvent } from '../../data/mockData';
-import { getRoleLabel, getRoleBadgeClass, updateAccountProfile, getAccountById, getAllRoleApplications, reviewRoleApplication, getAccountById as getUserById, resetAllLocalData } from '../../utils/authStorage';
+import { getRoleLabel, getRoleBadgeClass, updateAccountProfile, getAccountById, getAllAccounts, getAllRoleApplications, reviewRoleApplication, getAccountById as getUserById, resetAllLocalData, getCurrentUserId } from '../../utils/authStorage';
 import { loadTemplates, saveTemplates, addTemplate, updateTemplate, deleteTemplate } from '../../utils/routineTemplates';
 import RoutineTemplatesPanel from './RoutineTemplatesPanel';
 import TranscriptTemplatesPanel from './TranscriptTemplatesPanel';
@@ -141,18 +141,29 @@ export default function AdminPanelPage() {
       setLibraryInfo(libraryData);
     }
 
-    // 4. Accounts
-    const storedAccounts = localStorage.getItem('aust-auth-accounts-v1');
-    if (storedAccounts) {
-      const accountsList = JSON.parse(storedAccounts);
-      setAccounts(accountsList);
-      setFilteredAccounts(accountsList);
-    }
+    // 4. Accounts — go through getAllAccounts() so the auth-storage purge
+    // filter runs first (it drops leftover dummy/QA/demo accounts and keeps
+    // only the admin + the signed-in user), instead of reading the raw
+    // localStorage list which could show stale users.
+    const accountsList = getAllAccounts();
+    setAccounts(accountsList);
+    setFilteredAccounts(accountsList);
 
-    // 5. CR/SR Applications
+    // 5. CR/SR Applications — keep only applications that belong to accounts
+    // that still exist (applications from removed users are orphaned).
     const storedApplications = localStorage.getItem('aust-role-applications-v1');
     if (storedApplications) {
-      setApplications(JSON.parse(storedApplications));
+      let allApps = [];
+      try {
+        const parsed = JSON.parse(storedApplications);
+        if (Array.isArray(parsed)) allApps = parsed;
+      } catch { /* corrupt localStorage — treat as empty */ }
+      const liveIds = new Set(accountsList.map((a) => a.id));
+      const liveApps = allApps.filter((app) => liveIds.has(app.userId));
+      if (liveApps.length !== allApps.length) {
+        localStorage.setItem('aust-role-applications-v1', JSON.stringify(liveApps));
+      }
+      setApplications(liveApps);
     }
 
     // 6. Routine Templates
@@ -273,8 +284,9 @@ export default function AdminPanelPage() {
 
   // Delete Account
   const handleDeleteAccount = (id) => {
-    if (id === 'ADM-001') {
-      alert('Cannot delete the primary System Administrator account.');
+    const target = accounts.find(acc => acc.id === id);
+    if (target && target.role === 'admin') {
+      alert('Cannot delete an admin account.');
       return;
     }
     if (window.confirm('Are you sure you want to delete this account?')) {
@@ -317,8 +329,9 @@ export default function AdminPanelPage() {
 
   // Save Edited User
   const handleSaveEditUser = (userId) => {
-    if (userId === 'ADM-001' && editFormData.role !== 'admin') {
-      alert('Cannot change the role of the primary System Administrator.');
+    const target = accounts.find(acc => acc.id === userId);
+    if (target && target.role === 'admin' && editFormData.role !== 'admin') {
+      alert('Cannot change the role of an admin account.');
       return;
     }
 
@@ -409,7 +422,7 @@ export default function AdminPanelPage() {
       return;
     }
 
-    setResetNotification({ type: 'success', text: 'Factory reset complete. All data has been removed. The default admin account (admin@aust.edu / 12345678) has been restored. The page will now reload.' });
+    setResetNotification({ type: 'success', text: 'Factory reset complete. All data has been removed. The admin account has been restored. The page will now reload.' });
     setTimeout(() => window.location.reload(), 3000);
   };
 
@@ -1171,7 +1184,7 @@ export default function AdminPanelPage() {
                       value={editFormData.role}
                       onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })}
                       className="input"
-                      disabled={editingUser === 'ADM-001'}
+                      disabled={editingUser && accounts.find(a => a.id === editingUser)?.role === 'admin'}
                     >
                       <option value="student">Student</option>
                       <option value="cr">Class Representative (CR)</option>
@@ -1180,7 +1193,7 @@ export default function AdminPanelPage() {
                       <option value="gs">General Secretary (GS)</option>
                       <option value="faculty">Faculty</option>
                       <option value="alumni">Alumni</option>
-                      {editingUser !== 'ADM-001' && <option value="admin">Admin</option>}
+                      {!(editingUser && accounts.find(a => a.id === editingUser)?.role === 'admin') && <option value="admin">Admin</option>}
                     </select>
                   </div>
                   <div>
@@ -1452,15 +1465,15 @@ export default function AdminPanelPage() {
                               </button>
                               <button 
                                 className="btn btn-secondary btn-icon"
-                                disabled={acc.id === 'ADM-001'}
+                                disabled={acc.role === 'admin'}
                                 onClick={() => handleDeleteAccount(acc.id)}
                                 title="Delete User"
                                 style={{ 
-                                  color: acc.id === 'ADM-001' ? 'var(--text-tertiary)' : 'var(--accent-rose)', 
-                                  opacity: acc.id === 'ADM-001' ? 0.4 : 1,
+                                  color: acc.role === 'admin' ? 'var(--text-tertiary)' : 'var(--accent-rose)', 
+                                  opacity: acc.role === 'admin' ? 0.4 : 1,
                                   border: 'none',
                                   background: 'transparent',
-                                  cursor: acc.id === 'ADM-001' ? 'not-allowed' : 'pointer',
+                                  cursor: acc.role === 'admin' ? 'not-allowed' : 'pointer',
                                   padding: '4px',
                                   width: '28px',
                                   height: '28px'
@@ -1778,10 +1791,11 @@ export default function AdminPanelPage() {
                       style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                       onClick={() => {
                         if (window.confirm(`Approve ${selectedApplication.userName}'s application for ${selectedApplication.appliedRole === 'cr' ? 'CR' : 'SR'}?`)) {
-                          reviewRoleApplication(selectedApplication.id, 'approved', 'ADM-001');
+                          const reviewerId = getCurrentUserId() || 'ADM-MSOP6VG6BVL4';
+                          reviewRoleApplication(selectedApplication.id, 'approved', reviewerId);
                           const updatedApplications = applications.map(app => 
                             app.id === selectedApplication.id 
-                              ? { ...app, status: 'approved', reviewedAt: new Date().toISOString(), reviewedBy: 'ADM-001' }
+                              ? { ...app, status: 'approved', reviewedAt: new Date().toISOString(), reviewedBy: reviewerId }
                               : app
                           );
                           setApplications(updatedApplications);
@@ -1797,10 +1811,11 @@ export default function AdminPanelPage() {
                       style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: 'var(--accent-rose)' }}
                       onClick={() => {
                         if (window.confirm(`Reject ${selectedApplication.userName}'s application?`)) {
-                          reviewRoleApplication(selectedApplication.id, 'rejected', 'ADM-001');
+                          const reviewerId = getCurrentUserId() || 'ADM-MSOP6VG6BVL4';
+                          reviewRoleApplication(selectedApplication.id, 'rejected', reviewerId);
                           const updatedApplications = applications.map(app => 
                             app.id === selectedApplication.id 
-                              ? { ...app, status: 'rejected', reviewedAt: new Date().toISOString(), reviewedBy: 'ADM-001' }
+                              ? { ...app, status: 'rejected', reviewedAt: new Date().toISOString(), reviewedBy: reviewerId }
                               : app
                           );
                           setApplications(updatedApplications);

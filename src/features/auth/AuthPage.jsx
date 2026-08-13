@@ -103,24 +103,6 @@ export default function AuthPage() {
     });
   };
 
-  // ─── 3D tilt — card leans with the cursor ───
-  const pageRef = useRef(null);
-  const handleTilt = (e) => {
-    const el = pageRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const nx = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
-    const ny = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
-    el.style.setProperty('--mx', nx.toFixed(3));
-    el.style.setProperty('--my', ny.toFixed(3));
-  };
-  const resetTilt = () => {
-    const el = pageRef.current;
-    if (!el) return;
-    el.style.setProperty('--mx', '0');
-    el.style.setProperty('--my', '0');
-  };
-
   // ─── Typewriter ticker ───
   const TICKER_PHRASES = [
     'Track your attendance.',
@@ -518,9 +500,6 @@ export default function AuthPage() {
 
   return (
     <div
-      ref={pageRef}
-      onMouseMove={handleTilt}
-      onMouseLeave={resetTilt}
       className={`auth-page animate-fadeIn ${blueprintMode ? 'is-blueprint' : ''}`}
       style={{ '--pw-strength': energyIntensity }}
     >

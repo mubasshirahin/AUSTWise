@@ -2265,21 +2265,18 @@
 }
 
 /* ═══════════════════════════════════════════════════════
-   PREMIUM 3D — Auth Page (mesh-topology / SaaS style)
-   Cursor-driven 3D tilt, hairline gradient frame, depth
-   glow, floating impact strip. Theme-aware via tokens.
+   PREMIUM — Auth Page (mesh-topology / SaaS style)
+   Hairline gradient frame, depth glow, floating impact
+   strip. Theme-aware via tokens.
+
+   NOTE: the previous cursor-driven 3D tilt (rotateX/rotateY
+   on .auth-card inside a perspective/preserve-3d stage) broke
+   click hit-testing — Chromium failed to hit the card's
+   children, so Login/Sign Up tab clicks landed on the shell
+   and the toggle never fired. Removed; premium visuals kept.
    ═══════════════════════════════════════════════════════ */
 
-/* 1 · 3D stage — whole page becomes a perspective scene */
-.auth-page {
-  perspective: 1200px;
-}
-
-.auth-shell {
-  transform-style: preserve-3d;
-}
-
-/* 2 · Depth glow behind the card (SaaS hero) */
+/* 1 · Depth glow behind the card (SaaS hero) */
 .auth-shell::before {
   content: '';
   position: absolute;
@@ -2288,17 +2285,11 @@
     color-mix(in srgb, var(--accent-blue) 20%, transparent) 0%,
     transparent 68%);
   filter: blur(46px);
-  transform: translateZ(-60px);
   pointer-events: none;
   z-index: 0;
 }
 
-/* 3 · Brand + ticker float above the scene */
-.auth-brand-outside {
-  transform: translateZ(40px);
-}
-
-/* 4 · Impact stat strip — glass pill, mono numerals */
+/* 2 · Impact stat strip — glass pill, mono numerals */
 .auth-impact {
   display: flex;
   align-items: center;
@@ -2311,7 +2302,6 @@
   border: 1px solid var(--border-primary);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  transform: translateZ(30px);
   box-shadow:
     0 12px 30px -18px rgba(0, 0, 0, 0.55),
     inset 0 0 0 1px color-mix(in srgb, var(--accent-blue) 16%, transparent);
@@ -2346,28 +2336,16 @@
   background: linear-gradient(to bottom, transparent, var(--border-primary), transparent);
 }
 
-/* 5 · Card — cursor tilt + hairline frame */
+/* 3 · Card — premium hairline frame (no transform: 3D tilt broke hit-testing) */
 .auth-card {
-  transform:
-    rotateX(calc(var(--my, 0) * -5deg))
-    rotateY(calc(var(--mx, 0) * 7deg));
-  transition:
-    transform 0.18s cubic-bezier(0.2, 0, 0, 1),
-    box-shadow 0.3s ease;
-  will-change: transform;
+  transition: box-shadow 0.3s ease;
   box-shadow:
     0 40px 80px -30px rgba(0, 0, 0, 0.6),
     inset 0 0 0 1px color-mix(in srgb, var(--accent-blue) 22%, transparent),
     inset 0 1px 0 color-mix(in srgb, #fff 6%, transparent);
 }
 
-/* 6 · Reduced motion — kill 3D, keep the card flat */
+/* 4 · Reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  .auth-card,
-  .auth-impact,
-  .auth-brand-outside {
-    transform: none !important;
-    transition: none !important;
-  }
   .auth-shell::before { display: none; }
 }

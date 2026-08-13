@@ -22,7 +22,7 @@
  * # 3. Admin succeeds:
  * #    curl -c admin-cookies.txt -X POST http://localhost:5174/api/auth/login \
  * #      -H "Content-Type: application/json" \
- * #      -d '{"email":"admin@aust.edu","password":"changeme"}'
+ * #      -d '{"email":"austwise59@gmail.com","password":"<admin password>"}'
  * #    curl -b admin-cookies.txt http://localhost:5174/api/telegram/users
  * #
  * # → HTTP 200 {"success":true,"stats":{...},"users":[...]}

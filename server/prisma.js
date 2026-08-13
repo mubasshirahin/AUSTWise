@@ -76,7 +76,7 @@ async function initJsonDatabase() {
           id: n.id || `not-${index}`,
           title: n.title,
           body: n.body || n.content || '',
-          postedBy: n.postedBy || 'ADM-001',
+          postedBy: n.postedBy || 'ADM-MSOP6VG6BVL4',
           postedAt: n.postedAt || new Date().toISOString(),
           pinned: !!n.pinned
         }));

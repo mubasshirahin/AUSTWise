@@ -69,13 +69,14 @@ export async function seedDefaultAdmin() {
     BCRYPT_ROUNDS
   );
   const admin = {
-    id: 'ADM-001',
-    name: 'Prof. Dr. Md. Abdur Rahim',
-    email: 'admin@aust.edu',
+    id: 'ADM-MSOP6VG6BVL4',
+    awid: 'STU-ADM-AW000001',
+    name: 'AUSTWise Admin',
+    email: 'austwise59@gmail.com',
     password: hash,
     role: 'admin',
     department: 'Admin Department',
-    designation: 'Registrar',
+    designation: 'Administrator',
     company: 'Ahsanullah University of Science and Technology',
     batch: '',
     batchNo: '',
@@ -90,6 +91,11 @@ export async function seedDefaultAdmin() {
     linkedSocial: {},
     linkedAccounts: [],
     cgpa: 0,
+    attendancePct: null,
+    privacy: {
+      showCgpa: true,
+      showAttendance: false,
+    },
     creditsCompleted: 0,
     totalCredits: 160,
     bloodGroup: '',
@@ -101,7 +107,7 @@ export async function seedDefaultAdmin() {
   };
   users.push(admin);
   await writeUsers(users);
-  console.log('✅ Default admin account seeded (admin@aust.edu)');
+  console.log('✅ Default admin account seeded (austwise59@gmail.com)');
   return admin;
 }
 

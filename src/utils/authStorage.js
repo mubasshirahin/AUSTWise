@@ -139,7 +139,7 @@ export function resetAllLocalData() {
   try {
     localStorage.clear();
     const accounts = loadAccounts();
-    return { success: true, adminCreated: accounts.some(acc => acc.email === 'admin@aust.edu') };
+    return { success: true, adminCreated: accounts.some(acc => acc.role === 'admin') };
   } catch (e) {
     return { success: false, error: e.message };
   }
@@ -226,30 +226,43 @@ function loadAccounts() {
       localStorage.setItem(accountsKey, JSON.stringify(list));
     }
 
-    const adminExists = list.some(acc => acc.email === 'admin@aust.edu');
+    // The one true admin identity. Any OTHER admin-role account in
+    // localStorage is leftover from before the admin swap (e.g. the old
+    // ADM-001 / admin@aust.edu) and must be dropped so the admin panel and
+    // directories only ever show the real admin.
+    const DEFAULT_ADMIN_ID = 'ADM-MSOP6VG6BVL4';
+
+    // Explicitly purge the old admin identity so browsers that cached it
+    // before the swap stop showing "Prof. Dr. Md. Abdur Rahim".
+    const isOldAdmin = (acc) =>
+      acc.id === 'ADM-001' || acc.email === 'admin@aust.edu';
+    list = list.filter(acc => !isOldAdmin(acc));
+
+    const adminExists = list.some(acc => acc.id === DEFAULT_ADMIN_ID);
     if (!adminExists) {
       list.push({
-        id: 'ADM-001',
-        name: 'Prof. Dr. Md. Abdur Rahim',
-        email: 'admin@aust.edu',
+        id: DEFAULT_ADMIN_ID,
+        name: 'AUSTWise Admin',
+        email: 'austwise59@gmail.com',
         password: btoa(import.meta.env.VITE_ADMIN_DEFAULT_PASSWORD || 'changeme'),
         role: 'admin',
         department: 'Admin Department',
-        designation: 'Registrar',
+        designation: 'Administrator',
         company: 'Ahsanullah University of Science and Technology',
-        initials: 'AR',
+        initials: 'AW',
         createdAt: new Date().toISOString(),
       });
       localStorage.setItem(accountsKey, JSON.stringify(list));
     }
 
-    // Keep only real accounts on this browser: the default admin plus the
+    // Keep only real accounts on this browser: the one true admin plus the
     // account of whoever is signed in right now (if anyone). Everything else
-    // is leftover test/sync data (demo students, old QA/Google-test logins)
-    // that should never appear in public directories like the Student Directory.
+    // is leftover test/sync data (demo students, old QA/Google-test logins,
+    // any other admin-role accounts) that should never appear in public
+    // directories like the Student Directory or the Admin Panel.
     const currentId = getCurrentUserId();
     const beforeFilter = list.length;
-    list = list.filter(acc => (currentId && acc.id === currentId) || acc.role === 'admin');
+    list = list.filter(acc => (currentId && acc.id === currentId) || acc.id === DEFAULT_ADMIN_ID);
     if (list.length !== beforeFilter) {
       localStorage.setItem(accountsKey, JSON.stringify(list));
     }
