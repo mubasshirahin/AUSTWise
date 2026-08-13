@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { getRoleLabel, getRoleBadgeClass, AUTH_ROLES } from '../utils/authStorage';
 import NavPomodoro from './NavPomodoro';
 import {
-  Search, Bell, BellRing, Sun, Moon, Menu, Newspaper, Terminal, Check, User,
+  Search, Bell, BellRing, Sun, Moon, Menu, Newspaper, Terminal, SquareTerminal, Check, User,
   Clock, Hourglass, AlertTriangle, CalendarCheck, Info, CheckCheck, Trash2,
   Settings, LogOut, Sparkles, Gauge, MoonStar, Pen, PenTool, Zap,
   Building2, Type, Grid2x2, Cpu, Users, Orbit,
@@ -49,6 +49,7 @@ const darkThemeOptions = [
   { id: 'midnight', label: 'Midnight', icon: MoonStar },
   { id: 'nexus', label: 'Nexus', icon: Cpu },
   { id: 'cyberpunk', label: 'Cyberpunk', icon: Terminal },
+  { id: 'terminal', label: 'Terminal', icon: SquareTerminal },
   { id: 'bitcoindefi', label: 'Bitcoin DeFi', icon: Zap },
   { id: 'art-deco', label: 'Art Deco', icon: Building2 },
   { id: 'poster', label: 'Bold Type', icon: Type },
