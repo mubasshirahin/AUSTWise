@@ -15,6 +15,7 @@ import {
   X, Search, Hash, Megaphone, Orbit,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import HorizontalFeatures from './HorizontalFeatures';
 import logoSilver from '../../assets/logo-silver.png';
 import logoRed from '../../assets/logo-red.png';
 import './LandingPage.css';
@@ -1726,6 +1727,9 @@ export default function LandingPage() {
           })}
         </div>
       </section>
+
+      {/* ─── HORIZONTAL FEATURE ROLL (GSAP ScrollTrigger) ─── */}
+      <HorizontalFeatures items={features} />
 
       {/* ─── WHAT YOU GET / VALUE HIGHLIGHTS ─── */}
       <section className="landing-section">
