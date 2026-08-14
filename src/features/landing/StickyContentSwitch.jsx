@@ -99,12 +99,19 @@ export default function StickyContentSwitch() {
           );
       };
 
+      const navH = () => {
+        const nav = document.querySelector('.landing-nav');
+        return nav ? nav.getBoundingClientRect().height : 0;
+      };
+
+      section.style.setProperty('--switch-pin-offset', `${navH() + 50}px`);
+
       ScrollTrigger.create({
         trigger: section,
-        start: 'top top',
+        start: () => `top top+=${navH() + 50}`,
         end: 'bottom bottom',
         pin: left,
-        anticipatePin: 1,
+        anticipatePin: 0,
         invalidateOnRefresh: true,
         onUpdate: (self) => {
           const idx = Math.min(steps.length - 1, Math.max(0, Math.floor(self.progress * steps.length)));

@@ -31,9 +31,14 @@ export default function HorizontalFeatures({ items }) {
 
     const ctx = gsap.context(() => {
       const dist = () => Math.max(track.scrollWidth - viewport.clientWidth, 0);
+      const navH = () => {
+        const nav = document.querySelector('.landing-nav');
+        return nav ? nav.getBoundingClientRect().height : 0;
+      };
+      section.style.setProperty('--hscroll-pin-offset', `${navH()}px`);
       const settings = {
         trigger: section,
-        start: 'top top',
+        start: () => `top top+=${navH()}`,
         end: 'bottom bottom',
         scrub: 1,
         invalidateOnRefresh: true,
