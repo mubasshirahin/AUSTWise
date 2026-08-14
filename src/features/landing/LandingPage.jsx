@@ -3,23 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight, Sparkles, GraduationCap, BookOpen, Users,
   Library, Map, Archive, TrendingUp, MessageSquare,
-  ShoppingBag, Settings, Shield, Zap, Moon, Sun,
+  ShoppingBag, Settings, Shield, Zap,
   ChevronDown, Check, Star, Globe, Layers, Clock,
   CalendarCheck, Award, BarChart3, GitBranch,
   ChevronRight, ChevronUp, Target, AlertCircle,
   Coffee, Sun as SunIcon, Book, Bell,
   Smartphone, Eye, Activity, List, Menu,
-  Newspaper, Terminal, SquareTerminal, Gauge, MoonStar, Pen, PenTool,
-  Building2, Type, Grid2x2, Cpu,
   ChevronLeft, Heart, ThumbsUp, Download, MessageCircle,
-  X, Search, Hash, Megaphone, Orbit,
+  X, Search, Hash, Megaphone,
 } from 'lucide-react';
-import { useTheme } from '../../context/ThemeContext';
 import HorizontalFeatures from './HorizontalFeatures';
 import StickyContentSwitch from './StickyContentSwitch';
 import ImageTrailShowcase from './ImageTrailShowcase';
+import LandingNav from './LandingNav';
 import logoSilver from '../../assets/logo-silver.png';
-import logoNew from '../../assets/logo-new.png';
 import './LandingPage.css';
 
 // ─── RICH FEATURE DATA ───
@@ -1303,58 +1300,12 @@ function BeforeAfterSection() {
 
 
 
-const darkThemeOptions = [
-  { id: 'dark', label: 'Dark', icon: Moon },
-  { id: 'midnight', label: 'Midnight', icon: MoonStar },
-  { id: 'nexus', label: 'Nexus', icon: Cpu },
-  { id: 'cyberpunk', label: 'Cyberpunk', icon: Terminal },
-  { id: 'terminal', label: 'Terminal', icon: SquareTerminal },
-  { id: 'bitcoindefi', label: 'Bitcoin DeFi', icon: Zap },
-  { id: 'art-deco', label: 'Art Deco', icon: Building2 },
-  { id: 'poster', label: 'Bold Type', icon: Type },
-  { id: 'meshtopo', label: 'Mesh Topology', icon: Orbit },
-];
-
-const lightThemeOptions = [
-  { id: 'light', label: 'Light', icon: Sun },
-  { id: 'swiss', label: 'Swiss', icon: Grid2x2 },
-  { id: 'newsprint', label: 'Newsprint', icon: Newspaper },
-  { id: 'sketchbook', label: 'Sketchbook', icon: PenTool },
-  { id: 'industrial', label: 'Industrial', icon: Gauge },
-  { id: 'minimalist-monochrome', label: 'Monochrome', icon: Pen },
-];
-
-const allThemeOptions = [...darkThemeOptions, ...lightThemeOptions];
-
 export default function LandingPage() {
   const navigate = useNavigate();
-  const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [heroLoaded, setHeroLoaded] = useState(false);
   const [cursorPos, setCursorPos] = useState({ x: -100, y: -100 });
-  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
-  const themeSwitcherRef = useRef(null);
   const heroRef = useRef(null);
-  const [logoClicked, setLogoClicked] = useState(false);
-  const logoClickTimes = useRef([]);
-
-  const checkEasterEgg = useCallback(() => {
-    const now = Date.now();
-    logoClickTimes.current.push(now);
-    const windowMs = 3000;
-    const threshold = 3;
-    logoClickTimes.current = logoClickTimes.current.filter(t => now - t < windowMs);
-    if (logoClickTimes.current.length >= threshold) {
-      logoClickTimes.current = [];
-      navigate('/terminal');
-    }
-  }, [navigate]);
-
-  const toggleLogo = () => {
-    setLogoClicked(true);
-    setTimeout(() => setLogoClicked(false), 600);
-    checkEasterEgg();
-  };
 
   useEffect(() => {
     setMounted(true);
@@ -1371,20 +1322,6 @@ export default function LandingPage() {
     }
 
     return () => clearTimeout(timer);
-  }, []);
-
-  const activeTheme = allThemeOptions.find((t) => t.id === theme) || allThemeOptions[0];
-  const ThemeIcon = activeTheme.icon;
-
-  // Click-outside closes theme menu
-  useEffect(() => {
-    const handleClick = (e) => {
-      if (themeSwitcherRef.current && !themeSwitcherRef.current.contains(e.target)) {
-        setThemeMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
   useEffect(() => {
@@ -1420,96 +1357,7 @@ export default function LandingPage() {
       </div>
 
       {/* ─── NAV ─── (outside shutter so position:fixed stays viewport-relative) ─── */}
-      <nav className="landing-nav">
-        <div className="landing-nav-inner">
-          <div className="landing-nav-left">
-            <div className="topbar-logo">
-              <div className="logo-icon-wrapper">
-                <button
-                  type="button"
-                  className={`topbar-logo-icon ${logoClicked ? 'clicked' : ''}`}
-                  onClick={toggleLogo}
-                  title="Click 3x for Nexus Terminal"
-                  aria-label="AUSTWise logo"
-                >
-                  <img
-                    src={logoNew}
-                    alt="AUSTWise logo"
-                    className="topbar-logo-img"
-                  />
-                </button>
-                <div className="logo-burst" aria-hidden="true">
-                  <i></i><i></i><i></i><i></i>
-                  <i></i><i></i><i></i><i></i>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="landing-nav-mid">
-            <div className="landing-theme-switcher" ref={themeSwitcherRef}>
-              <button
-                type="button"
-                className="landing-theme-btn"
-                aria-haspopup="menu"
-                aria-expanded={themeMenuOpen}
-                aria-label={`Theme: ${activeTheme.label}. Choose a theme`}
-                onClick={() => setThemeMenuOpen((open) => !open)}
-              >
-                <div className={`landing-theme-icon ${theme}`}>
-                  <ThemeIcon size={16} />
-                </div>
-              </button>
-
-              <div className={`landing-theme-menu ${themeMenuOpen ? 'open' : ''}`} role="menu" aria-label="Select theme">
-                <span className="landing-theme-menu-heading">Dark Mode</span>
-                {darkThemeOptions.map(({ id, label, icon: Icon }) => {
-                  const isActive = theme === id;
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      role="menuitemradio"
-                      aria-checked={isActive}
-                      className={`landing-theme-menu-item ${isActive ? 'active' : ''}`}
-                      onClick={() => { setTheme(id); setThemeMenuOpen(false); }}
-                    >
-                      <Icon size={16} />
-                      <span>{label}</span>
-                      {isActive && <Check size={14} className="landing-theme-menu-check" />}
-                    </button>
-                  );
-                })}
-
-                <div className="landing-theme-menu-divider" />
-
-                <span className="landing-theme-menu-heading">Light Mode</span>
-                {lightThemeOptions.map(({ id, label, icon: Icon }) => {
-                  const isActive = theme === id;
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      role="menuitemradio"
-                      aria-checked={isActive}
-                      className={`landing-theme-menu-item ${isActive ? 'active' : ''}`}
-                      onClick={() => { setTheme(id); setThemeMenuOpen(false); }}
-                    >
-                      <Icon size={16} />
-                      <span>{label}</span>
-                      {isActive && <Check size={14} className="landing-theme-menu-check" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          <div className="landing-nav-right">
-            <button className="landing-btn landing-btn-primary ripple-btn" onClick={() => navigate('/login')}>Start for Free <ArrowRight size={16} /><span className="ripple-overlay" aria-hidden="true" /></button>
-          </div>
-        </div>
-      </nav>
+      <LandingNav />
 
       {/* ─── SHUTTER LAYER — slides up to reveal the fixed background ─── */}
       <div className="landing-shutter-layer">
@@ -1625,21 +1473,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── STACKING CARDS (sticky deck) ─── */}
-      <section className="landing-section landing-stacking-section">
-        <ScrollReveal>
-          <div className="landing-section-header">
-            <div className="landing-badge pulse-badge"><Layers size={12} /><span>The Portfolio</span></div>
-            <h2 className="landing-section-title">Your Campus Companion, <span className="landing-hero-highlight">One Card at a Time</span></h2>
-            <p className="landing-section-desc">
-              Keep scrolling — every core module stacks into a deck as you go, so the whole
-              AUSTWise experience builds up right in front of you.
-            </p>
-          </div>
-        </ScrollReveal>
-        <StackingCards items={stackingFeatures} />
-      </section>
-
       {/* ─── APP PREVIEW CAROUSEL ─── */}
       <section className="landing-section">
         <ScrollReveal>
@@ -1654,6 +1487,30 @@ export default function LandingPage() {
         <ScrollReveal direction="scale">
           <AppPreviewCarousel />
         </ScrollReveal>
+      </section>
+
+      {/* ─── STICKY CONTENT SWITCH (pinned heading, scrolling panels) ─── */}
+      <StickyContentSwitch />
+
+      {/* ─── HORIZONTAL FEATURE ROLL (GSAP ScrollTrigger) ─── */}
+      <HorizontalFeatures items={features} />
+
+      {/* ─── IMAGE TRAIL SHOWCASE (GSAP cursor trail) ─── */}
+      <ImageTrailShowcase items={features} />
+
+      {/* ─── STACKING CARDS (sticky deck) ─── */}
+      <section className="landing-section landing-stacking-section">
+        <ScrollReveal>
+          <div className="landing-section-header">
+            <div className="landing-badge pulse-badge"><Layers size={12} /><span>The Portfolio</span></div>
+            <h2 className="landing-section-title">Your Campus Companion, <span className="landing-hero-highlight">One Card at a Time</span></h2>
+            <p className="landing-section-desc">
+              Keep scrolling — every core module stacks into a deck as you go, so the whole
+              AUSTWise experience builds up right in front of you.
+            </p>
+          </div>
+        </ScrollReveal>
+        <StackingCards items={stackingFeatures} />
       </section>
 
       {/* ─── THE AUSTWISE EFFECT ─── */}
@@ -1708,23 +1565,14 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── HORIZONTAL FEATURE ROLL (GSAP ScrollTrigger) ─── */}
-      <HorizontalFeatures items={features} />
-
-      {/* ─── IMAGE TRAIL SHOWCASE (GSAP cursor trail) ─── */}
-      <ImageTrailShowcase items={features} />
-
-      {/* ─── STICKY CONTENT SWITCH (pinned heading, scrolling panels) ─── */}
-      <StickyContentSwitch />
-
       {/* ─── WHAT YOU GET / VALUE HIGHLIGHTS ─── */}
       <section className="landing-section">
         <ScrollReveal>
           <div className="landing-section-header">
             <div className="landing-badge pulse-badge"><Award size={12} /><span>Why Choose AUSTWise</span></div>
-            <h2 className="landing-section-title">Built for AUST Students, <span className="landing-hero-highlight">by AUST Developers</span></h2>
+            <h2 className="landing-section-title">Built for AUST Students, <span className="landing-hero-highlight">by One Developer</span></h2>
             <p className="landing-section-desc">
-              AUSTWise isn't just another student app — it's built by students who understand exactly what you need.
+              AUSTWise isn't another corporate student app — it's an independent project, built and maintained by one developer who understands exactly what you need.
             </p>
           </div>
         </ScrollReveal>

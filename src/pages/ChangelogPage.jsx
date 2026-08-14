@@ -1,21 +1,35 @@
 import { useNavigate } from 'react-router-dom';
-import logoSilver from '../assets/logo-silver.png';
 import './InfoPage.css';
+import LandingNav from '../features/landing/LandingNav';
 
 export default function ChangelogPage() {
   const navigate = useNavigate();
   return (
-    <div className="info-page">
-      <header className="info-page-header">
-        <a href="/" className="info-page-logo" onClick={(e) => { e.preventDefault(); navigate('/'); }}>
-          <img src={logoSilver} alt="" />
-          <span>AUSTWise</span>
-        </a>
-        <button className="info-page-back" onClick={() => navigate('/')}>← Back to Home</button>
-      </header>
+    <div className="info-page has-landing-nav">
+      <LandingNav />
       <div className="info-page-body">
-        <h1>Changelog</h1>
-        <p className="info-page-subtitle">Every update, feature, and fix — tracked here.</p>
+        <div className="info-page-title-block">
+          <div className="info-page-title-row">
+            <h1>Changelog</h1>
+            <button className="info-page-back" onClick={() => navigate('/')}>← Back to Home</button>
+          </div>
+          <p className="info-page-subtitle">Every update, feature, and fix — tracked here.</p>
+        </div>
+
+        <h2>v3.0 — August 2026</h2>
+        <ul>
+          <li>Daily Life — Mess Meal Tracker with cost splitting and BharaKoto fare estimates</li>
+          <li>Productivity — Pomodoro sessions, study room with ambient sounds, and Zen mode</li>
+          <li>DownTime — media trackers, gaming zone, and trivia</li>
+          <li>Shadow — anonymous AUST forum posts and 10-minute anonymous chats</li>
+          <li>Workspace — Google Classroom integration for courses, assignments, and materials</li>
+          <li>Money Tracker — expense logging, budget goals, and monthly summaries</li>
+          <li>Exam Checklist, CP Hub, and Cover Page Generator</li>
+          <li>Notebook — personal, searchable study notes library</li>
+          <li>ConnectBox — reactions, read receipts, and richer course/lab messaging</li>
+        </ul>
+
+        <hr />
 
         <h2>v2.0 — January 2025</h2>
         <ul>

@@ -1,21 +1,20 @@
 import { useNavigate } from 'react-router-dom';
-import logoSilver from '../assets/logo-silver.png';
 import './InfoPage.css';
+import LandingNav from '../features/landing/LandingNav';
 
 export default function CookiePolicyPage() {
   const navigate = useNavigate();
   return (
-    <div className="info-page">
-      <header className="info-page-header">
-        <a href="/" className="info-page-logo" onClick={(e) => { e.preventDefault(); navigate('/'); }}>
-          <img src={logoSilver} alt="" />
-          <span>AUSTWise</span>
-        </a>
-        <button className="info-page-back" onClick={() => navigate('/')}>← Back to Home</button>
-      </header>
+    <div className="info-page has-landing-nav">
+      <LandingNav />
       <div className="info-page-body">
-        <h1>Cookie Policy</h1>
-        <p className="info-page-subtitle">Last updated: January 2025</p>
+        <div className="info-page-title-block">
+          <div className="info-page-title-row">
+            <h1>Cookie Policy</h1>
+            <button className="info-page-back" onClick={() => navigate('/')}>← Back to Home</button>
+          </div>
+          <p className="info-page-subtitle">Last updated: August 2026</p>
+        </div>
 
         <h2>What Are Cookies</h2>
         <p>Cookies are small text files stored on your device by your browser. They help us remember your preferences and keep you logged in.</p>

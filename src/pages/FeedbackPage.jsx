@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import logoSilver from '../assets/logo-silver.png';
 import './InfoPage.css';
+import LandingNav from '../features/landing/LandingNav';
 
 export default function FeedbackPage() {
   const navigate = useNavigate();
@@ -13,17 +13,16 @@ export default function FeedbackPage() {
   };
 
   return (
-    <div className="info-page">
-      <header className="info-page-header">
-        <a href="/" className="info-page-logo" onClick={(e) => { e.preventDefault(); navigate('/'); }}>
-          <img src={logoSilver} alt="" />
-          <span>AUSTWise</span>
-        </a>
-        <button className="info-page-back" onClick={() => navigate('/')}>← Back to Home</button>
-      </header>
+    <div className="info-page has-landing-nav">
+      <LandingNav />
       <div className="info-page-body">
-        <h1>Feedback</h1>
-        <p className="info-page-subtitle">We would love to hear from you. Share your thoughts, ideas, or report an issue.</p>
+        <div className="info-page-title-block">
+          <div className="info-page-title-row">
+            <h1>Feedback</h1>
+            <button className="info-page-back" onClick={() => navigate('/')}>← Back to Home</button>
+          </div>
+          <p className="info-page-subtitle">We would love to hear from you. Share your thoughts, ideas, or report an issue.</p>
+        </div>
 
         {submitted ? (
           <div style={{ textAlign: 'center', padding: '60px 0' }}>

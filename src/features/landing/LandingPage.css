@@ -1538,22 +1538,16 @@
 .landing-switch-left {
   position: relative;
   align-self: start;
-  height: calc(100vh - var(--switch-pin-offset, 0px)); /* pinned below the navbar, so
+  height: calc(100vh - var(--switch-pin-offset, 0px) - 100px); /* pinned below the navbar, so
                                                           shrink so it never overflows the viewport */
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  padding: calc(clamp(84px, 14vh, 140px) - 50px) clamp(24px, 4vw, 64px) 0;
+  padding: calc(clamp(84px, 14vh, 140px) + 50px) clamp(24px, 4vw, 64px) 0;
 }
 
 .landing-switch-left::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  top: 12%;
-  bottom: 28%;
-  width: 1px;
-  background: var(--border-primary);
+  content: none;
 }
 
 .landing-switch-left .landing-badge {
@@ -1615,8 +1609,8 @@
 .landing-switch-progress {
   position: absolute;
   left: 0;
-  top: 12%;
-  bottom: 28%;
+  top: calc(2% + 40px);
+  bottom: calc(0% + 40px);
   width: 2px;
   border-radius: var(--radius-full);
   background: var(--border-primary);
@@ -1686,6 +1680,7 @@
   background: radial-gradient(ellipse at 50% 50%, var(--node-glow), transparent 65%);
   opacity: 0;
   transition: opacity var(--transition-base);
+  display: none;
 }
 
 .landing-switch-panel.active .landing-switch-card-glow {
@@ -1814,15 +1809,7 @@
 }
 
 .stacking-card::after {
-  content: '';
-  position: absolute;
-  top: -40%;
-  right: -18%;
-  width: 60%;
-  height: 130%;
-  background: radial-gradient(circle at 70% 30%, var(--card-glow) 0%, transparent 62%);
-  opacity: 0.35;
-  pointer-events: none;
+  content: none;
 }
 
 .stacking-card-top {
@@ -3901,14 +3888,14 @@
   font-size: 0.82rem;
   line-height: 1.6;
   color: var(--text-tertiary);
-  margin-top: 12px;
+  margin-top: 0;
   max-width: 320px;
 }
 
 .landing-footer-copy {
   font-size: 0.76rem;
   color: var(--text-tertiary);
-  margin-top: 16px;
+  margin-top: -8px;
 }
 
 .landing-footer-links {
@@ -3945,10 +3932,8 @@
 }
 
 .landing-footer-bottom {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px 24px;
-  border-top: 1px solid var(--border-primary);
+  padding: 20px 0;
+  border-top: 4px solid var(--border-primary);
   display: flex;
   align-items: center;
   justify-content: center;

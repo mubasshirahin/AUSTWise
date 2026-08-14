@@ -1,21 +1,26 @@
 import { useNavigate } from 'react-router-dom';
-import logoSilver from '../assets/logo-silver.png';
 import './InfoPage.css';
+import LandingNav from '../features/landing/LandingNav';
 
 export default function BlogPage() {
   const navigate = useNavigate();
   return (
-    <div className="info-page">
-      <header className="info-page-header">
-        <a href="/" className="info-page-logo" onClick={(e) => { e.preventDefault(); navigate('/'); }}>
-          <img src={logoSilver} alt="" />
-          <span>AUSTWise</span>
-        </a>
-        <button className="info-page-back" onClick={() => navigate('/')}>← Back to Home</button>
-      </header>
+    <div className="info-page has-landing-nav">
+      <LandingNav />
       <div className="info-page-body">
-        <h1>Blog</h1>
-        <p className="info-page-subtitle">Updates, tips, and stories from the AUSTWise team.</p>
+        <div className="info-page-title-block">
+          <div className="info-page-title-row">
+            <h1>Blog</h1>
+            <button className="info-page-back" onClick={() => navigate('/')}>← Back to Home</button>
+          </div>
+          <p className="info-page-subtitle">Updates, tips, and stories from the AUSTWise team.</p>
+        </div>
+
+        <h2>Campus Life, Fully Covered</h2>
+        <p className="info-page-meta">August 2026 · 3 min read</p>
+        <p>AUSTWise is no longer just a dashboard — it's a full campus companion. New additions like the Mess Meal Tracker with cost splitting, BharaKoto fare estimates, Pomodoro and Zen study modes, anonymous Shadow community spaces, and Google Classroom integration mean there's now a home for every part of your day, from morning mess meals to late-night study sessions.</p>
+
+        <hr />
 
         <h2>Introducing AUSTWise v2.0</h2>
         <p className="info-page-meta">January 2025 · 3 min read</p>

@@ -104,11 +104,12 @@ export default function StickyContentSwitch() {
         return nav ? nav.getBoundingClientRect().height : 0;
       };
 
-      section.style.setProperty('--switch-pin-offset', `${navH() + 50}px`);
+      const pinOffset = navH() + 50;
+      section.style.setProperty('--switch-pin-offset', `${pinOffset}px`);
 
       ScrollTrigger.create({
         trigger: section,
-        start: () => `top top+=${navH() + 50}`,
+        start: () => `top top+=${pinOffset}`,
         end: 'bottom bottom',
         pin: left,
         anticipatePin: 0,
