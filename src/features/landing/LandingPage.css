@@ -226,6 +226,7 @@
   align-items: center;
   gap: 0;
   flex-shrink: 0;
+  margin-left: 22px;
 }
 
 .landing-nav-left .logo-icon-wrapper {
@@ -248,7 +249,7 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
   cursor: pointer;
   position: relative;
   z-index: 1;

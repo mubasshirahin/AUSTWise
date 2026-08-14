@@ -19,7 +19,7 @@ import HorizontalFeatures from './HorizontalFeatures';
 import StickyContentSwitch from './StickyContentSwitch';
 import ImageTrailShowcase from './ImageTrailShowcase';
 import logoSilver from '../../assets/logo-silver.png';
-import logoRed from '../../assets/logo-red.png';
+import logoNew from '../../assets/logo-new.png';
 import './LandingPage.css';
 
 // ─── RICH FEATURE DATA ───
@@ -1335,9 +1335,6 @@ export default function LandingPage() {
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const themeSwitcherRef = useRef(null);
   const heroRef = useRef(null);
-  const [logoVariant, setLogoVariant] = useState(
-    () => localStorage.getItem('landingLogoVariant') || 'silver'
-  );
   const [logoClicked, setLogoClicked] = useState(false);
   const logoClickTimes = useRef([]);
 
@@ -1357,11 +1354,6 @@ export default function LandingPage() {
     setLogoClicked(true);
     setTimeout(() => setLogoClicked(false), 600);
     checkEasterEgg();
-    setLogoVariant((prev) => {
-      const next = prev === 'silver' ? 'red' : 'silver';
-      localStorage.setItem('landingLogoVariant', next);
-      return next;
-    });
   };
 
   useEffect(() => {
@@ -1437,11 +1429,11 @@ export default function LandingPage() {
                   type="button"
                   className={`topbar-logo-icon ${logoClicked ? 'clicked' : ''}`}
                   onClick={toggleLogo}
-                  title="Click to switch logo | Click 3x for Nexus Terminal"
-                  aria-label="Toggle logo color"
+                  title="Click 3x for Nexus Terminal"
+                  aria-label="AUSTWise logo"
                 >
                   <img
-                    src={logoVariant === 'silver' ? logoSilver : logoRed}
+                    src={logoNew}
                     alt="AUSTWise logo"
                     className="topbar-logo-img"
                   />
@@ -1449,20 +1441,6 @@ export default function LandingPage() {
                 <div className="logo-burst" aria-hidden="true">
                   <i></i><i></i><i></i><i></i>
                   <i></i><i></i><i></i><i></i>
-                </div>
-              </div>
-              <div className="logo-text">
-                <div className="logo-wordmark">
-                  <span className="wm-ust">
-                    <span className="wc">u</span>
-                    <span className="wc">s</span>
-                    <span className="wc">t</span>
-                  </span>
-                  <span className="wm-ise">
-                    <span className="wc">i</span>
-                    <span className="wc">s</span>
-                    <span className="wc">e</span>
-                  </span>
                 </div>
               </div>
             </div>
