@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import HorizontalFeatures from './HorizontalFeatures';
+import StickyContentSwitch from './StickyContentSwitch';
+import ImageTrailShowcase from './ImageTrailShowcase';
 import logoSilver from '../../assets/logo-silver.png';
 import logoRed from '../../assets/logo-red.png';
 import './LandingPage.css';
@@ -1730,6 +1732,12 @@ export default function LandingPage() {
 
       {/* ─── HORIZONTAL FEATURE ROLL (GSAP ScrollTrigger) ─── */}
       <HorizontalFeatures items={features} />
+
+      {/* ─── IMAGE TRAIL SHOWCASE (GSAP cursor trail) ─── */}
+      <ImageTrailShowcase items={features} />
+
+      {/* ─── STICKY CONTENT SWITCH (pinned heading, scrolling panels) ─── */}
+      <StickyContentSwitch />
 
       {/* ─── WHAT YOU GET / VALUE HIGHLIGHTS ─── */}
       <section className="landing-section">

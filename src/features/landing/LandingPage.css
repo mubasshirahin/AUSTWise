@@ -1267,6 +1267,510 @@
   }
 }
 
+
+/* ─── Image Trail Showcase (GSAP cursor trail) ─── */
+.landing-trail-section {
+  position: relative;
+  border-top: 1px solid var(--border-primary);
+  border-bottom: 1px solid var(--border-primary);
+  background:
+    radial-gradient(ellipse 55% 50% at 12% 12%, color-mix(in srgb, var(--accent-amber) 7%, transparent), transparent 60%),
+    radial-gradient(ellipse 45% 45% at 88% 20%, color-mix(in srgb, var(--accent-cyan) 6%, transparent), transparent 58%),
+    radial-gradient(ellipse 50% 50% at 50% 95%, color-mix(in srgb, var(--accent-purple) 6%, transparent), transparent 58%),
+    var(--bg-primary);
+  overflow: hidden;
+}
+
+.landing-trail-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 84px clamp(20px, 5vw, 56px) 96px;
+}
+
+.landing-trail-header {
+  text-align: center;
+}
+
+.landing-trail-header .landing-badge {
+  margin-bottom: 14px;
+}
+
+.landing-trail-title {
+  font-size: clamp(1.35rem, 3vw, 2rem);
+  font-weight: var(--fw-bold);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.landing-trail-sub {
+  margin: 10px auto 0;
+  max-width: 480px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+/* ─── Variant switcher ─── */
+.landing-trail-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 28px auto 20px;
+}
+
+.landing-trail-variants {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.landing-trail-variant {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-primary);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.landing-trail-variant:hover {
+  border-color: color-mix(in srgb, var(--accent-amber) 45%, var(--border-primary));
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.landing-trail-variant.active {
+  background: var(--gradient-primary);
+  color: var(--text-inverse);
+  border-color: transparent;
+  box-shadow: 0 4px 18px -2px color-mix(in srgb, var(--accent-amber) 45%, transparent);
+  transform: translateY(-1px);
+}
+
+.landing-trail-variant-name {
+  min-width: 132px;
+  font-size: 0.82rem;
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+/* ─── Interactive frame ─── */
+.landing-trail-frame {
+  position: relative;
+  height: clamp(380px, 62vh, 580px);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-primary);
+  background:
+    radial-gradient(ellipse 65% 55% at 50% 0%, color-mix(in srgb, var(--accent-amber) 8%, transparent), transparent 62%),
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-card) 92%, #000 8%), var(--bg-card));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    var(--shadow-lg);
+  overflow: hidden;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.landing-trail-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+/* ─── Trail cards (mini feature cards, accent-tinted) ─── */
+.trail-card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: clamp(150px, 18vw, 200px);
+  aspect-ratio: 1 / 1.12;
+  border-radius: 18px;
+  overflow: hidden;
+  opacity: 0;
+  box-shadow:
+    0 26px 60px -14px rgba(0, 0, 0, 0.6),
+    0 0 0 1px color-mix(in srgb, var(--card-color) 16%, transparent),
+    0 0 26px -6px color-mix(in srgb, var(--card-color) 22%, transparent);
+  will-change: transform, opacity, filter;
+}
+
+.trail-card-inner {
+  position: absolute;
+  inset: -12px;               /* overscan so scale-in never reveals edges */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 20px;
+  text-align: center;
+  background:
+    radial-gradient(130% 90% at 50% 0%, color-mix(in srgb, var(--card-color) 26%, transparent), transparent 58%),
+    linear-gradient(165deg, var(--bg-card-hover), var(--bg-card));
+  border: 1px solid color-mix(in srgb, var(--card-color) 26%, transparent);
+  border-radius: inherit;
+}
+
+.trail-card-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  color: var(--card-color);
+  background: color-mix(in srgb, var(--card-color) 15%, transparent);
+  box-shadow: 0 0 20px -2px color-mix(in srgb, var(--card-color) 38%, transparent);
+}
+
+.trail-card-label {
+  font-size: 0.86rem;
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--text-primary);
+}
+
+.trail-card-tag {
+  font-size: 0.66rem;
+  font-weight: var(--fw-regular);
+  line-height: 1.4;
+  color: var(--text-secondary);
+  max-width: 150px;
+}
+
+/* ─── Idle prompt + corner hint ─── */
+.landing-trail-prompt {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-tertiary);
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.landing-trail-prompt svg {
+  color: var(--accent-amber);
+  opacity: 0.7;
+  animation: trailPromptFloat 2.6s ease-in-out infinite;
+}
+
+.landing-trail-prompt.hidden {
+  opacity: 0;
+  transform: scale(0.98);
+}
+
+.landing-trail-hint {
+  position: absolute;
+  bottom: 16px;
+  left: 22px;
+  z-index: 30;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-weight: var(--fw-medium);
+  color: var(--text-tertiary);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+
+.landing-trail-frame:hover .landing-trail-hint {
+  opacity: 1;
+}
+
+@keyframes trailPromptFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@media (max-width: 640px) {
+  .landing-trail-inner {
+    padding: 56px clamp(16px, 5vw, 24px) 64px;
+  }
+  .landing-trail-title {
+    font-size: clamp(1.1rem, 5vw, 1.4rem);
+  }
+  .landing-trail-sub {
+    font-size: 0.82rem;
+  }
+  .landing-trail-frame {
+    height: clamp(320px, 56vh, 460px);
+  }
+  .trail-card {
+    width: clamp(130px, 34vw, 170px);
+  }
+  .landing-trail-variant-name {
+    min-width: 0;
+    text-align: center;
+  }
+}
+
+/* ─── Sticky Content Switch (pinned heading, scrolling panels) ─── */
+.landing-switch-section {
+  position: relative;
+  height: calc((var(--switch-count) + 1) * 100vh);
+  border-bottom: 1px solid var(--border-primary);
+  background:
+    radial-gradient(ellipse 55% 50% at 12% 20%, color-mix(in srgb, var(--accent-amber) 6%, transparent), transparent 60%),
+    radial-gradient(ellipse 50% 50% at 88% 80%, color-mix(in srgb, var(--accent-cyan) 6%, transparent), transparent 60%),
+    var(--bg-primary);
+}
+
+.landing-switch-layout {
+  position: relative;
+  max-width: 1200px;
+  margin: 0 auto;
+  height: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+}
+
+.landing-switch-left {
+  position: relative;
+  align-self: start;
+  height: 100vh;              /* pinned exactly to the viewport so the progress
+                                 line never extends beyond this section */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: clamp(84px, 14vh, 140px) clamp(24px, 4vw, 64px) 0;
+  border-right: 1px solid var(--border-primary);
+}
+
+.landing-switch-left .landing-badge {
+  margin-bottom: 18px;
+}
+
+.landing-switch-heading {
+  font-size: clamp(1.9rem, 3.6vw, 3rem);
+  font-weight: var(--fw-black);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  min-height: 1.2em;
+  will-change: transform, opacity, filter;
+}
+
+.landing-switch-sub {
+  margin-top: 18px;
+  max-width: 400px;
+  font-size: 0.95rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  min-height: 3em;
+  will-change: transform, opacity, filter;
+}
+
+.landing-switch-meta {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 36px;
+}
+
+.landing-switch-dots {
+  display: flex;
+  gap: 9px;
+}
+
+.landing-switch-dot {
+  width: 30px;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--border-primary);
+  transition: background var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.landing-switch-dot.active {
+  background: var(--switch-accent, var(--accent-blue));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--switch-accent, var(--accent-blue)) 55%, transparent);
+}
+
+.landing-switch-count {
+  font-size: 0.8rem;
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
+.landing-switch-progress {
+  position: absolute;
+  left: 0;
+  top: 12%;
+  bottom: 12%;
+  width: 2px;
+  border-radius: var(--radius-full);
+  background: var(--border-primary);
+  overflow: hidden;
+}
+
+.landing-switch-progress-fill {
+  width: 100%;
+  height: 100%;
+  transform-origin: top center;
+  transform: scaleY(0);
+  background: linear-gradient(180deg, var(--accent-amber), var(--accent-cyan), var(--accent-purple));
+}
+
+.landing-switch-right {
+  position: relative;
+}
+
+.landing-switch-panel {
+  height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.landing-switch-card {
+  position: relative;
+  width: min(440px, 100%);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.18);
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+.landing-switch-panel.active .landing-switch-card {
+  border-color: var(--node-color);
+  box-shadow:
+    0 28px 80px rgba(0, 0, 0, 0.22),
+    0 0 44px color-mix(in srgb, var(--node-color) 26%, transparent);
+}
+
+.landing-switch-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--node-color);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--transition-slow);
+}
+
+.landing-switch-panel.active .landing-switch-card::before {
+  transform: scaleX(1);
+}
+
+.landing-switch-card-glow {
+  position: absolute;
+  top: -30%;
+  left: -20%;
+  width: 140%;
+  height: 70%;
+  background: radial-gradient(ellipse at 50% 50%, var(--node-glow), transparent 65%);
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
+.landing-switch-panel.active .landing-switch-card-glow {
+  opacity: 1;
+}
+
+.landing-switch-panel-index {
+  position: absolute;
+  top: 10px;
+  right: 16px;
+  font-size: 4.5rem;
+  font-weight: var(--fw-black);
+  line-height: 1;
+  color: var(--border-primary);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.landing-switch-screen-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.landing-switch-head-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.landing-switch-dotp {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.landing-switch-screen-name {
+  font-size: 0.78rem;
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+}
+
+.landing-switch-screen-body {
+  padding: 26px 24px 30px;
+}
+
+.landing-switch-stat {
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  font-weight: var(--fw-black);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.landing-switch-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.landing-switch-row {
+  height: 10px;
+  border-radius: var(--radius-full);
+  opacity: 0.85;
+}
+
+@media (max-width: 900px) {
+  .landing-switch-layout {
+    grid-template-columns: 1fr;
+  }
+  .landing-switch-left {
+    padding: 28px 24px 12px;
+    border-right: none;
+  }
+  .landing-switch-heading {
+    font-size: clamp(1.5rem, 6vw, 2rem);
+  }
+  .landing-switch-progress {
+    display: none;
+  }
+}
+
 /* ─── Stacking Cards Deck (sticky fan) ─── */
 .stacking-deck {
   position: relative;
