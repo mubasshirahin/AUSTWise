@@ -6,6 +6,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -25,6 +26,23 @@ async function readUsers() {
 
 async function writeUsers(users) {
   await writeFile(DB_PATH, JSON.stringify(users, null, 2));
+}
+
+/**
+ * Normalize a year-semester value ("3.1" or "Year 3 - Semester 1") to the
+ * canonical server format "Year 3 - Semester 1". Returns '' for junk.
+ */
+function toYearSemester(value) {
+  const s = String(value || '').trim();
+  if (!s) return '';
+  if (/Year\s*\d+\s*-\s*Semester\s*\d+/i.test(s)) return s;
+  const parts = s.split('.');
+  const yr = Number(parts[0]);
+  const term = Number(parts[1]);
+  if (Number.isFinite(yr) && Number.isFinite(term) && yr >= 1 && term >= 1) {
+    return `Year ${yr} - Semester ${term}`;
+  }
+  return '';
 }
 
 /**
@@ -181,7 +199,9 @@ export async function createUser(payload) {
   // Extract student ID from email prefix
   const emailPrefix = email.split('@')[0] || '';
 
-  const [yr, term] = (payload.yearSemester || '1.1').split('.').map(Number);
+  // Canonical year-semester + its semester number (e.g. "Year 3 - Semester 1" → 5).
+  const yearSemester = toYearSemester(payload.yearSemester) || 'Year 1 - Semester 1';
+  const [yr, term] = yearSemester.match(/Year\s*(\d+)\s*-\s*Semester\s*(\d+)/).slice(1, 3).map(Number);
   const semesterNum = (yr - 1) * 2 + (term || 1);
 
   const user = {
@@ -198,7 +218,7 @@ export async function createUser(payload) {
     designation: String(payload.designation || '').trim(),
     company: String(payload.company || '').trim(),
     graduationYear: String(payload.graduationYear || '').trim(),
-    yearSemester: payload.yearSemester || '1.1',
+    yearSemester,
     section: String(payload.section || '').trim(),
     labSection: String(payload.labSection || '').trim(),
     semester: semesterNum,
@@ -246,6 +266,87 @@ export async function getUserById(id) {
   if (!user) return null;
   const { password: _, ...safe } = user;
   return safe;
+}
+
+/** Get a user by email (without password hash) */
+export async function getUserByEmail(email) {
+  const normalized = String(email || '').trim().toLowerCase();
+  const users = await readUsers();
+  const user = users.find(u => u.email === normalized);
+  if (!user) return null;
+  const { password: _, ...safe } = user;
+  return safe;
+}
+
+/**
+ * Find-or-create a user from a verified Google profile.
+ * Google accounts never use a real password, so a random one is hashed in.
+ * New accounts start as 'student' with an 'Undeclared' department until the
+ * client completes role/department/batch details in signup step 2.
+ */
+export async function findOrCreateGoogleUser(profile) {
+  const email = String(profile.email || '').trim().toLowerCase();
+  if (!email || !email.includes('@')) throw new Error('Google account has no email address.');
+  const name = String(profile.name || '').trim() || email.split('@')[0];
+  const picture = profile.picture || null;
+
+  const existing = await getUserByEmail(email);
+  if (existing) {
+    // Re-login — refresh avatar / social link if they changed.
+    const patch = {};
+    if (picture && existing.avatar !== picture) patch.avatar = picture;
+    if (!existing.linkedSocial || !existing.linkedSocial.gmail) {
+      patch.linkedSocial = { ...(existing.linkedSocial || {}), gmail: email };
+    }
+    if (Object.keys(patch).length) await updateUserProfile(existing.id, patch);
+    return { user: await getUserByEmail(email), created: false };
+  }
+
+  const users = await readUsers();
+  const passwordHash = await hashPassword(randomUUID());
+  const rnd = Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 6).toUpperCase();
+  const id = `STU-${rnd}`;
+  const awid = generateAwid(users, 'Undeclared');
+
+  const user = {
+    id,
+    awid,
+    email,
+    name,
+    password: passwordHash,
+    role: 'student',
+    department: 'Undeclared',
+    batch: '',
+    batchNo: '',
+    batchName: '',
+    designation: '',
+    company: '',
+    graduationYear: '',
+    yearSemester: toYearSemester('1.1') || 'Year 1 - Semester 1',
+    section: '',
+    labSection: '',
+    semester: 1,
+    avatar: picture,
+    openForTalk: false,
+    linkedSocial: { gmail: email },
+    linkedAccounts: [],
+    cgpa: 0,
+    attendancePct: null,
+    privacy: { showCgpa: true, showAttendance: false },
+    creditsCompleted: 0,
+    totalCredits: 160,
+    bloodGroup: '',
+    facebook: '',
+    whatsapp: '',
+    linkedin: '',
+    discord: '',
+    createdAt: new Date().toISOString(),
+  };
+
+  users.push(user);
+  await writeUsers(users);
+  const { password: _, ...safe } = user;
+  return { user: safe, created: true };
 }
 
 /** Get all users (for admin views — without password hashes) */

@@ -2,6 +2,8 @@
 //   GET  /api/grades  → getSemesterResults()
 //   POST /api/grades  → saveSemesterResult()
 // Keep userStoragePrefixes helpers until phased out.
+import { addNotification, makeNotifId, showNativeNotification } from './inAppNotifications';
+
 const accountsKey = 'aust-auth-accounts-v1';
 const sessionKey = 'aust-auth-session-v1';
 const profileKey = 'aust-user-profile';
@@ -255,18 +257,14 @@ function loadAccounts() {
       localStorage.setItem(accountsKey, JSON.stringify(list));
     }
 
-    // Keep only real accounts on this browser: the one true admin plus the
-    // account of whoever is signed in right now (if anyone). Everything else
-    // is leftover test/sync data (demo students, old QA/Google-test logins,
-    // any other admin-role accounts) that should never appear in public
-    // directories like the Student Directory or the Admin Panel.
-    const currentId = getCurrentUserId();
-    const beforeFilter = list.length;
-    list = list.filter(acc => (currentId && acc.id === currentId) || acc.id === DEFAULT_ADMIN_ID);
-    if (list.length !== beforeFilter) {
-      localStorage.setItem(accountsKey, JSON.stringify(list));
-    }
-
+    // NOTE: we intentionally do NOT prune accounts to "admin + signed-in user"
+    // here. That filter ran on every read and wiped accounts that were created
+    // before a session existed (e.g. the Google sign-up flow writes the account
+    // to localStorage, then completes department/batch in step 2 before any
+    // session is started). That made Google accounts vanish after the first
+    // sign-in, so the next sign-in created a brand-new account. The pattern
+    // cleanup above (DEV-/QA/demo + old admin) is enough to keep directories
+    // free of known test data without deleting real accounts.
     return list;
   } catch {
     return [];
@@ -659,7 +657,44 @@ function saveApplications(applications) {
   localStorage.setItem(applicationsKey, JSON.stringify(applications));
 }
 
-export function submitRoleApplication(payload) {
+/**
+ * Submit a CR/SR application. The server is the source of truth — it persists
+ * the application and notifies ONLY admins/moderators. The applicant is never
+ * notified about their own submission.
+ *
+ * If the server is unreachable, falls back to the local store so the flow still
+ * works offline (still no self-notification).
+ */
+export async function submitRoleApplication(payload) {
+  try {
+    const res = await fetch('/api/role-applications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.application) {
+      // Mirror server state locally so existing localStorage-based reads
+      // (settings status, vacancy map) stay consistent.
+      const applications = loadApplications();
+      if (!applications.some(a => a.id === data.application.id)) {
+        applications.push(data.application);
+        saveApplications(applications);
+      }
+      return data.application;
+    }
+    throw new Error(data.error || 'Failed to submit application.');
+  } catch (err) {
+    // Genuine network failure (server offline) → local fallback.
+    if (err instanceof TypeError || /fetch|network|ECONNREFUSED/i.test(String(err?.message))) {
+      return submitRoleApplicationLocal(payload);
+    }
+    throw err;
+  }
+}
+
+function submitRoleApplicationLocal(payload) {
   const applications = loadApplications();
   const userId = payload.userId;
   const appliedRole = payload.appliedRole; // 'cr' or 'sr'
@@ -721,6 +756,7 @@ export function submitRoleApplication(payload) {
 
   applications.push(application);
   saveApplications(applications);
+
   return application;
 }
 
@@ -733,10 +769,54 @@ export function getAllRoleApplications() {
   return loadApplications();
 }
 
-export function reviewRoleApplication(applicationId, status, adminId) {
+/**
+ * Review (approve/reject) a CR/SR application. Server-first so the decision
+ * is persisted and the applicant is notified regardless of which device they
+ * are on. Falls back to the local store when the server is unreachable.
+ */
+export async function reviewRoleApplication(applicationId, status, adminId) {
+  try {
+    const res = await fetch('/api/role-applications/review', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ applicationId, status }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.application) {
+      const app = data.application;
+      mirrorRoleApplication(app);
+      if (status === 'approved') {
+        updateAccountProfile(app.userId, { role: app.appliedRole });
+        // If the applicant is the current session user, refresh the cached
+        // profile too so their CR/SR powers activate without a re-login.
+        try {
+          const cached = localStorage.getItem(profileKey);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed && parsed.id === app.userId) {
+              persistUserProfile({ ...parsed, role: app.appliedRole });
+            }
+          }
+        } catch { /* ignore */ }
+      }
+      notifyRoleReview(app);
+      return app;
+    }
+    throw new Error(data.error || 'Failed to review application.');
+  } catch (err) {
+    // Genuine network failure (server offline) → local fallback.
+    if (err instanceof TypeError || /fetch|network|ECONNREFUSED/i.test(String(err?.message))) {
+      return reviewRoleApplicationLocal(applicationId, status, adminId);
+    }
+    throw err;
+  }
+}
+
+function reviewRoleApplicationLocal(applicationId, status, adminId) {
   const applications = loadApplications();
   const index = applications.findIndex(app => app.id === applicationId);
-  
+
   if (index === -1) {
     throw new Error('Application not found.');
   }
@@ -753,11 +833,90 @@ export function reviewRoleApplication(applicationId, status, adminId) {
   // If approved, update user's role
   if (status === 'approved') {
     updateAccountProfile(application.userId, { role: application.appliedRole });
+    // If the applicant is the current session user, refresh the cached
+    // profile too so their CR/SR powers activate without a re-login.
+    try {
+      const cached = localStorage.getItem(profileKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && parsed.id === application.userId) {
+          persistUserProfile({ ...parsed, role: application.appliedRole });
+        }
+      }
+    } catch { /* ignore */ }
   }
 
   applications[index] = application;
   saveApplications(applications);
+
+  notifyRoleReview(application);
+
   return application;
+}
+
+function notifyRoleReview(application) {
+  // Notify the applicant (bell + native) with the decision, so the
+  // confirmation lands in their notification area.
+  const approved = application.status === 'approved';
+  const roleLabel = application.appliedRole === 'cr' ? 'Class Representative (CR)' : 'Student Representative (SR)';
+  const notif = {
+    id: makeNotifId('rolereview'),
+    title: approved ? '🎉 Application approved' : 'Application rejected',
+    body: approved
+      ? `Congratulations ${application.userName}! You are now the ${roleLabel}.`
+      : `Your ${application.appliedRole === 'cr' ? 'CR' : 'SR'} application was rejected by the admin. You can re-apply for a vacant slot.`,
+    type: 'info',
+    icon: approved ? 'CheckCircle2' : 'XCircle',
+    path: '/settings',
+    timestamp: Date.now(),
+    read: false,
+    priority: approved ? 'high' : 'medium',
+  };
+  addNotification(notif);
+  showNativeNotification(notif);
+}
+
+/**
+ * Upsert a single application into the local mirror so existing
+ * localStorage-based reads (settings status, vacancy map) stay consistent.
+ */
+function mirrorRoleApplication(app) {
+  const applications = loadApplications();
+  const idx = applications.findIndex(a => a.id === app.id);
+  if (idx !== -1) {
+    applications[idx] = { ...applications[idx], ...app };
+  } else {
+    applications.push(app);
+  }
+  saveApplications(applications);
+}
+
+/**
+ * Pull the current user's applications from the server and mirror them
+ * locally. Used so an approval made on another device shows up without a
+ * manual reload.
+ */
+export async function syncRoleApplicationsFromServer(userId) {
+  try {
+    const res = await fetch('/api/role-applications/mine', { credentials: 'same-origin' });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && Array.isArray(data.applications)) {
+      const applications = loadApplications();
+      const merged = [...applications];
+      for (const app of data.applications) {
+        const idx = merged.findIndex(a => a.id === app.id);
+        if (idx !== -1) merged[idx] = { ...merged[idx], ...app };
+        else merged.push(app);
+      }
+      saveApplications(merged);
+      return merged.filter(app => app.userId === userId);
+    }
+  } catch { /* offline — keep local */ }
+  return getApplicationsByUserId(userId);
+}
+
+export function saveRoleApplications(applications) {
+  saveApplications(applications);
 }
 
 /** ─── Slot Vacancy ─── */
@@ -821,46 +980,91 @@ export function getSlotVacancyMap(department, semester) {
 
 /**
  * Resign from CR/SR role — revert account role back to 'student'.
- * Also marks the application as 'resigned'.
+ * Server-first so the vacancy opens up for everyone; falls back locally.
  */
-export function resignFromRole(userId) {
-  const account = getAccountById(userId);
-  if (!account) throw new Error('Account not found.');
-  if (account.role !== 'cr' && account.role !== 'sr') {
-    throw new Error('You do not have a CR or SR role to resign from.');
-  }
-
-  const resignedRole = account.role;
-
-  updateAccountProfile(userId, { role: 'student' });
-
-  const applications = loadApplications();
-  const updated = applications.map(app => {
-    if (app.userId === userId && app.status === 'approved') {
-      return { ...app, status: 'resigned', reviewedAt: new Date().toISOString() };
+export async function resignFromRole(userId) {
+  try {
+    const res = await fetch('/api/role-applications/resign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ userId }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      const account = getAccountById(userId);
+      updateAccountProfile(userId, { role: 'student' });
+      const applications = loadApplications();
+      const updated = applications.map(app => {
+        if (app.userId === userId && app.status === 'approved') {
+          return { ...app, status: 'resigned', reviewedAt: new Date().toISOString() };
+        }
+        return app;
+      });
+      saveApplications(updated);
+      return { resignedRole: data.resignedRole || account?.role || null };
     }
-    return app;
-  });
-  saveApplications(updated);
+    throw new Error(data.error || 'Failed to resign.');
+  } catch (err) {
+    if (err instanceof TypeError || /fetch|network|ECONNREFUSED/i.test(String(err?.message))) {
+      const account = getAccountById(userId);
+      if (!account) throw new Error('Account not found.');
+      if (account.role !== 'cr' && account.role !== 'sr') {
+        throw new Error('You do not have a CR or SR role to resign from.');
+      }
 
-  return { resignedRole };
+      const resignedRole = account.role;
+
+      updateAccountProfile(userId, { role: 'student' });
+
+      const applications = loadApplications();
+      const updated = applications.map(app => {
+        if (app.userId === userId && app.status === 'approved') {
+          return { ...app, status: 'resigned', reviewedAt: new Date().toISOString() };
+        }
+        return app;
+      });
+      saveApplications(updated);
+
+      return { resignedRole };
+    }
+    throw err;
+  }
 }
 
-export function withdrawApplication(userId) {
-  const applications = loadApplications();
-  const pending = applications.find(app => app.userId === userId && app.status === 'pending');
-  if (!pending) {
-    throw new Error('No pending application found to withdraw.');
-  }
-
-  const updated = applications.map(app => {
-    if (app.id === pending.id) {
-      return { ...app, status: 'withdrawn', reviewedAt: new Date().toISOString() };
+export async function withdrawApplication(userId, applicationId) {
+  try {
+    const res = await fetch('/api/role-applications/withdraw', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ applicationId }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.application) {
+      mirrorRoleApplication(data.application);
+      return data.application;
     }
-    return app;
-  });
-  saveApplications(updated);
-  return updated.find(app => app.id === pending.id);
+    throw new Error(data.error || 'Failed to withdraw application.');
+  } catch (err) {
+    if (err instanceof TypeError || /fetch|network|ECONNREFUSED/i.test(String(err?.message))) {
+      const applications = loadApplications();
+      const pending = applications.find(app => app.userId === userId && app.status === 'pending');
+      if (!pending) {
+        throw new Error('No pending application found to withdraw.');
+      }
+
+      const updated = applications.map(app => {
+        if (app.id === pending.id) {
+          return { ...app, status: 'withdrawn', reviewedAt: new Date().toISOString() };
+        }
+        return app;
+      });
+      saveApplications(updated);
+      return updated.find(app => app.id === pending.id);
+    }
+    throw err;
+  }
 }
 
 export function getUserApplicationStatus(userId) {

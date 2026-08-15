@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import http from 'node:http';
 import { readFile, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer as createViteServer } from 'vite';
@@ -45,6 +46,7 @@ import { initializeDatabase, resetDatabase, query, sql } from './db.mjs';
 import { handleOAuthRequest } from './socialOAuth.mjs';
 import { handleAuthRoute, readTokenCookie } from './auth.mjs';
 import { requireRole } from './middleware.mjs';
+import { rateLimit, extractRoutineRateLimiter } from './rateLimiter.mjs';
 import { getUserById, getAllUsersSafe, updateUserProfile } from './userStore.mjs';
 import {
   listMarketplace,
@@ -93,7 +95,13 @@ import {
   MAX_SIZE_BYTES as NOTE_MAX_SIZE,
   UPLOADS_DIR,
 } from './vaultNotesDB.mjs';
-import { createWSServer, broadcastToAll, getPresenceMap } from './wsServer.mjs';
+import {
+  listRoleApplications,
+  getRoleApplicationsByUser,
+  createRoleApplication,
+  updateRoleApplication,
+} from './roleAppDB.mjs';
+import { createWSServer, broadcastToAll, broadcastToUsers, getPresenceMap } from './wsServer.mjs';
 
 // Helper function to answer callback query
 async function answerCallbackQueryFn(botToken, callbackQueryId, text) {
@@ -177,6 +185,14 @@ async function updateMessageKeyboardFn(botToken, chatId, messageId, clickedCallb
 
 const port = Number(process.env.PORT || 5174);
 const maxBodyBytes = 15 * 1024 * 1024;
+
+// Global flood guard — every request counts toward one per-IP window, so a
+// scanner can't pin the server or blow its connection pool. Auth/extract keep
+// their own stricter limits. Tune via RATE_LIMIT_GLOBAL_MAX.
+const globalRateLimiter = rateLimit({
+  windowMs: 60_000,
+  max: Number(process.env.RATE_LIMIT_GLOBAL_MAX) || 300,
+});
 const useViteMiddleware = process.argv.includes('--vite');
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.resolve(__dirname, '..', 'dist');
@@ -236,8 +252,13 @@ function sendJson(res, status, payload) {
 }
 
 async function sendStaticFile(req, res) {
-  const requestUrl = new URL(req.url, `http://${req.headers.host}`);
-  const pathname = decodeURIComponent(requestUrl.pathname);
+  let pathname;
+  try {
+    pathname = decodeURIComponent(new URL(req.url, `http://${req.headers.host || 'localhost'}`).pathname);
+  } catch {
+    sendJson(res, 400, { error: 'Invalid request path.' });
+    return;
+  }
   const relativePath = pathname === '/' ? 'index.html' : pathname.slice(1);
   const candidatePath = path.resolve(distDir, relativePath);
   const filePath = candidatePath.startsWith(distDir) ? candidatePath : path.join(distDir, 'index.html');
@@ -245,12 +266,30 @@ async function sendStaticFile(req, res) {
   try {
     const data = await readFile(filePath);
     const ext = path.extname(filePath).toLowerCase();
+    const fileName = path.basename(filePath);
+    // index.html, sw.js, registerSW.js and manifest.webmanifest must NEVER be
+    // cached immutable — the browser has to re-fetch them so the service
+    // worker detects updates and refreshes its precache. If sw.js is pinned
+    // for a year, a stale worker keeps serving an old index.html whose hashed
+    // chunks no longer exist, producing exactly these 404s.
+    const noCache = ext === '.html' || fileName === 'sw.js' || fileName === 'registerSW.js' || fileName === 'manifest.webmanifest';
     res.writeHead(200, {
       'Content-Type': contentTypes[ext] || 'application/octet-stream',
-      'Cache-Control': ext === '.html' ? 'no-cache' : 'public, max-age=31536000, immutable',
+      'Cache-Control': noCache ? 'no-cache' : 'public, max-age=31536000, immutable',
     });
     res.end(data);
   } catch {
+    // Real file requests (e.g. a stale hashed asset left over from an older
+    // build) must get a 404, NOT the SPA fallback. Falling back to index.html
+    // here made the server answer <script type="module"> requests with a
+    // "text/html" MIME type, which browsers refuse with "Failed to load module
+    // script".
+    if (path.extname(pathname).toLowerCase()) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Not found' }));
+      return;
+    }
+    // Client-side routes get the SPA fallback.
     try {
       const data = await readFile(path.join(distDir, 'index.html'));
       res.writeHead(200, {
@@ -276,6 +315,9 @@ function handleCorsPreflight(req, res) {
 
 // Create HTTP server early so Vite can attach HMR to it
 const server = http.createServer();
+server.maxConnections = 200;
+server.headersTimeout = 15_000;
+server.requestTimeout = 30_000;
 
 const vite = useViteMiddleware
   ? await createViteServer({
@@ -360,15 +402,31 @@ if (FEATURES.dbConfig) {
 }
 
 server.on('request', async (req, res) => {
-  // CORS preflight
-  if (req.method === 'OPTIONS') {
-    handleCorsPreflight(req, res);
-    return;
+  try {
+    // CORS preflight
+    if (req.method === 'OPTIONS') {
+      handleCorsPreflight(req, res);
+      return;
+    }
+
+    // Add CORS headers to all responses
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
+    // Global flood guard — non-static requests count against this window.
+    if (globalRateLimiter(req, res)) {
+      await handleApiRequest(req, res);
+    }
+  } catch (error) {
+    if (!res.headersSent) {
+      sendJson(res, 500, { error: 'Internal server error.' });
+    } else {
+      res.end();
+    }
   }
+});
 
-  // Add CORS headers to all responses
-  res.setHeader('Access-Control-Allow-Origin', '*');
-
+// API + non-static request dispatch (run inside the global rate limiter).
+async function handleApiRequest(req, res) {
   // Extract routine from image (rate-limited — OpenAI-backed endpoint)
   if (req.url === '/api/extract-routine' && req.method === 'POST') {
     if (!extractRoutineRateLimiter(req, res)) return;
@@ -620,6 +678,35 @@ server.on('request', async (req, res) => {
         success: false,
         error: error.message || 'Failed to get users.',
       });
+    }
+    return;
+  }
+
+  // Admin: assign/change a user's role (used by CR/SR application approval
+  // so the role persists server-side and the user's powers activate).
+  if (req.url === '/api/admin/users/role' && req.method === 'POST') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const body = await readJsonBody(req);
+      const { userId, role } = body || {};
+      if (!userId || !role) {
+        sendJson(res, 400, { success: false, error: 'userId and role are required.' });
+        return;
+      }
+      const allowedRoles = ['student', 'cr', 'sr', 'vp', 'gs', 'faculty', 'alumni', 'senior', 'moderator'];
+      if (!allowedRoles.includes(role)) {
+        sendJson(res, 400, { success: false, error: 'Invalid role.' });
+        return;
+      }
+      const updated = await updateUserProfile(userId, { role });
+      if (!updated) {
+        sendJson(res, 404, { success: false, error: 'User not found.' });
+        return;
+      }
+      sendJson(res, 200, { success: true, user: updated });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to update role.' });
     }
     return;
   }
@@ -2322,6 +2409,261 @@ server.on('request', async (req, res) => {
   }
 
   // ═══════════════════════════════════════════════════════════════════
+  // Role Applications (CR/SR)
+
+  // POST /api/role-applications — submit a new CR/SR application.
+  // Persisted server-side so the admin sees it from any device, and only the
+  // admin is notified — never the applicant themselves.
+  if (req.url === '/api/role-applications' && req.method === 'POST') {
+    const auth = readTokenCookie(req);
+    if (!auth) {
+      sendJson(res, 401, { success: false, error: 'Authentication required.' });
+      return;
+    }
+    try {
+      const user = await getUserById(auth.id);
+      if (!user) {
+        sendJson(res, 401, { success: false, error: 'User not found.' });
+        return;
+      }
+
+      const body = await readJsonBody(req);
+      const appliedRole = body.appliedRole;
+      if (appliedRole !== 'cr' && appliedRole !== 'sr') {
+        sendJson(res, 400, { success: false, error: 'Invalid role. Choose cr or sr.' });
+        return;
+      }
+
+      // Duplicate pending application?
+      const mine = await getRoleApplicationsByUser(user.id);
+      if (mine.some(a => a.status === 'pending')) {
+        sendJson(res, 409, { success: false, error: 'You already have a pending application.' });
+        return;
+      }
+      if (user.role === appliedRole) {
+        sendJson(res, 409, { success: false, error: 'You already have this role.' });
+        return;
+      }
+
+      const targetSection = appliedRole === 'sr' ? String(body.targetSection || '').trim() : null;
+      const targetLabSection = appliedRole === 'cr' ? String(body.targetLabSection || '').trim() : null;
+      if (appliedRole === 'sr' && !targetSection) {
+        sendJson(res, 400, { success: false, error: 'Section is required for SR applications.' });
+        return;
+      }
+      if (appliedRole === 'cr' && !targetLabSection) {
+        sendJson(res, 400, { success: false, error: 'Lab group is required for CR applications.' });
+        return;
+      }
+
+      // Server-side slot vacancy check (authoritative — mirrors the client check).
+      const allUsers = await getAllUsersSafe();
+      const occupant = allUsers.find(u =>
+        u.role === appliedRole &&
+        u.department === user.department &&
+        Number(u.semester) === Number(user.semester) &&
+        (appliedRole === 'sr' ? u.section === targetSection : u.labSection === targetLabSection)
+      );
+      if (occupant) {
+        if (occupant.id === user.id) {
+          sendJson(res, 409, { success: false, error: 'You already hold this position.' });
+          return;
+        }
+        sendJson(res, 409, {
+          success: false,
+          error: `This position is already taken by ${occupant.name}. You can only apply for vacant positions.`,
+        });
+        return;
+      }
+
+      const application = {
+        id: `APP-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
+        userId: user.id,
+        userName: user.name,
+        userEmail: user.email,
+        userDepartment: user.department,
+        userBatch: user.batch || user.batchNo || '',
+        userSemester: String(user.semester || 1),
+        userSection: user.section || '',
+        userLabSection: user.labSection || '',
+        appliedRole,
+        targetLabSection,
+        targetSection,
+        statement: String(body.statement || ''),
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+        reviewedAt: null,
+        reviewedBy: null,
+      };
+      await createRoleApplication(application);
+
+      // Notify only admins/moderators (real-time over WebSocket).
+      const admins = allUsers.filter(u => u.role === 'admin' || u.role === 'moderator');
+      broadcastToUsers(admins.map(a => a.id), {
+        type: 'role-application',
+        payload: {
+          id: application.id,
+          title: `New ${appliedRole === 'cr' ? 'CR' : 'SR'} application`,
+          body: `${user.name} applied for ${appliedRole === 'cr' ? 'Class Representative' : 'Student Representative'} (${user.department} · Sem ${user.semester || 1}).`,
+          path: '/admin/applications',
+          timestamp: Date.now(),
+        },
+      });
+
+      console.log(`📥 Role application: ${user.name} (${user.department}) → ${appliedRole.toUpperCase()}`);
+      sendJson(res, 201, { success: true, application });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to submit application.' });
+    }
+    return;
+  }
+
+  // GET /api/role-applications — admin/mod only: all applications.
+  if (req.url === '/api/role-applications' && req.method === 'GET') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      // Exclude applications whose user no longer exists (deleted accounts),
+      // but keep every application from a live user — regardless of whether
+      // that user's account exists in the admin's local browser storage.
+      const allUsers = await getAllUsersSafe();
+      const userIds = new Set(allUsers.map((u) => u.id));
+      const applications = (await listRoleApplications()).filter((a) => userIds.has(a.userId));
+      sendJson(res, 200, { success: true, applications });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  // GET /api/role-applications/mine — current user's own applications.
+  if (req.url === '/api/role-applications/mine' && req.method === 'GET') {
+    const auth = readTokenCookie(req);
+    if (!auth) {
+      sendJson(res, 401, { success: false, error: 'Authentication required.' });
+      return;
+    }
+    try {
+      const applications = await getRoleApplicationsByUser(auth.id);
+      sendJson(res, 200, { success: true, applications });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  // POST /api/role-applications/review — admin/mod approve/reject an application.
+  if (req.url === '/api/role-applications/review' && req.method === 'POST') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const body = await readJsonBody(req);
+      const { applicationId, status } = body;
+      if (!applicationId || (status !== 'approved' && status !== 'rejected')) {
+        sendJson(res, 400, { success: false, error: 'applicationId and status (approved|rejected) are required.' });
+        return;
+      }
+      const app = await updateRoleApplication(applicationId, {
+        status,
+        reviewedAt: new Date().toISOString(),
+        reviewedBy: auth.id,
+      });
+      if (!app) {
+        sendJson(res, 404, { success: false, error: 'Application not found.' });
+        return;
+      }
+      if (status === 'approved') {
+        await updateUserProfile(app.userId, { role: app.appliedRole });
+      }
+      // Notify the applicant with the decision.
+      const approved = status === 'approved';
+      broadcastToUsers([app.userId], {
+        type: 'role-review',
+        payload: {
+          id: app.id,
+          title: approved ? 'Application approved' : 'Application rejected',
+          body: approved
+            ? `Congratulations ${app.userName}! You are now the ${app.appliedRole === 'cr' ? 'Class Representative (CR)' : 'Student Representative (SR)'}.`
+            : `Your ${app.appliedRole === 'cr' ? 'CR' : 'SR'} application was rejected by the admin. You can re-apply for a vacant slot.`,
+          path: '/settings',
+          timestamp: Date.now(),
+        },
+      });
+      console.log(`✅ Role application ${app.id} → ${status} by ${auth.id}`);
+      sendJson(res, 200, { success: true, application: app });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to review application.' });
+    }
+    return;
+  }
+
+  // POST /api/role-applications/resign — a CR/SR user resigns their position.
+  if (req.url === '/api/role-applications/resign' && req.method === 'POST') {
+    const auth = readTokenCookie(req);
+    if (!auth) {
+      sendJson(res, 401, { success: false, error: 'Authentication required.' });
+      return;
+    }
+    try {
+      const body = await readJsonBody(req);
+      const targetUserId = body.userId || auth.id;
+      if (targetUserId !== auth.id) {
+        sendJson(res, 403, { success: false, error: 'You can only resign from your own position.' });
+        return;
+      }
+      const user = await getUserById(auth.id);
+      if (!user || (user.role !== 'cr' && user.role !== 'sr')) {
+        sendJson(res, 400, { success: false, error: 'You do not have a CR or SR role to resign from.' });
+        return;
+      }
+      const resignedRole = user.role;
+      await updateUserProfile(auth.id, { role: 'student' });
+      const all = await listRoleApplications();
+      for (const app of all) {
+        if (app.userId === auth.id && app.status === 'approved') {
+          await updateRoleApplication(app.id, {
+            status: 'resigned',
+            reviewedAt: new Date().toISOString(),
+            reviewedBy: auth.id,
+          });
+        }
+      }
+      console.log(`↩️ ${user.name} resigned from ${resignedRole.toUpperCase()}`);
+      sendJson(res, 200, { success: true, resignedRole });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to resign.' });
+    }
+    return;
+  }
+
+  // POST /api/role-applications/withdraw — a user withdraws their pending application.
+  if (req.url === '/api/role-applications/withdraw' && req.method === 'POST') {
+    const auth = readTokenCookie(req);
+    if (!auth) {
+      sendJson(res, 401, { success: false, error: 'Authentication required.' });
+      return;
+    }
+    try {
+      const body = await readJsonBody(req);
+      const app = await listRoleApplications();
+      const pending = app.find(a => a.id === body.applicationId && a.userId === auth.id && a.status === 'pending');
+      if (!pending) {
+        sendJson(res, 400, { success: false, error: 'No pending application found to withdraw.' });
+        return;
+      }
+      const updatedApp = await updateRoleApplication(pending.id, {
+        status: 'withdrawn',
+        reviewedAt: new Date().toISOString(),
+        reviewedBy: auth.id,
+      });
+      sendJson(res, 200, { success: true, application: updatedApp });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to withdraw application.' });
+    }
+    return;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
   // Social OAuth Endpoints
 
   if (await handleOAuthRequest(req, res)) {
@@ -2329,45 +2671,74 @@ server.on('request', async (req, res) => {
   }
 
   // ========== Google Auth Endpoint ==========
+  // Handled by handleAuthRoute above (verify + find-or-create + auth cookie).
 
-  if (req.url === '/api/auth/google' && req.method === 'POST') {
-    try {
-      const { credential } = await readJsonBody(req);
-      if (!credential) {
-        sendJson(res, 400, { success: false, error: 'Credential is required.' });
-        return;
-      }
-      // Verify the Google JWT via Google's token info endpoint
-      const https = await import('node:https');
-      const verifyUrl = new URL('https://oauth2.googleapis.com/tokeninfo');
-      verifyUrl.searchParams.set('id_token', credential);
-      const response = await new Promise((resolve, reject) => {
-        https.default.get(verifyUrl.toString(), (resp) => {
-          let data = '';
-          resp.on('data', (chunk) => data += chunk);
-          resp.on('end', () => {
-            if (resp.statusCode === 200) {
-              try { resolve(JSON.parse(data)); }
-              catch { reject(new Error('Invalid response')); }
-            } else {
-              reject(new Error(data));
-            }
-          });
-        }).on('error', reject);
-      });
-      sendJson(res, 200, { success: true, user: response });
-    } catch (error) {
-      sendJson(res, 401, { success: false, error: error.message || 'Google verification failed.' });
+  // Static assets bypass the flood guard in dev so Vite serving isn't throttled.
+  if (isStaticAssetPath(req.url)) {
+    // In Vite mode, only hand paths Vite actually owns (source files) to its
+    // middleware. Build artifacts that only exist in dist/ — registerSW.js,
+    // hashed assets/chunk-*.js — must be served from dist, otherwise they
+    // 404 and a stale service worker keeps requesting old chunk names.
+    if (vite && !distFileExists(req.url)) {
+      vite.middlewares(req, res);
+      return;
     }
+    await sendStaticFile(req, res);
     return;
   }
 
   if (vite) {
-    vite.middlewares(req, res);
+    // Dev routing: Vite owns source files (/src), its client internals (/@...,
+    // /node_modules/vite/dist/client/env.mjs) and optimized deps, plus the SPA
+    // fallback. Everything else is served from dist/ as a static asset.
+    if (
+      req.url === '/' ||
+      req.url.startsWith('/@') ||
+      req.url.startsWith('/src') ||
+      req.url.startsWith('/node_modules/')
+    ) {
+      vite.middlewares(req, res);
+    } else {
+      await sendStaticFile(req, res);
+    }
     return;
   }
 
   await sendStaticFile(req, res);
+}
+
+// True when the requested path maps to a real file in dist/ — used to decide
+// whether a static-looking URL is a build artifact (serve from dist) or a
+// Vite source file (hand to the Vite middleware in dev).
+function distFileExists(url) {
+  try {
+    const pathname = decodeURIComponent(new URL(url, 'http://localhost').pathname);
+    const relativePath = pathname === '/' ? 'index.html' : pathname.slice(1);
+    const candidatePath = path.resolve(distDir, relativePath);
+    if (!candidatePath.startsWith(distDir)) return false;
+    return existsSync(candidatePath);
+  } catch {
+    return false;
+  }
+}
+
+// True for paths that map to a real file in dist/ — no router, no DB.
+function isStaticAssetPath(url) {
+  if (!url || url === '/' || url.startsWith('/api') || url.startsWith('/api/')) return false;
+  const noQuery = url.split('?')[0];
+  if (noQuery === '/' || noQuery.startsWith('/@')) return false;
+  const ext = path.extname(noQuery).toLowerCase();
+  return !!contentTypes[ext];
+}
+
+// Keep the process alive (log, don't die) — one bad request/upgrade must not
+// take the whole server down. Production supervisor would restart; for a
+// shared dev server, surviving is the point.
+process.on('uncaughtException', (err) => {
+  console.error('⚠️  uncaughtException:', err?.message || err);
+});
+process.on('unhandledRejection', (err) => {
+  console.error('⚠️  unhandledRejection:', err?.message || err);
 });
 
 // Initialize WebSocket server for real-time messaging

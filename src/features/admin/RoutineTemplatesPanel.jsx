@@ -3,6 +3,8 @@ import { CalendarDays, Plus, Trash2, Edit3, X, Save, Check, Download } from 'luc
 import { loadTemplates, saveTemplates, addTemplate, updateTemplate, deleteTemplate } from '../../utils/routineTemplates';
 import { getAutoColorForCourse } from '../../utils/autoColorPalette';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
+import RoomAutocomplete from '../../components/RoomAutocomplete';
+import TeacherAutocomplete from '../../components/TeacherAutocomplete';
 
 export default function RoutineTemplatesPanel() {
   const [templates, setTemplates] = useState([]);
@@ -487,11 +489,19 @@ export default function RoutineTemplatesPanel() {
                 </label>
                 <label>
                   Room
-                  <input className="input" value={editingClass.form.room} onChange={(e) => updateClassForm('room', e.target.value)} placeholder="Room 301" />
+                  <RoomAutocomplete
+                    value={editingClass.form.room}
+                    placeholder="e.g. 7A03 — choose a room or type your own..."
+                    onRoomSelect={(room) => updateClassForm('room', room)}
+                  />
                 </label>
                 <label className="routine-edit-wide">
                   Teacher
-                  <input className="input" value={editingClass.form.teacher} onChange={(e) => updateClassForm('teacher', e.target.value)} placeholder="Dr. Smith" />
+                  <TeacherAutocomplete
+                    value={editingClass.form.teacher}
+                    placeholder="Type teacher name (e.g. Dr. Rahman)..."
+                    onTeacherSelect={(teacher) => updateClassForm('teacher', teacher)}
+                  />
                 </label>
               </div>
             </div>
@@ -638,11 +648,19 @@ export default function RoutineTemplatesPanel() {
                 </label>
                 <label>
                   Room
-                  <input className="input" value={editingClass.form.room} onChange={(e) => updateClassForm('room', e.target.value)} placeholder="Room 301" />
+                  <RoomAutocomplete
+                    value={editingClass.form.room}
+                    placeholder="e.g. 7A03 — choose a room or type your own..."
+                    onRoomSelect={(room) => updateClassForm('room', room)}
+                  />
                 </label>
                 <label className="routine-edit-wide">
                   Teacher
-                  <input className="input" value={editingClass.form.teacher} onChange={(e) => updateClassForm('teacher', e.target.value)} placeholder="Dr. Smith" />
+                  <TeacherAutocomplete
+                    value={editingClass.form.teacher}
+                    placeholder="Type teacher name (e.g. Dr. Rahman)..."
+                    onTeacherSelect={(teacher) => updateClassForm('teacher', teacher)}
+                  />
                 </label>
               </div>
             </div>

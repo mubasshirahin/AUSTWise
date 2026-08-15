@@ -518,7 +518,7 @@ function QuickStats() {
           </div>
           <div>
             <span className="schedule-overline">Dashboard</span>
-            <p className="schedule-title">Quick Stats</p>
+            <p className="schedule-title">At a glance</p>
             <span className="schedule-subtitle">CGPA · attendance · deadlines · credits</span>
           </div>
         </div>

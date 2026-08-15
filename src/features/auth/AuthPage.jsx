@@ -158,6 +158,7 @@ export default function AuthPage() {
   const [submitting, setSubmitting] = useState(false);
   const [socialErr, setSocialErr] = useState('');
   const [pendingGoogleAccount, setPendingGoogleAccount] = useState(null);
+  const pendingCredentialRef = useRef(null);
 
   if (!isLoading && isAuthenticated) {
     return <Navigate to={redirectPath} replace />;
@@ -171,6 +172,7 @@ export default function AuthPage() {
     setError('');
     setSocialErr('');
     setPendingGoogleAccount(null);
+    pendingCredentialRef.current = null;
     setSignupStep(1);
   };
 
@@ -213,47 +215,114 @@ export default function AuthPage() {
     } catch { return null; }
   }, []);
 
-  const finalizeGoogleLogin = useCallback(async (payload, credential) => {
-    // Try backend verification (optional — don't block login if server is down)
+  // Mirror a server user into the localStorage accounts list so client-side
+  // features (directories, user-scoped storage) keep working with the same id.
+  const syncGoogleAccountToLocal = useCallback((serverUser) => {
     try {
-      await fetch('/api/auth/google', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ credential }),
-      });
-    } catch {
-      // Server might not be running — proceed with client-side login
-    }
+      const accounts = getAllAccounts().filter((a) => a.id !== 'guest');
+      const idx = accounts.findIndex((a) => a.id === serverUser.id || a.email === serverUser.email);
+      const record = {
+        id: serverUser.id,
+        awid: serverUser.awid || '',
+        name: serverUser.name,
+        email: serverUser.email,
+        password: (idx >= 0 && accounts[idx].password) || btoa(crypto.randomUUID()),
+        role: serverUser.role || 'student',
+        department: serverUser.department || '',
+        batch: serverUser.batch || '',
+        batchNo: serverUser.batchNo || '',
+        batchName: serverUser.batchName || '',
+        designation: serverUser.designation || '',
+        company: serverUser.company || '',
+        graduationYear: serverUser.graduationYear || '',
+        yearSemester: serverUser.yearSemester || '',
+        section: serverUser.section || '',
+        labSection: serverUser.labSection || '',
+        semester: serverUser.semester ?? 1,
+        avatar: serverUser.avatar || null,
+        linkedSocial: serverUser.linkedSocial || {},
+        linkedAccounts: serverUser.linkedAccounts || [],
+        cgpa: serverUser.cgpa || 0,
+        creditsCompleted: serverUser.creditsCompleted || 0,
+        totalCredits: serverUser.totalCredits || 160,
+        createdAt: serverUser.createdAt || new Date().toISOString(),
+      };
+      if (idx >= 0) accounts[idx] = { ...accounts[idx], ...record };
+      else accounts.push(record);
+      localStorage.setItem('aust-auth-accounts-v1', JSON.stringify(accounts));
+    } catch { /* best effort */ }
+  }, []);
 
+  const finalizeGoogleLogin = useCallback(async (payload, credential) => {
     // Google JWT may omit the picture claim for some accounts.
-    // Fallback: fetch directly from the UserInfo API.
     let pictureUrl = payload.picture;
     if (!pictureUrl) {
       pictureUrl = await fetchGooglePicture(credential);
     }
 
+    // Preferred path: server-side find-or-create. The account persists in
+    // users.json (appears in member counts / directories) and gets an auth
+    // cookie so the session survives reloads. Falls back to the legacy
+    // client-only localStorage flow if the server is unavailable.
+    try {
+      const res = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!data?.success || !data.user) throw new Error(data?.error || 'Google auth failed');
+
+      pendingCredentialRef.current = credential;
+      const serverUser = {
+        ...data.user,
+        avatar: pictureUrl || data.user.avatar || null,
+        linkedSocial: { ...(data.user.linkedSocial || {}), gmail: payload.email },
+      };
+
+      if (data.existing) {
+        // Already registered — straight to the dashboard.
+        loginDirect(serverUser);
+        syncGoogleAccountToLocal(serverUser);
+        return;
+      }
+
+      // Brand-new Google account — collect role/department/batch in step 2.
+      setPendingGoogleAccount(serverUser);
+      setSignupForm((prev) => ({
+        ...prev,
+        name: payload.name || '',
+        email: payload.email || '',
+        password: '',
+        confirmPassword: '',
+      }));
+      setMode('signup');
+      setSignupStep(2);
+      setError('');
+      setSocialErr('');
+      return;
+    } catch {
+      pendingCredentialRef.current = null;
+      setSocialErr('');
+    }
+
+    // ── Fallback: client-side only (server down) ──
     const accounts = getAllAccounts().filter((a) => a.id !== 'guest');
     const existing = accounts.find((a) => a.email === payload.email);
     if (existing) {
       try {
-        // Merge Google data into the account before loginDirect so avatar
-        // and linked social info are captured in the session immediately,
-        // avoiding a stale-closure issue with updateUser() seeing null user.
         const enrichedAccount = {
           ...existing,
           avatar: pictureUrl || existing.avatar,
           linkedSocial: { ...(existing.linkedSocial || {}), gmail: payload.email },
         };
         loginDirect(enrichedAccount);
-        // Persist Google data to the accounts list so it survives logout/login
         updateAccountProfile(existing.id, {
           avatar: pictureUrl || existing.avatar,
           linkedSocial: { ...(existing.linkedSocial || {}), gmail: payload.email },
         });
       } catch { setSocialErr('Failed to log in'); }
     } else {
-      // No existing account — create one with Google data, then redirect to
-      // signup step 2 so the user can fill in department, batch, etc.
       try {
         const newAccount = signupWithGoogle({
           name: payload.name,
@@ -276,7 +345,7 @@ export default function AuthPage() {
         setSocialErr(e.message || 'Failed to create account with Google.');
       }
     }
-  }, [loginDirect]);
+  }, [loginDirect, syncGoogleAccountToLocal]);
 
   const googleBtnRef = useRef(null);
   const gsiRenderedRef = useRef(false);
@@ -368,25 +437,7 @@ export default function AuthPage() {
         const [yr, term] = (signupForm.yearSemester || '1.1').split('.').map(Number);
         const semesterNum = (yr - 1) * 2 + term;
         const { batchName, batchNo } = parseBatchInput(signupForm.batchNo);
-
-        const newAwid = createAwid(signupForm.department);
-        updateAccountProfile(pendingGoogleAccount.id, {
-          awid: newAwid,
-          role: signupForm.role,
-          department: signupForm.department,
-          batchNo,
-          batchName,
-          batch: `${batchName} ${batchNo}`.trim(),
-          yearSemester: signupForm.yearSemester,
-          semester: semesterNum,
-          designation: signupForm.designation,
-          company: signupForm.company,
-          graduationYear: signupForm.graduationYear,
-        });
-
-        const updatedAccount = {
-          ...pendingGoogleAccount,
-          awid: newAwid,
+        const profile = {
           role: signupForm.role,
           department: signupForm.department,
           batchNo,
@@ -398,9 +449,36 @@ export default function AuthPage() {
           company: signupForm.company,
           graduationYear: signupForm.graduationYear,
         };
-        loginDirect(updatedAccount);
-        setPendingGoogleAccount(null);
-        navigate(redirectPath, { replace: true });
+
+        const credential = pendingCredentialRef.current;
+        if (credential) {
+          // Server-side completion — persists to users.json and sets the cookie.
+          const res = await fetch('/api/auth/google', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ credential, profile }),
+          });
+          const data = await res.json().catch(() => null);
+          if (!data?.success || !data.user) throw new Error(data?.error || 'Failed to complete Google signup.');
+          const updatedUser = {
+            ...data.user,
+            avatar: pendingGoogleAccount.avatar || data.user.avatar,
+            linkedSocial: { ...(data.user.linkedSocial || {}), gmail: googleEmail },
+          };
+          loginDirect(updatedUser);
+          syncGoogleAccountToLocal(updatedUser);
+          setPendingGoogleAccount(null);
+          pendingCredentialRef.current = null;
+          navigate(redirectPath, { replace: true });
+        } else {
+          // Fallback: client-only completion (server was down at step 1).
+          const newAwid = createAwid(signupForm.department);
+          updateAccountProfile(pendingGoogleAccount.id, { awid: newAwid, ...profile });
+          const updatedAccount = { ...pendingGoogleAccount, awid: newAwid, ...profile };
+          loginDirect(updatedAccount);
+          setPendingGoogleAccount(null);
+          navigate(redirectPath, { replace: true });
+        }
       } catch (e) {
         setError(e.message || 'Signup failed.');
         setSubmitting(false);

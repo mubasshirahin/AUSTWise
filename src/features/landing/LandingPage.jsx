@@ -12,6 +12,7 @@ import {
   ChevronLeft, Heart, ThumbsUp, Download, MessageCircle,
   X, Search, Hash, Megaphone,
 } from 'lucide-react';
+import { THEMES } from '../../context/ThemeContext';
 import HorizontalFeatures from './HorizontalFeatures';
 import StickyContentSwitch from './StickyContentSwitch';
 import ImageTrailShowcase from './ImageTrailShowcase';
@@ -137,9 +138,9 @@ const features = [
     icon: Settings,
     title: 'Themes & Customisation',
     tagline: 'Make AUSTWise truly yours',
-    description: '12 uniquely crafted visual themes — from minimalist dark to neon cyberpunk, from editorial newsprint to hand-drawn sketchbook. Your campus experience, your style.',
+    description: '15 uniquely crafted visual themes — from minimalist dark to neon cyberpunk, from editorial newsprint to hand-drawn sketchbook. Your campus experience, your style.',
     benefits: [
-      '12 hand-crafted themes — Dark, Light, Midnight, Cyberpunk & more',
+      '15 hand-crafted themes — Dark, Light, Midnight, Cyberpunk & more',
       'Automatic light/dark switching based on your preference',
       'Each theme has unique personality — fonts, shadows, borders, colors',
       'Real-time theme switching — no reload, no delay',
@@ -549,9 +550,9 @@ const bottomTestimonials = [
 ];
 
 const stats = [
-  { icon: Users, label: 'Active Students', value: '2,400+' },
+  { icon: Users, label: 'Members', value: '0', plus: true },
   { icon: Layers, label: 'Built-in Features', value: '40+' },
-  { icon: Star, label: 'Theme Variants', value: '12' },
+  { icon: Star, label: 'Theme Variants', value: `${THEMES.length}` },
 ];
 
 const valueHighlights = [
@@ -678,6 +679,10 @@ function TiltCard({ children, className = '', maxTilt = 8 }) {
 function AnimatedCounter({ end, suffix = '', duration = 2000 }) {
   const [count, setCount] = useState(0); const ref = useRef(null); const counted = useRef(false);
   useEffect(() => {
+    // Re-animate whenever the target value changes — without this, a counter
+    // that first ran with end=0 (e.g. the Members stat before its fetch lands)
+    // would stay stuck at 0 once the real value arrives.
+    counted.current = false;
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting && !counted.current) {
         counted.current = true; const startTime = performance.now(); const numEnd = parseInt(end.replace(/[^0-9]/g, ''));
@@ -1305,6 +1310,25 @@ export default function LandingPage() {
   const [mounted, setMounted] = useState(false);
   const [heroLoaded, setHeroLoaded] = useState(false);
   const [cursorPos, setCursorPos] = useState({ x: -100, y: -100 });
+  const [activeMembers, setActiveMembers] = useState(null);
+
+  // Total registered members from the members API. We count ALL members, not
+  // just those online right now — the online count is a transient in-memory
+  // WebSocket state that resets on server restart, so it often shows 0 even
+  // though the site has registered users.
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      const res = await fetch('/api/presence/members', { credentials: 'same-origin' }).catch(() => null);
+      if (cancelled || !res) return;
+      const data = await res.json().catch(() => null);
+      if (cancelled || !data?.success) return;
+      setActiveMembers((data.members || []).length);
+    };
+    load();
+    const t = setInterval(load, 30000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, []);
   const heroRef = useRef(null);
 
   useEffect(() => {
@@ -1383,8 +1407,9 @@ export default function LandingPage() {
           </div>
           <div className="landing-hero-stats">
             {stats.map((stat, i) => {
-              const showPlus = typeof stat.value === 'string' && stat.value.endsWith('+');
-              const endVal = showPlus ? stat.value.slice(0, -1) : stat.value;
+              const showPlus = stat.plus === true || (typeof stat.value === 'string' && stat.value.endsWith('+'));
+              const liveValue = (i === 0 && activeMembers != null) ? String(activeMembers) : stat.value;
+              const endVal = showPlus ? liveValue.replace('+', '') : liveValue;
               return (
                 <div key={i} className="landing-hero-stat">
                   <stat.icon size={18} />

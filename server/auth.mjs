@@ -4,7 +4,8 @@
  */
 import jwt from 'jsonwebtoken';
 import {
-  createUser, validateLogin, getUserById,
+  createUser, validateLogin, getUserById, getUserByEmail,
+  findOrCreateGoogleUser, updateUserProfile,
 } from './userStore.mjs';
 import { authRateLimiter } from './rateLimiter.mjs';
 
@@ -76,6 +77,87 @@ async function handleLogout(req, res) {
   return sendJson(res, 200, { success: true });
 }
 
+/** Verify a Google ID token via Google's tokeninfo endpoint */
+async function verifyGoogleToken(credential) {
+  const https = await import('node:https');
+  const verifyUrl = new URL('https://oauth2.googleapis.com/tokeninfo');
+  verifyUrl.searchParams.set('id_token', credential);
+  return new Promise((resolve, reject) => {
+    https.get(verifyUrl.toString(), (resp) => {
+      let data = '';
+      resp.on('data', (chunk) => data += chunk);
+      resp.on('end', () => {
+        if (resp.statusCode === 200) {
+          try { resolve(JSON.parse(data)); }
+          catch { reject(new Error('Invalid response')); }
+        } else {
+          reject(new Error(data));
+        }
+      });
+    }).on('error', reject);
+  });
+}
+
+function isAllowedAustEmail(email) {
+  const normalized = String(email || '').toLowerCase().trim();
+  return ['aust.edu', 'www.aust.edu'].some(d =>
+    normalized.endsWith(`@${d}`) || normalized.endsWith(`@www.${d}`)
+  );
+}
+
+/**
+ * POST /api/auth/google
+ * Body: { credential, profile? }
+ *   - credential: Google ID token (verified against Google).
+ *   - profile (optional): sent when completing signup step 2 — patches the
+ *     account created on first sign-in with role/department/batch/etc.
+ * Always issues an auth cookie so the session survives reloads.
+ */
+async function handleGoogle(req, res) {
+  const body = await readJsonBody(req);
+  const credential = body.credential;
+  if (!credential) {
+    return sendJson(res, 400, { success: false, error: 'Credential is required.' });
+  }
+  try {
+    const verified = await verifyGoogleToken(credential);
+    if (!verified || !verified.email) {
+      return sendJson(res, 401, { success: false, error: 'Invalid Google credential.' });
+    }
+    const googleEmail = String(verified.email).toLowerCase().trim();
+
+    const profilePatch = body.profile && typeof body.profile === 'object' ? body.profile : null;
+    let user;
+    let created = false;
+
+    if (profilePatch && profilePatch.role) {
+      // Signup step 2 — complete the account created on the first sign-in.
+      if (profilePatch.role !== 'alumni' && !isAllowedAustEmail(googleEmail)) {
+        return sendJson(res, 400, { success: false, error: 'Only AUST university email addresses (@aust.edu) are allowed for registration.' });
+      }
+      const existing = await getUserByEmail(googleEmail);
+      if (!existing) {
+        return sendJson(res, 404, { success: false, error: 'User not found.' });
+      }
+      user = await updateUserProfile(existing.id, profilePatch);
+    } else {
+      const result = await findOrCreateGoogleUser({
+        name: verified.name,
+        email: verified.email,
+        picture: verified.picture,
+      });
+      user = result.user;
+      created = result.created;
+    }
+
+    const token = signToken(user);
+    setAuthCookie(res, token);
+    return sendJson(res, 200, { success: true, user: sanitizeUser(user), existing: !created });
+  } catch (err) {
+    return sendJson(res, 401, { success: false, error: err.message || 'Google verification failed.' });
+  }
+}
+
 async function handleAdminCheck(req, res) {
   const payload = readTokenCookie(req);
   if (!payload || (payload.role !== 'admin' && payload.role !== 'moderator')) {
@@ -99,6 +181,68 @@ async function handleMe(req, res) {
     return sendJson(res, 401, { success: false, error: 'User not found' });
   }
   return sendJson(res, 200, { success: true, user: sanitizeUser(user) });
+}
+
+// Fields a user may edit about themselves. id/email/role/awid/privacy etc.
+// are deliberately excluded so the server stays the source of truth.
+const SELF_EDITABLE_FIELDS = [
+  'name', 'avatar', 'bloodGroup',
+  'department', 'batch', 'batchNo', 'batchName',
+  'yearSemester', 'section', 'labSection',
+  'designation', 'company', 'graduationYear',
+  'facebook', 'whatsapp', 'linkedin', 'discord',
+  'openForTalk',
+];
+
+/** Normalize "3.1" or "3.1.x" → "Year 3 - Semester 1"; passthrough otherwise. */
+function toYearSemester(value) {
+  const s = String(value || '').trim();
+  if (!s) return '';
+  if (/Year\s*\d+\s*-\s*Semester\s*\d+/i.test(s)) return s;
+  const parts = s.split('.');
+  const yr = Number(parts[0]);
+  const term = Number(parts[1]);
+  if (Number.isFinite(yr) && Number.isFinite(term) && yr >= 1 && term >= 1) {
+    return `Year ${yr} - Semester ${term}`;
+  }
+  return '';
+}
+
+async function handleProfileUpdate(req, res) {
+  const payload = readTokenCookie(req);
+  if (!payload) {
+    return sendJson(res, 401, { success: false, error: 'Not authenticated' });
+  }
+  const body = await readJsonBody(req).catch(() => ({}));
+  const patch = {};
+  for (const key of SELF_EDITABLE_FIELDS) {
+    if (key in body) {
+      patch[key] = typeof body[key] === 'string' ? body[key].trim() : body[key];
+    }
+  }
+  // Keep yearSemester + semester consistent regardless of the format sent.
+  if ('yearSemester' in patch) {
+    const canonical = toYearSemester(patch.yearSemester);
+    if (canonical) {
+      patch.yearSemester = canonical;
+      const m = canonical.match(/Year\s*(\d+)\s*-\s*Semester\s*(\d+)/);
+      if (m) patch.semester = (Number(m[1]) - 1) * 2 + Number(m[2]);
+    } else {
+      delete patch.yearSemester;
+    }
+  }
+  if (Object.keys(patch).length === 0) {
+    return sendJson(res, 400, { success: false, error: 'No updatable fields.' });
+  }
+  try {
+    const user = await updateUserProfile(payload.id, patch);
+    if (!user) {
+      return sendJson(res, 404, { success: false, error: 'User not found.' });
+    }
+    return sendJson(res, 200, { success: true, user: sanitizeUser(user) });
+  } catch (err) {
+    return sendJson(res, 500, { success: false, error: err.message });
+  }
 }
 
 /** Return user without sensitive fields */
@@ -154,9 +298,19 @@ function sendJson(res, status, payload) {
   res.end(body);
 }
 
+/** Decode req.url pathname safely — null on malformed/undecodable input */
+function safePathname(req) {
+  try {
+    return new URL(req.url, `http://${req.headers.host || 'localhost'}`).pathname;
+  } catch {
+    return null;
+  }
+}
+
 /** Main route handler — returns true if it handled the request */
 export async function handleAuthRoute(req, res) {
-  const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`).pathname;
+  const url = safePathname(req) || '';
+  if (!url) return false;
 
   if (url === '/api/auth/signup' && req.method === 'POST') {
     await handleSignup(req, res);
@@ -170,8 +324,16 @@ export async function handleAuthRoute(req, res) {
     await handleLogout(req, res);
     return true;
   }
+  if (url === '/api/auth/google' && req.method === 'POST') {
+    await handleGoogle(req, res);
+    return true;
+  }
   if (url === '/api/auth/me' && req.method === 'GET') {
     await handleMe(req, res);
+    return true;
+  }
+  if (url === '/api/auth/profile' && req.method === 'PUT') {
+    await handleProfileUpdate(req, res);
     return true;
   }
   if (url === '/api/auth/admin' && req.method === 'GET') {

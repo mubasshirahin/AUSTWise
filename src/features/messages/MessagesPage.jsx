@@ -23,7 +23,7 @@ import {
 } from '../../utils/messageStorage';
 import useWebSocket from '../../hooks/useWebSocket';
 import useMessageNotifications from '../../hooks/useMessageNotifications';
-import { getAccountById } from '../../utils/authStorage';
+import { getAccountById, getRoleLabel } from '../../utils/authStorage';
 import { sanitizeUserInput, MAX_TEXT_LENGTH } from '../../utils/sanitize';
 import '../campus/SemesterViewWidget.css';
 import './MessagesPage.css';
@@ -436,7 +436,9 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
         <div className="chat-peer-info" style={{ flex: 1 }}>
           <span className="chat-peer-name">{peer?.name}</span>
           <span className="chat-peer-sub">
-            {peer?.role === 'alumni' ? 'Alumni' : peer?.role || 'Member'}
+            {['admin', 'moderator', 'faculty', 'alumni', 'cr', 'sr'].includes(peer?.role)
+              ? getRoleLabel(peer.role)
+              : (peer?.role || 'Member')}
             {peer?.department ? ` · ${peer.department}` : ''}
             <span style={{ marginLeft: '6px' }}>
               · {connected ? 'Online' : 'Offline'}

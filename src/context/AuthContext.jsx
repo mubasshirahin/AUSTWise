@@ -26,13 +26,28 @@ async function api(path, options = {}) {
  * Re-hydrate the user object with a hasRole function since JSON
  * deserialization strips functions.
  */
+/** Normalize "3.1" → "Year 3 - Semester 1"; passthrough anything already canonical. */
+function normalizeYearSemester(value) {
+  const s = String(value || '').trim();
+  if (!s) return '';
+  if (/Year\s*\d+\s*-\s*Semester\s*\d+/i.test(s)) return s;
+  const parts = s.split('.');
+  const yr = Number(parts[0]);
+  const term = Number(parts[1]);
+  if (Number.isFinite(yr) && Number.isFinite(term) && yr >= 1 && term >= 1) {
+    return `Year ${yr} - Semester ${term}`;
+  }
+  return s;
+}
+
 function hydrateUser(raw) {
   if (!raw) return null;
   const roles = Array.isArray(raw.roles) ? raw.roles : [raw.role];
+  const yearSemester = normalizeYearSemester(raw.yearSemester);
   // Merge metadata roles
   const metaRoles = [
     raw.department,
-    raw.yearSemester,
+    yearSemester,
     raw.labSection ? `lab.${raw.labSection}` : null,
     raw.batchNo ? `batch.${raw.batchNo}` : null,
     raw.section ? `sec.${raw.section}` : null,
@@ -40,6 +55,7 @@ function hydrateUser(raw) {
   const mergedRoles = [...new Set([...roles, ...metaRoles])];
   return {
     ...raw,
+    yearSemester,
     roles: mergedRoles,
     hasRole(roleType) { return this.roles?.includes(roleType) || this.role === roleType; },
     initials: getInitials(raw.name),
@@ -245,10 +261,55 @@ export function AuthProvider({ children }) {
     localStorage.setItem(userStorageKey, JSON.stringify(updatedUser));
     const accountId = nextUserData.id || sessionUser.id;
     updateAccountProfile(accountId, nextUserData);
+    // Persist self-editable profile fields to the server so changes survive a
+    // reload. The server whitelists fields, so unsafe keys are ignored.
+    if (accountId !== 'guest') {
+      try {
+        fetch('/api/auth/profile', {
+          method: 'PUT',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(nextUserData),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data?.success && data.user) {
+              // Server wins for persisted fields, but keep the client's just-made
+              // local-only changes (linked accounts, privacy, etc.) intact.
+              const hydrated = hydrateUser({ ...data.user, ...nextUserData });
+              setSessionUser(hydrated);
+              localStorage.setItem(userStorageKey, JSON.stringify(hydrated));
+            }
+          })
+          .catch(() => {});
+      } catch { /* best effort — local session stays intact */ }
+    }
     return true;
   };
 
   const hasRole = (roleType) => user?.hasRole ? user.hasRole(roleType) : user?.role === roleType;
+
+  /**
+   * Re-fetch the current user from the server and sync the session + local
+   * account store. Used so role changes made on another device (e.g. the
+   * admin approving a CR/SR application) show up without a manual reload.
+   */
+  const refreshUserFromServer = async () => {
+    if (!sessionUser) return null;
+    try {
+      const data = await api('/api/auth/me');
+      if (data.success && data.user) {
+        const hydrated = hydrateUser(data.user);
+        setSessionUser(hydrated);
+        localStorage.setItem(userStorageKey, JSON.stringify(hydrated));
+        updateAccountProfile(hydrated.id, { role: hydrated.role });
+        return hydrated;
+      }
+    } catch (err) {
+      console.warn('[Auth] refreshUserFromServer failed:', err.message);
+    }
+    return null;
+  };
 
   return (
     <AuthContext.Provider value={{
@@ -262,6 +323,7 @@ export function AuthProvider({ children }) {
       signup,
       logout,
       updateUser,
+      refreshUserFromServer,
       hasRole,
     }}>
       {children}

@@ -152,7 +152,7 @@ export default function StudyRoomPage() {
           </div>
           <div>
             <span className="schedule-overline">Productivity</span>
-            <div className="schedule-title">Study Room</div>
+            <div className="schedule-title">Study Time</div>
             <span className="schedule-subtitle">Your focused study sanctuary — timer, ambient sounds, and tips to boost productivity.</span>
           </div>
         </div>

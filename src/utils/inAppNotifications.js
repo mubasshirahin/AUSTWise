@@ -252,3 +252,29 @@ export function seedFromTasks(tasks) {
   saveNotifications(existing);
 }
 
+export function seedFromRoleApplications(applications) {
+  if (!applications || !applications.length) return;
+  const existing = loadNotifications();
+  const existingIds = new Set(existing.map((n) => n.id));
+
+  applications.forEach((app) => {
+    if (app.status !== 'pending') return;
+    const id = `roleapp-${app.id}`;
+    if (existingIds.has(id)) return;
+    const isCr = app.appliedRole === 'cr';
+    existing.push({
+      id,
+      title: `New ${isCr ? 'CR' : 'SR'} application`,
+      body: `${app.userName} applied for ${isCr ? 'Class Representative' : 'Student Representative'} (${app.userDepartment} · Sem ${app.userSemester}).`,
+      type: 'info',
+      icon: 'Users',
+      path: '/admin/applications',
+      timestamp: new Date(app.createdAt).getTime() || Date.now(),
+      read: false,
+      priority: 'high',
+    });
+  });
+
+  saveNotifications(existing);
+}
+

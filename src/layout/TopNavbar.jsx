@@ -102,7 +102,7 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
   const notifRef = useRef(null);
   const profileRef = useRef(null);
 
-  const { notifications, unread, markAsRead, markAllAsRead, clearAll } = useInAppNotifications();
+  const { notifications, unread, markAsRead, markAllAsRead, clearAll } = useInAppNotifications(user);
 
   const allThemeOptions = [...darkThemeOptions, ...lightThemeOptions];
   const activeTheme = allThemeOptions.find((t) => t.id === theme) || allThemeOptions[0];
@@ -374,8 +374,8 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
               <div className="profile-info">
                 <span className="profile-info-name">{user.name}</span>
                 <span className="profile-info-role">{
-                  ['admin', 'moderator', 'faculty', 'alumni'].includes(user.role) 
-                    ? getRoleLabel(user.role) 
+                  ['admin', 'moderator', 'faculty', 'alumni', 'cr', 'sr'].includes(user.role)
+                    ? getRoleLabel(user.role)
                     : 'Student'
                 }</span>
               </div>

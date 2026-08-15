@@ -152,12 +152,17 @@ export function createWSServer(httpServer) {
   // synchronously by this point, so re-emitting 'connection' routes
   // the upgraded socket back into the existing handler.
   httpServer.on('upgrade', (request, socket, head) => {
-    if (request.headers['sec-websocket-protocol'] === 'vite-hmr') {
-      return; // Vite handles its own HMR upgrades
+    try {
+      if (request.headers['sec-websocket-protocol'] === 'vite-hmr') {
+        return; // Vite handles its own HMR upgrades
+      }
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit('connection', ws, request);
+      });
+    } catch (err) {
+      console.error('⚠️  WS upgrade error:', err?.message || err);
+      socket.destroy();
     }
-    wss.handleUpgrade(request, socket, head, (ws) => {
-      wss.emit('connection', ws, request);
-    });
   });
 
   wss.on('connection', (ws, req) => {
@@ -547,6 +552,18 @@ export function broadcastToAll(data) {
     for (const ws of clients) {
       sendTo(ws, data);
     }
+  }
+}
+
+/**
+ * Broadcast a JSON message only to the given user IDs (their open sockets).
+ * Used to deliver role-application notifications to admins (and review
+ * decisions back to the applicant) without spamming every client.
+ */
+export function broadcastToUsers(userIds, data) {
+  for (const userId of userIds) {
+    if (!userId) continue;
+    broadcastToUser(userId, data);
   }
 }
 

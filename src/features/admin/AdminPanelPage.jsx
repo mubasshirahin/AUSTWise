@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Shield, BellRing, Coffee, Activity, Users, Trash2, Plus, Check, AlertCircle, Eye, Edit3, Search, X, Save, User, FileText, CheckCircle2, XCircle, Clock3, ClipboardList, CalendarDays, Mic, CalendarClock, Ban } from 'lucide-react';
 import { notices, canteenData, libraryData, getAuditoriumEvent, setAuditoriumEvent, defaultAuditoriumEvent } from '../../data/mockData';
 import { getRoleLabel, getRoleBadgeClass, updateAccountProfile, getAccountById, getAllAccounts, getAllRoleApplications, reviewRoleApplication, getAccountById as getUserById, resetAllLocalData, getCurrentUserId } from '../../utils/authStorage';
 import { loadTemplates, saveTemplates, addTemplate, updateTemplate, deleteTemplate } from '../../utils/routineTemplates';
+import { sendMessage } from '../../utils/messageStorage';
 import RoutineTemplatesPanel from './RoutineTemplatesPanel';
 import TranscriptTemplatesPanel from './TranscriptTemplatesPanel';
 import './AdminPanelPage.css';
@@ -142,15 +144,17 @@ export default function AdminPanelPage() {
     }
 
     // 4. Accounts — go through getAllAccounts() so the auth-storage purge
-    // filter runs first (it drops leftover dummy/QA/demo accounts and keeps
-    // only the admin + the signed-in user), instead of reading the raw
-    // localStorage list which could show stale users.
+    // filter runs first (it drops leftover dummy/QA/demo accounts and old
+    // admin identities, but keeps all real accounts), instead of reading
+    // the raw localStorage list which could show stale users.
     const accountsList = getAllAccounts();
     setAccounts(accountsList);
     setFilteredAccounts(accountsList);
 
-    // 5. CR/SR Applications — keep only applications that belong to accounts
-    // that still exist (applications from removed users are orphaned).
+    // 5. CR/SR Applications — load the local mirror as a first paint.
+    // No filtering against the local account list here: the server is the
+    // authoritative source, and applicants may not be in this browser's
+    // localStorage accounts (they logged in on another device).
     const storedApplications = localStorage.getItem('aust-role-applications-v1');
     if (storedApplications) {
       let allApps = [];
@@ -158,17 +162,32 @@ export default function AdminPanelPage() {
         const parsed = JSON.parse(storedApplications);
         if (Array.isArray(parsed)) allApps = parsed;
       } catch { /* corrupt localStorage — treat as empty */ }
-      const liveIds = new Set(accountsList.map((a) => a.id));
-      const liveApps = allApps.filter((app) => liveIds.has(app.userId));
-      if (liveApps.length !== allApps.length) {
-        localStorage.setItem('aust-role-applications-v1', JSON.stringify(liveApps));
-      }
-      setApplications(liveApps);
+      setApplications(allApps);
     }
 
     // 6. Routine Templates
     const loadedTemplates = loadTemplates();
     setTemplates(loadedTemplates);
+  }, []);
+
+  // Load CR/SR applications from the server (authoritative) and mirror them
+  // locally, so applications submitted from another device reach the admin
+  // and the applicant's Settings stays in sync.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/role-applications', { credentials: 'same-origin' });
+        const data = await res.json().catch(() => ({}));
+if (!res.ok || !Array.isArray(data.applications)) return;
+      // Do NOT filter by the local account list — the admin browser may not
+      // have the applicant's account (they applied from another device). The
+      // server has already excluded applications from deleted users.
+      localStorage.setItem('aust-role-applications-v1', JSON.stringify(data.applications));
+      if (!cancelled) setApplications(data.applications);
+      } catch { /* offline — keep localStorage applications */ }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   // Filter accounts when search or role filter changes
@@ -1043,7 +1062,7 @@ export default function AdminPanelPage() {
         )}
 
         {/* User Profile Modal */}
-        {selectedUser && (
+        {selectedUser && createPortal(
           <div className="modal-overlay" onClick={() => setSelectedUser(null)}>
             <div className="modal-content glass-card-static" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px', position: 'relative' }}>
               <button 
@@ -1137,10 +1156,10 @@ export default function AdminPanelPage() {
               </div>
             </div>
           </div>
-        )}
+        , document.body)}
 
         {/* Edit User Modal */}
-        {editingUser && (
+        {editingUser && createPortal(
           <div className="modal-overlay" onClick={handleCancelEdit}>
             <div className="modal-content glass-card-static" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', position: 'relative', maxHeight: '80vh', overflowY: 'auto' }}>
               <button 
@@ -1320,7 +1339,7 @@ export default function AdminPanelPage() {
               </form>
             </div>
           </div>
-        )}
+        , document.body)}
 
         {/* ACCOUNTS PANEL */}
         {activeTab === 'accounts' && (
@@ -1704,152 +1723,167 @@ export default function AdminPanelPage() {
         )}
 
         {/* Application Review Modal */}
-        {selectedApplication && (
+        {selectedApplication && createPortal(
           <div className="modal-overlay" onClick={() => setSelectedApplication(null)}>
-            <div className="modal-content glass-card-static" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '550px', position: 'relative' }}>
-              <button 
-                className="btn btn-icon" 
-                onClick={() => setSelectedApplication(null)}
-                style={{ position: 'absolute', top: '12px', right: '12px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-tertiary)' }}
-              >
-                <X size={20} />
-              </button>
-
-              <h2 style={{ fontSize: 'var(--fs-lg)', fontWeight: 'bold', marginBottom: '20px' }}>Review Application</h2>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {/* Applicant Info */}
-                <div className="flex items-center gap-4 p-4" style={{ background: 'var(--bg-input)', borderRadius: 'var(--radius-md)' }}>
-                  <div className="avatar" style={{ width: 60, height: 60, fontSize: '20px' }}>
-                    {selectedApplication.userName?.charAt(0)?.toUpperCase() || 'U'}
-                  </div>
-                  <div>
-                    <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', margin: 0 }}>{selectedApplication.userName}</h3>
-                    <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: 0 }}>{selectedApplication.userEmail}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className={`badge ${selectedApplication.appliedRole === 'cr' ? 'badge-amber' : 'badge-emerald'}`} style={{ fontSize: '9px', padding: '1px 4px' }}>
-                        Applying for {selectedApplication.appliedRole === 'cr' ? 'CR' : 'SR'}
-                      </span>
-                    </div>
-                  </div>
+            <div className="modal-content glass-card-static app-review-modal" onClick={(e) => e.stopPropagation()}>
+              {/* Header */}
+              <div className="app-review-header">
+                <div>
+                  <h2>Review Application</h2>
+                  <p>Review and respond to the applicant's request</p>
                 </div>
-
-                {/* Details */}
-                <div className="grid-2" style={{ gap: '12px' }}>
-                  <div className="p-3" style={{ background: 'var(--bg-input)', borderRadius: 'var(--radius-md)' }}>
-                    <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', display: 'block' }}>Department</span>
-                    <strong style={{ fontSize: 'var(--fs-sm)' }}>{selectedApplication.userDepartment}</strong>
-                  </div>
-                  <div className="p-3" style={{ background: 'var(--bg-input)', borderRadius: 'var(--radius-md)' }}>
-                    <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', display: 'block' }}>Batch</span>
-                    <strong style={{ fontSize: 'var(--fs-sm)' }}>{selectedApplication.userBatch}</strong>
-                  </div>
-                  {selectedApplication.userSection && (
-                    <div className="p-3" style={{ background: 'var(--bg-input)', borderRadius: 'var(--radius-md)' }}>
-                      <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', display: 'block' }}>User Section</span>
-                      <strong style={{ fontSize: 'var(--fs-sm)' }}>{selectedApplication.userSection}</strong>
-                    </div>
-                  )}
-                  {selectedApplication.userLabSection && (
-                    <div className="p-3" style={{ background: 'var(--bg-input)', borderRadius: 'var(--radius-md)' }}>
-                      <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', display: 'block' }}>User Lab Group</span>
-                      <strong style={{ fontSize: 'var(--fs-sm)' }}>{selectedApplication.userLabSection}</strong>
-                    </div>
-                  )}
-                  {selectedApplication.targetLabSection && (
-                    <div className="p-3" style={{ background: 'var(--accent-amber-glow)', borderRadius: 'var(--radius-md)', border: '1px solid var(--accent-amber)' }}>
-                      <span style={{ fontSize: '10px', color: 'var(--accent-amber)', display: 'block' }}>Applying for CR of Lab</span>
-                      <strong style={{ fontSize: 'var(--fs-sm)', color: 'var(--accent-amber)' }}>Lab {selectedApplication.targetLabSection}</strong>
-                    </div>
-                  )}
-                  {selectedApplication.targetSection && (
-                    <div className="p-3" style={{ background: 'var(--accent-emerald-glow)', borderRadius: 'var(--radius-md)', border: '1px solid var(--accent-emerald)' }}>
-                      <span style={{ fontSize: '10px', color: 'var(--accent-emerald)', display: 'block' }}>Applying for SR of Section</span>
-                      <strong style={{ fontSize: 'var(--fs-sm)', color: 'var(--accent-emerald)' }}>Section {selectedApplication.targetSection}</strong>
-                    </div>
-                  )}
-                </div>
-
-                {/* Statement */}
-                <div className="p-3" style={{ background: 'var(--bg-input)', borderRadius: 'var(--radius-md)' }}>
-                  <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', display: 'block', marginBottom: '4px' }}>Statement</span>
-                  <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: 0, lineHeight: '1.5' }}>
-                    {selectedApplication.statement || 'No statement provided.'}
-                  </p>
-                </div>
-
-                {/* Application Date */}
-                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-                  Applied on: {new Date(selectedApplication.createdAt).toLocaleString()}
-                </div>
-
-                {/* Actions */}
-                {selectedApplication.status === 'pending' && (
-                  <div className="flex gap-3 mt-4">
-                    <button 
-                      className="btn btn-primary flex-1" 
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                      onClick={() => {
-                        if (window.confirm(`Approve ${selectedApplication.userName}'s application for ${selectedApplication.appliedRole === 'cr' ? 'CR' : 'SR'}?`)) {
-                          const reviewerId = getCurrentUserId() || 'ADM-MSOP6VG6BVL4';
-                          reviewRoleApplication(selectedApplication.id, 'approved', reviewerId);
-                          const updatedApplications = applications.map(app => 
-                            app.id === selectedApplication.id 
-                              ? { ...app, status: 'approved', reviewedAt: new Date().toISOString(), reviewedBy: reviewerId }
-                              : app
-                          );
-                          setApplications(updatedApplications);
-                          localStorage.setItem('aust-role-applications-v1', JSON.stringify(updatedApplications));
-                          setSelectedApplication(null);
-                        }
-                      }}
-                    >
-                      <CheckCircle2 size={16} /> Approve & Assign Role
-                    </button>
-                    <button 
-                      className="btn btn-secondary flex-1" 
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: 'var(--accent-rose)' }}
-                      onClick={() => {
-                        if (window.confirm(`Reject ${selectedApplication.userName}'s application?`)) {
-                          const reviewerId = getCurrentUserId() || 'ADM-MSOP6VG6BVL4';
-                          reviewRoleApplication(selectedApplication.id, 'rejected', reviewerId);
-                          const updatedApplications = applications.map(app => 
-                            app.id === selectedApplication.id 
-                              ? { ...app, status: 'rejected', reviewedAt: new Date().toISOString(), reviewedBy: reviewerId }
-                              : app
-                          );
-                          setApplications(updatedApplications);
-                          localStorage.setItem('aust-role-applications-v1', JSON.stringify(updatedApplications));
-                          setSelectedApplication(null);
-                        }
-                      }}
-                    >
-                      <XCircle size={16} /> Reject
-                    </button>
-                  </div>
-                )}
-
-                {selectedApplication.status !== 'pending' && (
-                  <div className={`p-4 ${selectedApplication.status === 'approved' ? 'success' : 'error'}`} style={{ 
-                    background: selectedApplication.status === 'approved' ? 'var(--accent-emerald-glow)' : 'var(--accent-rose-glow)',
-                    border: `1px solid ${selectedApplication.status === 'approved' ? 'var(--accent-emerald)' : 'var(--accent-rose)'}`,
-                    borderRadius: 'var(--radius-md)',
-                    textAlign: 'center'
-                  }}>
-                    <p style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', color: selectedApplication.status === 'approved' ? 'var(--accent-emerald)' : 'var(--accent-rose)', margin: 0 }}>
-                      This application has been {selectedApplication.status}.
-                    </p>
-                    {selectedApplication.reviewedAt && (
-                      <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
-                        Reviewed on {new Date(selectedApplication.reviewedAt).toLocaleDateString()}
-                      </p>
-                    )}
-                  </div>
-                )}
+                <button
+                  className="btn btn-icon"
+                  onClick={() => setSelectedApplication(null)}
+                  aria-label="Close"
+                >
+                  <X size={20} />
+                </button>
               </div>
+
+              {/* Applicant Info */}
+              <div className="app-review-applicant">
+                <div className="avatar" style={{ width: 52, height: 52, fontSize: '18px', flexShrink: 0 }}>
+                  {selectedApplication.userName?.charAt(0)?.toUpperCase() || 'U'}
+                </div>
+                <div className="app-review-applicant-meta">
+                  <h3>{selectedApplication.userName}</h3>
+                  <p>{selectedApplication.userEmail}</p>
+                </div>
+                <span className={`badge ${selectedApplication.appliedRole === 'cr' ? 'badge-amber' : 'badge-emerald'}`}>
+                  {selectedApplication.appliedRole === 'cr' ? 'CR' : 'SR'} Application
+                </span>
+              </div>
+
+              {/* Details */}
+              <div className="grid-2 app-review-details">
+                <div className="app-review-cell">
+                  <span>Department</span>
+                  <strong>{selectedApplication.userDepartment || '—'}</strong>
+                </div>
+                <div className="app-review-cell">
+                  <span>Batch</span>
+                  <strong>{selectedApplication.userBatch || '—'}</strong>
+                </div>
+                <div className="app-review-cell">
+                  <span>Section</span>
+                  <strong>{selectedApplication.userSection || '—'}</strong>
+                </div>
+                <div className="app-review-cell">
+                  <span>Lab Group</span>
+                  <strong>{selectedApplication.userLabSection || '—'}</strong>
+                </div>
+              </div>
+
+              {/* Target role */}
+              {(selectedApplication.targetLabSection || selectedApplication.targetSection) && (
+                <div className={`app-review-target ${selectedApplication.appliedRole === 'sr' ? 'is-sr' : ''}`}>
+                  <div>
+                    <span>Applying for</span>
+                    <strong>
+                      {selectedApplication.appliedRole === 'cr' ? 'Class Representative (CR)' : 'Student Representative (SR)'}
+                    </strong>
+                  </div>
+                  <span className="app-review-target-slot">
+                    {selectedApplication.appliedRole === 'cr'
+                      ? `Lab ${selectedApplication.targetLabSection}`
+                      : `Section ${selectedApplication.targetSection}`}
+                  </span>
+                </div>
+              )}
+
+              {/* Statement */}
+              <div className="app-review-statement">
+                <span>Statement</span>
+                <p>{selectedApplication.statement || 'No statement provided.'}</p>
+              </div>
+
+              {/* Applied on */}
+              <div className="app-review-date">
+                <CalendarDays size={14} />
+                Applied on {new Date(selectedApplication.createdAt).toLocaleString()}
+              </div>
+
+              {/* Actions */}
+              {selectedApplication.status === 'pending' && (
+                <div className="app-review-actions">
+                  <button
+                    className="btn btn-primary"
+                    onClick={async () => {
+                      if (window.confirm(`Approve ${selectedApplication.userName}'s application for ${selectedApplication.appliedRole === 'cr' ? 'CR' : 'SR'}?`)) {
+                        const reviewerId = getCurrentUserId() || 'ADM-MSOP6VG6BVL4';
+                        try {
+                          const reviewed = await reviewRoleApplication(selectedApplication.id, 'approved', reviewerId);
+                          const updatedApplications = applications.map(app =>
+                            app.id === selectedApplication.id
+                              ? (reviewed || { ...app, status: 'approved', reviewedAt: new Date().toISOString(), reviewedBy: reviewerId })
+                              : app
+                          );
+                          // Sync the assigned role to the server so the user's
+                          // powers persist across reloads (server is source of
+                          // truth for roles via /api/auth/me).
+                          fetch('/api/admin/users/role', {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ userId: selectedApplication.userId, role: selectedApplication.appliedRole }),
+                          }).catch(() => { /* server may not know this local account */ });
+                          // Confirmation mail → lands in the applicant's ConnectBox inbox.
+                          sendMessage(reviewerId, selectedApplication.userId,
+                            `🎉 Congratulations ${selectedApplication.userName}! Your application for ${selectedApplication.appliedRole === 'cr' ? 'Class Representative (CR)' : 'Student Representative (SR)'} has been APPROVED by the admin. You can now use all ${selectedApplication.appliedRole === 'cr' ? 'CR' : 'SR'} powers (notices, schedules, exam tracker).`
+                          );
+                          setApplications(updatedApplications);
+                          localStorage.setItem('aust-role-applications-v1', JSON.stringify(updatedApplications));
+                          setSelectedApplication(null);
+                        } catch (err) {
+                          window.alert(err.message || 'Failed to approve application.');
+                        }
+                      }
+                    }}
+                  >
+                    <CheckCircle2 size={16} /> Approve & Assign Role
+                  </button>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={async () => {
+                      if (window.confirm(`Reject ${selectedApplication.userName}'s application?`)) {
+                        const reviewerId = getCurrentUserId() || 'ADM-MSOP6VG6BVL4';
+                        try {
+                          const reviewed = await reviewRoleApplication(selectedApplication.id, 'rejected', reviewerId);
+                          // Notification mail → lands in the applicant's ConnectBox inbox.
+                          sendMessage(reviewerId, selectedApplication.userId,
+                            `Your application for ${selectedApplication.appliedRole === 'cr' ? 'Class Representative (CR)' : 'Student Representative (SR)'} was REJECTED by the admin. You can re-apply when a slot opens up.`
+                          );
+                          const updatedApplications = applications.map(app =>
+                            app.id === selectedApplication.id
+                              ? (reviewed || { ...app, status: 'rejected', reviewedAt: new Date().toISOString(), reviewedBy: reviewerId })
+                              : app
+                          );
+                          setApplications(updatedApplications);
+                          localStorage.setItem('aust-role-applications-v1', JSON.stringify(updatedApplications));
+                          setSelectedApplication(null);
+                        } catch (err) {
+                          window.alert(err.message || 'Failed to reject application.');
+                        }
+                      }
+                    }}
+                  >
+                    <XCircle size={16} /> Reject
+                  </button>
+                </div>
+              )}
+
+              {selectedApplication.status !== 'pending' && (
+                <div className={`app-review-status ${selectedApplication.status === 'approved' ? 'is-approved' : 'is-rejected'}`}>
+                  <p>This application has been {selectedApplication.status}.</p>
+                  {selectedApplication.reviewedAt && (
+                    <span>Reviewed on {new Date(selectedApplication.reviewedAt).toLocaleDateString()}</span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
-        )}
+        , document.body)}
 
         {/* AUDITORIUM ADMIN PANEL */}
         {activeTab === 'auditorium' && <AdminAuditoriumPanel />}

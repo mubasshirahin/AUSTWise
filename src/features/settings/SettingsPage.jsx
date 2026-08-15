@@ -8,7 +8,7 @@ import AboutUs from './AboutUs';
 import LinkedAccountsSection from './LinkedAccountsSection';
 import GliderTabs from '../../components/GliderTabs';
 import { useNotifications } from '../../hooks/useNotifications';
-import { submitRoleApplication, getApplicationsByUserId, getUserApplicationStatus, checkSlotVacancy, getSlotVacancyMap, resignFromRole, withdrawApplication, deleteAccountById, createAwid } from '../../utils/authStorage';
+import { submitRoleApplication, getApplicationsByUserId, getUserApplicationStatus, checkSlotVacancy, getSlotVacancyMap, resignFromRole, withdrawApplication, deleteAccountById, createAwid, syncRoleApplicationsFromServer } from '../../utils/authStorage';
 import './SettingsPage.css';
 import '../../components/PageHero.css';
 
@@ -154,7 +154,7 @@ function SettingsMasthead({ icon: Icon, title, subtitle }) {
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
-  const { user, isAuthenticated, updateUser, logout } = useAuth();
+  const { user, isAuthenticated, updateUser, logout, refreshUserFromServer } = useAuth();
   const { routine, weekDays } = useRoutine();
   const { supported, permission, settings: notifSettings, enable: enableNotifs, disable: disableNotifs, updateSetting } = useNotifications(routine, weekDays);
 
@@ -322,14 +322,26 @@ export default function SettingsPage() {
     }
   }, [isTelegramRegistered]);
 
-  // Load application status & vacancy map on mount
+  // Load application status & vacancy map on mount, then keep it fresh by
+  // polling the server. This way an approval made on another device shows up
+  // here (and the resign button appears) without a manual reload.
   useEffect(() => {
-    if (isAuthenticated && user?.id) {
-      const status = getUserApplicationStatus(user.id);
-      setApplicationStatus(status);
-      const applications = getApplicationsByUserId(user.id);
-      setUserApplications(applications);
-    }
+    if (!isAuthenticated || !user?.id) return;
+    let cancelled = false;
+
+    const syncStatus = async () => {
+      try {
+        await syncRoleApplicationsFromServer(user.id);
+        await refreshUserFromServer();
+      } catch { /* offline — local state stays */ }
+      if (cancelled) return;
+      setApplicationStatus(getUserApplicationStatus(user.id));
+      setUserApplications(getApplicationsByUserId(user.id));
+    };
+
+    syncStatus();
+    const interval = setInterval(syncStatus, 10000);
+    return () => { cancelled = true; clearInterval(interval); };
   }, [isAuthenticated, user?.id]);
 
   // Load vacancy map when department/semester is known
@@ -2102,7 +2114,7 @@ export default function SettingsPage() {
                         onClick={async () => {
                           setWithdrawing(true);
                           try {
-                            await withdrawApplication(user.id);
+                            await withdrawApplication(user.id, applicationStatus?.pendingApplication?.id);
                             setApplicationMessage('Application withdrawn successfully. You can re-apply anytime.');
                             setWithdrawConfirm(false);
                             setShowApplyForm(false);

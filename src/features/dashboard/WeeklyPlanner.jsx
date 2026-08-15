@@ -5,6 +5,8 @@ import { useRoutine } from '../../context/RoutineContext';
 import { ocrImportedRoutine, ocrImportedWeekDays } from '../../context/RoutineContext';
 import { normalizeAccentColor, getCourseColor } from '../../utils/colorPalette';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
+import RoomAutocomplete from '../../components/RoomAutocomplete';
+import TeacherAutocomplete from '../../components/TeacherAutocomplete';
 import { findCourseByCode, findCourseByName } from '../../data/courses';
 import { getAutoColorForCourse } from '../../utils/autoColorPalette';
 import { loadTemplates, mergeTemplatesToRoutine } from '../../utils/routineTemplates';
@@ -1212,11 +1214,19 @@ export default function WeeklyPlanner() {
               </label>
               <label>
                 Room
-                <input className="input" value={editing.form.room} onChange={(event) => updateForm('room', event.target.value)} />
+                <RoomAutocomplete
+                  value={editing.form.room}
+                  placeholder="e.g. 7A03 — choose a room or type your own..."
+                  onRoomSelect={(room) => updateForm('room', room)}
+                />
               </label>
               <label>
                 Teacher
-                <input className="input" value={editing.form.teacher} onChange={(event) => updateForm('teacher', event.target.value)} />
+                <TeacherAutocomplete
+                  value={editing.form.teacher}
+                  placeholder="Type teacher name (e.g. Dr. Rahman)..."
+                  onTeacherSelect={(teacher) => updateForm('teacher', teacher)}
+                />
               </label>
 
               {/* 🧩 Split into parts — at the bottom, same position as Lab's bi-weekly */}

@@ -184,6 +184,252 @@
   }
 }
 
+/* ─── Application Review Modal ─── */
+.app-review-modal {
+  max-width: 560px;
+}
+
+.app-review-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-4);
+}
+
+.app-review-header h2 {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: 700;
+}
+
+.app-review-header p {
+  margin: 4px 0 0;
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
+
+.app-review-header .btn-icon {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.app-review-applicant {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  background: var(--bg-input);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--sp-3);
+}
+
+.app-review-applicant-meta {
+  min-width: 0;
+  flex: 1;
+}
+
+.app-review-applicant-meta h3 {
+  margin: 0;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-review-applicant-meta p {
+  margin: 2px 0 0;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-review-details {
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+
+.app-review-cell {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-height: 72px;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--bg-input);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+}
+
+.app-review-cell span {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+}
+
+.app-review-cell strong {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-review-target {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  margin-bottom: var(--sp-3);
+  border: 1px solid var(--accent-amber);
+  background: var(--accent-amber-glow);
+  border-radius: var(--radius-md);
+}
+
+.app-review-target.is-sr {
+  border-color: var(--accent-emerald);
+  background: var(--accent-emerald-glow);
+}
+
+.app-review-target > div {
+  min-width: 0;
+}
+
+.app-review-target > div span {
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+
+.app-review-target strong {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--accent-amber);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-review-target.is-sr strong {
+  color: var(--accent-emerald);
+}
+
+.app-review-target-slot {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--accent-amber);
+  background: var(--bg-card);
+  border: 1px solid var(--accent-amber);
+  border-radius: var(--radius-full);
+}
+
+.app-review-target.is-sr .app-review-target-slot {
+  color: var(--accent-emerald);
+  border-color: var(--accent-emerald);
+}
+
+.app-review-statement {
+  padding: var(--sp-3) var(--sp-4);
+  margin-bottom: var(--sp-3);
+  background: var(--bg-input);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+}
+
+.app-review-statement span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+}
+
+.app-review-statement p {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+}
+
+.app-review-date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-bottom: var(--sp-4);
+}
+
+.app-review-actions {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.app-review-actions .btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.app-review-status {
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-md);
+  text-align: center;
+  border: 1px solid var(--accent-emerald);
+  background: var(--accent-emerald-glow);
+}
+
+.app-review-status.is-rejected {
+  border-color: var(--accent-rose);
+  background: var(--accent-rose-glow);
+}
+
+.app-review-status p {
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--accent-emerald);
+}
+
+.app-review-status.is-rejected p {
+  color: var(--accent-rose);
+}
+
+.app-review-status span {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 480px) {
+  .app-review-applicant {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .app-review-actions {
+    flex-direction: column;
+  }
+}
+
 /* ═══════════════════════════════════════════════════════
    SKETCHBOOK THEME — Hand-drawn personality
    ═══════════════════════════════════════════════════════ */
