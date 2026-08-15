@@ -44,7 +44,7 @@ export default function DocsPage() {
         <p>Real-time messaging for your courses, lab groups, and faculty — with file sharing, reactions, and read receipts. Your whole academic conversation in one place.</p>
 
         <h3>Productivity & Study</h3>
-        <p>Pomodoro sessions, a study room with ambient sounds, and Zen mode for focused deep work. Use the Exam Checklist to plan exam season, the CP Hub for competitive programming, and Money Tracker to manage your budget.</p>
+        <p>Pomodoro sessions, a study room with ambient sounds, and Zen mode for focused deep work. The CP Hub for competitive programming and Money Tracker to manage your budget round out your study toolkit.</p>
 
         <h3>Marketplace</h3>
         <p>Buy and sell used textbooks, find bachelor rentals near campus, report lost items, and request mentorship from seniors — free, with no commissions.</p>

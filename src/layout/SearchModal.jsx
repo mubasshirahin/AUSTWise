@@ -21,9 +21,8 @@ const searchItems = [
   {
     label: 'Daily Life', path: '/daily-life', icon: Home, keywords: 'daily life meals transport schedule mess meal',
     subs: [
-      { id: 'exam-checklist', label: 'Exam Checklist', keywords: 'exam checklist prep' },
       { id: 'cover-page-generator', label: 'Cover Page', keywords: 'cover page generator' },
-      { id: 'bhara-koto', label: 'Bhara Koto', keywords: 'bhara koto fare estimator rickshaw' },
+      { id: 'bhara-koto', label: 'Bhara Koto', keywords: 'bhara koto fare estimator distance cost transport rickshaw metro bus taxi' },
       { id: 'money-tracker', label: 'TakaGeloKoi', keywords: 'takagelokoi money tracker expenses budget' },
       { id: 'mess-meal', label: 'Mess Meal', keywords: 'mess meal planner food' },
     ],
@@ -109,8 +108,8 @@ const searchItems = [
     subs: [
       { id: 'profile', label: 'Identity', keywords: 'identity profile academic info' },
       { id: 'theme', label: 'UI', keywords: 'ui themes appearance' },
-      { id: 'notifications', label: 'Notify Me', keywords: 'notifications alerts reminders' },
-      { id: 'about', label: 'Credentials', keywords: 'credentials developer info' },
+      { id: 'notifications', label: 'Configure', keywords: 'notifications alerts reminders' },
+      { id: 'about', label: 'Credits', keywords: 'credits developer info about' },
       { id: 'roleApplication', label: 'Apply for CR/SR', keywords: 'apply cr sr leadership role' },
       { id: 'invite', label: 'Invite Member', keywords: 'invite member send invites' },
     ],

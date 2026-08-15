@@ -69,16 +69,19 @@ const TERMINAL_SCRIPT = `$ whoami
 ${DEV.handle}
 
 $ cat about.txt
-Just a student. Nothing worth reading here.
+I chose CSE cz it seemed cool. Now my code has more red lines than my Discord DMs. When I'm not sleeping, I'm either fighting with my IDE,getting lost in a new game,breaking some perfectly good electronics to see what's inside,or just clicking pictures of nature to prove to my friends that I actually go outside.
 
 $ cat work.txt
 Built a few things. AUSTWise is one of them. You're on it.
 
-$ cat education.txt
-BSc in CSE @ AUST · Quanta 52
-
 $ cat skills.txt
-You can't rank skills with numbers. But if you could, I'd be near the top.
+I sure know how to make AI dance to my tune.
+
+[Core Competencies]
+├── AI Prompting & Googling ─── 100% (Expert)
+├── Handling IDE Red Lines ─────  95% (Advanced)
+├── Understanding my own code ──  15% (Beginner)
+└── Vibe Management ───────── 100% (God Tier)
 
 $ cat status.txt
 Doing things. Quietly.`;

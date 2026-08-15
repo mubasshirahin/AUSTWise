@@ -24,7 +24,7 @@ export default function ChangelogPage() {
           <li>Shadow — anonymous AUST forum posts and 10-minute anonymous chats</li>
           <li>Workspace — Google Classroom integration for courses, assignments, and materials</li>
           <li>Money Tracker — expense logging, budget goals, and monthly summaries</li>
-          <li>Exam Checklist, CP Hub, and Cover Page Generator</li>
+          <li>CP Hub, Money Tracker, and Cover Page Generator</li>
           <li>Notebook — personal, searchable study notes library</li>
           <li>ConnectBox — reactions, read receipts, and richer course/lab messaging</li>
         </ul>

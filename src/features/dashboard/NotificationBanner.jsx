@@ -72,7 +72,7 @@ export default function NotificationBanner() {
           Never miss a class or deadline
         </p>
         <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-          Enable browser alerts — get notified before your next class starts and when assignments are due.
+          Enable browser alerts — your browser will ask for <strong>notification permission</strong>, used only to alert you before your next class starts and when assignments are due.
         </p>
       </div>
 

@@ -1695,7 +1695,6 @@ async function handleApiRequest(req, res) {
           const p = presence[u.id] || { status: 'offline', lastSeenAt: null };
           const privacy = u.privacy || {};
           const showCgpa = privacy.showCgpa !== false;
-          const showAttendance = privacy.showAttendance === true;
           return {
             id: u.id,
             name: u.name,
@@ -1713,10 +1712,10 @@ async function handleApiRequest(req, res) {
             status: p.status,
             lastSeenAt: p.lastSeenAt || (u.lastSeenAt ? new Date(u.lastSeenAt).getTime() : null),
             cgpa: showCgpa && u.cgpa > 0 ? Number(u.cgpa) : null,
-            attendancePct: showAttendance && u.attendancePct != null ? Number(u.attendancePct) : null,
+            // Attendance is always private — never exposed to other members.
+            attendancePct: null,
             privacy: {
               showCgpa,
-              showAttendance,
             },
           };
         });

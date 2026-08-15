@@ -41,7 +41,6 @@ const TerminalPage = lazy(() => import('./features/terminal/TerminalPage'));
 const WorkspacePage = lazy(() => import('./features/workspace/WorkspacePage'));
 const StudyRoomPage = lazy(() => import('./features/study-room/StudyRoomPage'));
 const ZenStudyRoom = lazy(() => import('./features/study-room/ZenStudyRoom'));
-const ExamChecklistPage = lazy(() => import('./features/exam-checklist/ExamChecklistPage'));
 const CPHubPage = lazy(() => import('./features/cp-hub/CPHubPage'));
 const MoneyTrackerPage = lazy(() => import('./features/money-tracker/MoneyTrackerPage'));
 
@@ -176,7 +175,6 @@ function AppContent() {
                 <Route path="/admin/auditorium" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
                 <Route path="/workspace" element={<WorkspacePage />} />
                 <Route path="/study-room" element={<StudyRoomPage />} />
-                <Route path="/exam-checklist" element={<ExamChecklistPage />} />
                 <Route path="/cp-hub" element={<CPHubPage />} />
                 <Route path="/money-tracker" element={<MoneyTrackerPage />} />
 
@@ -231,7 +229,6 @@ function AppShell() {
     '/workspace': 'Workspace',
     '/zen': 'Zen Study Room',
     '/study-room': 'Study Time',
-    '/exam-checklist': 'Exam Checklist',
     '/cp-hub': 'Code Pulse',
     '/money-tracker': 'TakaGeloKoi',
 

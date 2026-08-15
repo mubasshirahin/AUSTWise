@@ -53,7 +53,7 @@ export default function FeaturesPage() {
         <p>An anonymous corner of AUSTWise. Post to the AUST forum under the "Buzz" tag without your name, or match with a stranger for a 10-minute anonymous conversation through Shadow Chat.</p>
 
         <h2>Study Tools</h2>
-        <p>A growing toolbox for exam season and beyond — an Exam Checklist to plan and track your preparation, a CP Hub for competitive programming practice, and a Money Tracker to log expenses, set budget goals, and review monthly summaries.</p>
+        <p>A growing toolbox for exam season and beyond — a CP Hub for competitive programming practice and a Money Tracker to log expenses, set budget goals, and review monthly summaries.</p>
 
         <h2>Workspace & More</h2>
         <p>The Workspace connects your Google Classroom so you can track courses, assignments, and materials in one grid. The Cover Page Generator creates polished assignment cover pages in seconds, and Transcript Templates streamline official transcript formatting.</p>

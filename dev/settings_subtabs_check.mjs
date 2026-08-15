@@ -15,7 +15,7 @@ export default async function run(page, ui) {
   await page.waitForSelector('.glider-tabs-track', { timeout: 15000 });
   await page.waitForTimeout(500);
 
-  const labels = ['Identity', 'UI', 'Notify Me', 'Credentials', 'Invite Member'];
+  const labels = ['Identity', 'UI', 'Configure', 'Credits', 'Invite Member'];
   const report = {};
 
   for (const label of labels) {

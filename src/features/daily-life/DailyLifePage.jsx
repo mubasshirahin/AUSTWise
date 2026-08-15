@@ -1,20 +1,18 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Home, DollarSign, ClipboardCheck, NotebookPen, UtensilsCrossed, Banknote } from 'lucide-react';
+import { Home, DollarSign, NotebookPen, UtensilsCrossed, Banknote, Route } from 'lucide-react';
 import GliderTabs from '../../components/GliderTabs';
 import useTabUrlState from '../../hooks/useTabUrlState';
 import MoneyTrackerPage from '../money-tracker/MoneyTrackerPage';
-import ExamChecklistPage from '../exam-checklist/ExamChecklistPage';
 import CoverPageGeneratorPage from '../cover-page-generator/CoverPageGeneratorPage';
 import MessMealTrackerPage from './MessMealTrackerPage';
-import BharaKoto from './BharaKoto';
+import DhakaRoutes from './DhakaRoutes';
 import './DailyLifePage.css';
 import './daily-life-tokens.css';
 
 const TABS = [
-  { id: 'exam-checklist',       label: 'Exam Checklist',      icon: ClipboardCheck, color: 'amber', desc: 'Exam prep'          },
   { id: 'cover-page-generator', label: 'Cover Page',          icon: NotebookPen,    color: 'amber', desc: 'Generate cover page'},
-  { id: 'bhara-koto',           label: 'Bhara Koto',          icon: Banknote,       color: 'amber', desc: 'Fare estimator'     },
+  { id: 'bhara-koto',           label: 'Bhara Koto',          icon: Banknote,       color: 'amber', desc: 'Distance & cost'     },
   { id: 'money-tracker',        label: 'TakaGeloKoi',         icon: DollarSign,     color: 'amber', desc: 'Expenses & budget'  },
   { id: 'mess-meal',            label: 'Mess Meal',           icon: UtensilsCrossed,color: 'amber', desc: 'Meal planner'       },
 ];
@@ -24,22 +22,21 @@ const STORAGE_KEY = 'daily-life-active-tab';
 export default function DailyLifePage() {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(
-    () => searchParams.get('tab') || localStorage.getItem(STORAGE_KEY) || 'exam-checklist'
+    () => searchParams.get('tab') || localStorage.getItem(STORAGE_KEY) || 'cover-page-generator'
   );
 
   const handleTabChange = useTabUrlState({
     storageKey: STORAGE_KEY,
-    defaultValue: 'exam-checklist',
+    defaultValue: 'cover-page-generator',
     onChange: setActiveTab,
   });
 
   const renderTab = () => {
     switch (activeTab) {
       case 'money-tracker':        return <MoneyTrackerPage />;
-      case 'exam-checklist':       return <ExamChecklistPage />;
       case 'cover-page-generator': return <CoverPageGeneratorPage />;
       case 'mess-meal':            return <MessMealTrackerPage />;
-      case 'bhara-koto':           return <BharaKoto />;
+      case 'bhara-koto':           return <DhakaRoutes />;
       default:                     return <MoneyTrackerPage />;
     }
   };

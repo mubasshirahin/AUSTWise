@@ -1570,3 +1570,268 @@
   color: var(--text-tertiary);
   line-height: 1.4;
 }
+
+/* ═══════════════════════════════════════════
+   CONFIGURE (Notify Me) — settings subtab
+   Consistent section / row / banner language.
+   ═══════════════════════════════════════════ */
+.cfg-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.cfg-stack--tight {
+  gap: var(--sp-3);
+}
+
+.cfg-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.cfg-section-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cfg-section-title {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.cfg-section-desc {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.cfg-divider {
+  height: 1px;
+  background: var(--border-primary);
+}
+
+.cfg-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+}
+
+.cfg-row-main {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.cfg-row-icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-primary);
+}
+
+.cfg-row-icon.is-blue {
+  color: var(--accent-blue);
+  background: var(--accent-blue-glow);
+  border-color: color-mix(in srgb, var(--accent-blue) 28%, transparent);
+}
+
+.cfg-row-icon.is-amber {
+  color: var(--accent-amber);
+  background: var(--accent-amber-glow);
+  border-color: color-mix(in srgb, var(--accent-amber) 28%, transparent);
+}
+
+.cfg-row-icon.is-emerald {
+  color: var(--accent-emerald);
+  background: var(--accent-emerald-glow);
+  border-color: color-mix(in srgb, var(--accent-emerald) 28%, transparent);
+}
+
+.cfg-row-text {
+  min-width: 0;
+}
+
+.cfg-row-title {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.cfg-row-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  margin: 2px 0 0;
+}
+
+.cfg-row > .toggle-switch {
+  flex-shrink: 0;
+}
+
+.cfg-range-card {
+  padding: var(--sp-4);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-left: 3px solid var(--border-focus);
+  border-radius: var(--radius-lg);
+}
+
+.cfg-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-primary);
+  background: var(--bg-input);
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.cfg-banner svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.cfg-banner p {
+  margin: 0;
+}
+
+.cfg-banner--emerald {
+  background: var(--accent-emerald-glow);
+  border-color: color-mix(in srgb, var(--accent-emerald) 45%, transparent);
+}
+
+.cfg-banner--blue {
+  background: var(--accent-blue-glow);
+  border-color: color-mix(in srgb, var(--accent-blue) 45%, transparent);
+}
+
+.cfg-banner--rose {
+  background: var(--accent-rose-glow);
+  border-color: color-mix(in srgb, var(--accent-rose) 45%, transparent);
+}
+
+.cfg-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.cfg-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cfg-field-label {
+  display: block;
+  font-size: 10px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 4px;
+}
+
+.cfg-status-card {
+  padding: var(--sp-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-primary);
+  background: var(--bg-input);
+}
+
+.cfg-status-card.is-ok {
+  background: var(--accent-emerald-glow);
+  border-color: color-mix(in srgb, var(--accent-emerald) 40%, transparent);
+}
+
+.cfg-status-card.is-warn {
+  background: var(--accent-amber-glow);
+  border-color: color-mix(in srgb, var(--accent-amber) 40%, transparent);
+}
+
+.cfg-status-card p {
+  margin: 0;
+  font-size: 10px;
+}
+
+.cfg-note {
+  padding: var(--sp-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-secondary);
+  background: var(--bg-card);
+}
+
+.cfg-note p,
+.cfg-note ol {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.cfg-note ol {
+  padding-left: 16px;
+  margin: 0;
+}
+
+/* Permission explanation note — tells users why a browser permission is asked */
+.cfg-perm {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent-amber) 6%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--accent-amber) 35%, transparent);
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+  line-height: 1.5;
+}
+
+.cfg-perm svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.cfg-perm p {
+  margin: 0;
+}
+
+.cfg-perm strong {
+  color: var(--text-secondary);
+}
+
+@media (max-width: 640px) {
+  .cfg-row {
+    align-items: flex-start;
+  }
+
+  .cfg-row-main {
+    align-items: flex-start;
+  }
+
+  .cfg-row-icon {
+    width: 32px;
+    height: 32px;
+  }
+}

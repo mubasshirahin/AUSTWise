@@ -1182,6 +1182,12 @@ export default function MessagesPage() {
                     >
                       {notifEnabled ? <Bell size={14} /> : <BellOff size={14} />} Browser notifications
                       {notifEnabled && <Check size={14} className="menu-check" />}
+                      <span
+                        style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginLeft: 'auto' }}
+                        title="Asks for browser notification permission — used only to alert you about new messages. Nothing is shared; revoke anytime from your browser's site settings."
+                      >
+                        ⓘ
+                      </span>
                     </button>
                   )}
                 </div>

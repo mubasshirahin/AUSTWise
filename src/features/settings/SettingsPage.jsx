@@ -190,8 +190,8 @@ export default function SettingsPage() {
   const settingsTabs = [
     { id: 'profile', label: 'Identity', icon: User, desc: 'Identity & academic info', color: 'blue' },
     { id: 'theme', label: 'UI', icon: Settings, desc: 'Themes & appearance', color: 'purple' },
-    { id: 'notifications', label: 'Notify Me', icon: Bell, desc: 'Alerts & reminders', color: 'amber' },
-    { id: 'about', label: 'Credentials', icon: Info, desc: 'Developer credentials & info', color: 'emerald' },
+    { id: 'notifications', label: 'Configure', icon: Bell, desc: 'Alerts & reminders', color: 'amber' },
+    { id: 'about', label: 'Credits', icon: Info, desc: 'Developer credits & info', color: 'emerald' },
     ...(isAuthenticated && user?.role === 'admin' ? [{ id: 'invite', label: 'Invite Member', icon: Send, desc: 'Send invites', color: 'cyan' }] : []),
   ];
 
@@ -222,10 +222,9 @@ export default function SettingsPage() {
   const [showApplyForm, setShowApplyForm] = useState(false);
   const [yearSemTouched, setYearSemTouched] = useState(false);
 
-  // Member-list privacy toggles (show CGPA / attendance to others)
+  // Member-list privacy toggle (show CGPA to others; attendance is always private)
   const [privacySettings, setPrivacySettings] = useState(() => ({
     showCgpa: user?.privacy?.showCgpa !== false,
-    showAttendance: user?.privacy?.showAttendance === true,
   }));
   const [privacySaving, setPrivacySaving] = useState(false);
   const [privacyMsg, setPrivacyMsg] = useState('');
@@ -751,11 +750,13 @@ export default function SettingsPage() {
 
       {/* ── 3. Main content box (own card) ── */}
       <div className="st-content-card" key={activeSubTab}>
-        <div className="st-mac-chrome" aria-hidden="true">
-          <span className="st-mac-dot st-mac-dot--red" />
-          <span className="st-mac-dot st-mac-dot--amber" />
-          <span className="st-mac-dot st-mac-dot--green" />
-        </div>
+        {activeSubTab === 'about' && (
+          <div className="st-mac-chrome" aria-hidden="true">
+            <span className="st-mac-dot st-mac-dot--red" />
+            <span className="st-mac-dot st-mac-dot--amber" />
+            <span className="st-mac-dot st-mac-dot--green" />
+          </div>
+        )}
         <div className="settings-panel">
           {activeSubTab === 'profile' && (
             <div className="animate-fadeIn">
@@ -1037,19 +1038,19 @@ export default function SettingsPage() {
           )}
 
           {activeSubTab === 'notifications' && (
-            <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <SettingsMasthead icon={Bell} title="Notify Me" subtitle="Alerts &amp; reminders" />
+            <div className="animate-fadeIn cfg-stack">
+              <SettingsMasthead icon={Bell} title="Configure" subtitle="Alerts &amp; reminders" />
               <div className="schedule-dotted-divider" />
 
               {!supported && (
-                <div className="flex items-center gap-3 p-4" style={{ background: 'var(--accent-rose-glow)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--accent-rose)' }}>
+                <div className="cfg-banner cfg-banner--rose">
                   <AlertTriangle size={18} style={{ color: 'var(--accent-rose)', flexShrink: 0 }} />
                   <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent-rose)' }}>Your browser does not support notifications.</p>
                 </div>
               )}
 
               {supported && permission === 'denied' && (
-                <div className="flex items-center gap-3 p-4" style={{ background: 'var(--accent-rose-glow)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--accent-rose)' }}>
+                <div className="cfg-banner cfg-banner--rose">
                   <BellOff size={18} style={{ color: 'var(--accent-rose)', flexShrink: 0 }} />
                   <div>
                     <p style={{ fontSize: 'var(--fs-xs)', fontWeight: 'bold', color: 'var(--accent-rose)' }}>Notifications blocked by browser</p>
@@ -1060,72 +1061,89 @@ export default function SettingsPage() {
 
               {supported && permission !== 'denied' && (
                 <>
-                  <div className="flex justify-between items-center p-4" style={{ background: 'var(--bg-input)', borderRadius: 'var(--radius-lg)' }}>
-                    <div className="flex items-center gap-3">
-                      {notifSettings.enabled && permission === 'granted'
-                        ? <BellRing size={20} style={{ color: 'var(--accent-emerald)' }} />
-                        : <BellOff size={20} style={{ color: 'var(--text-tertiary)' }} />
-                      }
-                      <div>
-                        <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold' }}>Enable smart reminders</h4>
-                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                          {permission === 'granted'
-                            ? notifSettings.enabled ? 'Active — reminders running in background' : 'Permission granted — click to enable'
-                            : 'Browser will ask for permission when you enable'}
-                        </p>
-                      </div>
+                  <section className="cfg-section">
+                    <div className="cfg-section-head">
+                      <h3 className="cfg-section-title">Smart Reminders</h3>
+                      <p className="cfg-section-desc">Browser alerts for classes and deadlines.</p>
                     </div>
-                    <div
-                      className={`toggle-switch ${notifSettings.enabled && permission === 'granted' ? 'active' : ''}`}
-                      onClick={async () => {
-                        if (notifSettings.enabled) {
-                          disableNotifs();
-                          setNotifMsg('Reminders disabled.');
-                        } else {
-                          setNotifEnabling(true);
-                          const result = await enableNotifs();
-                          setNotifEnabling(false);
-                          if (result === 'granted') setNotifMsg('Reminders enabled! You\'ll get alerts before classes and deadlines.');
-                          else if (result === 'denied') setNotifMsg('Permission denied. Allow notifications in browser settings.');
-                          else setNotifMsg('Permission not granted.');
-                        }
-                        setTimeout(() => setNotifMsg(''), 3500);
-                      }}
-                      style={{ opacity: notifEnabling ? 0.6 : 1, cursor: notifEnabling ? 'not-allowed' : 'pointer' }}
-                    />
-                  </div>
 
-                  {notifMsg && (
-                    <p className="animate-fadeIn" style={{ fontSize: 'var(--fs-xs)', color: permission === 'granted' ? 'var(--accent-emerald)' : 'var(--accent-rose)', padding: '0 4px' }}>
-                      {notifMsg}
-                    </p>
-                  )}
+                    <div className="cfg-row">
+                      <div className="cfg-row-main">
+                        <span className={`cfg-row-icon ${notifSettings.enabled && permission === 'granted' ? 'is-emerald' : ''}`}>
+                          {notifSettings.enabled && permission === 'granted'
+                            ? <BellRing size={18} />
+                            : <BellOff size={18} />
+                          }
+                        </span>
+                        <div className="cfg-row-text">
+                          <h4 className="cfg-row-title">Enable smart reminders</h4>
+                          <p className="cfg-row-desc">
+                            {permission === 'granted'
+                              ? notifSettings.enabled ? 'Active — reminders running in background' : 'Permission granted — click to enable'
+                              : 'Browser will ask for permission when you enable'}
+                          </p>
+                        </div>
+                      </div>
+                      <div
+                        className={`toggle-switch ${notifSettings.enabled && permission === 'granted' ? 'active' : ''}`}
+                        onClick={async () => {
+                          if (notifSettings.enabled) {
+                            disableNotifs();
+                            setNotifMsg('Reminders disabled.');
+                          } else {
+                            setNotifEnabling(true);
+                            const result = await enableNotifs();
+                            setNotifEnabling(false);
+                            if (result === 'granted') setNotifMsg('Reminders enabled! You\'ll get alerts before classes and deadlines.');
+                            else if (result === 'denied') setNotifMsg('Permission denied. Allow notifications in browser settings.');
+                            else setNotifMsg('Permission not granted.');
+                          }
+                          setTimeout(() => setNotifMsg(''), 3500);
+                        }}
+                        style={{ opacity: notifEnabling ? 0.6 : 1, cursor: notifEnabling ? 'not-allowed' : 'pointer' }}
+                      />
+                    </div>
+
+                    <div className="cfg-perm">
+                      <ShieldCheck size={13} style={{ color: 'var(--accent-amber)' }} />
+                      <p>
+                        <strong>Why this permission?</strong> Turning this on asks your browser for <strong>notification permission</strong> — used only to alert you before classes and deadlines. Nothing is shared; you can revoke it anytime from your browser's site settings.
+                      </p>
+                    </div>
+
+                    {notifMsg && (
+                      <p className="animate-fadeIn" style={{ fontSize: 'var(--fs-xs)', color: permission === 'granted' ? 'var(--accent-emerald)' : 'var(--accent-rose)', padding: '0 4px' }}>
+                        {notifMsg}
+                      </p>
+                    )}
+                  </section>
                 </>
               )}
 
               {supported && notifSettings.enabled && permission === 'granted' && (
-                <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={{ height: '1px', background: 'var(--border-primary)' }} />
-                  <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', color: 'var(--text-secondary)' }}>Reminder Settings</h4>
+                <section className="cfg-section animate-fadeIn">
+                  <div className="cfg-divider" />
+                  <div className="cfg-section-head">
+                    <h3 className="cfg-section-title">Reminder Settings</h3>
+                    <p className="cfg-section-desc">Choose how early you want to be alerted.</p>
+                  </div>
 
-                  <div className="flex justify-between items-center p-4" style={{ background: 'var(--bg-input)', borderRadius: 'var(--radius-lg)' }}>
-                    <div className="flex items-center gap-3">
-                      <Clock size={16} style={{ color: 'var(--accent-blue)' }} />
-                      <div>
-                        <h4 style={{ fontSize: 'var(--fs-xs)', fontWeight: 'bold' }}>Class reminders</h4>
-                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Alert before class starts</p>
+                  <div className="cfg-row">
+                    <div className="cfg-row-main">
+                      <span className="cfg-row-icon is-blue"><Clock size={18} /></span>
+                      <div className="cfg-row-text">
+                        <h4 className="cfg-row-title">Class reminders</h4>
+                        <p className="cfg-row-desc">Alert before class starts</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`toggle-switch ${notifSettings.notifyClass ? 'active' : ''}`}
-                        onClick={() => updateSetting('notifyClass', !notifSettings.notifyClass)}
-                      />
-                    </div>
+                    <div
+                      className={`toggle-switch ${notifSettings.notifyClass ? 'active' : ''}`}
+                      onClick={() => updateSetting('notifyClass', !notifSettings.notifyClass)}
+                    />
                   </div>
 
                   {notifSettings.notifyClass && (
-                    <div className="animate-fadeIn p-4" style={{ background: 'var(--bg-input)', borderRadius: 'var(--radius-lg)' }}>
+                    <div className="cfg-range-card animate-fadeIn">
                       <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         <span style={{ fontWeight: 'bold' }}>Alert me <strong style={{ color: 'var(--accent-blue)' }}>{notifSettings.classReminderMins} minutes</strong> before class</span>
                         <input
@@ -1142,12 +1160,12 @@ export default function SettingsPage() {
                     </div>
                   )}
 
-                  <div className="flex justify-between items-center p-4" style={{ background: 'var(--bg-input)', borderRadius: 'var(--radius-lg)' }}>
-                    <div className="flex items-center gap-3">
-                      <AlertTriangle size={16} style={{ color: 'var(--accent-amber)' }} />
-                      <div>
-                        <h4 style={{ fontSize: 'var(--fs-xs)', fontWeight: 'bold' }}>Deadline reminders</h4>
-                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Alert for upcoming assignments & exams</p>
+                  <div className="cfg-row">
+                    <div className="cfg-row-main">
+                      <span className="cfg-row-icon is-amber"><AlertTriangle size={18} /></span>
+                      <div className="cfg-row-text">
+                        <h4 className="cfg-row-title">Deadline reminders</h4>
+                        <p className="cfg-row-desc">Alert for upcoming assignments &amp; exams</p>
                       </div>
                     </div>
                     <div
@@ -1157,7 +1175,7 @@ export default function SettingsPage() {
                   </div>
 
                   {notifSettings.notifyDeadline && (
-                    <div className="animate-fadeIn p-4" style={{ background: 'var(--bg-input)', borderRadius: 'var(--radius-lg)' }}>
+                    <div className="cfg-range-card animate-fadeIn">
                       <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         <span style={{ fontWeight: 'bold' }}>Alert me <strong style={{ color: 'var(--accent-amber)' }}>{notifSettings.deadlineReminderHours} hours</strong> before deadline</span>
                         <input
@@ -1174,38 +1192,41 @@ export default function SettingsPage() {
                     </div>
                   )}
 
-                  <div className="flex items-center gap-3 p-4" style={{ background: 'var(--accent-emerald-glow, rgba(52,211,153,0.08))', borderRadius: 'var(--radius-lg)', border: '1px solid var(--accent-emerald)' }}>
+                  <div className="cfg-banner cfg-banner--emerald">
                     <ShieldCheck size={18} style={{ color: 'var(--accent-emerald)', flexShrink: 0 }} />
                     <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                       Reminders are checked every minute. Notifications only fire once per event and won't repeat.
                     </p>
                   </div>
-                </div>
+                </section>
               )}
 
-              <div style={{ height: '1px', background: 'var(--border-primary)', margin: '16px 0' }} />
-              <h3 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', marginBottom: '4px' }}>Telegram Daily Notification</h3>
-              <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-                Receive daily class schedule notifications via Telegram at 8 AM.
-              </p>
-              
-              <div className="flex justify-between items-center p-4" style={{ background: 'var(--bg-input)', borderRadius: 'var(--radius-lg)' }}>
-                <div>
-                  <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold' }}>Enable Telegram notifications</h4>
-                  <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                    Get tomorrow's class schedule every morning at 8 AM
-                  </p>
+              <div className="cfg-divider" />
+
+              <section className="cfg-section">
+                <div className="cfg-section-head">
+                  <h3 className="cfg-section-title">Telegram Daily Notification</h3>
+                  <p className="cfg-section-desc">Receive daily class schedule notifications via Telegram at 8 AM.</p>
                 </div>
-                <div
-                  className={`toggle-switch ${telegramEnabled ? 'active' : ''}`}
-                  onClick={() => setTelegramEnabled(!telegramEnabled)}
-                />
-              </div>
+
+                <div className="cfg-row">
+                  <div className="cfg-row-main">
+                    <span className={`cfg-row-icon ${telegramEnabled ? 'is-emerald' : ''}`}><Send size={18} /></span>
+                    <div className="cfg-row-text">
+                      <h4 className="cfg-row-title">Enable Telegram notifications</h4>
+                      <p className="cfg-row-desc">Get tomorrow's class schedule every morning at 8 AM</p>
+                    </div>
+                  </div>
+                  <div
+                    className={`toggle-switch ${telegramEnabled ? 'active' : ''}`}
+                    onClick={() => setTelegramEnabled(!telegramEnabled)}
+                  />
+                </div>
 
               {telegramEnabled && (
-                <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+                <div className="animate-fadeIn cfg-stack cfg-stack--tight">
                   <div>
-                    <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Telegram Chat ID</span>
+                    <span className="cfg-field-label">Telegram Chat ID</span>
                     <input 
                       type="text"
                       value={telegramChatId} 
@@ -1220,12 +1241,8 @@ export default function SettingsPage() {
                   
                   {/* Registration status indicator */}
                   {isTelegramRegistered !== null && (
-                    <div className="p-3" style={{ 
-                      background: isTelegramRegistered ? 'var(--accent-emerald-glow)' : 'var(--bg-input)', 
-                      borderRadius: 'var(--radius-md)',
-                      border: `1px solid ${isTelegramRegistered ? 'var(--accent-emerald)' : 'var(--border-primary)'}`
-                    }}>
-                      <p style={{ fontSize: '10px', color: isTelegramRegistered ? 'var(--accent-emerald)' : 'var(--text-tertiary)' }}>
+                    <div className={`cfg-status-card ${isTelegramRegistered ? 'is-ok' : ''}`}>
+                      <p style={{ color: isTelegramRegistered ? 'var(--accent-emerald)' : 'var(--text-tertiary)' }}>
                         {isTelegramRegistered 
                           ? '✅ You are registered for daily notifications' 
                           : '⭕ Not registered for notifications'}
@@ -1233,7 +1250,7 @@ export default function SettingsPage() {
                     </div>
                   )}
                   
-                  <div className="flex gap-2">
+                  <div className="cfg-actions">
                     {/* Register button */}
                     {!isTelegramRegistered ? (
                       <button 
@@ -1269,7 +1286,6 @@ export default function SettingsPage() {
                           setTimeout(() => setTelegramMsg(''), 5000);
                         }}
                         disabled={telegramTesting}
-                        style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                       >
                         <BellRing size={14} /> {telegramTesting ? 'Registering...' : 'Register for Notifications'}
                       </button>
@@ -1300,7 +1316,6 @@ export default function SettingsPage() {
                           setTimeout(() => setTelegramMsg(''), 5000);
                         }}
                         disabled={telegramTesting}
-                        style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                       >
                         <BellOff size={14} /> Unsubscribe
                       </button>
@@ -1339,7 +1354,6 @@ export default function SettingsPage() {
                         setTimeout(() => setTelegramMsg(''), 5000);
                       }}
                       disabled={telegramTesting}
-                      style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                       title="Sends the notification that would be sent at the next 8 AM"
                     >
                       <Send size={14} /> Test (8 AM)
@@ -1378,7 +1392,6 @@ export default function SettingsPage() {
                         setTimeout(() => setTelegramMsg(''), 5000);
                       }}
                       disabled={telegramTesting}
-                      style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                       title="Sends the attendance confirmation message that would be sent at 9 PM"
                     >
                       <Send size={14} /> Test (9 PM Attendance)
@@ -1392,11 +1405,7 @@ export default function SettingsPage() {
                   )}
                   
                   {/* Webhook Status */}
-                  <div className="p-3" style={{ 
-                    background: webhookInfo?.ok ? 'var(--accent-emerald-glow)' : 'var(--accent-amber-glow)', 
-                    borderRadius: 'var(--radius-md)',
-                    border: `1px solid ${webhookInfo?.ok ? 'var(--accent-emerald)' : 'var(--accent-amber)'}`
-                  }}>
+                  <div className={`cfg-status-card ${webhookInfo?.ok ? 'is-ok' : 'is-warn'}`}>
                     <div className="flex items-center gap-2 mb-2">
                       {webhookLoading ? (
                         <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>Checking webhook status...</span>
@@ -1470,11 +1479,11 @@ export default function SettingsPage() {
                     )}
                   </div>
                   
-                  <div className="p-3" style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-secondary)' }}>
-                    <p style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginBottom: '8px' }}>
+                  <div className="cfg-note">
+                    <p style={{ color: 'var(--text-tertiary)', marginBottom: '8px' }}>
                       <strong>How it works:</strong>
                     </p>
-                    <ol style={{ fontSize: '10px', color: 'var(--text-secondary)', paddingLeft: '16px', margin: 0 }}>
+                    <ol>
                       <li>Get your Chat ID from <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-blue)' }}>@userinfobot</a> on Telegram</li>
                       <li>Enter your Chat ID above and click "Register for Notifications"</li>
                       <li>You'll receive a welcome message from our bot</li>
@@ -1484,39 +1493,43 @@ export default function SettingsPage() {
                   </div>
                 </div>
               )}
+              </section>
 
-              <div style={{ height: '1px', background: 'var(--border-primary)', margin: '16px 0' }} />
-              <h3 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', marginBottom: '4px' }}>Library Location Tracking</h3>
-              <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-                Automatically share your presence to power the live Library Occupancy Pulse.
-              </p>
+              <div className="cfg-divider" />
 
-              <div className="flex justify-between items-center p-4" style={{ background: 'var(--bg-input)', borderRadius: 'var(--radius-lg)' }}>
-                <div className="flex items-center gap-3">
-                  <MapPin size={20} style={{ color: libraryTracking ? 'var(--accent-emerald)' : 'var(--text-tertiary)' }} />
-                  <div>
-                    <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold' }}>Enable location tracking</h4>
-                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                      {libraryTracking
-                        ? 'Active — the library will count you when you are within 60m'
-                        : 'Off — you are not counted in the live occupancy count'}
-                    </p>
-                  </div>
+              <section className="cfg-section">
+                <div className="cfg-section-head">
+                  <h3 className="cfg-section-title">Library Location Tracking</h3>
+                  <p className="cfg-section-desc">Automatically share your presence to power the live Library Occupancy Pulse.</p>
                 </div>
-                <div
-                  className={`toggle-switch ${libraryTracking ? 'active' : ''}`}
-                  onClick={() => setLibraryTracking(!libraryTracking)}
-                />
-              </div>
 
-              <div className="flex items-center gap-3 p-4" style={{ background: 'var(--accent-blue-glow)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--accent-blue)' }}>
-                <ShieldCheck size={18} style={{ color: 'var(--accent-blue)', flexShrink: 0 }} />
-                <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                  Location is only used while the app is open to determine if you are inside the library geofence. Nothing is stored on this device and you can turn this off any time.
-                </p>
-              </div>
+                <div className="cfg-row">
+                  <div className="cfg-row-main">
+                    <span className={`cfg-row-icon ${libraryTracking ? 'is-emerald' : ''}`}><MapPin size={18} /></span>
+                    <div className="cfg-row-text">
+                      <h4 className="cfg-row-title">Enable location tracking</h4>
+                      <p className="cfg-row-desc">
+                        {libraryTracking
+                          ? 'Active — the library will count you when you are within 60m'
+                          : 'Off — you are not counted in the live occupancy count'}
+                      </p>
+                    </div>
+                  </div>
+                  <div
+                    className={`toggle-switch ${libraryTracking ? 'active' : ''}`}
+                    onClick={() => setLibraryTracking(!libraryTracking)}
+                  />
+                </div>
 
-              <div style={{ height: '1px', background: 'var(--border-primary)', margin: '16px 0' }} />
+                <div className="cfg-banner cfg-banner--blue">
+                  <ShieldCheck size={18} style={{ color: 'var(--accent-blue)', flexShrink: 0 }} />
+                  <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    <strong style={{ color: 'var(--accent-blue)' }}>Why this permission?</strong> Turning this on asks your browser for <strong>location access</strong> — used only to check if you are inside the library geofence (~60m) so you get counted in the live occupancy, and only while the app is open. Nothing is stored or shared, and you can turn it off anytime.
+                  </p>
+                </div>
+              </section>
+
+              <div className="cfg-divider" />
 
               <div className="am-settings-privacy">
                 <div className="am-settings-privacy-head">
@@ -1542,20 +1555,6 @@ export default function SettingsPage() {
                     aria-checked={privacySettings.showCgpa}
                     tabIndex={0}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); savePrivacySetting('showCgpa', !privacySettings.showCgpa); } }}
-                  />
-                </div>
-                <div className="am-settings-privacy-row">
-                  <div>
-                    <strong>Show my attendance</strong>
-                    <span>Display your attendance percentage in your member profile popup.</span>
-                  </div>
-                  <div
-                    className={`toggle-switch ${privacySettings.showAttendance ? 'active' : ''}`}
-                    onClick={() => savePrivacySetting('showAttendance', !privacySettings.showAttendance)}
-                    role="switch"
-                    aria-checked={privacySettings.showAttendance}
-                    tabIndex={0}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); savePrivacySetting('showAttendance', !privacySettings.showAttendance); } }}
                   />
                 </div>
               </div>
