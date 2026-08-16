@@ -25,6 +25,24 @@ const clubIcons = {
   shield: Shield,
 };
 
+// Club identity color → theme accent (so names/borders re-skin with every theme).
+const CLUB_ACCENT = {
+  '#2196F3': 'blue',   // Programming
+  '#FF5722': 'orange', // Sports
+  '#4CAF50': 'emerald',// Robotics
+  '#E91E63': 'rose',   // Cultural
+  '#9C27B0': 'purple', // Innovation & Design
+  '#FFC107': 'amber',  // Photography
+  '#00BCD4': 'cyan',   // Peace
+  '#FF9800': 'orange', // E-Sports
+  '#607D8B': 'cyan',   // Research & Publication
+  '#8BC34A': 'emerald',// Environmental
+  '#3F51B5': 'blue',   // Career Development
+  '#F44336': 'rose',   // Blood Donation
+  '#673AB7': 'purple', // Debating
+  '#009688': 'emerald',// Cybersecurity
+};
+
 export default function ClubPortal() {
   const [clubs, setClubs] = useState(clubsData);
   const [expandedClub, setExpandedClub] = useState(null);
@@ -114,24 +132,24 @@ export default function ClubPortal() {
             const Icon = getIconComponent(club.icon);
             const isExpanded = expandedClub === club.id;
 
-            // "Load" indicator: a club's reach is the number of social links.
-            // 0 → emerald · 1 → cyan · 2 → amber · 3+ → rose (matches sv-cell density).
-            const socialCount = Object.values(club.socialLinks || {}).filter(Boolean).length;
-            const densityClass = socialCount >= 3 ? 'is-rose' : socialCount === 2 ? 'is-amber' : socialCount === 1 ? 'is-cyan' : 'is-emerald';
+            // Club theme accent derived from the club's identity color — re-skins
+            // with the active theme instead of hardcoded Material hex.
+            const accent = CLUB_ACCENT[club.color] || 'amber';
+            const accentClass = `accent-${accent}`;
 
             return (
               <div
                 key={club.id}
-                className={`clubs-card animate-fadeInUp ${club.joined ? 'clubs-card-joined' : ''} ${densityClass}`}
+                className={`clubs-card animate-fadeInUp ${club.joined ? 'clubs-card-joined' : ''} is-${accent}`}
                 style={{ animationDelay: `${(idx % 6) * 60}ms` }}
               >
-                {/* Top accent bar is hidden in CSS — density lives on the left border */}
+                {/* Top accent bar is hidden in CSS — color lives on the left border */}
                 <div className="clubs-card-accent" />
 
                 <div className="clubs-card-body">
                   {/* Logo + header */}
                   <div className="clubs-card-head">
-                    <div className="clubs-card-logo" style={{ background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)' }}>
+                    <div className={`clubs-card-logo ${accentClass}`}>
                       <Icon size={22} />
                     </div>
                     <div className="clubs-card-head-text">

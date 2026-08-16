@@ -36,8 +36,8 @@ const DEPT_FULL_NAMES = {
   BBA: 'Business Administration',
 };
 
-const LAB_ORDER = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
-const SECTION_ORDER = ['A', 'B', 'C'];
+const LAB_ORDER = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2'];
+const SECTION_ORDER = ['A', 'B', 'C', 'D'];
 
 function getSectionLetter(section) {
   return (section || '')[0]?.toUpperCase() || 'Z';
@@ -102,7 +102,7 @@ export default function StudentDirectory() {
         const crs = semStudents.filter(s => s.role === 'cr');
         let regulars = [...semStudents];
 
-        // Sort SRs by section (A, B, C)
+        // Sort SRs by section (A, B, C, D)
         srs.sort((a, b) => {
           const aIdx = SECTION_ORDER.indexOf(getSectionLetter(a.section));
           const bIdx = SECTION_ORDER.indexOf(getSectionLetter(b.section));
@@ -110,7 +110,7 @@ export default function StudentDirectory() {
           return (a.id || '').localeCompare(b.id || '');
         });
 
-        // Sort CRs by labSection (A1, A2, B1, B2, C1, C2)
+        // Sort CRs by labSection (A1, A2, B1, B2, C1, C2, D1, D2)
         crs.sort((a, b) => {
           const aLab = getLabSortKey(a.labSection || a.section);
           const bLab = getLabSortKey(b.labSection || b.section);
@@ -168,7 +168,7 @@ export default function StudentDirectory() {
   // Build SR slot data (3 slots: A, B, C)
   const SR_SLOTS = SECTION_ORDER.map(sec => ({ section: sec, label: `Section ${sec}` }));
 
-  // Build CR slot data (6 slots: A1, A2, B1, B2, C1, C2)
+  // Build CR slot data (8 slots: A1, A2, B1, B2, C1, C2, D1, D2)
   const CR_SLOTS = LAB_ORDER.map(lab => ({ lab, section: lab[0], label: `Lab ${lab}` }));
 
   // ── Per-semester export (JPG / PDF) ──

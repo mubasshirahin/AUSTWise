@@ -41,6 +41,8 @@ server.log
 .mimocode/
 .commandcode/
 .claude/
+.sleepycode/
+skills-lock.json
 
 # Telegram user database (contains sensitive bot tokens)
 .telegram_users.json

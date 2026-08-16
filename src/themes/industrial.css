@@ -205,7 +205,7 @@
 }
 
 [data-theme="industrial"] .btn-primary {
-  background: var(--ind-accent);
+  background: var(--accent-blue);
   color: #fff;
   border-color: rgba(255, 255, 255, 0.25);
   box-shadow: 5px 5px 10px rgba(166, 50, 60, 0.35),

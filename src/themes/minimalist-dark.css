@@ -186,7 +186,7 @@
 [data-theme="midnight"] .btn:active { transform: scale(0.98); }
 
 [data-theme="midnight"] .btn-primary {
-  background: var(--md-accent);
+  background: var(--accent-blue);
   color: var(--text-inverse);
   border: none;
   box-shadow: none;

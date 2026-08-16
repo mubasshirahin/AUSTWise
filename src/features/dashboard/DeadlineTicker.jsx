@@ -8,18 +8,18 @@ export default function DeadlineTicker() {
   const [timers, setTimers] = useState([]);
   const [calendarTasks, setCalendarTasks] = useState([]);
 
-  // Get user's batch group (A1, A2, B1, B2, C1, C2)
+  // Get user's batch group (A1, A2, B1, B2, C1, C2, D1, D2)
   const userBatchGroup = (() => {
-    if (user?.section && ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].includes(user.section.toUpperCase())) {
+    if (user?.section && ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2'].includes(user.section.toUpperCase())) {
       return user.section.toUpperCase();
     }
-    if (user?.labSection && ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].includes(user.labSection.toUpperCase())) {
+    if (user?.labSection && ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2'].includes(user.labSection.toUpperCase())) {
       return user.labSection.toUpperCase();
     }
     if (user?.batchNo) {
       const batchNo = parseInt(user.batchNo);
-      const batchGroupIndex = (batchNo - 52) % 6;
-      const groups = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+      const batchGroupIndex = (batchNo - 52) % 8;
+      const groups = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2'];
       return groups[batchGroupIndex >= 0 ? batchGroupIndex : 0];
     }
     return 'A1';

@@ -319,23 +319,23 @@
 /* ─── Hero: Period palette overrides ─── */
 .dash-hero[data-period="morning"] {
   --hero-accent-a: var(--accent-amber, #fbbf24);
-  --hero-orb-color: rgba(251, 191, 36, 0.18);
-  --hero-orb-color-2: rgba(249, 115, 22, 0.12);
+  --hero-orb-color: color-mix(in srgb, var(--accent-amber) 18%, transparent);
+  --hero-orb-color-2: color-mix(in srgb, var(--accent-orange) 12%, transparent);
 }
 .dash-hero[data-period="afternoon"] {
   --hero-accent-a: var(--accent-blue, #f59e0b);
-  --hero-orb-color: rgba(245, 158, 11, 0.18);
-  --hero-orb-color-2: rgba(34, 211, 238, 0.10);
+  --hero-orb-color: color-mix(in srgb, var(--accent-blue) 18%, transparent);
+  --hero-orb-color-2: color-mix(in srgb, var(--accent-cyan) 10%, transparent);
 }
 .dash-hero[data-period="evening"] {
   --hero-accent-a: var(--accent-purple, #a78bfa);
-  --hero-orb-color: rgba(167, 139, 250, 0.16);
-  --hero-orb-color-2: rgba(245, 158, 11, 0.10);
+  --hero-orb-color: color-mix(in srgb, var(--accent-purple) 16%, transparent);
+  --hero-orb-color-2: color-mix(in srgb, var(--accent-orange) 10%, transparent);
 }
 .dash-hero[data-period="night"] {
   --hero-accent-a: var(--accent-orange, #f97316);
-  --hero-orb-color: rgba(249, 115, 22, 0.14);
-  --hero-orb-color-2: rgba(251, 191, 36, 0.10);
+  --hero-orb-color: color-mix(in srgb, var(--accent-orange) 14%, transparent);
+  --hero-orb-color-2: color-mix(in srgb, var(--accent-amber) 10%, transparent);
 }
 
 /* ─── Hero: Background layer ─── */
@@ -3146,9 +3146,8 @@
   gap: var(--sp-3);
   padding: var(--sp-4);
   margin-bottom: 16px;
-  background:
-    linear-gradient(120deg, color-mix(in srgb, var(--accent-amber) 7%, transparent), transparent 42%);
-  border: 1px solid var(--border-primary);
+  background: transparent;
+  border: 1.5px solid var(--accent-amber);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
 }

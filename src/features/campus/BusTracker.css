@@ -22,9 +22,8 @@
 /* Masthead box — soft glass panel, mirrors the Free Rooms header. */
 .bus-widget .schedule-masthead {
   position: relative;
-  background:
-    linear-gradient(120deg, color-mix(in srgb, var(--accent-amber) 7%, transparent), transparent 42%);
-  border: 1px solid var(--border-primary);
+  background: transparent;
+  border: 2px solid var(--accent-amber);
   border-radius: var(--radius-lg);
   padding: var(--sp-4);
   box-shadow: var(--shadow-sm);

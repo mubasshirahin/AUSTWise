@@ -15,8 +15,18 @@ const BCRYPT_ROUNDS = 10;
 
 const ALLOWED_DOMAINS = ['aust.edu', 'www.aust.edu'];
 const VALID_ROLES = ['student', 'faculty', 'alumni', 'admin', 'cr', 'sr', 'senior', 'moderator'];
+const DEV_PASSWORD = 'Dev@123456';
 
-async function readUsers() {
+const DEPARTMENTS = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'];
+const SECTIONS = ['A', 'B', 'C', 'D'];
+const LAB_GROUPS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2'];
+const NAME_POOL = [
+  'Rafi', 'Nadia', 'Arif', 'Samira', 'Farhan', 'Tasnim', 'Mahi', 'Riyad',
+  'Jannat', 'Sami', 'Ayesha', 'Imran', 'Fahim', 'Rahim', 'Sadia', 'Khalid',
+  'Nusrat', 'Shakil', 'Mitu', 'Rashed', 'Prome', 'Asif', 'Lamia', 'Hasan', 'Mim'
+];
+
+export async function readUsers() {
   try {
     if (!existsSync(DB_PATH)) return [];
     const raw = await readFile(DB_PATH, 'utf-8');
@@ -89,7 +99,7 @@ export async function seedDefaultAdmin() {
   const admin = {
     id: 'ADM-MSOP6VG6BVL4',
     awid: 'STU-ADM-AW000001',
-    name: 'AUSTWise Admin',
+    name: 'Admin',
     email: 'austwise59@gmail.com',
     password: hash,
     role: 'admin',
@@ -127,6 +137,375 @@ export async function seedDefaultAdmin() {
   await writeUsers(users);
   console.log('✅ Default admin account seeded (austwise59@gmail.com)');
   return admin;
+}
+
+/**
+ * Deterministic pseudo-random value from a seed (no Math.random — the seed is
+ * re-runnable and produces identical data every time).
+ */
+function seeded(seed) {
+  let x = Math.abs(seed) % 2147483647;
+  if (x <= 0) x += 2147483646;
+  return () => {
+    x = (x * 16807) % 2147483647;
+    return (x - 1) / 2147483646;
+  };
+}
+
+function isDevUser(u) {
+  return !!(
+    u &&
+    ((u.id && String(u.id).startsWith('DEV-')) ||
+      (u.email && String(u.email).toLowerCase().startsWith('dev-')))
+  );
+}
+
+/** Load the dev-user generation config from dev/devUsers.json (with defaults). */
+async function readDevConfig() {
+  const defaults = {
+    departments: DEPARTMENTS,
+    semesters: [1, 2, 3, 4, 5, 6, 7, 8],
+    sections: SECTIONS,
+    labGroups: LAB_GROUPS,
+    studentsPerCombo: 5,
+    namePool: NAME_POOL,
+  };
+  try {
+    const raw = await readFile(path.join(__dirname, '..', 'dev', 'devUsers.json'), 'utf-8');
+    const parsed = JSON.parse(raw);
+    const cfg = Array.isArray(parsed) ? parsed[0] : parsed;
+    return {
+      departments: Array.isArray(cfg.departments) && cfg.departments.length ? cfg.departments : defaults.departments,
+      semesters: Array.isArray(cfg.semesters) && cfg.semesters.length ? cfg.semesters : defaults.semesters,
+      sections: Array.isArray(cfg.sections) && cfg.sections.length ? cfg.sections : defaults.sections,
+      labGroups: Array.isArray(cfg.labGroups) && cfg.labGroups.length ? cfg.labGroups : defaults.labGroups,
+      studentsPerCombo: Number(cfg.studentsPerCombo) > 0 ? Number(cfg.studentsPerCombo) : defaults.studentsPerCombo,
+      namePool: Array.isArray(cfg.namePool) && cfg.namePool.length ? cfg.namePool : defaults.namePool,
+    };
+  } catch {
+    return defaults;
+  }
+}
+
+const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
+const DESIGNATIONS = ['Professor', 'Associate Professor', 'Assistant Professor', 'Lecturer'];
+
+/**
+ * Seed a full org-matrix of realistic dev users, configurable via
+ * dev/devUsers.json:
+ *
+ *   every department × every semester × every section × every lab group
+ *   gets `studentsPerCombo` students (1 CR per lab group, 1 SR per section),
+ *   plus faculty + alumni + senior + moderator accounts per department.
+ *
+ * Re-runs REPLACE the previous dev users (id `DEV-*` / email `dev-*@…`) so the
+ * matrix is always deterministic — real users are never touched. All dev
+ * accounts share the password `Dev@123456` so the dev switch button can log in
+ * as any of them.
+ */
+export async function seedDevUsers() {
+  const cfg = await readDevConfig();
+  const hash = await hashPassword(DEV_PASSWORD);
+  const now = new Date().toISOString();
+
+  const users = await readUsers();
+  const realUsers = users.filter((u) => !isDevUser(u));
+  const devUsers = [];
+  const seenEmails = new Set(realUsers.map((u) => String(u.email || '').toLowerCase()));
+
+  let awidCounter = 1;
+  const nextAwid = (dept) => {
+    const d = String(dept || 'GEN').toUpperCase().replace(/[^A-Z0-9]/g, '') || 'GEN';
+    const num = String(awidCounter++).padStart(6, '0');
+    return `DEV-${d}-AW${num}`;
+  };
+
+  const pushUser = (user) => {
+    devUsers.push(user);
+    seenEmails.add(String(user.email).toLowerCase());
+  };
+
+  const labsForSection = (section) =>
+    cfg.labGroups.filter((lab) => String(lab).toUpperCase().startsWith(String(section).toUpperCase()));
+
+  const deptUsers = new Map(); // dept -> [] (for faculty/alumni/senior lookup)
+
+  for (const dept of cfg.departments) {
+    const deptKey = String(dept).toUpperCase();
+    deptUsers.set(deptKey, []);
+
+    for (const sem of cfg.semesters) {
+      const year = Math.ceil(Number(sem) / 2);
+      const term = ((Number(sem) - 1) % 2) + 1;
+      const yearSemester = `Year ${year} - Semester ${term}`;
+      const batchNo = String(2027 - year);
+      const batchName = `${batchNo} Batch`;
+      const graduationYear = String(Number(batchNo) + 4);
+
+      for (const section of cfg.sections) {
+        const secKey = String(section).toUpperCase();
+        const labs = labsForSection(secKey);
+
+        for (const lab of labs) {
+          const labKey = String(lab).toUpperCase();
+          for (let n = 1; n <= cfg.studentsPerCombo; n += 1) {
+            const nn = String(n).padStart(2, '0');
+            const rand = seeded((deptKey + sem + secKey + labKey + n).split('').reduce((a, c) => a + c.charCodeAt(0), 0));
+            const first = cfg.namePool[(n - 1) % cfg.namePool.length];
+            const isCr = n === 1;
+            const role = isCr ? 'cr' : 'student';
+            const email = `dev-${deptKey.toLowerCase()}-s${sem}-${secKey.toLowerCase()}${labKey.toLowerCase()}-${n}@aust.edu`;
+            if (seenEmails.has(email)) continue;
+
+            const user = {
+              id: `DEV-${deptKey}-S${sem}-${secKey}${labKey}-${nn}`,
+              awid: nextAwid(deptKey),
+              email,
+              name: `${first} ${deptKey} ${secKey}${labKey} ${nn}`,
+              password: hash,
+              role,
+              department: deptKey,
+              batch: `${batchNo}-${deptKey}`,
+              batchNo,
+              batchName,
+              designation: '',
+              company: 'AUST',
+              graduationYear,
+              yearSemester,
+              section: secKey,
+              labSection: labKey,
+              semester: Number(sem),
+              avatar: null,
+              openForTalk: n % 3 === 0,
+              linkedSocial: n % 4 === 0 ? { facebook: 'dev' } : {},
+              linkedAccounts: [],
+              cgpa: isCr ? 3.2 + rand() * 0.6 : 2.4 + rand() * 1.5,
+              attendancePct: Math.round(58 + rand() * 40),
+              privacy: { showCgpa: n % 4 !== 0, showAttendance: n % 5 === 0 },
+              creditsCompleted: (Number(sem) - 1) * 20 + (n % 3) * 4,
+              totalCredits: 160,
+              bloodGroup: BLOOD_GROUPS[(n + deptKey.length) % BLOOD_GROUPS.length],
+              facebook: n % 3 === 0 ? `https://facebook.com/${deptKey.toLowerCase()}.${secKey.toLowerCase()}${labKey.toLowerCase()}.${nn}` : '',
+              whatsapp: n % 2 === 0 ? `+8801${String(6000000000 + ((n * 7919) % 100000000)).slice(0, 9)}` : '',
+              linkedin: n % 4 === 0 ? `https://linkedin.com/in/${first.toLowerCase()}-${deptKey.toLowerCase()}-${nn}` : '',
+              discord: '',
+              createdAt: now,
+            };
+            pushUser(user);
+            deptUsers.get(deptKey).push(user);
+          }
+        }
+
+        // Section Representative — one per section.
+        const srEmail = `dev-${deptKey.toLowerCase()}-s${sem}-s${secKey.toLowerCase()}-sr@aust.edu`;
+        if (!seenEmails.has(srEmail)) {
+          const rand = seeded((deptKey + sem + secKey + 'SR').split('').reduce((a, c) => a + c.charCodeAt(0), 0));
+          const user = {
+            id: `DEV-${deptKey}-S${sem}-${secKey}-SR`,
+            awid: nextAwid(deptKey),
+            email: srEmail,
+            name: `Section Rep ${deptKey} ${yearSemester} Sec ${secKey}`,
+            password: hash,
+            role: 'sr',
+            department: deptKey,
+            batch: `${batchNo}-${deptKey}`,
+            batchNo,
+            batchName,
+            designation: '',
+            company: 'AUST',
+            graduationYear,
+            yearSemester,
+            section: secKey,
+            labSection: '',
+            semester: Number(sem),
+            avatar: null,
+            openForTalk: true,
+            linkedSocial: {},
+            linkedAccounts: [],
+            cgpa: 3.0 + rand() * 0.7,
+            attendancePct: Math.round(70 + rand() * 25),
+            privacy: { showCgpa: true, showAttendance: true },
+            creditsCompleted: (Number(sem) - 1) * 20,
+            totalCredits: 160,
+            bloodGroup: BLOOD_GROUPS[(sem + secKey.length) % BLOOD_GROUPS.length],
+            facebook: '',
+            whatsapp: `+8801${String(6000000000 + ((sem * 7919) % 100000000)).slice(0, 9)}`,
+            linkedin: '',
+            discord: '',
+            createdAt: now,
+          };
+          pushUser(user);
+        }
+      }
+    }
+
+    // Faculty per department (covers the `faculty` role + department visibility).
+    const facEmail = `dev-faculty-${deptKey.toLowerCase()}@aust.edu`;
+    if (!seenEmails.has(facEmail)) {
+      const user = {
+        id: `DEV-${deptKey}-FAC`,
+        awid: nextAwid(deptKey),
+        email: facEmail,
+        name: `Dr. ${deptKey} Faculty`,
+        password: hash,
+        role: 'faculty',
+        department: deptKey,
+        batch: '',
+        batchNo: '',
+        batchName: '',
+        designation: DESIGNATIONS[deptKey.length % DESIGNATIONS.length],
+        company: 'Ahsanullah University of Science and Technology',
+        graduationYear: '',
+        yearSemester: '',
+        section: '',
+        labSection: '',
+        semester: 1,
+        avatar: null,
+        openForTalk: false,
+        linkedSocial: {},
+        linkedAccounts: [],
+        cgpa: 0,
+        attendancePct: null,
+        privacy: { showCgpa: true, showAttendance: false },
+        creditsCompleted: 0,
+        totalCredits: 0,
+        bloodGroup: '',
+        facebook: '',
+        whatsapp: '',
+        linkedin: `https://linkedin.com/in/${deptKey.toLowerCase()}-faculty`,
+        discord: '',
+        createdAt: now,
+      };
+      pushUser(user);
+    }
+
+    // Alumni per department.
+    const aluEmail = `dev-alumni-${deptKey.toLowerCase()}@aust.edu`;
+    if (!seenEmails.has(aluEmail)) {
+      const user = {
+        id: `DEV-${deptKey}-ALU`,
+        awid: nextAwid(deptKey),
+        email: aluEmail,
+        name: `${deptKey} Alumni Rep`,
+        password: hash,
+        role: 'alumni',
+        department: deptKey,
+        batch: `2020-${deptKey}`,
+        batchNo: '2020',
+        batchName: '2020 Batch',
+        designation: '',
+        company: 'Software Engineer',
+        graduationYear: '2024',
+        yearSemester: '',
+        section: '',
+        labSection: '',
+        semester: 8,
+        avatar: null,
+        openForTalk: true,
+        linkedSocial: {},
+        linkedAccounts: [],
+        cgpa: 3.1,
+        attendancePct: null,
+        privacy: { showCgpa: true, showAttendance: false },
+        creditsCompleted: 160,
+        totalCredits: 160,
+        bloodGroup: '',
+        facebook: '',
+        whatsapp: '',
+        linkedin: `https://linkedin.com/in/${deptKey.toLowerCase()}-alumni`,
+        discord: '',
+        createdAt: now,
+      };
+      pushUser(user);
+    }
+
+    // Senior (student body representative) per department.
+    const snrEmail = `dev-senior-${deptKey.toLowerCase()}@aust.edu`;
+    if (!seenEmails.has(snrEmail)) {
+      const user = {
+        id: `DEV-${deptKey}-SENIOR`,
+        awid: nextAwid(deptKey),
+        email: snrEmail,
+        name: `${deptKey} Senior Rep`,
+        password: hash,
+        role: 'senior',
+        department: deptKey,
+        batch: `2024-${deptKey}`,
+        batchNo: '2024',
+        batchName: '2024 Batch',
+        designation: '',
+        company: 'AUST',
+        graduationYear: '2028',
+        yearSemester: 'Year 4 - Semester 1',
+        section: '',
+        labSection: '',
+        semester: 7,
+        avatar: null,
+        openForTalk: true,
+        linkedSocial: {},
+        linkedAccounts: [],
+        cgpa: 3.4,
+        attendancePct: 88,
+        privacy: { showCgpa: true, showAttendance: false },
+        creditsCompleted: 140,
+        totalCredits: 160,
+        bloodGroup: '',
+        facebook: '',
+        whatsapp: '',
+        linkedin: '',
+        discord: '',
+        createdAt: now,
+      };
+      pushUser(user);
+    }
+  }
+
+  // Global moderator — can manage role applications etc.
+  if (!seenEmails.has('dev-moderator@aust.edu')) {
+    devUsers.push({
+      id: 'DEV-MOD-01',
+      awid: nextAwid('GEN'),
+      email: 'dev-moderator@aust.edu',
+      name: 'Dev Moderator',
+      password: hash,
+      role: 'moderator',
+      department: 'CSE',
+      batch: '',
+      batchNo: '',
+      batchName: '',
+      designation: 'Moderator',
+      company: 'AUST',
+      graduationYear: '',
+      yearSemester: '',
+      section: '',
+      labSection: '',
+      semester: 1,
+      avatar: null,
+      openForTalk: false,
+      linkedSocial: {},
+      linkedAccounts: [],
+      cgpa: 0,
+      attendancePct: null,
+      privacy: { showCgpa: true, showAttendance: false },
+      creditsCompleted: 0,
+      totalCredits: 160,
+      bloodGroup: '',
+      facebook: '',
+      whatsapp: '',
+      linkedin: '',
+      discord: '',
+      createdAt: now,
+    });
+  }
+
+  await writeUsers([...realUsers, ...devUsers]);
+  return { created: devUsers.length, skipped: 0, total: realUsers.length + devUsers.length };
+}
+
+/** Dev users only (id `DEV-*`) — used by the dev switch button fixture. */
+export async function getDevUsers() {
+  const users = await readUsers();
+  return users.filter((u) => u.id && String(u.id).startsWith('DEV-')).map(({ password, ...safe }) => safe);
 }
 
 /** Hash password with bcrypt */

@@ -9,6 +9,25 @@
   padding-bottom: var(--sp-10);
 }
 
+/* Masthead — match the standard widget masthead (st/mm/library): 3-column
+   grid with the stats centered, and normal var(--sp-4) padding. The sv-widget
+   base instead forces a cramped 2-column layout with only padding-top: 4px,
+   so re-declare the full standard here. .dr-widget.sv-widget out-specifies
+   .sv-widget so this wins no matter which route chunk loads first. */
+.dr-widget.sv-widget .schedule-masthead {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  margin: var(--sp-2) 0 20px;
+  background: transparent;
+  border: 2px solid var(--accent-amber);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
 /* ── Masthead ── */
 .dr-widget .dr-icon-tile {
   background: var(--accent-amber-glow);

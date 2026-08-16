@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Users, Search, X, ChevronDown, ChevronRight, MessageSquare, User as UserIcon,
-  Link2, GraduationCap, BookOpen, Clock3, WifiOff, Loader2, Lock,
+  Users, Search, X, ChevronDown, ChevronRight,
+  BookOpen, WifiOff, Loader2, Lock, UserCog, Zap,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import useWebSocket from '../../hooks/useWebSocket';
@@ -14,27 +14,14 @@ import './ActiveMembersSidebar.css';
 const MEMBERS_POLL_MS = 30000;
 const GROUPS_KEY = 'aust-members-groups-v1';
 
-const GROUPING_MODES = [
-  { id: 'role', label: 'Role' },
-  { id: 'department', label: 'Department' },
-  { id: 'batch', label: 'Batch' },
-  { id: 'semester', label: 'Semester' },
-];
+// Canonical AUST department list — every department shows in the member list,
+// even ones with no members yet, so the full structure is always visible.
+const ALL_DEPARTMENTS = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'];
 
-const ROLE_GROUPS = [
-  { key: 'admin', label: 'Admin', icon: '👑' },
-  { key: 'moderator', label: 'Moderator', icon: '🛡️' },
-  { key: 'faculty', label: 'Faculty', icon: '🎓' },
-  { key: 'crsr', label: 'CR / SR', icon: '📚' },
-  { key: 'student', label: 'Student', icon: '🧑‍🎓' },
-  { key: 'alumni', label: 'Alumni', icon: '💼' },
-];
-
-function roleGroupKey(role) {
-  if (role === 'cr' || role === 'sr') return 'crsr';
-  if (role === 'senior') return 'student';
-  return role || 'student';
-}
+// Canonical section + lab structure — every section (A/B/C/D) and its lab groups
+// (A1/A2 … D1/D2) always renders inside a semester, even when empty.
+const ALL_SECTIONS = ['A', 'B', 'C', 'D'];
+const LABS_BY_SECTION = { A: ['A1', 'A2'], B: ['B1', 'B2'], C: ['C1', 'C2'], D: ['D1', 'D2'] };
 
 function getRoleDisplay(role) {
   if (role === 'cr') return 'CR';
@@ -48,16 +35,6 @@ function getRoleDisplay(role) {
 }
 
 const AVATAR_IMG_STYLE = { width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' };
-
-function formatLastSeen(ts) {
-  if (!ts) return 'last seen recently';
-  const diff = Date.now() - ts;
-  if (diff < 60000) return 'last seen just now';
-  if (diff < 3600000) return `last seen ${Math.floor(diff / 60000)}m ago`;
-  if (diff < 86400000) return `last seen ${Math.floor(diff / 3600000)}h ago`;
-  const d = new Date(ts);
-  return `last seen ${d.getDate()}/${d.getMonth() + 1}`;
-}
 
 function presenceMeta(status) {
   switch (status) {
@@ -73,18 +50,17 @@ function PresenceDot({ status, size }) {
 }
 
 /* ─── Member row ─── */
-function MemberRow({ member, onClick, isOffline, isAdmin }) {
-  const { stalk } = useStalk();
+function MemberRow({ member, onClick, isOffline, isAdmin, devSwitch, switching }) {
   return (
     <div
-      className={`am-member-row${isOffline ? ' am-row-offline' : ''}${isAdmin ? ' am-row-admin' : ''}`}
-      title={member.name}
+      className={`am-member-row${isOffline ? ' am-row-offline' : ''}${isAdmin ? ' am-row-admin' : ''}${devSwitch ? ' am-row-dev-switch' : ''}`}
+      title={devSwitch ? `Dev: log in as ${member.name}` : member.name}
     >
       <button
         type="button"
         className="am-row-main"
         onClick={onClick}
-        title={`View ${member.name}'s profile`}
+        title={devSwitch ? `Quick log in as ${member.name}` : `View ${member.name}'s profile`}
       >
         <span className="am-avatar-wrap">
           <span className="am-avatar">
@@ -98,27 +74,21 @@ function MemberRow({ member, onClick, isOffline, isAdmin }) {
         </span>
         <span className="am-row-body">
           <span className="am-row-name">
-            {isAdmin && <span className="am-admin-crown-mini" aria-hidden="true">👑</span>}
             {member.name}
             {member.isYou && <span className="am-you">You</span>}
           </span>
           <span className="am-row-sub">
-            {getRoleDisplay(member.role)}
-            {member.department ? ` • ${member.department}` : ''}
-            {member.semester ? ` • Sem ${member.semester}` : ''}
+            {isAdmin ? (member.department || getRoleDisplay(member.role)) : getRoleDisplay(member.role)}
+            {!isAdmin && member.department ? ` • ${member.department}` : ''}
+            {!isAdmin && member.semester ? ` • Sem ${member.semester}` : ''}
           </span>
         </span>
         <span className="am-row-status-dot" data-status={member.status} />
-      </button>
-      <button
-        type="button"
-        className="am-stalk-btn"
-        onClick={(e) => { e.stopPropagation(); stalk(member); }}
-        title={`Stalk ${member.name} 🐾`}
-        aria-label={`Stalk ${member.name}`}
-      >
-        <span className="am-stalk-paw" aria-hidden="true">🐾</span>
-        <span className="am-stalk-text">STALK</span>
+        {devSwitch && (
+          <span className="am-row-switch-chip">
+            {switching ? <Loader2 size={10} className="spin" /> : 'Switch'}
+          </span>
+        )}
       </button>
     </div>
   );
@@ -186,13 +156,7 @@ function MemberPopover({ member, rect, onClose }) {
 
   if (!member || !rect || !placed) return null;
 
-  const meta = presenceMeta(member.status);
   const roleClass = `am-role-${member.role === 'admin' || member.role === 'moderator' ? 'admin' : member.role === 'faculty' ? 'faculty' : (member.role === 'cr' || member.role === 'sr') ? 'crsr' : 'student'}`;
-
-  const copyLink = () => {
-    const url = `${window.location.origin}/messages?peer=${encodeURIComponent(member.id)}`;
-    navigator.clipboard?.writeText(url).catch(() => {});
-  };
 
   return (
     <div
@@ -221,17 +185,12 @@ function MemberPopover({ member, rect, onClose }) {
         <h3 className="am-pop-name">{member.name}</h3>
         <div className="am-pop-badges">
           <span className="am-chip am-chip-role">{getRoleDisplay(member.role)}</span>
-          {member.batchNo && <span className="am-chip">Batch {member.batchNo}</span>}
-          {member.department && <span className="am-chip">{member.department}</span>}
-          {member.semester ? <span className="am-chip">Semester {member.semester}</span>
-            : member.yearSemester ? <span className="am-chip">{member.yearSemester}</span> : null}
+    {member.batchNo && <span className="am-chip">Batch {member.batchNo}</span>}
+    {member.department && <span className="am-chip">{member.department}</span>}
+    {member.role !== 'admin' && (member.semester ? <span className="am-chip">Semester {member.semester}</span>
+      : member.yearSemester ? <span className="am-chip">{member.yearSemester}</span> : null)}
           {member.section && <span className="am-chip">Section {member.section}</span>}
           {member.labSection && <span className="am-chip">Lab {member.labSection}</span>}
-        </div>
-
-        <div className={`am-pop-status ${meta.dot}`}>
-          <PresenceDot status={member.status} size={9} />
-          <span>{member.status === 'online' ? 'Active now' : member.status === 'idle' ? 'Idle — away for a while' : formatLastSeen(member.lastSeenAt)}</span>
         </div>
 
         <div className="am-pop-divider" />
@@ -245,20 +204,16 @@ function MemberPopover({ member, rect, onClose }) {
             <span className="am-pop-info-label">Batch</span>
             <span className="am-pop-info-value">{member.batchNo ? `Batch ${member.batchNo}` : (member.batch || '—')}</span>
           </div>
-          <div className="am-pop-info-row">
-            <span className="am-pop-info-label">Semester</span>
-            <span className="am-pop-info-value">{member.semester ? `Semester ${member.semester}` : '—'}</span>
-          </div>
+          {member.role !== 'admin' && (
+            <div className="am-pop-info-row">
+              <span className="am-pop-info-label">Semester</span>
+              <span className="am-pop-info-value">{member.semester ? `Semester ${member.semester}` : '—'}</span>
+            </div>
+          )}
           <div className="am-pop-info-row">
             <span className="am-pop-info-label">CGPA</span>
             <span className="am-pop-info-value">
               {member.cgpa != null ? member.cgpa.toFixed(2) : 'Private'}
-            </span>
-          </div>
-          <div className="am-pop-info-row">
-            <span className="am-pop-info-label">Attendance</span>
-            <span className="am-pop-info-value">
-              {member.attendancePct != null ? `${member.attendancePct}%` : 'Private'}
             </span>
           </div>
         </div>
@@ -270,32 +225,10 @@ function MemberPopover({ member, rect, onClose }) {
             type="button"
             className="am-pop-action am-pop-action-stalk"
             onClick={() => { stalk(member); onClose(); }}
-            title={`Go on a stalk road-trip to ${member.name}'s portfolio`}
+            title={`Visit ${member.name}'s orbit`}
           >
             <span aria-hidden="true">🐾</span>
-            <span>Stalk</span>
-          </button>
-          <button
-            type="button"
-            className="am-pop-action"
-            onClick={() => { navigate(`/messages?peer=${encodeURIComponent(member.id)}`); onClose(); }}
-            title="Open a direct message"
-          >
-            <MessageSquare size={16} />
-            <span>Message</span>
-          </button>
-          <button
-            type="button"
-            className="am-pop-action"
-            onClick={() => { navigate('/community?tab=students'); onClose(); }}
-            title="Open the student directory"
-          >
-            <UserIcon size={16} />
-            <span>Profile</span>
-          </button>
-          <button type="button" className="am-pop-action" onClick={copyLink} title="Copy a link to this member">
-            <Link2 size={16} />
-            <span>Copy Link</span>
+            <span>Visit Orbit</span>
           </button>
         </div>
       </div>
@@ -305,22 +238,39 @@ function MemberPopover({ member, rect, onClose }) {
 
 /* ─── Main sidebar ─── */
 export default function ActiveMembersSidebar({ open, onClose, onToggle, isDesktop }) {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loginDirect } = useAuth();
   const navigate = useNavigate();
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [mode, setMode] = useState('role');
   const [query, setQuery] = useState('');
   const [authRequired, setAuthRequired] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState(() => {
     try { return JSON.parse(localStorage.getItem(GROUPS_KEY) || '{}'); }
     catch { return {}; }
   });
-  const [offlineOpen, setOfflineOpen] = useState(false); // offline list: inverted vs collapsedGroups
-  const [onlineOpen, setOnlineOpen] = useState(true); // online list: open by default (self visible)
   const [popover, setPopover] = useState(null); // { member, rect }
   const rowRefs = useRef({});
+
+  // Dev-only "quick login" tool — lets the developer click any member in the
+  // list and instantly switch into their account (role/permission testing).
+  // Shown only when the dev endpoints are actually available: the vite dev
+  // build reports DEV=true immediately, and we probe the server for every
+  // other dev-server mode (dist-served routes / static dev). Production
+  // servers disable the endpoints, so the button never appears there.
+  const [devEnabled, setDevEnabled] = useState(null); // null = probing
+  const [devMode, setDevMode] = useState(false);
+  const [switchingId, setSwitchingId] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/__dev/users', { credentials: 'same-origin' })
+      .then((r) => r.json().catch(() => ({})))
+      .then((d) => { if (!cancelled) setDevEnabled(Boolean(d?.success)); })
+      .catch(() => { if (!cancelled) setDevEnabled(false); });
+    return () => { cancelled = true; };
+  }, []);
+  const showDevTools = import.meta.env.DEV || devEnabled === true;
 
   // Initial load + polling fallback (WS updates presence live on top)
   useEffect(() => {
@@ -365,7 +315,7 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
 
   // Live presence updates over WebSocket (only when signed in — guests rely
   // on the 30s polling so they don't register as "online" themselves)
-  const { connected } = useWebSocket(isAuthenticated ? user?.id : null, {
+  useWebSocket(isAuthenticated ? user?.id : null, {
     onPresence: useCallback(({ userId, status, lastSeenAt }) => {
       setMembers((prev) => prev.map((m) =>
         m.id === userId ? { ...m, status, lastSeenAt } : m
@@ -418,11 +368,9 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
   // tracks "who is online" live (admins live in their own pinned section,
   // so they're added back into the count here).
   const onlineCount = useMemo(
-    () => onlineMembers.length + members.filter((m) => m.role === 'admin' && (m.status === 'online' || m.status === 'idle')).length,
+    () => onlineMembers.length + members.filter((m) => m.role === 'admin').length,
     [onlineMembers, members]
   );
-  const offlineMembers = useMemo(() => members.filter((m) => m.status === 'offline' && m.role !== 'admin'), [members]);
-
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const list = q ? members.filter((m) =>
@@ -436,78 +384,141 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
   // Admins always live in their own pinned section at the very top — never
   // mixed into the Online list, the role groups, or the Offline section.
   // (Defined after `filtered` — it reads from it.)
+  // Admins always show as active — pinned at the top with a green dot, no
+  // offline styling, and "Active now" in their profile popover.
   const admins = useMemo(
     () => filtered
       .filter((m) => m.role === 'admin')
-      .map((m) => (m.id === user?.id ? { ...m, isYou: true } : m)),
+      .map((m) => ({ ...m, status: 'online', ...(m.id === user?.id ? { isYou: true } : {}) })),
     [filtered, user]
   );
 
-  // Group the filtered list per active mode (offline users stay in their groups
-  // for dept/batch/semester modes; for Role mode they move to the Offline section)
+  // Group the filtered list by department, then semester inside each
+  // department (offline users stay in their groups). Departments with members
+  // come first (sorted by size); the remaining known departments render below
+  // with an empty state so the whole AUST structure stays visible.
   const groups = useMemo(() => {
-    if (mode === 'role') {
-      return ROLE_GROUPS.map((g) => ({
-        key: `role-${g.key}`,
-        title: g.label,
-        icon: g.icon,
-        members: filtered.filter((m) => m.role !== 'admin' && roleGroupKey(m.role) === g.key && m.status !== 'offline'),
-      })).filter((g) => g.members.length > 0);
-    }
-    if (mode === 'department') {
-      const byDept = {};
-      filtered.forEach((m) => {
-        if (m.role === 'admin') return; // admins pinned in their own section
-        const k = m.department || 'Undeclared';
-        (byDept[k] = byDept[k] || []).push(m);
-      });
-      return Object.entries(byDept)
-        .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))
-        .map(([dept, list]) => ({
-          key: `dept-${dept}`,
-          title: dept,
-          icon: <BookOpen size={13} />,
-          members: list,
-        }));
-    }
-    if (mode === 'batch') {
-      const byBatch = {};
-      filtered.forEach((m) => {
-        if (m.role === 'admin') return; // admins pinned in their own section
-        const k = m.batchNo || (m.batch ? String(m.batch).replace(/^Batch\s*/i, '') : 'Other');
-        (byBatch[k] = byBatch[k] || []).push(m);
-      });
-      return Object.entries(byBatch)
-        .sort((a, b) => Number(b[0]) - Number(a[0]) || a[0].localeCompare(b[0]))
-        .map(([b, list]) => ({
-          key: `batch-${b}`,
-          title: b === 'Other' ? 'Other' : `Batch ${b}`,
-          icon: <GraduationCap size={13} />,
-          members: list,
-        }));
-    }
-    // semester
-    const bySem = {};
+    const byDept = {};
     filtered.forEach((m) => {
       if (m.role === 'admin') return; // admins pinned in their own section
-      const k = m.semester ? String(m.semester) : 'Other';
-      (bySem[k] = bySem[k] || []).push(m);
+      const k = m.department || 'Undeclared';
+      (byDept[k] = byDept[k] || []).push(m);
     });
-    return Object.entries(bySem)
-      .sort((a, b) => Number(b[0]) - Number(a[0]))
-      .map(([s, list]) => ({
-        key: `sem-${s}`,
-        title: s === 'Other' ? 'Other' : `Semester ${s}`,
-        icon: <Clock3 size={13} />,
-        members: list,
-      }));
-  }, [mode, filtered]);
+    const membered = Object.entries(byDept)
+      .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))
+      .map(([dept, list]) => {
+        const bySem = {};
+        list.forEach((m) => {
+          const s = m.semester ? String(m.semester) : 'Other';
+          (bySem[s] = bySem[s] || []).push(m);
+        });
+        const toGroups = (map) =>
+          Object.entries(map)
+            .sort((a, b) => {
+              const oa = a[0] === 'Other' ? 1 : 0;
+              const ob = b[0] === 'Other' ? 1 : 0;
+              return oa - ob || a[0].localeCompare(b[0], undefined, { numeric: true });
+            })
+            .map(([k, members]) => ({ key: k, members }));
+        const semesters = Object.entries(bySem)
+          .sort((a, b) => {
+            const na = a[0] === 'Other' ? 999 : Number(a[0]);
+            const nb = b[0] === 'Other' ? 999 : Number(b[0]);
+            return na - nb;
+          })
+          .map(([sem, members]) => {
+            // Group by Section first, then by Lab group inside each section —
+            // members without a labSection sit directly under the section.
+            // Every canonical section (A/B/C/D) and its lab groups (A1/A2 …
+            // D1/D2) always renders, even with zero members, so the full
+            // structure stays visible like the department list.
+            const bySec = {};
+            members.forEach((m) => {
+              const sec = m.section || 'Other';
+              (bySec[sec] = bySec[sec] || []).push(m);
+            });
+            const splitLabs = (secMembers) => {
+              const byLab = {};
+              const loose = [];
+              secMembers.forEach((m) => {
+                if (m.labSection) (byLab[m.labSection] = byLab[m.labSection] || []).push(m);
+                else loose.push(m);
+              });
+              return { byLab, loose };
+            };
+            const sections = ALL_SECTIONS.map((secKey) => {
+              const secMembers = bySec[secKey] || [];
+              const { byLab, loose } = splitLabs(secMembers);
+              // Canonical lab groups first (in A1/A2 order), then any extra labs
+              // that exist in the data but aren't in the canonical list.
+              const canonical = (LABS_BY_SECTION[secKey] || []).map((lab) => ({ key: lab, members: byLab[lab] || [] }));
+              const extra = Object.entries(byLab)
+                .filter(([lab]) => !(LABS_BY_SECTION[secKey] || []).includes(lab))
+                .map(([lab, labMembers]) => ({ key: lab, members: labMembers }))
+                .sort((a, b) => (a.key === 'Other' ? 1 : 0) - (b.key === 'Other' ? 1 : 0) || a.key.localeCompare(b.key, undefined, { numeric: true }));
+              return { key: secKey, count: secMembers.length, labs: [...canonical, ...extra], loose };
+            });
+            // Sections present in the data but outside the canonical list (e.g. 'Other').
+            Object.entries(bySec).forEach(([secKey, secMembers]) => {
+              if (ALL_SECTIONS.includes(secKey)) return;
+              const { byLab, loose } = splitLabs(secMembers);
+              sections.push({ key: secKey, count: secMembers.length, labs: toGroups(byLab), loose });
+            });
+            sections.sort((a, b) => {
+              const ia = ALL_SECTIONS.indexOf(a.key);
+              const ib = ALL_SECTIONS.indexOf(b.key);
+              if (ia !== -1 && ib !== -1) return ia - ib;
+              if (ia !== -1) return -1;
+              if (ib !== -1) return 1;
+              return (a.key === 'Other' ? 1 : 0) - (b.key === 'Other' ? 1 : 0) || a.key.localeCompare(b.key);
+            });
+            return { sem, sections };
+          });
+        return { dept, semesters, count: list.length };
+      });
+    const memberedSet = new Set(membered.map((g) => g.dept));
+    const empty = ALL_DEPARTMENTS
+      .filter((d) => !memberedSet.has(d))
+      .map((d) => ({ dept: d, semesters: [], count: 0 }));
+    return [...membered, ...empty].map(({ dept, semesters, count }) => ({
+      key: `dept-${dept}`,
+      title: dept,
+      icon: <BookOpen size={13} />,
+      count,
+      semesters,
+    }));
+  }, [filtered]);
 
   const openPopover = (member, key) => {
     const el = rowRefs.current[key];
     if (el) {
       const r = el.getBoundingClientRect();
       setPopover({ member, rect: { left: r.left, right: r.right, top: r.top } });
+    }
+  };
+
+  // Dev quick-login — the server sets the auth cookie for the target user,
+  // then we hydrate the session locally with the returned user object.
+  const handleDevSwitch = async (member) => {
+    if (!devMode) return;
+    setSwitchingId(member.id);
+    try {
+      const res = await fetch('/api/dev/switch-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ userId: member.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!data.success) throw new Error(data.error || 'Switch failed');
+      loginDirect(data.user);
+      setDevMode(false);
+      setPopover(null);
+      setError('');
+    } catch (err) {
+      setError(err.message || 'Failed to switch account.');
+    } finally {
+      setSwitchingId(null);
     }
   };
 
@@ -528,36 +539,32 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
             </span>
           </div>
           <div className="am-header-actions">
+            {showDevTools && (
+              <button
+                type="button"
+                className={`am-icon-btn am-dev-btn${devMode ? ' active' : ''}`}
+                onClick={() => { setDevMode((v) => !v); setPopover(null); }}
+                aria-label="Dev quick-login mode"
+                title={devMode ? 'Turn off dev quick-login' : 'Dev: quick-login as any member'}
+              >
+                <UserCog size={15} />
+              </button>
+            )}
             {!isDesktop && (
               <button type="button" className="am-icon-btn" onClick={onClose} aria-label="Close members panel">
                 <X size={16} />
               </button>
             )}
-            <button
-              type="button"
-              className={`am-icon-btn am-toggle-btn${open ? ' active' : ''}`}
-              onClick={onToggle}
-              aria-label={open ? 'Hide active members' : 'Show active members'}
-              title={open ? 'Hide members' : 'Show members'}
-            >
-              {open ? <ChevronRight size={16} /> : <Users size={16} />}
-            </button>
           </div>
         </div>
 
-        {/* Grouping pills */}
-        <div className="am-mode-tabs">
-          {GROUPING_MODES.map((g) => (
-            <button
-              key={g.id}
-              type="button"
-              className={`am-mode-tab${mode === g.id ? ' active' : ''}`}
-              onClick={() => setMode(g.id)}
-            >
-              {g.label}
-            </button>
-          ))}
-        </div>
+        {/* Dev mode hint */}
+        {devMode && (
+          <div className="am-dev-banner">
+            <Zap size={12} />
+            <span>Dev mode: click any member to log in as them</span>
+          </div>
+        )}
 
         {/* Search */}
         <div className="am-search">
@@ -614,29 +621,19 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
                 >
                   {admins.map((m) => (
                     <span key={`adm-${m.id}`} ref={(el) => { rowRefs.current[`adm-${m.id}`] = el; }}>
-                      <MemberRow member={m} isOffline={m.status === 'offline'} isAdmin onClick={() => openPopover(m, `adm-${m.id}`)} />
+                      <MemberRow
+                        member={m}
+                        isOffline={m.status === 'offline'}
+                        isAdmin
+                        devSwitch={devMode}
+                        switching={switchingId === m.id}
+                        onClick={devMode ? () => handleDevSwitch(m) : () => openPopover(m, `adm-${m.id}`)}
+                      />
                     </span>
                   ))}
                 </MemberGroup>
               )}
 
-              {/* Online section — active now (online + idle), own name pinned */}
-              {onlineMembers.length > 0 && (
-                <MemberGroup
-                  title="Online"
-                  icon={<span className="am-live-dot" />}
-                  count={onlineMembers.length}
-                  defaultOpen={true}
-                  collapsed={!onlineOpen}
-                  onToggle={() => setOnlineOpen((o) => !o)}
-                >
-                  {onlineMembers.map((m) => (
-                    <span key={`on-${m.id}`} ref={(el) => { rowRefs.current[`on-${m.id}`] = el; }}>
-                      <MemberRow member={m} isOffline={false} onClick={() => openPopover(m, `on-${m.id}`)} />
-                    </span>
-                  ))}
-                </MemberGroup>
-              )}
 
               {groups.map((g) => {
                 const key = g.key;
@@ -646,52 +643,107 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
                     key={key}
                     title={g.title}
                     icon={g.icon}
-                    count={g.members.length}
+                    count={g.count}
                     collapsed={collapsed}
                     onToggle={() => toggleGroup(key)}
                   >
-                    {g.members.map((m) => {
-                      const rowKey = `${key}-${m.id}`;
+                    {g.count === 0 ? (
+                      <div className="am-group-empty">No members yet</div>
+                    ) : g.semesters.map((s) => {
+                      const semKey = `${key}-sem-${s.sem}`;
+                      const semTotal = s.sections.reduce((n, x) => n + x.count, 0);
                       return (
-                        <span key={rowKey} ref={(el) => { rowRefs.current[rowKey] = el; }}>
-                          <MemberRow member={m} onClick={() => openPopover(m, rowKey)} />
-                        </span>
+                      <MemberGroup
+                        key={semKey}
+                        title={s.sem === 'Other' ? 'Other' : `Semester ${s.sem}`}
+                        count={semTotal}
+                        collapsed={collapsedGroups[semKey]}
+                        onToggle={() => toggleGroup(semKey)}
+                        className="am-sem-group"
+                      >
+                        {s.sections.map((sec) => {
+                          const secKey = `${semKey}-sec-${sec.key}`;
+                          return (
+                            <MemberGroup
+                              key={secKey}
+                              title={sec.key === 'Other' ? 'Other' : `Sec ${sec.key}`}
+                              count={sec.count}
+                              collapsed={collapsedGroups[secKey]}
+                              onToggle={() => toggleGroup(secKey)}
+                              className="am-sec-group"
+                            >
+                              {sec.count === 0 ? (
+                                <div className="am-group-empty">No members yet</div>
+                              ) : (
+                                <>
+                                  {sec.labs.map((lab) => {
+                                    const labKey = `${secKey}-lab-${lab.key}`;
+                                    return (
+                                      <MemberGroup
+                                        key={labKey}
+                                        title={lab.key === 'Other' ? 'Other' : `Lab ${lab.key}`}
+                                        count={lab.members.length}
+                                        collapsed={collapsedGroups[labKey]}
+                                        onToggle={() => toggleGroup(labKey)}
+                                        className="am-leaf-group"
+                                      >
+                                        {lab.members.length === 0 ? (
+                                          <div className="am-group-empty">No members yet</div>
+                                        ) : lab.members.map((m) => {
+                                          const rowKey = `${labKey}-${m.id}`;
+                                          return (
+                                            <span key={rowKey} ref={(el) => { rowRefs.current[rowKey] = el; }}>
+                                              <MemberRow
+                                                member={m}
+                                                devSwitch={devMode}
+                                                switching={switchingId === m.id}
+                                                onClick={devMode ? () => handleDevSwitch(m) : () => openPopover(m, rowKey)}
+                                              />
+                                            </span>
+                                          );
+                                        })}
+                                      </MemberGroup>
+                                    );
+                                  })}
+                                  {sec.loose.map((m) => {
+                                    const rowKey = `${secKey}-loose-${m.id}`;
+                                    return (
+                                      <span key={rowKey} ref={(el) => { rowRefs.current[rowKey] = el; }}>
+                                        <MemberRow
+                                          member={m}
+                                          devSwitch={devMode}
+                                          switching={switchingId === m.id}
+                                          onClick={devMode ? () => handleDevSwitch(m) : () => openPopover(m, rowKey)}
+                                        />
+                                      </span>
+                                    );
+                                  })}
+                                </>
+                              )}
+                            </MemberGroup>
+                          );
+                        })}
+                      </MemberGroup>
                       );
                     })}
                   </MemberGroup>
                 );
               })}
-
-              {/* Offline section — only in Role mode, collapsed by default */}
-              {mode === 'role' && offlineMembers.length > 0 && (
-                <MemberGroup
-                  title="Offline"
-                  icon={<WifiOff size={13} />}
-                  count={offlineMembers.length}
-                  defaultOpen={false}
-                  collapsed={!offlineOpen}
-                  onToggle={() => setOfflineOpen((o) => !o)}
-                >
-                  {offlineMembers.map((m) => (
-                    <span key={`off-${m.id}`} ref={(el) => { rowRefs.current[`off-${m.id}`] = el; }}>
-                      <MemberRow member={m} isOffline onClick={() => openPopover(m, `off-${m.id}`)} />
-                    </span>
-                  ))}
-                </MemberGroup>
-              )}
             </>
           )}
         </div>
 
-        {/* Footer status */}
-        <div className="am-footer">
-          <span className={`am-ws-dot${connected ? ' on' : ''}`} />
-          <span>{connected ? 'Live presence' : (isAuthenticated ? 'Presence paused' : 'Log in for live updates')}</span>
-          {!isDesktop && (
-            <button type="button" className="am-footer-open" onClick={() => navigate('/messages')}>
-              <MessageSquare size={12} /> ConnectBox
-            </button>
-          )}
+        {/* Collapse button — bottom, like the left sidebar */}
+        <div className="am-footer-collapse">
+          <button
+            type="button"
+            className="am-collapse-btn"
+            onClick={onToggle}
+            aria-label={open ? 'Hide active members' : 'Show active members'}
+            title={open ? 'Hide members' : 'Show members'}
+          >
+            {open ? <ChevronRight size={16} /> : <Users size={16} />}
+          </button>
         </div>
       </aside>
 

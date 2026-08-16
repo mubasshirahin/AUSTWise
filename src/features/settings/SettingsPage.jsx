@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useRoutine } from '../../context/RoutineContext';
-import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, ShieldAlert, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, SquareTerminal, Sparkles, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2, Orbit, PawPrint } from 'lucide-react';
+import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, ShieldAlert, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, SquareTerminal, Sparkles, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2, Orbit, PawPrint, Palette } from 'lucide-react';
 import AboutUs from './AboutUs';
 import LinkedAccountsSection from './LinkedAccountsSection';
 import GliderTabs from '../../components/GliderTabs';
@@ -35,7 +35,7 @@ const getYearSemesters = (department) => {
   }
   return options;
 };
-const sections = ['A', 'B', 'C'];
+const sections = ['A', 'B', 'C', 'D'];
 const quickProfileFields = ['department', 'yearSemester', 'section', 'labSection'];
 
 const getLabSectionOptions = (section) => {
@@ -136,6 +136,179 @@ const lightThemes = [
 
 const themeOptions = [...darkThemes, ...lightThemes];
 
+// ─── HSV color wheel helpers (no dependency, tiny + precise) ───
+function hexToHsv(hex) {
+  const int = parseInt(hex.replace('#', ''), 16);
+  const r = ((int >> 16) & 255) / 255;
+  const g = ((int >> 8) & 255) / 255;
+  const b = (int & 255) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  let h = 0;
+  if (d !== 0) {
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  return { h, s: max === 0 ? 0 : d / max, v: max };
+}
+
+function hsvToHex({ h, s, v }) {
+  const c = v * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = v - c;
+  let rgb;
+  if (h < 60) rgb = [c, x, 0];
+  else if (h < 120) rgb = [x, c, 0];
+  else if (h < 180) rgb = [0, c, x];
+  else if (h < 240) rgb = [0, x, c];
+  else if (h < 300) rgb = [x, 0, c];
+  else rgb = [c, 0, x];
+  const toHex = (val) => Math.max(0, Math.min(255, Math.round((val + m) * 255))).toString(16).padStart(2, '0');
+  return `#${toHex(rgb[0])}${toHex(rgb[1])}${toHex(rgb[2])}`;
+}
+
+const ACCENT_DEFAULT_HEX = '#F5A623';
+
+// Real-time color wheel — recolors the app's golden theme instantly.
+function AccentColorSection() {
+  const { accent, setAccent } = useTheme();
+  const [hsv, setHsv] = useState(() => hexToHsv(accent || ACCENT_DEFAULT_HEX));
+  const draggingRef = useRef(null);
+  const wheelRef = useRef(null);
+  const barRef = useRef(null);
+
+  // Follow theme resets / external changes, but not while the user is dragging.
+  useEffect(() => {
+    if (draggingRef.current) return;
+    setHsv(hexToHsv(accent || ACCENT_DEFAULT_HEX));
+  }, [accent]);
+
+  const hex = hsvToHex(hsv);
+  const isDefault = !accent;
+
+  const pickFromWheel = useCallback((clientX, clientY) => {
+    const el = wheelRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const cx = rect.width / 2;
+    const cy = rect.height / 2;
+    const maxR = Math.min(cx, cy) - 6;
+    const dx = clientX - rect.left - cx;
+    const dy = clientY - rect.top - cy;
+    const dist = Math.min(Math.hypot(dx, dy), maxR);
+    let h = Math.atan2(dy, dx) * (180 / Math.PI);
+    if (h < 0) h += 360;
+    const s = dist / maxR;
+    setHsv((prev) => {
+      const next = { ...prev, h, s };
+      setAccent(hsvToHex(next));
+      return next;
+    });
+  }, [setAccent]);
+
+  const pickFromBar = useCallback((clientX) => {
+    const el = barRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const v = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    setHsv((prev) => {
+      const next = { ...prev, v };
+      setAccent(hsvToHex(next));
+      return next;
+    });
+  }, [setAccent]);
+
+  const onPointerDown = (e, kind) => {
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    draggingRef.current = kind;
+    if (kind === 'wheel') pickFromWheel(e.clientX, e.clientY);
+    else pickFromBar(e.clientX);
+  };
+
+  const onPointerMove = (e) => {
+    if (draggingRef.current === 'wheel') pickFromWheel(e.clientX, e.clientY);
+    else if (draggingRef.current === 'value') pickFromBar(e.clientX);
+  };
+
+  const endDrag = () => {
+    draggingRef.current = null;
+  };
+
+  const wheelAngle = (hsv.h * Math.PI) / 180;
+  const wheelPos = {
+    left: `calc(50% + ${Math.cos(wheelAngle) * hsv.s * 47}%)`,
+    top: `calc(50% + ${Math.sin(wheelAngle) * hsv.s * 47}%)`,
+  };
+
+  return (
+    <section className="cfg-section">
+      <div className="cfg-section-head">
+        <h3 className="cfg-section-title">Accent Color</h3>
+        <p className="cfg-section-desc">
+          Drag the color wheel to re-skin the app's golden theme in real time.
+        </p>
+      </div>
+
+      <div
+        ref={wheelRef}
+        className="accent-wheel"
+        onPointerDown={(e) => onPointerDown(e, 'wheel')}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerLeave={endDrag}
+        role="slider"
+        aria-label="Accent color wheel"
+        aria-valuetext={`Hue ${Math.round(hsv.h)}, Saturation ${Math.round(hsv.s * 100)}%`}
+      >
+        <span className="accent-wheel-dot" style={wheelPos} />
+      </div>
+
+      <div
+        ref={barRef}
+        className="accent-value-bar"
+        style={{ background: `linear-gradient(to right, #000 0%, ${hsvToHex({ ...hsv, v: 1 })} 100%)` }}
+        onPointerDown={(e) => onPointerDown(e, 'value')}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerLeave={endDrag}
+        role="slider"
+        aria-label="Accent brightness"
+        aria-valuenow={Math.round(hsv.v * 100)}
+        aria-valuemin="0"
+        aria-valuemax="100"
+      >
+        <span className="accent-value-dot" style={{ left: `${hsv.v * 100}%` }} />
+      </div>
+
+      <div className="accent-custom-row">
+        <div className="cfg-row-main">
+          <span className="cfg-row-icon is-amber"><Palette size={18} /></span>
+          <div className="cfg-row-text">
+            <h4 className="cfg-row-title">Current color</h4>
+            <p className="cfg-row-desc">Preview updates live as you drag.</p>
+          </div>
+        </div>
+        <div className="accent-custom-controls">
+          <span className="accent-preview-chip" style={{ background: isDefault ? ACCENT_DEFAULT_HEX : hex }} />
+          <code>{isDefault ? ACCENT_DEFAULT_HEX.toUpperCase() : hex.toUpperCase()}</code>
+          <button
+            type="button"
+            className="accent-reset-btn"
+            onClick={() => setAccent(null)}
+            disabled={isDefault}
+          >
+            Reset
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // Shared subtab masthead — same style as the Identity masthead.
 function SettingsMasthead({ icon: Icon, title, subtitle }) {
   return (
@@ -159,15 +332,35 @@ function SettingsMasthead({ icon: Icon, title, subtitle }) {
 // with the editable checkpoints from Checkpoint Control instead of the classic
 // five stops. Fields are edited in the control panel; this just previews them.
 function DriveOrbitButton({ user }) {
-  const { visibleCheckpoints } = useOrbits();
+  const { visibleCheckpoints, favoriteColor } = useOrbits();
   const { stalk } = useStalk();
   const drive = () => {
-    stalk(user, visibleCheckpoints.map((cp) => ({ key: cp.id, label: cp.label, fields: cp.fields })));
+    stalk(user, visibleCheckpoints.map((cp) => ({ key: cp.id, label: cp.label, fields: cp.fields })), favoriteColor || '');
   };
   return (
     <button className="btn btn-primary" onClick={drive}>
       <PawPrint size={16} /> Drive My Orbit
     </button>
+  );
+}
+
+// Favorite color picker — the road-trip accent follows this live.
+function FavoriteColorInput() {
+  const { favoriteColor, setFavoriteColor } = useOrbits();
+  const color = favoriteColor || '#00ffcc';
+  return (
+    <div className="orbits-color-row">
+      <span>Favorite color</span>
+      <input
+        type="color"
+        className="orbits-color-input"
+        value={color}
+        onChange={(e) => setFavoriteColor(e.target.value)}
+        aria-label="Choose favorite color"
+      />
+      <span className="orbits-swatch" style={{ background: color }} />
+      <code>{color.toUpperCase()}</code>
+    </div>
   );
 }
 
@@ -184,6 +377,9 @@ export default function SettingsPage() {
     return ['profile', 'theme', 'notifications', 'about', 'orbits', 'invite'].includes(tab) ? tab : 'profile';
   });
   const orbitInitials = (user?.name || '?').split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+  // Fall back to themed initials when the avatar image fails to load — the
+  // browser's broken-image placeholder would clash with the active theme.
+  const [orbitAvatarError, setOrbitAvatarError] = useState(false);
 
   // AWID (AUSTWise ID) is the app-generated identifier — always separate
   // from the student ID. Fall back to a freshly generated AWID instead of
@@ -373,6 +569,25 @@ export default function SettingsPage() {
       setVacancyMap(map);
     }
   }, [user?.department, user?.semester, isAuthenticated]);
+
+  // The live session role (server-authoritative via /api/auth/me) wins over
+  // the localStorage account mirror when deciding CR/SR status — the mirror
+  // can lag behind an approval or strip DEV users entirely, which would
+  // otherwise make an active CR/SR see "Apply Now".
+  const crSrStatus = useMemo(() => {
+    const s = applicationStatus || {};
+    const serverRole = user?.role;
+    const hasActiveRole = Boolean(
+      s.hasActiveRole || serverRole === 'cr' || serverRole === 'sr'
+    );
+    return {
+      ...s,
+      hasActiveRole,
+      activeRole: hasActiveRole
+        ? (s.activeRole || (serverRole === 'cr' || serverRole === 'sr' ? serverRole : null))
+        : null,
+    };
+  }, [applicationStatus, user?.role]);
 
   // Fetch invitations list
   const fetchInvites = useCallback(async (page = 1) => {
@@ -1064,6 +1279,8 @@ export default function SettingsPage() {
               <SettingsMasthead icon={Bell} title="Configure" subtitle="Alerts &amp; reminders" />
               <div className="schedule-dotted-divider" />
 
+              <AccentColorSection />
+
               {!supported && (
                 <div className="cfg-banner cfg-banner--rose">
                   <AlertTriangle size={18} style={{ color: 'var(--accent-rose)', flexShrink: 0 }} />
@@ -1591,8 +1808,8 @@ export default function SettingsPage() {
               <OrbitsProvider user={user}>
                 <div className="orbits-hero">
                   <div className="orbits-avatar">
-                    {user?.avatar ? (
-                      <img src={user.avatar} alt="Your orbit avatar" />
+                    {user?.avatar && !orbitAvatarError ? (
+                      <img src={user.avatar} alt="Your orbit avatar" onError={() => setOrbitAvatarError(true)} />
                     ) : (
                       orbitInitials
                     )}
@@ -1604,6 +1821,7 @@ export default function SettingsPage() {
                       {user?.department}
                       {user?.yearSemester ? ` · ${getYearSemesterShortName(user.yearSemester)}` : ''}
                     </p>
+                    <FavoriteColorInput />
                   </div>
                   <div className="orbits-start">
                     <DriveOrbitButton user={user} />
@@ -1778,21 +1996,21 @@ export default function SettingsPage() {
                     width: 34, height: 34, borderRadius: 'var(--radius-full)', flexShrink: 0,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     background: 'var(--accent-amber-glow)',
-                    color: applicationStatus?.hasActiveRole ? 'var(--accent-emerald)' : 'var(--accent-amber)',
+                    color: crSrStatus?.hasActiveRole ? 'var(--accent-emerald)' : 'var(--accent-amber)',
                   }}>
-                    {applicationStatus?.hasActiveRole ? <ShieldCheck size={16} /> : applicationStatus?.hasPending ? <Clock3 size={16} /> : <GraduationCap size={16} />}
+                    {crSrStatus?.hasActiveRole ? <ShieldCheck size={16} /> : crSrStatus?.hasPending ? <Clock3 size={16} /> : <GraduationCap size={16} />}
                   </span>
                   <div style={{ minWidth: 0 }}>
                     <p style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', margin: 0, whiteSpace: 'nowrap' }}>
-                      {applicationStatus?.hasActiveRole
-                        ? `You're the ${applicationStatus.activeRole === 'cr' ? 'Class Representative (CR)' : 'Student Representative (SR)'}`
+                      {crSrStatus?.hasActiveRole
+                        ? `You're the ${crSrStatus.activeRole === 'cr' ? 'Class Representative (CR)' : 'Student Representative (SR)'}`
                         : 'CR / SR Leadership'}
                     </p>
                     <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '420px' }}>
-                      {applicationStatus?.hasActiveRole
-                        ? `${user?.department} • ${applicationStatus.activeRole === 'cr' ? `Lab ${user?.labSection}` : `Section ${user?.section}`}`
-                        : applicationStatus?.hasPending
-                          ? `Applied for ${applicationStatus.pendingApplication.appliedRole === 'cr' ? 'CR' : 'SR'} · ${formatAppDate(applicationStatus.pendingApplication.createdAt)} · Awaiting review`
+                      {crSrStatus?.hasActiveRole
+                        ? `${user?.department} • ${crSrStatus.activeRole === 'cr' ? `Lab ${user?.labSection}` : `Section ${user?.section}`}`
+                        : crSrStatus?.hasPending
+                          ? `Applied for ${crSrStatus.pendingApplication.appliedRole === 'cr' ? 'CR' : 'SR'} · ${formatAppDate(crSrStatus.pendingApplication.createdAt)} · Awaiting review`
                           : allChangesReady
                             ? 'CR/SR positions are open for your batch'
                             : 'Complete your academic details to apply'}
@@ -1800,7 +2018,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                {applicationStatus?.hasActiveRole ? (
+                {crSrStatus?.hasActiveRole ? (
                   <button
                     className="btn btn-sm"
                     onClick={() => setResignConfirm(true)}
@@ -1813,7 +2031,7 @@ export default function SettingsPage() {
                   >
                     Resign / Step Down
                   </button>
-                ) : applicationStatus?.hasPending ? (
+                ) : crSrStatus?.hasPending ? (
                   <button
                     className="btn btn-sm"
                     onClick={() => setWithdrawConfirm(true)}
@@ -1863,10 +2081,10 @@ export default function SettingsPage() {
               )}
 
               {/* Apply area — expands from the one-line bar (hidden once applied/active) */}
-              {showApplyForm && !applicationStatus?.hasPending && !applicationStatus?.hasActiveRole && (
+              {showApplyForm && !crSrStatus?.hasPending && !crSrStatus?.hasActiveRole && (
                 <>
               {/* Profile Completion Check */}
-              {(!applicationStatus?.hasPending && !applicationStatus?.hasActiveRole) && !allChangesReady && (
+              {(!crSrStatus?.hasPending && !crSrStatus?.hasActiveRole) && !allChangesReady && (
                 <div className="glass-card-static" style={{ border: '1px solid var(--accent-amber)', borderRadius: 'var(--radius-lg)', padding: '20px', background: 'var(--accent-amber-glow)' }}>
                   <div className="flex items-center gap-3 mb-3">
                     <AlertTriangle size={20} style={{ color: 'var(--accent-amber)' }} />
@@ -1886,7 +2104,7 @@ export default function SettingsPage() {
               )}
 
               {/* Application Form */}
-              {(!applicationStatus?.hasPending && !applicationStatus?.hasActiveRole) && allChangesReady && (
+              {(!crSrStatus?.hasPending && !crSrStatus?.hasActiveRole) && allChangesReady && (
                 <form onSubmit={handleRoleApplication} className="glass-card-static" style={{ border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-lg)', padding: '20px' }}>
                   <div className="mb-6">
                     <label style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>Apply for Position</label>
@@ -1916,7 +2134,7 @@ export default function SettingsPage() {
                       </label>
                       {roleApplicationForm.appliedRole === 'cr' ? (
                         <div className="flex gap-2 flex-wrap">
-                          {['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((lab) => {
+                          {['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2'].map((lab) => {
                             const slotInfo = vacancyMap?.crSlots?.find(s => s.key === lab);
                             const isVacant = slotInfo?.vacant !== false;
                             const occupantName = slotInfo?.occupant?.name;
@@ -1953,7 +2171,7 @@ export default function SettingsPage() {
                         </div>
                       ) : (
                         <div className="flex gap-2 flex-wrap">
-                          {['A', 'B', 'C'].map((section) => {
+                          {['A', 'B', 'C', 'D'].map((section) => {
                             const slotInfo = vacancyMap?.srSlots?.find(s => s.key === section);
                             const isVacant = slotInfo?.vacant !== false;
                             const occupantName = slotInfo?.occupant?.name;
@@ -2057,7 +2275,7 @@ export default function SettingsPage() {
                       <div>
                         <h4 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', margin: 0 }}>Resign from Position?</h4>
                         <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
-                          You are currently a {applicationStatus?.activeRole === 'cr' ? 'Class Representative (CR)' : 'Student Representative (SR)'}
+                          You are currently a {crSrStatus?.activeRole === 'cr' ? 'Class Representative (CR)' : 'Student Representative (SR)'}
                           {user?.labSection && ` (${user.labSection})`}
                           {user?.section && !user?.labSection && ` (Section ${user.section})`}
                         </p>
@@ -2160,7 +2378,7 @@ export default function SettingsPage() {
                       <div>
                         <h4 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', margin: 0 }}>Withdraw Application?</h4>
                         <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
-                          Applied for {applicationStatus?.pendingApplication?.appliedRole === 'cr' ? 'CR' : 'SR'}
+                          Applied for {crSrStatus?.pendingApplication?.appliedRole === 'cr' ? 'CR' : 'SR'}
                         </p>
                       </div>
                     </div>
@@ -2182,7 +2400,7 @@ export default function SettingsPage() {
                         onClick={async () => {
                           setWithdrawing(true);
                           try {
-                            await withdrawApplication(user.id, applicationStatus?.pendingApplication?.id);
+                            await withdrawApplication(user.id, crSrStatus?.pendingApplication?.id);
                             setApplicationMessage('Application withdrawn successfully. You can re-apply anytime.');
                             setWithdrawConfirm(false);
                             setShowApplyForm(false);

@@ -44,7 +44,8 @@ import {
 } from './liveLibraryDB.mjs';
 import { initializeDatabase, resetDatabase, query, sql } from './db.mjs';
 import { handleOAuthRequest } from './socialOAuth.mjs';
-import { handleAuthRoute, readTokenCookie } from './auth.mjs';
+import { handleCleanerRequest } from './googleCleaner.mjs';
+import { handleAuthRoute, readTokenCookie, handleDevSwitchUser, handleDevSeedUsers, handleDevUsers } from './auth.mjs';
 import { requireRole } from './middleware.mjs';
 import { rateLimit, extractRoutineRateLimiter } from './rateLimiter.mjs';
 import { getUserById, getAllUsersSafe, updateUserProfile } from './userStore.mjs';
@@ -101,6 +102,13 @@ import {
   createRoleApplication,
   updateRoleApplication,
 } from './roleAppDB.mjs';
+import {
+  saveCredential,
+  updateCredential,
+  listCredentials,
+  deleteCredential,
+  revealPassword,
+} from './passwordVaultDB.mjs';
 import { createWSServer, broadcastToAll, broadcastToUsers, getPresenceMap } from './wsServer.mjs';
 
 // Helper function to answer callback query
@@ -411,6 +419,11 @@ server.on('request', async (req, res) => {
 
     // Add CORS headers to all responses
     res.setHeader('Access-Control-Allow-Origin', '*');
+
+    // Dev-only API auth routes
+    if (req.url === '/api/dev/switch-user' && req.method === 'POST') return handleDevSwitchUser(req, res);
+    if (req.url === '/api/dev/seed-users' && req.method === 'POST') return handleDevSeedUsers(req, res);
+    if (req.url === '/__dev/users' && req.method === 'GET') return handleDevUsers(req, res);
 
     // Global flood guard — non-static requests count against this window.
     if (globalRateLimiter(req, res)) {
@@ -1678,6 +1691,93 @@ async function handleApiRequest(req, res) {
     return;
   }
 
+  // ========== Password Vault (Daily Life — Password Manager) ==========
+  // All endpoints require login. Credentials are scoped per-user via auth.id
+  // and stored AES-256-GCM encrypted — plaintext is never persisted or logged.
+
+  // POST /api/passwords/save — encrypt + store a credential.
+  if (req.url === '/api/passwords/save' && req.method === 'POST') {
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    try {
+      const { platform, email, username, password } = await readJsonBody(req);
+      if (!password || !String(password)) {
+        sendJson(res, 400, { success: false, error: 'Password is required.' });
+        return;
+      }
+      // Encrypt instantly — the raw password exists only in this request scope.
+      const enc = (await import('./passwordCrypto.mjs')).encrypt(String(password));
+      const record = await saveCredential(auth.id, { platform, email, username, enc });
+      sendJson(res, 201, { success: true, credential: record });
+    } catch (error) {
+      sendJson(res, 400, { success: false, error: error.message || 'Failed to save credential.' });
+    }
+    return;
+  }
+
+  // GET /api/passwords/list — fetch user's credentials, decrypt in-memory.
+  if (req.url === '/api/passwords/list' && req.method === 'GET') {
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    try {
+      const records = await listCredentials(auth.id);
+      const credentials = records.map((r) => {
+        try {
+          return { ...r, password: revealPassword(r), decrypted: true };
+        } catch {
+          return { ...r, password: '', decrypted: false };
+        }
+      });
+      sendJson(res, 200, { success: true, credentials });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to load credentials.' });
+    }
+    return;
+  }
+
+  // PUT /api/passwords/:id — update a credential (ownership enforced).
+  if (req.url.startsWith('/api/passwords/') && req.method === 'PUT') {
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    try {
+      const id = new URL(req.url, `http://${req.headers.host}`).pathname.split('/').pop();
+      const { platform, email, username, password } = await readJsonBody(req);
+      if (!password || !String(password)) {
+        sendJson(res, 400, { success: false, error: 'Password is required.' });
+        return;
+      }
+      // Re-encrypt the (possibly changed) password.
+      const enc = (await import('./passwordCrypto.mjs')).encrypt(String(password));
+      const record = await updateCredential(id, auth.id, { platform, email, username, enc });
+      if (!record) {
+        sendJson(res, 404, { success: false, error: 'Credential not found.' });
+        return;
+      }
+      sendJson(res, 200, { success: true, credential: record });
+    } catch (error) {
+      sendJson(res, 400, { success: false, error: error.message || 'Failed to update credential.' });
+    }
+    return;
+  }
+
+  // DELETE /api/passwords/:id — remove a credential (ownership enforced).
+  if (req.url.startsWith('/api/passwords/') && req.method === 'DELETE') {
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    try {
+      const id = new URL(req.url, `http://${req.headers.host}`).pathname.split('/').pop();
+      const deleted = await deleteCredential(id, auth.id);
+      if (!deleted) {
+        sendJson(res, 404, { success: false, error: 'Credential not found.' });
+        return;
+      }
+      sendJson(res, 200, { success: true });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to delete credential.' });
+    }
+    return;
+  }
+
   // ========== Presence / Active Members ==========
 
   // GET /api/presence/members — sanitized directory of every registered user
@@ -1697,6 +1797,7 @@ async function handleApiRequest(req, res) {
           const showCgpa = privacy.showCgpa !== false;
           return {
             id: u.id,
+            awid: u.awid || '',
             name: u.name,
             initials: String(u.name || 'AU').trim().split(/\s+/).slice(0, 2).map(x => x[0]?.toUpperCase()).join('') || 'AU',
             avatar: u.avatar || null,
@@ -1717,6 +1818,9 @@ async function handleApiRequest(req, res) {
             privacy: {
               showCgpa,
             },
+            // The member's configured orbit (checkpoints + favorite color) —
+            // public by design so anyone visiting their orbit sees it.
+            orbit: u.orbit || null,
           };
         });
       sendJson(res, 200, { success: true, members });
@@ -2663,6 +2767,13 @@ async function handleApiRequest(req, res) {
   }
 
   // ═══════════════════════════════════════════════════════════════════
+  // Digital Footprint Cleaner — Gmail inbox → platform mapping
+
+  if (await handleCleanerRequest(req, res)) {
+    return;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
   // Social OAuth Endpoints
 
   if (await handleOAuthRequest(req, res)) {
@@ -2782,6 +2893,7 @@ server.listen(port, '0.0.0.0', () => {
   console.log('');
   console.log('Auth Endpoints:');
   console.log('  POST /api/auth/google                  - Verify Google OAuth JWT');
+  console.log('  POST /api/cleaner/scan                 - Digital Footprint: scan Gmail inbox (SSE progress)');
   console.log('  GET  /api/auth/github/(login|callback) - GitHub OAuth');
   console.log('  GET  /api/auth/discord/(login|callback)- Discord OAuth');
   console.log('  GET  /api/auth/spotify/(login|callback)- Spotify OAuth');

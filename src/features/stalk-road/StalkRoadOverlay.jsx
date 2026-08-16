@@ -6,6 +6,8 @@ import {
   PawPrint, X, ChevronDown, Flag, Route, Clapperboard, Gamepad2, Eye, Headphones, Swords,
 } from 'lucide-react';
 import { useStalk } from './StalkContext';
+import { useAuth } from '../../context/AuthContext';
+import { loadUserFavoriteColor } from '../orbits/OrbitsContext';
 import ThreeCar from './ThreeCar';
 import { MoviesSection, GamingSection, AnimeSection, MusicSection, ThisOrThatSection } from './StalkPortfolio';
 import OrbitsCheckpointPreview from '../orbits/OrbitsPreview';
@@ -59,7 +61,8 @@ const CP_ZONE = 0.045; // half-width of the active window (in trip progress)
 const ARRIVE_AT = 0.96; // journey-complete panel appears only at the very end
 
 export default function StalkRoadOverlay() {
-  const { target, portfolio, customStops, close } = useStalk();
+  const { target, portfolio, customStops, favoriteColor: tripFavoriteColor, close } = useStalk();
+  const { user } = useAuth();
   const scrollerRef = useRef(null); // fixed scroll container
   const trackRef = useRef(null);    // tall runway that provides scroll
   const stageRef = useRef(null);    // pinned 100vw x 100vh viewport
@@ -80,12 +83,24 @@ export default function StalkRoadOverlay() {
   const SEGMENTS = STOP_COUNT + 2;
   const isOrbitDrive = Boolean(customStops && customStops.length);
 
+  // The accent rides the user's chosen favorite color whenever the target is
+  // the logged-in user (self-stalk) or an orbit drive; everyone else keeps
+  // their deterministic portfolio color.
+  const isSelf = Boolean(user && (target?.id === user.id || target?.id === user.awid || target?.awid === user.id));
+  const savedFav = isSelf ? (() => { try { return loadUserFavoriteColor(user?.id); } catch { return ''; } })() : '';
+  // The orbit drive (Drive My Orbit) always rides the user's favorite color;
+  // when none is saved yet it falls back to the default cyan — never the
+  // deterministic portfolio color, which can be pink.
+  const accent = isOrbitDrive
+    ? (tripFavoriteColor || savedFav || '#00ffcc')
+    : (savedFav || portfolio?.favoriteColor);
+
   const defaultPanels = [
-    <MoviesSection movies={portfolio?.movies} accent={portfolio?.favoriteColor} key="p-movies" />,
-    <GamingSection games={portfolio?.games} accent={portfolio?.favoriteColor} key="p-gaming" />,
-    <AnimeSection anime={portfolio?.anime} accent={portfolio?.favoriteColor} key="p-anime" />,
-    <MusicSection portfolio={portfolio} accent={portfolio?.favoriteColor} key="p-music" />,
-    <ThisOrThatSection matchups={portfolio?.matchups} accent={portfolio?.favoriteColor} key="p-vs" />,
+    <MoviesSection movies={portfolio?.movies} accent={accent} key="p-movies" />,
+    <GamingSection games={portfolio?.games} accent={accent} key="p-gaming" />,
+    <AnimeSection anime={portfolio?.anime} accent={accent} key="p-anime" />,
+    <MusicSection portfolio={portfolio} accent={accent} key="p-music" />,
+    <ThisOrThatSection matchups={portfolio?.matchups} accent={accent} key="p-vs" />,
   ];
 
   useEffect(() => {
@@ -359,8 +374,6 @@ export default function StalkRoadOverlay() {
   }, [target, portfolio, customStops, close, stops, STOP_COUNT, SEGMENTS]);
 
   if (!target || !portfolio) return null;
-
-  const accent = portfolio.favoriteColor;
 
   return (
     <div className="sr-overlay" ref={scrollerRef} data-role="stalk-road">

@@ -6,6 +6,7 @@ import {
   Cloud, ChevronDown,
 } from 'lucide-react';
 import './ProPage.css';
+import { topTestimonials, bottomTestimonials } from '../../data/testimonials';
 
 // ─── Plan Definitions ───
 const PLANS = [
@@ -152,33 +153,6 @@ const BENEFITS = [
 ];
 
 // ─── Testimonials ───
-const TESTIMONIALS = [
-  {
-    quote: 'AUSTWise Pro changed how I study. The analytics helped me raise my CGPA from 3.32 to 3.71 in one semester.',
-    name: 'Fahim Rahman',
-    role: 'CSE\'25',
-    avatar: 'https://api.dicebear.com/9.x/adventurer/svg?seed=FahimRahman',
-  },
-  {
-    quote: 'Zero ads, zero interruptions. The premium themes alone make studying so much more enjoyable.',
-    name: 'Nusrat Jahan',
-    role: 'EEE\'24',
-    avatar: 'https://api.dicebear.com/9.x/adventurer/svg?seed=NusratJahan',
-  },
-  {
-    quote: 'The AI assistant generated a revision plan that nailed my exam prep. Aced everything!',
-    name: 'Ariful Islam',
-    role: 'CE\'24',
-    avatar: 'https://api.dicebear.com/9.x/adventurer/svg?seed=ArifulIslam',
-  },
-  {
-    quote: 'Priority support responded in under 10 minutes. Felt like a VIP from day one.',
-    name: 'Tasnim Ahmed',
-    role: 'ME\'25',
-    avatar: 'https://api.dicebear.com/9.x/adventurer/svg?seed=TasnimAhmed',
-  },
-];
-
 // ─── FAQ Data ───
 const FAQ_DATA = [
   {
@@ -227,23 +201,47 @@ function FaqAccordion() {
   );
 }
 
-// ─── Testimonial List ───
-function TestimonialList() {
-  return (
-    <div className="pro-testimonial-grid">
-      {TESTIMONIALS.map((t, i) => (
-        <div key={i} className="pro-testimonial">
-          <div className="pro-testimonial-stars">★★★★★</div>
-          <p className="pro-testimonial-quote">"{t.quote}"</p>
-          <div className="pro-testimonial-user">
-            <img src={t.avatar} alt={t.name} className="pro-testimonial-avatar" />
-            <div className="pro-testimonial-info">
-              <div className="pro-testimonial-name">{t.name}</div>
-              <div className="pro-testimonial-role">{t.role}</div>
-            </div>
-          </div>
+// ─── Sliding Testimonials (dual marquee — same as the landing page) ───
+function TestimonialMarquee() {
+  const pauseTrack = (e, state) => {
+    e.currentTarget.querySelector('.pro-tm-track').style.animationPlayState = state;
+  };
+
+  const renderCard = (t, i) => (
+    <div key={i} className="pro-tm-card">
+      <div className="pro-tm-stars">★★★★★</div>
+      <p className="pro-tm-quote">"{t.quote}"</p>
+      <div className="pro-tm-user">
+        <img src={t.avatar} alt={t.name} className="pro-tm-avatar" />
+        <div className="pro-tm-user-info">
+          <div className="pro-tm-name">{t.name}</div>
+          <div className="pro-tm-role">{t.role}</div>
         </div>
-      ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="pro-tm">
+      <div
+        className="pro-tm-wrapper"
+        onMouseEnter={(e) => pauseTrack(e, 'paused')}
+        onMouseLeave={(e) => pauseTrack(e, 'running')}
+      >
+        <div className="pro-tm-track track-right">
+          {[...topTestimonials, ...topTestimonials, ...topTestimonials].map(renderCard)}
+        </div>
+      </div>
+
+      <div
+        className="pro-tm-wrapper"
+        onMouseEnter={(e) => pauseTrack(e, 'paused')}
+        onMouseLeave={(e) => pauseTrack(e, 'running')}
+      >
+        <div className="pro-tm-track track-left">
+          {[...bottomTestimonials, ...bottomTestimonials, ...bottomTestimonials].map(renderCard)}
+        </div>
+      </div>
     </div>
   );
 }
@@ -514,7 +512,7 @@ export default function ProPage() {
             Join 2,400+ premium users who've upgraded their academic game.
           </p>
         </div>
-        <TestimonialList />
+        <TestimonialMarquee />
       </section>
 
       {/* ═══════════ FAQ ═══════════ */}

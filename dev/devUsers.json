@@ -1,0 +1,14 @@
+[
+  {
+    "departments": ["CSE", "EEE", "CE", "ME", "IPE", "TE", "ARCH", "BBA"],
+    "semesters": [1, 2, 3, 4, 5, 6, 7, 8],
+    "sections": ["A", "B", "C", "D"],
+    "labGroups": ["A1", "A2", "B1", "B2", "C1", "C2", "D1", "D2"],
+    "studentsPerCombo": 5,
+    "namePool": [
+      "Rafi", "Nadia", "Arif", "Samira", "Farhan", "Tasnim", "Mahi", "Riyad",
+      "Jannat", "Sami", "Ayesha", "Imran", "Fahim", "Rahim", "Sadia", "Khalid",
+      "Nusrat", "Shakil", "Mitu", "Rashed", "Prome", "Asif", "Lamia", "Hasan", "Mim"
+    ]
+  }
+]

@@ -9,6 +9,8 @@ import {
 } from './userStore.mjs';
 import { authRateLimiter } from './rateLimiter.mjs';
 
+export { handleDevSwitchUser, handleDevSeedUsers, handleDevUsers };
+
 const JWT_SECRET = process.env.JWT_SECRET || (() => {
   console.warn('⚠️  JWT_SECRET not set in .env — using insecure default. Set JWT_SECRET in production!');
   return 'aust-wise-dev-secret-change-in-production';
@@ -75,6 +77,54 @@ async function handleLogin(req, res) {
 async function handleLogout(req, res) {
   clearAuthCookie(res);
   return sendJson(res, 200, { success: true });
+}
+
+/** Dev-only endpoints - disabled in production */
+async function handleDevSwitchUser(req, res) {
+  if (process.env.NODE_ENV === 'production') {
+    return sendJson(res, 403, { success: false, error: 'Dev endpoints disabled in production' });
+  }
+  const body = await readJsonBody(req);
+  const userId = String(body?.userId || '').trim();
+  if (!userId) return sendJson(res, 400, { success: false, error: 'userId is required' });
+  try {
+    const user = await getUserById(userId);
+    if (!user) return sendJson(res, 404, { success: false, error: 'User not found' });
+    const token = signToken(user);
+    setAuthCookie(res, token);
+    return sendJson(res, 200, { success: true, user: sanitizeUser(user) });
+  } catch (err) {
+    return sendJson(res, 500, { success: false, error: err.message || 'Switch failed' });
+  }
+}
+
+async function handleDevSeedUsers(req, res) {
+  if (process.env.NODE_ENV === 'production') {
+    return sendJson(res, 403, { success: false, error: 'Dev endpoints disabled in production' });
+  }
+  try {
+    const { seedDevUsers } = await import('./userStore.mjs');
+    const { seedDevData } = await import('./devDataSeed.mjs');
+    const result = await seedDevUsers();
+    // Realistic internal data (shared routines + messages) for the dev users.
+    const data = await seedDevData();
+    return sendJson(res, 200, { success: true, ...result, data });
+  } catch (err) {
+    return sendJson(res, 500, { success: false, error: err.message || 'Seeding failed' });
+  }
+}
+
+async function handleDevUsers(req, res) {
+  if (process.env.NODE_ENV === 'production') {
+    return sendJson(res, 403, { success: false, error: 'Dev endpoints disabled in production' });
+  }
+  try {
+    const { getDevUsers } = await import('./userStore.mjs');
+    const users = await getDevUsers();
+    return sendJson(res, 200, { success: true, users });
+  } catch (err) {
+    return sendJson(res, 500, { success: false, error: err.message || 'Failed to load users' });
+  }
 }
 
 /** Verify a Google ID token via Google's tokeninfo endpoint */
@@ -192,6 +242,7 @@ const SELF_EDITABLE_FIELDS = [
   'designation', 'company', 'graduationYear',
   'facebook', 'whatsapp', 'linkedin', 'discord',
   'openForTalk',
+  'orbit', // { checkpoints, favoriteColor } — public, shown to anyone visiting the orbit
 ];
 
 /** Normalize "3.1" or "3.1.x" → "Year 3 - Semester 1"; passthrough otherwise. */
@@ -219,6 +270,16 @@ async function handleProfileUpdate(req, res) {
     if (key in body) {
       patch[key] = typeof body[key] === 'string' ? body[key].trim() : body[key];
     }
+  }
+  // Orbit payload is user-controlled JSON — sanity-check its shape and size so
+  // one account can't bloat the shared member directory.
+  if ('orbit' in patch && patch.orbit != null) {
+    const o = patch.orbit;
+    const ok = o && typeof o === 'object'
+      && (o.checkpoints === undefined || Array.isArray(o.checkpoints))
+      && (o.favoriteColor === undefined || typeof o.favoriteColor === 'string')
+      && JSON.stringify(o).length <= 100_000;
+    if (!ok) delete patch.orbit;
   }
   // Keep yearSemester + semester consistent regardless of the format sent.
   if ('yearSemester' in patch) {

@@ -21,10 +21,57 @@ export const MASTER_CHECKPOINTS = [
   { id: 'cp-10', type: 'bucket_list', label: 'Bucket List & Goals', isVisible: true, order: 10, fields: { items: [] } },
 ];
 
-const STORAGE_KEY = 'orbits-checkpoints-v1';
+// Orbit data is stored per user so each account's configured orbit survives
+// account switches (dev quick-login etc.). The old shared keys are kept as a
+// legacy fallback — trusted only when the stored user_details id matches.
+const LEGACY_STORAGE_KEY = 'orbits-checkpoints-v1';
+const LEGACY_FAV_COLOR_KEY = 'orbits-favorite-color';
+const getCheckpointsKey = (userId) => (userId && userId !== 'guest' ? `orbits-checkpoints-v1-${userId}` : LEGACY_STORAGE_KEY);
+const getFavoriteColorKey = (userId) => (userId && userId !== 'guest' ? `orbits-favorite-color-${userId}` : LEGACY_FAV_COLOR_KEY);
 const OrbitsContext = createContext(null);
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
+
+/**
+ * Read a user's saved orbit checkpoints. Checks the per-user key first; the
+ * legacy shared key is only trusted when its cp-01 user_details id matches the
+ * target user (id or awid), so other accounts' old data is never shown.
+ */
+export function loadUserOrbit(userId, awid) {
+  try {
+    const perUser = localStorage.getItem(getCheckpointsKey(userId));
+    const raw = perUser || localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || !parsed.length) return null;
+    if (!perUser) {
+      const owner = parsed.find((cp) => cp.id === 'cp-01')?.fields?.id;
+      if (owner && String(owner).trim() && ![userId, awid].filter(Boolean).some((v) => String(v) === String(owner))) {
+        return null; // legacy data belongs to a different account
+      }
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+/** Read a user's favorite orbit color (per-user key, legacy key as fallback). */
+export function loadUserFavoriteColor(userId) {
+  try {
+    return localStorage.getItem(getFavoriteColorKey(userId)) || localStorage.getItem(LEGACY_FAV_COLOR_KEY) || '';
+  } catch {
+    return '';
+  }
+}
+
+function persistFavoriteColor(userId, color) {
+  try {
+    const key = getFavoriteColorKey(userId);
+    if (color) localStorage.setItem(key, color);
+    else localStorage.removeItem(key);
+  } catch { /* storage unavailable */ }
+}
 
 /* ─── schema helpers (shared by the config panel + preview renderer) ─── */
 export function humanizeKey(key) {
@@ -60,10 +107,8 @@ function prefillUserDetails(fields, user) {
 function buildInitial(user, fromSaved) {
   const savedMap = {};
   if (fromSaved) {
-    try {
-      const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-      if (Array.isArray(parsed)) parsed.forEach((cp) => { savedMap[cp.id] = cp; });
-    } catch { /* ignore corrupt cache */ }
+    const parsed = loadUserOrbit(user?.id, user?.awid);
+    if (parsed) parsed.forEach((cp) => { savedMap[cp.id] = cp; });
   }
   return MASTER_CHECKPOINTS.map((master) => {
     const saved = savedMap[master.id];
@@ -82,9 +127,9 @@ export function OrbitsProvider({ user, children }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(checkpoints));
+      localStorage.setItem(getCheckpointsKey(user?.id), JSON.stringify(checkpoints));
     } catch { /* storage unavailable */ }
-  }, [checkpoints]);
+  }, [checkpoints, user?.id]);
 
   // The auth user may resolve after this provider first mounts (guest →
   // authenticated). When a real user appears, backfill any empty user_details
@@ -100,33 +145,74 @@ export function OrbitsProvider({ user, children }) {
     }
   }, [user]);
 
+  // The config panel edits are user actions — only those push the orbit to the
+  // server (debounced), so opening the tab never writes default checkpoints.
+  const dirtyRef = useRef(false);
+  const markDirty = useCallback(() => { dirtyRef.current = true; }, []);
+
   const updateCheckpointOrder = useCallback((id, newOrder) => {
+    markDirty();
     setCheckpoints((prev) => (
       [...prev.map((c) => (c.id === id ? { ...c, order: newOrder } : c))].sort((a, b) => a.order - b.order)
     ));
-  }, []);
+  }, [markDirty]);
 
   const toggleVisibility = useCallback((id) => {
+    markDirty();
     setCheckpoints((prev) => prev.map((c) => (c.id === id ? { ...c, isVisible: !c.isVisible } : c)));
-  }, []);
+  }, [markDirty]);
 
   const updateCheckpointFields = useCallback((id, updatedFields) => {
+    markDirty();
     setCheckpoints((prev) => prev.map((c) => (c.id === id ? { ...c, fields: { ...c.fields, ...updatedFields } } : c)));
-  }, []);
+  }, [markDirty]);
 
-  const resetCheckpoints = useCallback(() => setCheckpoints(buildInitial(user, false)), [user]);
+  const resetCheckpoints = useCallback(() => {
+    markDirty();
+    setCheckpoints(buildInitial(user, false));
+  }, [user, markDirty]);
+
+  // The road-trip accent. Defaults to the deterministic portfolio color unless
+  // the user picks their own — then the drive uses theirs, live.
+  const [favoriteColor, setFavoriteColorState] = useState(() => loadUserFavoriteColor(user?.id));
+  const setFavoriteColor = useCallback((color) => {
+    markDirty();
+    const hex = /^#[0-9a-fA-F]{6}$/.test(color || '') ? color.toLowerCase() : '';
+    setFavoriteColorState(hex);
+    persistFavoriteColor(user?.id, hex);
+  }, [user?.id, markDirty]);
+
+  // Persist the configured orbit to the server (debounced) so other users — on
+  // any device — see the same orbit when they visit it. localStorage stays as
+  // the fast offline cache.
+  const orbitUserId = user?.id;
+  useEffect(() => {
+    if (!orbitUserId || orbitUserId === 'guest' || !dirtyRef.current) return undefined;
+    const timer = setTimeout(() => {
+      const orbit = { checkpoints, favoriteColor };
+      fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ orbit }),
+      }).catch(() => { /* offline — localStorage still holds the config */ });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [checkpoints, favoriteColor, orbitUserId]);
 
   const value = useMemo(() => {
     const sorted = [...checkpoints].sort((a, b) => a.order - b.order);
     return {
       checkpoints: sorted,
       visibleCheckpoints: sorted.filter((c) => c.isVisible),
+      favoriteColor,
+      setFavoriteColor,
       updateCheckpointOrder,
       toggleVisibility,
       updateCheckpointFields,
       resetCheckpoints,
     };
-  }, [checkpoints, updateCheckpointOrder, toggleVisibility, updateCheckpointFields, resetCheckpoints]);
+  }, [checkpoints, favoriteColor, setFavoriteColor, updateCheckpointOrder, toggleVisibility, updateCheckpointFields, resetCheckpoints]);
 
   return <OrbitsContext.Provider value={value}>{children}</OrbitsContext.Provider>;
 }

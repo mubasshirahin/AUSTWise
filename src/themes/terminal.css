@@ -284,20 +284,20 @@
 }
 
 [data-theme="terminal"] .btn-primary {
-  background: var(--term-green);
+  background: var(--accent-blue);
   color: var(--term-bg);
-  border: 1px solid var(--term-green);
+  border: 1px solid var(--accent-blue);
   text-shadow: none;
 }
 [data-theme="terminal"] .btn-primary:hover {
   background: transparent;
-  color: var(--term-green);
-  box-shadow: 0 0 4px rgba(51, 255, 0, 0.3);
+  color: var(--accent-blue);
+  box-shadow: 0 0 4px var(--accent-blue-glow);
   filter: none;
 }
 [data-theme="terminal"] .btn-primary:active {
   color: var(--term-bg);
-  background: var(--term-green);
+  background: var(--accent-blue);
 }
 
 [data-theme="terminal"] .btn-secondary {

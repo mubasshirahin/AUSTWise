@@ -337,10 +337,7 @@
   background: color-mix(in srgb, var(--accent-amber) 13%, var(--bg-primary));
   color: var(--accent-amber);
   font-weight: var(--fw-semibold);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--accent-amber) 55%, transparent),
-    0 0 20px color-mix(in srgb, var(--accent-amber) 28%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .nav-item-premium.active::before {
@@ -356,11 +353,7 @@
   background: color-mix(in srgb, var(--accent-amber) 17%, var(--bg-primary));
   color: var(--accent-amber);
   transform: translateY(-1px);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--accent-amber) 68%, transparent),
-    0 6px 22px -4px color-mix(in srgb, var(--accent-amber) 50%, transparent),
-    0 0 26px color-mix(in srgb, var(--accent-amber) 36%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .nav-item-premium.active .nav-icon-wrapper svg,
@@ -453,10 +446,7 @@
 
 /* Active state */
 .nav-item-premium.active {
-  box-shadow:
-    0 0 0 2px rgba(245, 158, 11, 0.5),
-    0 0 16px 6px rgba(245, 158, 11, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
   animation: none;
 }
 

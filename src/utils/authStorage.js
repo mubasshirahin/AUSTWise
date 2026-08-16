@@ -244,14 +244,14 @@ function loadAccounts() {
     if (!adminExists) {
       list.push({
         id: DEFAULT_ADMIN_ID,
-        name: 'AUSTWise Admin',
+        name: 'Admin',
         email: 'austwise59@gmail.com',
         password: btoa(import.meta.env.VITE_ADMIN_DEFAULT_PASSWORD || 'changeme'),
         role: 'admin',
         department: 'Admin Department',
         designation: 'Administrator',
         company: 'Ahsanullah University of Science and Technology',
-        initials: 'AW',
+        initials: 'A',
         createdAt: new Date().toISOString(),
       });
       localStorage.setItem(accountsKey, JSON.stringify(list));
@@ -926,7 +926,7 @@ export function saveRoleApplications(applications) {
  * @param {string} department - e.g. 'CSE'
  * @param {number|string} semester - e.g. 3
  * @param {string} appliedRole - 'cr' or 'sr'
- * @param {string} [targetSection] - 'A', 'B', or 'C' (for SR)
+ * @param {string} [targetSection] - 'A', 'B', 'C', or 'D' (for SR)
  * @param {string} [targetLabSection] - 'A1', 'A2', etc. (for CR)
  * @returns {{ vacant: boolean, occupant: object|null }}
  */
@@ -959,14 +959,14 @@ export function checkSlotVacancy(department, semester, appliedRole, targetSectio
 export function getSlotVacancyMap(department, semester) {
   const accounts = loadAccounts();
   
-  const srSlots = ['A', 'B', 'C'].map(sec => ({
+  const srSlots = ['A', 'B', 'C', 'D'].map(sec => ({
     slot: `Section ${sec}`,
     key: sec,
     type: 'sr',
     ...checkSlotVacancy(department, semester, 'sr', sec, null),
   }));
 
-  const crSlots = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map(lab => ({
+  const crSlots = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2'].map(lab => ({
     slot: `Lab ${lab}`,
     key: lab,
     type: 'cr',

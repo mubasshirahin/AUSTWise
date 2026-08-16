@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Home, DollarSign, NotebookPen, UtensilsCrossed, Banknote, Route } from 'lucide-react';
+import { Home, DollarSign, NotebookPen, UtensilsCrossed, Banknote, ShieldCheck, KeyRound } from 'lucide-react';
 import GliderTabs from '../../components/GliderTabs';
 import useTabUrlState from '../../hooks/useTabUrlState';
 import MoneyTrackerPage from '../money-tracker/MoneyTrackerPage';
 import CoverPageGeneratorPage from '../cover-page-generator/CoverPageGeneratorPage';
 import MessMealTrackerPage from './MessMealTrackerPage';
 import DhakaRoutes from './DhakaRoutes';
+import DigitalFootprintCleaner from '../digital-footprint/DigitalFootprintCleaner';
+import PasswordManagerPage from '../password-manager/PasswordManagerPage';
 import './DailyLifePage.css';
 import './daily-life-tokens.css';
 
@@ -15,6 +17,8 @@ const TABS = [
   { id: 'bhara-koto',           label: 'Bhara Koto',          icon: Banknote,       color: 'amber', desc: 'Distance & cost'     },
   { id: 'money-tracker',        label: 'TakaGeloKoi',         icon: DollarSign,     color: 'amber', desc: 'Expenses & budget'  },
   { id: 'mess-meal',            label: 'Mess Meal',           icon: UtensilsCrossed,color: 'amber', desc: 'Meal planner'       },
+  { id: 'digital-footprint',    label: 'Footprint',           icon: ShieldCheck,    color: 'cyan',  desc: 'Map online accounts' },
+  { id: 'password-manager',     label: 'Passwords',           icon: KeyRound,       color: 'amber', desc: 'Secure login vault' },
 ];
 
 const STORAGE_KEY = 'daily-life-active-tab';
@@ -37,6 +41,8 @@ export default function DailyLifePage() {
       case 'cover-page-generator': return <CoverPageGeneratorPage />;
       case 'mess-meal':            return <MessMealTrackerPage />;
       case 'bhara-koto':           return <DhakaRoutes />;
+      case 'digital-footprint':    return <DigitalFootprintCleaner />;
+      case 'password-manager':     return <PasswordManagerPage />;
       default:                     return <MoneyTrackerPage />;
     }
   };

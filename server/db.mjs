@@ -165,6 +165,29 @@ export async function initializeDatabase() {
       ALTER TABLE live_library_occupancy ADD lng FLOAT NULL;
   `);
 
+  // Create PasswordVault table (Password Manager — credentials stored
+  // AES-256-GCM encrypted, never plaintext)
+  await p.request().query(`
+    IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PasswordVault]') AND type in (N'U'))
+    BEGIN
+      CREATE TABLE PasswordVault (
+        Id           UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWID(),
+        UserId       NVARCHAR(100)    NOT NULL,
+        Platform     NVARCHAR(120)    NOT NULL,
+        Email        NVARCHAR(255)    NOT NULL,
+        Username     NVARCHAR(120)    NULL,
+        EncIv        NVARCHAR(500)    NOT NULL,
+        EncContent   NVARCHAR(MAX)    NOT NULL,
+        EncAuthTag   NVARCHAR(500)    NOT NULL,
+        CreatedAt    DATETIME2        NOT NULL DEFAULT GETDATE(),
+        UpdatedAt    DATETIME2        NOT NULL DEFAULT GETDATE(),
+        CONSTRAINT UQ_PasswordVault_User UNIQUE (UserId, Platform)
+      );
+      CREATE NONCLUSTERED INDEX IX_PasswordVault_UserId
+        ON PasswordVault (UserId);
+    END
+  `);
+
   // Create Invitations table
   await p.request().query(`
     IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Invitations]') AND type in (N'U'))

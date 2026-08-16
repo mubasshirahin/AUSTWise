@@ -646,21 +646,28 @@
   box-shadow: var(--shadow-sm);
 }
 
-/* No top color strip — density lives on the left border (see .is-*) */
+/* No top color strip — club theme color lives on the left border (see .is-*) */
 .clubs-card-accent {
   display: none;
 }
 
-/* Density colors */
-.clubs-card.is-emerald { border-left-color: var(--accent-emerald); }
-.clubs-card.is-cyan     { border-left-color: var(--accent-cyan); }
-.clubs-card.is-amber    { border-left-color: var(--accent-amber); }
+/* Club theme accent colors — one per club, derived from its identity color.
+   Border + name re-skin with the active [data-theme] palette. */
+.clubs-card.is-blue     { border-left-color: var(--accent-blue); }
+.clubs-card.is-orange   { border-left-color: var(--accent-orange); }
+.clubs-card.is-emerald  { border-left-color: var(--accent-emerald); }
 .clubs-card.is-rose     { border-left-color: var(--accent-rose); }
+.clubs-card.is-purple   { border-left-color: var(--accent-purple); }
+.clubs-card.is-amber    { border-left-color: var(--accent-amber); }
+.clubs-card.is-cyan     { border-left-color: var(--accent-cyan); }
 
-.clubs-card.is-emerald .clubs-card-name { color: var(--accent-emerald); }
-.clubs-card.is-cyan     .clubs-card-name { color: var(--accent-cyan); }
-.clubs-card.is-amber    .clubs-card-name { color: var(--accent-amber); }
+.clubs-card.is-blue     .clubs-card-name { color: var(--accent-blue); }
+.clubs-card.is-orange   .clubs-card-name { color: var(--accent-orange); }
+.clubs-card.is-emerald  .clubs-card-name { color: var(--accent-emerald); }
 .clubs-card.is-rose     .clubs-card-name { color: var(--accent-rose); }
+.clubs-card.is-purple   .clubs-card-name { color: var(--accent-purple); }
+.clubs-card.is-amber    .clubs-card-name { color: var(--accent-amber); }
+.clubs-card.is-cyan     .clubs-card-name { color: var(--accent-cyan); }
 
 .clubs-card-body {
   display: flex;
@@ -686,6 +693,15 @@
   justify-content: center;
   flex-shrink: 0;
 }
+
+/* Logo accent tiles — glow bg + accent icon, one per club theme color */
+.clubs-card-logo.accent-blue     { background: var(--accent-blue-glow);     color: var(--accent-blue); }
+.clubs-card-logo.accent-orange   { background: var(--accent-orange-glow);   color: var(--accent-orange); }
+.clubs-card-logo.accent-emerald  { background: var(--accent-emerald-glow);  color: var(--accent-emerald); }
+.clubs-card-logo.accent-rose     { background: var(--accent-rose-glow);     color: var(--accent-rose); }
+.clubs-card-logo.accent-purple   { background: var(--accent-purple-glow);   color: var(--accent-purple); }
+.clubs-card-logo.accent-amber    { background: var(--accent-amber-glow);    color: var(--accent-amber); }
+.clubs-card-logo.accent-cyan     { background: var(--accent-cyan-glow);     color: var(--accent-cyan); }
 
 .clubs-card-head-text {
   flex: 1;
@@ -1104,8 +1120,6 @@
   gap: var(--sp-3);
   padding: var(--sp-4);
   border-bottom: 1px solid var(--border-secondary);
-  background:
-    linear-gradient(120deg, color-mix(in srgb, var(--accent-amber) 5%, transparent), transparent 45%);
 }
 
 .student-dir-dept-icon {
@@ -1161,8 +1175,6 @@
 .student-dir-exec-section {
   padding: var(--sp-4) var(--sp-5);
   border-bottom: 1px solid var(--border-secondary);
-  background:
-    linear-gradient(120deg, color-mix(in srgb, var(--accent-amber) 4%, transparent), transparent 40%);
 }
 
 .student-dir-exec-label {
@@ -1491,8 +1503,6 @@
   padding: var(--sp-4) var(--sp-5);
   border-top: 1px solid var(--border-secondary);
   animation: fadeInUp 0.25s ease forwards;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--accent-amber) 3%, transparent), transparent 30%);
 }
 
 /* ── Role sections (SR, CR, Students) ── */

@@ -30,24 +30,24 @@ export default function NextWeekSchedule() {
     return '';
   })();
 
-  // Get user's batch group (A1, A2, B1, B2, C1, C2)
+  // Get user's batch group (A1, A2, B1, B2, C1, C2, D1, D2)
   // Priority: section > labSection > calculated from batchNo
   const userBatchGroup = (() => {
     // First check if user has a section (like B2, A1, etc.)
-    if (user?.section && ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].includes(user.section.toUpperCase())) {
+    if (user?.section && ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2'].includes(user.section.toUpperCase())) {
       return user.section.toUpperCase();
     }
     // Then check labSection
-    if (user?.labSection && ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].includes(user.labSection.toUpperCase())) {
+    if (user?.labSection && ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2'].includes(user.labSection.toUpperCase())) {
       return user.labSection.toUpperCase();
     }
     // Fallback: calculate from batch number
     if (user?.batchNo) {
       const batchNo = parseInt(user.batchNo);
-      // Map batch number to batch group (A1, A2, B1, B2, C1, C2)
-      // Batch 52 -> A1, 53 -> A2, 54 -> B1, 55 -> B2, 56 -> C1, 57 -> C2, 58 -> A1, etc.
-      const batchGroupIndex = (batchNo - 52) % 6;
-      const groups = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+      // Map batch number to batch group (A1, A2, B1, B2, C1, C2, D1, D2)
+      // Batch 52 -> A1, 53 -> A2, 54 -> B1, 55 -> B2, 56 -> C1, 57 -> C2, 58 -> D1, 59 -> D2, 60 -> A1, etc.
+      const batchGroupIndex = (batchNo - 52) % 8;
+      const groups = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2'];
       return groups[batchGroupIndex >= 0 ? batchGroupIndex : 0];
     }
     return 'A1';

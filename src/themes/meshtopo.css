@@ -222,7 +222,7 @@
 [data-theme="meshtopo"] .btn:active { transform: scale(0.98); }
 
 [data-theme="meshtopo"] .btn-primary {
-  background: var(--mt-emerald);
+  background: var(--accent-blue);
   color: var(--text-inverse);
   border: none;
   box-shadow: none;
