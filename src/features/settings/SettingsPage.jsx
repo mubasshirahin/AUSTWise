@@ -3,11 +3,13 @@ import { useSearchParams } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useRoutine } from '../../context/RoutineContext';
-import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, SquareTerminal, Sparkles, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2, Orbit } from 'lucide-react';
+import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, SquareTerminal, Sparkles, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2, Orbit, Route, Flag, PawPrint, Clapperboard, Gamepad2, Eye, Headphones, Swords } from 'lucide-react';
 import AboutUs from './AboutUs';
 import LinkedAccountsSection from './LinkedAccountsSection';
 import GliderTabs from '../../components/GliderTabs';
 import { useNotifications } from '../../hooks/useNotifications';
+import { useStalk } from '../stalk-road/StalkContext';
+import { buildStalkPortfolio } from '../stalk-road/mockStalkData';
 import { submitRoleApplication, getApplicationsByUserId, getUserApplicationStatus, checkSlotVacancy, getSlotVacancyMap, resignFromRole, withdrawApplication, deleteAccountById, createAwid, syncRoleApplicationsFromServer } from '../../utils/authStorage';
 import './SettingsPage.css';
 import '../../components/PageHero.css';
@@ -133,6 +135,15 @@ const lightThemes = [
 
 const themeOptions = [...darkThemes, ...lightThemes];
 
+// The five checkpoints on every orbit road-trip.
+const ORBIT_STOPS = [
+  { label: 'Movies', Icon: Clapperboard },
+  { label: 'Gaming', Icon: Gamepad2 },
+  { label: 'Anime', Icon: Eye },
+  { label: 'Music', Icon: Headphones },
+  { label: 'This or That', Icon: Swords },
+];
+
 // Shared subtab masthead — same style as the Identity masthead.
 function SettingsMasthead({ icon: Icon, title, subtitle }) {
   return (
@@ -157,11 +168,16 @@ export default function SettingsPage() {
   const { user, isAuthenticated, updateUser, logout, refreshUserFromServer } = useAuth();
   const { routine, weekDays } = useRoutine();
   const { supported, permission, settings: notifSettings, enable: enableNotifs, disable: disableNotifs, updateSetting } = useNotifications(routine, weekDays);
+  const { stalk } = useStalk();
+
+  // The logged-in user's own stalk profile — the same orbit the road-trip
+  // drives through, so "My Orbits" previews exactly what stalking yourself shows.
+  const myPortfolio = useMemo(() => (user ? buildStalkPortfolio(user) : null), [user]);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeSubTab, setActiveSubTab] = useState(() => {
     const tab = searchParams.get('tab');
-    return ['profile', 'theme', 'notifications', 'about', 'invite'].includes(tab) ? tab : 'profile';
+    return ['profile', 'theme', 'notifications', 'about', 'orbits', 'invite'].includes(tab) ? tab : 'profile';
   });
 
   // AWID (AUSTWise ID) is the app-generated identifier — always separate
@@ -189,6 +205,7 @@ export default function SettingsPage() {
 
   const settingsTabs = [
     { id: 'profile', label: 'Identity', icon: User, desc: 'Identity & academic info', color: 'blue' },
+    { id: 'orbits', label: 'My Orbits', icon: Orbit, desc: 'Your stalk journey', color: 'cyan' },
     { id: 'theme', label: 'UI', icon: Settings, desc: 'Themes & appearance', color: 'purple' },
     { id: 'notifications', label: 'Configure', icon: Bell, desc: 'Alerts & reminders', color: 'amber' },
     { id: 'about', label: 'Credits', icon: Info, desc: 'Developer credits & info', color: 'emerald' },
@@ -1558,6 +1575,92 @@ export default function SettingsPage() {
                   />
                 </div>
               </div>
+            </div>
+          )}
+
+{activeSubTab === 'orbits' && (
+            <div className="animate-fadeIn">
+              <SettingsMasthead icon={Orbit} title="My Orbits" subtitle="Take a road-trip through your own orbit" />
+              <div className="schedule-dotted-divider" />
+
+              {!user ? (
+                <div className="cfg-banner cfg-banner--rose">
+                  <AlertTriangle size={18} style={{ color: 'var(--accent-rose)', flexShrink: 0 }} />
+                  <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent-rose)' }}>Log in to explore your orbit.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="orbits-hero">
+                    <div className="orbits-avatar">
+                      {myPortfolio?.avatar ? (
+                        <img src={myPortfolio.avatar} alt="Your orbit avatar" />
+                      ) : (
+                        myPortfolio?.initials
+                      )}
+                    </div>
+                    <div className="orbits-hero-info">
+                      <span className="orbits-eyebrow">YOUR ORBIT</span>
+                      <h4 className="orbits-name">{myPortfolio?.name}</h4>
+                      <p className="orbits-desc">
+                        {myPortfolio?.department}
+                        {myPortfolio?.semester ? ` · Sem ${myPortfolio.semester}` : ''} — {myPortfolio?.vibe}
+                      </p>
+                      <div className="orbits-color-row">
+                        <span>Favorite color</span>
+                        <span className="orbits-swatch" style={{ background: myPortfolio?.favoriteColor }} />
+                        <code>{myPortfolio?.favoriteColor?.toUpperCase()}</code>
+                      </div>
+                    </div>
+                    <div className="orbits-start">
+                      <button className="btn btn-primary" onClick={() => stalk(user)}>
+                        <PawPrint size={16} /> Start my orbit trip
+                      </button>
+                      <p>Drives a scroll road-trip through your movies, games, anime, music &amp; hot takes.</p>
+                    </div>
+                  </div>
+
+                  <div className="orbits-grid">
+                    <div className="orbits-stat">
+                      <Route size={18} />
+                      <strong>{myPortfolio?.miles ?? 0} mi</strong>
+                      <span>orbit length</span>
+                    </div>
+                    <div className="orbits-stat">
+                      <Flag size={18} />
+                      <strong>{ORBIT_STOPS.length}</strong>
+                      <span>checkpoints</span>
+                    </div>
+                    <div className="orbits-stat">
+                      <PawPrint size={18} />
+                      <strong>{myPortfolio?.hobbies?.length ?? 0}</strong>
+                      <span>hobbies</span>
+                    </div>
+                    <div className="orbits-stat">
+                      <Orbit size={18} />
+                      <strong>
+                        {myPortfolio?.movies?.length ?? 0}·{myPortfolio?.games?.length ?? 0}·
+                        {myPortfolio?.anime?.length ?? 0}
+                      </strong>
+                      <span>films · games · anime</span>
+                    </div>
+                  </div>
+
+                  <div className="orbits-stops">
+                    <span className="orbits-stops-title">Checkpoint stops on your route</span>
+                    <div className="orbits-stop-chips">
+                      {ORBIT_STOPS.map((s) => {
+                        const Icon = s.Icon;
+                        return (
+                          <span key={s.label} className="orbits-stop-chip" style={{ '--orbit-accent': myPortfolio?.favoriteColor }}>
+                            <Icon size={13} />
+                            {s.label}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
