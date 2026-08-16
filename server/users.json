@@ -74,5 +74,42 @@
     "linkedin": "",
     "discord": "",
     "createdAt": "2026-08-11T15:15:22.635Z"
+  },
+  {
+    "id": "STU-MSO5JP6RR4JOM",
+    "awid": "STU-CSE-AW000002",
+    "email": "sadia.rahman.dummy@aust.edu",
+    "name": "Sadia Rahman",
+    "password": "$2b$10$qZ2sGDEfvYoln1m7GdX6UOwtxVQhsXkhG8RZvIVHq0A86VVBYOwX2",
+    "role": "student",
+    "department": "CSE",
+    "batch": "Quanta",
+    "batchNo": "52",
+    "batchName": "Quanta",
+    "designation": "",
+    "company": "",
+    "graduationYear": "",
+    "yearSemester": "Year 3 - Semester 1",
+    "section": "A",
+    "labSection": "A2",
+    "semester": 5,
+    "avatar": null,
+    "openForTalk": true,
+    "linkedSocial": {},
+    "linkedAccounts": [],
+    "cgpa": 3.85,
+    "attendancePct": null,
+    "privacy": {
+      "showCgpa": true,
+      "showAttendance": false
+    },
+    "creditsCompleted": 96,
+    "totalCredits": 160,
+    "bloodGroup": "",
+    "facebook": "",
+    "whatsapp": "",
+    "linkedin": "",
+    "discord": "",
+    "createdAt": "2026-08-16T10:00:00.000Z"
   }
 ]

@@ -1,0 +1,387 @@
+/* ─── Scroll-driven Stalk Road-Trip ───
+   The overlay is its own fixed scroll container. Inside it a tall track
+   provides the scroll runway while the stage stays pinned (position: sticky)
+   for the whole journey. The car follows the winding road, scrubbed by
+   scroll progress, and each checkpoint's details pop in on the road itself. */
+
+.sr-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-toast) + 10);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  background: #07080c;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-primary) transparent;
+}
+
+.sr-track {
+  position: relative;
+  height: calc((var(--sr-segments, 7)) * 100vh);
+}
+
+.sr-stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.017) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.017) 1px, transparent 1px),
+    linear-gradient(180deg, #0b0d13 0%, #0d0f16 55%, #0a0c12 100%);
+  background-size: 200px 200px, 200px 200px, 40px 40px, 40px 40px, auto;
+}
+
+/* ── cinematic letterbox bars ── */
+.sr-letterbox {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 9vh;
+  background: #05060a;
+  z-index: 20;
+  pointer-events: none;
+}
+.sr-letterbox-top { top: 0; transform-origin: top center; }
+.sr-letterbox-bottom { bottom: 0; transform-origin: bottom center; }
+
+/* ── the road ── */
+.sr-band {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: calc(100vw * var(--sr-band-w, 4.2));
+  will-change: transform;
+}
+.sr-road-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.sr-road-body {
+  stroke: #1c2330;
+  stroke-width: 17;
+  fill: none;
+}
+.sr-road-edge {
+  stroke-width: 2.5;
+  fill: none;
+  opacity: 0.85;
+}
+.sr-road-dash {
+  stroke: rgba(255, 255, 255, 0.55);
+  stroke-width: 3;
+  stroke-dasharray: 26 34;
+  stroke-linecap: round;
+  fill: none;
+}
+
+/* ── checkpoint flags on the road ── */
+.sr-flag {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  transform: translate(-50%, -50%);
+  z-index: 6;
+  will-change: transform;
+  pointer-events: none;
+}
+.sr-flag-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 13px 13px 13px 3px;
+  background: linear-gradient(160deg, var(--stalk-accent), color-mix(in srgb, var(--stalk-accent) 70%, #0f172a));
+  color: #04231a;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+.sr-flag-label {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(5, 6, 10, 0.62);
+  color: #e2e8f0;
+  white-space: nowrap;
+}
+
+/* ── the car ── */
+.sr-car {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 112px;
+  height: 52px;
+  z-index: 8;
+  transform-origin: center;
+  will-change: transform;
+}
+.sr-car-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.45));
+}
+
+/* ── HUD ── */
+.sr-hud {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  z-index: 25;
+  pointer-events: none;
+}
+.sr-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 62vw;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(10, 12, 18, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  font-size: 12px;
+  color: #cbd5e1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sr-badge strong {
+  color: #fff;
+}
+.sr-close {
+  pointer-events: auto;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  background: rgba(10, 12, 18, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: transform var(--transition-fast), border-color var(--transition-fast);
+}
+.sr-close:hover {
+  transform: scale(1.06);
+  border-color: color-mix(in srgb, var(--stalk-accent) 60%, transparent);
+}
+
+.sr-stop-label {
+  position: absolute;
+  top: 64px;
+  left: 16px;
+  z-index: 24;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: var(--stalk-accent);
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+.sr-stage.sr-scrolled .sr-stop-label { opacity: 1; }
+
+/* ── progress bar ── */
+.sr-progress {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  z-index: 24;
+  overflow: hidden;
+}
+.sr-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--stalk-accent) 70%, #10b981), var(--stalk-accent));
+  border-radius: 999px;
+}
+
+/* ── scroll hint ── */
+.sr-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 64px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  z-index: 24;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+.sr-hint svg {
+  animation: sr-bounce 1.2s ease-in-out infinite;
+}
+.sr-stage.sr-scrolled .sr-hint {
+  opacity: 0;
+}
+@keyframes sr-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(8px); }
+}
+
+/* ── checkpoint detail panels (on the road) ── */
+.sr-cps {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none;
+}
+.sr-cp {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.92);
+  z-index: 20;
+  width: min(560px, 88vw);
+  max-height: 74vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  border-radius: 22px;
+  padding: 18px;
+  background: rgba(9, 11, 17, 0.82);
+  border: 1px solid color-mix(in srgb, var(--stalk-accent) 32%, rgba(255, 255, 255, 0.09));
+  box-shadow:
+    0 30px 70px -20px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(16px);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-primary) transparent;
+  transition: opacity 0.35s ease, transform 0.35s ease, visibility 0.35s;
+}
+.sr-cp.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* ── arrival panel ── */
+.sr-done-panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.94);
+  width: min(520px, 90vw);
+  z-index: 26;
+  padding: 34px 28px;
+  text-align: center;
+  border-radius: 24px;
+  background: rgba(9, 11, 17, 0.85);
+  border: 1px solid color-mix(in srgb, var(--stalk-accent) 42%, rgba(255, 255, 255, 0.1));
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(16px);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.4s ease, transform 0.4s ease, visibility 0.4s;
+}
+.sr-stage.sr-done .sr-done-panel {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translate(-50%, -50%) scale(1);
+}
+.sr-done-flag {
+  display: inline-grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 14px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--stalk-accent) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--stalk-accent) 40%, transparent);
+}
+.sr-done-title {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+.sr-done-sub {
+  margin: 0 0 18px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #94a3b8;
+}
+.sr-done-sub b {
+  color: #e2e8f0;
+}
+.sr-done-chips {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+}
+.sr-done-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.sr-done-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent-emerald), color-mix(in srgb, var(--accent-emerald) 65%, #10b981));
+  color: #04231a;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform var(--transition-fast);
+}
+.sr-done-btn:hover {
+  transform: translateY(-1px);
+}
+
+@media (max-width: 760px) {
+  .sr-cp {
+    width: 92vw;
+    max-height: 78vh;
+    padding: 12px;
+  }
+  .sr-badge {
+    max-width: 56vw;
+  }
+}

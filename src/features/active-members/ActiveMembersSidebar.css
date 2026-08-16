@@ -321,15 +321,26 @@
 .am-member-row {
   display: flex;
   align-items: center;
-  gap: var(--sp-3);
+  gap: 4px;
   width: 100%;
-  padding: 6px var(--sp-2);
+  padding: 3px var(--sp-1) 3px var(--sp-2);
+  border-radius: var(--radius-md);
+  text-align: left;
+}
+
+.am-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 4px var(--sp-1) 4px 0;
   border-radius: var(--radius-md);
   text-align: left;
   transition: background var(--transition-fast);
 }
 
-.am-member-row:hover {
+.am-row-main:hover {
   background: var(--bg-tertiary);
 }
 
@@ -339,6 +350,45 @@
 
 .am-row-offline:hover {
   opacity: 0.8;
+}
+
+/* Green STALK button — the gamified "start the road-trip" trigger */
+.am-stalk-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--accent-emerald), color-mix(in srgb, var(--accent-emerald) 65%, #10b981));
+  color: #04231a;
+  font-size: 9.5px;
+  font-weight: var(--fw-black);
+  letter-spacing: 0.08em;
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.35), 0 4px 12px -2px rgba(16, 185, 129, 0.5);
+  cursor: pointer;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), filter var(--transition-fast);
+  text-transform: uppercase;
+}
+
+.am-stalk-paw {
+  font-size: 10px;
+  line-height: 1;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.4));
+}
+
+.am-stalk-btn:hover {
+  transform: translateY(-1px) scale(1.05);
+  filter: brightness(1.1);
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.55), 0 6px 16px -2px rgba(16, 185, 129, 0.65);
+}
+
+.am-stalk-btn:active {
+  transform: scale(0.95);
+}
+
+.am-row-offline .am-stalk-btn {
+  filter: grayscale(0.6) brightness(0.9);
 }
 
 .am-avatar-wrap {
@@ -740,6 +790,18 @@
   background: var(--accent-blue-glow);
   border-color: var(--accent-blue);
   color: var(--accent-blue);
+}
+
+.am-pop-action-stalk {
+  color: var(--accent-emerald);
+  border-color: color-mix(in srgb, var(--accent-emerald) 45%, var(--border-primary));
+  background: var(--accent-emerald-glow);
+}
+
+.am-pop-action-stalk:hover {
+  background: var(--accent-emerald);
+  border-color: var(--accent-emerald);
+  color: #04231a;
 }
 
 /* ─── Responsive ─── */

@@ -9,6 +9,8 @@ import TopNavbar from './layout/TopNavbar';
 import SearchModal from './layout/SearchModal';
 import MobileNav from './layout/MobileNav';
 import ActiveMembersSidebar from './features/active-members/ActiveMembersSidebar';
+import { StalkProvider } from './features/stalk-road/StalkContext';
+import StalkRoadOverlay from './features/stalk-road/StalkRoadOverlay';
 import AuthPage from './features/auth/AuthPage';
 import LandingPage from './features/landing/LandingPage';
 import TermsPage from './pages/TermsPage';
@@ -128,82 +130,85 @@ function AppContent() {
   }, [location.pathname]);
 
   return (
-    <RoutineProvider>
-      <QuotePopup />
-      <NotificationRunner />
-      <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
-      <FloatingBackground />
-      <div className="app-layout">
-        <Sidebar
-          collapsed={sidebarCollapsed}
-          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-        />
-        <div className={`main-content ${sidebarCollapsed ? 'sidebar-collapsed' : ''}${membersOpen && isDesktop ? ' members-open' : ''}`}>
-          <TopNavbar
-            onMenuClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            onSearchOpen={setIsSearchOpen}
-            membersOpen={membersOpen}
-            onMembersToggle={() => setMembersOpen((o) => !o)}
+    <StalkProvider>
+      <RoutineProvider>
+        <QuotePopup />
+        <NotificationRunner />
+        <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+        <FloatingBackground />
+        <div className="app-layout">
+          <Sidebar
+            collapsed={sidebarCollapsed}
+            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
           />
-          <div className="page-wrapper" key={location.pathname}>
-            <Suspense fallback={
-              <div className="page-loading">
-                <div className="page-loading-spinner" />
-                <span>Loading…</span>
-              </div>
-            }>
-              <Routes>
-                <Route path="/" element={<AdminRoute />} />
-                <Route path="/admin/transcript-templates" element={<TranscriptTemplatesPage />} />
-                <Route path="/analytics" element={<AnalyticsPage />} />
-                <Route path="/vault" element={<VaultPage />} />
-                <Route path="/notebook" element={<NotebookPage />} />
-                <Route path="/cheatsheets" element={<CheatsheetsPage />} />
-                <Route path="/campus" element={<CampusPage />} />
-                <Route path="/community" element={<CommunityPage />} />
-                <Route path="/marketplace" element={<MarketplacePage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/messages" element={<MessagesPage />} />
-                <Route path="/admin" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
-                <Route path="/admin/overview" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
-                <Route path="/admin/notice-board" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
-                <Route path="/admin/canteen" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
-                <Route path="/admin/library" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
-                <Route path="/admin/users" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
-                <Route path="/admin/applications" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
-                <Route path="/admin/cr-sr-directory" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
-                <Route path="/admin/auditorium" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
-                <Route path="/workspace" element={<WorkspacePage />} />
-                <Route path="/study-room" element={<StudyRoomPage />} />
-                <Route path="/cp-hub" element={<CPHubPage />} />
-                <Route path="/money-tracker" element={<MoneyTrackerPage />} />
+          <div className={`main-content ${sidebarCollapsed ? 'sidebar-collapsed' : ''}${membersOpen && isDesktop ? ' members-open' : ''}`}>
+            <TopNavbar
+              onMenuClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              onSearchOpen={setIsSearchOpen}
+              membersOpen={membersOpen}
+              onMembersToggle={() => setMembersOpen((o) => !o)}
+            />
+            <div className="page-wrapper" key={location.pathname}>
+              <Suspense fallback={
+                <div className="page-loading">
+                  <div className="page-loading-spinner" />
+                  <span>Loading…</span>
+                </div>
+              }>
+                <Routes>
+                  <Route path="/" element={<AdminRoute />} />
+                  <Route path="/admin/transcript-templates" element={<TranscriptTemplatesPage />} />
+                  <Route path="/analytics" element={<AnalyticsPage />} />
+                  <Route path="/vault" element={<VaultPage />} />
+                  <Route path="/notebook" element={<NotebookPage />} />
+                  <Route path="/cheatsheets" element={<CheatsheetsPage />} />
+                  <Route path="/campus" element={<CampusPage />} />
+                  <Route path="/community" element={<CommunityPage />} />
+                  <Route path="/marketplace" element={<MarketplacePage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/messages" element={<MessagesPage />} />
+                  <Route path="/admin" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
+                  <Route path="/admin/overview" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
+                  <Route path="/admin/notice-board" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
+                  <Route path="/admin/canteen" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
+                  <Route path="/admin/library" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
+                  <Route path="/admin/users" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
+                  <Route path="/admin/applications" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
+                  <Route path="/admin/cr-sr-directory" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
+                  <Route path="/admin/auditorium" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
+                  <Route path="/workspace" element={<WorkspacePage />} />
+                  <Route path="/study-room" element={<StudyRoomPage />} />
+                  <Route path="/cp-hub" element={<CPHubPage />} />
+                  <Route path="/money-tracker" element={<MoneyTrackerPage />} />
 
-                <Route path="/aust-bhara" element={<Navigate to="/campus" replace />} />
-                <Route path="/cover-page-generator" element={<CoverPageGeneratorPage />} />
-                <Route path="/empty-classroom" element={<Navigate to="/campus" replace />} />
-                <Route path="/chill-zone" element={<ChillZonePage />} />
-                <Route path="/roast-cv" element={<RoastCVPage />} />
-                <Route path="/certificate" element={<CertificatePage />} />
-                <Route path="/auto-alarm" element={<AutoAlarmPage />} />
-                <Route path="/austeddit" element={<AustedditPage />} />
-                <Route path="/shadow" element={<ShadowPage />} />
-                <Route path="/daily-life" element={<DailyLifePage />} />
-                <Route path="/pro" element={<ProPage />} />
-                <Route path="/productivity" element={<ProductivityPage />} />
-                <Route path="/login" element={<Navigate to="/" replace />} />
-              </Routes>
-            </Suspense>
+                  <Route path="/aust-bhara" element={<Navigate to="/campus" replace />} />
+                  <Route path="/cover-page-generator" element={<CoverPageGeneratorPage />} />
+                  <Route path="/empty-classroom" element={<Navigate to="/campus" replace />} />
+                  <Route path="/chill-zone" element={<ChillZonePage />} />
+                  <Route path="/roast-cv" element={<RoastCVPage />} />
+                  <Route path="/certificate" element={<CertificatePage />} />
+                  <Route path="/auto-alarm" element={<AutoAlarmPage />} />
+                  <Route path="/austeddit" element={<AustedditPage />} />
+                  <Route path="/shadow" element={<ShadowPage />} />
+                  <Route path="/daily-life" element={<DailyLifePage />} />
+                  <Route path="/pro" element={<ProPage />} />
+                  <Route path="/productivity" element={<ProductivityPage />} />
+                  <Route path="/login" element={<Navigate to="/" replace />} />
+                </Routes>
+              </Suspense>
+            </div>
           </div>
+          <ActiveMembersSidebar
+            open={membersOpen}
+            isDesktop={isDesktop}
+            onClose={() => setMembersOpen(false)}
+            onToggle={() => setMembersOpen((o) => !o)}
+          />
+          <MobileNav />
         </div>
-        <ActiveMembersSidebar
-          open={membersOpen}
-          isDesktop={isDesktop}
-          onClose={() => setMembersOpen(false)}
-          onToggle={() => setMembersOpen((o) => !o)}
-        />
-        <MobileNav />
-      </div>
-    </RoutineProvider>
+        <StalkRoadOverlay />
+      </RoutineProvider>
+    </StalkProvider>
   );
 }
 

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import useWebSocket from '../../hooks/useWebSocket';
+import { useStalk } from '../stalk-road/StalkContext';
 import './ActiveMembersSidebar.css';
 
 /* ─── Constants ─── */
@@ -73,37 +74,53 @@ function PresenceDot({ status, size }) {
 
 /* ─── Member row ─── */
 function MemberRow({ member, onClick, isOffline, isAdmin }) {
+  const { stalk } = useStalk();
   return (
-    <button
-      type="button"
+    <div
       className={`am-member-row${isOffline ? ' am-row-offline' : ''}${isAdmin ? ' am-row-admin' : ''}`}
-      onClick={onClick}
       title={member.name}
     >
-      <span className="am-avatar-wrap">
-        <span className="am-avatar">
-          {member.avatar ? (
-            <img src={member.avatar} alt="" style={AVATAR_IMG_STYLE} />
-          ) : (
-            member.initials || member.name?.slice(0, 2).toUpperCase()
-          )}
+      <button
+        type="button"
+        className="am-row-main"
+        onClick={onClick}
+        title={`View ${member.name}'s profile`}
+      >
+        <span className="am-avatar-wrap">
+          <span className="am-avatar">
+            {member.avatar ? (
+              <img src={member.avatar} alt="" style={AVATAR_IMG_STYLE} />
+            ) : (
+              member.initials || member.name?.slice(0, 2).toUpperCase()
+            )}
+          </span>
+          <PresenceDot status={member.status} size={11} />
         </span>
-        <PresenceDot status={member.status} size={11} />
-      </span>
-      <span className="am-row-body">
-        <span className="am-row-name">
-          {isAdmin && <span className="am-admin-crown-mini" aria-hidden="true">👑</span>}
-          {member.name}
-          {member.isYou && <span className="am-you">You</span>}
+        <span className="am-row-body">
+          <span className="am-row-name">
+            {isAdmin && <span className="am-admin-crown-mini" aria-hidden="true">👑</span>}
+            {member.name}
+            {member.isYou && <span className="am-you">You</span>}
+          </span>
+          <span className="am-row-sub">
+            {getRoleDisplay(member.role)}
+            {member.department ? ` • ${member.department}` : ''}
+            {member.semester ? ` • Sem ${member.semester}` : ''}
+          </span>
         </span>
-        <span className="am-row-sub">
-          {getRoleDisplay(member.role)}
-          {member.department ? ` • ${member.department}` : ''}
-          {member.semester ? ` • Sem ${member.semester}` : ''}
-        </span>
-      </span>
-      <span className="am-row-status-dot" data-status={member.status} />
-    </button>
+        <span className="am-row-status-dot" data-status={member.status} />
+      </button>
+      <button
+        type="button"
+        className="am-stalk-btn"
+        onClick={(e) => { e.stopPropagation(); stalk(member); }}
+        title={`Stalk ${member.name} 🐾`}
+        aria-label={`Stalk ${member.name}`}
+      >
+        <span className="am-stalk-paw" aria-hidden="true">🐾</span>
+        <span className="am-stalk-text">STALK</span>
+      </button>
+    </div>
   );
 }
 
@@ -128,6 +145,7 @@ function MemberGroup({ title, icon, count, children, defaultOpen, forceOpen, col
 function MemberPopover({ member, rect, onClose }) {
   const navigate = useNavigate();
   const popRef = useRef(null);
+  const { stalk } = useStalk();
 
   // Compute placement from the anchored row's rect (captured at open time).
   // Done in render — no effect needed since rect is a frozen snapshot.
@@ -248,6 +266,15 @@ function MemberPopover({ member, rect, onClose }) {
         <div className="am-pop-divider" />
 
         <div className="am-pop-actions">
+          <button
+            type="button"
+            className="am-pop-action am-pop-action-stalk"
+            onClick={() => { stalk(member); onClose(); }}
+            title={`Go on a stalk road-trip to ${member.name}'s portfolio`}
+          >
+            <span aria-hidden="true">🐾</span>
+            <span>Stalk</span>
+          </button>
           <button
             type="button"
             className="am-pop-action"
