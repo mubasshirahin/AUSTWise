@@ -26,13 +26,9 @@
   top: 0;
   height: 100vh;
   overflow: hidden;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
-    linear-gradient(rgba(255, 255, 255, 0.017) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.017) 1px, transparent 1px),
-    linear-gradient(180deg, #0b0d13 0%, #0d0f16 55%, #0a0c12 100%);
-  background-size: 200px 200px, 200px 200px, 40px 40px, 40px 40px, auto;
+  background:
+    radial-gradient(120% 80% at 50% 22%, rgba(96, 125, 170, 0.07), transparent 58%),
+    linear-gradient(180deg, #04060b 0%, #060a12 42%, #0a0f1a 100%);
 }
 
 /* ── cinematic letterbox bars ── */
@@ -55,6 +51,7 @@
   top: 0;
   height: 100%;
   width: calc(100vw * var(--sr-band-w, 4.2));
+  z-index: 3;
   will-change: transform;
 }
 .sr-road-svg {
@@ -63,73 +60,526 @@
   width: 100%;
   height: 100%;
 }
-.sr-road-body {
-  stroke: #1c2330;
-  stroke-width: 17;
+/* lane structure, layered on the same winding path:
+   verge (dark shoulders) → white edge lines → asphalt → dashed centre line */
+.sr-road-verge {
+  stroke: #0c0f16;
+  stroke-width: 30;
   fill: none;
 }
 .sr-road-edge {
-  stroke-width: 2.5;
+  stroke: rgba(196, 210, 226, 0.55);
+  stroke-width: 20;
   fill: none;
-  opacity: 0.85;
+}
+.sr-road-body {
+  stroke: #202834;
+  stroke-width: 14;
+  fill: none;
 }
 .sr-road-dash {
-  stroke: rgba(255, 255, 255, 0.55);
-  stroke-width: 3;
-  stroke-dasharray: 26 34;
+  stroke: rgba(255, 255, 255, 0.4);
+  stroke-width: 2;
+  stroke-dasharray: 22 34;
   stroke-linecap: round;
   fill: none;
 }
 
-/* ── checkpoint flags on the road ── */
-.sr-flag {
+/* ── night sky: stars + drifting clouds ── */
+.sr-sky {
   position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.sr-star {
+  position: absolute;
+  border-radius: 50%;
+  background: #cdd6e6;
+  opacity: 0.7;
+  animation: sr-twinkle var(--d, 2.4s) ease-in-out infinite;
+}
+@keyframes sr-twinkle {
+  0%, 100% { opacity: 0.12; }
+  50% { opacity: 0.85; }
+}
+.sr-cloud {
+  position: absolute;
+  left: -180px;
+  width: 190px;
+  height: 36px;
+  opacity: 0.15;
+  border-radius: 999px;
+  background: radial-gradient(ellipse at 50% 60%, #9fb3d0 0%, rgba(120, 140, 170, 0) 70%);
+  animation: sr-cloud-drift var(--dur, 80s) linear infinite;
+  animation-delay: var(--dl, 0s);
+}
+@keyframes sr-cloud-drift {
+  from { transform: translateX(0) scale(var(--sc, 1)); }
+  to { transform: translateX(calc(100vw + 400px)) scale(var(--sc, 1)); }
+}
+
+/* ── distant city skyline (parallax) ── */
+.sr-skyline {
+  position: absolute;
+  bottom: 0;
+  left: -50vw;
+  width: 200vw;
+  height: 26vh;
+  z-index: 2;
+  pointer-events: none;
+  will-change: transform;
+}
+.sr-building {
+  position: absolute;
+  bottom: 0;
+  display: block;
+  background: linear-gradient(180deg, rgba(56, 74, 104, 0.3), rgba(20, 28, 44, 0.55));
+  border-radius: 2px 2px 0 0;
+}
+.sr-building::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(150, 170, 205, 0.14);
+}
+.sr-building-tall::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 7px;
+  background: rgba(170, 190, 220, 0.2);
+}
+
+/* ── roadside scenery (pans with the road) ── */
+.sr-scenery {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+.sr-sc {
+  position: absolute;
+  transform: translate(-50%, -100%);
+}
+.sr-sc > span { display: block; }
+
+/* trees (sway gently) */
+.sr-tree { --s: 1; }
+.sr-tree-b {
+  position: relative;
+  width: 0;
+  height: 0;
+  transform: scale(var(--s));
+  transform-origin: 0 30px;
+  animation: sr-sway var(--d, 4.4s) ease-in-out infinite alternate;
+}
+.sr-tree-trunk {
+  position: absolute;
+  left: -3px;
+  bottom: -30px;
+  width: 6px;
+  height: 30px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #1c1813, #2a241c);
+}
+.sr-tree-top {
+  position: absolute;
+  left: -13px;
+  bottom: -2px;
+  width: 26px;
+  height: 34px;
+  border-radius: 52% 52% 40% 40%;
+  background: radial-gradient(ellipse at 50% 38%, #22452f, #152b1f 68%, #0f2018);
+}
+.sr-tree-top::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  bottom: -6px;
+  width: 18px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 40%, #1c3a28, #12241a);
+}
+.sr-tree-top::after {
+  content: '';
+  position: absolute;
+  right: 2px;
+  top: -4px;
+  width: 14px;
+  height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 45%, #2a5138, #1a3324);
+}
+
+/* lamp posts */
+.sr-lamp-b {
+  position: relative;
+  width: 0;
+  height: 0;
+}
+.sr-lamp-pole {
+  position: absolute;
+  left: -2px;
+  bottom: -56px;
+  width: 4px;
+  height: 56px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #2c3544, #141923);
+}
+.sr-lamp-head {
+  position: absolute;
+  left: -8px;
+  bottom: -2px;
+  width: 18px;
+  height: 7px;
+  border-radius: 5px 5px 2px 2px;
+  background: linear-gradient(180deg, #465468, #232b3a);
+}
+.sr-lamp-head::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  width: 8px;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+/* traffic signs */
+.sr-sign-b {
+  position: relative;
+  width: 0;
+  height: 0;
+}
+.sr-sign-pole {
+  position: absolute;
+  left: -2px;
+  bottom: -34px;
+  width: 4px;
+  height: 34px;
+  border-radius: 2px;
+  background: #1d2530;
+}
+.sr-sign-board {
+  position: absolute;
+  left: -13px;
+  bottom: -10px;
+  width: 26px;
+  height: 18px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+.sr-sign-0 .sr-sign-board { background: #17301f; }
+.sr-sign-1 .sr-sign-board { background: #241c33; }
+.sr-sign-2 .sr-sign-board { background: linear-gradient(180deg, #2c3a4a, #1b2430); }
+.sr-sign-board::after {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 6px;
+  width: 10px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* triangular warning signs */
+.sr-warn-b {
+  position: relative;
+  width: 0;
+  height: 0;
+}
+.sr-warn-pole {
+  position: absolute;
+  left: -2px;
+  bottom: -34px;
+  width: 4px;
+  height: 34px;
+  border-radius: 2px;
+  background: #1d2530;
+}
+.sr-warn-board {
+  position: absolute;
+  left: -9px;
+  bottom: -8px;
+  width: 18px;
+  height: 16px;
+  background: linear-gradient(180deg, #8a7a2a, #5c5219);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+.sr-warn-board::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  width: 10px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* traffic signal (lights cycle) */
+.sr-traffic-b {
+  position: relative;
+  width: 0;
+  height: 0;
+}
+.sr-traffic-pole {
+  position: absolute;
+  left: -2px;
+  bottom: -54px;
+  width: 4px;
+  height: 54px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #2c3544, #141923);
+}
+.sr-traffic-head {
+  position: absolute;
+  left: -8px;
+  bottom: -6px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
+  justify-content: space-around;
+  width: 16px;
+  height: 36px;
+  padding: 3px 0;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #1a2029;
+}
+.sr-traffic-lamp {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  opacity: 0.3;
+  animation: sr-light 6s linear infinite;
+}
+.sr-traffic-r { background: #ff5a5f; }
+.sr-traffic-y { background: #ffc93c; animation-delay: -2s; }
+.sr-traffic-g { background: #3ddc7a; animation-delay: -4s; }
+@keyframes sr-light {
+  0%, 32% { opacity: 0.3; }
+  33%, 65% { opacity: 1; }
+  66%, 100% { opacity: 0.3; }
+}
+
+/* road cones at the lane edge */
+.sr-cone-b {
+  position: relative;
+  width: 0;
+  height: 0;
+}
+.sr-cone-body {
+  position: absolute;
+  left: -7px;
+  bottom: -14px;
+  width: 14px;
+  height: 16px;
+  background: linear-gradient(180deg, #ff8a3d, #cf5c19);
+  clip-path: polygon(20% 0, 80% 0, 100% 100%, 0 100%);
+}
+.sr-cone-body::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 6px;
+  width: 8px;
+  height: 3px;
+  background: #ffffff;
+  opacity: 0.85;
+}
+
+/* distance markers */
+.sr-marker-b {
+  position: relative;
+  width: 0;
+  height: 0;
+}
+.sr-marker-post {
+  position: absolute;
+  left: -2px;
+  bottom: -24px;
+  width: 4px;
+  height: 24px;
+  border-radius: 2px;
+  background: #222831;
+}
+.sr-marker-block {
+  position: absolute;
+  left: -6px;
+  bottom: -6px;
+  width: 12px;
+  height: 10px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #e8eef6, #9fb0c6);
+}
+
+/* bushes (sway with the trees) */
+.sr-bush-b {
+  position: relative;
+  width: 0;
+  height: 0;
+  transform: scale(var(--s, 1));
+  transform-origin: 0 16px;
+  animation: sr-sway var(--d, 5s) ease-in-out infinite alternate;
+}
+.sr-bush-b::before {
+  content: '';
+  position: absolute;
+  left: -13px;
+  bottom: -12px;
+  width: 26px;
+  height: 13px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 45% 40%, #1d3527, #12241a 70%);
+}
+.sr-bush-b::after {
+  content: '';
+  position: absolute;
+  left: -6px;
+  bottom: -16px;
+  width: 14px;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 45%, #162b1f, #0e1d15);
+}
+
+/* billboards */
+.sr-billboard-b {
+  position: relative;
+  width: 0;
+  height: 0;
+}
+.sr-billboard-b::before,
+.sr-billboard-b::after {
+  content: '';
+  position: absolute;
+  bottom: -32px;
+  width: 4px;
+  height: 32px;
+  background: #161c27;
+}
+.sr-billboard-b::before { left: -14px; }
+.sr-billboard-b::after { right: -14px; }
+.sr-billboard-board {
+  position: absolute;
+  left: -26px;
+  bottom: -8px;
+  width: 52px;
+  height: 24px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(180deg, #20283a, #141a26);
+}
+.sr-billboard-board::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 7px;
+  width: 36px;
+  height: 5px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.06));
+}
+
+@keyframes sr-sway {
+  from { transform: scale(var(--s, 1)) rotate(-2.2deg); }
+  to { transform: scale(var(--s, 1)) rotate(2.2deg); }
+}
+
+/* ── checkpoint flags on the road (pole + waving banner) ── */
+.sr-flag {
+  position: absolute;
+  width: 0;
+  height: 0;
   transform: translate(-50%, -50%);
   z-index: 6;
   will-change: transform;
   pointer-events: none;
 }
+.sr-flag-pole {
+  position: absolute;
+  left: -1.5px;
+  bottom: 0;
+  width: 3px;
+  height: 58px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #d7e0ee, #8fa0b8);
+}
+.sr-flag-pole::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: -2.5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #eef3fb, #9fb0c6);
+}
+.sr-flag-banner {
+  position: absolute;
+  left: 2px;
+  bottom: 50px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 24px 6px 8px;
+  background: linear-gradient(120deg, var(--stalk-accent), color-mix(in srgb, var(--stalk-accent) 72%, #0f172a));
+  clip-path: polygon(0 0, 100% 0, 100% 58%, 80% 50%, 100% 42%, 100% 100%, 0 100%);
+  transform-origin: left center;
+  animation: sr-flag-wave var(--d, 2.6s) ease-in-out infinite alternate;
+  color: #04231a;
+  white-space: nowrap;
+}
 .sr-flag-icon {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 13px 13px 13px 3px;
-  background: linear-gradient(160deg, var(--stalk-accent), color-mix(in srgb, var(--stalk-accent) 70%, #0f172a));
-  color: #04231a;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  background: rgba(3, 10, 8, 0.3);
+  color: #ffffff;
 }
 .sr-flag-label {
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.12em;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(5, 6, 10, 0.62);
-  color: #e2e8f0;
-  white-space: nowrap;
+  letter-spacing: 0.14em;
+}
+@keyframes sr-flag-wave {
+  from { transform: rotate(-1.6deg); }
+  to { transform: rotate(1.8deg); }
 }
 
-/* ── the car ── */
+/* ── the car (3D viewport) ── */
 .sr-car {
   position: absolute;
   left: 0;
   top: 0;
-  width: 112px;
-  height: 52px;
+  width: 160px;
+  height: 160px;
   z-index: 8;
+  pointer-events: none;
   transform-origin: center;
   will-change: transform;
 }
-.sr-car-svg {
+.sr-car-3d {
+  position: absolute;
+  inset: 0;
+}
+.sr-car-3d canvas {
+  display: block;
   width: 100%;
   height: 100%;
-  display: block;
-  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.45));
 }
 
 /* ── HUD ── */

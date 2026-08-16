@@ -6,6 +6,7 @@ import {
   PawPrint, X, ChevronDown, Flag, Route, Clapperboard, Gamepad2, Eye, Headphones, Swords,
 } from 'lucide-react';
 import { useStalk } from './StalkContext';
+import ThreeCar from './ThreeCar';
 import { MoviesSection, GamingSection, AnimeSection, MusicSection, ThisOrThatSection } from './StalkPortfolio';
 import './StalkPortfolio.css';
 import './StalkRoad.css';
@@ -27,6 +28,17 @@ const ROAD_PATH_D = [
   'C 1145 656, 1170 685, 1200 700',
 ].join(' ');
 
+/* ─── Deterministic pseudo-random generator (stable scenery across mounts) ─── */
+function mulberry(seed) {
+  let s = seed | 0;
+  return () => {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 /* ─── Road-trip stops (checkpoints) shown along the drive ─── */
 const STOPS = [
   { key: 'movies', label: 'MOVIES', Icon: Clapperboard },
@@ -43,36 +55,10 @@ const SEGMENTS = STOP_COUNT + 2;
 const BAND_W = 4.2; // band width in viewport units
 const CAR_X = 0.30; // car's screen position as a fraction of the viewport width
 
-/* ─── Stylized top-down sports car sprite ─── */
-function CarSprite({ color, uid }) {
-  const gid = `srk-body-${uid}`;
-  return (
-    <svg viewBox="0 0 140 64" width="100%" height="100%" aria-hidden="true" className="sr-car-svg">
-      <defs>
-        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor={color} />
-          <stop offset="1" stopColor={color} stopOpacity="0.72" />
-        </linearGradient>
-      </defs>
-      <rect x="14" y="4" width="27" height="10" rx="5" fill="#0a0c11" />
-      <rect x="14" y="50" width="27" height="10" rx="5" fill="#0a0c11" />
-      <rect x="92" y="4" width="27" height="10" rx="5" fill="#0a0c11" />
-      <rect x="92" y="50" width="27" height="10" rx="5" fill="#0a0c11" />
-      <rect x="10" y="19" width="12" height="26" rx="5" fill="#11141b" />
-      <path
-        d="M12 32 C12 20 22 12 36 12 L92 12 C106 12 114 16 118 25 C122 29 128 30 132 32 C128 34 122 35 118 39 C114 48 106 52 92 52 L36 52 C22 52 12 44 12 32 Z"
-        fill={`url(#${gid})`}
-        stroke={color}
-        strokeWidth="1.5"
-        strokeOpacity="0.55"
-      />
-      <path d="M44 16 C58 16 70 18 76 22 L76 42 C70 46 58 48 44 48 C36 48 32 44 32 38 L32 26 C32 20 36 16 44 16 Z" fill="#0a0c11" opacity="0.92" />
-      <path d="M47 18 C58 19 66 21 70 24 L70 27 C62 23 52 21 47 21 Z" fill="#ffffff" opacity="0.16" />
-      <rect x="126" y="27" width="10" height="10" rx="4" fill="#ffe08a" />
-      <ellipse cx="70" cy="32" rx="56" ry="14" fill={color} opacity="0.18" />
-    </svg>
-  );
-}
+// Checkpoint detail panels only appear a short while before/after the car
+// reaches each checkpoint flag — nothing in between (no premature overlays).
+const CP_ZONE = 0.045; // half-width of the active window (in trip progress)
+const ARRIVE_AT = 0.96; // journey-complete panel appears only at the very end
 
 export default function StalkRoadOverlay() {
   const { target, portfolio, close } = useStalk();
@@ -81,6 +67,8 @@ export default function StalkRoadOverlay() {
   const stageRef = useRef(null);    // pinned 100vw x 100vh viewport
   const bandRef = useRef(null);     // the wide highway strip the camera pans across
   const carRef = useRef(null);      // the car (screen-space, camera-followed)
+  const carAngleRef = useRef(0);    // current road heading, fed to the 3D car
+  const skylineRef = useRef(null);  // distant city backdrop (parallax layer)
   const flagsRef = useRef([]);
 
   useEffect(() => {
@@ -113,6 +101,121 @@ export default function StalkRoadOverlay() {
         gsap.set(flagEl, { autoAlpha: 0, scale: 0 });
       });
 
+      // ── Night sky: twinkling stars + drifting clouds ──
+      const sky = stage.querySelector('.sr-sky');
+      if (sky) {
+        const starRand = mulberry(2026);
+        for (let s = 0; s < 48; s += 1) {
+          const star = document.createElement('span');
+          star.className = 'sr-star';
+          star.style.left = `${(starRand() * 100).toFixed(2)}%`;
+          star.style.top = `${(starRand() * 64).toFixed(2)}%`;
+          const size = starRand() * 1.6 + 1;
+          star.style.width = `${size.toFixed(1)}px`;
+          star.style.height = `${size.toFixed(1)}px`;
+          star.style.setProperty('--d', `${(starRand() * 2.4 + 1.3).toFixed(2)}s`);
+          star.style.animationDelay = `${(-starRand() * 4).toFixed(2)}s`;
+          sky.appendChild(star);
+        }
+        const cloudRand = mulberry(31);
+        for (let c = 0; c < 3; c += 1) {
+          const cloud = document.createElement('span');
+          cloud.className = 'sr-cloud';
+          cloud.style.top = `${(cloudRand() * 26 + 7).toFixed(1)}%`;
+          cloud.style.setProperty('--sc', (cloudRand() * 0.9 + 0.55).toFixed(2));
+          cloud.style.setProperty('--dur', `${(cloudRand() * 70 + 60).toFixed(0)}s`);
+          cloud.style.animationDelay = `${(-cloudRand() * 90).toFixed(0)}s`;
+          sky.appendChild(cloud);
+        }
+      }
+
+      // ── Distant city skyline (parallax backdrop) ──
+      const skyline = skylineRef.current;
+      if (skyline) {
+        const bRand = mulberry(777);
+        for (let b = 0; b < 66; b += 1) {
+          const bld = document.createElement('span');
+          bld.className = 'sr-building';
+          bld.style.left = `${(b * 3.1).toFixed(1)}vw`;
+          bld.style.width = `${(bRand() * 2.6 + 1.6).toFixed(1)}vw`;
+          bld.style.height = `${((bRand() * 0.5 + 0.18) * 22).toFixed(1)}vh`;
+          if (bRand() > 0.8) bld.classList.add('sr-building-tall');
+          skyline.appendChild(bld);
+        }
+      }
+
+      // ── Roadside scenery: lamps, trees, bushes, signs & billboards ──
+      const scenery = stage.querySelector('.sr-scenery');
+      if (scenery) {
+        const sRand = mulberry(4242);
+        const roadLen = pathEl.getTotalLength();
+        const INNER = {
+          tree: '<span class="sr-tree-b"><span class="sr-tree-trunk"></span><span class="sr-tree-top"></span></span>',
+          lamp: '<span class="sr-lamp-b"><span class="sr-lamp-pole"></span><span class="sr-lamp-head"></span></span>',
+          sign: '<span class="sr-sign-b"><span class="sr-sign-board"></span><span class="sr-sign-pole"></span></span>',
+          warn: '<span class="sr-warn-b"><span class="sr-warn-board"></span><span class="sr-warn-pole"></span></span>',
+          traffic: '<span class="sr-traffic-b"><span class="sr-traffic-head"><i class="sr-traffic-lamp sr-traffic-r"></i><i class="sr-traffic-lamp sr-traffic-y"></i><i class="sr-traffic-lamp sr-traffic-g"></i></span><span class="sr-traffic-pole"></span></span>',
+          cone: '<span class="sr-cone-b"><span class="sr-cone-body"></span></span>',
+          marker: '<span class="sr-marker-b"><span class="sr-marker-block"></span><span class="sr-marker-post"></span></span>',
+          bush: '<span class="sr-bush-b"></span>',
+          billboard: '<span class="sr-billboard-b"><span class="sr-billboard-board"></span></span>',
+        };
+        const place = (type, len, side, off, scl = 1) => {
+          const pt = pathEl.getPointAtLength(len);
+          const a = pathEl.getPointAtLength(Math.min(len + 5, roadLen));
+          const b = pathEl.getPointAtLength(Math.max(len - 5, 0));
+          const dx = a.x - b.x;
+          const dy = a.y - b.y;
+          const dl = Math.hypot(dx, dy) || 1;
+          const nx = -dy / dl;
+          const ny = dx / dl;
+          const el = document.createElement('div');
+          el.className = `sr-sc sr-${type}`;
+          el.innerHTML = INNER[type] || '';
+          el.style.left = `${(pt.x * sx() + nx * off * side).toFixed(1)}px`;
+          el.style.top = `${(pt.y * sy() + ny * off * side).toFixed(1)}px`;
+          el.style.setProperty('--s', String(scl));
+          el.style.setProperty('--d', `${(sRand() * 3 + 3.6).toFixed(2)}s`);
+          el.style.setProperty('--dl', `${(-sRand() * 4).toFixed(2)}s`);
+          scenery.appendChild(el);
+          return el;
+        };
+
+        const STEP = 40;
+        const M = Math.floor(roadLen / STEP);
+        for (let i = 1; i < M; i += 1) {
+          const len = i * STEP;
+          const side = i % 2 === 0 ? 1 : -1;
+          const r = sRand();
+          if (i % 17 === 9) {
+            place('traffic', len, side, 34 + sRand() * 12);
+          } else if (i % 8 === 6) {
+            place('marker', len, side, 26 + sRand() * 8);
+          } else if (i % 4 === 0) {
+            place('lamp', len, side, 30 + sRand() * 14);
+          } else if (i % 6 === 5) {
+            place('cone', len, side, 32 + sRand() * 10);
+          } else if (i % 7 === 3) {
+            const el = place('sign', len, side, 34 + sRand() * 12);
+            el.classList.add(`sr-sign-${i % 3}`);
+          } else if (i % 11 === 7) {
+            place('warn', len, side, 30 + sRand() * 12);
+          } else if (r < 0.42) {
+            place('tree', len, side, 30 + sRand() * 40, 0.7 + sRand() * 0.65);
+          } else if (r < 0.72) {
+            place('bush', len, side, 24 + sRand() * 20, 0.7 + sRand() * 0.6);
+          } else if (r < 0.88) {
+            place('tree', len, side, 30 + sRand() * 30, 0.8 + sRand() * 0.5);
+          } else {
+            place('bush', len, side, 22 + sRand() * 16, 0.75 + sRand() * 0.5);
+          }
+        }
+
+        for (let k = 0; k < 4; k += 1) {
+          place('billboard', sRand() * roadLen, sRand() > 0.5 ? 1 : -1, 78 + sRand() * 30);
+        }
+      }
+
       // ── The drive: one scroll → car rides the road while the camera pans ──
       const panels = stage.querySelectorAll('.sr-cp');
       const progressFill = stage.querySelector('.sr-progress-fill');
@@ -140,16 +243,19 @@ export default function StalkRoadOverlay() {
         const bandX = Math.min(0, Math.max(CAR_X * vw - carWorldX, -panMax));
         const carScreenX = carWorldX + bandX;
         band.style.transform = `translateX(${bandX}px)`;
-        car.style.transform = `translate(${carScreenX}px, ${carY}px) translate(-50%, -50%) rotate(${angle}deg)`;
+        if (skylineRef.current) skylineRef.current.style.transform = `translateX(${(bandX * 0.14).toFixed(1)}px)`;
+        carAngleRef.current = angle;
+        car.style.transform = `translate(${carScreenX}px, ${carY}px) translate(-50%, -50%)`;
 
         if (progressFill) progressFill.style.width = `${Math.round(p * 100)}%`;
         stage.classList.toggle('sr-scrolled', p > 0.02);
 
         let idx = -1;
         for (let i = 0; i < STOP_COUNT; i += 1) {
-          if (p >= (i + 0.5) / (SEGMENTS - 1) && p < (i + 1.5) / (SEGMENTS - 1)) idx = i;
+          const centre = (i + 1) / (SEGMENTS - 1);
+          if (p >= centre - CP_ZONE && p < centre + CP_ZONE) idx = i;
         }
-        if (p >= (STOP_COUNT + 0.5) / (SEGMENTS - 1)) idx = STOP_COUNT; // arrival
+        if (p >= ARRIVE_AT) idx = STOP_COUNT; // arrival — only at the very end
 
         if (idx === last) return;
         last = idx;
@@ -246,29 +352,41 @@ export default function StalkRoadOverlay() {
           <div className="sr-letterbox sr-letterbox-top" />
           <div className="sr-letterbox sr-letterbox-bottom" />
 
+          {/* night sky — twinkling stars & drifting clouds (fixed, no parallax) */}
+          <div className="sr-sky" aria-hidden="true" />
+          {/* distant city skyline — parallaxes slowly as the camera pans */}
+          <div className="sr-skyline" ref={skylineRef} aria-hidden="true" />
+
           {/* the wide highway — the camera pans across this strip */}
           <div className="sr-band" ref={bandRef}>
             <svg className="sr-road-svg" viewBox="0 0 1200 800" preserveAspectRatio="none" aria-hidden="true">
+              <path d={ROAD_PATH_D} fill="none" className="sr-road-verge" />
+              <path d={ROAD_PATH_D} fill="none" className="sr-road-edge" />
               <path id="sr-road-path" d={ROAD_PATH_D} fill="none" className="sr-road-body" />
-              <path d={ROAD_PATH_D} fill="none" className="sr-road-edge" style={{ stroke: accent }} />
               <path d={ROAD_PATH_D} fill="none" className="sr-road-dash" />
             </svg>
+
+            {/* roadside scenery — lamps, trees, bushes, signs & billboards */}
+            <div className="sr-scenery" aria-hidden="true" />
 
             {/* checkpoint flags along the highway */}
             {STOPS.map((s, i) => {
               const Icon = s.Icon;
               return (
                 <div key={s.key} className="sr-flag" data-idx={i} ref={(el) => { flagsRef.current[i] = el; }}>
-                  <span className="sr-flag-icon"><Icon size={14} /></span>
-                  <span className="sr-flag-label">{s.label}</span>
+                  <div className="sr-flag-pole" />
+                  <div className="sr-flag-banner">
+                    <span className="sr-flag-icon"><Icon size={15} /></span>
+                    <span className="sr-flag-label">{s.label}</span>
+                  </div>
                 </div>
               );
             })}
           </div>
 
-          {/* the car (sits still until you scroll) */}
+          {/* the car (3D, sits still until you scroll) */}
           <div className="sr-car" ref={carRef}>
-            <CarSprite color={accent} uid={portfolio.id} />
+            <ThreeCar color={accent} angleRef={carAngleRef} />
           </div>
 
           {/* HUD */}
