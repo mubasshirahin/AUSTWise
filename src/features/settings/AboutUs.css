@@ -350,6 +350,7 @@
 }
 .json-key    { color: var(--c-cyan); }
 .json-num    { color: var(--c-gold-2); font-weight: 600; }
+.json-bool   { color: var(--c-violet); font-weight: 600; }
 .json-brace  { color: var(--c-violet); }
 .json-punct  { color: var(--c-faint); }
 
@@ -414,47 +415,6 @@
   color: var(--c-dim);
 }
 
-/* ─── skills.ts → typed skill bars ─── */
-.ts-window { padding: 18px 0 20px; }
-.ts-head {
-  padding: 0 20px 14px;
-  font-size: 13px;
-  color: var(--c-faint);
-  border-bottom: 1px solid var(--c-border);
-  margin-bottom: 10px;
-}
-.skill-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 7px 20px;
-}
-.skill-name {
-  flex: 0 0 190px;
-  font-size: 14px;
-  color: var(--c-text);
-}
-.skill-track {
-  flex: 1;
-  height: 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.07);
-  overflow: hidden;
-}
-.skill-fill {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--c-gold), var(--c-cyan));
-}
-.skill-level {
-  flex: 0 0 42px;
-  text-align: right;
-  font-size: 13px;
-  color: var(--c-gold-2);
-}
-.ts-foot { padding: 10px 20px 0; font-size: 14px; color: var(--c-faint); }
-
 /* ─── projects.json → project cards ─── */
 .proj-grid {
   display: grid;
@@ -510,29 +470,6 @@
 .proj-stat { color: var(--c-gold-2); }
 .proj-link { margin-left: auto; color: var(--c-violet); font-style: italic; }
 
-/* ─── achievements.md → award list ─── */
-.ach-window { padding: 18px 0 20px; }
-.ach-head {
-  padding: 0 20px 14px;
-  font-size: 13px;
-  color: var(--c-faint);
-  border-bottom: 1px solid var(--c-border);
-  margin-bottom: 10px;
-}
-.ach-line {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 9px 20px;
-  font-size: 14px;
-}
-.ach-line + .ach-line { border-top: 1px dashed var(--c-border); }
-.ach-num { color: var(--c-faint); font-size: 12.5px; flex-shrink: 0; }
-.ach-icon { color: var(--c-gold); flex-shrink: 0; }
-.ach-title { color: var(--c-text); font-weight: 500; }
-.ach-org { margin-left: auto; color: var(--c-cyan); font-size: 13px; }
-.ach-year { color: var(--c-violet); font-size: 13px; flex-shrink: 0; }
-
 /* ─── story.md → markdown ─── */
 .md-window { padding: 28px 30px 34px; }
 .md-h {
@@ -553,30 +490,6 @@
   font-size: 15px;
   line-height: 1.8;
   color: var(--c-dim);
-}
-.md-quotes {
-  margin-top: 26px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.md-quote {
-  margin: 0;
-  padding: 16px 20px;
-  border-left: 3px solid var(--c-gold);
-  background: rgba(232, 163, 61, 0.06);
-  border-radius: 0 8px 8px 0;
-  font-size: 15px;
-  line-height: 1.75;
-  color: var(--c-text);
-}
-.md-quote-author {
-  display: block;
-  margin-top: 9px;
-  font-style: normal;
-  font-size: 13px;
-  letter-spacing: 0.05em;
-  color: var(--c-gold-2);
 }
 
 /* ─── facts.log → git log ─── */
@@ -736,7 +649,6 @@
   .cred-sidebar { display: none; }
   .cred-main { margin-left: 0; padding: 20px 14px 32px; max-width: none; }
   .proj-grid { grid-template-columns: 1fr; }
-  .skill-name { flex-basis: 140px; }
   .cred-mobile-pill {
     position: sticky;
     top: 0;

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Mail, FileText, Braces, ScrollText, Cpu, Terminal, Zap, ArrowRight, GitCommit,
-  GraduationCap, FolderGit2, Award, Code2
+  GraduationCap, FolderGit2
 } from 'lucide-react';
 import './AboutUs.css';
 
@@ -23,34 +23,13 @@ const DEV = {
   university: 'Ahsanullah University of Science & Technology',
 };
 
-const QUOTES = [
-  {
-    text: 'I don\'t talk about my achievements. The work talks.',
-    author: 'Mubasshir Mehedi',
-  },
-  {
-    text: 'You\'re using my work right now. I\'ll let that sink in.',
-    author: 'Mubasshir Mehedi',
-  },
-  {
-    text: 'I\'d call myself humble, but that feels like bragging.',
-    author: 'Mubasshir Mehedi',
-  },
-  {
-    text: 'First commit 11:42 PM. Last commit 2:03 AM. Somewhere in between, I slept.',
-    author: 'AUSTWise git log',
-  },
-];
-
 // ─── File tree — one entry per content section ───
 const FILES = [
   { id: 'about',      file: 'about.md',       ext: 'md',   icon: Terminal   },
   { id: 'stats',      file: 'stats.json',     ext: 'json', icon: Braces     },
   { id: 'story',      file: 'story.md',       ext: 'md',   icon: FileText   },
   { id: 'education',  file: 'education.yml',  ext: 'yml',  icon: GraduationCap },
-  { id: 'skills',     file: 'skills.ts',      ext: 'ts',   icon: Code2      },
   { id: 'projects',   file: 'projects.json',  ext: 'json', icon: FolderGit2 },
-  { id: 'achievements', file: 'achievements.md', ext: 'md', icon: Award    },
   { id: 'facts',      file: 'facts.log',      ext: 'log',  icon: ScrollText },
   { id: 'stack',      file: 'stack.cfg',      ext: 'cfg',  icon: Cpu        },
   { id: 'contact',    file: 'contact.sh',     ext: 'sh',   icon: Terminal   },
@@ -87,97 +66,82 @@ $ cat status.txt
 Doing things. Quietly.`;
 
 const STATS = [
-  { key: 'features_built',  value: 50,  suffix: '+' },
-  { key: 'months_of_dev',   value: 12,  suffix: '+' },
-  { key: 'cups_of_coffee',  value: 100, suffix: '+' },
-  { key: 'solo_developer',  value: 1,   suffix: ''  },
-  { key: 'projects_shipped', value: 8,  suffix: ''  },
-  { key: 'contributions',   value: 300, suffix: '+' },
+  { key: 'months_of_dev',     value: 12,  suffix: '+' },
+  { key: 'features_built',    value: 30,  suffix: '+ (somehow)' },
+  { key: 'solo_carrying',     raw: true },
+  { key: 'bugs_created',      value: 999, suffix: '+' },
+  { key: 'existential_dread', value: 100, suffix: '%' },
 ];
 
 const EDUCATION = [
   {
     degree: 'BSc in Computer Science & Engineering',
     school: 'Ahsanullah University of Science & Technology',
-    period: '2022 — 2026',
+    period: '2024 — 2028',
     batch: 'Quanta 52',
     status: 'ongoing',
-    detail: 'CGPA 3.9+/4.0 · Core CS: DSA, OOP, DBMS, Computer Networks. Nothing I need to explain.',
+    detail: 'CGPA 3.64/4.0',
   },
   {
     degree: 'Higher Secondary Certificate (HSC)',
-    school: 'Dhaka College',
-    period: '2020 — 2022',
+    school: 'Govt. City College, Chattogram',
+    period: '2023',
     batch: 'Science Group',
     status: 'completed',
-    detail: 'GPA 5.00/5.00 · Physics, Chemistry, Mathematics. Numbers speak for themselves.',
+    detail: 'GPA 5.00/5.00',
   },
   {
     degree: 'Secondary School Certificate (SSC)',
-    school: 'Dhaka Residential Model College',
-    period: '2018 — 2020',
+    school: 'Halishahar Cantonment Public School & College',
+    period: '2021',
     batch: 'Science Group',
     status: 'completed',
-    detail: 'GPA 5.00/5.00 · Merit Scholarship. A consistent pattern, if you look closely.',
+    detail: 'GPA 5.00/5.00',
   },
-];
-
-const SKILLS = [
-  { name: 'React / JavaScript',   level: 99 },
-  { name: 'Node.js / Express',    level: 95 },
-  { name: 'Python / Automation',  level: 92 },
-  { name: 'CSS / Tailwind / UI',  level: 98 },
-  { name: 'SQL / MongoDB',        level: 94 },
-  { name: 'Git / DevOps',         level: 90 },
-  { name: 'Data Structures',      level: 96 },
-  { name: 'System Design',        level: 88 },
 ];
 
 const PROJECTS = [
   {
     name: 'AUSTWise',
-    desc: 'A small academic platform. You\'re looking at it. I built it alone — not that I count.',
-    stack: ['React', 'Node.js', 'MongoDB', 'Vite'],
-    stars: 128,
-    forks: 24,
-    link: 'austwise.app',
+    desc: 'A small academic platform for AUSTians. You\'re looking at it. I built it alone — not that I count.',
+    stack: ['React', 'Node.js', 'Vite', 'WebSockets'],
+    link: 'https://github.com/mubasshirahin/AUSTWise.git',
   },
   {
-    name: 'RoutineHub',
-    desc: 'A routine manager. Handles scheduling, so people actually show up to class.',
-    stack: ['React', 'Express', 'SQLite'],
-    stars: 47,
-    forks: 9,
-    link: 'routinehub.dev',
+    name: 'TakaGeloKoi-',
+    desc: 'The ultimate question every university student asks by the 10th of every month. Expense tracking made self-deprecating.',
+    stack: ['React', 'Express', 'MongoDB', 'Vite'],
+    link: 'https://github.com/mubasshirahin/TakaGeloKoi-.git',
   },
   {
-    name: 'NoteNest',
-    desc: 'Notes app with offline sync. Simple on the surface. Harder underneath.',
-    stack: ['React', 'IndexedDB', 'PWA'],
-    stars: 63,
-    forks: 12,
-    link: 'notenest.io',
+    name: 'ToLet-Mama',
+    desc: 'Mess or flat hunting near AUST? Let Mama handle the grind while you complain about rent prices.',
+    stack: ['React', 'Tailwind CSS', 'Vite', 'Framer Motion'],
+    link: 'https://github.com/mubasshirahin/ToLet-Mama.git',
   },
   {
-    name: 'CP Tracker',
-    desc: 'A tracker for competitive programming. Charts included. Keeps me honest.',
-    stack: ['Python', 'Flask', 'Chart.js'],
-    stars: 35,
-    forks: 6,
-    link: 'cptracker.app',
+    name: 'PIXEL-ALCHEMIST',
+    desc: 'A 2D adventure puzzle game built with the iGraphics library — merge elements to guide a lost character home.',
+    stack: ['C', 'C++', 'iGraphics'],
+    link: 'https://github.com/mubasshirahin/PIXEL-ALCHEMIST.git',
   },
-];
-
-const ACHIEVEMENTS = [
-  { title: 'Dean\'s List Honours', org: 'AUST', year: '2024', icon: Award },
-  { title: 'Hackathon Winner', org: 'TechFest', year: '2025', icon: Zap },
-  { title: 'Open Source Contributor', org: 'GitHub', year: '2023', icon: GitCommit },
-  { title: 'ICPC Regional Participant', org: 'ACM ICPC', year: '2024', icon: GraduationCap },
+  {
+    name: 'TimelyDose',
+    desc: 'A medicine reminder and health tracker. Because remembering prescriptions shouldn\'t require another brain cell.',
+    stack: ['Flutter', 'Dart', 'Firebase'],
+    link: 'https://github.com/mubasshirahin/TimelyDose.git',
+  },
+  {
+    name: 'EduConnect',
+    desc: 'Bridging the gap between students and resources before the semester finals panic drops in.',
+    stack: ['React', 'Vite'],
+    link: 'https://github.com/mubasshirahin/EduConnect.git',
+  },
 ];
 
 const STORY = [
-  'I\'m not going to tell you I\'m brilliant. You\'re on this platform right now — a full academic assistant, built by one person, alone. Draw your own conclusions.',
-  'I don\'t chase attention or write long stories about myself. I build things. Some of them work. AUSTWise works. The rest is on this page for you to read, if you\'re into that sort of thing.',
+  'I\'d love to tell you there\'s a whole team behind this, but it\'s just me, an overstretched IDE, and an AI assistant that\'s probably tired of my prompts.',
+  'AUSTWise is what happens when you combine academic panic with an absolute refusal to do things manually. It works, it\'s live, and it\'s saving us all some clicks. Scroll down to see the rest of my digital chaos—or don\'t, I\'m not the boss of you.',
 ];
 
 const FACTS = [
@@ -444,7 +408,11 @@ export default function AboutUs() {
                 <span className="json-ln">{i + 2}</span>
                 <span className="json-key">"{s.key}"</span>
                 <span className="json-punct">: </span>
-                <span className="json-num"><CountUp value={s.value} suffix={s.suffix} /></span>
+                {s.raw !== undefined ? (
+                  <span className="json-bool">{String(s.raw)}</span>
+                ) : (
+                  <span className="json-num"><CountUp value={s.value} suffix={s.suffix} /></span>
+                )}
                 {i < STATS.length - 1 && <span className="json-punct">,</span>}
               </div>
             ))}
@@ -477,22 +445,6 @@ export default function AboutUs() {
           </div>
         </section>
 
-        {/* skills.ts → typed skill bars */}
-        <section id="skills" className="cred-section" data-file="skills">
-          <div className="cred-file-head"><Code2 size={14} /><span>skills.ts</span></div>
-          <div className="ts-window cred-window">
-            <div className="ts-head">export const skills: Skill[] = [</div>
-            {SKILLS.map((s) => (
-              <div key={s.name} className="skill-row">
-                <span className="skill-name">{s.name}</span>
-                <span className="skill-track"><i className="skill-fill" style={{ width: `${s.level}%` }} /></span>
-                <span className="skill-level">{s.level}%</span>
-              </div>
-            ))}
-            <div className="ts-foot">];</div>
-          </div>
-        </section>
-
         {/* projects.json → project cards */}
         <section id="projects" className="cred-section" data-file="projects">
           <div className="cred-file-head"><FolderGit2 size={14} /><span>projects.json</span></div>
@@ -508,27 +460,10 @@ export default function AboutUs() {
                   {p.stack.map((t) => <span key={t} className="proj-tag">{t}</span>)}
                 </div>
                 <div className="proj-meta">
-                  <span className="proj-stat">★ {p.stars}</span>
-                  <span className="proj-stat">⑂ {p.forks}</span>
-                  <span className="proj-link">{p.link}</span>
+                  {p.stars != null && <span className="proj-stat">★ {p.stars}</span>}
+                  {p.forks != null && <span className="proj-stat">⑂ {p.forks}</span>}
+                  <a className="proj-link" href={p.link} target="_blank" rel="noopener noreferrer">{p.link.replace(/^https?:\/\/github\.com\//, '')}</a>
                 </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* achievements.md → award list */}
-        <section id="achievements" className="cred-section" data-file="achievements">
-          <div className="cred-file-head"><Award size={14} /><span>achievements.md</span></div>
-          <div className="ach-window cred-window">
-            <div className="ach-head"># Badges earned — lifetime</div>
-            {ACHIEVEMENTS.map((a, i) => (
-              <div key={a.title} className="ach-line">
-                <span className="ach-num">[{String(i + 1).padStart(2, '0')}]</span>
-                <a.icon size={15} className="ach-icon" />
-                <span className="ach-title">{a.title}</span>
-                <span className="ach-org">@ {a.org}</span>
-                <span className="ach-year">{a.year}</span>
               </div>
             ))}
           </div>
@@ -538,16 +473,8 @@ export default function AboutUs() {
         <section id="story" className="cred-section" data-file="story">
           <div className="cred-file-head"><FileText size={14} /><span>story.md</span></div>
           <div className="md-window cred-window">
-            <h2 className="md-h"># A few words. <span className="md-accent">Not many.</span></h2>
+            <h2 className="md-h"># Under the <span className="md-accent">hood.</span></h2>
             {STORY.map((p, i) => <p key={i} className="md-p">{p}</p>)}
-            <div className="md-quotes">
-              {QUOTES.map((q, i) => (
-                <blockquote key={i} className="md-quote">
-                  “{q.text}”
-                  <cite className="md-quote-author">— {q.author}</cite>
-                </blockquote>
-              ))}
-            </div>
           </div>
         </section>
 
