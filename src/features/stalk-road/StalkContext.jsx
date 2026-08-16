@@ -7,12 +7,19 @@ const StalkContext = createContext(null);
 const STORAGE_KEY = 'stalk-target';
 const SCROLL_KEY = 'stalk-scroll';
 
-function loadTarget() {
+// The stored trip is now { member, customStops } so the "Drive My Orbit"
+// road-trip can persist its own editable checkpoints across refreshes too.
+function loadTrip() {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return { member: null, customStops: null };
+    const parsed = JSON.parse(raw);
+    return {
+      member: parsed?.member || null,
+      customStops: Array.isArray(parsed?.customStops) ? parsed.customStops : null,
+    };
   } catch {
-    return null;
+    return { member: null, customStops: null };
   }
 }
 
@@ -24,27 +31,34 @@ function clearTrip() {
 }
 
 export function StalkProvider({ children }) {
-  const [target, setTarget] = useState(loadTarget);
+  const [trip, setTrip] = useState(loadTrip);
 
-  const stalk = useCallback((member) => {
+  const stalk = useCallback((member, customStops) => {
+    const next = { member: member || null, customStops: customStops || null };
     if (member) {
       try {
-        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(member));
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
         sessionStorage.removeItem(SCROLL_KEY);
       } catch { /* ignore */ }
     }
-    setTarget(member || null);
+    setTrip(next);
   }, []);
 
   const close = useCallback(() => {
     clearTrip();
-    setTarget(null);
+    setTrip({ member: null, customStops: null });
   }, []);
 
   const value = useMemo(() => {
-    const portfolio = target ? buildStalkPortfolio(target) : null;
-    return { target, portfolio, stalk, close };
-  }, [target, stalk, close]);
+    const portfolio = trip.member ? buildStalkPortfolio(trip.member) : null;
+    return {
+      target: trip.member,
+      portfolio,
+      customStops: trip.customStops,
+      stalk,
+      close,
+    };
+  }, [trip, stalk, close]);
 
   return <StalkContext.Provider value={value}>{children}</StalkContext.Provider>;
 }

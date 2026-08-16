@@ -1,15 +1,16 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useRoutine } from '../../context/RoutineContext';
-import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, SquareTerminal, Sparkles, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2, Orbit, Route, Flag, PawPrint, Clapperboard, Gamepad2, Eye, Headphones, Swords } from 'lucide-react';
+import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, ShieldAlert, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, SquareTerminal, Sparkles, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2, Orbit, PawPrint } from 'lucide-react';
 import AboutUs from './AboutUs';
 import LinkedAccountsSection from './LinkedAccountsSection';
 import GliderTabs from '../../components/GliderTabs';
 import { useNotifications } from '../../hooks/useNotifications';
+import { OrbitsProvider, useOrbits } from '../orbits/OrbitsContext';
+import OrbitsConfigurationPanel from '../orbits/OrbitsConfigurationPanel';
 import { useStalk } from '../stalk-road/StalkContext';
-import { buildStalkPortfolio } from '../stalk-road/mockStalkData';
 import { submitRoleApplication, getApplicationsByUserId, getUserApplicationStatus, checkSlotVacancy, getSlotVacancyMap, resignFromRole, withdrawApplication, deleteAccountById, createAwid, syncRoleApplicationsFromServer } from '../../utils/authStorage';
 import './SettingsPage.css';
 import '../../components/PageHero.css';
@@ -135,15 +136,6 @@ const lightThemes = [
 
 const themeOptions = [...darkThemes, ...lightThemes];
 
-// The five checkpoints on every orbit road-trip.
-const ORBIT_STOPS = [
-  { label: 'Movies', Icon: Clapperboard },
-  { label: 'Gaming', Icon: Gamepad2 },
-  { label: 'Anime', Icon: Eye },
-  { label: 'Music', Icon: Headphones },
-  { label: 'This or That', Icon: Swords },
-];
-
 // Shared subtab masthead — same style as the Identity masthead.
 function SettingsMasthead({ icon: Icon, title, subtitle }) {
   return (
@@ -163,22 +155,35 @@ function SettingsMasthead({ icon: Icon, title, subtitle }) {
   );
 }
 
+// "Drive My Orbit" reuses the exact stalk road-trip interface, but drives it
+// with the editable checkpoints from Checkpoint Control instead of the classic
+// five stops. Fields are edited in the control panel; this just previews them.
+function DriveOrbitButton({ user }) {
+  const { visibleCheckpoints } = useOrbits();
+  const { stalk } = useStalk();
+  const drive = () => {
+    stalk(user, visibleCheckpoints.map((cp) => ({ key: cp.id, label: cp.label, fields: cp.fields })));
+  };
+  return (
+    <button className="btn btn-primary" onClick={drive}>
+      <PawPrint size={16} /> Drive My Orbit
+    </button>
+  );
+}
+
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { user, isAuthenticated, updateUser, logout, refreshUserFromServer } = useAuth();
   const { routine, weekDays } = useRoutine();
   const { supported, permission, settings: notifSettings, enable: enableNotifs, disable: disableNotifs, updateSetting } = useNotifications(routine, weekDays);
-  const { stalk } = useStalk();
-
-  // The logged-in user's own stalk profile — the same orbit the road-trip
-  // drives through, so "My Orbits" previews exactly what stalking yourself shows.
-  const myPortfolio = useMemo(() => (user ? buildStalkPortfolio(user) : null), [user]);
 
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [activeSubTab, setActiveSubTab] = useState(() => {
     const tab = searchParams.get('tab');
     return ['profile', 'theme', 'notifications', 'about', 'orbits', 'invite'].includes(tab) ? tab : 'profile';
   });
+  const orbitInitials = (user?.name || '?').split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 
   // AWID (AUSTWise ID) is the app-generated identifier — always separate
   // from the student ID. Fall back to a freshly generated AWID instead of
@@ -1580,87 +1585,48 @@ export default function SettingsPage() {
 
 {activeSubTab === 'orbits' && (
             <div className="animate-fadeIn">
-              <SettingsMasthead icon={Orbit} title="My Orbits" subtitle="Take a road-trip through your own orbit" />
+              <SettingsMasthead icon={Orbit} title="My Orbits" subtitle="Configure checkpoints, then drive a road-trip through your orbit" />
               <div className="schedule-dotted-divider" />
 
-              {!user ? (
-                <div className="cfg-banner cfg-banner--rose">
-                  <AlertTriangle size={18} style={{ color: 'var(--accent-rose)', flexShrink: 0 }} />
-                  <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent-rose)' }}>Log in to explore your orbit.</p>
+              <OrbitsProvider user={user}>
+                <div className="orbits-hero">
+                  <div className="orbits-avatar">
+                    {user?.avatar ? (
+                      <img src={user.avatar} alt="Your orbit avatar" />
+                    ) : (
+                      orbitInitials
+                    )}
+                  </div>
+                  <div className="orbits-hero-info">
+                    <span className="orbits-eyebrow">YOUR ORBIT</span>
+                    <h4 className="orbits-name">{user?.name || 'Guest'}</h4>
+                    <p className="orbits-desc">
+                      {user?.department}
+                      {user?.yearSemester ? ` · ${getYearSemesterShortName(user.yearSemester)}` : ''}
+                    </p>
+                  </div>
+                  <div className="orbits-start">
+                    <DriveOrbitButton user={user} />
+                    <p>Reuses the stalk road-trip — drives your checkpoints with the details you set in Checkpoint Control.</p>
+                  </div>
                 </div>
-              ) : (
-                <>
-                  <div className="orbits-hero">
-                    <div className="orbits-avatar">
-                      {myPortfolio?.avatar ? (
-                        <img src={myPortfolio.avatar} alt="Your orbit avatar" />
-                      ) : (
-                        myPortfolio?.initials
-                      )}
-                    </div>
-                    <div className="orbits-hero-info">
-                      <span className="orbits-eyebrow">YOUR ORBIT</span>
-                      <h4 className="orbits-name">{myPortfolio?.name}</h4>
-                      <p className="orbits-desc">
-                        {myPortfolio?.department}
-                        {myPortfolio?.semester ? ` · Sem ${myPortfolio.semester}` : ''} — {myPortfolio?.vibe}
+
+                {!isAuthenticated ? (
+                  <div className="cfg-banner cfg-banner--rose">
+                    <ShieldAlert size={18} style={{ color: 'var(--accent-rose)', flexShrink: 0 }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                      <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent-rose)', margin: 0 }}>
+                        Firewall active — you're in guest mode. Log in to unlock your checkpoint data and configure your route.
                       </p>
-                      <div className="orbits-color-row">
-                        <span>Favorite color</span>
-                        <span className="orbits-swatch" style={{ background: myPortfolio?.favoriteColor }} />
-                        <code>{myPortfolio?.favoriteColor?.toUpperCase()}</code>
-                      </div>
-                    </div>
-                    <div className="orbits-start">
-                      <button className="btn btn-primary" onClick={() => stalk(user)}>
-                        <PawPrint size={16} /> Start my orbit trip
+                      <button className="btn btn-primary" style={{ padding: '6px 12px' }} onClick={() => navigate('/login')}>
+                        Bypass Firewall
                       </button>
-                      <p>Drives a scroll road-trip through your movies, games, anime, music &amp; hot takes.</p>
                     </div>
                   </div>
-
-                  <div className="orbits-grid">
-                    <div className="orbits-stat">
-                      <Route size={18} />
-                      <strong>{myPortfolio?.miles ?? 0} mi</strong>
-                      <span>orbit length</span>
-                    </div>
-                    <div className="orbits-stat">
-                      <Flag size={18} />
-                      <strong>{ORBIT_STOPS.length}</strong>
-                      <span>checkpoints</span>
-                    </div>
-                    <div className="orbits-stat">
-                      <PawPrint size={18} />
-                      <strong>{myPortfolio?.hobbies?.length ?? 0}</strong>
-                      <span>hobbies</span>
-                    </div>
-                    <div className="orbits-stat">
-                      <Orbit size={18} />
-                      <strong>
-                        {myPortfolio?.movies?.length ?? 0}·{myPortfolio?.games?.length ?? 0}·
-                        {myPortfolio?.anime?.length ?? 0}
-                      </strong>
-                      <span>films · games · anime</span>
-                    </div>
-                  </div>
-
-                  <div className="orbits-stops">
-                    <span className="orbits-stops-title">Checkpoint stops on your route</span>
-                    <div className="orbits-stop-chips">
-                      {ORBIT_STOPS.map((s) => {
-                        const Icon = s.Icon;
-                        return (
-                          <span key={s.label} className="orbits-stop-chip" style={{ '--orbit-accent': myPortfolio?.favoriteColor }}>
-                            <Icon size={13} />
-                            {s.label}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </>
-              )}
+                ) : (
+                  <OrbitsConfigurationPanel />
+                )}
+              </OrbitsProvider>
             </div>
           )}
 

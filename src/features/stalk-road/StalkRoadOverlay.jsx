@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import gsap from 'gsap';
 import { MotionPathPlugin } from 'gsap/MotionPathPlugin';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -8,6 +8,7 @@ import {
 import { useStalk } from './StalkContext';
 import ThreeCar from './ThreeCar';
 import { MoviesSection, GamingSection, AnimeSection, MusicSection, ThisOrThatSection } from './StalkPortfolio';
+import OrbitsCheckpointPreview from '../orbits/OrbitsPreview';
 import './StalkPortfolio.css';
 import './StalkRoad.css';
 
@@ -40,16 +41,13 @@ function mulberry(seed) {
 }
 
 /* ─── Road-trip stops (checkpoints) shown along the drive ─── */
-const STOPS = [
+const DEFAULT_STOPS = [
   { key: 'movies', label: 'MOVIES', Icon: Clapperboard },
   { key: 'gaming', label: 'GAMING', Icon: Gamepad2 },
   { key: 'anime', label: 'ANIME', Icon: Eye },
   { key: 'music', label: 'MUSIC', Icon: Headphones },
   { key: 'vs', label: 'THIS OR THAT', Icon: Swords },
 ];
-const STOP_COUNT = STOPS.length;
-// track height in viewport segments (intro + stops + arrival)
-const SEGMENTS = STOP_COUNT + 2;
 
 // The highway is far wider than the screen — the camera pans across it.
 const BAND_W = 4.2; // band width in viewport units
@@ -61,7 +59,7 @@ const CP_ZONE = 0.045; // half-width of the active window (in trip progress)
 const ARRIVE_AT = 0.96; // journey-complete panel appears only at the very end
 
 export default function StalkRoadOverlay() {
-  const { target, portfolio, close } = useStalk();
+  const { target, portfolio, customStops, close } = useStalk();
   const scrollerRef = useRef(null); // fixed scroll container
   const trackRef = useRef(null);    // tall runway that provides scroll
   const stageRef = useRef(null);    // pinned 100vw x 100vh viewport
@@ -69,7 +67,26 @@ export default function StalkRoadOverlay() {
   const carRef = useRef(null);      // the car (screen-space, camera-followed)
   const carAngleRef = useRef(0);    // current road heading, fed to the 3D car
   const skylineRef = useRef(null);  // distant city backdrop (parallax layer)
-  const flagsRef = useRef([]);
+
+  // Drive My Orbit passes its own editable checkpoints; anything else uses the
+  // classic five stops (movies → gaming → anime → music → this-or-that).
+  const stops = useMemo(() => (
+    customStops && customStops.length
+      ? customStops.map((s) => ({ key: s.key, label: s.label, fields: s.fields }))
+      : DEFAULT_STOPS
+  ), [customStops]);
+  const STOP_COUNT = stops.length;
+  // track height in viewport segments (intro + stops + arrival)
+  const SEGMENTS = STOP_COUNT + 2;
+  const isOrbitDrive = Boolean(customStops && customStops.length);
+
+  const defaultPanels = [
+    <MoviesSection movies={portfolio?.movies} accent={portfolio?.favoriteColor} key="p-movies" />,
+    <GamingSection games={portfolio?.games} accent={portfolio?.favoriteColor} key="p-gaming" />,
+    <AnimeSection anime={portfolio?.anime} accent={portfolio?.favoriteColor} key="p-anime" />,
+    <MusicSection portfolio={portfolio} accent={portfolio?.favoriteColor} key="p-music" />,
+    <ThisOrThatSection matchups={portfolio?.matchups} accent={portfolio?.favoriteColor} key="p-vs" />,
+  ];
 
   useEffect(() => {
     if (!target || !portfolio) return undefined;
@@ -94,7 +111,8 @@ export default function StalkRoadOverlay() {
       const totalLen = pathEl.getTotalLength();
       const sx = () => (window.innerWidth * BAND_W) / 1200;
       const sy = () => window.innerHeight / 800;
-      flagsRef.current.forEach((flagEl, i) => {
+      const flagEls = Array.from(stage.querySelectorAll('.sr-flag'));
+      flagEls.forEach((flagEl, i) => {
         const pt = pathEl.getPointAtLength(totalLen * ((i + 1) / (SEGMENTS - 1)));
         flagEl.style.left = `${pt.x * sx()}px`;
         flagEl.style.top = `${pt.y * sy()}px`;
@@ -264,7 +282,7 @@ export default function StalkRoadOverlay() {
           pn.classList.toggle('active', i === idx);
           pn.setAttribute('aria-hidden', i === idx ? 'false' : 'true');
         });
-        flagsRef.current.forEach((fl, i) => {
+        flagEls.forEach((fl, i) => {
           if (i === idx) {
             gsap.to(fl, { autoAlpha: 1, scale: 1, duration: 0.4, ease: 'back.out(2)', overwrite: true });
           }
@@ -277,7 +295,7 @@ export default function StalkRoadOverlay() {
           stage.classList.remove('sr-done');
         }
         if (stopLabel) {
-          stopLabel.textContent = idx >= 0 && idx < STOP_COUNT ? STOPS[idx].label : '';
+          stopLabel.textContent = idx >= 0 && idx < STOP_COUNT ? stops[idx].label : '';
         }
       };
 
@@ -338,7 +356,7 @@ export default function StalkRoadOverlay() {
       document.body.style.overflow = prevOverflow;
       ctx.revert();
     };
-  }, [target, portfolio, close]);
+  }, [target, portfolio, customStops, close, stops, STOP_COUNT, SEGMENTS]);
 
   if (!target || !portfolio) return null;
 
@@ -346,7 +364,7 @@ export default function StalkRoadOverlay() {
 
   return (
     <div className="sr-overlay" ref={scrollerRef} data-role="stalk-road">
-      <div className="sr-track" ref={trackRef}>
+      <div className="sr-track" ref={trackRef} style={{ '--sr-segments': SEGMENTS }}>
         <div className="sr-stage" ref={stageRef} style={{ '--stalk-accent': accent }}>
           {/* cinematic letterbox bars */}
           <div className="sr-letterbox sr-letterbox-top" />
@@ -370,13 +388,15 @@ export default function StalkRoadOverlay() {
             <div className="sr-scenery" aria-hidden="true" />
 
             {/* checkpoint flags along the highway */}
-            {STOPS.map((s, i) => {
+            {stops.map((s, i) => {
               const Icon = s.Icon;
               return (
-                <div key={s.key} className="sr-flag" data-idx={i} ref={(el) => { flagsRef.current[i] = el; }}>
+                <div key={s.key} className="sr-flag" data-idx={i}>
                   <div className="sr-flag-pole" />
                   <div className="sr-flag-banner">
-                    <span className="sr-flag-icon"><Icon size={15} /></span>
+                    <span className="sr-flag-icon">
+                      {Icon ? <Icon size={15} /> : <span className="sr-flag-init">{s.label.charAt(0)}</span>}
+                    </span>
                     <span className="sr-flag-label">{s.label}</span>
                   </div>
                 </div>
@@ -410,21 +430,15 @@ export default function StalkRoadOverlay() {
 
           {/* checkpoint detail panels — shown on the road itself */}
           <div className="sr-cps">
-            <div className="sr-cp" data-cp="movies" aria-hidden="true">
-              <MoviesSection movies={portfolio.movies} accent={accent} />
-            </div>
-            <div className="sr-cp" data-cp="gaming" aria-hidden="true">
-              <GamingSection games={portfolio.games} accent={accent} />
-            </div>
-            <div className="sr-cp" data-cp="anime" aria-hidden="true">
-              <AnimeSection anime={portfolio.anime} accent={accent} />
-            </div>
-            <div className="sr-cp" data-cp="music" aria-hidden="true">
-              <MusicSection portfolio={portfolio} accent={accent} />
-            </div>
-            <div className="sr-cp" data-cp="vs" aria-hidden="true">
-              <ThisOrThatSection matchups={portfolio.matchups} accent={accent} />
-            </div>
+            {stops.map((s, i) => (
+              <div key={s.key} className="sr-cp" data-cp={s.key} aria-hidden="true">
+                {isOrbitDrive ? (
+                  <OrbitsCheckpointPreview label={s.label} fields={s.fields} accent={accent} />
+                ) : (
+                  defaultPanels[i]
+                )}
+              </div>
+            ))}
           </div>
 
           {/* arrival */}
