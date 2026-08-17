@@ -41,13 +41,13 @@ import {
   getLivePulse,
   isInsideGeofence
 } from './liveLibraryDB.mjs';
-import { initializeDatabase, resetDatabase, query, sql } from './db.mjs';
+import { initializeDatabase, resetDatabase, query, sql, testConnection } from './db.mjs';
 import { handleOAuthRequest } from './socialOAuth.mjs';
 import { handleCleanerRequest } from './googleCleaner.mjs';
 import { handleAuthRoute, readTokenCookie, handleDevSwitchUser, handleDevSeedUsers, handleDevUsers } from './auth.mjs';
-import { requireRole } from './middleware.mjs';
+import { requireRole, requireAuth } from './middleware.mjs';
 import { rateLimit, extractRoutineRateLimiter } from './rateLimiter.mjs';
-import { getUserById, getUserByEmail, getAllUsersSafe, updateUserProfile, deleteUserById } from './userStore.mjs';
+import { getUserById, getUserByEmail, getAllUsersSafe, updateUserProfile, deleteUserById, ADMIN_ASSIGNABLE_ROLES } from './userStore.mjs';
 import {
   listMarketplace,
   addMarketplaceListing,
@@ -92,6 +92,7 @@ import {
   ALLOWED_TYPES as NOTE_ALLOWED_TYPES,
   MAX_SIZE_BYTES as NOTE_MAX_SIZE,
   UPLOADS_DIR,
+  verifyMimeType,
 } from './vaultNotesDB.mjs';
 import {
   listRoleApplications,
@@ -149,7 +150,7 @@ async function answerCallbackQueryFn(botToken, callbackQueryId, text) {
 }
 
 // Helper function to update message keyboard (remove buttons)
-async function updateMessageKeyboardFn(botToken, chatId, messageId, clickedCallbackData, isAttended, courseCode) {
+async function updateMessageKeyboardFn(botToken, chatId, messageId, _clickedCallbackData, _isAttended, _courseCode) {
   const https = await import('node:https');
   const postData = JSON.stringify({
     chat_id: chatId,
@@ -257,11 +258,54 @@ function safeJsonParse(str, fallback) {
   catch { return fallback; }
 }
 
+// CORS: same-origin by default (SPA is served by this server). If the app is
+// ever hosted on a different origin (e.g. CDN), whitelist it here via
+// ALLOWED_ORIGIN. A wildcard is never granted — same-origin requests need no
+// CORS headers, and anything else must be explicitly allowlisted.
+const ALLOWED_ORIGIN = (process.env.ALLOWED_ORIGIN || '').split(',').map(s => s.trim()).filter(Boolean);
+const isOriginAllowed = (origin) => origin && ALLOWED_ORIGIN.includes(origin);
+
+/** Apply CORS headers if the request origin is whitelisted, else same-origin. */
+function applyCorsHeaders(req, res) {
+  const origin = req.headers.origin;
+  if (isOriginAllowed(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  }
+}
+
+/** True when the request is same-origin, allowlisted, or a dev-localhost origin. */
+function isSameSiteRequest(req) {
+  const origin = req.headers.origin;
+  if (!origin) return true; // non-browser clients carry no Origin
+  if (isOriginAllowed(origin)) return true;
+  try {
+    const o = new URL(origin);
+    if (req.headers.host && o.host === req.headers.host) return true;
+  } catch { /* fall through */ }
+  if (isDevMode && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
+  return false;
+}
+
+/** Minimal, safe security headers. CSP/HSTS are opt-in via env so we don't
+ *  break the inline-styles + external-embed heavy SPA by default. */
+function applySecurityHeaders(res) {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+  if (process.env.ENABLE_CSP) {
+    res.setHeader('Content-Security-Policy', process.env.CSP_HEADER || "default-src 'self'");
+  }
+  if (process.env.ENABLE_HSTS === '1' || process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+}
+
 function sendJson(res, status, payload) {
-  res.writeHead(status, { 
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*'
-  });
+  res.writeHead(status, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(payload));
 }
 
@@ -317,13 +361,9 @@ async function sendStaticFile(req, res) {
   }
 }
 
-// CORS preflight handler
+// CORS preflight handler — headers already applied by applyCorsHeaders
 function handleCorsPreflight(req, res) {
-  res.writeHead(204, {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-  });
+  res.writeHead(204);
   res.end();
 }
 
@@ -370,6 +410,12 @@ function validateEnv() {
   if (!FEATURES.googleApi) {
     warnings.push('⚠️  VITE_GOOGLE_API_KEY not set — YouTube search & PDF proxy will return an error');
   }
+  if (process.env.NODE_ENV === 'production' && !process.env.TELEGRAM_WEBHOOK_SECRET) {
+    warnings.push('⚠️  TELEGRAM_WEBHOOK_SECRET not set — Telegram webhook updates will be rejected (set it and re-run setWebhook)');
+  }
+  if (process.env.NODE_ENV === 'production' && !process.env.ADMIN_DEFAULT_PASSWORD) {
+    warnings.push('⚠️  ADMIN_DEFAULT_PASSWORD not set — a default admin account will NOT be seeded');
+  }
   if (!FEATURES.dbConfig) {
     warnings.push(`ℹ️  Missing DB credentials (${missingDbVars.join(', ')}) — falling back to local JSON database`);
   }
@@ -415,16 +461,43 @@ if (FEATURES.dbConfig) {
   validateEnv();
 }
 
+// Redirect HTTP → HTTPS in production behind a proxy that terminates TLS.
+// Relies on the standard `x-forwarded-proto` header set by the load balancer
+// (Heroku, Fly, Cloudflare, nginx, etc). No-op when the header is absent or
+// when not in production so dev/localhost flow is unaffected.
+function requireHttps(req, res) {
+  if (process.env.NODE_ENV !== 'production') return false;
+  if (req.headers['x-forwarded-proto'] === 'https') return false;
+  res.writeHead(301, { Location: `https://${req.headers.host}${req.url}` });
+  res.end();
+  return true;
+}
+
 server.on('request', async (req, res) => {
   try {
+    // HTTP→HTTPS redirect in production
+    if (requireHttps(req, res)) return;
+
+    // Security headers on every response, then CORS if origin is whitelisted
+    applySecurityHeaders(res);
+    applyCorsHeaders(req, res);
+
     // CORS preflight
     if (req.method === 'OPTIONS') {
       handleCorsPreflight(req, res);
       return;
     }
 
-    // Add CORS headers to all responses
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    // CSRF defense: browsers always send an Origin header on cross-site
+    // state-changing requests. Reject any POST/PUT/PATCH/DELETE whose origin
+    // isn't same-site or explicitly allowlisted (the SameSite=Strict cookie
+    // blocks the request anyway; this is belt-and-suspenders).
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      if (!isSameSiteRequest(req)) {
+        sendJson(res, 403, { success: false, error: 'Cross-origin request rejected.' });
+        return;
+      }
+    }
 
     // Dev-only API auth routes — hard-disabled in production mode so they
     // can never impersonate accounts, seed data, or leak the user list.
@@ -443,7 +516,7 @@ server.on('request', async (req, res) => {
     if (globalRateLimiter(req, res)) {
       await handleApiRequest(req, res);
     }
-  } catch (error) {
+  } catch {
     if (!res.headersSent) {
       sendJson(res, 500, { error: 'Internal server error.' });
     } else {
@@ -454,8 +527,10 @@ server.on('request', async (req, res) => {
 
 // API + non-static request dispatch (run inside the global rate limiter).
 async function handleApiRequest(req, res) {
-  // Extract routine from image (rate-limited — OpenAI-backed endpoint)
+  // Extract routine from image (authenticated + rate-limited — OpenAI-backed)
   if (req.url === '/api/extract-routine' && req.method === 'POST') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
     if (!extractRoutineRateLimiter(req, res)) return;
     if (!requireFeature('openai', res, 'OPENAI_API_KEY')) return;
     try {
@@ -472,9 +547,11 @@ async function handleApiRequest(req, res) {
 
   // ========== Telegram API Endpoints ==========
 
-  // Test Telegram notification
+  // Test Telegram notification (authenticated)
   if (req.url === '/api/telegram/test' && req.method === 'POST') {
     if (!requireFeature('telegram', res, 'TELEGRAM_BOT_TOKEN')) return;
+    const auth = requireAuth(req, res);
+    if (!auth) return;
     try {
       const { routine, chatId } = await readJsonBody(req);
       
@@ -721,12 +798,12 @@ async function handleApiRequest(req, res) {
         sendJson(res, 400, { success: false, error: 'userId and role are required.' });
         return;
       }
-      const allowedRoles = ['student', 'cr', 'sr', 'vp', 'gs', 'faculty', 'alumni', 'senior', 'moderator'];
+      const allowedRoles = ADMIN_ASSIGNABLE_ROLES;
       if (!allowedRoles.includes(role)) {
         sendJson(res, 400, { success: false, error: 'Invalid role.' });
         return;
       }
-      const updated = await updateUserProfile(userId, { role });
+      const updated = await updateUserProfile(userId, { role }, { allowRole: true });
       if (!updated) {
         sendJson(res, 404, { success: false, error: 'User not found.' });
         return;
@@ -786,7 +863,7 @@ async function handleApiRequest(req, res) {
           return;
         }
       }
-      const updated = await updateUserProfile(userId, patch);
+      const updated = await updateUserProfile(userId, patch, { allowRole: true });
       sendJson(res, 200, { success: true, user: updated });
     } catch (error) {
       sendJson(res, 500, { success: false, error: error.message || 'Failed to update user.' });
@@ -870,9 +947,11 @@ async function handleApiRequest(req, res) {
     return;
   }
 
-  // Test 9 PM Attendance notification
+  // Test 9 PM Attendance notification (authenticated)
   if (req.url === '/api/telegram/test-attendance' && req.method === 'POST') {
     if (!requireFeature('telegram', res, 'TELEGRAM_BOT_TOKEN')) return;
+    const auth = requireAuth(req, res);
+    if (!auth) return;
     try {
       const { routine, chatId } = await readJsonBody(req);
       
@@ -894,9 +973,12 @@ async function handleApiRequest(req, res) {
     return;
   }
 
-  // Handle attendance callback from Telegram bot (webhook)
+  // Handle attendance callback from Telegram bot (webhook) — authenticated so
+  // third parties can't forge attendance records.
   if (req.url === '/api/telegram/attendance-callback' && req.method === 'POST') {
     if (!requireFeature('telegram', res, 'TELEGRAM_BOT_TOKEN')) return;
+    const auth = requireAuth(req, res);
+    if (!auth) return;
     try {
       const { callbackQueryId, chatId, callbackData, messageId } = await readJsonBody(req);
       
@@ -925,8 +1007,33 @@ async function handleApiRequest(req, res) {
   // including callback queries when users click inline buttons
   if (req.url === '/api/telegram/webhook' && req.method === 'POST') {
     try {
+      // Verify the webhook secret token so only Telegram's servers can post
+      // updates here. In production the secret MUST be configured; without it
+      // the webhook refuses to process anything (forged-attendance defense).
+      const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+      if (!webhookSecret) {
+        if (!isDevMode) {
+          sendJson(res, 503, { ok: false, description: 'TELEGRAM_WEBHOOK_SECRET not configured.' });
+          return;
+        }
+        console.warn('⚠️  TELEGRAM_WEBHOOK_SECRET not set — accepting webhook updates without verification (dev only).');
+      } else {
+        const receivedSecret = req.headers['x-telegram-bot-api-secret-token'];
+        if (receivedSecret !== webhookSecret) {
+          sendJson(res, 403, { ok: false, description: 'Invalid webhook secret.' });
+          return;
+        }
+      }
+
       const update = await readJsonBody(req);
-      console.log('📩 Telegram Webhook Update:', JSON.stringify(update).substring(0, 200) + '...');
+      // Redact PII before logging — never log full Telegram updates (phone,
+      // messages, text) to stdout. Only log structural signal.
+      console.log('📩 Telegram Webhook Update:', JSON.stringify({
+        has_callback_query: !!update.callback_query,
+        has_message: !!update.message,
+        has_inline_query: !!update.inline_query,
+        update_id: update.update_id,
+      }));
       
       const botToken = process.env.TELEGRAM_BOT_TOKEN;
       if (!botToken) {
@@ -949,7 +1056,6 @@ async function handleApiRequest(req, res) {
           const parts = callbackData.split('_');
           if (parts.length >= 4) {
             const isAttended = parts[1] === 'yes';
-            const classIndex = parseInt(parts[2]);
             const courseCode = parts.slice(3).join('_');
 
             // Save attendance record
@@ -1132,6 +1238,8 @@ async function handleApiRequest(req, res) {
   //   date      -> YYYY-MM-DD string
   //   status    -> 'Present' | 'Absent'
   if (req.url === '/api/attendance/telegram-sync' && req.method === 'POST') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
     try {
       const { studentId, courseId, date, status } = await readJsonBody(req);
 
@@ -1213,10 +1321,14 @@ async function handleApiRequest(req, res) {
 
   // Check in (or heartbeat refresh) with the device's GPS position.
   // The server verifies the position is inside the library geofence.
+  // Authentication required — deviceId is bound to the logged-in user.
   if (req.url === '/api/library/checkin' && req.method === 'POST') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
     try {
       const { deviceId, lat, lng } = await readJsonBody(req);
-      const result = await recordCheckIn(deviceId, Number(lat), Number(lng));
+      const device = deviceId || auth.id;
+      const result = await recordCheckIn(device, Number(lat), Number(lng));
       sendJson(res, 200, { success: true, ...result });
     } catch (error) {
       sendJson(res, 400, {
@@ -1228,14 +1340,14 @@ async function handleApiRequest(req, res) {
   }
 
   // Explicit check out (user left the library or tapped "check out").
+  // Authentication required — a user may only check out their own session.
   if (req.url === '/api/library/checkout' && req.method === 'POST') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
     try {
       const { deviceId } = await readJsonBody(req);
-      if (!deviceId) {
-        sendJson(res, 400, { success: false, error: 'deviceId is required.' });
-        return;
-      }
-      const result = await recordCheckOut(deviceId);
+      const device = deviceId || auth.id;
+      const result = await recordCheckOut(device);
       sendJson(res, 200, { success: true, ...result });
     } catch (error) {
       sendJson(res, 500, {
@@ -1263,12 +1375,16 @@ async function handleApiRequest(req, res) {
   // ── Live geofence occupancy (user_id based real-time tracking) ──
 
   // POST /api/library/track — UPSERT a user's inside/outside state via MERGE.
+  // Authentication required. userId is taken from the JWT (auth.id), never from
+  // the client, so users cannot spoof another account's presence.
   // isInside is optional; when omitted (or no lat/lng), the server only flips
   // the flag using the already-verified value. When lat/lng are present the
   // server re-verifies the geofence before trusting the client.
   if (req.url === '/api/library/track' && req.method === 'POST') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
     try {
-      const { userId, isInside, lat, lng } = await readJsonBody(req);
+      const { isInside, lat, lng } = await readJsonBody(req);
       let verified = isInside;
       if (lat !== undefined && lng !== undefined) {
         const check = isInsideGeofence(Number(lat), Number(lng));
@@ -1285,7 +1401,7 @@ async function handleApiRequest(req, res) {
           return;
         }
       }
-      const result = await trackUserPresence(userId, verified, Number(lat), Number(lng));
+      const result = await trackUserPresence(auth.id, verified, Number(lat), Number(lng));
       sendJson(res, 200, { success: true, verified, ...result });
     } catch (error) {
       sendJson(res, 400, {
@@ -1350,36 +1466,44 @@ async function handleApiRequest(req, res) {
         return;
       }
 
-      // Generate unique token
+      // Generate unique single-use token and store ONLY its SHA-256 hash so a
+      // DB read can never reveal a usable token.
       const crypto = await import('node:crypto');
       const token = crypto.randomBytes(32).toString('hex');
+      const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
 
       // Set expiry to 7 days from now
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
       await query(
         `INSERT INTO Invitations (Email, Role, Token, Status, InvitedBy, ExpiresAt)
-         VALUES (@email, @role, @token, 'pending', @invitedBy, @expiresAt)`,
+         VALUES (@email, @role, @tokenHash, 'pending', @invitedBy, @expiresAt)`,
         {
           email: { value: email },
           role: { value: role },
-          token: { value: token },
+          tokenHash: { value: tokenHash },
           invitedBy: { value: invitedBy || 'Admin' },
           expiresAt: { value: expiresAt },
         }
       );
 
-      console.log(`📨 Invitation sent to ${email} (${role}), token=${token.substring(0, 12)}...`);
+      console.log(`📨 Invitation sent to ${email} (${role}); hash=${tokenHash.substring(0, 12)}...`);
 
-      // In production, send email here via SMTP/API
-      // For now, return the invite link so admin can share it
-      const inviteLink = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host || 'localhost:5174'}/accept-invite?token=${token}`;
+      // In production, send email here via SMTP/API. Build the link from the
+      // server-configured base URL (PUBLIC_BASE_URL) to avoid host-header
+      // injection / phishing via a spoofed Host header.
+      const baseUrl = process.env.PUBLIC_BASE_URL ||
+        (req.headers.host && /localhost:?/.test(req.headers.host)
+          ? `http://${req.headers.host}`
+          : 'https://austwise.example');
+      const cleanBase = baseUrl.replace(/\/+$/, '');
+      const inviteLink = `${cleanBase}/accept-invite?token=${encodeURIComponent(token)}`;
 
       sendJson(res, 201, {
         success: true,
         message: `Invitation sent to ${email}`,
         inviteLink,
-        token: token.substring(0, 8) + '...',
+        isHash: true, // server stores only the hash; plaintext token leaves via this link only
       });
     } catch (error) {
       sendJson(res, 500, {
@@ -1405,7 +1529,7 @@ async function handleApiRequest(req, res) {
       const total = countResult.recordset[0].total;
 
       const result = await query(
-        `SELECT Id, Email, Role, Token, Status, InvitedBy, CreatedAt, ExpiresAt, AcceptedAt
+        `SELECT Id, Email, Role, Status, InvitedBy, CreatedAt, ExpiresAt, AcceptedAt
          FROM Invitations
          ORDER BY CreatedAt DESC
          OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY`,
@@ -1431,7 +1555,7 @@ async function handleApiRequest(req, res) {
     return;
   }
 
-  // Validate invitation token
+  // Validate invitation token — look up by SHA-256 hash (token never stored in clear)
   if (req.url.startsWith('/api/invite/validate') && req.method === 'GET') {
     try {
       const url = new URL(req.url, `http://${req.headers.host}`);
@@ -1442,9 +1566,11 @@ async function handleApiRequest(req, res) {
         return;
       }
 
+      const crypto = await import('node:crypto');
+      const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
       const result = await query(
-        `SELECT Id, Email, Role, Status, ExpiresAt FROM Invitations WHERE Token = @token`,
-        { token: { value: token } }
+        `SELECT Id, Email, Role, Status, ExpiresAt FROM Invitations WHERE Token = @tokenHash`,
+        { tokenHash: { value: tokenHash } }
       );
 
       if (result.recordset.length === 0) {
@@ -1488,9 +1614,11 @@ async function handleApiRequest(req, res) {
         return;
       }
 
+      const crypto = await import('node:crypto');
+      const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
       const result = await query(
-        `SELECT Id, Email, Role, Status, ExpiresAt FROM Invitations WHERE Token = @token`,
-        { token: { value: token } }
+        `SELECT Id, Email, Role, Status, ExpiresAt FROM Invitations WHERE Token = @tokenHash`,
+        { tokenHash: { value: tokenHash } }
       );
 
       if (result.recordset.length === 0) {
@@ -1533,10 +1661,16 @@ async function handleApiRequest(req, res) {
     return;
   }
 
-  // Admin: full database reset
+  // Admin: full database reset — admin-only and disabled in production mode so
+  // a leaked moderator account (or the role-escalation bug fixed elsewhere)
+  // can never wipe application data.
   if (req.url === '/api/admin/reset' && req.method === 'POST') {
+    if (!isDevMode) {
+      sendJson(res, 404, { success: false, error: 'Not found.' });
+      return;
+    }
     if (!requireFeature('db', res, 'Database connection')) return;
-    const auth = requireRole('admin', 'moderator')(req, res);
+    const auth = requireRole('admin')(req, res);
     if (!auth) return;
     try {
       const body = await readJsonBody(req);
@@ -1555,6 +1689,8 @@ async function handleApiRequest(req, res) {
   // ========== PDF Proxy (bypass CORS for Google Drive) ==========
   // Uses Google Drive API v3 (alt=media) with API key — no virus scan page issues
   if (req.url.startsWith('/api/proxy/pdf') && req.method === 'GET') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
     try {
       const url = new URL(req.url, `http://${req.headers.host}`);
       const fileId = url.searchParams.get('id');
@@ -1570,6 +1706,39 @@ async function handleApiRequest(req, res) {
       }
 
       const https = await import('node:https');
+
+      // SSRF/content-access hardening: only serve files that live inside the
+      // allowlisted Drive folder IDs configured via GOOGLE_DRIVE_ALLOWED_FOLDERS.
+      // When unset we fall back to open-fetch but log a loud warning so dev
+      // deployments don't silently proxy arbitrary public Drive content.
+      const allowedFolders = (process.env.GOOGLE_DRIVE_ALLOWED_FOLDERS || '')
+        .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+      if (allowedFolders.length === 0) {
+        console.warn('⚠️  GOOGLE_DRIVE_ALLOWED_FOLDERS not set — PDF proxy will fetch ANY public Drive file in this auth context.');
+      } else {
+        // Resolve parents of the requested file and reject if none intersect the
+        // allowlist. Drive API `files.get` with `fields=parents` lists the
+        // immediate parent folders of the file.
+        const parentCheck = await new Promise((resolve, reject) => {
+          const pUrl = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?fields=parents,mimeType&key=${encodeURIComponent(apiKey)}`;
+          https.default.get(pUrl, { timeout: 15000 }, (resp) => {
+            let data = '';
+            resp.on('data', (c) => data += c);
+            resp.on('end', () => resolve({ status: resp.statusCode, body: data }));
+          }).on('error', reject).on('timeout', function () { this.destroy(); reject(new Error('Drive parent-check timeout')); });
+        });
+        if (parentCheck.status !== 200) {
+          throw new Error(`Drive API parent-check failed: ${parentCheck.status}`);
+        }
+        let parents = [];
+        try { parents = JSON.parse(parentCheck.body).parents || []; } catch {}
+        const allowed = parents.some(p => allowedFolders.includes(String(p).toLowerCase()));
+        if (!allowed) {
+          sendJson(res, 403, { error: 'File not in an allowed folder.' });
+          return;
+        }
+      }
+
       const apiUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${apiKey}`;
 
       const pdfBuffer = await new Promise((resolve, reject) => {
@@ -1595,7 +1764,6 @@ async function handleApiRequest(req, res) {
       res.writeHead(200, {
         'Content-Type': 'application/pdf',
         'Content-Length': pdfBuffer.length,
-        'Access-Control-Allow-Origin': '*',
         'Cache-Control': 'public, max-age=3600',
       });
       res.end(pdfBuffer);
@@ -1611,6 +1779,8 @@ async function handleApiRequest(req, res) {
   // ========== YouTube Suggestions Proxy ==========
   // Returns autocomplete suggestions as user types
   if (req.url === '/api/youtube/suggestions' && req.method === 'POST') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
     try {
       const { query: searchQuery } = await readJsonBody(req);
       if (!searchQuery || !searchQuery.trim()) {
@@ -1621,7 +1791,7 @@ async function handleApiRequest(req, res) {
       const https = await import('node:https');
       const sugUrl = `https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=${encodeURIComponent(searchQuery.trim())}`;
       
-      const data = await new Promise((resolve, reject) => {
+      const data = await new Promise((resolve, _reject) => {
         https.default.get(sugUrl, (resp) => {
           let body = '';
           resp.on('data', (chunk) => body += chunk);
@@ -1646,6 +1816,8 @@ async function handleApiRequest(req, res) {
   }
 
   if (req.url === '/api/youtube/search' && req.method === 'POST') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
     try {
       const { query: searchQuery } = await readJsonBody(req);
       
@@ -1693,6 +1865,8 @@ async function handleApiRequest(req, res) {
   // ========== Gemini AI Chat Proxy ==========
   // Proxies requests to Google's Gemini API from server-side to avoid CORS & model issues
   if (req.url === '/api/gemini/chat' && req.method === 'POST') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
     try {
       const { messages } = await readJsonBody(req);
       
@@ -2445,8 +2619,11 @@ async function handleApiRequest(req, res) {
   // ═══════════════════════════════════════════════════════════════════
   // Vault Notes — file upload / download for lecture notes
 
-  // Upload a note file (base64-encoded in JSON body to avoid multipart)
+  // Upload a note file (base64-encoded in JSON body to avoid multipart) —
+  // authenticated only, so the upload endpoint can't be abused for disk fill.
   if (req.url === '/api/vault/notes/upload' && req.method === 'POST') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
     try {
       const body = await readJsonBody(req);
       if (!body.fileData || !body.fileName) {
@@ -2475,6 +2652,12 @@ async function handleApiRequest(req, res) {
       const buffer = Buffer.from(base64Data, 'base64');
       if (buffer.length > NOTE_MAX_SIZE) {
         sendJson(res, 413, { success: false, error: `File too large (${(buffer.length / (1024*1024)).toFixed(1)}MB). Max 15MB.` });
+        return;
+      }
+
+      // Verify by magic bytes, not just the client-supplied MIME type.
+      if (!verifyMimeType(buffer, mimeType)) {
+        sendJson(res, 400, { success: false, error: `File content doesn't match declared type "${mimeType}". Rejected.` });
         return;
       }
 
@@ -2536,7 +2719,6 @@ async function handleApiRequest(req, res) {
           'Content-Type': note.mimeType || 'application/octet-stream',
           'Content-Length': data.length,
           'Content-Disposition': `attachment; filename="${encodeURIComponent(note.originalName)}"`,
-          'Access-Control-Allow-Origin': '*',
         });
         res.end(data);
       } catch {
@@ -2776,7 +2958,7 @@ async function handleApiRequest(req, res) {
         return;
       }
       if (status === 'approved') {
-        await updateUserProfile(app.userId, { role: app.appliedRole });
+        await updateUserProfile(app.userId, { role: app.appliedRole }, { allowRole: true });
       }
       // Notify the applicant with the decision.
       const approved = status === 'approved';
@@ -2820,7 +3002,7 @@ async function handleApiRequest(req, res) {
         return;
       }
       const resignedRole = user.role;
-      await updateUserProfile(auth.id, { role: 'student' });
+      await updateUserProfile(auth.id, { role: 'student' }, { allowRole: true });
       const all = await listRoleApplications();
       for (const app of all) {
         if (app.userId === auth.id && app.status === 'approved') {
@@ -2869,6 +3051,13 @@ async function handleApiRequest(req, res) {
   // ═══════════════════════════════════════════════════════════════════
   // Digital Footprint Cleaner — Gmail inbox → platform mapping
 
+  // Digital Footprint Cleaner — authenticated only (it drives the caller's
+  // Gmail access token, so it must be gated to logged-in users).
+  if (req.url === '/api/cleaner/scan' && req.method === 'POST') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
+  }
+
   if (await handleCleanerRequest(req, res)) {
     return;
   }
@@ -2882,6 +3071,24 @@ async function handleApiRequest(req, res) {
 
   // ========== Google Auth Endpoint ==========
   // Handled by handleAuthRoute above (verify + find-or-create + auth cookie).
+
+  // Health checks — handled before the static SPA fallback so they always
+  // return JSON, not the index.html shell.
+  const hp = (() => { try { return new URL(req.url, `http://${req.headers.host || 'localhost'}`).pathname; } catch { return null; } })();
+  if (hp === '/healthz' && req.method === 'GET') {
+    sendJson(res, 200, { ok: true, ts: new Date().toISOString() });
+    return;
+  }
+  if (hp === '/healthz/db' && req.method === 'GET') {
+    if (!requireFeature('db', res, 'Database connection')) return;
+    try {
+      const ok = await testConnection();
+      sendJson(res, ok ? 200 : 503, { ok, db: FEATURES.db && ok });
+    } catch (e) {
+      sendJson(res, 503, { ok: false, error: e.message });
+    }
+    return;
+  }
 
   // Static assets bypass the flood guard in dev so Vite serving isn't throttled.
   if (isStaticAssetPath(req.url)) {
@@ -2916,6 +3123,23 @@ async function handleApiRequest(req, res) {
 
   await sendStaticFile(req, res);
 }
+
+// Graceful shutdown — stop accepting new traffic, drain open handles, then
+// close. Reverse proxies (and the OS SIGTERM on container stop) can wait out
+// the drain window instead of cutting in-flight clients.
+let shuttingDown = false;
+function startGracefulShutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`\n${signal} received — shutting down gracefully...`);
+  server.close(() => process.exit(0));
+  setTimeout(() => {
+    console.error('⚠️  Shutdown timed out — force exiting.');
+    process.exit(1);
+  }, 10_000).unref(); // allow 10s drain
+}
+process.on('SIGTERM', () => startGracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => startGracefulShutdown('SIGINT'));
 
 // True when the requested path maps to a real file in dist/ — used to decide
 // whether a static-looking URL is a build artifact (serve from dist) or a
