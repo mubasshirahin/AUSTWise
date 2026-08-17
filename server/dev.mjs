@@ -1969,16 +1969,8 @@ async function handleApiRequest(req, res) {
 
   // ========== Auth Endpoints (JWT + HttpOnly cookie) ==========
 
-  // Clean the URL pathname (drop query strings) so route matching is exact.
-  // Some clients (e.g. ?t=TIMESTAMP) append query params that break the
-  // === match inside handleAuthRoute's safePathname. We strip them here so
-  // handleAuthRoute sees a pristine /api/auth/me path.
-  const cleanPath = new URL(req.url, `http://${req.headers.host || 'localhost'}`).pathname;
-  if (cleanPath === '/api/auth/me' && req.method === 'GET') {
-    req.url = cleanPath;
-    return await handleAuthRoute(req, res);
-  }
-
+  // Auth endpoints are handled by handleAuthRoute (in auth.mjs), which already
+  // strips query strings via safePathname(). No extra handling needed here.
   if (await handleAuthRoute(req, res)) {
     return;
   }
