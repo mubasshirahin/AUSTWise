@@ -580,7 +580,7 @@ export default function WeeklyPlanner() {
            </div>
            <div>
              <span className="schedule-overline">Dashboard</span>
-             <p className="schedule-title">Routine</p>
+             <p className="schedule-title">Routine Grid</p>
              <span className="schedule-subtitle">Tap a class to edit</span>
            </div>
          </div>

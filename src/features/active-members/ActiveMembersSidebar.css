@@ -479,6 +479,50 @@
   font-weight: var(--fw-semibold);
 }
 
+/* ─── Role sections (Students / Faculty / Alumni) ───
+   Top-level dividers separate the three role lists; department folders
+   inside each role section keep their normal group styling. */
+.am-role-group + .am-role-group {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-secondary);
+}
+
+.am-role-group .am-group-head {
+  color: var(--text-secondary);
+}
+
+.am-role-group .am-group-head:hover {
+  color: var(--text-primary);
+  background: var(--bg-input);
+}
+
+.am-role-group .am-group-icon svg {
+  color: var(--accent-blue);
+}
+
+/* Faculty designation + Alumni batch folders (leaf level inside a role
+   section) reuse the section-folder look, including row indentation. */
+.am-role-group .am-sec-group .am-group-head {
+  padding: 4px 10px 4px 24px;
+  font-size: 11px;
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+}
+
+.am-role-group .am-sec-group .am-group-head:hover {
+  color: var(--text-primary);
+  background: transparent;
+}
+
+.am-role-group .am-sec-group .am-row-main {
+  padding-left: 12px;
+}
+
+.am-role-group .am-sec-group .am-group-empty {
+  padding-left: 20px;
+}
+
 /* ─── Member row ─── */
 .am-member-row {
   display: flex;

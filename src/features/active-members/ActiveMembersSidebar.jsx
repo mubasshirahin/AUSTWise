@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Users, Search, X, ChevronDown, ChevronRight,
   BookOpen, WifiOff, Loader2, Lock, UserCog, Zap,
+  GraduationCap, School, Briefcase,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import useWebSocket from '../../hooks/useWebSocket';
@@ -22,6 +23,152 @@ const ALL_DEPARTMENTS = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'];
 // (A1/A2 … D1/D2) always renders inside a semester, even when empty.
 const ALL_SECTIONS = ['A', 'B', 'C', 'D'];
 const LABS_BY_SECTION = { A: ['A1', 'A2'], B: ['B1', 'B2'], C: ['C1', 'C2'], D: ['D1', 'D2'] };
+
+// ─── Role-based grouping builders ────────────────────────────────────────
+// The member list is split into three top-level sections, each with its
+// own nested structure:
+//   Students → department → semester → section → lab group
+//   Faculty  → department → designation
+//   Alumni   → department → batch
+// Admins stay pinned in their own section above everything.
+
+const DESIGNATION_ORDER = ['Professor', 'Associate Professor', 'Assistant Professor', 'Lecturer'];
+const isStudentRole = (r) => r === 'student' || r === 'cr' || r === 'sr' || r === 'senior';
+
+// Students keep the full canonical structure visible (every department,
+// semester, section and lab group renders, even when empty).
+const buildStudentGroups = (list) => {
+  const byDept = {};
+  list.forEach((m) => {
+    const k = m.department || 'Undeclared';
+    (byDept[k] = byDept[k] || []).push(m);
+  });
+  const membered = Object.entries(byDept)
+    .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))
+    .map(([dept, members]) => {
+      const bySem = {};
+      members.forEach((m) => {
+        const s = m.semester ? String(m.semester) : 'Other';
+        (bySem[s] = bySem[s] || []).push(m);
+      });
+      const toGroups = (map) =>
+        Object.entries(map)
+          .sort((a, b) => {
+            const oa = a[0] === 'Other' ? 1 : 0;
+            const ob = b[0] === 'Other' ? 1 : 0;
+            return oa - ob || a[0].localeCompare(b[0], undefined, { numeric: true });
+          })
+          .map(([k, members]) => ({ key: k, members }));
+      const semesters = Object.entries(bySem)
+        .sort((a, b) => {
+          const na = a[0] === 'Other' ? 999 : Number(a[0]);
+          const nb = b[0] === 'Other' ? 999 : Number(b[0]);
+          return na - nb;
+        })
+        .map(([sem, semMembers]) => {
+          const bySec = {};
+          semMembers.forEach((m) => {
+            const sec = m.section || 'Other';
+            (bySec[sec] = bySec[sec] || []).push(m);
+          });
+          const splitLabs = (secMembers) => {
+            const byLab = {};
+            const loose = [];
+            secMembers.forEach((m) => {
+              if (m.labSection) (byLab[m.labSection] = byLab[m.labSection] || []).push(m);
+              else loose.push(m);
+            });
+            return { byLab, loose };
+          };
+          const sections = ALL_SECTIONS.map((secKey) => {
+            const secMembers = bySec[secKey] || [];
+            const { byLab, loose } = splitLabs(secMembers);
+            // Canonical lab groups first (in A1/A2 order), then any extra labs
+            // that exist in the data but aren't in the canonical list.
+            const canonical = (LABS_BY_SECTION[secKey] || []).map((lab) => ({ key: lab, members: byLab[lab] || [] }));
+            const extra = Object.entries(byLab)
+              .filter(([lab]) => !(LABS_BY_SECTION[secKey] || []).includes(lab))
+              .map(([lab, labMembers]) => ({ key: lab, members: labMembers }))
+              .sort((a, b) => (a.key === 'Other' ? 1 : 0) - (b.key === 'Other' ? 1 : 0) || a.key.localeCompare(b.key, undefined, { numeric: true }));
+            return { key: secKey, count: secMembers.length, labs: [...canonical, ...extra], loose };
+          });
+          // Sections present in the data but outside the canonical list (e.g. 'Other').
+          Object.entries(bySec).forEach(([secKey, secMembers]) => {
+            if (ALL_SECTIONS.includes(secKey)) return;
+            const { byLab, loose } = splitLabs(secMembers);
+            sections.push({ key: secKey, count: secMembers.length, labs: toGroups(byLab), loose });
+          });
+          sections.sort((a, b) => {
+            const ia = ALL_SECTIONS.indexOf(a.key);
+            const ib = ALL_SECTIONS.indexOf(b.key);
+            if (ia !== -1 && ib !== -1) return ia - ib;
+            if (ia !== -1) return -1;
+            if (ib !== -1) return 1;
+            return (a.key === 'Other' ? 1 : 0) - (b.key === 'Other' ? 1 : 0) || a.key.localeCompare(b.key);
+          });
+          return { sem, sections };
+        });
+      return { dept, semesters, count: members.length };
+    });
+  const memberedSet = new Set(membered.map((g) => g.dept));
+  const empty = ALL_DEPARTMENTS
+    .filter((d) => !memberedSet.has(d))
+    .map((d) => ({ dept: d, semesters: [], count: 0 }));
+  return [...membered, ...empty].map(({ dept, semesters, count }) => ({
+    key: `dept-${dept}`,
+    title: dept,
+    icon: <BookOpen size={13} />,
+    count,
+    semesters,
+  }));
+};
+
+// Faculty → department → designation (canonical order, then alphabetical).
+const buildFacultyGroups = (list) => {
+  const byDept = {};
+  list.forEach((m) => { const k = m.department || 'Undeclared'; (byDept[k] = byDept[k] || []).push(m); });
+  return Object.entries(byDept)
+    .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))
+    .map(([dept, members]) => {
+      const byDesig = {};
+      members.forEach((m) => { const d = m.designation || 'Other'; (byDesig[d] = byDesig[d] || []).push(m); });
+      const designations = Object.entries(byDesig)
+        .sort((a, b) => {
+          const ia = DESIGNATION_ORDER.indexOf(a[0]);
+          const ib = DESIGNATION_ORDER.indexOf(b[0]);
+          if (ia !== -1 && ib !== -1) return ia - ib;
+          if (ia !== -1) return -1;
+          if (ib !== -1) return 1;
+          return (a[0] === 'Other' ? 1 : 0) - (b[0] === 'Other' ? 1 : 0) || a[0].localeCompare(b[0]);
+        })
+        .map(([desig, desigMembers]) => ({ key: desig, members: desigMembers }));
+      return { dept, count: members.length, designations };
+    });
+};
+
+// Alumni → department → batch (newest batch first).
+const buildAlumniGroups = (list) => {
+  const byDept = {};
+  list.forEach((m) => { const k = m.department || 'Undeclared'; (byDept[k] = byDept[k] || []).push(m); });
+  return Object.entries(byDept)
+    .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))
+    .map(([dept, members]) => {
+      const byBatch = {};
+      members.forEach((m) => {
+        const b = m.batchName || (m.batchNo ? `Batch ${m.batchNo}` : 'Other');
+        (byBatch[b] = byBatch[b] || []).push(m);
+      });
+      const batches = Object.entries(byBatch)
+        .sort((a, b) => {
+          const na = /(\d{4})/.exec(a[0]);
+          const nb = /(\d{4})/.exec(b[0]);
+          if (na && nb && na[1] !== nb[1]) return Number(nb[1]) - Number(na[1]); // newest first
+          return (a[0] === 'Other' ? 1 : 0) - (b[0] === 'Other' ? 1 : 0) || a[0].localeCompare(b[0]);
+        })
+        .map(([batch, batchMembers]) => ({ key: batch, members: batchMembers }));
+      return { dept, count: members.length, batches };
+    });
+};
 
 function getRoleDisplay(role) {
   if (role === 'cr') return 'CR';
@@ -393,100 +540,21 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
     [filtered, user]
   );
 
-  // Group the filtered list by department, then semester inside each
-  // department (offline users stay in their groups). Departments with members
-  // come first (sorted by size); the remaining known departments render below
-  // with an empty state so the whole AUST structure stays visible.
-  const groups = useMemo(() => {
-    const byDept = {};
+  // Split the filtered list into the three role sections (admins pinned above).
+  const roleSections = useMemo(() => {
+    const byRole = { students: [], faculty: [], alumni: [] };
     filtered.forEach((m) => {
       if (m.role === 'admin') return; // admins pinned in their own section
-      const k = m.department || 'Undeclared';
-      (byDept[k] = byDept[k] || []).push(m);
+      if (isStudentRole(m.role)) byRole.students.push(m);
+      else if (m.role === 'faculty' || m.role === 'moderator') byRole.faculty.push(m);
+      else if (m.role === 'alumni') byRole.alumni.push(m);
+      else byRole.students.push(m); // unknown roles fall back to Students
     });
-    const membered = Object.entries(byDept)
-      .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))
-      .map(([dept, list]) => {
-        const bySem = {};
-        list.forEach((m) => {
-          const s = m.semester ? String(m.semester) : 'Other';
-          (bySem[s] = bySem[s] || []).push(m);
-        });
-        const toGroups = (map) =>
-          Object.entries(map)
-            .sort((a, b) => {
-              const oa = a[0] === 'Other' ? 1 : 0;
-              const ob = b[0] === 'Other' ? 1 : 0;
-              return oa - ob || a[0].localeCompare(b[0], undefined, { numeric: true });
-            })
-            .map(([k, members]) => ({ key: k, members }));
-        const semesters = Object.entries(bySem)
-          .sort((a, b) => {
-            const na = a[0] === 'Other' ? 999 : Number(a[0]);
-            const nb = b[0] === 'Other' ? 999 : Number(b[0]);
-            return na - nb;
-          })
-          .map(([sem, members]) => {
-            // Group by Section first, then by Lab group inside each section —
-            // members without a labSection sit directly under the section.
-            // Every canonical section (A/B/C/D) and its lab groups (A1/A2 …
-            // D1/D2) always renders, even with zero members, so the full
-            // structure stays visible like the department list.
-            const bySec = {};
-            members.forEach((m) => {
-              const sec = m.section || 'Other';
-              (bySec[sec] = bySec[sec] || []).push(m);
-            });
-            const splitLabs = (secMembers) => {
-              const byLab = {};
-              const loose = [];
-              secMembers.forEach((m) => {
-                if (m.labSection) (byLab[m.labSection] = byLab[m.labSection] || []).push(m);
-                else loose.push(m);
-              });
-              return { byLab, loose };
-            };
-            const sections = ALL_SECTIONS.map((secKey) => {
-              const secMembers = bySec[secKey] || [];
-              const { byLab, loose } = splitLabs(secMembers);
-              // Canonical lab groups first (in A1/A2 order), then any extra labs
-              // that exist in the data but aren't in the canonical list.
-              const canonical = (LABS_BY_SECTION[secKey] || []).map((lab) => ({ key: lab, members: byLab[lab] || [] }));
-              const extra = Object.entries(byLab)
-                .filter(([lab]) => !(LABS_BY_SECTION[secKey] || []).includes(lab))
-                .map(([lab, labMembers]) => ({ key: lab, members: labMembers }))
-                .sort((a, b) => (a.key === 'Other' ? 1 : 0) - (b.key === 'Other' ? 1 : 0) || a.key.localeCompare(b.key, undefined, { numeric: true }));
-              return { key: secKey, count: secMembers.length, labs: [...canonical, ...extra], loose };
-            });
-            // Sections present in the data but outside the canonical list (e.g. 'Other').
-            Object.entries(bySec).forEach(([secKey, secMembers]) => {
-              if (ALL_SECTIONS.includes(secKey)) return;
-              const { byLab, loose } = splitLabs(secMembers);
-              sections.push({ key: secKey, count: secMembers.length, labs: toGroups(byLab), loose });
-            });
-            sections.sort((a, b) => {
-              const ia = ALL_SECTIONS.indexOf(a.key);
-              const ib = ALL_SECTIONS.indexOf(b.key);
-              if (ia !== -1 && ib !== -1) return ia - ib;
-              if (ia !== -1) return -1;
-              if (ib !== -1) return 1;
-              return (a.key === 'Other' ? 1 : 0) - (b.key === 'Other' ? 1 : 0) || a.key.localeCompare(b.key);
-            });
-            return { sem, sections };
-          });
-        return { dept, semesters, count: list.length };
-      });
-    const memberedSet = new Set(membered.map((g) => g.dept));
-    const empty = ALL_DEPARTMENTS
-      .filter((d) => !memberedSet.has(d))
-      .map((d) => ({ dept: d, semesters: [], count: 0 }));
-    return [...membered, ...empty].map(({ dept, semesters, count }) => ({
-      key: `dept-${dept}`,
-      title: dept,
-      icon: <BookOpen size={13} />,
-      count,
-      semesters,
-    }));
+    return {
+      students: buildStudentGroups(byRole.students),
+      faculty: buildFacultyGroups(byRole.faculty),
+      alumni: buildAlumniGroups(byRole.alumni),
+    };
   }, [filtered]);
 
   const openPopover = (member, key) => {
@@ -635,100 +703,218 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
               )}
 
 
-              {groups.map((g) => {
-                const key = g.key;
-                const collapsed = collapsedGroups[key];
-                return (
-                  <MemberGroup
-                    key={key}
-                    title={g.title}
-                    icon={g.icon}
-                    count={g.count}
-                    collapsed={collapsed}
-                    onToggle={() => toggleGroup(key)}
-                  >
-                    {g.count === 0 ? (
-                      <div className="am-group-empty">No members yet</div>
-                    ) : g.semesters.map((s) => {
-                      const semKey = `${key}-sem-${s.sem}`;
-                      const semTotal = s.sections.reduce((n, x) => n + x.count, 0);
-                      return (
-                      <MemberGroup
-                        key={semKey}
-                        title={s.sem === 'Other' ? 'Other' : `Semester ${s.sem}`}
-                        count={semTotal}
-                        collapsed={collapsedGroups[semKey]}
-                        onToggle={() => toggleGroup(semKey)}
-                        className="am-sem-group"
-                      >
-                        {s.sections.map((sec) => {
-                          const secKey = `${semKey}-sec-${sec.key}`;
-                          return (
-                            <MemberGroup
-                              key={secKey}
-                              title={sec.key === 'Other' ? 'Other' : `Sec ${sec.key}`}
-                              count={sec.count}
-                              collapsed={collapsedGroups[secKey]}
-                              onToggle={() => toggleGroup(secKey)}
-                              className="am-sec-group"
-                            >
-                              {sec.count === 0 ? (
-                                <div className="am-group-empty">No members yet</div>
-                              ) : (
-                                <>
-                                  {sec.labs.map((lab) => {
-                                    const labKey = `${secKey}-lab-${lab.key}`;
-                                    return (
-                                      <MemberGroup
-                                        key={labKey}
-                                        title={lab.key === 'Other' ? 'Other' : `Lab ${lab.key}`}
-                                        count={lab.members.length}
-                                        collapsed={collapsedGroups[labKey]}
-                                        onToggle={() => toggleGroup(labKey)}
-                                        className="am-leaf-group"
-                                      >
-                                        {lab.members.length === 0 ? (
-                                          <div className="am-group-empty">No members yet</div>
-                                        ) : lab.members.map((m) => {
-                                          const rowKey = `${labKey}-${m.id}`;
-                                          return (
-                                            <span key={rowKey} ref={(el) => { rowRefs.current[rowKey] = el; }}>
-                                              <MemberRow
-                                                member={m}
-                                                devSwitch={devMode}
-                                                switching={switchingId === m.id}
-                                                onClick={devMode ? () => handleDevSwitch(m) : () => openPopover(m, rowKey)}
-                                              />
-                                            </span>
-                                          );
-                                        })}
-                                      </MemberGroup>
-                                    );
-                                  })}
-                                  {sec.loose.map((m) => {
-                                    const rowKey = `${secKey}-loose-${m.id}`;
-                                    return (
-                                      <span key={rowKey} ref={(el) => { rowRefs.current[rowKey] = el; }}>
-                                        <MemberRow
-                                          member={m}
-                                          devSwitch={devMode}
-                                          switching={switchingId === m.id}
-                                          onClick={devMode ? () => handleDevSwitch(m) : () => openPopover(m, rowKey)}
-                                        />
-                                      </span>
-                                    );
-                                  })}
-                                </>
-                              )}
-                            </MemberGroup>
-                          );
-                        })}
-                      </MemberGroup>
-                      );
-                    })}
-                  </MemberGroup>
-                );
-              })}
+              {/* Students — department → semester → section → lab group */}
+              <MemberGroup
+                title="Students"
+                icon={<GraduationCap size={13} />}
+                count={roleSections.students.reduce((n, g) => n + g.count, 0)}
+                collapsed={collapsedGroups['role-students']}
+                onToggle={() => toggleGroup('role-students')}
+                className="am-role-group"
+              >
+                {roleSections.students.length === 0 ? (
+                  <div className="am-group-empty">No members yet</div>
+                ) : roleSections.students.map((g) => {
+                  const key = g.key;
+                  const collapsed = collapsedGroups[key];
+                  return (
+                    <MemberGroup
+                      key={key}
+                      title={g.title}
+                      icon={g.icon}
+                      count={g.count}
+                      collapsed={collapsed}
+                      onToggle={() => toggleGroup(key)}
+                    >
+                      {g.count === 0 ? (
+                        <div className="am-group-empty">No members yet</div>
+                      ) : g.semesters.map((s) => {
+                        const semKey = `${key}-sem-${s.sem}`;
+                        const semTotal = s.sections.reduce((n, x) => n + x.count, 0);
+                        return (
+                          <MemberGroup
+                            key={semKey}
+                            title={s.sem === 'Other' ? 'Other' : `Semester ${s.sem}`}
+                            count={semTotal}
+                            collapsed={collapsedGroups[semKey]}
+                            onToggle={() => toggleGroup(semKey)}
+                            className="am-sem-group"
+                          >
+                            {s.sections.map((sec) => {
+                              const secKey = `${semKey}-sec-${sec.key}`;
+                              return (
+                                <MemberGroup
+                                  key={secKey}
+                                  title={sec.key === 'Other' ? 'Other' : `Sec ${sec.key}`}
+                                  count={sec.count}
+                                  collapsed={collapsedGroups[secKey]}
+                                  onToggle={() => toggleGroup(secKey)}
+                                  className="am-sec-group"
+                                >
+                                  {sec.count === 0 ? (
+                                    <div className="am-group-empty">No members yet</div>
+                                  ) : (
+                                    <>
+                                      {sec.labs.map((lab) => {
+                                        const labKey = `${secKey}-lab-${lab.key}`;
+                                        return (
+                                          <MemberGroup
+                                            key={labKey}
+                                            title={lab.key === 'Other' ? 'Other' : `Lab ${lab.key}`}
+                                            count={lab.members.length}
+                                            collapsed={collapsedGroups[labKey]}
+                                            onToggle={() => toggleGroup(labKey)}
+                                            className="am-leaf-group"
+                                          >
+                                            {lab.members.length === 0 ? (
+                                              <div className="am-group-empty">No members yet</div>
+                                            ) : lab.members.map((m) => {
+                                              const rowKey = `${labKey}-${m.id}`;
+                                              return (
+                                                <span key={rowKey} ref={(el) => { rowRefs.current[rowKey] = el; }}>
+                                                  <MemberRow
+                                                    member={m}
+                                                    devSwitch={devMode}
+                                                    switching={switchingId === m.id}
+                                                    onClick={devMode ? () => handleDevSwitch(m) : () => openPopover(m, rowKey)}
+                                                  />
+                                                </span>
+                                              );
+                                            })}
+                                          </MemberGroup>
+                                        );
+                                      })}
+                                      {sec.loose.map((m) => {
+                                        const rowKey = `${secKey}-loose-${m.id}`;
+                                        return (
+                                          <span key={rowKey} ref={(el) => { rowRefs.current[rowKey] = el; }}>
+                                            <MemberRow
+                                              member={m}
+                                              devSwitch={devMode}
+                                              switching={switchingId === m.id}
+                                              onClick={devMode ? () => handleDevSwitch(m) : () => openPopover(m, rowKey)}
+                                            />
+                                          </span>
+                                        );
+                                      })}
+                                    </>
+                                  )}
+                                </MemberGroup>
+                              );
+                            })}
+                          </MemberGroup>
+                        );
+                      })}
+                    </MemberGroup>
+                  );
+                })}
+              </MemberGroup>
+
+              {/* Faculty — department → designation */}
+              <MemberGroup
+                title="Faculty"
+                icon={<School size={13} />}
+                count={roleSections.faculty.reduce((n, g) => n + g.count, 0)}
+                collapsed={collapsedGroups['role-faculty']}
+                onToggle={() => toggleGroup('role-faculty')}
+                className="am-role-group"
+              >
+                {roleSections.faculty.length === 0 ? (
+                  <div className="am-group-empty">No members yet</div>
+                ) : roleSections.faculty.map((d) => {
+                  const deptKey = `fac-${d.dept}`;
+                  return (
+                    <MemberGroup
+                      key={deptKey}
+                      title={d.dept}
+                      count={d.count}
+                      collapsed={collapsedGroups[deptKey]}
+                      onToggle={() => toggleGroup(deptKey)}
+                    >
+                      {d.designations.map((desig) => {
+                        const desigKey = `${deptKey}-desig-${desig.key}`;
+                        return (
+                          <MemberGroup
+                            key={desigKey}
+                            title={desig.key}
+                            count={desig.members.length}
+                            collapsed={collapsedGroups[desigKey]}
+                            onToggle={() => toggleGroup(desigKey)}
+                            className="am-sec-group"
+                          >
+                            {desig.members.map((m) => {
+                              const rowKey = `${desigKey}-${m.id}`;
+                              return (
+                                <span key={rowKey} ref={(el) => { rowRefs.current[rowKey] = el; }}>
+                                  <MemberRow
+                                    member={m}
+                                    devSwitch={devMode}
+                                    switching={switchingId === m.id}
+                                    onClick={devMode ? () => handleDevSwitch(m) : () => openPopover(m, rowKey)}
+                                  />
+                                </span>
+                              );
+                            })}
+                          </MemberGroup>
+                        );
+                      })}
+                    </MemberGroup>
+                  );
+                })}
+              </MemberGroup>
+
+              {/* Alumni — department → batch */}
+              <MemberGroup
+                title="Alumni"
+                icon={<Briefcase size={13} />}
+                count={roleSections.alumni.reduce((n, g) => n + g.count, 0)}
+                collapsed={collapsedGroups['role-alumni']}
+                onToggle={() => toggleGroup('role-alumni')}
+                className="am-role-group"
+              >
+                {roleSections.alumni.length === 0 ? (
+                  <div className="am-group-empty">No members yet</div>
+                ) : roleSections.alumni.map((d) => {
+                  const deptKey = `alu-${d.dept}`;
+                  return (
+                    <MemberGroup
+                      key={deptKey}
+                      title={d.dept}
+                      count={d.count}
+                      collapsed={collapsedGroups[deptKey]}
+                      onToggle={() => toggleGroup(deptKey)}
+                    >
+                      {d.batches.map((batch) => {
+                        const batchKey = `${deptKey}-batch-${batch.key}`;
+                        return (
+                          <MemberGroup
+                            key={batchKey}
+                            title={batch.key}
+                            count={batch.members.length}
+                            collapsed={collapsedGroups[batchKey]}
+                            onToggle={() => toggleGroup(batchKey)}
+                            className="am-sec-group"
+                          >
+                            {batch.members.map((m) => {
+                              const rowKey = `${batchKey}-${m.id}`;
+                              return (
+                                <span key={rowKey} ref={(el) => { rowRefs.current[rowKey] = el; }}>
+                                  <MemberRow
+                                    member={m}
+                                    devSwitch={devMode}
+                                    switching={switchingId === m.id}
+                                    onClick={devMode ? () => handleDevSwitch(m) : () => openPopover(m, rowKey)}
+                                  />
+                                </span>
+                              );
+                            })}
+                          </MemberGroup>
+                        );
+                      })}
+                    </MemberGroup>
+                  );
+                })}
+              </MemberGroup>
             </>
           )}
         </div>

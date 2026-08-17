@@ -1810,6 +1810,7 @@ async function handleApiRequest(req, res) {
             yearSemester: u.yearSemester || '',
             section: u.section || '',
             labSection: u.labSection || '',
+            designation: u.designation || '',
             status: p.status,
             lastSeenAt: p.lastSeenAt || (u.lastSeenAt ? new Date(u.lastSeenAt).getTime() : null),
             cgpa: showCgpa && u.cgpa > 0 ? Number(u.cgpa) : null,

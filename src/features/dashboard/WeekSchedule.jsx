@@ -497,7 +497,7 @@ export default function WeekSchedule() {
           </div>
           <div>
             <span className="schedule-overline">Dashboard</span>
-            <p className="schedule-title">Semester View</p>
+            <p className="schedule-title">14-Weeks View</p>
             <span className="schedule-subtitle">
               {user?.department || 'AUST'}
               {user?.yearSemester ? ` · ${fmtSem(user.yearSemester)}` : ''}
