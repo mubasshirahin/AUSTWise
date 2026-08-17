@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Star, MessageSquare, ThumbsUp, ArrowUpDown, Send, Plus, X } from 'lucide-react';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
 import { sanitizeUserInput, MAX_TEXT_LENGTH, MAX_TITLE_LENGTH } from '../../utils/sanitize';
@@ -55,7 +55,7 @@ export default function CourseReview() {
   const [reviewForm, setReviewForm] = useState(defaultReviewForm);
   const [formError, setFormError] = useState('');
   const [formMessage, setFormMessage] = useState('');
-  const trackerCourses = useMemo(() => getCoursesFromTracker(), [reviews.length, showAddForm]);
+  const trackerCourses = getCoursesFromTracker();
 
   const refreshReviews = () => {
     const nextReviews = buildCourseReviewList();

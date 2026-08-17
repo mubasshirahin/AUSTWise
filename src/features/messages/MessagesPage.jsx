@@ -800,7 +800,7 @@ export default function MessagesPage() {
   const editListenersRef = useRef(new Set());
   const pendingQueueRef = useRef([]);
   const activePeerIdRef = useRef(activePeerId);
-  activePeerIdRef.current = activePeerId;
+  useEffect(() => { activePeerIdRef.current = activePeerId; }, [activePeerId]);
 
   // Subscribe to message status updates
   const onMessageStatusUpdate = useCallback((listener) => {
@@ -826,16 +826,20 @@ export default function MessagesPage() {
     return () => editListenersRef.current.delete(listener);
   }, []);
 
+  // Queue messages sent while offline — flushed once the socket reconnects.
+  // wsSendMessage is read via a ref below because it is only available after
+  // the useWebSocket destructure (referencing it inside the call is a TDZ error).
+  const wsSendMessageRef = useRef(null);
+  const queueMessage = useCallback((toId, text, id, timestamp) => {
+    pendingQueueRef.current.push({ toId, text, id, timestamp });
+  }, []);
+
   const drainQueue = useCallback((userId) => {
     const queue = pendingQueueRef.current;
     pendingQueueRef.current = [];
     queue.forEach((item) => {
-      wsSendMessage(userId, item.toId, item.text, item.id, item.timestamp);
+      wsSendMessageRef.current?.(userId, item.toId, item.text, item.id, item.timestamp);
     });
-  }, []);
-
-  const queueMessage = useCallback((toId, text, id, timestamp) => {
-    pendingQueueRef.current.push({ toId, text, id, timestamp });
   }, []);
 
   // Message notifications hook (background push notifications)
@@ -855,7 +859,6 @@ export default function MessagesPage() {
     sendMessage: wsSendMessage,
     sendTyping: wsSendTyping,
     sendRead: wsSendRead,
-    sendReaction: wsSendReaction,
     sendDelete: wsSendDelete,
     sendEdit: wsSendEdit,
     subscribe: wsSubscribe,
@@ -929,6 +932,11 @@ export default function MessagesPage() {
     }, [currentUserId, drainQueue]),
   });
 
+  // Keep the latest sendMessage available to drainQueue via the ref above.
+  useEffect(() => {
+    wsSendMessageRef.current = wsSendMessage;
+  }, [wsSendMessage]);
+
   // Subscribe/unsubscribe to active conversation
   useEffect(() => {
     if (wsConnected && currentUserId && activePeerId) {
@@ -963,9 +971,7 @@ export default function MessagesPage() {
     refreshConversations();
   };
 
-  const unreadTotal = useMemo(() => {
-    return currentUserId ? getUnreadCount(currentUserId) : 0;
-  }, [currentUserId, conversations]);
+  const unreadTotal = currentUserId ? getUnreadCount(currentUserId) : 0;
 
   const filteredConversations = useMemo(() => {
     let list = conversations.filter((c) =>

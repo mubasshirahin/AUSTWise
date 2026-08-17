@@ -1,35 +1,99 @@
 # AUSTWise
 
-A comprehensive utility tool designed to assist students at American University of Technology (AUST).
+All-in-one utility tool for students of **Ahsanullah University of Science & Technology (AUST)** — routines, course reviews, campus maps, bus tracking, library occupancy, vault/notes, messaging, and more.
 
-## React + Vite
+## Stack
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+- **Frontend:** React 19 + Vite 8 (rolldown), PWA (vite-plugin-pwa)
+- **Backend:** Node.js (zero-framework HTTP server in `server/dev.mjs`), bcrypt + JWT auth
+- **Database:** SQL Server (via `mssql` / Prisma adapter), with JSON-file fallback
+- **Storage:** Local JSON files for runtime data (users, messages, password vault, …)
 
-Currently, two official plugins are available:
+## Development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install
+cp .env.example .env   # then fill in your values
+npm run dev            # Vite HMR + API server on http://localhost:5174
+```
 
-## React Compiler
+## Production
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 1. Configure `.env`
 
-## Expanding the ESLint configuration
+Copy `.env.example` to `.env` and set at minimum:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+| Variable | Purpose |
+| --- | --- |
+| `JWT_SECRET` | Sign auth tokens. `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"` |
+| `ADMIN_DEFAULT_PASSWORD` | Seeds the first admin account on first run. **Change after first login.** |
+| `CRYPTO_SECRET_KEY` | Password-vault AES-256-GCM key. `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
+| `DB_SERVER` / `DB_DATABASE` / `DB_USER` / `DB_PASSWORD` | SQL Server connection (host + static port, e.g. `localhost:1433`) |
+| `COOKIE_SECURE=1` | Marks the auth cookie `Secure` (required behind HTTPS) |
+| `ALLOWED_ORIGIN` | Comma-separated CORS origins; empty = same-origin only (recommended) |
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Runtime data files (`server/users.json`, `messages.json`, `password_vault.json`, …) are gitignored and created fresh on first boot.
 
-Currently, two official plugins are available:
+### 2. Build & run
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm run build          # bundles the SPA into dist/
+npm start              # node server/dev.mjs — auto-pins NODE_ENV=production
+```
 
-## React Compiler
+The server serves the built SPA and the API on `PORT` (default 5174). In production mode the dev-only endpoints (`/api/dev/*`, `/__dev/users`) are hard-disabled.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 3. HTTPS (required in production)
 
-## Expanding the ESLint configuration
+The server speaks plain HTTP — terminate TLS with a reverse proxy (nginx / Caddy / PM2 + certbot). Example nginx:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```nginx
+server {
+    listen 443 ssl;
+    server_name austwise.example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/austwise.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/austwise.example.com/privkey.pem;
+
+    client_max_body_size 20M;
+
+    location / {
+        proxy_pass http://127.0.0.1:5174;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # WebSocket support (real-time messaging)
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+```
+
+Then set `COOKIE_SECURE=1`, optionally `ENABLE_HSTS=1`, and restart.
+
+### 4. Process manager (PM2)
+
+```bash
+npm i -g pm2
+pm2 start server/dev.mjs --name austwise --env production
+pm2 save && pm2 startup
+```
+
+### Security notes
+
+- Passwords are bcrypt-hashed; password-vault entries are AES-256-GCM encrypted.
+- Auth uses an `HttpOnly` + `SameSite=Lax` cookie (adds `Secure` with `COOKIE_SECURE=1`).
+- Rate limiting is built in (global flood guard + stricter auth/extract limits).
+- SQL queries are parameterized. CORS is same-origin unless `ALLOWED_ORIGIN` is set.
+- Dev-only endpoints are disabled in `NODE_ENV=production`.
+
+## Scripts
+
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Dev server with HMR |
+| `npm run build` | Production build to `dist/` |
+| `npm run lint` | ESLint over `src/`, `server/`, `scripts/` |
+| `node scripts/seed-sqlserver.mjs` | One-time seed of courses/locations into SQL Server (idempotent) |

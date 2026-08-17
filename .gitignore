@@ -51,6 +51,19 @@ skills-lock.json
 .library_presence.json
 .aider*
 
+# Runtime user & message data (bcrypt hashes, 2,844 users, 1,280 messages)
+# — seeded fresh on first run, never commit to git
+server/users.json
+server/messages.json
+
+# Runtime state & sensitive user data (library presence/occupancy, encrypted
+# password vault, role applications, shared routines) — never commit
+server/library_occupancy.json
+server/library_presence.json
+server/password_vault.json
+server/roleApplications.json
+server/shared_routines.json
+
 # Nested third-party repo (unrelated to AUSTWise)
 strix/
 

@@ -85,7 +85,7 @@ async function migrateInlineFileToIndexedDb(item) {
   if (!item?.id || !item.fileData) return item;
 
   await saveQuestionPaperFile(item.id, item.fileData);
-  const { fileData, ...rest } = item;
+  const { fileData: _fileData, ...rest } = item;
   return { ...rest, hasFile: true };
 }
 

@@ -1,13 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Hourglass, AlertTriangle, Timer } from 'lucide-react';
 import { deadlines } from '../../data/mockData';
 import { useAuth } from '../../context/AuthContext';
 
 export default function DeadlineTicker() {
   const { user } = useAuth();
-  const [timers, setTimers] = useState([]);
-  const [calendarTasks, setCalendarTasks] = useState([]);
-
   // Get user's batch group (A1, A2, B1, B2, C1, C2, D1, D2)
   const userBatchGroup = (() => {
     if (user?.section && ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2'].includes(user.section.toUpperCase())) {
@@ -25,34 +22,23 @@ export default function DeadlineTicker() {
     return 'A1';
   })();
 
-  useEffect(() => {
+  const [timers] = useState(() => {
     // Load deadlines from localStorage or use empty array
     const stored = localStorage.getItem('aust-deadlines');
-    const loadedDeadlines = stored ? JSON.parse(stored) : [...deadlines];
-    setTimers(loadedDeadlines);
+    return stored ? JSON.parse(stored) : [...deadlines];
+  });
+  const [calendarTasks] = useState(() => {
+    const stored = localStorage.getItem('aust-week-tasks');
+    return stored ? JSON.parse(stored) : [];
+  });
 
-    // Load calendar tasks from localStorage
-    const storedTasks = localStorage.getItem('aust-week-tasks');
-    if (storedTasks) {
-      setCalendarTasks(JSON.parse(storedTasks));
-    }
-  }, []);
-
-  // Combine manual deadlines with calendar tasks for user's batch
-  const combinedDeadlines = (() => {
+  // Combine manual deadlines with calendar tasks for user's batch.
+  // Note: past-task filtering happens inside the countdown effect (where the
+  // current time is available) so this derivation stays pure for render.
+  const combinedDeadlines = useMemo(() => {
     // Convert calendar tasks to deadline format (only for user's batch)
     const taskDeadlines = calendarTasks
       .filter(task => task.batchGroup === userBatchGroup)
-      .filter(task => {
-        const taskDate = new Date(task.date);
-        if (task.time) {
-          const [hours, minutes] = task.time.split(':');
-          taskDate.setHours(parseInt(hours), parseInt(minutes), 0);
-        } else {
-          taskDate.setHours(23, 59, 59);
-        }
-        return taskDate.getTime() > Date.now(); // Only future tasks
-      })
       .map(task => {
         const taskDate = new Date(task.date);
         if (task.time) {
@@ -76,43 +62,43 @@ export default function DeadlineTicker() {
 
     // Combine with manual deadlines
     return [...timers, ...taskDeadlines];
-  })();
+  }, [timers, calendarTasks, userBatchGroup]);
 
   // State for live countdown display
   const [displayDeadlines, setDisplayDeadlines] = useState([]);
 
   useEffect(() => {
-    if (combinedDeadlines.length === 0) {
-      setDisplayDeadlines([]);
-      return undefined;
-    }
+    if (combinedDeadlines.length === 0) return undefined;
 
     const calculateTimeRemaining = () => {
-      const updated = combinedDeadlines.map(dl => {
-        const diff = dl.dueDate.getTime() - Date.now();
-        
-        if (diff <= 0) {
-          return { ...dl, formatted: 'Passed', urgent: false };
-        }
+      const nowTs = Date.now();
+      const updated = combinedDeadlines
+        .filter(dl => dl.dueDate.getTime() > nowTs) // Only future tasks
+        .map(dl => {
+          const diff = dl.dueDate.getTime() - nowTs;
 
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-        const mins = Math.floor((diff / (1000 * 60)) % 60);
-        const secs = Math.floor((diff / 1000) % 60);
+          if (diff <= 0) {
+            return { ...dl, formatted: 'Passed', urgent: false };
+          }
 
-        // Cleaner countdown text — rounded days when possible, otherwise h/m.
-        const formatted =
-          days > 0 ? `${days} Day${days > 1 ? 's' : ''} Left`
-            : hours > 0 ? `${hours}h ${mins}m Left`
-              : mins > 0 ? `${mins}m Left`
-                : `${secs}s Left`;
+          const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+          const mins = Math.floor((diff / (1000 * 60)) % 60);
+          const secs = Math.floor((diff / 1000) % 60);
 
-        // Semantic priority: < 3 days = HIGH (danger), < 7 days = MEDIUM (warning).
-        const priority = diff < 3 * 24 * 60 * 60 * 1000 ? 'high' : diff < 7 * 24 * 60 * 60 * 1000 ? 'medium' : 'low';
-        const urgent = diff < 48 * 60 * 60 * 1000; // less than 48 hours
+          // Cleaner countdown text — rounded days when possible, otherwise h/m.
+          const formatted =
+            days > 0 ? `${days} Day${days > 1 ? 's' : ''} Left`
+              : hours > 0 ? `${hours}h ${mins}m Left`
+                : mins > 0 ? `${mins}m Left`
+                  : `${secs}s Left`;
 
-        return { ...dl, formatted, urgent, priority };
-      });
+          // Semantic priority: < 3 days = HIGH (danger), < 7 days = MEDIUM (warning).
+          const priority = diff < 3 * 24 * 60 * 60 * 1000 ? 'high' : diff < 7 * 24 * 60 * 60 * 1000 ? 'medium' : 'low';
+          const urgent = diff < 48 * 60 * 60 * 1000; // less than 48 hours
+
+          return { ...dl, formatted, urgent, priority };
+        });
 
       // Sort by nearest deadline
       updated.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
@@ -122,7 +108,7 @@ export default function DeadlineTicker() {
     calculateTimeRemaining();
     const interval = setInterval(calculateTimeRemaining, 1000);
     return () => clearInterval(interval);
-  }, [combinedDeadlines.length, calendarTasks.length, timers.length]);
+  }, [combinedDeadlines]);
 
   return (
     <div className="glass-card-static schedule-widget deadline-widget animate-fadeInUp">

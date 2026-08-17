@@ -85,7 +85,6 @@ export function rateLimit({ windowMs, max, keyFn }) {
       res.setHeader('X-RateLimit-Reset', String(Math.ceil(entry.resetTime / 1000)));
       res.writeHead(429, {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
         'Retry-After': String(retryAfter),
       });
       res.end(JSON.stringify({
@@ -104,12 +103,95 @@ export function rateLimit({ windowMs, max, keyFn }) {
   };
 }
 
+/**
+ * Per-account + per-IP login limiter with exponential backoff (M4).
+ *
+ * Keys are `ip|account`, so rotating IPs can't bypass the per-account budget,
+ * and a process-wide `__global__` key bounds total attempts even across IP
+ * rotation. A failed login locks the account+IP for windowMs × 2^failures
+ * (capped at 15 min); a successful login clears the lock.
+ *
+ * Returns a middleware function with two attached helpers:
+ *   check.fail(req, account)    — record a failed login (starts/extends backoff)
+ *   check.success(req, account) — clear the lock after a successful login
+ */
+export function createLoginRateLimiter({ windowMs, max, globalMax }) {
+  const store = new Map();
+  stores.add(store);
+  scheduleCleanup();
+  const MAX_BACKOFF = 15 * 60 * 1000;
+  const GLOBAL_KEY = '__global__';
+
+  const keyOf = (req, account) => {
+    const acct = String(account || '').toLowerCase().trim();
+    return acct ? `${getClientIp(req)}|${acct}` : getClientIp(req);
+  };
+  const entryMax = (k) => (k === GLOBAL_KEY ? (globalMax || max * 10) : max);
+
+  const check = (req, res, account) => {
+    const now = Date.now();
+    const keys = account ? [keyOf(req, account), GLOBAL_KEY] : [keyOf(req, account)];
+
+    for (const k of keys) {
+      const e = store.get(k);
+      if (e && e.resetTime > now && e.count >= entryMax(k)) {
+        const retryAfter = Math.ceil((e.resetTime - now) / 1000);
+        res.writeHead(429, {
+          'Content-Type': 'application/json',
+          'Retry-After': String(retryAfter),
+        });
+        res.end(JSON.stringify({
+          success: false,
+          error: `Too many attempts. Please try again in ${retryAfter} seconds.`,
+          retryAfter,
+        }));
+        return false;
+      }
+    }
+
+    for (const k of keys) {
+      const e = store.get(k);
+      if (!e || e.resetTime <= now) {
+        store.set(k, { count: 1, failures: 0, resetTime: now + windowMs });
+      } else {
+        e.count += 1;
+      }
+    }
+    return true;
+  };
+
+  check.fail = (req, account) => {
+    const now = Date.now();
+    const key = keyOf(req, account);
+    const prev = store.get(key);
+    const failures = (prev?.failures || 0) + 1;
+    const backoffMs = Math.min(windowMs * Math.pow(2, failures), MAX_BACKOFF);
+    store.set(key, { count: max, failures, resetTime: now + backoffMs });
+    const g = store.get(GLOBAL_KEY);
+    if (g && g.resetTime > now) g.count += 1;
+    else store.set(GLOBAL_KEY, { count: 1, failures: 0, resetTime: now + windowMs });
+  };
+
+  check.success = (req, account) => {
+    store.delete(keyOf(req, account));
+  };
+
+  return check;
+}
+
 // ── Pre-configured limiters (env-tunable) ──────────────────────────────────
 
-/** Shared limiter for /api/auth/login + /api/auth/signup */
+/** Shared per-IP limiter for /api/auth/login + /api/auth/signup */
 export const authRateLimiter = rateLimit({
   windowMs: Number(process.env.RATE_LIMIT_AUTH_WINDOW_MS) || 60_000,
   max: Number(process.env.RATE_LIMIT_AUTH_MAX) || 5,
+});
+
+/** Per-account + per-IP limiter with exponential backoff on failed logins. */
+export const loginRateLimiter = createLoginRateLimiter({
+  windowMs: Number(process.env.RATE_LIMIT_AUTH_WINDOW_MS) || 60_000,
+  max: Number(process.env.RATE_LIMIT_AUTH_MAX) || 5,
+  globalMax: Number(process.env.RATE_LIMIT_AUTH_GLOBAL_MAX) || 100,
 });
 
 /** Limiter for /api/extract-routine (OpenAI-backed image extraction) */

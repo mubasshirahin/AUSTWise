@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- AUSTWise sitemap. Mirrors public client routes. Regenerate on route change. -->
+<urlset xmlns="https://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://austwise.example/</loc><changefreq>daily</changefreq></url>
+  <url><loc>https://austwise.example/dashboard</loc><changefreq>hourly</changefreq></url>
+  <url><loc>https://austwise.example/routine</loc><changefreq>daily</changefreq></url>
+  <url><loc>https://austwise.example/campus</loc><changefreq>weekly</changefreq></url>
+  <url><loc>https://austwise.example/library</loc><changefreq>hourly</changefreq></url>
+  <url><loc>https://austwise.example/vault</loc><changefreq>daily</changefreq></url>
+  <url><loc>https://austwise.example/community</loc><changefreq>daily</changefreq></url>
+  <url><loc>https://austwise.example/settings</loc><changefreq>weekly</changefreq></url>
+</urlset>

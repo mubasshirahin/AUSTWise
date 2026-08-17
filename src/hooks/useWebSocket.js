@@ -27,12 +27,13 @@ export default function useWebSocket(userId, options = {}) {
   const pingIntervalRef = useRef(null);
   const reconnectAttemptRef = useRef(0);
   const mountedRef = useRef(true);
+  const connectRef = useRef(null);
   const [connected, setConnected] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState([]);
 
   // Store callbacks in refs to avoid re-creating `connect` when callbacks change
   const optionsRef = useRef(options);
-  optionsRef.current = options;
+  useEffect(() => { optionsRef.current = options; }, [options]);
 
   const connect = useCallback(() => {
     if (!userId || !mountedRef.current) return;
@@ -164,7 +165,7 @@ export default function useWebSocket(userId, options = {}) {
             WS_MAX_RECONNECT_DELAY
           );
           reconnectAttemptRef.current += 1;
-          reconnectTimeoutRef.current = setTimeout(connect, delay);
+          reconnectTimeoutRef.current = setTimeout(() => connectRef.current?.(), delay);
         }
       };
 
@@ -175,6 +176,11 @@ export default function useWebSocket(userId, options = {}) {
       // Connection failed, will retry via onclose
     }
   }, [userId]); // Only reconnect when userId changes — callbacks are read from ref
+
+  // Keep the latest connect in a ref so the reconnect timeout can call it
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   // Connect when userId changes
   useEffect(() => {

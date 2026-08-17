@@ -111,7 +111,7 @@ function getMaterialTypeLabel(materials) {
   return [...new Set(labels)].join(', ');
 }
 
-function getMaterialColor(materials) {
+function getMaterialColor(_materials) {
   // Material type is conveyed by the icon + label, not color — all use the brand accent.
   return 'var(--accent-amber)';
 }
@@ -136,7 +136,7 @@ function getMaterialTitle(materials) {
   return 'Untitled';
 }
 
-function generateAvatarColor(email) {
+function generateAvatarColor(_email) {
   // Account identity is shown via initials — avatars use the brand accent consistently.
   return 'var(--accent-amber)';
 }
@@ -199,7 +199,6 @@ export default function WorkspacePage() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [tokenClient, setTokenClient] = useState(null);
   const [isAuthorizing, setIsAuthorizing] = useState(false);
-  const [processingToken, setProcessingToken] = useState(null);
 
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [coursework, setCoursework] = useState([]);
@@ -1208,7 +1207,6 @@ export default function WorkspacePage() {
                     const MatIcon = item.materials && item.materials.length > 0 ? getMaterialIcon(item.materials) : Megaphone;
                     const matColor = item.materials && item.materials.length > 0 ? getMaterialColor(item.materials) : 'var(--accent-amber)';
                     const matLabel = item.materials && item.materials.length > 0 ? getMaterialTypeLabel(item.materials) : 'Announcement';
-                    const matLink = item.materials && item.materials.length > 0 ? getMaterialLink(item.materials) : null;
                     const displayTitle = item.title || item.text?.substring(0, 80) || (item.materials ? getMaterialTitle(item.materials) : 'Untitled');
                     return (
                       <div
@@ -1470,7 +1468,6 @@ export default function WorkspacePage() {
                     </h3>
                     <div className="workspace-material-modal-attachment-list">
                       {item.materials.map((mat, i) => {
-                        const mIcon = getMaterialIcon([mat]);
                         const mColor = getMaterialColor([mat]);
                         const mTitle = getMaterialTitle([mat]);
                         const mLink = getMaterialLink([mat]);

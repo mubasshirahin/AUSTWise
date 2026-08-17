@@ -98,7 +98,6 @@ const MESSAGE_SCRIPTS = [
 export async function seedDevMessages() {
   const users = await readUsers();
   const devUsers = users.filter((u) => u.id && String(u.id).startsWith('DEV-'));
-  const byEmail = new Map(devUsers.map((u) => [String(u.email).toLowerCase(), u]));
   const sections = new Map(); // `${dept}|${sem}|${section}` -> { dept, sem, section, lab, cr, s2, s3, sr }
 
   for (const u of devUsers) {

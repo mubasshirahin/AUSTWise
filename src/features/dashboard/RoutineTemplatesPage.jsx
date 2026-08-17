@@ -1,205 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { CalendarDays, Download, Building2, Check } from 'lucide-react';
 import { loadTemplates, mergeTemplatesToRoutine } from '../../utils/routineTemplates';
-import { getAutoColorForCourse } from '../../utils/autoColorPalette';
 import { useRoutine } from '../../context/RoutineContext';
 import './DashboardPage.css';
 
 export default function RoutineTemplatesPage() {
   const { replaceRoutine } = useRoutine();
-  const [templates, setTemplates] = useState([]);
+  const [templates] = useState(() => loadTemplates());
   const [selectedDept, setSelectedDept] = useState('all');
-  const [selectedTemplate, setSelectedTemplate] = useState(null);
-  const [showEditor, setShowEditor] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState(null);
-  const [editorForm, setEditorForm] = useState({
-    name: '',
-    semester: '1-1',
-    department: 'CSE',
-    year: new Date().getFullYear().toString(),
-    routine: {
-      Sunday: [],
-      Monday: [],
-      Tuesday: [],
-      Wednesday: [],
-      Thursday: [],
-    },
-    weekDays: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday']
-  });
-  const [editingClass, setEditingClass] = useState(null);
-  const [showLoadModal, setShowLoadModal] = useState(false);
 
   const departments = [...new Set(templates.map(t => t.department).filter(Boolean))].sort();
   const visibleTemplates = selectedDept === 'all'
     ? templates
     : templates.filter(t => t.department === selectedDept);
 
-  const timeSlots = [
-    { label: '08:00 AM - 08:50 AM', display: '08:00-08:50' },
-    { label: '08:50 AM - 09:40 AM', display: '08:50-09:40' },
-    { label: '09:40 AM - 10:30 AM', display: '09:40-10:30' },
-    { label: '10:30 AM - 11:20 AM', display: '10:30-11:20' },
-    { label: '11:20 AM - 12:10 PM', display: '11:20-12:10' },
-    { label: '12:10 PM - 01:00 PM', display: '12:10-01:00' },
-    { label: '01:00 PM - 01:50 PM', display: '01:00-01:50' },
-    { label: '01:50 PM - 02:40 PM', display: '01:50-02:40' },
-    { label: '02:40 PM - 03:30 PM', display: '02:40-03:30' },
-    { label: '03:30 PM - 04:20 PM', display: '03:30-04:20' },
-    { label: '04:20 PM - 05:10 PM', display: '04:20-05:10' },
-    { label: '05:10 PM - 06:00 PM', display: '05:10-06:00' },
-  ];
-
-  const slotBoundaries = [
-    '08:00', '08:50', '09:40', '10:30', '11:20', '12:10',
-    '13:00', '13:50', '14:40', '15:30', '16:20', '17:10', '18:00',
-  ];
-
   const weekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
-
-  useEffect(() => {
-    refreshTemplates();
-  }, []);
-
-  const refreshTemplates = () => {
-    const loaded = loadTemplates();
-    setTemplates(loaded);
-  };
-
-  const normalizeTime = (value) => {
-    const match = value.trim().match(/^(\d{1,2}):(\d{2})\s*(am|pm)?$/i);
-    if (!match) return null;
-    let hour = Number(match[1]);
-    const minute = match[2];
-    const period = match[3]?.toLowerCase();
-    if (period === 'pm' && hour !== 12) hour += 12;
-    if (period === 'am' && hour === 12) hour = 0;
-    if (!period && hour >= 1 && hour <= 6) hour += 12;
-    return `${String(hour).padStart(2, '0')}:${minute}`;
-  };
-
-  const calculateEndTime = (startTime, periods) => {
-    const start = normalizeTime(startTime.trim());
-    if (!start) return '08:50';
-    const startIdx = slotBoundaries.indexOf(start);
-    if (startIdx === -1) return '08:50';
-    const endIdx = Math.min(startIdx + periods, slotBoundaries.length - 1);
-    return slotBoundaries[endIdx];
-  };
-
-  const formatTimeForDisplay = (time24) => {
-    const [hour, minute] = time24.split(':');
-    const hourNum = parseInt(hour, 10);
-    const ampm = hourNum >= 12 ? 'PM' : 'AM';
-    const hour12 = hourNum > 12 ? hourNum - 12 : (hourNum === 0 ? 12 : hourNum);
-    return `${String(hour12).padStart(2, '0')}:${minute} ${ampm}`;
-  };
-
-  const getSlotDetails = (timeStr) => {
-    const [rawStart, rawEnd] = timeStr.split('-');
-    const start = normalizeTime(rawStart || '');
-    const end = normalizeTime(rawEnd || '');
-    let startIdx = slotBoundaries.indexOf(start);
-    let endIdx = slotBoundaries.indexOf(end);
-    if (startIdx === -1 && start) {
-      startIdx = slotBoundaries.findIndex((slot) => slot > start) - 1;
-    }
-    if (endIdx === -1 && end) {
-      endIdx = slotBoundaries.findIndex((slot) => slot >= end);
-    }
-    if (startIdx < 0) startIdx = 0;
-    if (endIdx <= startIdx) endIdx = startIdx + 1;
-    const colSpan = Math.min(timeSlots.length - startIdx, Math.max(1, endIdx - startIdx));
-    return { startIdx, colSpan };
-  };
-
-  const openAddClass = (day, slotIdx) => {
-    const start = slotBoundaries[slotIdx] || '08:00';
-    const end = slotBoundaries[slotIdx + 1] || '08:50';
-    const startTime = formatTimeForDisplay(start);
-    const endTime = formatTimeForDisplay(end);
-    
-    setEditingClass({
-      mode: 'add',
-      day,
-      form: {
-        id: Date.now(),
-        course: '',
-        name: '',
-        type: 'Theory',
-        time: `${startTime} - ${endTime}`,
-        room: '',
-        teacher: '',
-        color: getAutoColorForCourse('', 'Theory'),
-      },
-    });
-  };
-
-  const openEditClass = (day, cls) => {
-    setEditingClass({
-      mode: 'edit',
-      originalDay: day,
-      day,
-      form: { ...cls },
-    });
-  };
-
-  const updateClassForm = (field, value) => {
-    setEditingClass((current) => ({
-      ...current,
-      form: {
-        ...current.form,
-        [field]: value,
-      },
-    }));
-  };
-
-  const handleClassTypeChange = (newType) => {
-    const periods = newType === 'Lab' ? 3 : 1;
-    const timeParts = editingClass.form.time.split(' - ');
-    const start = timeParts[0] || '08:00';
-    const newEnd = calculateEndTime(start, periods);
-    updateClassForm('time', `${start} - ${newEnd}`);
-    updateClassForm('type', newType);
-    updateClassForm('color', getAutoColorForCourse(editingClass.form.course, newType));
-  };
-
-  const saveClass = (event) => {
-    event.preventDefault();
-    const cleanClass = {
-      ...editingClass.form,
-      course: editingClass.form.course.trim() || 'Untitled',
-      name: editingClass.form.name.trim() || 'Class',
-      room: editingClass.form.room.trim() || 'TBA',
-      teacher: editingClass.form.teacher.trim() || 'TBA',
-      time: editingClass.form.time.trim() || '08:00 - 08:50',
-    };
-
-    const newRoutine = { ...editorForm.routine };
-    
-    if (editingClass.mode === 'add') {
-      newRoutine[editingClass.day] = [...(newRoutine[editingClass.day] || []), cleanClass];
-    } else {
-      newRoutine[editingClass.originalDay] = (newRoutine[editingClass.originalDay] || []).filter(
-        cls => cls.id !== cleanClass.id
-      );
-      const targetDay = cleanClass.day || editingClass.originalDay;
-      newRoutine[targetDay] = [...(newRoutine[targetDay] || []), cleanClass];
-    }
-
-    setEditorForm({ ...editorForm, routine: newRoutine });
-    setEditingClass(null);
-  };
-
-  const deleteClass = () => {
-    if (editingClass.mode === 'edit') {
-      const newRoutine = { ...editorForm.routine };
-      newRoutine[editingClass.originalDay] = (newRoutine[editingClass.originalDay] || []).filter(
-        cls => cls.id !== editingClass.form.id
-      );
-      setEditorForm({ ...editorForm, routine: newRoutine });
-    }
-    setEditingClass(null);
-  };
 
   // Load a single template straight into the routine (fixes the old dead event).
   // Only meaningful in the "All departments" view — once a dept is chosen, its

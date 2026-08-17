@@ -104,10 +104,10 @@ const INITIAL_FORM_STATE = {
 
 export default function BusTracker() {
   const [activeRoute, setActiveRoute] = useState(null);
-  const [view, setView] = useState('all');
+  const [, setView] = useState('all');
   const [search, setSearch] = useState('');
   const [direction, setDirection] = useState('to-campus');
-  const [now, setNow] = useState(Date.now());
+  const [, setNow] = useState(0);
   const [showAddModal, setShowAddModal] = useState(false);
   const [customBuses, setCustomBuses] = useState(loadCustomBuses);
   const [editingBusId, setEditingBusId] = useState(null);
@@ -148,8 +148,6 @@ export default function BusTracker() {
       setActiveRoute(routes[0].id);
     }
   }, [routes, activeRoute]);
-
-  const allRoutes = routes;
 
   const todayTimes = useMemo(() => {
     const result = {};

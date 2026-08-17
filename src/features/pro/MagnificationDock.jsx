@@ -26,7 +26,7 @@ import React, {
   useState,
 } from 'react';
 
-export const dockDefaultSpring = { mass: 0.1, stiffness: 150, damping: 12 };
+const dockDefaultSpring = { mass: 0.1, stiffness: 150, damping: 12 };
 
 function DockItem({
   children,

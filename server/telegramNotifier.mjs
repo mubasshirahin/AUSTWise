@@ -165,7 +165,7 @@ async function sendTelegramMessage(botToken, chatId, message) {
     parse_mode: 'Markdown'
   });
   
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve, _reject) => {
     const options = {
       hostname: 'api.telegram.org',
       port: 443,
@@ -321,7 +321,7 @@ export async function sendDailyNotifications() {
  * Escape Markdown (v1) special characters so notice text renders as plain text
  */
 function escapeMarkdown(text) {
-  return String(text || '').replace(/([_*\[\]`])/g, '\\$1');
+  return String(text || '').replace(/([_*[\]`])/g, '\\$1');
 }
 
 /**
@@ -516,55 +516,6 @@ function formatSingleClassMessage(cls, index, total, today, date) {
  * @param {Array} classes - Array of class objects for today
  * @returns {Object} Object with message text and inline keyboard
  */
-function formatAttendanceMessage(classes) {
-  const dayNames = {
-    'Sunday': 'রবিবার',
-    'Monday': 'সোমবার',
-    'Tuesday': 'মঙ্গলবার',
-    'Wednesday': 'বুধবার',
-    'Thursday': 'বৃহস্পতিবার',
-    'Friday': 'শুক্রবার',
-    'Saturday': 'শনিবার'
-  };
-  
-  const today = dayNames[['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date().getDay()]];
-  const date = new Date().toLocaleDateString('bn-BD', { day: 'numeric', month: 'long' });
-  
-  let message = `🌙 রাত ৯টায়:\n\n`;
-  message += `আজকের ক্লাসের উপস্থিতি নিশ্চিত করুন (${today}, ${date})\n\n`;
-  
-  if (classes.length === 0) {
-    message += `🎉 আজ কোনো ক্লাস ছিল না!\n\n`;
-    message += `📖 AUSTWise থেকে`;
-    return { message, keyboard: null };
-  }
-  
-  // Build inline keyboard with Yes/No buttons for each class
-  const keyboard = [];
-  
-  classes.forEach((cls, index) => {
-    const num = toBengaliNumber(index + 1);
-    const time = formatTime(cls.time);
-    const room = cls.room || 'TBA';
-    const type = cls.type === 'Lab' ? '🧪' : '📚';
-    
-    message += `${num}️⃣ ${type} ${cls.course} – ${cls.name}\n`;
-    message += `   ⏰ ${time} | 📍 Room ${room}\n\n`;
-    
-    // Add Yes/No buttons for this class
-    const callbackDataYes = `attend_yes_${index}_${cls.course.replace(/\s/g, '_')}`;
-    const callbackDataNo = `attend_no_${index}_${cls.course.replace(/\s/g, '_')}`;
-    
-    keyboard.push([
-      { text: `✅ ${cls.course} - Yes`, callback_data: callbackDataYes },
-      { text: `❌ ${cls.course} - No`, callback_data: callbackDataNo }
-    ]);
-  });
-  
-  message += `\n📖 AUSTWise থেকে`;
-  
-  return { message, keyboard };
-}
 
 /**
  * Send message with inline keyboard via Telegram Bot API
@@ -596,7 +547,7 @@ async function sendTelegramMessageWithKeyboard(botToken, chatId, message, keyboa
     reply_markup: keyboard ? { inline_keyboard: keyboard } : undefined
   });
   
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve, _reject) => {
     const options = {
       hostname: 'api.telegram.org',
       port: 443,
@@ -641,7 +592,7 @@ async function sendTelegramMessageWithKeyboard(botToken, chatId, message, keyboa
  * @param {boolean} isTest - If true, simulates the 9 PM attendance message
  * @returns {Object} Result of the attendance message attempt
  */
-export async function sendAttendanceMessageToUser(chatId, routine, isTest = false) {
+export async function sendAttendanceMessageToUser(chatId, routine, _isTest = false) {
   const botToken = TELEGRAM_BOT_TOKEN;
   const classes = getTodayClasses(routine);
   
@@ -810,7 +761,6 @@ export async function handleAttendanceCallback(botToken, callbackQueryId, chatId
   }
   
   const isAttended = parts[1] === 'yes';
-  const classIndex = parseInt(parts[2]);
   const courseCode = parts.slice(3).join('_');
   
   // Save attendance record first
@@ -901,7 +851,7 @@ async function answerCallbackQuery(botToken, callbackQueryId, text) {
  * @param {string} courseCode - Course code
  * @returns {Promise<Object>} Result of the operation
  */
-async function updateMessageKeyboard(botToken, chatId, messageId, clickedCallbackData, isAttended, courseCode) {
+async function updateMessageKeyboard(botToken, chatId, messageId, _clickedCallbackData, _isAttended, _courseCode) {
   // We'll just remove the buttons for the clicked course to show it's been answered
   // This is a simplified approach - in a full implementation, you'd parse the original
   // keyboard and remove only the clicked button pair
@@ -956,7 +906,10 @@ export async function setTelegramWebhook(botToken, webhookUrl) {
   }
 
   const postData = JSON.stringify({
-    url: webhookUrl
+    url: webhookUrl,
+    // Telegram sends this back in X-Telegram-Bot-Api-Secret-Token on every
+    // update, letting us reject forged webhook calls.
+    secret_token: process.env.TELEGRAM_WEBHOOK_SECRET || undefined,
   });
 
   return new Promise((resolve) => {
@@ -978,7 +931,7 @@ export async function setTelegramWebhook(botToken, webhookUrl) {
         try {
           const result = JSON.parse(data);
           resolve(result);
-        } catch (e) {
+        } catch {
           resolve({ ok: false, description: 'Failed to parse response' });
         }
       });
@@ -1018,7 +971,7 @@ export async function getWebhookInfo(botToken) {
         try {
           const result = JSON.parse(data);
           resolve(result);
-        } catch (e) {
+        } catch {
           resolve({ ok: false, description: 'Failed to parse response' });
         }
       });
@@ -1057,7 +1010,7 @@ export async function deleteWebhook(botToken) {
         try {
           const result = JSON.parse(data);
           resolve(result);
-        } catch (e) {
+        } catch {
           resolve({ ok: false, description: 'Failed to parse response' });
         }
       });

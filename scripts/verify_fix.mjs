@@ -1,4 +1,4 @@
-export default async function run(page, ui) {
+export default async function run(page, _ui) {
   const fakeUser = { id: 'u_repro_1', name: 'Repro', email: 'r@aust.edu', role: 'student', roles: ['student'], department: 'CSE', initials: 'RU' };
   await page.addInitScript((u) => { localStorage.setItem('aust-user-profile', JSON.stringify(u)); }, fakeUser);
   await page.setViewportSize({ width: 1280, height: 800 });

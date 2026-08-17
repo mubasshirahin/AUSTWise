@@ -57,13 +57,9 @@ export default function EmptyClassroomPage() {
   // the auditorium. Falls back to local computed state so the page still
   // renders if the API is unreachable.
   const [liveFloors, setLiveFloors] = useState(() => computeDemoAvailability());
-  const [liveSource, setLiveSource] = useState('local');
+  const [, setLiveSource] = useState('local');
 
   const fetchAvailability = useCallback(async () => {
-    // Locally-shared routines (offline / fallback shares) always overlay.
-    const localShared = typeof window !== 'undefined'
-      ? JSON.parse(localStorage.getItem('aust-shared-routines') || '[]')
-      : [];
     try {
       const res = await fetch(`/api/rooms/availability?day=${currentDayOfWeek()}&time=${currentTimeString()}`);
       if (!res.ok) throw new Error('api');

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 
-export const buildingZones = [
+const buildingZones = [
   {
     id: 'plaza',
     name: 'Plaza',

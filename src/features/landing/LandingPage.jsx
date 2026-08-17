@@ -410,9 +410,6 @@ function AnimatedCounter({ end, suffix = '', duration = 2000 }) {
   return <span ref={ref}>{count}{suffix}</span>;
 }
 
-function StarRating({ rating }) {
-  return (<div className="landing-stars">{Array.from({ length: 5 }).map((_, i) => (<Star key={i} size={14} className={i < rating ? 'filled' : ''} />))}</div>);
-}
 
 
 

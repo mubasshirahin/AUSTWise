@@ -236,7 +236,6 @@ export function AuthProvider({ children }) {
   };
 
   const loginGuest = () => {
-    const guestAccount = { id: 'guest', role: 'guest', name: 'Guest', email: '', initials: 'GU' };
     setSessionUser(null);
     localStorage.setItem('aust-auth-session-v1', JSON.stringify({
       userId: 'guest', role: 'guest', startedAt: new Date().toISOString(),

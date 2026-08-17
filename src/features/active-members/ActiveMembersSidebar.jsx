@@ -13,6 +13,9 @@ import './ActiveMembersSidebar.css';
 /* ─── Constants ─── */
 
 const MEMBERS_POLL_MS = 30000;
+// Timestamp for the synthetic self row — captured once at module load so
+// rendering stays pure (the value is only cosmetic presence metadata).
+const SELF_ROW_SEEN_AT = Date.now();
 const GROUPS_KEY = 'aust-members-groups-v1';
 
 // Canonical AUST department list — every department shows in the member list,
@@ -260,7 +263,6 @@ function MemberGroup({ title, icon, count, children, defaultOpen, forceOpen, col
 
 /* ─── Member profile popover (anchored to the clicked row) ─── */
 function MemberPopover({ member, rect, onClose }) {
-  const navigate = useNavigate();
   const popRef = useRef(null);
   const { stalk } = useStalk();
 
@@ -506,7 +508,7 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
   const onlineMembers = useMemo(() => {
     const list = members.filter((m) => (m.status === 'online' || m.status === 'idle') && m.role !== 'admin');
     if (isAuthenticated && user?.id && user?.role !== 'admin' && !list.some((m) => m.id === user.id)) {
-      list.push({ id: user.id, name: user.name, initials: user.initials, avatar: user.avatar, role: user.role, department: user.department, semester: user.semester, status: 'online', lastSeenAt: Date.now(), isYou: true });
+      list.push({ id: user.id, name: user.name, initials: user.initials, avatar: user.avatar, role: user.role, department: user.department, semester: user.semester, status: 'online', lastSeenAt: SELF_ROW_SEEN_AT, isYou: true });
     }
     return list.map((m) => (m.id === user?.id ? { ...m, isYou: true } : m));
   }, [members, user, isAuthenticated]);

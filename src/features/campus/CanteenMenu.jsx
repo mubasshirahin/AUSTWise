@@ -95,10 +95,12 @@ function StarPicker({ value, onChange }) {
 // ─── Food card ───
 function FoodCard({ food, onDelete }) {
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
-  const [feedbackVersion, setFeedbackVersion] = useState(0);
+  const [, setFeedbackVersion] = useState(0);
 
-  const summary = useMemo(() => getReviewSummary(food.id), [food.id, feedbackVersion]);
-  const complaintCount = useMemo(() => getComplaintCount(food.id), [food.id, feedbackVersion]);
+  // Read review data during render so a feedback submit (which bumps
+  // feedbackVersion and re-renders) always shows fresh results.
+  const summary = getReviewSummary(food.id);
+  const complaintCount = getComplaintCount(food.id);
 
   const densityClass = !food.available ? 'is-rose' : food.popular ? 'is-amber' : 'is-emerald';
 
@@ -379,15 +381,6 @@ export default function CanteenMenu() {
     setCanteenInfo(updated);
     localStorage.setItem('aust-canteen-data', JSON.stringify(updated));
   };
-
-  const getCrowdColor = () => {
-    if (!isOpen) return 'var(--text-tertiary)';
-    if (canteenInfo.crowdLevel >= 75) return 'var(--accent-rose)';
-    if (canteenInfo.crowdLevel >= 40) return 'var(--accent-amber)';
-    return 'var(--accent-emerald)';
-  };
-
-  const crowdLabel = canteenInfo.crowdLevel >= 75 ? 'Busy' : canteenInfo.crowdLevel >= 40 ? 'Moderate' : 'Quiet';
 
   return (
     <div className="glass-card-static schedule-widget sv-widget canteen-widget animate-fadeInUp">

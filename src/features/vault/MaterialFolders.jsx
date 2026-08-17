@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Folder, Plus, Loader2, AlertCircle, Link, X, Download, Eye, EyeOff,
@@ -8,7 +8,6 @@ import {
   ZoomIn, ZoomOut, StickyNote, Trash2, Edit3, Save,
   Square, Circle, Pencil, Minus,
   Music, Play, Pause, PlayCircle, Bot, Send, PanelRightOpen, PanelRightClose,
-  Upload, FileText, CheckCircle, AlertTriangle as AlertTri,
 } from 'lucide-react';
 import {
   extractFolderId,
@@ -29,7 +28,6 @@ import {
 } from '../../utils/annotationsStorage';
 import { updateBatchDriveUrl } from '../../utils/vaultBatchStorage';
 import VaultMasthead from './VaultMasthead';
-import { useAuth } from '../../context/AuthContext';
 import './MaterialFolders.css';
 
 // Use the Google API credential from env to access public Drive folders
@@ -75,7 +73,7 @@ function FileTypeIcon({ category, size = 40, variant = 'grid' }) {
 }
 
 // ─── File type badge ───
-function FileTypeBadge({ category, small }) {
+function FileTypeBadge({ category }) {
   const meta = CATEGORY_META[category] || CATEGORY_META.other;
   return (
     <span className={`mf-file-grid-badge mf-file-grid-badge-${category}`}>
@@ -415,7 +413,7 @@ function YTSidebar() {
    PDF.js LOCAL VIEWER — inline copy/paste support, no iframe/CSP issues
    ═══════════════════════════════════════════════════════════════════════ */
 
-function PDFPreview({ fileId, annotMode }) {
+function PDFPreview({ fileId }) {
   const [pdfDoc, setPdfDoc] = useState(null);
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -831,6 +829,9 @@ function FilePreviewModal({ files, currentIndex, setCurrentIndex, onClose }) {
     };
   }, []);
 
+  const prevFile = () => setCurrentIndex(i => Math.max(0, i - 1));
+  const nextFile = () => setCurrentIndex(i => Math.min(files.length - 1, i + 1));
+
   // ─── Keyboard ───
   useEffect(() => {
     const handler = (e) => {
@@ -851,9 +852,6 @@ function FilePreviewModal({ files, currentIndex, setCurrentIndex, onClose }) {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [currentIndex, files.length, activeNote, annotMode, isDrawing]);
-
-  const prevFile = () => setCurrentIndex(i => Math.max(0, i - 1));
-  const nextFile = () => setCurrentIndex(i => Math.min(files.length - 1, i + 1));
 
   // Download public file — no auth needed
   const handleDownload = () => {
@@ -935,7 +933,7 @@ function FilePreviewModal({ files, currentIndex, setCurrentIndex, onClose }) {
     }
   };
 
-  const handleMouseUp = (e) => {
+  const handleMouseUp = () => {
     if (!isDrawing || !annotMode || !bodyRef.current) return;
     setIsDrawing(false);
 
@@ -947,7 +945,6 @@ function FilePreviewModal({ files, currentIndex, setCurrentIndex, onClose }) {
     }
 
     if (liveShape && liveShape.type) {
-      const rect = bodyRef.current.getBoundingClientRect();
       const sx = liveShape.start.x;
       const sy = liveShape.start.y;
       const ex = liveShape.end.x;
@@ -1007,7 +1004,7 @@ function FilePreviewModal({ files, currentIndex, setCurrentIndex, onClose }) {
   };
 
   // ─── Render SVG shapes ───
-  const renderShape = (anno, idx) => {
+  const renderShape = (anno, _idx) => {
     let el = null;
     switch (anno.type) {
       case 'rect':
@@ -1164,7 +1161,7 @@ function FilePreviewModal({ files, currentIndex, setCurrentIndex, onClose }) {
           ))}
 
           {showAnnotations && annotations.filter(a => a.type && ['rect','circle','freehand'].includes(a.type)).map((anno) => {
-            let cx = 0.5, cy = 0.5;
+            let cx, cy;
             if (anno.type === 'circle') { cx = anno.cx; cy = anno.cy; }
             else if (anno.type === 'freehand' && anno.points?.length) {
               const sum = anno.points.reduce((a,p) => ({x:a.x+p.x, y:a.y+p.y}), {x:0,y:0});
@@ -1360,238 +1357,6 @@ function AnnotPopup({ note, editing, editContent, setEditContent, onSave, onEdit
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   LECTURE NOTES UPLOAD — real file upload with progress
-   ═══════════════════════════════════════════════════════════════════════ */
-
-function UploadLectureNotes({ vaultContext }) {
-  const { course, courseName, department, yearSem } = vaultContext;
-  const { user } = useAuth();
-  const [notes, setNotes] = useState([]);
-  const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [status, setStatus] = useState(null); // { type: 'success'|'error', msg }
-  const fileInputRef = useRef(null);
-
-  const fetchNotes = useCallback(async () => {
-    try {
-      const params = new URLSearchParams();
-      if (course) params.set('course', course);
-      if (department) params.set('department', department);
-      if (yearSem) params.set('semester', String(yearSem));
-      const res = await fetch(`/api/vault/notes?${params}`);
-      const data = await res.json();
-      if (data.success) setNotes(data.notes);
-    } catch { /* ignore */ }
-  }, [course, department, yearSem]);
-
-  useEffect(() => { fetchNotes(); }, [fetchNotes]);
-
-  const handleFilePick = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    setProgress(0);
-    setStatus(null);
-
-    try {
-      // Read file as base64
-      const reader = new FileReader();
-      const base64Promise = new Promise((resolve, reject) => {
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.onprogress = (evt) => {
-          if (evt.lengthComputable) setProgress(Math.round((evt.loaded / evt.total) * 50));
-        };
-      });
-      reader.readAsDataURL(file);
-      const fileData = await base64Promise;
-      setProgress(60);
-
-      // Upload to server
-      const res = await fetch('/api/vault/notes/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fileData,
-          fileName: file.name,
-          mimeType: file.type,
-          course: course || '',
-          department: department || '',
-          semester: String(yearSem || ''),
-        }),
-      });
-      setProgress(90);
-
-      const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || 'Upload failed');
-
-      setProgress(100);
-      setStatus({ type: 'success', msg: `"${file.name}" uploaded!` });
-      fetchNotes();
-    } catch (err) {
-      setStatus({ type: 'error', msg: err.message });
-    } finally {
-      setUploading(false);
-      setTimeout(() => { setProgress(0); setStatus(null); }, 4000);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
-  const handleDelete = async (noteId) => {
-    try {
-      const res = await fetch(`/api/vault/notes/${noteId}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (data.success) {
-        fetchNotes();
-        setStatus({ type: 'success', msg: 'File deleted.' });
-        setTimeout(() => setStatus(null), 3000);
-      } else {
-        setStatus({ type: 'error', msg: data.error || 'Delete failed' });
-        setTimeout(() => setStatus(null), 4000);
-      }
-    } catch (err) {
-      setStatus({ type: 'error', msg: 'Failed to delete: ' + err.message });
-      setTimeout(() => setStatus(null), 4000);
-    }
-  };
-
-  const isOwner = (note) => user?.id && note.uploader === user.id;
-
-  const handleDownload = (note) => {
-    window.open(`/api/vault/notes/download/${note.id}`, '_blank');
-  };
-
-  const formatSize = (bytes) => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-  };
-
-  return (
-    <div className="glass-card-static" style={{ marginTop: 'var(--sp-4)', padding: 'var(--sp-4)' }}>
-      <div className="flex items-center gap-2 mb-4">
-        <div className="icon" style={{ backgroundColor: 'var(--accent-blue-glow)', color: 'var(--accent-blue)', padding: '6px', borderRadius: '8px' }}>
-          <FileText size={16} />
-        </div>
-        <div>
-          <h3 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', margin: 0 }}>Upload Lecture Notes</h3>
-          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
-            Share PDFs, docs, or images with others in this course
-          </p>
-        </div>
-      </div>
-
-      {/* Upload Button */}
-      <div style={{ marginBottom: 'var(--sp-3)' }}>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".pdf,.png,.jpg,.jpeg,.docx"
-          onChange={handleFilePick}
-          style={{ display: 'none' }}
-        />
-        <button
-          className="btn btn-primary"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-        >
-          {uploading ? (
-            <Loader2 size={14} className="animate-spin" />
-          ) : (
-            <Upload size={14} />
-          )}
-          {uploading ? 'Uploading...' : 'Choose File'}
-        </button>
-        <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginLeft: '10px' }}>
-          PDF, DOCX, PNG, JPG — max 15MB
-        </span>
-      </div>
-
-      {/* Progress Bar */}
-      {uploading && (
-        <div style={{ marginBottom: 'var(--sp-3)' }}>
-          <div className="progress-bar" style={{ height: '6px', borderRadius: '3px' }}>
-            <div
-              className="progress-bar-fill"
-              style={{ width: `${progress}%`, background: 'var(--accent-blue)', transition: 'width 0.3s ease' }}
-            />
-          </div>
-          <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>{progress}%</span>
-        </div>
-      )}
-
-      {/* Status Message */}
-      {status && (
-        <div
-          style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
-            padding: '8px 12px', borderRadius: 'var(--radius-md)',
-            marginBottom: 'var(--sp-3)', fontSize: 'var(--fs-xs)',
-            background: status.type === 'success' ? 'var(--accent-emerald-glow)' : 'var(--accent-rose-glow)',
-            color: status.type === 'success' ? 'var(--accent-emerald)' : 'var(--accent-rose)',
-          }}
-        >
-          {status.type === 'success' ? <CheckCircle size={14} /> : <AlertTri size={14} />}
-          {status.msg}
-        </div>
-      )}
-
-      {/* Notes List */}
-      {notes.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          {notes.map((note) => (
-            <div
-              key={note.id}
-              className="flex items-center justify-between"
-              style={{
-                padding: '10px 14px',
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.06)',
-                borderRadius: 'var(--radius-md)',
-              }}
-            >
-              <div className="flex items-center gap-3" style={{ minWidth: 0, flex: 1 }}>
-                <FileText size={18} style={{ color: 'var(--accent-blue)', flexShrink: 0 }} />
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: '13px', fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {note.originalName}
-                  </div>
-                  <div style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>
-                    {formatSize(note.size)} · {note.uploaderName} · {new Date(note.uploadedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2" style={{ flexShrink: 0 }}>
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => handleDownload(note)}
-                  title="Download"
-                >
-                  <Download size={14} />
-                </button>
-                {isOwner(note) && (
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => handleDelete(note.id)}
-                    title="Delete"
-                    style={{ color: 'var(--accent-rose)' }}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {notes.length === 0 && !uploading && null}
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════════════
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════════════════════ */
 export default function MaterialFolders({ vaultContext, progress }) {
@@ -1762,11 +1527,6 @@ export default function MaterialFolders({ vaultContext, progress }) {
     }
   };
 
-  const handleRefresh = () => {
-    const targetId = currentFolderId || extractFolderId(folderUrl);
-    if (targetId) { setImgErrors({}); fetchFiles(targetId); }
-  };
-
   /* ─── File operations ─── */
   const handleDownload = (file) => {
     window.open('https://drive.google.com/uc?export=download&id=' + file.id, '_blank', 'noopener');
@@ -1792,7 +1552,7 @@ export default function MaterialFolders({ vaultContext, progress }) {
   };
 
   /* ─── Search & sort ─── */
-  const filteredFiles = useMemo(() => {
+  const filteredFiles = (() => {
     let list = [...allFiles];
 
     if (searchQuery.trim()) {
@@ -1821,7 +1581,7 @@ export default function MaterialFolders({ vaultContext, progress }) {
     });
 
     return list;
-  }, [allFiles, searchQuery, sortBy]);
+  })();
 
   /* ─── Stats ─── */
   const stats = useMemo(() => {

@@ -157,7 +157,24 @@ export default function SemesterTracker() {
     if (saved) { const n = parseInt(saved, 10); if (n >= 1 && n <= 8) return n; }
     return 1;
   };
-  const [selectedSemester, setSelectedSemester] = useState(getInitialSem);
+  // Auto-switch to the first available semester when the saved one has no
+  // transcript data (but never move away from the user's current semester).
+  const [selectedSemester, setSelectedSemester] = useState(() => {
+    const current = getCurrentSemester();
+    const initial = getInitialSem();
+    if (current !== null) return initial;
+    const allResults = getUserStorageItemWithGuestFallback('semesterResults') || [];
+    const hasData = allResults.some(r => r.semester === initial && r.courses?.some(c => c.code));
+    if (allResults.length > 0 && !hasData) {
+      const fromData = allResults
+        .filter(r => r.courses?.some(c => c.code && c.code.trim()))
+        .map(r => r.semester)
+        .sort((a, b) => a - b);
+      const first = fromData.length > 0 ? fromData[0] : 1;
+      if (first && first !== initial) return first;
+    }
+    return initial;
+  });
   const prevSemRef = useRef(null);
   const currentSemRef = useRef(getInitialSem());
 
@@ -243,10 +260,11 @@ export default function SemesterTracker() {
   useEffect(() => { setSemItem('labConfig', currentSemRef.current, labConfig); }, [labConfig]);
   useEffect(() => { setSemItem('labMarks', currentSemRef.current, labMarks); }, [labMarks]);
 
-  /* ── When semester changes (or first mount), save old & load new, then populate from transcript ── */
-  useEffect(() => {
+  /* ── Semester switch: save old semester's data, then load the new one ── */
+  const switchToSemester = (next) => {
+    if (next === selectedSemester) return;
     const prev = prevSemRef.current;
-    if (prev !== null && prev !== selectedSemester) {
+    if (prev !== null && prev !== next) {
       setSemItem('courses', prev, theoryCourses);
       setSemItem('marks', prev, theoryMarks);
       setSemItem('theoryConfig', prev, theoryConfig);
@@ -254,10 +272,10 @@ export default function SemesterTracker() {
       setSemItem('labConfig', prev, labConfig);
       setSemItem('labMarks', prev, labMarks);
     }
-    prevSemRef.current = selectedSemester;
-    currentSemRef.current = selectedSemester;
+    prevSemRef.current = next;
+    currentSemRef.current = next;
 
-    const nd = loadSemesterData(selectedSemester);
+    const nd = loadSemesterData(next);
     setTheoryCourses(nd.theoryCourses);
     setTheoryMarks(nd.theoryMarks);
     setTheoryConfig(nd.theoryConfig);
@@ -265,7 +283,8 @@ export default function SemesterTracker() {
     setLabConfig(nd.labConfig);
     setLabMarks(nd.labMarks);
     setQuizDrafts({});
-  }, [selectedSemester]);
+    setSelectedSemester(next);
+  };
 
   /* ════════════════════
      THEORY LOGIC
@@ -301,11 +320,11 @@ export default function SemesterTracker() {
   /* ── Semester nav (masthead chevrons) ── */
   const goPrevSem = () => {
     const idx = availableSemesters.indexOf(selectedSemester);
-    if (idx > 0) setSelectedSemester(availableSemesters[idx - 1]);
+    if (idx > 0) switchToSemester(availableSemesters[idx - 1]);
   };
   const goNextSem = () => {
     const idx = availableSemesters.indexOf(selectedSemester);
-    if (idx < availableSemesters.length - 1) setSelectedSemester(availableSemesters[idx + 1]);
+    if (idx < availableSemesters.length - 1) switchToSemester(availableSemesters[idx + 1]);
   };
 
   /* ════════════════════
@@ -573,24 +592,13 @@ export default function SemesterTracker() {
      RENDER
   ═══════════════════════════════════════════ */
   const allResults = useMemo(() => getUserStorageItemWithGuestFallback('semesterResults') || [], []);
-  const availableSemesters = useMemo(() => {
+  const availableSemesters = (() => {
     const fromData = allResults
       .filter(r => r.courses?.some(c => c.code && c.code.trim()))
       .map(r => r.semester)
       .sort((a, b) => a - b);
     return fromData.length > 0 ? fromData : Array.from({ length: 8 }, (_, i) => i + 1);
-  }, [allResults]);
-
-  // Auto-switch to first available if current has no transcript data
-  // (but never move away from the user's current semester)
-  useEffect(() => {
-    const current = getCurrentSemester();
-    if (current !== null && current === selectedSemester) return;
-    if (allResults.length > 0 && !allResults.some(r => r.semester === selectedSemester && r.courses?.some(c => c.code))) {
-      const first = availableSemesters[0];
-      if (first && first !== selectedSemester) setSelectedSemester(first);
-    }
-  }, []);
+  })();
 
   return (
     <div className="glass-card-static schedule-widget st-widget animate-fadeInUp">
@@ -782,7 +790,6 @@ export default function SemesterTracker() {
                       }
                       const val = m[field.id];
                       const isActive = activeCell?.key===`t_${course.id}_${fIdx}`;
-                      const cField = courseFields.find(f=>f.id===field.id);
                       return (
                         <td key={field.id}
                           className={`st-td st-td-input ${getCellClass(val,field.maxMarks)} ${isActive?'st-td-active':''}`}
@@ -797,6 +804,7 @@ export default function SemesterTracker() {
                             onFocus={()=>setActiveCell({key:`t_${course.id}_${fIdx}`})}
                             onBlur={()=>setActiveCell(null)}
                             onChange={e=>handleTheoryMark(course.id,field.id,e.target.value)}
+                            // eslint-disable-next-line react-hooks/refs -- handleKeyDown only runs in the keydown event, never during render
                             onKeyDown={e=>handleKeyDown(e,theoryCourses,cIdx,fIdx,maxFields.length,'t')}
                           />
                         </td>

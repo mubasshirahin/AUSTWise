@@ -46,7 +46,6 @@ export function requireRole(...allowedRoles) {
     if (!payload) {
       res.writeHead(401, {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
       });
       res.end(JSON.stringify({ success: false, error: 'Authentication required.' }));
       return null;
@@ -54,7 +53,6 @@ export function requireRole(...allowedRoles) {
     if (!allowedRoles.includes(payload.role)) {
       res.writeHead(403, {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
       });
       const roles = allowedRoles.join(' or ');
       res.end(JSON.stringify({ success: false, error: `Forbidden: ${roles} role required.` }));
@@ -63,3 +61,9 @@ export function requireRole(...allowedRoles) {
     return payload;
   };
 }
+
+/** Every role that maps to a real authenticated account (excludes guest). */
+export const AUTH_ROLES = ['student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior', 'vp', 'gs'];
+
+/** Require any authenticated (non-guest) session. */
+export const requireAuth = requireRole(...AUTH_ROLES);

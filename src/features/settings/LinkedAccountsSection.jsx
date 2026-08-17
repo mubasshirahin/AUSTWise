@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, X, Check, Loader, ExternalLink, Copy, CheckCircle2 } from 'lucide-react';
-import { startOAuthFlow, PROVIDER_MAP } from '../../utils/socialOAuth.jsx';
+import { startOAuthFlow } from '../../utils/socialOAuthFlow.js';
+import { PROVIDER_MAP } from '../../utils/socialOAuth.jsx';
 
 export default function LinkedAccountsSection({ user, updateUser }) {
   const [showAddModal, setShowAddModal] = useState(false);

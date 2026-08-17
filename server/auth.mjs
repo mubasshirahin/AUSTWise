@@ -7,7 +7,7 @@ import {
   createUser, validateLogin, getUserById, getUserByEmail,
   findOrCreateGoogleUser, updateUserProfile,
 } from './userStore.mjs';
-import { authRateLimiter } from './rateLimiter.mjs';
+import { authRateLimiter, loginRateLimiter } from './rateLimiter.mjs';
 
 export { handleDevSwitchUser, handleDevSeedUsers, handleDevUsers };
 
@@ -18,6 +18,16 @@ const JWT_SECRET = process.env.JWT_SECRET || (() => {
 const COOKIE_NAME = 'aust_token';
 const TOKEN_EXPIRY = '7d';
 
+// Secure cookies (HTTPS-only) when behind TLS. Force off in plain-HTTP dev.
+// Enable via COOKIE_SECURE=1 in production env (or NODE_ENV=production,
+// evaluated lazily because dev.mjs pins NODE_ENV after this module loads).
+const secureCookie = () =>
+  process.env.COOKIE_SECURE === '1' || process.env.NODE_ENV === 'production';
+// SameSite=Strict: the auth cookie is never sent on cross-site requests, which
+// is the primary CSRF defense (top-level POST navigations included).
+const cookieFlags = () =>
+  `HttpOnly; SameSite=Strict; Path=/; Max-Age=${7 * 24 * 60 * 60}${secureCookie() ? '; Secure' : ''}`;
+
 function signToken(user) {
   return jwt.sign(
     { id: user.id, role: user.role, email: user.email },
@@ -27,13 +37,11 @@ function signToken(user) {
 }
 
 function setAuthCookie(res, token) {
-  const cookie = `${COOKIE_NAME}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${7 * 24 * 60 * 60}`;
-  res.setHeader('Set-Cookie', cookie);
+  res.setHeader('Set-Cookie', `${COOKIE_NAME}=${token}; ${cookieFlags()}`);
 }
 
 function clearAuthCookie(res) {
-  const cookie = `${COOKIE_NAME}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`;
-  res.setHeader('Set-Cookie', cookie);
+  res.setHeader('Set-Cookie', `${COOKIE_NAME}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0${secureCookie() ? '; Secure' : ''}`);
 }
 
 /** Read JWT from cookie and return payload or null */
@@ -51,6 +59,7 @@ export function readTokenCookie(req) {
 async function handleSignup(req, res) {
   if (!authRateLimiter(req, res)) return;
   const body = await readJsonBody(req);
+  if (!loginRateLimiter(req, res, body?.email)) return;
   try {
     const user = await createUser(body);
     const token = signToken(user);
@@ -64,12 +73,16 @@ async function handleSignup(req, res) {
 async function handleLogin(req, res) {
   if (!authRateLimiter(req, res)) return;
   const body = await readJsonBody(req);
+  if (!loginRateLimiter(req, res, body?.email)) return;
   try {
     const user = await validateLogin(body.email, body.password);
+    loginRateLimiter.success(req, body?.email);
     const token = signToken(user);
     setAuthCookie(res, token);
     return sendJson(res, 200, { success: true, user: sanitizeUser(user) });
   } catch (err) {
+    // Lock this account+IP with exponential backoff (per-account anti-brute-force).
+    loginRateLimiter.fail(req, body?.email);
     return sendJson(res, 401, { success: false, error: err.message });
   }
 }
@@ -131,7 +144,9 @@ async function handleDevUsers(req, res) {
   }
 }
 
-/** Verify a Google ID token via Google's tokeninfo endpoint */
+/** Verify a Google ID token via Google's tokeninfo endpoint.
+ *  Enforces audience (aud), expiry (exp), issue time (iat) and email_verified
+ *  so a token minted for another Google client is rejected. */
 async function verifyGoogleToken(credential) {
   const https = await import('node:https');
   const verifyUrl = new URL('https://oauth2.googleapis.com/tokeninfo');
@@ -142,7 +157,28 @@ async function verifyGoogleToken(credential) {
       resp.on('data', (chunk) => data += chunk);
       resp.on('end', () => {
         if (resp.statusCode === 200) {
-          try { resolve(JSON.parse(data)); }
+          try {
+            const payload = JSON.parse(data);
+            const clientId = process.env.VITE_GOOGLE_CLIENT_ID;
+            if (clientId && payload.aud !== clientId) {
+              reject(new Error('Google token was issued to a different client.'));
+              return;
+            }
+            const now = Math.floor(Date.now() / 1000);
+            if (payload.exp && Number(payload.exp) < now) {
+              reject(new Error('Google token has expired.'));
+              return;
+            }
+            if (payload.iat && Number(payload.iat) > now + 300) {
+              reject(new Error('Google token has an invalid issue time.'));
+              return;
+            }
+            if (payload.email_verified !== true && payload.email_verified !== 'true') {
+              reject(new Error('Google email address is not verified.'));
+              return;
+            }
+            resolve(payload);
+          }
           catch { reject(new Error('Invalid response')); }
         } else {
           reject(new Error(data));
@@ -154,9 +190,8 @@ async function verifyGoogleToken(credential) {
 
 function isAllowedAustEmail(email) {
   const normalized = String(email || '').toLowerCase().trim();
-  return ['aust.edu', 'www.aust.edu'].some(d =>
-    normalized.endsWith(`@${d}`) || normalized.endsWith(`@www.${d}`)
-  );
+  // Anchor the domain so `evil@aust.edu.attacker.com` is rejected.
+  return /^[^@\s]+@(?:[a-z0-9-]+\.)*aust\.edu$/.test(normalized);
 }
 
 /**
@@ -188,16 +223,45 @@ async function handleGoogle(req, res) {
     }
 
     const profilePatch = body.profile && typeof body.profile === 'object' ? body.profile : null;
+
+    // Signup step 2 — complete the account created on the first sign-in.
+    // Only non-privileged profile fields are accepted; `role` is NEVER taken
+    // from the client (the server stays the sole role authority).
+    const GOOGLE_SIGNUP_FIELDS = [
+      'name', 'avatar',
+      'department', 'batch', 'batchNo', 'batchName',
+      'yearSemester', 'semester', 'section', 'labSection',
+      'designation', 'company', 'graduationYear',
+      'openForTalk',
+    ];
+    const patch = {};
+    if (profilePatch) {
+      for (const key of GOOGLE_SIGNUP_FIELDS) {
+        if (key in profilePatch) {
+          patch[key] = typeof profilePatch[key] === 'string' ? profilePatch[key].trim() : profilePatch[key];
+        }
+      }
+      if ('yearSemester' in patch) {
+        const canonical = toYearSemester(patch.yearSemester);
+        if (canonical) {
+          patch.yearSemester = canonical;
+          const m = canonical.match(/Year\s*(\d+)\s*-\s*Semester\s*(\d+)/);
+          if (m) patch.semester = (Number(m[1]) - 1) * 2 + Number(m[2]);
+        } else {
+          delete patch.yearSemester;
+        }
+      }
+    }
+
     let user;
     let created = false;
 
-    if (profilePatch && profilePatch.role) {
-      // Signup step 2 — complete the account created on the first sign-in.
+    if (Object.keys(patch).length > 0) {
       const existing = await getUserByEmail(googleEmail);
       if (!existing) {
         return sendJson(res, 404, { success: false, error: 'User not found.' });
       }
-      user = await updateUserProfile(existing.id, profilePatch);
+      user = await updateUserProfile(existing.id, patch);
     } else {
       const result = await findOrCreateGoogleUser({
         name: verified.name,
@@ -316,7 +380,7 @@ async function handleProfileUpdate(req, res) {
 
 /** Return user without sensitive fields */
 function sanitizeUser(user) {
-  const { password, ...safe } = user;
+  const { password: _password, ...safe } = user;
   // Add helper that matches the expected frontend shape
   const baseRoles = [safe.role];
   const extraRoles = Array.isArray(safe.roles) ? safe.roles : [];
@@ -361,7 +425,6 @@ function sendJson(res, status, payload) {
   const body = JSON.stringify(payload);
   res.writeHead(status, {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
     'Content-Length': Buffer.byteLength(body),
   });
   res.end(body);

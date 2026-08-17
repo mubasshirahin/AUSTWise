@@ -77,7 +77,7 @@ export default function ShadowPage() {
   /* ─── Shadow Chat State ─── */
   const [chatState, setChatState] = useState('idle'); // idle | queued | matched | ended
   const [shadowId] = useState(generateShadowId);
-  const [peerId, setPeerId] = useState(null);
+  const [, setPeerId] = useState(null);
   const [sessionId, setSessionId] = useState(null);
   const [timeLeft, setTimeLeft] = useState(SHADOW_DURATION);
   const [messages, setMessages] = useState([]);
@@ -93,7 +93,7 @@ export default function ShadowPage() {
   const inputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const chatStateRef = useRef(chatState);
-  chatStateRef.current = chatState;
+  useEffect(() => { chatStateRef.current = chatState; }, [chatState]);
 
   /* ─── Scroll to bottom on new messages ─── */
   useEffect(() => {
@@ -267,8 +267,6 @@ export default function ShadowPage() {
       }, 2000);
     }
   };
-
-  const getPeerLabel = (msgFrom) => (msgFrom === shadowId ? 'You' : 'Stranger');
 
   const stats = [
     { icon: Eye, value: totalReviews, label: 'Total Reviews', color: 'var(--accent-amber)', bg: 'var(--accent-amber-glow)' },

@@ -16,7 +16,7 @@ export default function WeekSchedule() {
   });
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedDay, setSelectedDay] = useState(null);
+  const [, setSelectedDay] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [newTask, setNewTask] = useState({
     courseCode: '',
@@ -291,10 +291,6 @@ export default function WeekSchedule() {
     const startDate = new Date(semesterStart);
     startDate.setHours(0, 0, 0, 0);
     return date < startDate;
-  };
-
-  const getDayName = (date) => {
-    return date.toLocaleDateString('en-US', { weekday: 'short' });
   };
 
   const getDayNumber = (date) => {

@@ -97,11 +97,6 @@ const getBatchNoFromUser = (user) => {
   return batchDigits || '';
 };
 
-const getBatchDisplayName = (batchName, batchNo) => {
-  const cleanName = String(batchName || '').trim();
-  return cleanName || batchNo || 'Not selected';
-};
-
 const parseBatchInput = (input) => {
   const raw = String(input || '').trim();
   const match = raw.match(/^(.*?)\s*(\d{1,2})$/);
@@ -319,7 +314,7 @@ export default function SettingsPage() {
 
   const [roleApplicationForm, setRoleApplicationForm] = useState({ appliedRole: 'cr' });
   const [applicationStatus, setApplicationStatus] = useState(null);
-  const [userApplications, setUserApplications] = useState([]);
+  const [, setUserApplications] = useState([]);
   const [applicationMessage, setApplicationMessage] = useState('');
   const [submittingApplication, setSubmittingApplication] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
@@ -537,7 +532,7 @@ export default function SettingsPage() {
         setInviteMsg(data.error || 'Failed to send invitation.');
         setInviteMsgType('error');
       }
-    } catch (err) {
+    } catch {
       setInviteMsg('Network error. Please try again.');
       setInviteMsgType('error');
     } finally {

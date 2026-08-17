@@ -46,19 +46,40 @@ for (const [provider, creds] of Object.entries(CREDENTIALS)) {
   }
 }
 
-const CALLBACK_HTML = (provider, profile) => `<!DOCTYPE html>
+// The app's own origin — derived from PUBLIC_BASE_URL when configured (the
+// correct production value), falling back to the request host for local dev.
+function getAppOrigin(req) {
+  const pub = process.env.PUBLIC_BASE_URL;
+  if (pub) {
+    try { return new URL(pub).origin; } catch { /* fall through */ }
+  }
+  const host = req.headers.host || 'localhost:5174';
+  const proto = host.includes('localhost') ? 'http' : 'https';
+  return `${proto}://${host}`;
+}
+
+// postMessage goes to the app's origin ONLY — never '*'. A hostile opener
+// window must not be able to receive the OAuth profile / token data.
+const CALLBACK_HTML = (req, provider, profile) => {
+  const targetOrigin = getAppOrigin(req);
+  return `<!DOCTYPE html>
 <html><body><script>
 const data = ${JSON.stringify({ provider, profile })};
 if (window.opener) {
-  window.opener.postMessage(data, '*');
+  window.opener.postMessage(data, ${JSON.stringify(targetOrigin)});
   document.body.innerHTML = '<h3>✅ Connected! You may close this window.</h3>';
   setTimeout(() => window.close(), 1500);
 } else {
   document.body.innerHTML = '<h3>No opener found. Try again.</h3>';
 }
-<\/script></body></html>`;
+</script></body></html>`;
+};
 
 function getRedirectUri(req, provider) {
+  const base = process.env.PUBLIC_BASE_URL;
+  if (base) {
+    return `${base.replace(/\/+$/, '')}/api/auth/${provider}/callback`;
+  }
   const host = req.headers.host || 'localhost:5174';
   const proto = host.includes('localhost') ? 'http' : 'https';
   return `${proto}://${host}/api/auth/${provider}/callback`;
@@ -92,7 +113,6 @@ async function fetchJson(url, options = {}) {
 
 async function fetchJsonPost(url, body, headers = {}) {
   const mod = await import('node:https');
-  const urlObj = new URL(url);
   return new Promise((resolve, reject) => {
     const req = mod.default.request(url, {
       method: 'POST',
@@ -127,7 +147,6 @@ async function fetchJsonPost(url, body, headers = {}) {
 function sendHtml(res, html) {
   res.writeHead(200, {
     'Content-Type': 'text/html; charset=utf-8',
-    'Access-Control-Allow-Origin': '*',
   });
   res.end(html);
 }
@@ -138,7 +157,7 @@ async function handleGitHub(req, res, redirectUri) {
   const error = query.get('error');
 
   if (error) {
-    sendHtml(res, CALLBACK_HTML('github', { error: `GitHub returned an error: ${error}` }));
+    sendHtml(res, CALLBACK_HTML(req, 'github', { error: `GitHub returned an error: ${error}` }));
     return;
   }
 
@@ -154,9 +173,9 @@ async function handleGitHub(req, res, redirectUri) {
     redirect_uri: redirectUri,
   });
   const accessToken = tokenData.access_token;
-  if (!accessToken) { sendHtml(res, CALLBACK_HTML('github', { error: 'No access token' })); return; }
+  if (!accessToken) { sendHtml(res, CALLBACK_HTML(req, 'github', { error: 'No access token' })); return; }
   const profile = await fetchJson(CREDENTIALS.github.apiUrl, { headers: { 'User-Agent': 'AUSTWise', 'Authorization': `Bearer ${accessToken}` } });
-  sendHtml(res, CALLBACK_HTML('github', {
+  sendHtml(res, CALLBACK_HTML(req, 'github', {
     id: String(profile.id),
     username: profile.login,
     displayName: profile.name || profile.login,
@@ -171,7 +190,7 @@ async function handleDiscord(req, res, redirectUri) {
   const error = query.get('error');
 
   if (error) {
-    sendHtml(res, CALLBACK_HTML('discord', { error: `Discord returned an error: ${error}` }));
+    sendHtml(res, CALLBACK_HTML(req, 'discord', { error: `Discord returned an error: ${error}` }));
     return;
   }
 
@@ -188,12 +207,12 @@ async function handleDiscord(req, res, redirectUri) {
     redirect_uri: redirectUri,
   });
   const accessToken = tokenData.access_token;
-  if (!accessToken) { sendHtml(res, CALLBACK_HTML('discord', { error: 'No access token' })); return; }
+  if (!accessToken) { sendHtml(res, CALLBACK_HTML(req, 'discord', { error: 'No access token' })); return; }
   const profile = await fetchJson(CREDENTIALS.discord.apiUrl, { headers: { 'Authorization': `Bearer ${accessToken}` } });
   const avatarUrl = profile.avatar
     ? `https://cdn.discordapp.com/avatars/${profile.id}/${profile.avatar}.png`
     : null;
-  sendHtml(res, CALLBACK_HTML('discord', {
+  sendHtml(res, CALLBACK_HTML(req, 'discord', {
     id: profile.id,
     username: profile.username,
     displayName: profile.global_name || profile.username,
@@ -208,7 +227,7 @@ async function handleSpotify(req, res, redirectUri) {
   const error = query.get('error');
 
   if (error) {
-    sendHtml(res, CALLBACK_HTML('spotify', { error: `Spotify returned an error: ${error}` }));
+    sendHtml(res, CALLBACK_HTML(req, 'spotify', { error: `Spotify returned an error: ${error}` }));
     return;
   }
 
@@ -224,9 +243,9 @@ async function handleSpotify(req, res, redirectUri) {
     redirect_uri: redirectUri,
   }, { 'Authorization': `Basic ${auth}` });
   const accessToken = tokenData.access_token;
-  if (!accessToken) { sendHtml(res, CALLBACK_HTML('spotify', { error: 'No access token' })); return; }
+  if (!accessToken) { sendHtml(res, CALLBACK_HTML(req, 'spotify', { error: 'No access token' })); return; }
   const profile = await fetchJson(CREDENTIALS.spotify.apiUrl, { headers: { 'Authorization': `Bearer ${accessToken}` } });
-  sendHtml(res, CALLBACK_HTML('spotify', {
+  sendHtml(res, CALLBACK_HTML(req, 'spotify', {
     id: profile.id,
     username: profile.id,
     displayName: profile.display_name || profile.id,
@@ -241,7 +260,7 @@ async function handleFacebook(req, res, redirectUri) {
   const error = query.get('error');
 
   if (error) {
-    sendHtml(res, CALLBACK_HTML('facebook', { error: `Facebook returned an error: ${error}` }));
+    sendHtml(res, CALLBACK_HTML(req, 'facebook', { error: `Facebook returned an error: ${error}` }));
     return;
   }
 
@@ -252,9 +271,9 @@ async function handleFacebook(req, res, redirectUri) {
   }
   const tokenData = await fetchJson(`${CREDENTIALS.facebook.tokenUrl}?client_id=${CREDENTIALS.facebook.clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&client_secret=${CREDENTIALS.facebook.clientSecret}&code=${code}`);
   const accessToken = tokenData.access_token;
-  if (!accessToken) { sendHtml(res, CALLBACK_HTML('facebook', { error: 'No access token' })); return; }
+  if (!accessToken) { sendHtml(res, CALLBACK_HTML(req, 'facebook', { error: 'No access token' })); return; }
   const profile = await fetchJson(`${CREDENTIALS.facebook.apiUrl}&access_token=${accessToken}`);
-  sendHtml(res, CALLBACK_HTML('facebook', {
+  sendHtml(res, CALLBACK_HTML(req, 'facebook', {
     id: profile.id,
     username: profile.id,
     displayName: profile.name,
@@ -270,7 +289,7 @@ async function handleSteam(req, res, redirectUri) {
   const openidMode = query.get('openid.mode');
 
   if (openidMode === 'cancel') {
-    sendHtml(res, CALLBACK_HTML('steam', { error: 'Login cancelled' }));
+    sendHtml(res, CALLBACK_HTML(req, 'steam', { error: 'Login cancelled' }));
     return;
   }
 
@@ -312,14 +331,14 @@ async function handleSteam(req, res, redirectUri) {
   });
 
   if (!verifyResult) {
-    sendHtml(res, CALLBACK_HTML('steam', { error: 'Verification failed' }));
+    sendHtml(res, CALLBACK_HTML(req, 'steam', { error: 'Verification failed' }));
     return;
   }
 
   const claimedId = query.get('openid.claimed_id');
   const steamId = claimedId?.match(/\/(\d+)$/)?.[1];
   if (!steamId) {
-    sendHtml(res, CALLBACK_HTML('steam', { error: 'No Steam ID' }));
+    sendHtml(res, CALLBACK_HTML(req, 'steam', { error: 'No Steam ID' }));
     return;
   }
 
@@ -328,10 +347,10 @@ async function handleSteam(req, res, redirectUri) {
   );
   const player = profileData?.response?.players?.[0];
   if (!player) {
-    sendHtml(res, CALLBACK_HTML('steam', { username: steamId, displayName: steamId }));
+    sendHtml(res, CALLBACK_HTML(req, 'steam', { username: steamId, displayName: steamId }));
     return;
   }
-  sendHtml(res, CALLBACK_HTML('steam', {
+  sendHtml(res, CALLBACK_HTML(req, 'steam', {
     id: steamId,
     username: steamId,
     displayName: player.personaname,
@@ -361,7 +380,7 @@ export async function handleOAuthRequest(req, res) {
       } catch (err) {
         console.error(`OAuth error [${provider}]:`, err);
         if (!res.headersSent) {
-          sendHtml(res, CALLBACK_HTML(provider, { error: err.message || 'OAuth request failed' }));
+          sendHtml(res, CALLBACK_HTML(req, provider, { error: err.message || 'OAuth request failed' }));
         }
       }
       return true;

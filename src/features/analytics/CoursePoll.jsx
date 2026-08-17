@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState } from 'react';
 import { ThumbsUp, ThumbsDown, Trophy, Users, Send, Award, CheckCircle } from 'lucide-react';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
 import {
@@ -111,31 +111,24 @@ function Leaderboard({ title, icon, accent, rows, totalVoters }) {
 }
 
 export default function CoursePoll() {
-  const [voted, setVoted] = useState(false);
-  const [best, setBest] = useState(() =>
-    Array.from({ length: MAX_PICKS }, () => ({ code: '', name: '' }))
-  );
-  const [worst, setWorst] = useState(() =>
-    Array.from({ length: MAX_PICKS }, () => ({ code: '', name: '' }))
-  );
-  const [version, setVersion] = useState(0);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    // Check if this browser already submitted a ballot
+  // Restore a previously submitted ballot (if any) directly in the lazy
+  // initializers — no effect needed.
+  const fillSlots = (picks) => {
+    const slots = Array.from({ length: MAX_PICKS }, () => ({ code: '', name: '' }));
+    (picks || []).forEach((p, i) => { if (i < MAX_PICKS) slots[i] = p; });
+    return slots;
+  };
+  const [voted, setVoted] = useState(() => !!getMyBallot());
+  const [best, setBest] = useState(() => {
     const existing = getMyBallot();
-    if (existing) {
-      setVoted(true);
-      // Restore picks from existing ballot for display
-      const fillSlots = (picks) => {
-        const slots = Array.from({ length: MAX_PICKS }, () => ({ code: '', name: '' }));
-        (picks || []).forEach((p, i) => { if (i < MAX_PICKS) slots[i] = p; });
-        return slots;
-      };
-      setBest(fillSlots(existing.best));
-      setWorst(fillSlots(existing.worst));
-    }
-  }, []);
+    return existing ? fillSlots(existing.best) : Array.from({ length: MAX_PICKS }, () => ({ code: '', name: '' }));
+  });
+  const [worst, setWorst] = useState(() => {
+    const existing = getMyBallot();
+    return existing ? fillSlots(existing.worst) : Array.from({ length: MAX_PICKS }, () => ({ code: '', name: '' }));
+  });
 
   /*
    * MANUAL TEST: Duplicate-vote protection
@@ -154,9 +147,9 @@ export default function CoursePoll() {
    * mount before any submit handler can fire.
    */
 
-  const bestBoard = useMemo(() => getBestLeaderboard(), [version]);
-  const worstBoard = useMemo(() => getWorstLeaderboard(), [version]);
-  const totalVoters = useMemo(() => getTotalVoters(), [version]);
+  const bestBoard = getBestLeaderboard();
+  const worstBoard = getWorstLeaderboard();
+  const totalVoters = getTotalVoters();
 
   const submit = (e) => {
     e.preventDefault();
@@ -164,7 +157,6 @@ export default function CoursePoll() {
       saveMyBallot(best, worst);
       setError('');
       setVoted(true);
-      setVersion((v) => v + 1);
     } catch (err) {
       setError(err.message);
     }

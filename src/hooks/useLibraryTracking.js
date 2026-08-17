@@ -79,7 +79,7 @@ export default function useLibraryTracking(enabledOverride) {
     const supported = typeof navigator !== 'undefined' && Boolean(navigator.geolocation);
 
     if (!enabled || !supported) {
-      setState({ enabled, supported, inside: false, watching: false, inside: null, error: null });
+      setState({ enabled, supported, inside: false, watching: false, error: null });
       return;
     }
 

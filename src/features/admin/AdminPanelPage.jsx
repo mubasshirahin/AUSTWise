@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Shield, BellRing, Coffee, Activity, Users, Trash2, Plus, AlertCircle, Eye, Edit3, Search, X, Save, CheckCircle2, XCircle, ClipboardList, CalendarDays, Mic, CalendarClock, Ban } from 'lucide-react';
-import { notices, canteenData, libraryData, getAuditoriumEvent, setAuditoriumEvent, defaultAuditoriumEvent } from '../../data/mockData';
+import { notices, getAuditoriumEvent, setAuditoriumEvent, defaultAuditoriumEvent } from '../../data/mockData';
 import { getRoleLabel, getRoleBadgeClass, getAllAccounts, reviewRoleApplication, resetAllLocalData, getCurrentUserId } from '../../utils/authStorage';
-import { loadTemplates } from '../../utils/routineTemplates';
 import { sendMessage } from '../../utils/messageStorage';
 import RoutineTemplatesPanel from './RoutineTemplatesPanel';
 import TranscriptTemplatesPanel from './TranscriptTemplatesPanel';
@@ -31,12 +30,8 @@ export default function AdminPanelPage() {
     return 'overview';
   };
   
-  const [activeTab, setActiveTab] = useState(getTabFromPath);
-  
-  // Sync active tab with URL when navigating via sidebar
-  useEffect(() => {
-    setActiveTab(getTabFromPath());
-  }, [location.pathname]);
+  // Active tab is purely derived from the URL — no state needed.
+  const activeTab = getTabFromPath();
 
   // Navigate to a tab and update URL
   const navigateToTab = (tab) => {
@@ -57,8 +52,11 @@ export default function AdminPanelPage() {
     navigate(paths[tab] || '/admin');
   };
 
-  // Notices State
-  const [noticesList, setNoticesList] = useState([]);
+  // Notices State — lazy-initialized from localStorage
+  const [noticesList, setNoticesList] = useState(() => {
+    const stored = localStorage.getItem('aust-notices');
+    return stored ? JSON.parse(stored) : notices;
+  });
   const [noticeForm, setNoticeForm] = useState({
     title: '',
     category: 'Admin',
@@ -66,12 +64,15 @@ export default function AdminPanelPage() {
     content: ''
   });
 
-  // Canteen State
-  const [canteenInfo, setCanteenInfo] = useState({
-    status: 'closed',
-    crowdLevel: 0,
-    hours: '8:00 AM - 7:00 PM',
-    menu: []
+  // Canteen State — lazy-initialized from localStorage
+  const [canteenInfo, setCanteenInfo] = useState(() => {
+    const stored = localStorage.getItem('aust-canteen-data');
+    return stored ? JSON.parse(stored) : {
+      status: 'closed',
+      crowdLevel: 0,
+      hours: '8:00 AM - 7:00 PM',
+      menu: []
+    };
   });
 
   // Canteen food item form
@@ -83,100 +84,50 @@ export default function AdminPanelPage() {
     available: true
   });
 
-  // Library State
-  const [libraryInfo, setLibraryInfo] = useState({
-    totalSeats: 120,
-    occupied: 0,
-    peakHours: []
+  // Library State — lazy-initialized from localStorage
+  const [libraryInfo, setLibraryInfo] = useState(() => {
+    const stored = localStorage.getItem('aust-library-data');
+    return stored ? JSON.parse(stored) : {
+      totalSeats: 120,
+      occupied: 0,
+      peakHours: []
+    };
   });
 
-  // User Accounts State
-  const [accounts, setAccounts] = useState([]);
-  const [filteredAccounts, setFilteredAccounts] = useState([]);
+  // User Accounts State — lazy-initialized from localStorage
+  const [accounts, setAccounts] = useState(() => getAllAccounts());
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [selectedUser, setSelectedUser] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
   const [editFormData, setEditFormData] = useState({});
 
-  // CR/SR Applications State
-  const [applications, setApplications] = useState([]);
+  // CR/SR Applications State — lazy-initialized from the local mirror
+  const [applications, setApplications] = useState(() => {
+    const stored = localStorage.getItem('aust-role-applications-v1');
+    if (!stored) return [];
+    try {
+      const parsed = JSON.parse(stored);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch { /* corrupt localStorage — treat as empty */ }
+    return [];
+  });
   const [applicationFilter, setApplicationFilter] = useState('pending');
   const [selectedApplication, setSelectedApplication] = useState(null);
 
-  // Routine Templates State
-  const [templates, setTemplates] = useState([]);
-  const [selectedTemplate, setSelectedTemplate] = useState(null);
-  const [editingTemplate, setEditingTemplate] = useState(null);
-  const [templateForm, setTemplateForm] = useState({
-    name: '',
-    semester: '1-1',
-    department: 'CSE',
-    year: new Date().getFullYear().toString(),
-    routine: {},
-    weekDays: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday']
-  });
-
-  // Load Data from LocalStorage
+  // Accounts — the server is the authoritative source. Fetch the real user
+  // list (users.json) so the admin sees every account, not just the ones
+  // cached in this browser's localStorage. Fall back to the local accounts
+  // list only when offline.
   useEffect(() => {
-    // 1. Notices
-    const storedNotices = localStorage.getItem('aust-notices');
-    if (storedNotices) {
-      setNoticesList(JSON.parse(storedNotices));
-    } else {
-      setNoticesList(notices);
-    }
-
-    // 2. Canteen
-    const storedCanteen = localStorage.getItem('aust-canteen-data');
-    if (storedCanteen) {
-      setCanteenInfo(JSON.parse(storedCanteen));
-    } else {
-      setCanteenInfo(canteenData);
-    }
-
-    // 3. Library
-    const storedLibrary = localStorage.getItem('aust-library-data');
-    if (storedLibrary) {
-      setLibraryInfo(JSON.parse(storedLibrary));
-    } else {
-      setLibraryInfo(libraryData);
-    }
-
-    // 4. Accounts — the server is the authoritative source. Fetch the real
-    // user list (users.json) so the admin sees every account, not just the
-    // ones cached in this browser's localStorage. Fall back to the local
-    // accounts list only when offline.
-    const accountsList = getAllAccounts();
-    setAccounts(accountsList);
-    setFilteredAccounts(accountsList);
     fetch('/api/admin/users', { credentials: 'same-origin' })
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (data && Array.isArray(data.users)) {
           setAccounts(data.users);
-          setFilteredAccounts(data.users);
         }
       })
       .catch(() => { /* offline — keep the localStorage accounts list */ });
-
-    // 5. CR/SR Applications — load the local mirror as a first paint.
-    // No filtering against the local account list here: the server is the
-    // authoritative source, and applicants may not be in this browser's
-    // localStorage accounts (they logged in on another device).
-    const storedApplications = localStorage.getItem('aust-role-applications-v1');
-    if (storedApplications) {
-      let allApps = [];
-      try {
-        const parsed = JSON.parse(storedApplications);
-        if (Array.isArray(parsed)) allApps = parsed;
-      } catch { /* corrupt localStorage — treat as empty */ }
-      setApplications(allApps);
-    }
-
-    // 6. Routine Templates
-    const loadedTemplates = loadTemplates();
-    setTemplates(loadedTemplates);
   }, []);
 
   // Load CR/SR applications from the server (authoritative) and mirror them
@@ -199,8 +150,8 @@ if (!res.ok || !Array.isArray(data.applications)) return;
     return () => { cancelled = true; };
   }, []);
 
-  // Filter accounts when search or role filter changes
-  useEffect(() => {
+  // Filtered accounts — derived during render from search + role filter.
+  const filteredAccounts = useMemo(() => {
     let result = [...accounts];
     
     if (searchQuery.trim()) {
@@ -217,7 +168,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
       result = result.filter(acc => acc.role === roleFilter);
     }
     
-    setFilteredAccounts(result);
+    return result;
   }, [searchQuery, roleFilter, accounts]);
 
   // Save Notices
@@ -332,7 +283,6 @@ if (!res.ok || !Array.isArray(data.applications)) return;
       }
       const updated = accounts.filter(acc => acc.id !== id);
       setAccounts(updated);
-      setFilteredAccounts(updated);
     } catch {
       alert('Failed to delete user. Are you online?');
     }
@@ -392,7 +342,6 @@ if (!res.ok || !Array.isArray(data.applications)) return;
         acc.id === userId ? { ...acc, ...data.user } : acc
       );
       setAccounts(newAccounts);
-      setFilteredAccounts(newAccounts);
       setEditingUser(null);
       setEditFormData({});
     } catch {

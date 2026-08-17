@@ -1,8 +1,6 @@
 import { HardDrive } from 'lucide-react';
 
 export default function VaultMasthead({
-  department,
-  yearSem,
   title = 'Batch Drive',
   subtitle = 'Study materials & drive',
   actions,

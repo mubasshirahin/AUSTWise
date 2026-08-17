@@ -19,6 +19,29 @@ const ALLOWED_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'
 
 const MAX_SIZE_BYTES = 15 * 1024 * 1024; // 15 MB
 
+// Magic-byte sniffers keyed by MIME type. Verifies the buffer's leading bytes
+// match the declared type so an attacker can't upload a renamed executable or
+// spoofed image (e.g. a .php/.html with a PNG Content-Type).
+const MAGIC = {
+  'application/pdf': buf => buf.length >= 5 && buf.subarray(0, 5).toString('ascii') === '%PDF-',
+  'image/png':       buf => buf.length >= 8 && buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])),
+  'image/jpeg':      buf => buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff,
+  'image/jpg':       buf => buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff,
+  // docx is a ZIP archive (PK\x03\x04). We additionally reject the common
+  // executable/misleading headers (PE `MZ`, HTML `<!`, script `#!`) so a
+  // crafted payload can't slip through as a docx.
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+    buf => buf.length >= 4 && buf.subarray(0, 2).equals(Buffer.from([0x50, 0x4b])) &&
+      !buf.subarray(0, 2).equals(Buffer.from([0x4d, 0x5a])),
+};
+
+/** Verify a buffer's magic bytes match the declared MIME type. */
+export function verifyMimeType(buffer, mimeType) {
+  const check = MAGIC[mimeType];
+  if (!check) return false;
+  return check(buffer);
+}
+
 export { ALLOWED_TYPES, MAX_SIZE_BYTES, UPLOADS_DIR };
 
 async function readNotes() {

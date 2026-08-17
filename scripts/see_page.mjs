@@ -1,4 +1,4 @@
-export default async function run(page, ui) {
+export default async function run(page, _ui) {
   const fakeUser = {
     id: 'u_repro_1', name: 'Repro User', email: 'repro@aust.edu',
     role: 'student', roles: ['student'], department: 'CSE', initials: 'RU',

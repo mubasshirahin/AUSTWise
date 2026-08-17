@@ -34,7 +34,7 @@ export default function TopicHeatmap({ vaultContext }) {
     // Sort descending
     list.sort((a, b) => b.totalFreq - a.totalFreq);
     return list.slice(0, 3);
-  }, [course, currentData]);
+  }, [currentData]);
 
   return (
     <div className="glass-card-static schedule-widget topic-heatmap-container animate-fadeInUp">

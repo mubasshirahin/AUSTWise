@@ -34,18 +34,17 @@ export default function CourseAutocomplete({
     inputValueRef.current = inputValue;
   });
 
-  // Update local value when prop changes
-  useEffect(() => {
+  // Adjust local value when the prop changes — done during render per the
+  // React docs ("adjusting state when props change") to avoid a second pass.
+  const [prevValue, setPrevValue] = useState(value || '');
+  if (value !== prevValue) {
+    setPrevValue(value);
     setInputValue(value || '');
-  }, [value]);
+  }
 
   // State for portal positioning
   const [portalPosition, setPortalPosition] = useState({ top: 0, left: 0, width: 0 });
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const [mounted] = useState(true);
 
   // Update portal position when suggestions are shown
   const updatePortalPosition = useCallback(() => {
@@ -114,16 +113,6 @@ export default function CourseAutocomplete({
         inputRef.current?.blur();
         break;
     }
-  };
-
-  // Check if current input exactly matches a course
-  const isExactMatch = (courses) => {
-    if (!inputValue.trim()) return false;
-    const inputLower = inputValue.toLowerCase().trim();
-    return courses.some(c => 
-      c.code.toLowerCase() === inputLower || 
-      c.name.toLowerCase() === inputLower
-    );
   };
 
   // Handle input change

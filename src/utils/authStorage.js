@@ -965,8 +965,6 @@ export function checkSlotVacancy(department, semester, appliedRole, targetSectio
  * Get the full vacancy map for all CR/SR slots in a department+semester.
  */
 export function getSlotVacancyMap(department, semester) {
-  const accounts = loadAccounts();
-  
   const srSlots = ['A', 'B', 'C', 'D'].map(sec => ({
     slot: `Section ${sec}`,
     key: sec,
@@ -1016,9 +1014,9 @@ export async function resignFromRole(userId) {
   } catch (err) {
     if (err instanceof TypeError || /fetch|network|ECONNREFUSED/i.test(String(err?.message))) {
       const account = getAccountById(userId);
-      if (!account) throw new Error('Account not found.');
+      if (!account) throw new Error('Account not found.', { cause: err });
       if (account.role !== 'cr' && account.role !== 'sr') {
-        throw new Error('You do not have a CR or SR role to resign from.');
+        throw new Error('You do not have a CR or SR role to resign from.', { cause: err });
       }
 
       const resignedRole = account.role;
@@ -1059,7 +1057,7 @@ export async function withdrawApplication(userId, applicationId) {
       const applications = loadApplications();
       const pending = applications.find(app => app.userId === userId && app.status === 'pending');
       if (!pending) {
-        throw new Error('No pending application found to withdraw.');
+        throw new Error('No pending application found to withdraw.', { cause: err });
       }
 
       const updated = applications.map(app => {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { CalendarDays, Plus, Trash2, Edit3, X, Save } from 'lucide-react';
 import { loadTemplates, addTemplate, updateTemplate, deleteTemplate } from '../../utils/routineTemplates';
 import { getAutoColorForCourse } from '../../utils/autoColorPalette';
@@ -7,7 +7,7 @@ import RoomAutocomplete from '../../components/RoomAutocomplete';
 import TeacherAutocomplete from '../../components/TeacherAutocomplete';
 
 export default function RoutineTemplatesPanel() {
-  const [templates, setTemplates] = useState([]);
+  const [templates, setTemplates] = useState(() => loadTemplates());
   const [showEditor, setShowEditor] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [editorForm, setEditorForm] = useState({
@@ -50,14 +50,10 @@ export default function RoutineTemplatesPanel() {
 
   const weekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
 
-  useEffect(() => {
-    refreshTemplates();
-  }, []);
-
-  const refreshTemplates = () => {
+  const refreshTemplates = useCallback(() => {
     const loaded = loadTemplates();
     setTemplates(loaded);
-  };
+  }, []);
 
   const handleCreateTemplate = () => {
     setEditorForm({
@@ -142,8 +138,6 @@ export default function RoutineTemplatesPanel() {
   const openAddClass = (day, slotIdx) => {
     const start = slotBoundaries[slotIdx] || '08:00';
     const end = slotBoundaries[slotIdx + 1] || '08:50';
-    const startFormatted = start.replace(':', ' - ').replace(' - ', ' - ').substring(0, 5);
-    const endFormatted = end.substring(0, 5);
     
     // Format time for display
     const startTime = formatTimeForDisplay(start);
@@ -153,6 +147,7 @@ export default function RoutineTemplatesPanel() {
       mode: 'add',
       day,
       form: {
+        // eslint-disable-next-line react-hooks/purity -- event-handler only; never runs during render
         id: Date.now(),
         course: '',
         name: '',

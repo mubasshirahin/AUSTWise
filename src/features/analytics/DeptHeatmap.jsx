@@ -45,7 +45,7 @@ export default function DeptHeatmap() {
 
   const heatmapView = useMemo(
     () => buildHeatmapView(selectedDepartment),
-    [selectedDepartment, user.department, user.batch, user.batchNo],
+    [selectedDepartment],
   );
 
   const totalBatches = heatmapView.visibleBatches.length + heatmapView.pendingBatches.length;

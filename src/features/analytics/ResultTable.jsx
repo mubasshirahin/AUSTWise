@@ -4,7 +4,7 @@ import CourseAutocomplete from '../../components/CourseAutocomplete';
 import { formatSemesterLabel, getSemesterCountForDepartment } from '../../utils/semester';
 import { syncHeatmapFromTracker } from '../../utils/deptHeatmapStorage';
 import { semesterResults as mockSemesterResults } from '../../data/mockData';
-import { getUserStorageItemWithGuestFallback, setUserStorageItem, getUserStorageKey, getGuestStorageItem, removeUserStorageItem, removeGuestStorageItem } from '../../utils/authStorage';
+import { getUserStorageItemWithGuestFallback, setUserStorageItem, removeUserStorageItem, removeGuestStorageItem } from '../../utils/authStorage';
 import { transcriptTemplates, getTemplateCredits } from '../../data/transcriptTemplateData';
 import { useAuth } from '../../context/AuthContext';
 
@@ -40,7 +40,7 @@ const DEPT_FULL_NAMES = {
   BBA: 'Business Administration',
 };
 
-const createBlankCourse = (semNum, index = 0) => ({
+const createBlankCourse = (semNum, _index = 0) => ({
   code: '',
   name: '',
   credit: 3,
@@ -128,16 +128,6 @@ const loadStoredResults = (maxSemester) => {
     return calculateSemesterStats(getDefaultResults(maxSemester));
   } catch {
     return calculateSemesterStats(getDefaultResults(maxSemester));
-  }
-};
-
-const hasStoredResults = () => {
-  try {
-    const key = getUserStorageKey(storageKeyType);
-    if (key && localStorage.getItem(key)) return true;
-    return getGuestStorageItem(storageKeyType) !== null;
-  } catch {
-    return false;
   }
 };
 
@@ -236,7 +226,6 @@ export default function ResultTable({ onResultsChange }) {
   // semesters (5.1/5.2 visible) while every other department stays at 8.
   const handleLoadFullCurriculum = (dept) =>
     applyTemplates(transcriptTemplates[dept] || [], getSemesterCountForDepartment(dept));
-  const hasCustomResults = hasStoredResults();
   const inputRefs = useRef({});
 
   const handleKeyDown = (e, semNum, rowIdx, fieldIdx) => {

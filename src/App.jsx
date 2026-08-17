@@ -1,9 +1,9 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { ThemeProvider } from './context/ThemeContext';
+import { ThemeProvider } from './context/ThemeProvider';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { RoutineProvider } from './context/RoutineContext';
-import { PomodoroProvider } from './context/PomodoroContext';
+import { RoutineProvider } from './context/RoutineProvider';
+import { PomodoroProvider } from './context/PomodoroProvider';
 import Sidebar from './layout/Sidebar';
 import TopNavbar from './layout/TopNavbar';
 import SearchModal from './layout/SearchModal';
@@ -28,6 +28,7 @@ import QuotePopup from './features/dashboard/QuotePopup';
 import FloatingBackground from './components/FloatingBackground';
 
 const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage'));
+const RoutineTemplatesPage = lazy(() => import('./features/dashboard/RoutineTemplatesPage'));
 const TranscriptTemplatesPage = lazy(() => import('./features/dashboard/TranscriptTemplatesPage'));
 const AnalyticsPage = lazy(() => import('./features/analytics/AnalyticsPage'));
 const VaultPage = lazy(() => import('./features/vault/VaultPage'));
@@ -61,7 +62,7 @@ import './App.css';
 
 // Admin Route - redirects admin/moderator users to admin panel
 function AdminRoute() {
-  const { user, hasRole } = useAuth();
+  const { hasRole } = useAuth();
   if (hasRole?.('admin') || hasRole?.('moderator')) {
     return <Navigate to="/admin" replace />;
   }
@@ -157,6 +158,7 @@ function AppContent() {
               }>
                 <Routes>
                   <Route path="/" element={<AdminRoute />} />
+                  <Route path="/routine-templates" element={<RoutineTemplatesPage />} />
                   <Route path="/admin/transcript-templates" element={<TranscriptTemplatesPage />} />
                   <Route path="/analytics" element={<AnalyticsPage />} />
                   <Route path="/vault" element={<VaultPage />} />
@@ -219,6 +221,7 @@ function AppShell() {
 
   const pageTitles = {
     '/dashboard': 'Dashboard',
+    '/routine-templates': 'Routine Templates',
     '/analytics': 'Grade Lab',
     '/vault': 'Vault',
     '/notebook': 'Notebook',

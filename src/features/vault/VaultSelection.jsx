@@ -25,15 +25,13 @@ const deptAccents = {
 export default function VaultSelection({
   department,
   yearSem,
-  selectionStep,
   onSelectDepartment,
   onSelectYearSem,
   onSelectCourse,
-  onBackToDepartments,
   onBackToSemesters,
   progress,
 }) {
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [, setRefreshKey] = useState(0);
 
   const refreshCourses = useCallback(() => {
     setRefreshKey((key) => key + 1);
@@ -44,10 +42,9 @@ export default function VaultSelection({
     [department],
   );
 
-  const courseCategories = useMemo(() => {
-    if (!department || !yearSem) return [];
-    return getCourseCategories(department, yearSem);
-  }, [department, yearSem, refreshKey]);
+  const courseCategories = department && yearSem
+    ? getCourseCategories(department, yearSem)
+    : [];
 
   if (!department) {
     return (

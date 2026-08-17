@@ -146,14 +146,6 @@ export default function WeeklyPlanner() {
     return slotBoundaries[endIdx];
   };
 
-  const formatTimeForDisplay = (time24) => {
-    const [hour, minute] = time24.split(':');
-    const hourNum = parseInt(hour, 10);
-    const ampm = hourNum >= 12 ? 'PM' : 'AM';
-    const hour12 = hourNum > 12 ? hourNum - 12 : (hourNum === 0 ? 12 : hourNum);
-    return `${String(hour12).padStart(2, '0')}:${minute} ${ampm}`;
-  };
-
   const emptyForm = {
     course: '',
     name: '',
@@ -683,8 +675,6 @@ export default function WeeklyPlanner() {
                 .filter((cls) => cls.startIdx < timeSlots.length)
                 .sort((a, b) => a.startIdx - b.startIdx);
 
-              let nextClassIdx = 0;
-
               return (
                 <tr key={day}>
                   <td className="weekly-day-cell">
@@ -702,7 +692,6 @@ export default function WeeklyPlanner() {
                       const isBiWeekly = classesAtIdx.some((c) => c.biWeekly);
 
                       if (isBiWeekly) {
-                        nextClassIdx += classesAtIdx.length;
                         const firstCls = classesAtIdx.find((c) => c.weekGroup === 'first') || classesAtIdx[0];
                         const secondCls = classesAtIdx.find((c) => c.weekGroup === 'second');
                         const baseColor = getCourseColor(firstCls.course);
@@ -828,7 +817,6 @@ export default function WeeklyPlanner() {
                       }
 
                       // Normal (non-bi-weekly): single or multiple stacked
-                      nextClassIdx += classesAtIdx.length;
                       if (classesAtIdx.length === 1) {
                         const cls = classesAtIdx[0];
                         const accentColor = getCourseColor(cls.course);

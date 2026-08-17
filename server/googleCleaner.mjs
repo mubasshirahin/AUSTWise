@@ -157,7 +157,6 @@ const BRAND_MAP = {
   'mailchimp.com': 'Mailchimp',
   'typeform.com': 'Typeform',
   'calendly.com': 'Calendly',
-  'notion.so': 'Notion',
   // Education
   'coursera.org': 'Coursera',
   'udemy.com': 'Udemy',
@@ -177,7 +176,6 @@ const BRAND_MAP = {
   'hackerrank.com': 'HackerRank',
   'hackerearth.com': 'HackerEarth',
   'geeksforgeeks.org': 'GeeksforGeeks',
-  'coursera.org': 'Coursera',
   'aust.edu': 'AUST',
   'mbstu.ac.bd': 'MBSTU',
   'buet.ac.bd': 'BUET',
@@ -215,7 +213,6 @@ const BRAND_MAP = {
   'gojek.com': 'Gojek',
   'olacabs.com': 'Ola',
   'inDrive.com': 'inDrive',
-  'steamcommunity.com': 'Steam',
   // Travel
   'airbnb.com': 'Airbnb',
   'booking.com': 'Booking.com',
@@ -261,7 +258,6 @@ const BRAND_MAP = {
   'myfitnesspal.com': 'MyFitnessPal',
   'healthify.me': 'HealthifyMe',
   'cult.fit': 'Cult.fit',
-  'nike.com': 'Nike',
   // News & info
   'cnn.com': 'CNN',
   'bbc.co.uk': 'BBC',
@@ -294,29 +290,19 @@ const BRAND_MAP = {
   'airtel.in': 'Airtel India',
   'vodafone.com': 'Vodafone',
   // Job & professional
-  'linkedin.com': 'LinkedIn',
   'glassdoor.com': 'Glassdoor',
   'indeed.com': 'Indeed',
   'bdjobs.com': 'Bdjobs',
   'bdcirculars.com': 'BD Circulars',
   'rokomari.com': 'Rokomari',
   // Gaming
-  'steampowered.com': 'Steam',
-  'ea.com': 'EA',
   'ubisoft.com': 'Ubisoft',
   'square-enix.com': 'Square Enix',
-  'riotgames.com': 'Riot Games',
-  'playstation.com': 'PlayStation',
-  'xbox.com': 'Xbox',
-  'nintendo.com': 'Nintendo',
-  'epicgames.com': 'Epic Games',
-  'roblox.com': 'Roblox',
   'minecraft.net': 'Minecraft',
   'valorant.com': 'Valorant',
   'pubgmobile.com': 'PUBG Mobile',
   'freefire.com': 'Free Fire',
   // Productivity misc
-  'zoom.us': 'Zoom',
   'gov.bd': 'Bangladesh Government',
   'a2i.gov.bd': 'a2i',
   'e.gov.bd': 'Bangladesh Government',
@@ -496,7 +482,6 @@ function readJsonBody(req) {
 function sendJson(res, status, payload) {
   res.writeHead(status, {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
   });
   res.end(JSON.stringify(payload));
 }
@@ -536,7 +521,6 @@ export async function handleCleanerRequest(req, res) {
       'Content-Type': 'text/event-stream; charset=utf-8',
       'Cache-Control': 'no-cache',
       Connection: 'keep-alive',
-      'Access-Control-Allow-Origin': '*',
     });
     const emit = (event) => res.write(`data: ${JSON.stringify(event)}\n\n`);
 

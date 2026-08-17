@@ -73,7 +73,7 @@ const GOOGLE_CLIENT_ID = '736141389272-m680j6nh45evbe36mnmhuqpi8i06cv4q.apps.goo
 
 
 export default function AuthPage() {
-  const { isAuthenticated, isLoading, login, loginDirect, loginGuest, signup, updateUser } = useAuth();
+  const { isAuthenticated, isLoading, login, loginDirect, loginGuest, signup } = useAuth();
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
@@ -351,7 +351,7 @@ export default function AuthPage() {
   const googleBtnRef = useRef(null);
   const gsiRenderedRef = useRef(false);
   const finalizeRef = useRef(finalizeGoogleLogin);
-  finalizeRef.current = finalizeGoogleLogin;
+  useEffect(() => { finalizeRef.current = finalizeGoogleLogin; }, [finalizeGoogleLogin]);
 
   /* Load GIS and initialize once (popup mode avoids FedCM dependency) */
   useEffect(() => {

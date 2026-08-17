@@ -77,7 +77,6 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
   useEffect(() => { setAvatarError(false); }, [user?.avatar]);
   const [logoClicked, setLogoClicked] = useState(false);
   const logoClickTimes = useRef([]);
-  const easterEggTimer = useRef(null);
 
   const checkEasterEgg = useCallback(() => {
     const now = Date.now();

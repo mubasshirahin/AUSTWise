@@ -24,17 +24,6 @@ const zoomLevels = [
   { id: 'fit', label: 'Fit' },
 ];
 
-const roomTypeLabels = {
-  admin: 'Administration',
-  hall: 'Auditorium / Hall',
-  facility: 'Facility',
-  library: 'Library',
-  classroom: 'Classroom',
-  lab: 'Laboratory',
-  lift: 'Lift',
-  washroom: 'Washroom',
-};
-
 const RESIZE_DIRECTIONS = {
   nw: { dl: 1, dt: 1, dw: -1, dh: -1 },
   se: { dl: 0, dt: 0, dw: 1, dh: 1 },
@@ -48,7 +37,7 @@ const getHotspotKey = (room, index) => `${room.id}-${index}`;
 /* Room-type hotspots all share the single primary accent so the map stays
    consistent, not a rotating palette. Semantic colors (emerald/rose) are
    reserved for status, not room categories. */
-const getRoomColor = (type) => 'var(--accent-blue)';
+const getRoomColor = (_type) => 'var(--accent-blue)';
 
 function FloorShowcase({ floorData, selectedFloor, floorTabs, onFloorChange }) {
   const [zoom, setZoom] = useState('fit');
@@ -56,7 +45,7 @@ function FloorShowcase({ floorData, selectedFloor, floorTabs, onFloorChange }) {
   const [selectedRoomId, setSelectedRoomId] = useState(null);
   const [selectedHotspotKey, setSelectedHotspotKey] = useState(null);
   const [floorView, setFloorView] = useState('image');
-  const [editMode, setEditMode] = useState(false);
+  const [editMode] = useState(false);
   const [selectedZone, setSelectedZone] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -243,37 +232,6 @@ function FloorShowcase({ floorData, selectedFloor, floorTabs, onFloorChange }) {
     document.addEventListener('pointerup', handlePointerUp);
   };
 
-  const updatePosition = (hotspotKey, hotspot, field, value) => {
-    setPositions((prev) => {
-      return {
-        ...prev,
-        [hotspotKey]: { ...(prev[hotspotKey] || hotspot), [field]: parseFloat(value) || 0 },
-      };
-    });
-  };
-
-  const updateRotation = (hotspotKey, value) => {
-    setRotations((prev) => ({
-      ...prev,
-      [hotspotKey]: parseFloat(value) || 0,
-    }));
-  };
-
-  const resetPositions = () => {
-    setPositions({});
-    setRotations({});
-    localStorage.removeItem('aust-campus-positions');
-    localStorage.removeItem('aust-campus-rotations');
-  };
-
-  const editingRoom = floorData.rooms.find((r) => r.id === selectedRoomId);
-  const editingHotspotIndex = editingRoom && selectedHotspotKey
-    ? Number(selectedHotspotKey.split('-').at(-1))
-    : 0;
-  const editingHotspot = editingRoom ? getRoomHotspots(editingRoom)[editingHotspotIndex] : null;
-  const editingPos = editingHotspot && selectedHotspotKey ? (positions[selectedHotspotKey] || editingHotspot) : null;
-  const editingRotation = selectedHotspotKey ? (rotations[selectedHotspotKey] || 0) : 0;
-  const isInteractiveView = floorView === 'interactive';
   const isInteractiveFloor = floorView === 'interactive';
 
   /** Generate SVG text labels for floors 2-8 which reuse the same building structure */

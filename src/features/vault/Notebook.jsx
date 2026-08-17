@@ -56,39 +56,6 @@ function fitFontSize(text, width, height) {
   return best;
 }
 
-// Find the closest point where a new rect (w×h) does not overlap any existing
-// item. Returns { x, y } in canvas coords, or a centering fallback.
-function findFreeSpot(w, h, items, areaW, areaH) {
-  const margin = 12;
-  const maxX = Math.max(0, (areaW || 1000) - w - margin);
-  const maxY = Math.max(0, (areaH || 600) - h - margin);
-  const cx = maxX / 2 + w / 2;
-  const cy = maxY / 2 + h / 2;
-
-  const overlaps = (x, y) => {
-    const r = { x, y, w, h };
-    for (const it of items) {
-      const a = { x: it.x, y: it.y, w: it.w, h: it.h };
-      if (r.x < a.x + a.w && r.x + r.w > a.x && r.y < a.y + a.h && r.y + r.h > a.y) return true;
-    }
-    return false;
-  };
-
-  let best = null;
-  let bestDist = Infinity;
-  for (let gy = margin; gy <= maxY; gy += 40) {
-    for (let gx = margin; gx <= maxX; gx += 40) {
-      if (overlaps(gx, gy)) continue;
-      const dx = gx + w / 2 - cx;
-      const dy = gy + h / 2 - cy;
-      const d = dx * dx + dy * dy;
-      if (d < bestDist) { bestDist = d; best = { x: gx, y: gy }; }
-    }
-  }
-  if (best) return best;
-  return { x: cx - w / 2, y: cy - h / 2 };
-}
-
 const bottomSpot = (w, h, items, areaW) => {
   const margin = 12;
   if (items.length === 0) return { x: margin, y: margin };
@@ -115,7 +82,7 @@ const SharpStar = ({ color = '#F5A623', ...rest }) => (
   </svg>
 );
 
-export default function Notebook({ vaultContext, batch, noteKey, title, path, onBack, onSaved, onPathCrumb }) {
+export default function Notebook({ vaultContext, batch, noteKey, title, path, onSaved, onPathCrumb }) {
   const { department, yearSem } = vaultContext;
   // noteKey (from the Notebook library) gives every note its own storage slot:
   // `aust-notebook-<noteKey>`. Without it we fall back to the legacy single
@@ -156,7 +123,7 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
   const editedSessionRef = useRef(false); // true once the user typed during the current edit session
   const [connections, setConnections] = useState([]);
   const [connectFrom, setConnectFrom] = useState(null);
-  const [boxColor, setBoxColor] = useState('#F5A623');
+  const [boxColor] = useState('#F5A623');
   const [selectedItemId, setSelectedItemId] = useState(null);
   const [editItemId, setEditItemId] = useState(null); // which item's edit menu is open
   const [drawMode, setDrawMode] = useState(false);
@@ -331,13 +298,13 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
 
     // Snapshot the current canvas state before a mutation so undo can restore it
     const pushSnapshot = () => {
-      undoStack.current.push({
+      undoStackRef.current.push({
         items: [...stateRef.current.items],
         connections: [...stateRef.current.connections],
         manualLines: [...stateRef.current.manualLines],
       });
-      if (undoStack.current.length > 100) undoStack.current.shift();
-      redoStack.current = [];
+      if (undoStackRef.current.length > 100) undoStackRef.current.shift();
+      redoStackRef.current = [];
     };
 
     const addImage = (blob) => {
@@ -477,20 +444,22 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
   useEffect(() => () => clearTimeout(pasteFlashTimer.current), []);
 
   // ─── Undo / Redo (Ctrl+Z undo · Ctrl+Shift+Z redo) ───
-  const undoStack = useRef([]);
-  const redoStack = useRef([]);
+  const undoStackRef = useRef([]);
+  const redoStackRef = useRef([]);
   const dragStartState = useRef(null);
   const stateRef = useRef({ items: [], connections: [], manualLines: [] });
+  // eslint-disable-next-line react-hooks/immutability -- compiler false positive: ref is mutated in an effect, never during render
   useEffect(() => { stateRef.current = { items, connections, manualLines }; }, [items, connections, manualLines]);
 
   const pushUndo = () => {
-    undoStack.current.push({
+    undoStackRef.current.push({
       items: [...stateRef.current.items],
       connections: [...stateRef.current.connections],
       manualLines: [...stateRef.current.manualLines],
     });
-    if (undoStack.current.length > 100) undoStack.current.shift();
-    redoStack.current = [];
+    if (undoStackRef.current.length > 100) undoStackRef.current.shift();
+    // eslint-disable-next-line react-hooks/immutability -- compiler false positive: clearing a ref array in an event handler
+    redoStackRef.current = [];
   };
 
   // Canvas keyboard shortcuts: Ctrl+Z undo, Ctrl+Shift+Z redo.
@@ -513,9 +482,9 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
       setSaved(false);
     };
     const undoNow = () => {
-      const prev = undoStack.current.pop();
+      const prev = undoStackRef.current.pop();
       if (!prev) return;
-      redoStack.current.push({
+      redoStackRef.current.push({
         items: [...stateRef.current.items],
         connections: [...stateRef.current.connections],
         manualLines: [...stateRef.current.manualLines],
@@ -523,9 +492,9 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
       restore(prev);
     };
     const redoNow = () => {
-      const next = redoStack.current.pop();
+      const next = redoStackRef.current.pop();
       if (!next) return;
-      undoStack.current.push({
+      undoStackRef.current.push({
         items: [...stateRef.current.items],
         connections: [...stateRef.current.connections],
         manualLines: [...stateRef.current.manualLines],
@@ -609,12 +578,13 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
       const after = stateRef.current;
       const afterItem = after.items.find(i => i.id === resizingId);
       if (rs && afterItem && (rs.w !== afterItem.w || rs.h !== afterItem.h)) {
-        undoStack.current.push({
+        undoStackRef.current.push({
           items: [...rs.snapshot.items],
           connections: [...rs.snapshot.connections],
           manualLines: [...rs.snapshot.manualLines],
         });
-        redoStack.current = [];
+        // eslint-disable-next-line react-hooks/immutability -- compiler false positive: clearing a ref array in an event handler
+        redoStackRef.current = [];
       }
       setResizingId(null);
       resizeStartRef.current = null;
@@ -628,12 +598,12 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
       const beforeItem = before?.items.find(i => i.id === dragId);
       const afterItem = after.items.find(i => i.id === dragId);
       if (beforeItem && afterItem && (beforeItem.x !== afterItem.x || beforeItem.y !== afterItem.y)) {
-        undoStack.current.push({
+        undoStackRef.current.push({
           items: [...before.items],
           connections: [...before.connections],
           manualLines: [...before.manualLines],
         });
-        redoStack.current = [];
+        redoStackRef.current = [];
       }
       setDragId(null);
       markDirty();
@@ -1338,8 +1308,10 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
             }
             const activeCol = line.color || (isConn ? '#3b82f6' : '#22c55e');
             const activeStyle = line.style || 'solid';
+            /* eslint-disable react-hooks/refs -- these helpers only run in the onClick below (event time), never during render */
             const applyPatch = (patch) =>
               isConn ? updateConnectionStyle(line.id, patch) : updateLineStyle(line.id, patch);
+            /* eslint-enable react-hooks/refs */
             return (
               <div
                 className="nb-line-options"
@@ -1371,6 +1343,7 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
                   <button
                     className="nb-line-del-btn"
                     title={isConn ? 'Remove connection' : 'Delete line'}
+                    // eslint-disable-next-line react-hooks/refs -- delete helpers run at event time, never during render
                     onClick={() => isConn ? deleteConnection(line.id) : deleteLine(line.id)}
                   >
                     <Trash2 size={12} />

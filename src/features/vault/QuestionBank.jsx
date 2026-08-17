@@ -21,7 +21,7 @@ export default function QuestionBank({ vaultContext }) {
   const { user } = useAuth();
   const [selectedType, setSelectedType] = useState('All');
   const [selectedTermKey, setSelectedTermKey] = useState(getDefaultQuestionBankTermKey);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [, setRefreshKey] = useState(0);
   const [viewingPaperId, setViewingPaperId] = useState(null);
 
   const { department, yearSem, course, courseName, courseType = 'Theory' } = vaultContext;
@@ -49,14 +49,12 @@ export default function QuestionBank({ vaultContext }) {
     [terms, selectedTermKey],
   );
 
-  const courseQuestions = useMemo(() => {
-    return getQuestionBankSummaries().filter(
-      (item) =>
-        item.department === department &&
-        item.yearSem === yearSem &&
-        item.course === course,
-    );
-  }, [department, yearSem, course, refreshKey]);
+  const courseQuestions = getQuestionBankSummaries().filter(
+    (item) =>
+      item.department === department &&
+      item.yearSem === yearSem &&
+      item.course === course,
+  );
 
   const termQuestions = useMemo(() => {
     if (!selectedTerm) return [];

@@ -1,0 +1,123 @@
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\App.jsx:249:67 | React Hook useEffect has a missing dependency: 'pageName'. Either include it or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\context\PomodoroContext.jsx:41:6 | React Hook useEffect has a missing dependency: 'timeLeft'. Either include it or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\admin\AdminPanelPage.jsx:38:6 | React Hook useEffect has a missing dependency: 'getTabFromPath'. Either include it or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\analytics\CoursePoll.jsx:157:57 | React Hook useMemo has an unnecessary dependency: 'version'. Either exclude it or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\analytics\CoursePoll.jsx:158:59 | React Hook useMemo has an unnecessary dependency: 'version'. Either exclude it or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\analytics\CoursePoll.jsx:159:55 | React Hook useMemo has an unnecessary dependency: 'version'. Either exclude it or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\analytics\CourseReview.jsx:58:65 | React Hook useMemo has unnecessary dependencies: 'reviews.length' and 'showAddForm'. Either exclude them or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\analytics\DeptHeatmap.jsx:48:5 | React Hook useMemo has unnecessary dependencies: 'user.batch', 'user.batchNo', and 'user.department'. Either exclude them or remove the dependency arr
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\analytics\SemesterTracker.jsx:268:6 | React Hook useEffect has missing dependencies: 'labConfig', 'labCourses', 'labMarks', 'loadSemesterData', 'theoryConfig', 'theoryCourses', and 'theory
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\analytics\SemesterTracker.jsx:593:6 | React Hook useEffect has missing dependencies: 'allResults', 'availableSemesters', 'getCurrentSemester', and 'selectedSemester'. Either include them o
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\auth\AuthPage.jsx:154:6 | React Hook useEffect has a missing dependency: 'TICKER_PHRASES'. Either include it or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\auth\AuthPage.jsx:349:6 | React Hook useCallback has a missing dependency: 'fetchGooglePicture'. Either include it or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\campus\CanteenMenu.jsx:100:60 | React Hook useMemo has an unnecessary dependency: 'feedbackVersion'. Either exclude it or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\campus\CanteenMenu.jsx:101:68 | React Hook useMemo has an unnecessary dependency: 'feedbackVersion'. Either exclude it or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\dashboard\DashboardPage.jsx:96:6 | React Hook useEffect has a missing dependency: 'displayStreak'. Either include it or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\dashboard\DeadlineTicker.jsx:125:6 | React Hook useEffect has a missing dependency: 'combinedDeadlines'. Either include it or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\messages\MessagesPage.jsx:175:6 | React Hook useEffect has missing dependencies: 'conversationId', 'wsReady', and 'wsSendRead'. Either include them or remove the dependency array. If '
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\messages\MessagesPage.jsx:835:6 | React Hook useCallback has a missing dependency: 'wsSendMessage'. Either include it or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\messages\MessagesPage.jsx:967:6 | React Hook useMemo has an unnecessary dependency: 'conversations'. Either exclude it or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\pro\CardSwap.jsx:126:9 | The 'swap' function makes the dependencies of useImperativeHandle Hook (at line 170) change on every render. To fix this, wrap the definition of 'swap
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\pro\CardSwap.jsx:126:9 | The 'swap' function makes the dependencies of useEffect Hook (at line 211) change on every render. To fix this, wrap the definition of 'swap' in its o
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\pro\MagnificationDock.jsx:126:5 | React Hook useMemo has a missing dependency: 'dockHeight'. Either include it or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\settings\SettingsPage.jsx:461:6 | React Hook useEffect has a missing dependency: 'refreshUserFromServer'. Either include it or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\settings\SettingsPage.jsx:470:6 | React Hook useEffect has a missing dependency: 'user?.yearSemester'. Either include it or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\study-room\ZenStudyRoom.jsx:131:6 | React Hook useEffect has a missing dependency: 'navigate'. Either include it or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\vault\MaterialFolders.jsx:851:6 | React Hook useEffect has missing dependencies: 'nextFile', 'onClose', and 'prevFile'. Either include them or remove the dependency array. If 'onClose'
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\vault\MaterialFolders.jsx:1413:6 | React Hook useEffect has missing dependencies: 'batch.driveUrl' and 'batch?.folderId'. Either include them or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\vault\Notebook.jsx:405:6 | React Hook useCallback has missing dependencies: 'boxColor' and 'sizeToContent'. Either include them or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\vault\NotebookPage.jsx:187:6 | React Hook useCallback has a missing dependency: 'handleNavigateTo'. Either include it or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\vault\QuestionBank.jsx:59:6 | React Hook useMemo has an unnecessary dependency: 'refreshKey'. Either exclude it or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\vault\TopicHeatmap.jsx:37:6 | React Hook React.useMemo has an unnecessary dependency: 'course'. Either exclude it or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\vault\VaultSelection.jsx:48:6 | React Hook useMemo has an unnecessary dependency: 'refreshKey'. Either exclude it or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\workspace\WorkspacePage.jsx:327:6 | React Hook useEffect has missing dependencies: 'accounts' and 'silentRefreshToken'. Either include them or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\workspace\WorkspacePage.jsx:342:6 | React Hook useEffect has missing dependencies: 'accounts' and 'silentRefreshToken'. Either include them or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\features\workspace\WorkspacePage.jsx:752:6 | React Hook useCallback has a missing dependency: 'tokenClient'. Either include it or remove the dependency array.
+react-hooks/exhaustive-deps | C:\Users\PEPSi\Desktop\AUSTWise\src\layout\TopNavbar.jsx:126:6 | React Hook useEffect has a missing dependency: 'onSearchOpen'. Either include it or remove the dependency array. If 'onSearchOpen' changes too often, 
+react-hooks/immutability | C:\Users\PEPSi\Desktop\AUSTWise\src\features\admin\RoutineTemplatesPanel.jsx:54:5 | Error: Cannot access variable before it is declared
+react-hooks/immutability | C:\Users\PEPSi\Desktop\AUSTWise\src\features\admin\TranscriptTemplatesPanel.jsx:19:5 | Error: Cannot access variable before it is declared
+react-hooks/immutability | C:\Users\PEPSi\Desktop\AUSTWise\src\features\dashboard\RoutineTemplatesPage.jsx:20:5 | Error: Cannot access variable before it is declared
+react-hooks/immutability | C:\Users\PEPSi\Desktop\AUSTWise\src\features\messages\MessagesPage.jsx:833:7 | Error: Cannot access variable before it is declared
+react-hooks/immutability | C:\Users\PEPSi\Desktop\AUSTWise\src\features\vault\MaterialFolders.jsx:846:85 | Error: Cannot access variable before it is declared
+react-hooks/immutability | C:\Users\PEPSi\Desktop\AUSTWise\src\features\vault\MaterialFolders.jsx:847:86 | Error: Cannot access variable before it is declared
+react-hooks/immutability | C:\Users\PEPSi\Desktop\AUSTWise\src\features\vault\Notebook.jsx:451:21 | Error: This value cannot be modified
+react-hooks/immutability | C:\Users\PEPSi\Desktop\AUSTWise\src\features\vault\Notebook.jsx:460:5 | Error: This value cannot be modified
+react-hooks/immutability | C:\Users\PEPSi\Desktop\AUSTWise\src\features\vault\Notebook.jsx:584:9 | Error: This value cannot be modified
+react-hooks/immutability | C:\Users\PEPSi\Desktop\AUSTWise\src\hooks\useWebSocket.js:167:52 | Error: Cannot access variable before it is declared
+react-hooks/preserve-manual-memoization | C:\Users\PEPSi\Desktop\AUSTWise\src\features\analytics\SemesterTracker.jsx:576:30 | Compilation Skipped: Existing memoization could not be preserved
+react-hooks/preserve-manual-memoization | C:\Users\PEPSi\Desktop\AUSTWise\src\features\vault\MaterialFolders.jsx:1555:25 | Compilation Skipped: Existing memoization could not be preserved
+react-hooks/purity | C:\Users\PEPSi\Desktop\AUSTWise\src\features\active-members\ActiveMembersSidebar.jsx:508:196 | Error: Cannot call impure function during render
+react-hooks/purity | C:\Users\PEPSi\Desktop\AUSTWise\src\features\admin\RoutineTemplatesPanel.jsx:154:13 | Error: Cannot call impure function during render
+react-hooks/purity | C:\Users\PEPSi\Desktop\AUSTWise\src\features\campus\BusTracker.jsx:110:31 | Error: Cannot call impure function during render
+react-hooks/purity | C:\Users\PEPSi\Desktop\AUSTWise\src\features\dashboard\DeadlineTicker.jsx:54:37 | Error: Cannot call impure function during render
+react-hooks/refs | C:\Users\PEPSi\Desktop\AUSTWise\src\features\analytics\SemesterTracker.jsx:799:43 | Error: Cannot access refs during render
+react-hooks/refs | C:\Users\PEPSi\Desktop\AUSTWise\src\features\auth\AuthPage.jsx:354:3 | Error: Cannot access refs during render
+react-hooks/refs | C:\Users\PEPSi\Desktop\AUSTWise\src\features\messages\MessagesPage.jsx:803:3 | Error: Cannot access refs during render
+react-hooks/refs | C:\Users\PEPSi\Desktop\AUSTWise\src\features\shadow\ShadowPage.jsx:96:3 | Error: Cannot access refs during render
+react-hooks/refs | C:\Users\PEPSi\Desktop\AUSTWise\src\features\study-room\ZenStudyRoom.jsx:36:3 | Error: Cannot access refs during render
+react-hooks/refs | C:\Users\PEPSi\Desktop\AUSTWise\src\features\vault\Notebook.jsx:1309:24 | Error: Cannot access refs during render
+react-hooks/refs | C:\Users\PEPSi\Desktop\AUSTWise\src\features\vault\Notebook.jsx:1309:64 | Error: Cannot access refs during render
+react-hooks/refs | C:\Users\PEPSi\Desktop\AUSTWise\src\features\vault\Notebook.jsx:1341:45 | Error: Cannot access refs during render
+react-hooks/refs | C:\Users\PEPSi\Desktop\AUSTWise\src\features\vault\Notebook.jsx:1341:73 | Error: Cannot access refs during render
+react-hooks/refs | C:\Users\PEPSi\Desktop\AUSTWise\src\hooks\useMessageNotifications.js:26:3 | Error: Cannot access refs during render
+react-hooks/refs | C:\Users\PEPSi\Desktop\AUSTWise\src\hooks\useWebSocket.js:35:3 | Error: Cannot access refs during render
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\App.jsx:79:7 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\components\CourseAutocomplete.jsx:39:5 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\components\CourseAutocomplete.jsx:47:5 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\admin\AdminPanelPage.jsx:37:5 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\admin\AdminPanelPage.jsx:111:7 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\admin\AdminPanelPage.jsx:203:5 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\analytics\CGPAGraph.jsx:44:5 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\analytics\CoursePoll.jsx:128:7 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\analytics\SemesterTracker.jsx:261:5 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\analytics\SemesterTracker.jsx:591:48 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\auth\AuthPage.jsx:149:9 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\campus\BusTracker.jsx:132:7 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\campus\BusTracker.jsx:148:7 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\campus\LibraryPulse.jsx:64:5 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\dashboard\DashboardPage.jsx:333:7 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\dashboard\DashboardPage.jsx:586:7 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\dashboard\DeadlineTicker.jsx:32:5 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\dashboard\DeadlineTicker.jsx:86:7 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\dashboard\NextWeekSchedule.jsx:65:5 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\dashboard\NextWeekSchedule.jsx:91:7 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\dashboard\QuotePopup.jsx:101:7 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\dashboard\RoutineAttendanceTracker.jsx:78:7 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\dashboard\RoutineAttendanceTracker.jsx:124:7 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\dashboard\RoutineCard.jsx:86:7 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\dashboard\WeekSchedule.jsx:158:7 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\empty-classroom\EmptyClassroomPage.jsx:84:5 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\landing\LandingPage.jsx:1047:5 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\messages\MessagesPage.jsx:174:5 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\messages\MessagesPage.jsx:265:7 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\password-manager\PasswordManagerPage.jsx:79:5 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\settings\SettingsPage.jsx:145:5 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\settings\SettingsPage.jsx:468:7 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\settings\SettingsPage.jsx:506:36 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\shadow\ShadowPage.jsx:213:5 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\terminal\TerminalPage.jsx:58:7 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\vault\Cheatsheets.jsx:122:5 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\vault\MaterialFolders.jsx:430:5 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\vault\MaterialFolders.jsx:797:5 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\vault\MaterialFolders.jsx:1402:5 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\vault\MaterialFolders.jsx:1487:9 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\vault\Notebook.jsx:180:24 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\vault\PlaylistPlayer.jsx:16:5 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\vault\QuestionBank.jsx:43:5 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\vault\SkillRoadmap.jsx:17:5 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\workspace\WorkspacePage.jsx:408:5 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\features\workspace\WorkspacePage.jsx:762:7 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\hooks\useLibraryTracking.js:82:7 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\layout\SearchModal.jsx:142:5 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-hooks/set-state-in-effect | C:\Users\PEPSi\Desktop\AUSTWise\src\layout\TopNavbar.jsx:77:21 | Error: Calling setState synchronously within an effect can trigger cascading renders
+react-refresh/only-export-components | C:\Users\PEPSi\Desktop\AUSTWise\src\context\PomodoroContext.jsx:10:17 | Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+react-refresh/only-export-components | C:\Users\PEPSi\Desktop\AUSTWise\src\context\PomodoroContext.jsx:71:17 | Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+react-refresh/only-export-components | C:\Users\PEPSi\Desktop\AUSTWise\src\context\RoutineContext.jsx:14:14 | Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+react-refresh/only-export-components | C:\Users\PEPSi\Desktop\AUSTWise\src\context\RoutineContext.jsx:22:14 | Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+react-refresh/only-export-components | C:\Users\PEPSi\Desktop\AUSTWise\src\context\RoutineContext.jsx:119:14 | Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+react-refresh/only-export-components | C:\Users\PEPSi\Desktop\AUSTWise\src\context\ThemeContext.jsx:5:14 | Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+react-refresh/only-export-components | C:\Users\PEPSi\Desktop\AUSTWise\src\context\ThemeContext.jsx:144:14 | Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+react-refresh/only-export-components | C:\Users\PEPSi\Desktop\AUSTWise\src\context\ThemeContext.jsx:145:14 | Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+react-refresh/only-export-components | C:\Users\PEPSi\Desktop\AUSTWise\src\features\campus\BuildingStructure.jsx:3:14 | Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+react-refresh/only-export-components | C:\Users\PEPSi\Desktop\AUSTWise\src\features\pro\MagnificationDock.jsx:29:14 | Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+react-refresh/only-export-components | C:\Users\PEPSi\Desktop\AUSTWise\src\utils\socialOAuth.jsx:42:17 | Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.

@@ -294,7 +294,6 @@ export default function StudyRoomPage() {
             </div>
             <div className="sr-sound-grid">
               {AMBIENT_SOUNDS.map((sound) => {
-                const Icon = sound.icon;
                 const isActive = activeSound === sound.id;
                 return (
                   <button

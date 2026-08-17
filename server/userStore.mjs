@@ -13,8 +13,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DB_PATH = path.join(__dirname, 'users.json');
 const BCRYPT_ROUNDS = 10;
 
-const ALLOWED_DOMAINS = ['aust.edu', 'www.aust.edu'];
-const VALID_ROLES = ['student', 'faculty', 'alumni', 'admin', 'cr', 'sr', 'senior', 'moderator'];
+/** Every role the system understands (self-registration is always 'student'). */
+export const VALID_ROLES = ['student', 'faculty', 'alumni', 'admin', 'cr', 'sr', 'senior', 'moderator', 'vp', 'gs'];
+/** Roles an admin may assign to another user via the admin panel / approvals. */
+export const ADMIN_ASSIGNABLE_ROLES = ['student', 'cr', 'sr', 'vp', 'gs', 'faculty', 'alumni', 'senior', 'moderator'];
 const DEV_PASSWORD = 'Dev@123456';
 
 const DEPARTMENTS = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'];
@@ -92,8 +94,14 @@ export async function ensureAllAwids() {
 export async function seedDefaultAdmin() {
   const users = await readUsers();
   if (users.some(u => u.role === 'admin')) return null;
+  const isProduction = process.env.NODE_ENV === 'production';
+  const adminPassword = process.env.ADMIN_DEFAULT_PASSWORD;
+  if (isProduction && (!adminPassword || adminPassword.length < 12)) {
+    console.error('❌ Refusing to seed the default admin account: set a strong ADMIN_DEFAULT_PASSWORD (>= 12 characters) in production.');
+    return null;
+  }
   const hash = await bcrypt.hash(
-    process.env.ADMIN_DEFAULT_PASSWORD || 'changeme',
+    adminPassword || 'changeme',
     BCRYPT_ROUNDS
   );
   const admin = {
@@ -523,7 +531,7 @@ export async function seedDevUsers() {
 /** Dev users only (id `DEV-*`) — used by the dev switch button fixture. */
 export async function getDevUsers() {
   const users = await readUsers();
-  return users.filter((u) => u.id && String(u.id).startsWith('DEV-')).map(({ password, ...safe }) => safe);
+  return users.filter((u) => u.id && String(u.id).startsWith('DEV-')).map(({ _password, ...safe }) => safe);
 }
 
 /** Hash password with bcrypt */
@@ -538,32 +546,24 @@ export function comparePassword(plain, hash) {
 
 function isValidAustEmail(email) {
   const normalized = email.toLowerCase().trim();
-  return ALLOWED_DOMAINS.some(d => normalized.endsWith(`@${d}`) || normalized.endsWith(`@www.${d}`));
+  // Anchor the domain so `evil@aust.edu.attacker.com` is rejected. Matches
+  // `@aust.edu` and subdomains like `@www.aust.edu`.
+  return /^[^@\s]+@(?:[a-z0-9-]+\.)*aust\.edu$/.test(normalized);
 }
 
-function generateId(role) {
-  const prefix = {
-    student: 'STU', faculty: 'FAC', alumni: 'ALU', admin: 'ADM',
-    cr: 'CR', sr: 'SR', senior: 'SNR', moderator: 'MOD',
-  }[role] || 'USR';
-  const crypto = await_import_crypto();
-  // Synchronous random — use Date.now + Math.random for simplicity
-  const rnd = Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `${prefix}-${rnd}`;
-}
-
-// We import crypto lazily
-let _crypto;
-function await_import_crypto() {
-  // handled below
-}
-
-/** Create a new user */
+/** Create a new user (self-registration) */
 export async function createUser(payload) {
   const name = String(payload.name || '').trim();
   const email = String(payload.email || '').trim().toLowerCase();
   const password = String(payload.password || '');
-  const role = VALID_ROLES.includes(payload.role) ? payload.role : 'student';
+  // The server is the sole role authority. Self-registration may only create
+  // student accounts — faculty/alumni/admin/moderator roles come from admin
+  // action or invitations. Any client-supplied role is ignored.
+  const requestedRole = String(payload.role || 'student').toLowerCase().trim();
+  if (requestedRole !== 'student') {
+    throw new Error('Self-registration is limited to student accounts. Faculty and alumni roles are granted by an admin or invitation.');
+  }
+  const role = 'student';
   const department = String(payload.department || '').trim();
 
   if (!name) throw new Error('Full name is required.');
@@ -571,7 +571,7 @@ export async function createUser(payload) {
   if (!isValidAustEmail(email)) {
     throw new Error('Only AUST university email addresses (@aust.edu) are allowed for registration.');
   }
-  if (password.length < 6) throw new Error('Password must be at least 6 characters.');
+  if (password.length < 8) throw new Error('Password must be at least 8 characters.');
   if (!department) throw new Error('Department is required.');
 
   const users = await readUsers();
@@ -579,11 +579,8 @@ export async function createUser(payload) {
     throw new Error('An account with this email already exists.');
   }
 
-  if ((role === 'student' || role === 'alumni') && !String(payload.batchNo || payload.batch || '').trim()) {
-    throw new Error('Batch is required for students and alumni.');
-  }
-  if (role === 'faculty' && !String(payload.designation || '').trim()) {
-    throw new Error('Designation is required for faculty accounts.');
+  if (!String(payload.batchNo || payload.batch || '').trim()) {
+    throw new Error('Batch is required for student accounts.');
   }
 
   const hash = await hashPassword(password);
@@ -592,9 +589,6 @@ export async function createUser(payload) {
   const prefix = { student: 'STU', faculty: 'FAC', alumni: 'ALU', admin: 'ADM', cr: 'CR', sr: 'SR', senior: 'SNR', moderator: 'MOD' }[role] || 'USR';
   const id = `${prefix}-${rnd}`;
   const awid = generateAwid(users, department);
-
-  // Extract student ID from email prefix
-  const emailPrefix = email.split('@')[0] || '';
 
   // Canonical year-semester + its semester number (e.g. "Year 3 - Semester 1" → 5).
   const yearSemester = toYearSemester(payload.yearSemester) || 'Year 1 - Semester 1';
@@ -762,15 +756,20 @@ export async function getAllUsersSafe() {
   return users.map(({ password: _, ...safe }) => safe);
 }
 
-/** Update a user profile */
-export async function updateUserProfile(id, patch) {
+/** Update a user profile. Role changes require opts.allowRole (admin-only paths). */
+export async function updateUserProfile(id, patch, opts = {}) {
   const users = await readUsers();
   const idx = users.findIndex(u => u.id === id);
   if (idx === -1) return null;
-  users[idx] = { ...users[idx], ...patch };
+  const next = { ...patch };
+  if (next.role !== undefined && !opts.allowRole) {
+    // Defense-in-depth: only admin-role paths may change a user's role.
+    delete next.role;
+  }
+  users[idx] = { ...users[idx], ...next };
   // Don't allow password overwrite via this method
-  if (patch.password) {
-    users[idx].password = await hashPassword(patch.password);
+  if (next.password) {
+    users[idx].password = await hashPassword(next.password);
   }
   await writeUsers(users);
   const { password: _, ...safe } = users[idx];

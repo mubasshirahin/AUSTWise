@@ -8,7 +8,7 @@ export default function NextWeekSchedule() {
   const { user } = useAuth();
   const [upcomingDates, setUpcomingDates] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedDay, setSelectedDay] = useState(null);
+  const [, setSelectedDay] = useState(null);
   const [newDeadline, setNewDeadline] = useState({
     title: '',
     course: '',
@@ -64,10 +64,6 @@ export default function NextWeekSchedule() {
     }
     setUpcomingDates(dates);
   }, []);
-
-  const formatDate = (date) => {
-    return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-  };
 
   const getDayName = (date) => {
     return date.toLocaleDateString('en-US', { weekday: 'short' });

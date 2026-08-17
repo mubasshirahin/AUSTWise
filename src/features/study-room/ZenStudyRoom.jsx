@@ -33,7 +33,7 @@ export default function ZenStudyRoom({ onExit }) {
   const [completedSessions, setCompletedSessions] = useState(0);
   const timerRef = useRef(null);
   const isRunningRef = useRef(isRunning);
-  isRunningRef.current = isRunning;
+  useEffect(() => { isRunningRef.current = isRunning; }, [isRunning]);
 
   const totalSeconds = mode === 'focus' ? FOCUS_DURATION : BREAK_DURATION;
   const progress = ((totalSeconds - timeLeft) / totalSeconds) * 100;
@@ -297,7 +297,6 @@ export default function ZenStudyRoom({ onExit }) {
           </div>
           <div className="zen-sound-btns">
             {SOUNDS.map((s) => {
-              const Icon = s.icon;
               const isActive = activeSound === s.id;
               return (
                 <button

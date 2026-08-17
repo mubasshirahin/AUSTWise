@@ -12,6 +12,30 @@
  */
 
 import { WebSocketServer } from 'ws';
+import { readTokenCookie } from './auth.mjs';
+
+// Allowed cross-origin WS origins (same-origin + dev localhost are always OK).
+const ALLOWED_WS_ORIGINS = (process.env.ALLOWED_ORIGIN || '')
+  .split(',').map(s => s.trim()).filter(Boolean);
+const DEV_ORIGIN_RE = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+
+/** Reject cross-site WebSocket upgrades to stop cookie smuggling / presence forgery. */
+function isAllowedWsUpgrade(request) {
+  const origin = request.headers.origin;
+  if (origin) {
+    try {
+      const o = new URL(origin);
+      if (request.headers.host && o.host === request.headers.host) return true;
+      if (ALLOWED_WS_ORIGINS.includes(origin)) return true;
+      if (DEV_ORIGIN_RE.test(origin)) return true;
+    } catch {
+      return false;
+    }
+    return false;
+  }
+  // No Origin header (non-browser client): require a valid session cookie.
+  return !!readTokenCookie(request);
+}
 
 // Map: userId -> Set<WebSocket>
 const userClients = new Map();
@@ -156,6 +180,11 @@ export function createWSServer(httpServer) {
       if (request.headers['sec-websocket-protocol'] === 'vite-hmr') {
         return; // Vite handles its own HMR upgrades
       }
+      if (!isAllowedWsUpgrade(request)) {
+        socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+        socket.destroy();
+        return;
+      }
       wss.handleUpgrade(request, socket, head, (ws) => {
         wss.emit('connection', ws, request);
       });
@@ -165,7 +194,7 @@ export function createWSServer(httpServer) {
     }
   });
 
-  wss.on('connection', (ws, req) => {
+  wss.on('connection', (ws, _req) => {
     let currentUserId = null;
     let shadowId = null;
 
@@ -334,7 +363,7 @@ export function createWSServer(httpServer) {
           default:
             sendTo(ws, { type: 'error', payload: { message: `Unknown message type: ${type}` } });
         }
-      } catch (err) {
+      } catch {
         sendTo(ws, { type: 'error', payload: { message: 'Invalid message format' } });
       }
     });

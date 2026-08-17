@@ -15,7 +15,7 @@ const STORAGE_KEY = 'aust-msg-notif-enabled';
  *
  * @param {string|null} userId - Current user's ID
  */
-export default function useMessageNotifications(userId) {
+export default function useMessageNotifications(_userId) {
   const [permission, setPermission] = useState(() => getPermissionStatus());
   const [enabled, setEnabled] = useState(() => {
     try {
@@ -23,7 +23,7 @@ export default function useMessageNotifications(userId) {
     } catch { return true; }
   });
   const enabledRef = useRef(enabled);
-  enabledRef.current = enabled;
+  useEffect(() => { enabledRef.current = enabled; }, [enabled]);
 
   // Track whether the app is backgrounded
   const isHiddenRef = useRef(document.visibilityState === 'hidden');

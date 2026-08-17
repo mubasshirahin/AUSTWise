@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { FileText, Plus, Trash2, Edit3, Save, X } from 'lucide-react';
 import { loadTemplates, addTemplate, updateTemplate, deleteTemplate } from '../../utils/transcriptTemplates';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
 
 export default function TranscriptTemplatesPanel() {
-  const [templates, setTemplates] = useState([]);
-  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [templates, setTemplates] = useState(() => loadTemplates());
   const [showEditor, setShowEditor] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [editorForm, setEditorForm] = useState({
@@ -15,16 +14,11 @@ export default function TranscriptTemplatesPanel() {
     year: new Date().getFullYear().toString(),
     courses: []
   });
-  const [editingCourse, setEditingCourse] = useState(null);
 
-  useEffect(() => {
-    refreshTemplates();
-  }, []);
-
-  const refreshTemplates = () => {
+  const refreshTemplates = useCallback(() => {
     const loaded = loadTemplates();
     setTemplates(loaded);
-  };
+  }, []);
 
   const openAddTemplate = () => {
     setEditingTemplate(null);
