@@ -4,6 +4,26 @@ const ThemeContext = createContext();
 
 export const THEMES = ['light', 'dark', 'midnight', 'industrial', 'swiss', 'newsprint', 'sketchbook', 'minimalist-monochrome', 'terminal', 'art-deco', 'bitcoindefi', 'poster', 'nexus', 'cyberpunk', 'meshtopo'];
 
+// Each theme's native primary accent (its --accent-blue), so the default color
+// follows the theme. The user can still pick any custom hex, which overrides.
+const THEME_ACCENTS = {
+  dark: '#F5A623',
+  light: '#7a653d',
+  midnight: '#ff9f43',
+  industrial: '#ff4757',
+  swiss: '#FF3000',
+  newsprint: '#cc0000',
+  sketchbook: '#ff4d4d',
+  'minimalist-monochrome': '#000000',
+  terminal: '#33ff00',
+  'art-deco': '#D4AF37',
+  bitcoindefi: '#F7931A',
+  poster: '#FF3D00',
+  nexus: '#10B981',
+  cyberpunk: '#00ff88',
+  meshtopo: '#10B981',
+};
+
 const ACCENT_KEY = 'aust-accent';
 
 function hexToRgb(hex) {
@@ -63,9 +83,15 @@ export function ThemeProvider({ children }) {
     return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
   });
 
-  const [accent, setAccentState] = useState(() => {
-    const saved = localStorage.getItem(ACCENT_KEY);
-    return saved && /^#[0-9a-fA-F]{6}$/.test(saved) ? saved : null;
+  // Per-theme custom accents: { theme: '#hex' }. Keys present = user override
+  // for that theme; absent = theme's native color (from THEME_ACCENTS).
+  const [accentMap, setAccentMap] = useState(() => {
+    try {
+      const raw = localStorage.getItem(ACCENT_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      if (parsed && typeof parsed === 'object') return parsed;
+    } catch { /* malformed storage — start fresh */ }
+    return {};
   });
 
   useEffect(() => {
@@ -73,20 +99,31 @@ export function ThemeProvider({ children }) {
     localStorage.setItem('aust-theme', theme);
   }, [theme]);
 
-  // Apply the custom accent live. Re-runs on theme change so a theme switch
-  // can never clobber the user's chosen color — the inline overrides win.
+  // The active theme's accent = its stored override, else its native color.
+  const accentOverridden = !!(accentMap[theme] && /^#[0-9a-fA-F]{6}$/.test(accentMap[theme]));
+  const accent = accentOverridden ? accentMap[theme].toLowerCase() : (THEME_ACCENTS[theme] || null);
+
+  const persistAccentMap = useCallback((map) => {
+    localStorage.setItem(ACCENT_KEY, JSON.stringify(map));
+  }, []);
+
+  // Apply the active accent override live.
   useEffect(() => {
     if (accent) applyAccentOverrides(accent);
     else clearAccentOverrides();
-  }, [accent, theme]);
+  }, [accent]);
 
-  // null/undefined → back to the theme's default accent.
+  // Set a custom color for the current theme (or clear → theme's native).
   const setAccent = useCallback((color) => {
     const normalized = color && /^#[0-9a-fA-F]{6}$/.test(color) ? color.toLowerCase() : null;
-    setAccentState(normalized);
-    if (normalized) localStorage.setItem(ACCENT_KEY, normalized);
-    else localStorage.removeItem(ACCENT_KEY);
-  }, []);
+    setAccentMap(prev => {
+      const next = { ...prev };
+      if (normalized) next[theme] = normalized;
+      else delete next[theme];
+      persistAccentMap(next);
+      return next;
+    });
+  }, [theme, persistAccentMap]);
 
   // Kept for backward compatibility — flips only between dark/light.
   const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
@@ -98,10 +135,11 @@ export function ThemeProvider({ children }) {
   });
 
   return (
-    <ThemeContext.Provider value={{ theme, themes: THEMES, setTheme, toggleTheme, cycleTheme, accent, setAccent }}>
+    <ThemeContext.Provider value={{ theme, themes: THEMES, setTheme, toggleTheme, cycleTheme, accent, accentOverridden, setAccent }}>
       {children}
     </ThemeContext.Provider>
   );
 }
 
 export const useTheme = () => useContext(ThemeContext);
+export const getThemeAccent = (theme) => THEME_ACCENTS[theme] || null;

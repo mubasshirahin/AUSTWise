@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme, getThemeAccent } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useRoutine } from '../../context/RoutineContext';
 import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, ShieldAlert, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, SquareTerminal, Sparkles, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2, Orbit, PawPrint, Palette } from 'lucide-react';
@@ -136,152 +136,46 @@ const lightThemes = [
 
 const themeOptions = [...darkThemes, ...lightThemes];
 
-// ─── HSV color wheel helpers (no dependency, tiny + precise) ───
-function hexToHsv(hex) {
-  const int = parseInt(hex.replace('#', ''), 16);
-  const r = ((int >> 16) & 255) / 255;
-  const g = ((int >> 8) & 255) / 255;
-  const b = (int & 255) / 255;
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const d = max - min;
-  let h = 0;
-  if (d !== 0) {
-    if (max === r) h = ((g - b) / d) % 6;
-    else if (max === g) h = (b - r) / d + 2;
-    else h = (r - g) / d + 4;
-    h *= 60;
-    if (h < 0) h += 360;
-  }
-  return { h, s: max === 0 ? 0 : d / max, v: max };
-}
-
-function hsvToHex({ h, s, v }) {
-  const c = v * s;
-  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-  const m = v - c;
-  let rgb;
-  if (h < 60) rgb = [c, x, 0];
-  else if (h < 120) rgb = [x, c, 0];
-  else if (h < 180) rgb = [0, c, x];
-  else if (h < 240) rgb = [0, x, c];
-  else if (h < 300) rgb = [x, 0, c];
-  else rgb = [c, 0, x];
-  const toHex = (val) => Math.max(0, Math.min(255, Math.round((val + m) * 255))).toString(16).padStart(2, '0');
-  return `#${toHex(rgb[0])}${toHex(rgb[1])}${toHex(rgb[2])}`;
-}
-
 const ACCENT_DEFAULT_HEX = '#F5A623';
 
-// Real-time color wheel — recolors the app's golden theme instantly.
+// Accent color — the hex field re-skins the app's accent theme instantly.
+// Defaults to the active theme's native color; the user can override per theme.
 function AccentColorSection() {
-  const { accent, setAccent } = useTheme();
-  const [hsv, setHsv] = useState(() => hexToHsv(accent || ACCENT_DEFAULT_HEX));
-  const draggingRef = useRef(null);
-  const wheelRef = useRef(null);
-  const barRef = useRef(null);
+  const { theme, accent, accentOverridden, setAccent } = useTheme();
+  const defaultHex = getThemeAccent(theme) || '#F5A623';
+  const [hexDraft, setHexDraft] = useState(() => (accent || defaultHex).toUpperCase());
 
-  // Follow theme resets / external changes, but not while the user is dragging.
+  // Follow theme resets / external changes.
   useEffect(() => {
-    if (draggingRef.current) return;
-    setHsv(hexToHsv(accent || ACCENT_DEFAULT_HEX));
-  }, [accent]);
+    setHexDraft((accent || defaultHex).toUpperCase());
+  }, [accent, defaultHex]);
 
-  const hex = hsvToHex(hsv);
-  const isDefault = !accent;
+  const hex = accent || defaultHex;
+  const isDefault = !accentOverridden;
+  const hexDraftClean = hexDraft.replace(/^#/, '');
+  const hexValid = /^[0-9A-F]{6}$/.test(hexDraftClean);
 
-  const pickFromWheel = useCallback((clientX, clientY) => {
-    const el = wheelRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const cx = rect.width / 2;
-    const cy = rect.height / 2;
-    const maxR = Math.min(cx, cy) - 6;
-    const dx = clientX - rect.left - cx;
-    const dy = clientY - rect.top - cy;
-    const dist = Math.min(Math.hypot(dx, dy), maxR);
-    let h = Math.atan2(dy, dx) * (180 / Math.PI);
-    if (h < 0) h += 360;
-    const s = dist / maxR;
-    setHsv((prev) => {
-      const next = { ...prev, h, s };
-      setAccent(hsvToHex(next));
-      return next;
-    });
-  }, [setAccent]);
-
-  const pickFromBar = useCallback((clientX) => {
-    const el = barRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const v = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-    setHsv((prev) => {
-      const next = { ...prev, v };
-      setAccent(hsvToHex(next));
-      return next;
-    });
-  }, [setAccent]);
-
-  const onPointerDown = (e, kind) => {
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-    draggingRef.current = kind;
-    if (kind === 'wheel') pickFromWheel(e.clientX, e.clientY);
-    else pickFromBar(e.clientX);
+  // Manual hex entry — commits live once the field holds 6 hex digits.
+  const onHexInput = (e) => {
+    let raw = e.target.value.toUpperCase().replace(/[^0-9A-F#]/g, '');
+    if (raw.length > 7) raw = raw.slice(0, 7);
+    setHexDraft(raw);
+    const cleaned = raw.replace(/^#/, '');
+    if (/^[0-9A-F]{6}$/.test(cleaned)) {
+      setAccent(`#${cleaned}`);
+    }
   };
 
-  const onPointerMove = (e) => {
-    if (draggingRef.current === 'wheel') pickFromWheel(e.clientX, e.clientY);
-    else if (draggingRef.current === 'value') pickFromBar(e.clientX);
-  };
-
-  const endDrag = () => {
-    draggingRef.current = null;
-  };
-
-  const wheelAngle = (hsv.h * Math.PI) / 180;
-  const wheelPos = {
-    left: `calc(50% + ${Math.cos(wheelAngle) * hsv.s * 47}%)`,
-    top: `calc(50% + ${Math.sin(wheelAngle) * hsv.s * 47}%)`,
-  };
+  // Leaving the field with an incomplete value snaps back to the real color.
+  const onHexBlur = () => setHexDraft((accent || defaultHex).toUpperCase());
 
   return (
     <section className="cfg-section">
       <div className="cfg-section-head">
         <h3 className="cfg-section-title">Accent Color</h3>
         <p className="cfg-section-desc">
-          Drag the color wheel to re-skin the app's golden theme in real time.
+          Default color follows the active theme; type a hex code to override it for this theme.
         </p>
-      </div>
-
-      <div
-        ref={wheelRef}
-        className="accent-wheel"
-        onPointerDown={(e) => onPointerDown(e, 'wheel')}
-        onPointerMove={onPointerMove}
-        onPointerUp={endDrag}
-        onPointerLeave={endDrag}
-        role="slider"
-        aria-label="Accent color wheel"
-        aria-valuetext={`Hue ${Math.round(hsv.h)}, Saturation ${Math.round(hsv.s * 100)}%`}
-      >
-        <span className="accent-wheel-dot" style={wheelPos} />
-      </div>
-
-      <div
-        ref={barRef}
-        className="accent-value-bar"
-        style={{ background: `linear-gradient(to right, #000 0%, ${hsvToHex({ ...hsv, v: 1 })} 100%)` }}
-        onPointerDown={(e) => onPointerDown(e, 'value')}
-        onPointerMove={onPointerMove}
-        onPointerUp={endDrag}
-        onPointerLeave={endDrag}
-        role="slider"
-        aria-label="Accent brightness"
-        aria-valuenow={Math.round(hsv.v * 100)}
-        aria-valuemin="0"
-        aria-valuemax="100"
-      >
-        <span className="accent-value-dot" style={{ left: `${hsv.v * 100}%` }} />
       </div>
 
       <div className="accent-custom-row">
@@ -289,12 +183,22 @@ function AccentColorSection() {
           <span className="cfg-row-icon is-amber"><Palette size={18} /></span>
           <div className="cfg-row-text">
             <h4 className="cfg-row-title">Current color</h4>
-            <p className="cfg-row-desc">Preview updates live as you drag.</p>
+            <p className="cfg-row-desc">Preview updates live as you type.</p>
           </div>
         </div>
         <div className="accent-custom-controls">
           <span className="accent-preview-chip" style={{ background: isDefault ? ACCENT_DEFAULT_HEX : hex }} />
-          <code>{isDefault ? ACCENT_DEFAULT_HEX.toUpperCase() : hex.toUpperCase()}</code>
+          <input
+            type="text"
+            className={`accent-hex-input${hexValid ? '' : ' is-invalid'}`}
+            value={hexDraft}
+            onChange={onHexInput}
+            onBlur={onHexBlur}
+            spellCheck={false}
+            maxLength={7}
+            aria-label="Accent color hex code"
+            title="Enter a 6-digit hex code, e.g. #F5A623"
+          />
           <button
             type="button"
             className="accent-reset-btn"

@@ -479,8 +479,8 @@ function QuickStats() {
       placeholder: !hasCgpa,
       count: hasCgpa ? stats.semestersCompleted : 0,
       trend: null,
-      // Credits are derived from semester results in the Grade Lab.
-      link: '/analytics',
+      // Credits are derived from semester results in the CGPA Calculator.
+      link: '/analytics?tab=cgpagraph',
     },
   ];
 

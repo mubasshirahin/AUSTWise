@@ -1821,70 +1821,6 @@
 }
 
 /* ─── Accent Color (real-time brand re-skin, Configure tab) ─── */
-.accent-wheel {
-  position: relative;
-  width: 216px;
-  height: 216px;
-  border-radius: 50%;
-  align-self: center;
-  cursor: crosshair;
-  touch-action: none;
-  border: 1px solid color-mix(in srgb, var(--text-secondary) 22%, transparent);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18), inset 0 0 0 6px rgba(0, 0, 0, 0.06);
-  background:
-    radial-gradient(circle at center, #fff 0%, #fff 52%, rgba(255, 255, 255, 0.95) 56%, transparent 62%),
-    conic-gradient(
-      #f00 0deg,
-      #ff8000 60deg,
-      #ff0 120deg,
-      #80ff00 180deg,
-      #0f0 240deg,
-      #00ff80 300deg,
-      #0ff 360deg,
-      #00a0ff 420deg,
-      #00f 480deg,
-      #8000ff 540deg,
-      #f0f 600deg,
-      #ff0080 660deg,
-      #f00 720deg
-    );
-}
-
-.accent-wheel-dot {
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 2px solid #fff;
-  background: transparent;
-  box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.35);
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-
-.accent-value-bar {
-  position: relative;
-  width: 100%;
-  height: 18px;
-  border-radius: var(--radius-full, 999px);
-  border: 1px solid color-mix(in srgb, var(--text-secondary) 22%, transparent);
-  cursor: ew-resize;
-  touch-action: none;
-}
-
-.accent-value-dot {
-  position: absolute;
-  top: 50%;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 2px solid #fff;
-  background: var(--accent-amber);
-  box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.35);
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-
 .accent-custom-row {
   display: flex;
   align-items: center;
@@ -1911,10 +1847,28 @@
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
 }
 
-.accent-custom-controls code {
+.accent-custom-controls .accent-hex-input {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--text-tertiary);
+  color: var(--text-primary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  padding: 4px 6px;
+  width: 74px;
+  text-align: center;
+  text-transform: uppercase;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.accent-custom-controls .accent-hex-input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-blue) 20%, transparent);
+}
+
+.accent-custom-controls .accent-hex-input.is-invalid {
+  border-color: var(--accent-rose);
 }
 
 .accent-reset-btn {
@@ -1937,13 +1891,6 @@
 .accent-reset-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
-}
-
-@media (max-width: 640px) {
-  .accent-wheel {
-    width: 184px;
-    height: 184px;
-  }
 }
 
 @media (max-width: 640px) {
