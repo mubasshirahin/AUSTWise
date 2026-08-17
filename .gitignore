@@ -53,3 +53,7 @@ skills-lock.json
 
 # Nested third-party repo (unrelated to AUSTWise)
 strix/
+
+# Throwaway QA scripts (dev-only debugging)
+qa-*.mjs
+.agents/
