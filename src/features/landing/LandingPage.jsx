@@ -1,21 +1,21 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowRight, Sparkles, GraduationCap, BookOpen, Users,
-  Library, Map, Archive, TrendingUp, MessageSquare,
+  ArrowRight, Sparkles, GraduationCap, Users, Map, Archive, TrendingUp, MessageSquare,
   ShoppingBag, Settings, Shield, Zap,
-  ChevronDown, Check, Star, Globe, Layers, Clock,
-  CalendarCheck, Award, BarChart3, GitBranch,
+  ChevronDown, Check, Star, Layers, Clock, Award, BarChart3,
   ChevronRight, ChevronUp, Target, AlertCircle,
   Coffee, Sun as SunIcon, Book, Bell,
-  Smartphone, Eye, Activity, List, Menu,
-  ChevronLeft, Heart, ThumbsUp, Download, MessageCircle,
-  X, Search, Hash, Megaphone,
+  Smartphone, Eye, Activity, List,
+  ChevronLeft, MessageCircle,
+  X, Search, Hash,
 } from 'lucide-react';
 import { THEMES } from '../../context/ThemeContext';
-import HorizontalFeatures from './HorizontalFeatures';
-import StickyContentSwitch from './StickyContentSwitch';
-import ImageTrailShowcase from './ImageTrailShowcase';
+// GSAP-powered sections are below the fold, so they load in their own async
+// chunk (keeps GSAP + ScrollTrigger out of the main bundle).
+const HorizontalFeatures = lazy(() => import('./HorizontalFeatures'));
+const StickyContentSwitch = lazy(() => import('./StickyContentSwitch'));
+const ImageTrailShowcase = lazy(() => import('./ImageTrailShowcase'));
 import LandingNav from './LandingNav';
 import logoSilver from '../../assets/logo-silver.png';
 import './LandingPage.css';
@@ -1230,13 +1230,15 @@ export default function LandingPage() {
       </section>
 
       {/* ─── STICKY CONTENT SWITCH (pinned heading, scrolling panels) ─── */}
-      <StickyContentSwitch />
+      <Suspense fallback={null}>
+        <StickyContentSwitch />
 
-      {/* ─── HORIZONTAL FEATURE ROLL (GSAP ScrollTrigger) ─── */}
-      <HorizontalFeatures items={features} />
+        {/* ─── HORIZONTAL FEATURE ROLL (GSAP ScrollTrigger) ─── */}
+        <HorizontalFeatures items={features} />
 
-      {/* ─── IMAGE TRAIL SHOWCASE (GSAP cursor trail) ─── */}
-      <ImageTrailShowcase items={features} />
+        {/* ─── IMAGE TRAIL SHOWCASE (GSAP cursor trail) ─── */}
+        <ImageTrailShowcase items={features} />
+      </Suspense>
 
       {/* ─── STACKING CARDS (sticky deck) ─── */}
       <section className="landing-section landing-stacking-section">

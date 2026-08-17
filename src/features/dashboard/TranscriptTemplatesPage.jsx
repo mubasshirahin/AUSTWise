@@ -1,4 +1,3 @@
-import React from 'react';
 import { FileSpreadsheet } from 'lucide-react';
 import TranscriptTemplatesPanel from '../admin/TranscriptTemplatesPanel';
 import './DashboardPage.css';

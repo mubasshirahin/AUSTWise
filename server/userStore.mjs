@@ -93,7 +93,7 @@ export async function seedDefaultAdmin() {
   const users = await readUsers();
   if (users.some(u => u.role === 'admin')) return null;
   const hash = await bcrypt.hash(
-    process.env.VITE_ADMIN_DEFAULT_PASSWORD || 'changeme',
+    process.env.ADMIN_DEFAULT_PASSWORD || 'changeme',
     BCRYPT_ROUNDS
   );
   const admin = {

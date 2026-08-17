@@ -79,10 +79,14 @@ async function handleLogout(req, res) {
   return sendJson(res, 200, { success: true });
 }
 
-/** Dev-only endpoints - disabled in production */
+/** Dev-only endpoints - only run with an explicit NODE_ENV=development. */
+function devEndpointsEnabled() {
+  return process.env.NODE_ENV === 'development';
+}
+
 async function handleDevSwitchUser(req, res) {
-  if (process.env.NODE_ENV === 'production') {
-    return sendJson(res, 403, { success: false, error: 'Dev endpoints disabled in production' });
+  if (!devEndpointsEnabled()) {
+    return sendJson(res, 403, { success: false, error: 'Dev endpoints disabled outside development' });
   }
   const body = await readJsonBody(req);
   const userId = String(body?.userId || '').trim();
@@ -99,8 +103,8 @@ async function handleDevSwitchUser(req, res) {
 }
 
 async function handleDevSeedUsers(req, res) {
-  if (process.env.NODE_ENV === 'production') {
-    return sendJson(res, 403, { success: false, error: 'Dev endpoints disabled in production' });
+  if (!devEndpointsEnabled()) {
+    return sendJson(res, 403, { success: false, error: 'Dev endpoints disabled outside development' });
   }
   try {
     const { seedDevUsers } = await import('./userStore.mjs');
@@ -115,8 +119,8 @@ async function handleDevSeedUsers(req, res) {
 }
 
 async function handleDevUsers(req, res) {
-  if (process.env.NODE_ENV === 'production') {
-    return sendJson(res, 403, { success: false, error: 'Dev endpoints disabled in production' });
+  if (!devEndpointsEnabled()) {
+    return sendJson(res, 403, { success: false, error: 'Dev endpoints disabled outside development' });
   }
   try {
     const { getDevUsers } = await import('./userStore.mjs');

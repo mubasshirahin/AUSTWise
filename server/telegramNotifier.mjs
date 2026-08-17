@@ -13,7 +13,7 @@
  */
 
 import https from 'node:https';
-import { getAllUsers, registerUser, updateUserRoutine, getUser, saveAttendanceRecord, getTodayAttendanceRecord } from './telegramDB.mjs';
+import { getAllUsers, registerUser, updateUserRoutine, getUser, saveAttendanceRecord } from './telegramDB.mjs';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Archive, ArrowLeft, Users, HardDrive, Cpu } from 'lucide-react';
+import { Archive, HardDrive, Cpu } from 'lucide-react';
 import VaultSelection from './VaultSelection';
 import VaultStepProgress from './VaultStepProgress';
 import VaultBatchSelector from './VaultBatchSelector';

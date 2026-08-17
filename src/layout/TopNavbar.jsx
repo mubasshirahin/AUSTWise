@@ -5,7 +5,7 @@ import NavPomodoro from './NavPomodoro';
 import {
   Search, Bell, BellRing, Sun, Moon, Menu, Newspaper, Terminal, SquareTerminal, Check, User,
   Clock, Hourglass, AlertTriangle, CalendarCheck, Info, CheckCheck, Trash2,
-  Settings, LogOut, Sparkles, Gauge, MoonStar, Pen, PenTool, Zap,
+  Settings, LogOut, Gauge, MoonStar, Pen, PenTool, Zap,
   Building2, Type, Grid2x2, Cpu, Users, Orbit,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';

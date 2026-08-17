@@ -1,13 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Trash2, X, Download, Eye, Check, RotateCcw, FileDown, Share2, Search, Loader2, MoreVertical, Moon, Image as ImageIcon, CalendarDays, Building2, GraduationCap } from 'lucide-react';
+import { Trash2, X, Download, Check, RotateCcw, FileDown, Share2, Search, Loader2, MoreVertical, Moon, Image as ImageIcon, CalendarDays, Building2, GraduationCap } from 'lucide-react';
 import { useRoutine } from '../../context/RoutineContext';
-import { ocrImportedRoutine, ocrImportedWeekDays } from '../../context/RoutineContext';
-import { normalizeAccentColor, getCourseColor } from '../../utils/colorPalette';
+import { getCourseColor } from '../../utils/colorPalette';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
 import RoomAutocomplete from '../../components/RoomAutocomplete';
 import TeacherAutocomplete from '../../components/TeacherAutocomplete';
-import { findCourseByCode, findCourseByName } from '../../data/courses';
 import { getAutoColorForCourse } from '../../utils/autoColorPalette';
 import { loadTemplates, mergeTemplatesToRoutine } from '../../utils/routineTemplates';
 import jsPDF from 'jspdf';

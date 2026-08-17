@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { TrendingUp, ChartLine, Sparkles } from 'lucide-react';
 import ResultTable from './ResultTable';
 import { formatSemesterLabel } from '../../utils/semester';

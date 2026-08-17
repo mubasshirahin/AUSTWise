@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { CalendarDays, Download, Building2, Check } from 'lucide-react';
 import { loadTemplates, mergeTemplatesToRoutine } from '../../utils/routineTemplates';
+import { getAutoColorForCourse } from '../../utils/autoColorPalette';
 import { useRoutine } from '../../context/RoutineContext';
 import './DashboardPage.css';
 

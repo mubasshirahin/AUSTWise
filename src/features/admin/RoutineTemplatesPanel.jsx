@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { CalendarDays, Plus, Trash2, Edit3, X, Save, Check, Download } from 'lucide-react';
-import { loadTemplates, saveTemplates, addTemplate, updateTemplate, deleteTemplate } from '../../utils/routineTemplates';
+import { useState, useEffect } from 'react';
+import { CalendarDays, Plus, Trash2, Edit3, X, Save } from 'lucide-react';
+import { loadTemplates, addTemplate, updateTemplate, deleteTemplate } from '../../utils/routineTemplates';
 import { getAutoColorForCourse } from '../../utils/autoColorPalette';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
 import RoomAutocomplete from '../../components/RoomAutocomplete';

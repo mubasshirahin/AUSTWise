@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Plus, X, Users, Check, Link, Unlink } from 'lucide-react';
 import { getBatchConfigs, addBatchConfig, updateBatchDriveUrl } from '../../utils/vaultBatchStorage';
 import { extractFolderId } from '../../utils/googleDrive';

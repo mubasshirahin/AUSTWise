@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { ArrowLeft, ChevronRight } from 'lucide-react';
 import {
   heatmapDepartments,

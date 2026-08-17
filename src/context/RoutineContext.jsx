@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState } from 'react';
 import { routineData as defaultRoutine, weekDays as defaultWeekDays } from '../data/mockData';
-import { getUserStorageItem, setUserStorageItem, getUserStorageKey, getCurrentUserId } from '../utils/authStorage';
+import { getUserStorageItem, setUserStorageItem, getUserStorageKey } from '../utils/authStorage';
 
 const RoutineContext = createContext();
 const storageKeyTypes = {

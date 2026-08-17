@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Folder, StickyNote, ChevronUp, Home, MoreVertical, Pencil, Trash2, Check } from 'lucide-react';
+import { Folder, StickyNote, Home, MoreVertical, Pencil, Trash2, Check } from 'lucide-react';
 
 function fmtDate(ts) {
   if (!ts) return '';

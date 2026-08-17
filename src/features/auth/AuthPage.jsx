@@ -1,11 +1,11 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { GraduationCap, Briefcase, BookOpen, Monitor, Moon, Sun, Newspaper, Terminal, SquareTerminal, Sparkles, Gauge, MoonStar, Pen, PenTool, Building2, Check, Eye, EyeOff, Zap, Type, Grid2x2, Cpu, ArrowLeft, Orbit } from 'lucide-react';
+import { GraduationCap, Briefcase, BookOpen, Moon, Sun, Newspaper, Terminal, SquareTerminal, Gauge, MoonStar, Pen, PenTool, Building2, Check, Eye, EyeOff, Zap, Type, Grid2x2, Cpu, ArrowLeft, Orbit } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { getYearSemOptions } from '../../utils/semester';
 import { getPasswordGrade } from '../../utils/passwordStrength';
-import { getAccountByEmail, getAllAccounts, signupWithGoogle, updateAccountProfile, createAwid } from '../../utils/authStorage';
+import { getAllAccounts, signupWithGoogle, updateAccountProfile, createAwid } from '../../utils/authStorage';
 import ParticleField from './ParticleField';
 import logoSilver from '../../assets/logo-silver.png';
 import logoRed from '../../assets/logo-red.png';
@@ -160,9 +160,10 @@ export default function AuthPage() {
   const [pendingGoogleAccount, setPendingGoogleAccount] = useState(null);
   const pendingCredentialRef = useRef(null);
 
-  if (!isLoading && isAuthenticated) {
-    return <Navigate to={redirectPath} replace />;
-  }
+  // Redirect after all hooks so the hook order stays constant on every render
+  // (an early return before these hooks would make React throw "Rendered fewer
+  // hooks than expected" whenever a session resolves mid-render).
+  const shouldRedirect = !isLoading && isAuthenticated;
 
   const activeTheme = themeOptions.find((t) => t.id === theme) || themeOptions[0];
   const ThemeIcon = activeTheme.icon;
@@ -576,6 +577,10 @@ export default function AuthPage() {
   };
   const suggestLogin = shouldSuggest(loginForm.email);
   const suggestSignup = shouldSuggest(signupForm.email);
+
+  if (shouldRedirect) {
+    return <Navigate to={redirectPath} replace />;
+  }
 
   return (
     <div

@@ -18,7 +18,6 @@ import {
   sendNoticeToAllUsers
 } from './telegramNotifier.mjs';
 import {
-  registerUser,
   unregisterUser,
   getUser,
   getAllUsers,
@@ -48,7 +47,7 @@ import { handleCleanerRequest } from './googleCleaner.mjs';
 import { handleAuthRoute, readTokenCookie, handleDevSwitchUser, handleDevSeedUsers, handleDevUsers } from './auth.mjs';
 import { requireRole } from './middleware.mjs';
 import { rateLimit, extractRoutineRateLimiter } from './rateLimiter.mjs';
-import { getUserById, getAllUsersSafe, updateUserProfile } from './userStore.mjs';
+import { getUserById, getUserByEmail, getAllUsersSafe, updateUserProfile, deleteUserById } from './userStore.mjs';
 import {
   listMarketplace,
   addMarketplaceListing,
@@ -56,8 +55,6 @@ import {
   saveMessage,
   getConversations,
   getThread,
-  deleteMessageById,
-  editMessageById,
   getSemesterResults,
   saveSemesterResult,
   listNotices,
@@ -202,6 +199,15 @@ const globalRateLimiter = rateLimit({
   max: Number(process.env.RATE_LIMIT_GLOBAL_MAX) || 300,
 });
 const useViteMiddleware = process.argv.includes('--vite');
+
+// Dev mode = running with the Vite dev server (HMR) or an explicit
+// NODE_ENV=development. Production mode = serving the built dist/ without
+// Vite. Pin NODE_ENV=production in production mode so the dev-only auth
+// endpoints (/api/dev/*, /__dev/users) and any NODE_ENV-gated behaviour are
+// hard-disabled even if the deployer forgets to set the variable.
+const isDevMode = useViteMiddleware || process.env.NODE_ENV === 'development';
+if (!isDevMode) process.env.NODE_ENV = 'production';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.resolve(__dirname, '..', 'dist');
 
@@ -420,10 +426,18 @@ server.on('request', async (req, res) => {
     // Add CORS headers to all responses
     res.setHeader('Access-Control-Allow-Origin', '*');
 
-    // Dev-only API auth routes
-    if (req.url === '/api/dev/switch-user' && req.method === 'POST') return handleDevSwitchUser(req, res);
-    if (req.url === '/api/dev/seed-users' && req.method === 'POST') return handleDevSeedUsers(req, res);
-    if (req.url === '/__dev/users' && req.method === 'GET') return handleDevUsers(req, res);
+    // Dev-only API auth routes — hard-disabled in production mode so they
+    // can never impersonate accounts, seed data, or leak the user list.
+    if (!isDevMode) {
+      if (req.url === '/__dev/users' || req.url.startsWith('/api/dev/')) {
+        sendJson(res, 404, { success: false, error: 'Not found.' });
+        return;
+      }
+    } else {
+      if (req.url === '/api/dev/switch-user' && req.method === 'POST') return handleDevSwitchUser(req, res);
+      if (req.url === '/api/dev/seed-users' && req.method === 'POST') return handleDevSeedUsers(req, res);
+      if (req.url === '/__dev/users' && req.method === 'GET') return handleDevUsers(req, res);
+    }
 
     // Global flood guard — non-static requests count against this window.
     if (globalRateLimiter(req, res)) {
@@ -720,6 +734,90 @@ async function handleApiRequest(req, res) {
       sendJson(res, 200, { success: true, user: updated });
     } catch (error) {
       sendJson(res, 500, { success: false, error: error.message || 'Failed to update role.' });
+    }
+    return;
+  }
+
+  // List all users for the admin panel (admin endpoint)
+  if (req.url === '/api/admin/users' && req.method === 'GET') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const users = await getAllUsersSafe();
+      sendJson(res, 200, { success: true, users });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to load users.' });
+    }
+    return;
+  }
+
+  // Update a user's profile from the admin panel (admin endpoint)
+  if (req.url === '/api/admin/users/update' && req.method === 'POST') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const body = await readJsonBody(req);
+      const { userId } = body || {};
+      if (!userId) {
+        sendJson(res, 400, { success: false, error: 'userId is required.' });
+        return;
+      }
+      const existing = await getUserById(userId);
+      if (!existing) {
+        sendJson(res, 404, { success: false, error: 'User not found.' });
+        return;
+      }
+      if (existing.role === 'admin' && body.role && body.role !== 'admin') {
+        sendJson(res, 400, { success: false, error: 'Cannot change the role of an admin account.' });
+        return;
+      }
+      // Whitelist the fields an admin may edit.
+      const allowed = ['name', 'email', 'role', 'department', 'batch', 'batchNo', 'batchName',
+        'designation', 'company', 'graduationYear', 'yearSemester', 'section', 'labSection',
+        'semester', 'cgpa', 'avatar', 'bloodGroup', 'facebook', 'whatsapp'];
+      const patch = {};
+      for (const key of allowed) {
+        if (key in body) patch[key] = body[key];
+      }
+      if (patch.email && patch.email !== existing.email) {
+        const clash = await getUserByEmail(patch.email);
+        if (clash && clash.id !== userId) {
+          sendJson(res, 400, { success: false, error: 'Another account already uses that email.' });
+          return;
+        }
+      }
+      const updated = await updateUserProfile(userId, patch);
+      sendJson(res, 200, { success: true, user: updated });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to update user.' });
+    }
+    return;
+  }
+
+  // Delete a user from the admin panel (admin endpoint)
+  if (req.url === '/api/admin/users/delete' && req.method === 'POST') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const body = await readJsonBody(req);
+      const { userId } = body || {};
+      if (!userId) {
+        sendJson(res, 400, { success: false, error: 'userId is required.' });
+        return;
+      }
+      const existing = await getUserById(userId);
+      if (!existing) {
+        sendJson(res, 404, { success: false, error: 'User not found.' });
+        return;
+      }
+      if (existing.role === 'admin') {
+        sendJson(res, 400, { success: false, error: 'Cannot delete an admin account.' });
+        return;
+      }
+      const deleted = await deleteUserById(userId);
+      sendJson(res, 200, { success: deleted });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to delete user.' });
     }
     return;
   }

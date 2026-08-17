@@ -1,5 +1,5 @@
-import React, { useMemo, useState, useCallback } from 'react';
-import { BookOpen, Building2, GraduationCap, Library, ArrowLeft, ChevronRight } from 'lucide-react';
+import { useMemo, useState, useCallback } from 'react';
+import { BookOpen, Library, ArrowLeft, ChevronRight } from 'lucide-react';
 import {
   heatmapDepartments,
   departmentLabels,

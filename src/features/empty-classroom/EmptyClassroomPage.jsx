@@ -3,8 +3,7 @@ import {
   DoorOpen, Search, X, Building2, Check, Hourglass,
   ChevronDown, ChevronRight,
 } from 'lucide-react';
-import {
-  freeRoomData, roomCatalog,
+import { roomCatalog,
   computeRoomAvailability, computeDemoAvailability,
   currentDayOfWeek, currentTimeString,
 } from '../../data/mockData';
@@ -196,7 +195,7 @@ export default function EmptyClassroomPage() {
       }
       return next;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [displayFloors, searchTerm, statusFilter, floorFilter, isFiltering]);
 
   return (

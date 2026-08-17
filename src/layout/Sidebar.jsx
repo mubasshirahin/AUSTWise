@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { getUnreadCount } from '../utils/messageStorage';
 
 import {
-  LayoutDashboard, CalendarDays, BarChart3, BookOpen, MapPin, Users, ShoppingBag, Settings, MessageSquare,
+  LayoutDashboard, BarChart3, BookOpen, MapPin, Users, ShoppingBag, Settings, MessageSquare,
   LogIn, Shield, Eye, Megaphone, Utensils,
   Library, FileText, FolderOpen, FileSpreadsheet,
   ChevronLeft, ChevronRight, Crown,

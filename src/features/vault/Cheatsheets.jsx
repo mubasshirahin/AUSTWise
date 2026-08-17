@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   Copy, Check, BookOpen, Star, Plus, X, Trash2,
   Monitor, Zap, Building2, Cog, Factory, Scissors,

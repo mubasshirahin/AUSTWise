@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, X } from 'lucide-react';
-import { searchCourses, findCourseByCode, findCourseByName } from '../data/courses';
+import { searchCourses } from '../data/courses';
 
 /**
  * CourseAutocomplete Component

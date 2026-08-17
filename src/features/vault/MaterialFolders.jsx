@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Folder, Plus, Loader2, AlertCircle, RefreshCw, Link, X, Download, Eye, EyeOff,
+  Folder, Plus, Loader2, AlertCircle, Link, X, Download, Eye, EyeOff,
   ChevronRight, Home, Search, Grid3X3, List, File,
   ExternalLink, Maximize2, Minimize2, ChevronLeft,
-  ChevronsLeft, BookOpen, Clock, HardDrive, FileType,
+  ChevronsLeft, Clock, HardDrive,
   ZoomIn, ZoomOut, StickyNote, Trash2, Edit3, Save,
   Square, Circle, Pencil, Minus,
   Music, Play, Pause, PlayCircle, Bot, Send, PanelRightOpen, PanelRightClose,

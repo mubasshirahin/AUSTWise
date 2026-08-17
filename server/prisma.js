@@ -17,14 +17,42 @@ function getPrisma() {
   return _prisma;
 }
 
+// Build the mssql connection config from the same env vars db.mjs uses, so
+// the Prisma driver adapter talks to the same SQL Server database.
+function mssqlConfig() {
+  const useTrusted = process.env.DB_TRUSTED === 'true';
+  const config = {
+    server: process.env.DB_SERVER || 'localhost',
+    port: Number(process.env.DB_PORT || 1433),
+    database: process.env.DB_DATABASE || 'AUSTWise',
+    options: {
+      encrypt: process.env.DB_ENCRYPT === 'true',
+      trustServerCertificate: true,
+    },
+  };
+  if (useTrusted) {
+    config.authentication = { type: 'ntlm', options: { userName: '', password: '', domain: '' } };
+  } else {
+    config.user = process.env.DB_USER || 'sa';
+    config.password = process.env.DB_PASSWORD || '';
+  }
+  return config;
+}
+
 async function initPrisma() {
   try {
     const mod = await import('@prisma/client');
-    _prisma = new mod.PrismaClient();
+    const { PrismaMssql } = await import('@prisma/adapter-mssql');
+    const adapter = new PrismaMssql(mssqlConfig());
+    _prisma = new mod.PrismaClient({ adapter });
+    // Ping the database so a missing/incorrect connection is caught here
+    // (and falls back to JSON below) instead of failing lazily on the first
+    // API call.
+    await _prisma.$queryRaw`SELECT 1`;
     _prismaAvailable = true;
-    console.log('✅ PrismaClient connected');
+    console.log('✅ PrismaClient connected (SQL Server via @prisma/adapter-mssql)');
   } catch (e) {
-    console.warn('⚠️  PrismaClient unavailable (driver adapter required for v7). DB-backed features disabled.');
+    console.warn('⚠️  PrismaClient unavailable (' + (e?.message || e) + '). DB-backed features disabled, using JSON fallback.');
     _prismaAvailable = false;
     await initJsonDatabase();
   }

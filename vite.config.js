@@ -35,6 +35,24 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            // Core React runtime + router: the only dependencies the app shell
+            // needs on every page. Splitting them out keeps the entry chunk
+            // small and lets browsers cache them independently of app code.
+            {
+              name: 'vendor-react',
+              test: /node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler|use-sync-external-store|react-is|object-assign)[\\/]/,
+              priority: 30,
+            },
+          ],
+        },
+      },
+    },
+  },
   server: {
     allowedHosts: true,
     host: '0.0.0.0',

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Timer, Play, Pause, RotateCcw, Coffee, Brain,
   Music, Wind, Waves, Volume2, VolumeX,
-  Minimize2, ChevronLeft,
+  Minimize2,
 } from 'lucide-react';
 import './ZenStudyRoom.css';
 

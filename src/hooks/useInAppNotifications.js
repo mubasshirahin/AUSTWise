@@ -73,7 +73,7 @@ export function useInAppNotifications(user) {
     if (seededRef.current) return;
     seededRef.current = true;
     runSeed();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [runSeed]);
 
   // Poll for external changes + fire native notifications for new items.

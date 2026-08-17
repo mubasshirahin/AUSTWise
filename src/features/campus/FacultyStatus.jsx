@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { UserCheck, Mail, Phone, Calendar, Search, Users, GraduationCap, Briefcase, X, MoreVertical, Check } from 'lucide-react';
 import { facultyData } from '../../data/mockData';
 import './SemesterViewWidget.css';

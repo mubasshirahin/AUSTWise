@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  AlertCircle, BookOpen, FlaskConical,
-  Plus, X, Check, Settings2, ChevronLeft, ChevronRight, RotateCcw, Info, FileDown, MoreVertical, Layers
+  AlertCircle, BookOpen, FlaskConical, X, Check, Settings2, ChevronLeft, ChevronRight, RotateCcw, Info, FileDown, MoreVertical, Layers
 } from 'lucide-react';
 
-import { getUserStorageItemWithGuestFallback, setUserStorageItem, getCurrentUserId } from '../../utils/authStorage';
+import { getUserStorageItemWithGuestFallback, getCurrentUserId } from '../../utils/authStorage';
 import { useAuth } from '../../context/AuthContext';
 import { formatSemesterLabel } from '../../utils/semester';
 import './SemesterTracker.css';

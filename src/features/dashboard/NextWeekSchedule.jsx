@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, MapPin, User, Plus, ArrowRight } from 'lucide-react';
+import { Calendar, Clock, MapPin, Plus } from 'lucide-react';
 import { useRoutine } from '../../context/RoutineContext';
 import { useAuth } from '../../context/AuthContext';
 

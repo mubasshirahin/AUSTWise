@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Shield, BellRing, Coffee, Activity, Users, Trash2, Plus, Check, AlertCircle, Eye, Edit3, Search, X, Save, User, FileText, CheckCircle2, XCircle, Clock3, ClipboardList, CalendarDays, Mic, CalendarClock, Ban } from 'lucide-react';
+import { Shield, BellRing, Coffee, Activity, Users, Trash2, Plus, AlertCircle, Eye, Edit3, Search, X, Save, CheckCircle2, XCircle, ClipboardList, CalendarDays, Mic, CalendarClock, Ban } from 'lucide-react';
 import { notices, canteenData, libraryData, getAuditoriumEvent, setAuditoriumEvent, defaultAuditoriumEvent } from '../../data/mockData';
-import { getRoleLabel, getRoleBadgeClass, updateAccountProfile, getAccountById, getAllAccounts, getAllRoleApplications, reviewRoleApplication, getAccountById as getUserById, resetAllLocalData, getCurrentUserId } from '../../utils/authStorage';
-import { loadTemplates, saveTemplates, addTemplate, updateTemplate, deleteTemplate } from '../../utils/routineTemplates';
+import { getRoleLabel, getRoleBadgeClass, getAllAccounts, reviewRoleApplication, resetAllLocalData, getCurrentUserId } from '../../utils/authStorage';
+import { loadTemplates } from '../../utils/routineTemplates';
 import { sendMessage } from '../../utils/messageStorage';
 import RoutineTemplatesPanel from './RoutineTemplatesPanel';
 import TranscriptTemplatesPanel from './TranscriptTemplatesPanel';
@@ -143,13 +143,22 @@ export default function AdminPanelPage() {
       setLibraryInfo(libraryData);
     }
 
-    // 4. Accounts — go through getAllAccounts() so the auth-storage purge
-    // filter runs first (it drops leftover dummy/QA/demo accounts and old
-    // admin identities, but keeps all real accounts), instead of reading
-    // the raw localStorage list which could show stale users.
+    // 4. Accounts — the server is the authoritative source. Fetch the real
+    // user list (users.json) so the admin sees every account, not just the
+    // ones cached in this browser's localStorage. Fall back to the local
+    // accounts list only when offline.
     const accountsList = getAllAccounts();
     setAccounts(accountsList);
     setFilteredAccounts(accountsList);
+    fetch('/api/admin/users', { credentials: 'same-origin' })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && Array.isArray(data.users)) {
+          setAccounts(data.users);
+          setFilteredAccounts(data.users);
+        }
+      })
+      .catch(() => { /* offline — keep the localStorage accounts list */ });
 
     // 5. CR/SR Applications — load the local mirror as a first paint.
     // No filtering against the local account list here: the server is the
@@ -301,32 +310,45 @@ if (!res.ok || !Array.isArray(data.applications)) return;
     localStorage.setItem('aust-library-data', JSON.stringify(updated));
   };
 
-  // Delete Account
-  const handleDeleteAccount = (id) => {
+  // Delete Account (server-side — localStorage is just a mirror)
+  const handleDeleteAccount = async (id) => {
     const target = accounts.find(acc => acc.id === id);
     if (target && target.role === 'admin') {
       alert('Cannot delete an admin account.');
       return;
     }
-    if (window.confirm('Are you sure you want to delete this account?')) {
+    if (!window.confirm('Are you sure you want to delete this account?')) return;
+    try {
+      const res = await fetch('/api/admin/users/delete', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        alert(data.error || 'Failed to delete user.');
+        return;
+      }
       const updated = accounts.filter(acc => acc.id !== id);
       setAccounts(updated);
       setFilteredAccounts(updated);
-      localStorage.setItem('aust-auth-accounts-v1', JSON.stringify(updated));
+    } catch {
+      alert('Failed to delete user. Are you online?');
     }
   };
 
-  // View User Profile
+  // View User Profile (from the server-backed accounts list)
   const handleViewUser = (userId) => {
-    const account = getAccountById(userId);
+    const account = accounts.find(acc => acc.id === userId);
     if (account) {
       setSelectedUser(account);
     }
   };
 
-  // Start Editing User
+  // Start Editing User (from the server-backed accounts list)
   const handleStartEditUser = (userId) => {
-    const account = getAccountById(userId);
+    const account = accounts.find(acc => acc.id === userId);
     if (account) {
       setEditingUser(userId);
       setEditFormData({
@@ -346,24 +368,35 @@ if (!res.ok || !Array.isArray(data.applications)) return;
     }
   };
 
-  // Save Edited User
-  const handleSaveEditUser = (userId) => {
+  // Save Edited User (server-side — localStorage is just a mirror)
+  const handleSaveEditUser = async (userId) => {
     const target = accounts.find(acc => acc.id === userId);
     if (target && target.role === 'admin' && editFormData.role !== 'admin') {
       alert('Cannot change the role of an admin account.');
       return;
     }
 
-    const updated = updateAccountProfile(userId, editFormData);
-    if (updated) {
-      const newAccounts = accounts.map(acc => 
-        acc.id === userId ? { ...acc, ...editFormData } : acc
+    try {
+      const res = await fetch('/api/admin/users/update', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, ...editFormData }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        alert(data.error || 'Failed to update user.');
+        return;
+      }
+      const newAccounts = accounts.map(acc =>
+        acc.id === userId ? { ...acc, ...data.user } : acc
       );
       setAccounts(newAccounts);
       setFilteredAccounts(newAccounts);
-      localStorage.setItem('aust-auth-accounts-v1', JSON.stringify(newAccounts));
       setEditingUser(null);
       setEditFormData({});
+    } catch {
+      alert('Failed to update user. Are you online?');
     }
   };
 
@@ -1822,12 +1855,21 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                           // Sync the assigned role to the server so the user's
                           // powers persist across reloads (server is source of
                           // truth for roles via /api/auth/me).
-                          fetch('/api/admin/users/role', {
+                          const roleRes = await fetch('/api/admin/users/role', {
                             method: 'POST',
                             credentials: 'same-origin',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ userId: selectedApplication.userId, role: selectedApplication.appliedRole }),
-                          }).catch(() => { /* server may not know this local account */ });
+                          });
+                          if (roleRes.ok) {
+                            const roleData = await roleRes.json().catch(() => ({}));
+                            if (roleData.user) {
+                              // Keep the Users tab in sync with the new role.
+                              setAccounts(prev => prev.map(acc =>
+                                acc.id === roleData.user.id ? { ...acc, ...roleData.user } : acc
+                              ));
+                            }
+                          }
                           // Confirmation mail → lands in the applicant's ConnectBox inbox.
                           sendMessage(reviewerId, selectedApplication.userId,
                             `🎉 Congratulations ${selectedApplication.userName}! Your application for ${selectedApplication.appliedRole === 'cr' ? 'Class Representative (CR)' : 'Student Representative (SR)'} has been APPROVED by the admin. You can now use all ${selectedApplication.appliedRole === 'cr' ? 'CR' : 'SR'} powers (notices, schedules, exam tracker).`

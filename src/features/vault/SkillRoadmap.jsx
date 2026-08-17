@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Route, Milestone, Award, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Route, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { skillRoadmaps } from '../../data/mockData';
 
 export default function SkillRoadmap({ vaultContext }) {

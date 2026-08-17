@@ -246,11 +246,15 @@ function loadAccounts() {
 
     const adminExists = list.some(acc => acc.id === DEFAULT_ADMIN_ID);
     if (!adminExists) {
+      // The real admin password is a server-only secret (ADMIN_DEFAULT_PASSWORD,
+      // never a VITE_ var) and is stored in users.json as a bcrypt hash. The
+      // localStorage record is only for directory/admin-panel display, so it
+      // gets a random throwaway password that can never authenticate.
       list.push({
         id: DEFAULT_ADMIN_ID,
         name: 'Admin',
         email: 'austwise59@gmail.com',
-        password: btoa(import.meta.env.VITE_ADMIN_DEFAULT_PASSWORD || 'changeme'),
+        password: btoa(String(Math.random()).slice(2)),
         role: 'admin',
         department: 'Admin Department',
         designation: 'Administrator',

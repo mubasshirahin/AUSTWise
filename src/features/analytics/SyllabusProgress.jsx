@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { BookCheck, CheckSquare, Square, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
 import { buildSyllabusData, SEMESTER_COURSES } from '../../data/syllabusCompletionData';
 

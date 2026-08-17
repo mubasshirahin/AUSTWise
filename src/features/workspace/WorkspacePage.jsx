@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  ExternalLink, BookOpen, Calendar, Clock, ChevronRight,
+  ExternalLink, BookOpen, Clock, ChevronRight,
   LogIn, Loader2, CheckCircle, AlertCircle, FileText,
   RefreshCw, X, Plus,
   Eye, EyeOff, Settings, CheckSquare, Square,

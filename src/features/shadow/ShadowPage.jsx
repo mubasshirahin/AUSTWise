@@ -207,7 +207,7 @@ export default function ShadowPage() {
     } catch {
       setWsError(true);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);  
 
   useEffect(() => {
     connectWS();
