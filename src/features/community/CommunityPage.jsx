@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  Users, GraduationCap, Building2, UserPlus,
+  Users, GraduationCap, Building2, UserPlus, School,
 } from 'lucide-react';
 import GliderTabs from '../../components/GliderTabs';
 import useTabUrlState from '../../hooks/useTabUrlState';
 import AlumniDirectory from './AlumniDirectory';
 import ClubPortal from './ClubPortal';
 import StudentDirectory from './StudentDirectory';
+import FacultyDirectory from './FacultyDirectory';
 import MentorRequests from './MentorRequests';
 import '../campus/SemesterViewWidget.css';
 import './CommunityPage.css';
@@ -20,6 +21,7 @@ const communityTabs = [
   { id: 'alumni', label: 'Alumni Directory', icon: GraduationCap, color: 'amber', desc: 'Connect with alumni' },
   { id: 'clubs', label: 'Clubs Hub', icon: Building2, color: 'amber', desc: 'Join student clubs' },
   { id: 'students', label: 'Student Directory', icon: Users, color: 'amber', desc: 'Find classmates' },
+  { id: 'faculty', label: 'Faculty Directory', icon: School, color: 'amber', desc: 'Meet your teachers' },
   { id: 'mentorRequests', label: 'Mentor Requests', icon: UserPlus, color: 'amber', desc: 'Connect study buddies' },
 ];
 
@@ -41,6 +43,7 @@ export default function CommunityPage() {
       case 'alumni': return <AlumniDirectory />;
       case 'clubs': return <ClubPortal />;
       case 'students': return <StudentDirectory />;
+      case 'faculty': return <FacultyDirectory />;
       case 'mentorRequests': return <MentorRequests />;
       default: return <AlumniDirectory />;
     }
@@ -64,7 +67,7 @@ export default function CommunityPage() {
             Communit<span className="cm-hero-name">y</span>
           </h1>
           <p className="cm-hero-subtitle">
-            {activeMeta.desc} · connect with alumni, clubs, classmates and mentors.
+            {activeMeta.desc} · connect with alumni, faculty, clubs, classmates and mentors.
           </p>
         </div>
       </header>

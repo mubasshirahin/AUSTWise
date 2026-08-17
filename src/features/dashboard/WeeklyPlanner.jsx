@@ -30,7 +30,10 @@ export default function WeeklyPlanner() {
   const exportRef = useRef(null);
 
   // ── Shared routine (CR publishing) ──
-  const CR_TOTAL_SLOTS = 396;
+  // One CR slot per (dept × semester × section × lab group). A-D sections × 2
+  // lab groups × 8 sems × 8 depts = 512. The badge shows this only as a
+  // fallback; the server /api/routines/shared/stats returns the live total.
+  const CR_TOTAL_SLOTS = 512;
   const CR_DEPTS = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'];
   const isCR = !!(user && (user.role === 'cr' || (typeof user.hasRole === 'function' && user.hasRole('cr'))));
   const [sharedRoutines, setSharedRoutines] = useState([]);

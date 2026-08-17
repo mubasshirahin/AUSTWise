@@ -215,23 +215,17 @@
 
 /* ═══ Sub-page masthead alignment (Notebook-style header) ═══
    Each standalone sub-page centers itself with its own max-width
-   (StudyRoom 1024 · CPHub 840 · Workspace 960 · RoastCV 1100px). Inside the
+   (StudyRoom 1024 · CPHub 840 · Workspace 960). Inside the
    Productivity card that makes every masthead header a different width and
    off-center. Neutralize the wrapping so each header spans the full card
    width and stays left-aligned — exactly like the Notebook masthead. */
 .pr-content-card .study-room-page,
 .pr-content-card .csh-page,
 .pr-content-card .cp-hub-page,
-.pr-content-card .workspace-page,
-.pr-content-card .roastcv-page {
+.pr-content-card .workspace-page {
   max-width: none;
   margin: 0;
   padding-bottom: 0;
-}
-
-/* RoastCV also adds its own sp-4 inset padding — drop it inside the hub. */
-.pr-content-card .roastcv-page {
-  padding: 0;
 }
 
 @keyframes ptFadeIn {

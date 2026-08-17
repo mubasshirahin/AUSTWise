@@ -1105,10 +1105,9 @@ export async function deleteCourse(code) {
 // Shared Routines (CRs publish their class routine for everyone to load)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// AUST CR capacity: 7 four-year depts (CSE, EEE, CE, ME, IPE, TE, BBA)
-// × 8 semesters × 3 sections × 2 lab groups = 336, plus ARCH (10 semesters)
-// × 3 sections × 2 lab groups = 60. Total = 396 CR slots.
-export const SHARED_ROUTINE_TOTAL_SLOTS = 396;
+// AUST CR capacity: 8 depts (CSE, EEE, CE, ME, IPE, TE, ARCH, BBA)
+// × 8 semesters × 4 sections (A-D) × 2 lab groups = 512 CR slots.
+export const SHARED_ROUTINE_TOTAL_SLOTS = 512;
 
 export function sharedRoutineSlotKey(record) {
   return `${record.department || ''}|${record.yearSemester || ''}|${record.section || ''}|${record.labSection || ''}`;
@@ -1210,8 +1209,17 @@ export async function deleteSharedRoutineBySlot(slot) {
 }
 
 export async function getSharedRoutineStats() {
+  // The total isn't hardcoded — count what the user matrix actually defines:
+  // one CR slot per (dept × semester × section × lab group). Dev seed creates
+  // 8 depts × 8 sems × 4 sections × 2 lab groups = 512 CRs, so the counter stays
+  // correct if the section/lab matrix ever changes again.
   const list = await listSharedRoutines();
-  return { shared: list.length, total: SHARED_ROUTINE_TOTAL_SLOTS };
+  let total = SHARED_ROUTINE_TOTAL_SLOTS;
+  try {
+    const { countCrSlots } = await import('./userStore.mjs');
+    total = await countCrSlots();
+  } catch { /* keep static fallback if userStore can't be loaded */ }
+  return { shared: list.length, total };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

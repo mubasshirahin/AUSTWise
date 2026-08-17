@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import RoutineCard from './RoutineCard';
 import ExamTracker from './ExamTracker';
@@ -358,6 +358,7 @@ function useAnimatedValue(target, duration = 900, forceDecimals = false) {
 }
 
 function QuickStats() {
+  const navigate = useNavigate();
   const [userResults, setUserResults] = useState(null);
   const [isGuest, setIsGuest] = useState(false);
 
@@ -440,6 +441,9 @@ function QuickStats() {
       // Risk tier: 0 great, 1 good, 2 okay, 3 poor.
       count: !hasCgpa ? 0 : (stats.currentCgpa >= 3.5 ? 0 : stats.currentCgpa >= 3.0 ? 1 : stats.currentCgpa >= 2.5 ? 2 : 3),
       trend: hasCgpa ? (stats.currentCgpa >= 3.0 ? 'up' : stats.currentCgpa >= 2.5 ? 'stable' : 'down') : null,
+      // Where this metric's data is managed — clicking the card jumps there.
+      // ?tab=cgpagraph forces the CGPA Calculator tab even if another was last used.
+      link: '/analytics?tab=cgpagraph',
     },
     {
       code: 'ATT',
@@ -451,6 +455,8 @@ function QuickStats() {
       // Risk tier: 0 fine, 1 slipping, 2 risky, 3 critical (75% minimum).
       count: !hasAttendance ? 0 : (stats.avgAttendance >= 75 ? 0 : stats.avgAttendance >= 70 ? 1 : stats.avgAttendance >= 65 ? 2 : 3),
       trend: null,
+      // Attendance sessions are logged in the dashboard's Attendance Tracker.
+      link: '/?tab=attendance',
     },
     {
       code: 'DL',
@@ -461,6 +467,8 @@ function QuickStats() {
       placeholder: false,
       count: stats.upcomingDeadlines,
       trend: null,
+      // Deadlines/exams live in the dashboard's Semester View — jump there.
+      link: '/?tab=calendar',
     },
     {
       code: 'CR',
@@ -471,6 +479,8 @@ function QuickStats() {
       placeholder: !hasCgpa,
       count: hasCgpa ? stats.semestersCompleted : 0,
       trend: null,
+      // Credits are derived from semester results in the Grade Lab.
+      link: '/analytics',
     },
   ];
 
@@ -481,10 +491,20 @@ function QuickStats() {
     return (
       <div
         key={item.code}
-        className={`schedule-day-card quick-stat-cell${isActive ? ' today' : ''}${item.placeholder ? ' placeholder' : ''}`}
+        className={`schedule-day-card quick-stat-cell${isActive ? ' today' : ''}${item.placeholder ? ' placeholder' : ''}${item.link ? ' is-link' : ''}`}
         style={{
           animationDelay: `${idx * 70}ms`,
         }}
+        onClick={item.link ? () => navigate(item.link) : undefined}
+        role={item.link ? 'button' : undefined}
+        tabIndex={item.link ? 0 : undefined}
+        onKeyDown={item.link ? (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            navigate(item.link);
+          }
+        } : undefined}
+        title={item.link ? `Open ${item.label}` : undefined}
       >
         <div className="quick-stat-top">
           <span className={`quick-stat-icon tone-${item.tone}`}>
@@ -555,6 +575,24 @@ export default function DashboardPage() {
       try { localStorage.setItem('aust-dashboard-focus', mode); } catch {}
     },
   });
+
+  // Keep the focus tab in sync with the URL (?tab=…) so in-app navigation
+  // (e.g. Quick Stats card clicks) switches views without a full reload.
+  // When the tab param is removed, restore the last saved preference so the
+  // back button returns to a consistent view.
+  useEffect(() => {
+    const urlTab = searchParams.get('tab');
+    if (urlTab && FOCUS_SECTIONS[urlTab]) {
+      setFocusMode(urlTab);
+    } else if (!urlTab) {
+      try {
+        const stored = localStorage.getItem('aust-dashboard-focus');
+        setFocusMode(stored && FOCUS_SECTIONS[stored] ? stored : 'stats');
+      } catch {
+        setFocusMode('stats');
+      }
+    }
+  }, [searchParams]);
 
   const profileIncomplete = user && (!user.department || !user.batch || !user.section || !user.yearSemester);
 

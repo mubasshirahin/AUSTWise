@@ -160,6 +160,24 @@ function isDevUser(u) {
   );
 }
 
+/**
+ * Number of CR slots in the current section × lab-group matrix —
+ * one slot per (dept × semester × section × lab group), derived from the same
+ * dev config that seeds users, so it tracks section additions (3 → 4 sections)
+ * automatically instead of holding a hardcoded total.
+ */
+export async function countCrSlots() {
+  const cfg = await readDevConfig();
+  const semCount = cfg.semesters.length || 8;
+  const deptCount = cfg.departments.length || DEPARTMENTS.length;
+  let sum = 0;
+  for (const section of cfg.sections) {
+    const labs = cfg.labGroups.filter((lab) => String(lab).toUpperCase().startsWith(String(section).toUpperCase()));
+    sum += labs.length;
+  }
+  return deptCount * semCount * sum;
+}
+
 /** Load the dev-user generation config from dev/devUsers.json (with defaults). */
 async function readDevConfig() {
   const defaults = {

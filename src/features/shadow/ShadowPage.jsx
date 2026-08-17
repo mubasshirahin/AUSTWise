@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  Moon, Eye, Star, Shield, Send, User, Timer, MessageSquare,
+  Moon, Eye, Star, Shield, Send, User, Timer, MessageSquare, Flame,
   Loader2, AlertTriangle, Wifi, WifiOff, Zap,
 } from 'lucide-react';
 import CourseReview from '../analytics/CourseReview';
 import BuzzPage from '../austeddit/AustedditPage';
+import RoastCVPage from '../roast-cv/RoastCVPage';
 import GliderTabs from '../../components/GliderTabs';
 import useTabUrlState from '../../hooks/useTabUrlState';
 import './ShadowPage.css';
@@ -331,6 +332,7 @@ export default function ShadowPage() {
             { id: 'reviews', label: 'Course Reviews',   desc: 'Anonymous feedback',     color: 'amber',  icon: Star          },
             { id: 'chat',    label: 'Shadow Chat',      desc: '10-min anonymous match', color: 'amber',  icon: MessageSquare },
             { id: 'buzz',    label: 'Buzz',             desc: 'AUST forum',             color: 'amber',  icon: Zap           },
+            { id: 'roast-cv', label: 'Roast CV',        desc: 'CV feedback',            color: 'amber',  icon: Flame         },
           ]}
           activeTab={activeTab}
           onChange={handleShadowTabChange}
@@ -354,6 +356,8 @@ export default function ShadowPage() {
             </>
           ) : activeTab === 'reviews' ? (
             <CourseReview />
+          ) : activeTab === 'roast-cv' ? (
+            <RoastCVPage />
           ) : (
             <>
               <ShadowMasthead

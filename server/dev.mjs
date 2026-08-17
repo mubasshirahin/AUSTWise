@@ -1961,7 +1961,8 @@ async function handleApiRequest(req, res) {
     return;
   }
 
-  // Counter: how many of the 396 CR slots have published a routine.
+  // Counter: how many of the CR slots have published a routine (total served
+  // by getSharedRoutineStats — 512 for the A-D section matrix).
   if (req.url === '/api/routines/shared/stats' && req.method === 'GET') {
     try {
       const stats = await getSharedRoutineStats();

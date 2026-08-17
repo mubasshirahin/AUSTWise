@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Zap, ScrollText, Code2, School, ExternalLink, Flame } from 'lucide-react';
+import { Zap, ScrollText, Code2, School, ExternalLink } from 'lucide-react';
 import GliderTabs from '../../components/GliderTabs';
 import useTabUrlState from '../../hooks/useTabUrlState';
 import CheatsheetsPage from '../vault/CheatsheetsPage';
 import CPHubPage from '../cp-hub/CPHubPage';
 import StudyRoomPage from '../study-room/StudyRoomPage';
 import WorkspacePage from '../workspace/WorkspacePage';
-import RoastCVPage from '../roast-cv/RoastCVPage';
 import './ProductivityPage.css';
 
 // All tools share the single brand accent (gold) — no per-category color rotation.
@@ -16,7 +15,6 @@ const TABS = [
   { id: 'cheatsheets', label: 'Cheat Sheets', icon: ScrollText,   desc: 'Quick reference'  },
   { id: 'cp-hub',      label: 'Code Pulse',   icon: Code2,        desc: 'Coding contests'  },
   { id: 'workspace',   label: 'Workspace',    icon: ExternalLink, desc: 'Google Classroom' },
-  { id: 'roast-cv',    label: 'Roast CV',     icon: Flame,        desc: 'CV feedback'      },
 ];
 
 const STORAGE_KEY = 'productivity-active-tab';
@@ -38,7 +36,6 @@ export default function ProductivityPage() {
       case 'cheatsheets': return <CheatsheetsPage />;
       case 'cp-hub':      return <CPHubPage />;
       case 'workspace':   return <WorkspacePage />;
-      case 'roast-cv':    return <RoastCVPage />;
       default:            return <StudyRoomPage />;
     }
   };
