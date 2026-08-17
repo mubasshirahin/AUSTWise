@@ -292,7 +292,7 @@ async function handleAdminCheck(req, res) {
   return sendJson(res, 200, { success: true });
 }
 
-async function handleMe(req, res) {
+export async function handleMe(req, res) {
   const payload = readTokenCookie(req);
   if (!payload) {
     return sendJson(res, 401, { success: false, error: 'Not authenticated' });
