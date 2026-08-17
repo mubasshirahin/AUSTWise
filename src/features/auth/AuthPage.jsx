@@ -424,11 +424,10 @@ export default function AuthPage() {
 
     // Google signup: no password needed, just update the account with remaining fields
     if (pendingGoogleAccount) {
-      // Student & Faculty must use @aust.edu email; alumni can use any email
-      const selectedRole = signupForm.role || 'student';
+      // Only @aust.edu emails are allowed — no role exceptions.
       const googleEmail = (pendingGoogleAccount.email || '').toLowerCase().trim();
-      if (selectedRole !== 'alumni' && !googleEmail.endsWith('@aust.edu')) {
-        setError('Student & Faculty must use an @aust.edu email address with Google login.');
+      if (!googleEmail.endsWith('@aust.edu')) {
+        setError('Only @aust.edu email addresses are allowed with Google login.');
         return;
       }
 

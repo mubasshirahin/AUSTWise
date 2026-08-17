@@ -568,7 +568,7 @@ export async function createUser(payload) {
 
   if (!name) throw new Error('Full name is required.');
   if (!email || !email.includes('@')) throw new Error('Enter a valid email address.');
-  if (role !== 'alumni' && !isValidAustEmail(email)) {
+  if (!isValidAustEmail(email)) {
     throw new Error('Only AUST university email addresses (@aust.edu) are allowed for registration.');
   }
   if (password.length < 6) throw new Error('Password must be at least 6 characters.');
@@ -650,6 +650,11 @@ export async function validateLogin(email, password) {
   const users = await readUsers();
   const user = users.find(u => u.email === normalized);
   if (!user) throw new Error('Invalid email or password.');
+  // Only @aust.edu accounts may sign in — admins (e.g. the site owner) are the
+  // single exception, so a non-AUST admin gmail keeps working.
+  if (user.role !== 'admin' && !isValidAustEmail(normalized)) {
+    throw new Error('Only AUST university email addresses (@aust.edu) are allowed to sign in.');
+  }
   const valid = await comparePassword(password, user.password);
   if (!valid) throw new Error('Invalid email or password.');
   const { password: _, ...safe } = user;
@@ -697,6 +702,11 @@ export async function findOrCreateGoogleUser(profile) {
     }
     if (Object.keys(patch).length) await updateUserProfile(existing.id, patch);
     return { user: await getUserByEmail(email), created: false };
+  }
+
+  // New registrations — only @aust.edu university emails are allowed.
+  if (!isValidAustEmail(email)) {
+    throw new Error('Only AUST university email addresses (@aust.edu) are allowed for registration.');
   }
 
   const users = await readUsers();

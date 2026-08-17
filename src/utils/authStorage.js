@@ -207,6 +207,10 @@ export function loginAccount(email, password) {
   if (!account || !verifyPassword(password, account.password)) {
     throw new Error('Invalid email or password.');
   }
+  // Only @aust.edu may sign in — admins (site owner) are the exception.
+  if (account.role !== 'admin' && !isValidAustEmail(account.email)) {
+    throw new Error('Only AUST university email addresses (@aust.edu) are allowed to sign in.');
+  }
   return account;
 }
 
@@ -497,7 +501,7 @@ export function signupAccount(payload) {
 
   if (!name) throw new Error('Full name is required.');
   if (!email || !email.includes('@')) throw new Error('Enter a valid email address.');
-  if (role !== 'alumni' && !isValidAustEmail(email)) {
+  if (!isValidAustEmail(email)) {
     throw new Error('Only AUST university email addresses (@aust.edu) are allowed for registration.');
   }
   if (password.length < 6) throw new Error('Password must be at least 6 characters.');

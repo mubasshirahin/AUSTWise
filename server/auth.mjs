@@ -176,15 +176,19 @@ async function handleGoogle(req, res) {
     }
     const googleEmail = String(verified.email).toLowerCase().trim();
 
+    // Only @aust.edu emails may sign in or register — admins (site owner) are
+    // the single exception, so their non-AUST gmail keeps working.
+    const existingUser = await getUserByEmail(googleEmail);
+    if (existingUser?.role !== 'admin' && !isAllowedAustEmail(googleEmail)) {
+      return sendJson(res, 400, { success: false, error: 'Only AUST university email addresses (@aust.edu) are allowed for registration.' });
+    }
+
     const profilePatch = body.profile && typeof body.profile === 'object' ? body.profile : null;
     let user;
     let created = false;
 
     if (profilePatch && profilePatch.role) {
       // Signup step 2 — complete the account created on the first sign-in.
-      if (profilePatch.role !== 'alumni' && !isAllowedAustEmail(googleEmail)) {
-        return sendJson(res, 400, { success: false, error: 'Only AUST university email addresses (@aust.edu) are allowed for registration.' });
-      }
       const existing = await getUserByEmail(googleEmail);
       if (!existing) {
         return sendJson(res, 404, { success: false, error: 'User not found.' });
