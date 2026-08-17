@@ -12,6 +12,7 @@ import {
   registerUserForNotifications,
   sendTestAttendanceMessage,
   handleAttendanceCallback,
+  handleStartCommand,
   getTodayClasses,
   setTelegramWebhook,
   getWebhookInfo,
@@ -1077,6 +1078,15 @@ async function handleApiRequest(req, res) {
               await updateMessageKeyboardFn(botToken, chatId, messageId, callbackData, isAttended, courseCode);
             }
           }
+        }
+      }
+
+      // Handle /start command — welcome message
+      if (update.message?.text === '/start') {
+        const chatId = update.message?.chat?.id;
+        if (chatId) {
+          const result = await handleStartCommand(chatId);
+          console.log(`👋 /start handled for chat ${chatId}:`, result.success ? 'welcome sent' : result.error);
         }
       }
 

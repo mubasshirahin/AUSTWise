@@ -1027,6 +1027,26 @@ export async function deleteWebhook(botToken) {
 // Export the new functions for webhook handling
 export { answerCallbackQuery, updateMessageKeyboard };
 
+/**
+ * Handle /start command from a user
+ * @param {string} chatId - Telegram Chat ID
+ * @returns {Object} Result
+ */
+export async function handleStartCommand(chatId) {
+  const botToken = TELEGRAM_BOT_TOKEN;
+  if (!botToken) {
+    return { success: false, error: 'Bot token not configured' };
+  }
+
+  const message =
+    '🌅 AUSTWise বটে আপনাকে স্বাগতম!\n\n' +
+    `✅ আপনার চ্যাট আইডি: <code>${chatId}</code>\n\n` +
+    'দৈনিক ক্লাস ও অ্যাটেন্ডেন্স নোটিফিকেশন পেতে এই চ্যাট আইডিটি AUSTWise ওয়েবসাইটে আপনার প্রোফাইলে যুক্ত করুন।\n\n' +
+    '📖 AUSTWise থেকে';
+
+  return await sendTelegramMessage(botToken, chatId, message);
+}
+
 // Test function - run directly to test
 if (import.meta.url === `file://${process.argv[1]}`) {
   console.log('Testing Telegram notification system...');
