@@ -69,7 +69,7 @@ const defaultSignup = {
   graduationYear: '',
 };
 
-const GOOGLE_CLIENT_ID = '736141389272-m680j6nh45evbe36mnmhuqpi8i06cv4q.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
 
 
 export default function AuthPage() {
