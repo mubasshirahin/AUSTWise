@@ -466,9 +466,16 @@ if (FEATURES.dbConfig) {
 // Relies on the standard `x-forwarded-proto` header set by the load balancer
 // (Heroku, Fly, Cloudflare, nginx, etc). No-op when the header is absent or
 // when not in production so dev/localhost flow is unaffected.
+//
+// x-forwarded-proto may arrive comma-joined across multi-hop proxies
+// (e.g. "https,https" from Vercel → Railway). We only inspect the first hop.
 function requireHttps(req, res) {
   if (process.env.NODE_ENV !== 'production') return false;
-  if (req.headers['x-forwarded-proto'] === 'https') return false;
+  const proto = (req.headers['x-forwarded-proto'] || '')
+    .split(',')[0]
+    .trim();
+  console.log('HTTPS check — x-forwarded-proto:', JSON.stringify(req.headers['x-forwarded-proto']), '→ parsed:', proto); // TEMP DEBUG
+  if (proto === 'https') return false;
   res.writeHead(301, { Location: `https://${req.headers.host}${req.url}` });
   res.end();
   return true;
