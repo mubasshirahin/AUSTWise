@@ -18,15 +18,22 @@ const JWT_SECRET = process.env.JWT_SECRET || (() => {
 const COOKIE_NAME = 'aust_token';
 const TOKEN_EXPIRY = '7d';
 
-// Secure cookies (HTTPS-only) when behind TLS. Force off in plain-HTTP dev.
-// Enable via COOKIE_SECURE=1 in production env (or NODE_ENV=production,
-// evaluated lazily because dev.mjs pins NODE_ENV after this module loads).
-const secureCookie = () =>
-  process.env.COOKIE_SECURE === '1' || process.env.NODE_ENV === 'production';
-// SameSite=Strict: the auth cookie is never sent on cross-site requests, which
-// is the primary CSRF defense (top-level POST navigations included).
+// Cookie security varies by environment:
+// - Production (Vercel → Railway proxy): SameSite=None; Secure so the auth
+//   cookie is forwarded across origins. This MUST be paired with Secure
+//   (HTTPS) — browsers reject SameSite=None without the Secure flag.
+// - Development: SameSite=Lax keeps the CSRF surface minimal while still
+//   permitting same-site navigation. Secure is omitted so localhost HTTP
+//   works during local testing.
+const isProdEnv = () => process.env.NODE_ENV === 'production';
 const cookieFlags = () =>
-  `HttpOnly; SameSite=Strict; Path=/; Max-Age=${7 * 24 * 60 * 60}${secureCookie() ? '; Secure' : ''}`;
+  isProdEnv()
+    ? `HttpOnly; SameSite=None; Secure; Path=/; Max-Age=${7 * 24 * 60 * 60}`
+    : `HttpOnly; SameSite=Lax; Path=/; Max-Age=${7 * 24 * 60 * 60}`;
+const cookieClearFlags = () =>
+  isProdEnv()
+    ? `HttpOnly; SameSite=None; Secure; Path=/; Max-Age=0`
+    : `HttpOnly; SameSite=Lax; Path=/; Max-Age=0`;
 
 function signToken(user) {
   return jwt.sign(
@@ -41,7 +48,7 @@ function setAuthCookie(res, token) {
 }
 
 function clearAuthCookie(res) {
-  res.setHeader('Set-Cookie', `${COOKIE_NAME}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0${secureCookie() ? '; Secure' : ''}`);
+  res.setHeader('Set-Cookie', `${COOKIE_NAME}=; ${cookieClearFlags()}`);
 }
 
 /** Read JWT from cookie and return payload or null */

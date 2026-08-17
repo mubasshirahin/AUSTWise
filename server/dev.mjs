@@ -474,7 +474,6 @@ function requireHttps(req, res) {
   const proto = (req.headers['x-forwarded-proto'] || '')
     .split(',')[0]
     .trim();
-  console.log('HTTPS check — x-forwarded-proto:', JSON.stringify(req.headers['x-forwarded-proto']), '→ parsed:', proto); // TEMP DEBUG
   if (proto === 'https') return false;
   res.writeHead(301, { Location: `https://${req.headers.host}${req.url}` });
   res.end();
