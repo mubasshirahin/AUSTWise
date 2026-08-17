@@ -45,7 +45,7 @@ import {
 import { initializeDatabase, resetDatabase, query, sql, testConnection } from './db.mjs';
 import { handleOAuthRequest } from './socialOAuth.mjs';
 import { handleCleanerRequest } from './googleCleaner.mjs';
-import { handleAuthRoute, readTokenCookie, handleMe, handleDevSwitchUser, handleDevSeedUsers, handleDevUsers } from './auth.mjs';
+import { handleAuthRoute, readTokenCookie, handleDevSwitchUser, handleDevSeedUsers, handleDevUsers } from './auth.mjs';
 import { requireRole, requireAuth } from './middleware.mjs';
 import { rateLimit, extractRoutineRateLimiter } from './rateLimiter.mjs';
 import { getUserById, getUserByEmail, getAllUsersSafe, updateUserProfile, deleteUserById, ADMIN_ASSIGNABLE_ROLES } from './userStore.mjs';
@@ -1969,12 +1969,14 @@ async function handleApiRequest(req, res) {
 
   // ========== Auth Endpoints (JWT + HttpOnly cookie) ==========
 
-  // Explicit /api/auth/me route — handle before handleAuthRoute so query
-  // strings or path edge cases don't bypass the match (origin_mismatch fix).
-  const reqUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-  const reqPathname = reqUrl.pathname;
-  if (reqPathname === '/api/auth/me' && req.method === 'GET') {
-    return await handleMe(req, res);
+  // Clean the URL pathname (drop query strings) so route matching is exact.
+  // Some clients (e.g. ?t=TIMESTAMP) append query params that break the
+  // === match inside handleAuthRoute's safePathname. We strip them here so
+  // handleAuthRoute sees a pristine /api/auth/me path.
+  const cleanPath = new URL(req.url, `http://${req.headers.host || 'localhost'}`).pathname;
+  if (cleanPath === '/api/auth/me' && req.method === 'GET') {
+    req.url = cleanPath;
+    return await handleAuthRoute(req, res);
   }
 
   if (await handleAuthRoute(req, res)) {
