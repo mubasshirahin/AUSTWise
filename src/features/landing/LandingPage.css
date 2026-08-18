@@ -2090,6 +2090,21 @@
   border-bottom: none;
 }
 
+.landing-feature-coming-soon {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 0.62rem;
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent-amber);
+  background: var(--accent-amber-glow);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 35%, transparent);
+  border-radius: 999px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+
 .landing-feature-use-case {
   background: var(--bg-input);
   border-radius: var(--radius-md);

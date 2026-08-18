@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight, Sparkles, GraduationCap, Users, Map, Archive, TrendingUp, MessageSquare,
-  ShoppingBag, Settings, Shield, Zap,
+  ShoppingBag, Settings, Zap,
   ChevronDown, Check, Star, Layers, Clock, Award, BarChart3,
   ChevronRight, ChevronUp, Target, AlertCircle,
   Coffee, Sun as SunIcon, Book, Bell,
@@ -20,154 +20,7 @@ import LandingNav from './LandingNav';
 import logoSilver from '../../assets/logo-silver.png';
 import './LandingPage.css';
 import { topTestimonials, bottomTestimonials } from '../../data/testimonials';
-
-// ─── RICH FEATURE DATA ───
-const features = [
-  {
-    icon: LayoutDashboard,
-    title: 'Dashboard',
-    tagline: 'Your academic command center',
-    description: 'Everything you need to start your day — at a glance. Your CGPA, upcoming classes, pending deadlines, attendance, and weekly schedule, all in one place.',
-    benefits: [
-      'Track your CGPA across semesters with animated stats',
-      'Never miss a class with smart reminders before each lecture',
-      'View your full weekly routine with room numbers & faculty names',
-      'Get deadline alerts for assignments, quizzes, and exams',
-      'Monitor attendance percentage per course in real time',
-    ],
-    useCase: 'Start your morning by checking today\'s classes, see what assignments are due this week, and track your CGPA progress — all from one screen.',
-    color: 'var(--accent-blue)',
-    glow: 'var(--accent-blue-glow)',
-  },
-  {
-    icon: BarChart3,
-    title: 'Grade Lab (Analytics)',
-    tagline: 'Visualise your academic performance',
-    description: 'Go beyond the numbers. See your CGPA trajectory across semesters, compare with department averages, and identify which topics need more attention.',
-    benefits: [
-      'Interactive CGPA graph — track your growth semester by semester',
-      'Department heatmap — see grade distributions across batches',
-      'Course reviews & ratings — know which courses to prepare for',
-      'Syllabus completion tracker — never fall behind on your syllabus',
-      'Semester-by-semester result breakdown with credit analysis',
-    ],
-    useCase: 'After midterms, check how your CGPA has changed, compare your grades with your department\'s average, and review which courses need more focus before finals.',
-    color: 'var(--accent-emerald)',
-    glow: 'var(--accent-emerald-glow)',
-  },
-  {
-    icon: Archive,
-    title: 'Resource Vault',
-    tagline: 'All your study materials, one click away',
-    description: 'No more hunting for past papers in WhatsApp groups. The vault organises question banks, topic heatmaps, notes, and video playlists by department, semester, and course.',
-    benefits: [
-      '1,200+ past question papers from previous final exams',
-      'Topic heatmap — see which topics appear most frequently in exams',
-      'Curated YouTube playlists — entire semester syllabi in one playlist',
-      'Course notes, slides & materials organised by topic',
-      'Cheat sheets & formula summaries for quick revision',
-    ],
-    useCase: 'The night before your CSE 3101 final, open Vault, pick your course, and practice with 5 previous years\' question papers — all from the same page.',
-    color: 'var(--accent-purple)',
-    glow: 'var(--accent-purple-glow)',
-  },
-  {
-    icon: Map,
-    title: 'Campus Hub',
-    tagline: 'Navigate AUST like a pro',
-    description: 'Find any room, check faculty availability, see if the canteen is crowded, and know exactly how many library seats are free — all updated in real time.',
-    benefits: [
-      'Interactive floor plans — find any classroom, lab, or office instantly',
-      'Faculty status — see which teachers are in their offices right now',
-      'Library pulse — live seat occupancy across all study zones',
-      'Canteen menu & crowd index — avoid the lunch rush',
-      'Course prerequisite trees — plan your semester roadmap',
-    ],
-    useCase: 'Between classes, check the library pulse to grab a quiet study spot, see which faculty members are in their offices for quick questions, and check the canteen crowd level before heading for lunch.',
-    color: 'var(--accent-cyan)',
-    glow: 'var(--accent-cyan-glow)',
-  },
-  {
-    icon: Users,
-    title: 'Community (Social Square)',
-    tagline: 'Connect with the entire AUST community',
-    description: 'Share anonymously, network with alumni, find clubs, and look up any student\'s contact info, blood group, and batch — all in one social hub.',
-    benefits: [
-      'Anonymous confession feed — share freely, no judgement',
-      'Alumni directory — network with graduates by batch & company',
-      'Club hub — discover and join active AUST clubs',
-      'Student directory — find classmates by name, batch, or blood group',
-      'In-app messaging — chat directly with classmates & faculty',
-    ],
-    useCase: 'Need a study partner for your EEE lab? Look up classmates in the Student Directory. Want career advice? Message an alumnus from your department who works at your dream company.',
-    color: 'var(--accent-amber)',
-    glow: 'var(--accent-amber-glow)',
-  },
-  {
-    icon: ShoppingBag,
-    title: 'Campus Market',
-    tagline: 'Buy, sell, rent, and find housing',
-    description: 'The ultimate AUST marketplace — exchange used textbooks, find bachelor/rental listings near campus, report lost items, and request mentorship from senior students.',
-    benefits: [
-      'Exchange kits — buy & sell used textbooks and academic equipment',
-      'ToLet Mama — find bachelor rentals & shared apartments near campus',
-      'Lost & Found — report lost items and help others find theirs',
-      'Mentor requests — connect with seniors for academic guidance',
-      'All free — no listing fees, no commission, no charges',
-    ],
-    useCase: 'Starting a new semester? Buy used CSE books from seniors at half price. Need a place near campus? Check the To-Let listings. Lost your calculator? Report it in Lost & Found.',
-    color: 'var(--accent-orange)',
-    glow: 'var(--accent-orange-glow)',
-  },
-  {
-    icon: MessageSquare,
-    title: 'Messaging',
-    tagline: 'Real-time chat for your courses & groups',
-    description: 'Stop juggling between WhatsApp, Messenger, and Email. AUSTWise Messaging brings all your course conversations into one organised space.',
-    benefits: [
-      'Course-specific chat rooms — discuss with batchmates in your section',
-      'Lab group messaging — coordinate with your lab team members',
-      'Smart notifications — never miss an important class announcement',
-      'File sharing — share notes, assignments, and resources instantly',
-      'Private faculty DMs — ask questions directly to your professors',
-    ],
-    useCase: 'Your CSE 3102 lab group has a project submission tomorrow. Use the lab group chat to coordinate who brings what, share the latest code, and ask the CR for deadline clarifications.',
-    color: 'var(--accent-orange)',
-    glow: 'var(--accent-orange-glow)',
-  },
-  {
-    icon: Settings,
-    title: 'Themes & Customisation',
-    tagline: 'Make AUSTWise truly yours',
-    description: '15 uniquely crafted visual themes — from minimalist dark to neon cyberpunk, from editorial newsprint to hand-drawn sketchbook. Your campus experience, your style.',
-    benefits: [
-      '15 hand-crafted themes — Dark, Light, Midnight, Cyberpunk & more',
-      'Automatic light/dark switching based on your preference',
-      'Each theme has unique personality — fonts, shadows, borders, colors',
-      'Real-time theme switching — no reload, no delay',
-      'Customisable per-session — change your theme anytime',
-    ],
-    useCase: 'Study mode? Switch to "Monochrome" for distraction-free focus. Late-night coding? Flip to "Cyberpunk" for that neon terminal vibe. Reading articles? "Newsprint" turns the app into a beautiful digital newspaper.',
-    color: 'var(--accent-blue)',
-    glow: 'var(--accent-blue-glow)',
-  },
-  {
-    icon: Shield,
-    title: 'Admin Panel',
-    tagline: 'For CRs, SRs, Faculty & Moderators',
-    description: 'Powerful management tools for class representatives, student representatives, faculty, and admins — manage notices, applications, and campus data from one dashboard.',
-    benefits: [
-      'Publish official notices — exam schedules, holiday announcements & more',
-      'Update canteen status & crowd levels in real time',
-      'Monitor library seat occupancy across all zones',
-      'Manage user accounts — roles, batches, sections & permissions',
-      'Review & approve CR/SR applications with vacancy checks',
-    ],
-    useCase: 'As a CR, post an urgent notice about tomorrow\'s quiz postponement. As a faculty member, update your office hours. As admin, review SR applications and assign roles — all from one panel.',
-    color: 'var(--accent-rose)',
-    glow: 'var(--accent-rose-glow)',
-  },
-];
+import { modules, stackingHighlights, cursorSpotlight, tickerFeatures } from '../../data/features';
 
 // ─── PAIN POINTS → SOLUTIONS ───
 const problemSolutions = [
@@ -444,15 +297,12 @@ function FeatureCard({ feature, index }) {
             <div className="landing-feature-divider" />
             <div className="landing-feature-benefits">
               <h4 className="landing-feature-benefits-title">✓ What you get:</h4>
-              {feature.benefits.map((benefit, j) => (
+              {feature.features.map((f, j) => (
                 <div key={j} className="landing-feature-benefit">
-                  <span>{benefit}</span>
+                  <span>{f.title}</span>
+                  {f.comingSoon && <span className="landing-feature-coming-soon">Coming Soon</span>}
                 </div>
               ))}
-            </div>
-            <div className="landing-feature-use-case">
-              <h4 className="landing-feature-use-case-title">Real-life scenario:</h4>
-              <p>{feature.useCase}</p>
             </div>
           </div>
         </div>
@@ -462,14 +312,7 @@ function FeatureCard({ feature, index }) {
 }
 
 // ─── STACKING CARDS (deck that stacks as you scroll) ───
-// Curated "portfolio" of the core modules, shown as a sticky deck.
-const stackingFeatures = [
-  features[0], // Dashboard
-  features[1], // Grade Lab
-  features[2], // Resource Vault
-  features[3], // Campus Hub
-  features[4], // Community
-];
+// Feature-level highlights from src/data/features.js (stackingHighlights).
 
 function StackingCards({ items }) {
   return (
@@ -1198,13 +1041,13 @@ export default function LandingPage() {
             <div className="landing-badge pulse-badge"><Zap size={12} /><span>Everything You Need</span></div>
             <h2 className="landing-section-title">Powerful Features for <span className="landing-hero-highlight">Every Aspect</span> of Campus Life</h2>
             <p className="landing-section-desc">
-              Click on any feature to see exactly what you get — detailed benefits and real-life scenarios for each tool.
+              Open any module to see every tool inside — what's live today and what's coming soon.
             </p>
           </div>
         </ScrollReveal>
 
         <div className="landing-features-grid">
-          {features.map((feature, i) => (
+          {modules.map((feature, i) => (
             <FeatureCard key={i} feature={feature} index={i} />
           ))}
         </div>
@@ -1231,10 +1074,10 @@ export default function LandingPage() {
         <StickyContentSwitch />
 
         {/* ─── HORIZONTAL FEATURE ROLL (GSAP ScrollTrigger) ─── */}
-        <HorizontalFeatures items={features} />
+        <HorizontalFeatures items={tickerFeatures} />
 
         {/* ─── IMAGE TRAIL SHOWCASE (GSAP cursor trail) ─── */}
-        <ImageTrailShowcase items={features} />
+        <ImageTrailShowcase items={cursorSpotlight} />
       </Suspense>
 
       {/* ─── STACKING CARDS (sticky deck) ─── */}
@@ -1249,7 +1092,7 @@ export default function LandingPage() {
             </p>
           </div>
         </ScrollReveal>
-        <StackingCards items={stackingFeatures} />
+        <StackingCards items={stackingHighlights} />
       </section>
 
       {/* ─── THE AUSTWISE EFFECT ─── */}
