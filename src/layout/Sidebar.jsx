@@ -9,14 +9,13 @@ import {
   Library, FileText, FolderOpen, FileSpreadsheet,
   ChevronLeft, ChevronRight, Crown,
   NotebookPen, Coffee, Mic,
-  Zap, Home, Moon, CalendarDays
+  Zap, Home, Moon
 } from 'lucide-react';
 import './Sidebar.css';
 
 // Top nav — primary campus tools.
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/routine-templates', label: 'Routine Templates', icon: CalendarDays },
   { path: '/daily-life', label: 'Daily Life', icon: Home },
   { path: '/analytics', label: 'Grade Lab', icon: BarChart3 },
   { path: '/campus', label: 'InsideAUST', icon: MapPin },
