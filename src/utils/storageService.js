@@ -194,6 +194,15 @@ export async function writeDual(key, value, isShared = false) {
  *   const [canteenData, setCanteenData] = useState(() => loadSharedSync('aust-canteen-data', fallback));
  *   useEffect(() => { loadSharedAsync('aust-canteen-data', fallback).then(setCanteenData); }, []);
  */
+/** Read a per-user store value with localStorage-first caching (synchronous, for useState initializers). */
+export function loadUserSync(key, fallback = null) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw !== null) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  return fallback;
+}
+
 export function loadSharedSync(key, fallback = null) {
   try {
     const raw = localStorage.getItem(key);
@@ -237,6 +246,8 @@ const MIGRATION_KEYS = {
     'aust-transcript-templates',
     'aust-routine-templates',
     'aust-cover-page-form',
+    'aust-user-routine',
+    'aust-user-weekdays',
   ],
   sharedKeys: [
     'aust-marketplace-v1',
@@ -258,11 +269,15 @@ export async function runMigrationOnLogin(userId) {
   if (_migrationDone || !userId) return;
   _migrationDone = true;
 
-  // Migrate per-user keys
+  // Migrate per-user keys. Most are written under the bare key (server-first
+  // cache). Some older features wrote a `${key}-${userId}` variant (localStorage
+  // user-scoped keys) — pick that up too and push it to the server under the
+  // bare key so reads from any device agree on one canonical name.
   const userEntries = {};
   for (const key of MIGRATION_KEYS.userKeys) {
     try {
-      const raw = localStorage.getItem(key);
+      let raw = localStorage.getItem(key);
+      if (raw === null) raw = localStorage.getItem(`${key}-${userId}`);
       if (raw !== null) {
         userEntries[key] = JSON.parse(raw);
       }

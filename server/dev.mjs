@@ -108,7 +108,7 @@ import {
   deleteCredential,
   revealPassword,
 } from './passwordVaultDB.mjs';
-import { createWSServer, broadcastToAll, broadcastToUsers, getPresenceMap } from './wsServer.mjs';
+import { createWSServer, broadcastToAll, broadcastToUsers, broadcastToUser, getPresenceMap } from './wsServer.mjs';
 import {
   getUserStoreValue, setUserStoreValue, deleteUserStoreValue, listUserStoreKeys,
   getSharedStoreValue, setSharedStoreValue, deleteSharedStoreValue,
@@ -2293,6 +2293,8 @@ async function handleApiRequest(req, res) {
     try {
       const body = await readJsonBody(req);
       await setUserStoreValue(auth.id, key, body.value);
+      // Notify the user's OTHER open devices that this key changed in real time.
+      broadcastToUser(auth.id, { type: 'store-change', payload: { scope: 'user', key } });
       sendJson(res, 200, { success: true, key });
     } catch (err) {
       sendJson(res, 500, { success: false, error: err.message || 'Failed to write store.' });
@@ -2307,6 +2309,7 @@ async function handleApiRequest(req, res) {
     const key = decodeURIComponent(req.url.slice('/api/store/user/'.length));
     try {
       await deleteUserStoreValue(auth.id, key);
+      broadcastToUser(auth.id, { type: 'store-change', payload: { scope: 'user', key } });
       sendJson(res, 200, { success: true, key });
     } catch (err) {
       sendJson(res, 500, { success: false, error: err.message || 'Failed to delete store.' });

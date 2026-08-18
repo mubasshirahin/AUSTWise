@@ -626,7 +626,7 @@ function sendTo(ws, data) {
   }
 }
 
-function broadcastToUser(userId, data) {
+export function broadcastToUser(userId, data) {
   const clients = userClients.get(userId);
   if (!clients) return;
   for (const ws of clients) {
