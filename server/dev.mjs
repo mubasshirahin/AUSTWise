@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import http from 'node:http';
+import { execFile } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -56,6 +57,9 @@ import {
   saveMessage,
   getConversations,
   getThread,
+  deleteMessageById,
+  editMessageById,
+  addReaction,
   getSemesterResults,
   saveSemesterResult,
   listNotices,
@@ -453,10 +457,11 @@ const FEATURES = {
   dbConfig: false,   // set to true if DB_* vars are all present
 };
 
-// Check DB credential env vars
+// Check DB credential env vars. A single DATABASE_URL (Railway Postgres)
+// is enough; otherwise all four DB_* split vars must be present.
 const dbVarMap = { DB_SERVER: 'Server', DB_DATABASE: 'Database', DB_USER: 'User', DB_PASSWORD: 'Password' };
 const missingDbVars = Object.entries(dbVarMap).filter(([k]) => !process.env[k]).map(([, label]) => label);
-FEATURES.dbConfig = missingDbVars.length === 0;
+FEATURES.dbConfig = !!process.env.DATABASE_URL || missingDbVars.length === 0;
 
 function validateEnv() {
   const warnings = [];
@@ -506,13 +511,29 @@ function requireFeature(feature, res, label) {
   return true;
 }
 
+// Create the Prisma-managed tables (User, Routine, MarketplaceListing, …) by
+// running `prisma db push` once at boot. Idempotent, fire-and-forget.
+function ensurePrismaPush() {
+  if (!process.env.DATABASE_URL && !process.env.DB_SERVER) return;
+  execFile(
+    'npx',
+    ['prisma', 'db', 'push', '--accept-data-loss'],
+    { cwd: path.resolve(__dirname, '..'), windowsHide: true },
+    (err, _stdout, stderr) => {
+      if (err) console.warn('⚠️  prisma db push failed:', stderr || err.message);
+      else console.log('✅ Prisma tables ready (db push)');
+    }
+  );
+}
+
 // Auto-create database & tables on startup
 if (FEATURES.dbConfig) {
   initializeDatabase().then(() => {
     FEATURES.db = true;
-    console.log('✅ SQL Server connected & tables ready');
+    console.log('✅ PostgreSQL connected & tables ready');
+    ensurePrismaPush();
   }).catch(err => {
-    console.warn('⚠️  SQL Server init failed:', err.message);
+    console.warn('⚠️  PostgreSQL init failed:', err.message);
     console.warn('ℹ️  Using local JSON file-based database fallback.');
     FEATURES.db = true; // Enable database-backed features via JSON fallback
   }).finally(() => {
@@ -1540,7 +1561,7 @@ async function handleApiRequest(req, res) {
 
       // Check if already invited with this email
       const existing = await query(
-        'SELECT Id, Status FROM Invitations WHERE Email = @email',
+        'SELECT "Id", "Status" FROM "Invitations" WHERE "Email" = @email',
         { email: { value: email } }
       );
 
@@ -1560,7 +1581,7 @@ async function handleApiRequest(req, res) {
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
       await query(
-        `INSERT INTO Invitations (Email, Role, Token, Status, InvitedBy, ExpiresAt)
+        `INSERT INTO "Invitations" ("Email", "Role", "Token", "Status", "InvitedBy", "ExpiresAt")
          VALUES (@email, @role, @tokenHash, 'pending', @invitedBy, @expiresAt)`,
         {
           email: { value: email },
@@ -1609,14 +1630,14 @@ async function handleApiRequest(req, res) {
       const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get('limit') || '10')));
       const offset = (page - 1) * limit;
 
-      const countResult = await query('SELECT COUNT(*) AS total FROM Invitations');
+      const countResult = await query('SELECT COUNT(*)::int AS total FROM "Invitations"');
       const total = countResult.recordset[0].total;
 
       const result = await query(
-        `SELECT Id, Email, Role, Status, InvitedBy, CreatedAt, ExpiresAt, AcceptedAt
-         FROM Invitations
-         ORDER BY CreatedAt DESC
-         OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY`,
+        `SELECT "Id", "Email", "Role", "Status", "InvitedBy", "CreatedAt", "ExpiresAt", "AcceptedAt"
+         FROM "Invitations"
+         ORDER BY "CreatedAt" DESC
+         OFFSET @offset LIMIT @limit`,
         { offset: { type: sql.Int, value: offset }, limit: { type: sql.Int, value: limit } }
       );
 
@@ -1653,7 +1674,7 @@ async function handleApiRequest(req, res) {
       const crypto = await import('node:crypto');
       const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
       const result = await query(
-        `SELECT Id, Email, Role, Status, ExpiresAt FROM Invitations WHERE Token = @tokenHash`,
+        `SELECT "Id", "Email", "Role", "Status", "ExpiresAt" FROM "Invitations" WHERE "Token" = @tokenHash`,
         { tokenHash: { value: tokenHash } }
       );
 
@@ -1701,7 +1722,7 @@ async function handleApiRequest(req, res) {
       const crypto = await import('node:crypto');
       const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
       const result = await query(
-        `SELECT Id, Email, Role, Status, ExpiresAt FROM Invitations WHERE Token = @tokenHash`,
+        `SELECT "Id", "Email", "Role", "Status", "ExpiresAt" FROM "Invitations" WHERE "Token" = @tokenHash`,
         { tokenHash: { value: tokenHash } }
       );
 
@@ -1724,7 +1745,7 @@ async function handleApiRequest(req, res) {
 
       // Mark invitation as accepted
       await query(
-        `UPDATE Invitations SET Status = 'accepted', AcceptedAt = GETDATE() WHERE Id = @id`,
+        `UPDATE "Invitations" SET "Status" = 'accepted', "AcceptedAt" = NOW() WHERE "Id" = @id`,
         { id: { type: sql.Int, value: invite.Id } }
       );
 
@@ -2654,6 +2675,66 @@ async function handleApiRequest(req, res) {
         text: payload.text,
       });
       sendJson(res, 201, { success: true, message: msg });
+    } catch (error) {
+      sendJson(res, 400, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  // PUT /api/messages/:id — edit own message (ownership enforced)
+  if (req.url.startsWith('/api/messages/') && req.method === 'PUT') {
+    if (!requireFeature('db', res, 'Database connection')) return;
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    try {
+      const id = new URL(req.url, `http://${req.headers.host}`).pathname.split('/').pop();
+      const body = await readJsonBody(req);
+      const cleaned = String(body.text || '').trim().slice(0, 4000);
+      if (!cleaned) {
+        sendJson(res, 400, { success: false, error: 'Message text is required.' });
+        return;
+      }
+      const updated = await editMessageById(id, cleaned);
+      if (!updated || updated.fromId !== auth.id) {
+        sendJson(res, 403, { success: false, error: 'Not your message to edit.' });
+        return;
+      }
+      sendJson(res, 200, { success: true, message: updated });
+    } catch (error) {
+      sendJson(res, 400, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  // DELETE /api/messages/:id — soft-delete own message
+  if (req.url.startsWith('/api/messages/') && req.method === 'DELETE') {
+    if (!requireFeature('db', res, 'Database connection')) return;
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    try {
+      const id = new URL(req.url, `http://${req.headers.host}`).pathname.split('/').pop();
+      const removed = await deleteMessageById(id);
+      sendJson(res, 200, { success: true, message: removed });
+    } catch (error) {
+      sendJson(res, 400, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  // POST /api/messages/:id/reaction — toggle a reaction
+  if (req.url.startsWith('/api/messages/') && req.url.endsWith('/reaction') && req.method === 'POST') {
+    if (!requireFeature('db', res, 'Database connection')) return;
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    try {
+      const id = new URL(req.url, `http://${req.headers.host}`).pathname.split('/').slice(-2)[0];
+      const { emoji } = await readJsonBody(req);
+      if (!emoji) {
+        sendJson(res, 400, { success: false, error: 'Emoji is required.' });
+        return;
+      }
+      const reactions = await addReaction(id, auth.id, emoji);
+      sendJson(res, 200, { success: true, reactions });
     } catch (error) {
       sendJson(res, 400, { success: false, error: error.message });
     }
