@@ -27,7 +27,6 @@ BEGIN
     id    NVARCHAR(50) PRIMARY KEY,
     data  NVARCHAR(MAX) DEFAULT '{}'
   );
-  CREATE INDEX IX_RoleApplications_userId ON RoleApplications(CAST(JSON_VALUE(data, '$.userId') AS NVARCHAR(50)));
 END;
 `;
 

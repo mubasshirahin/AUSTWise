@@ -54,9 +54,10 @@ async function isDbAvailable() {
 async function ensureAuthTables() {
   if (_authTablesEnsured) return;
   try {
-    for (const stmt of AUTH_USERS_DDL.split(';').map((s) => s.trim()).filter(Boolean)) {
-      await query(stmt);
-    }
+    // Run the DDL as a single batch — the IF NOT EXISTS … BEGIN…END wrapper is
+    // already atomic. Splitting on ';' breaks the block apart and produces a
+    // dangling ')' fragment ("Incorrect syntax near ')'").
+    await query(AUTH_USERS_DDL);
     _authTablesEnsured = true;
   } catch (err) {
     console.warn('⚠️  userStore: could not create AuthUsers table:', err.message);
