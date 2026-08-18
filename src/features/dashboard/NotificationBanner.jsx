@@ -7,6 +7,7 @@ import {
   loadSettings,
   requestPermission,
   saveSettings,
+  saveSettingsToServer,
 } from '../../utils/notificationService';
 
 const DISMISSED_KEY = 'aust-notif-banner-dismissed';
@@ -35,7 +36,10 @@ export default function NotificationBanner() {
     setEnabling(true);
     const result = await requestPermission();
     if (result === 'granted') {
-      saveSettings({ enabled: true, notifyClass: true, notifyDeadline: true });
+      const next = { enabled: true, notifyClass: true, notifyDeadline: true };
+      saveSettings(next);
+      // Push to the account so other devices see the same prefs.
+      saveSettingsToServer(next);
       setDone(true);
     } else {
       handleDismiss();

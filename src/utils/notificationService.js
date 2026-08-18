@@ -1,5 +1,10 @@
 const STORAGE_KEY = 'aust-notifications-v1';
+const LAST_WRITE_KEY = 'aust-notifications-lastwrite-v1';
 const FIRED_KEY = 'aust-notifications-fired-v1';
+const SERVER_SETTINGS_URL = '/api/user/settings';
+
+// Exposed so other modules can react to localStorage writes in other tabs.
+export const SETTINGS_STORAGE_KEY = STORAGE_KEY;
 
 const defaultSettings = {
   enabled: false,
@@ -40,6 +45,60 @@ export function loadSettings() {
 
 export function saveSettings(settings) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...loadSettings(), ...settings }));
+  try { localStorage.setItem(LAST_WRITE_KEY, String(Date.now())); } catch { /* best-effort */ }
+}
+
+/** How long ago (ms) this device last changed settings locally, or null if
+ *  it never has. Used to avoid clobbering a fresh local edit with a poll. */
+export function getLocalWriteAge() {
+  try {
+    const t = Number(localStorage.getItem(LAST_WRITE_KEY));
+    return Number.isFinite(t) ? Date.now() - t : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Fetch this account's cross-device settings from the server (or null). */
+export async function fetchServerSettings() {
+  try {
+    const res = await fetch(SERVER_SETTINGS_URL);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data && data.success ? data.settings : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Best-effort push of the notification prefs to the server so other
+ *  devices on this account see the same settings. */
+export async function saveSettingsToServer(settings) {
+  try {
+    await fetch(SERVER_SETTINGS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notifications: settings }),
+    });
+  } catch {
+    // Best-effort — localStorage stays as the local cache.
+  }
+}
+
+/** Pull the account's notification prefs from the server and merge them into
+ *  localStorage so every device on this account sees the same settings.
+ *  Returns the merged settings, or null when the server had nothing (e.g.
+ *  not logged in / offline). */
+export async function hydrateSettingsFromServer() {
+  const server = await fetchServerSettings();
+  if (!server || !server.notifications) return null;
+  // If this device changed settings in the last few seconds, that change is
+  // about to be pushed to the server — don't let a poll clobber it.
+  const localAge = getLocalWriteAge();
+  if (localAge !== null && localAge < 5000) return null;
+  const merged = { ...loadSettings(), ...server.notifications };
+  saveSettings(merged);
+  return merged;
 }
 
 function loadFiredSet() {

@@ -5,19 +5,60 @@ import {
   requestPermission,
   loadSettings,
   saveSettings,
+  saveSettingsToServer,
+  hydrateSettingsFromServer,
+  SETTINGS_STORAGE_KEY,
   checkClassReminders,
   checkDeadlineReminders,
 } from '../utils/notificationService';
 import { deadlines } from '../data/mockData';
 
 const POLL_INTERVAL_MS = 60 * 1000;
+const SYNC_INTERVAL_MS = 20 * 1000;
 
 export function useNotifications(routine, weekDays) {
   const [permission, setPermission] = useState(() => getPermissionStatus());
   const [settings, setSettings] = useState(() => loadSettings());
   const intervalRef = useRef(null);
+  const syncIntervalRef = useRef(null);
 
   const supported = isNotificationSupported();
+
+  // Pull the account's server-side prefs so changes made on other devices
+  // (e.g. the laptop) show up here without a manual refresh.
+  const syncFromServer = useCallback(async () => {
+    const merged = await hydrateSettingsFromServer();
+    if (merged) setSettings(merged);
+  }, []);
+
+  useEffect(() => {
+    // Defer the initial pull a tick so the first render stays with the
+    // localStorage cache, then hydrate from the server right after.
+    const initialSync = setTimeout(syncFromServer, 0);
+    syncIntervalRef.current = setInterval(syncFromServer, SYNC_INTERVAL_MS);
+
+    // Re-sync when the tab regains focus / becomes visible again (mobile
+    // browsers throttle background timers, so this is what catches a change
+    // made on another device right after unlocking the phone).
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') syncFromServer();
+    };
+    const onFocus = () => syncFromServer();
+    // Another tab on the same browser wrote settings — pick them up instantly.
+    const onStorage = (e) => {
+      if (e.key === SETTINGS_STORAGE_KEY) setSettings(loadSettings());
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      clearTimeout(initialSync);
+      clearInterval(syncIntervalRef.current);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [syncFromServer]);
 
   const runChecks = useCallback(() => {
     const current = loadSettings();
@@ -47,6 +88,7 @@ export function useNotifications(routine, weekDays) {
       const next = { ...loadSettings(), enabled: true };
       saveSettings(next);
       setSettings(next);
+      saveSettingsToServer(next);
     }
     return result;
   }, [supported]);
@@ -55,12 +97,14 @@ export function useNotifications(routine, weekDays) {
     const next = { ...loadSettings(), enabled: false };
     saveSettings(next);
     setSettings(next);
+    saveSettingsToServer(next);
   }, []);
 
   const updateSetting = useCallback((key, value) => {
     const next = { ...loadSettings(), [key]: value };
     saveSettings(next);
     setSettings(next);
+    saveSettingsToServer(next);
   }, []);
 
   return { supported, permission, settings, enable, disable, updateSetting };

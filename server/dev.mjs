@@ -311,6 +311,43 @@ function isSameSiteRequest(req) {
   return false;
 }
 
+// Per-account settings synced across devices (notification prefs, Telegram
+// chat id, library tracking). Stored on the user record — same pattern as the
+// privacy toggles — so a change made on one device shows up on all of them.
+const DEFAULT_USER_SETTINGS = {
+  notifications: {
+    enabled: false,
+    classReminderMins: 10,
+    deadlineReminderHours: 24,
+    notifyClass: true,
+    notifyDeadline: true,
+    notifyNotices: false,
+  },
+  telegram: { chatId: '', enabled: false },
+  libraryTracking: false,
+};
+
+function normalizeUserSettings(raw) {
+  const s = raw && typeof raw === 'object' ? raw : {};
+  const notif = { ...DEFAULT_USER_SETTINGS.notifications, ...(s.notifications || {}) };
+  const mins = Number(notif.classReminderMins);
+  const hours = Number(notif.deadlineReminderHours);
+  notif.classReminderMins = Number.isFinite(mins) ? Math.min(30, Math.max(5, mins)) : 10;
+  notif.deadlineReminderHours = Number.isFinite(hours) ? Math.min(48, Math.max(6, hours)) : 24;
+  notif.enabled = notif.enabled === true;
+  notif.notifyClass = notif.notifyClass !== false;
+  notif.notifyDeadline = notif.notifyDeadline !== false;
+  notif.notifyNotices = notif.notifyNotices === true;
+  const telegram = { ...DEFAULT_USER_SETTINGS.telegram, ...(s.telegram || {}) };
+  telegram.chatId = typeof telegram.chatId === 'string' ? telegram.chatId.trim().slice(0, 64) : '';
+  telegram.enabled = telegram.enabled === true;
+  return {
+    notifications: notif,
+    telegram,
+    libraryTracking: s.libraryTracking === true,
+  };
+}
+
 /** Minimal, safe security headers. CSP/HSTS are opt-in via env so we don't
  *  break the inline-styles + external-embed heavy SPA by default. */
 function applySecurityHeaders(res) {
@@ -892,6 +929,7 @@ async function handleApiRequest(req, res) {
         }
       }
       const updated = await updateUserProfile(userId, patch, { allowRole: true });
+      broadcastToAll({ type: 'profile-update', payload: { userId, fields: Object.keys(patch) } });
       sendJson(res, 200, { success: true, user: updated });
     } catch (error) {
       sendJson(res, 500, { success: false, error: error.message || 'Failed to update user.' });
@@ -2160,9 +2198,65 @@ async function handleApiRequest(req, res) {
         showAttendance: typeof body.showAttendance === 'boolean' ? body.showAttendance : (user.privacy?.showAttendance === true),
       };
       const updated = await updateUserProfile(auth.id, { privacy: next });
+      broadcastToAll({ type: 'profile-update', payload: { userId: auth.id, fields: ['privacy'] } });
       sendJson(res, 200, { success: true, privacy: next, user: updated });
     } catch (error) {
       sendJson(res, 500, { success: false, error: error.message || 'Failed to update privacy settings.' });
+    }
+    return;
+  }
+
+  // GET /api/user/settings — the viewer's cross-device settings (notification
+  // prefs, Telegram chat id/status, library tracking). Stored on the user
+  // record; Telegram registration status is recomputed from the Telegram store.
+  if (req.url === '/api/user/settings' && req.method === 'GET') {
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    try {
+      const user = await getUserById(auth.id);
+      if (!user) {
+        sendJson(res, 404, { success: false, error: 'User not found.' });
+        return;
+      }
+      const settings = normalizeUserSettings(user.settings);
+      let registered = false;
+      if (settings.telegram.chatId) {
+        try { registered = await isRegistered(settings.telegram.chatId); } catch { /* store unavailable */ }
+      }
+      sendJson(res, 200, { success: true, settings: { ...settings, telegram: { ...settings.telegram, registered } } });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to load settings.' });
+    }
+    return;
+  }
+
+  // POST /api/user/settings — save the viewer's cross-device settings.
+  // Accepts partial payloads; merged over the stored settings.
+  if (req.url === '/api/user/settings' && req.method === 'POST') {
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    try {
+      const body = await readJsonBody(req);
+      const user = await getUserById(auth.id);
+      if (!user) {
+        sendJson(res, 404, { success: false, error: 'User not found.' });
+        return;
+      }
+      const current = normalizeUserSettings(user.settings);
+      const next = normalizeUserSettings({
+        notifications: { ...current.notifications, ...(body.notifications || {}) },
+        telegram: { ...current.telegram, ...(body.telegram || {}) },
+        libraryTracking: typeof body.libraryTracking === 'boolean' ? body.libraryTracking : current.libraryTracking,
+      });
+      await updateUserProfile(auth.id, { settings: next });
+      broadcastToAll({ type: 'profile-update', payload: { userId: auth.id, fields: ['settings'] } });
+      let registered = false;
+      if (next.telegram.chatId) {
+        try { registered = await isRegistered(next.telegram.chatId); } catch { /* store unavailable */ }
+      }
+      sendJson(res, 200, { success: true, settings: { ...next, telegram: { ...next.telegram, registered } } });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to save settings.' });
     }
     return;
   }
@@ -2337,6 +2431,7 @@ async function handleApiRequest(req, res) {
       const payload = await readJsonBody(req);
       payload.contributorId = auth.id;
       const item = await addMarketplaceListing(payload);
+      broadcastToAll({ type: 'marketplace-listing', payload: { action: 'create', item } });
       sendJson(res, 201, { success: true, item });
     } catch (error) {
       sendJson(res, 400, { success: false, error: error.message });
@@ -2351,6 +2446,7 @@ async function handleApiRequest(req, res) {
       if (!auth) return;
       const id = new URL(req.url, `http://${req.headers.host}`).pathname.split('/').pop();
       await deleteMarketplaceListing(id, auth.id, auth.role === 'admin' || auth.role === 'moderator');
+      broadcastToAll({ type: 'marketplace-listing', payload: { action: 'delete', id } });
       sendJson(res, 200, { success: true });
     } catch (error) {
       sendJson(res, error.message === 'Forbidden' ? 403 : 404, { success: false, error: error.message });

@@ -20,6 +20,8 @@ const PING_INTERVAL = 30000;
  * @param {function} options.onPresence - Called with { userId, status, lastSeenAt } when a user's presence changes
  * @param {function} options.onPresenceSnapshot - Called with { presence } object map on connect
  * @param {function} options.onConnectionChange - Called with boolean (connected/disconnected)
+ * @param {function} options.onMarketplaceListing - Called with { action: 'create'|'delete', item?, id? } when a listing changes
+ * @param {function} options.onProfileUpdate - Called with { userId, fields } when a user profile is updated
  */
 export default function useWebSocket(userId, options = {}) {
   const wsRef = useRef(null);
@@ -40,7 +42,7 @@ export default function useWebSocket(userId, options = {}) {
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
-    const wsUrl = `${protocol}//${host}`;
+    const wsUrl = `${protocol}//${host}/socket.io/`;
 
     try {
       const ws = new WebSocket(wsUrl);
@@ -137,6 +139,14 @@ export default function useWebSocket(userId, options = {}) {
 
             case 'presence-snapshot':
               opts.onPresenceSnapshot?.(payload.presence || {});
+              break;
+
+            case 'marketplace-listing':
+              opts.onMarketplaceListing?.(payload);
+              break;
+
+            case 'profile-update':
+              opts.onProfileUpdate?.(payload);
               break;
 
             case 'error':
