@@ -1,6 +1,12 @@
 /**
- * File-based user store — replaces client-side localStorage auth.
- * Passwords are hashed with bcrypt. Users persist in server/users.json.
+ * User store — dual-mode like storeDB.mjs / passwordVaultDB.mjs.
+ *   SQL Server (via db.mjs) when the database is configured,
+ *   else the legacy JSON file (server/users.json) as fallback.
+ *
+ * Accounts previously lived ONLY in users.json, which is gitignored so it is
+ * ephemeral on Railway — a redeploy wiped every account. SQL keeps accounts
+ * persistent across redeploys so the same email always resolves to the same
+ * user on every device.
  */
 import { readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -8,10 +14,67 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
+import { query, sql } from './db.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DB_PATH = path.join(__dirname, 'users.json');
 const BCRYPT_ROUNDS = 10;
+
+// ── SQL table (AuthUsers) ────────────────────────────────────────────────────
+
+const AUTH_USERS_DDL = `
+IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'AuthUsers')
+BEGIN
+  CREATE TABLE AuthUsers (
+    id              NVARCHAR(50) PRIMARY KEY,
+    awid            NVARCHAR(50) NOT NULL,
+    email           NVARCHAR(200) NOT NULL UNIQUE,
+    name            NVARCHAR(200) NOT NULL DEFAULT '',
+    data            NVARCHAR(MAX) DEFAULT '{}'
+  );
+  CREATE INDEX IX_AuthUsers_email ON AuthUsers(email);
+  CREATE INDEX IX_AuthUsers_awid ON AuthUsers(awid);
+END;
+`;
+
+let _authTablesEnsured = false;
+let _dbAvailable = null; // null = untested → true/false
+
+async function isDbAvailable() {
+  if (_dbAvailable !== null) return _dbAvailable;
+  try {
+    await query('SELECT 1');
+    _dbAvailable = true;
+  } catch {
+    _dbAvailable = false;
+  }
+  return _dbAvailable;
+}
+
+async function ensureAuthTables() {
+  if (_authTablesEnsured) return;
+  try {
+    for (const stmt of AUTH_USERS_DDL.split(';').map((s) => s.trim()).filter(Boolean)) {
+      await query(stmt);
+    }
+    _authTablesEnsured = true;
+  } catch (err) {
+    console.warn('⚠️  userStore: could not create AuthUsers table:', err.message);
+  }
+}
+
+// The `data` column stores the FULL user object (minus `id`/`email`, which are
+// columns) so this module keeps byte-compatible shapes with the old JSON format.
+function toUserRow(user) {
+  const { id, email, ...rest } = user;
+  return { id, email, data: JSON.stringify({ ...rest, id, email }) };
+}
+
+function fromUserRow(row) {
+  try { return JSON.parse(row.data); } catch { return null; }
+}
+
+// ── Data access ──────────────────────────────────────────────────────────────
 
 /** Every role the system understands (self-registration is always 'student'). */
 export const VALID_ROLES = ['student', 'faculty', 'alumni', 'admin', 'cr', 'sr', 'senior', 'moderator', 'vp', 'gs'];
@@ -29,6 +92,30 @@ const NAME_POOL = [
 ];
 
 export async function readUsers() {
+  if (await isDbAvailable()) {
+    await ensureAuthTables();
+    try {
+      const rows = await query('SELECT id, email, data FROM AuthUsers');
+      const users = rows.map(fromUserRow).filter(Boolean);
+      // One-time migration: if the JSON file has rows and SQL is empty, push
+      // the file's accounts up so nothing the user created before survives on
+      // the persistent store.
+      if (users.length === 0 && existsSync(DB_PATH)) {
+        try {
+          const legacy = JSON.parse(await readFile(DB_PATH, 'utf-8'));
+          if (Array.isArray(legacy) && legacy.length) {
+            for (const user of legacy) {
+              await upsertUserRow(toUserRow(user));
+            }
+            users.push(...legacy);
+          }
+        } catch { /* invalid/absent file — ignore */ }
+      }
+      return users;
+    } catch (err) {
+      console.warn('⚠️  userStore: SQL read failed, using JSON fallback:', err.message);
+    }
+  }
   try {
     if (!existsSync(DB_PATH)) return [];
     const raw = await readFile(DB_PATH, 'utf-8');
@@ -36,7 +123,46 @@ export async function readUsers() {
   } catch { return []; }
 }
 
+async function upsertUserRow(row) {
+  await query(`
+    MERGE AuthUsers AS target
+    USING (SELECT @id AS id, @email AS email, @data AS data) AS source
+    ON target.id = source.id
+    WHEN MATCHED THEN UPDATE SET email = source.email, data = source.data
+    WHEN NOT MATCHED THEN INSERT (id, awid, email, data)
+      VALUES (source.id, COALESCE(JSON_VALUE(source.data, '$.awid'), ''), source.email, source.data);
+  `, [
+    { name: 'id', type: sql.NVarChar(50), value: row.id },
+    { name: 'email', type: sql.NVarChar(200), value: row.email },
+    { name: 'data', type: sql.NVarChar(-1), value: row.data },
+  ]);
+}
+
+async function deleteUserRow(id) {
+  if (await isDbAvailable()) {
+    await ensureAuthTables();
+    try {
+      await query('DELETE FROM AuthUsers WHERE id = @id',
+        [{ name: 'id', type: sql.NVarChar(50), value: id }]);
+    } catch (err) {
+      console.warn('⚠️  userStore: SQL delete failed:', err.message);
+    }
+  }
+}
+
 async function writeUsers(users) {
+  // Fire-and-forget SQL write when possible; always refresh the JSON file so
+  // offline/local fallback stays coherent.
+  if (await isDbAvailable()) {
+    await ensureAuthTables();
+    try {
+      for (const user of users) {
+        await upsertUserRow(toUserRow(user));
+      }
+    } catch (err) {
+      console.warn('⚠️  userStore: SQL write failed, writing JSON only:', err.message);
+    }
+  }
   await writeFile(DB_PATH, JSON.stringify(users, null, 2));
 }
 
@@ -782,6 +908,7 @@ export async function deleteUserById(id) {
   const filtered = users.filter(u => u.id !== id);
   if (filtered.length === users.length) return false;
   await writeUsers(filtered);
+  await deleteUserRow(id);
   return true;
 }
 

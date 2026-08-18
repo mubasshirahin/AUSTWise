@@ -1,14 +1,19 @@
 /**
- * Vault Notes — JSON-based metadata storage (mirrors telegramDB.mjs pattern).
+ * Vault Notes — metadata store, dual-mode like storeDB.mjs.
+ *   SQL Server (via db.mjs) when configured, else the legacy JSON file
+ *   (server/vaultNotes.json) as fallback.
+ *
  * Each uploaded file gets a record with: id, filename, originalName, uploader,
  * course, department, semester, size, mimeType, uploadedAt.
  *
- * Files live on disk under uploads/ — this module only manages metadata.
+ * Files live on disk under uploads/ — this module only manages metadata
+ * (records persist to SQL so they survive Railway redeploys).
  */
 import { readFile, writeFile, mkdir, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { query, sql } from './db.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DB_PATH = path.join(__dirname, 'vaultNotes.json');
@@ -44,7 +49,92 @@ export function verifyMimeType(buffer, mimeType) {
 
 export { ALLOWED_TYPES, MAX_SIZE_BYTES, UPLOADS_DIR };
 
+// ── SQL table ────────────────────────────────────────────────────────────────
+
+const VAULT_NOTES_DDL = `
+IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'VaultNotes')
+BEGIN
+  CREATE TABLE VaultNotes (
+    id   NVARCHAR(100) PRIMARY KEY,
+    data NVARCHAR(MAX) DEFAULT '{}'
+  );
+END;
+`;
+
+let _tablesEnsured = false;
+let _dbAvailable = null;
+
+async function isDbAvailable() {
+  if (_dbAvailable !== null) return _dbAvailable;
+  try {
+    await query('SELECT 1');
+    _dbAvailable = true;
+  } catch {
+    _dbAvailable = false;
+  }
+  return _dbAvailable;
+}
+
+async function ensureTables() {
+  if (_tablesEnsured) return;
+  try {
+    for (const stmt of VAULT_NOTES_DDL.split(';').map((s) => s.trim()).filter(Boolean)) {
+      await query(stmt);
+    }
+    _tablesEnsured = true;
+  } catch (err) {
+    console.warn('⚠️  vaultNotesDB: could not create VaultNotes table:', err.message);
+  }
+}
+
+async function readNotesFromDb() {
+  await ensureTables();
+  const rows = await query('SELECT data FROM VaultNotes');
+  return rows.map((r) => {
+    try { return JSON.parse(r.data); } catch { return null; }
+  }).filter(Boolean);
+}
+
+async function upsertNoteRow(note) {
+  const data = JSON.stringify(note);
+  await query(`
+    MERGE VaultNotes AS target
+    USING (SELECT @id AS id, @data AS data) AS source
+    ON target.id = source.id
+    WHEN MATCHED THEN UPDATE SET data = source.data
+    WHEN NOT MATCHED THEN INSERT (id, data) VALUES (source.id, source.data);
+  `, [
+    { name: 'id', type: sql.NVarChar(100), value: note.id },
+    { name: 'data', type: sql.NVarChar(-1), value: data },
+  ]);
+}
+
+async function deleteNoteRow(id) {
+  await query('DELETE FROM VaultNotes WHERE id = @id',
+    [{ name: 'id', type: sql.NVarChar(100), value: id }]);
+}
+
+// ── Persistent read (SQL-first with JSON fallback) ───────────────────────────
+
 async function readNotes() {
+  if (await isDbAvailable()) {
+    try {
+      const notes = await readNotesFromDb();
+      // One-time migration from the JSON file if SQL is empty.
+      if (notes.length === 0) {
+        try {
+          const legacy = JSON.parse(await readFile(DB_PATH, 'utf-8'));
+          if (Array.isArray(legacy) && legacy.length) {
+            for (const n of legacy) await upsertNoteRow(n);
+            return legacy;
+          }
+        } catch { /* invalid/absent file — ignore */ }
+      }
+      return notes;
+    } catch (err) {
+      console.warn('⚠️  vaultNotesDB: SQL read failed, using JSON fallback:', err.message);
+    }
+  }
   try {
     if (!existsSync(DB_PATH)) return [];
     const raw = await readFile(DB_PATH, 'utf-8');
@@ -53,6 +143,13 @@ async function readNotes() {
 }
 
 async function writeNotes(notes) {
+  if (await isDbAvailable()) {
+    try {
+      for (const n of notes) await upsertNoteRow(n);
+    } catch (err) {
+      console.warn('⚠️  vaultNotesDB: SQL write failed, writing JSON only:', err.message);
+    }
+  }
   await writeFile(DB_PATH, JSON.stringify(notes, null, 2));
 }
 
@@ -127,5 +224,10 @@ export async function deleteNoteById(id, uploaderId, isAdmin = false) {
   // Remove metadata
   notes.splice(idx, 1);
   await writeNotes(notes);
+  if (await isDbAvailable()) {
+    try { await deleteNoteRow(id); } catch (err) {
+      console.warn('⚠️  vaultNotesDB: SQL delete failed:', err.message);
+    }
+  }
   return { deleted: true, filename: note.filename };
 }
