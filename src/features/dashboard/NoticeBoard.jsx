@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { BellRing, Pin, ChevronDown, ChevronUp, Sparkles, Plus, X, Trash2, UserRound } from 'lucide-react';
 import { notices } from '../../data/mockData';
