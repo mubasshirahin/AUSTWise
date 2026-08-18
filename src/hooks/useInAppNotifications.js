@@ -11,6 +11,7 @@ import {
   clearAllNotifications,
   showNativeNotification,
 } from '../utils/inAppNotifications';
+import { loadSharedSync } from '../utils/storageService';
 import { getAllRoleApplications } from '../utils/authStorage';
 
 const POLL_MS = 5000;
@@ -29,8 +30,8 @@ export function useInAppNotifications(user) {
 
   const runSeed = useCallback(() => {
     try {
-      const storedNotices = localStorage.getItem('aust-notices');
-      if (storedNotices) seedFromNotices(JSON.parse(storedNotices));
+      const storedNotices = loadSharedSync('aust-notices');
+      if (storedNotices) seedFromNotices(storedNotices);
     } catch { /* ignore */ }
 
     try {

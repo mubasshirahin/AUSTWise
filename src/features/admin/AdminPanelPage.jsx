@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Shield, BellRing, Coffee, Activity, Users, Trash2, Plus, AlertCircle, Eye, Edit3, Search, X, Save, CheckCircle2, XCircle, ClipboardList, CalendarDays, Mic, CalendarClock, Ban } from 'lucide-react';
 import { notices, getAuditoriumEvent, setAuditoriumEvent, defaultAuditoriumEvent } from '../../data/mockData';
+import { loadSharedSync, loadSharedAsync, saveShared } from '../../utils/storageService';
 import { getRoleLabel, getRoleBadgeClass, getAllAccounts, reviewRoleApplication, resetAllLocalData, getCurrentUserId } from '../../utils/authStorage';
 import { sendMessage } from '../../utils/messageStorage';
 import RoutineTemplatesPanel from './RoutineTemplatesPanel';
@@ -52,11 +53,9 @@ export default function AdminPanelPage() {
     navigate(paths[tab] || '/admin');
   };
 
-  // Notices State — lazy-initialized from localStorage
-  const [noticesList, setNoticesList] = useState(() => {
-    const stored = localStorage.getItem('aust-notices');
-    return stored ? JSON.parse(stored) : notices;
-  });
+  // Notices State — lazy-initialized from localStorage, synced from server
+  const [noticesList, setNoticesList] = useState(() => loadSharedSync('aust-notices', notices));
+  useEffect(() => { loadSharedAsync('aust-notices', notices).then(setNoticesList); }, []);
   const [noticeForm, setNoticeForm] = useState({
     title: '',
     category: 'Admin',
@@ -64,16 +63,10 @@ export default function AdminPanelPage() {
     content: ''
   });
 
-  // Canteen State — lazy-initialized from localStorage
-  const [canteenInfo, setCanteenInfo] = useState(() => {
-    const stored = localStorage.getItem('aust-canteen-data');
-    return stored ? JSON.parse(stored) : {
-      status: 'closed',
-      crowdLevel: 0,
-      hours: '8:00 AM - 7:00 PM',
-      menu: []
-    };
-  });
+  // Canteen State — lazy-initialized from localStorage, synced from server
+  const defaultCanteen = { status: 'closed', crowdLevel: 0, hours: '8:00 AM - 7:00 PM', menu: [] };
+  const [canteenInfo, setCanteenInfo] = useState(() => loadSharedSync('aust-canteen-data', defaultCanteen));
+  useEffect(() => { loadSharedAsync('aust-canteen-data', defaultCanteen).then(setCanteenInfo); }, []);
 
   // Canteen food item form
   const [foodForm, setFoodForm] = useState({
@@ -84,15 +77,10 @@ export default function AdminPanelPage() {
     available: true
   });
 
-  // Library State — lazy-initialized from localStorage
-  const [libraryInfo, setLibraryInfo] = useState(() => {
-    const stored = localStorage.getItem('aust-library-data');
-    return stored ? JSON.parse(stored) : {
-      totalSeats: 120,
-      occupied: 0,
-      peakHours: []
-    };
-  });
+  // Library State — lazy-initialized from localStorage, synced from server
+  const defaultLibrary = { totalSeats: 120, occupied: 0, peakHours: [] };
+  const [libraryInfo, setLibraryInfo] = useState(() => loadSharedSync('aust-library-data', defaultLibrary));
+  useEffect(() => { loadSharedAsync('aust-library-data', defaultLibrary).then(setLibraryInfo); }, []);
 
   // User Accounts State — lazy-initialized from localStorage
   const [accounts, setAccounts] = useState(() => getAllAccounts());
@@ -174,7 +162,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
   // Save Notices
   const saveNotices = (newList) => {
     setNoticesList(newList);
-    localStorage.setItem('aust-notices', JSON.stringify(newList));
+    saveShared('aust-notices', newList);
   };
 
   // Add Notice
@@ -209,7 +197,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
   const handleUpdateCanteen = (field, value) => {
     const updated = { ...canteenInfo, [field]: value };
     setCanteenInfo(updated);
-    localStorage.setItem('aust-canteen-data', JSON.stringify(updated));
+    saveShared('aust-canteen-data', updated);
   };
 
   // Add a food item to the canteen menu
@@ -230,7 +218,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
 
     const updated = { ...canteenInfo, menu: [...(canteenInfo.menu || []), newItem] };
     setCanteenInfo(updated);
-    localStorage.setItem('aust-canteen-data', JSON.stringify(updated));
+    saveShared('aust-canteen-data', updated);
     setFoodForm({ name: '', category: 'Meals', price: '', popular: false, available: true });
   };
 
@@ -238,7 +226,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
   const handleDeleteFood = (id) => {
     const updated = { ...canteenInfo, menu: (canteenInfo.menu || []).filter(item => item.id !== id) };
     setCanteenInfo(updated);
-    localStorage.setItem('aust-canteen-data', JSON.stringify(updated));
+    saveShared('aust-canteen-data', updated);
   };
 
   // Toggle a food item's stock availability
@@ -250,7 +238,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
       )
     };
     setCanteenInfo(updated);
-    localStorage.setItem('aust-canteen-data', JSON.stringify(updated));
+    saveShared('aust-canteen-data', updated);
   };
 
   // Update Library Occupied
@@ -258,7 +246,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
     const occupiedVal = Math.min(Math.max(0, Number(value)), libraryInfo.totalSeats);
     const updated = { ...libraryInfo, occupied: occupiedVal };
     setLibraryInfo(updated);
-    localStorage.setItem('aust-library-data', JSON.stringify(updated));
+    saveShared('aust-library-data', updated);
   };
 
   // Delete Account (server-side — localStorage is just a mirror)
@@ -1020,7 +1008,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                       const limit = Math.max(0, Number(e.target.value));
                       const updated = { ...libraryInfo, totalSeats: limit, occupied: Math.min(libraryInfo.occupied, limit) };
                       setLibraryInfo(updated);
-                      localStorage.setItem('aust-library-data', JSON.stringify(updated));
+                      saveShared('aust-library-data', updated);
                     }}
                     className="input"
                   />

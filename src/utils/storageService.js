@@ -183,3 +183,35 @@ export async function writeDual(key, value, isShared = false) {
     await userStore.set(key, value);
   }
 }
+
+// ── React-compatible async storage ───────────────────────────────────────────
+
+/**
+ * Read a shared store value with localStorage-first caching.
+ * Returns { data, loading } — call from useState initializer + useEffect.
+ *
+ * Usage:
+ *   const [canteenData, setCanteenData] = useState(() => loadSharedSync('aust-canteen-data', fallback));
+ *   useEffect(() => { loadSharedAsync('aust-canteen-data', fallback).then(setCanteenData); }, []);
+ */
+export function loadSharedSync(key, fallback = null) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw !== null) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  return fallback;
+}
+
+export async function loadSharedAsync(key, fallback = null) {
+  const serverValue = await sharedStore.get(key);
+  if (serverValue !== null) {
+    try { localStorage.setItem(key, JSON.stringify(serverValue)); } catch { /* ignore */ }
+    return serverValue;
+  }
+  return fallback;
+}
+
+export async function saveShared(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
+  await sharedStore.set(key, value);
+}

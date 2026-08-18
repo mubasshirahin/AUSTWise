@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Coffee, Flame, Star, MessageSquare, AlertTriangle, Plus, X, Info, MoreVertical, Check, Search, Trash2 } from 'lucide-react';
 import { canteenData, currentDayOfWeek } from '../../data/mockData';
+import { loadSharedSync, loadSharedAsync, saveShared } from '../../utils/storageService';
 import {
   getReviewSummary,
   getReviewsForFood,
@@ -281,14 +282,8 @@ export default function CanteenMenu() {
   const [activeCategory, setActiveCategory] = useState('All');
   const [menuSearch, setMenuSearch] = useState('');
   const [priceFilter, setPriceFilter] = useState('all');
-  const [canteenInfo, setCanteenInfo] = useState(() => {
-    try {
-      const stored = localStorage.getItem('aust-canteen-data');
-      return stored ? JSON.parse(stored) : canteenData;
-    } catch {
-      return canteenData;
-    }
-  });
+  const [canteenInfo, setCanteenInfo] = useState(() => loadSharedSync('aust-canteen-data', canteenData));
+  useEffect(() => { loadSharedAsync('aust-canteen-data', canteenData).then(setCanteenInfo); }, []);
   const [showAddForm, setShowAddForm] = useState(false);
   const [addForm, setAddForm] = useState({ name: '', category: 'Meals', price: '' });
   const [showCrowdInfo, setShowCrowdInfo] = useState(false);
@@ -368,7 +363,7 @@ export default function CanteenMenu() {
 
     const updated = { ...canteenInfo, menu: [...(canteenInfo.menu || []), newItem] };
     setCanteenInfo(updated);
-    localStorage.setItem('aust-canteen-data', JSON.stringify(updated));
+    saveShared('aust-canteen-data', updated);
     setAddForm({ name: '', category: 'Meals', price: '' });
     setShowAddForm(false);
   };
@@ -379,7 +374,7 @@ export default function CanteenMenu() {
       menu: (canteenInfo.menu || []).filter(item => item !== food),
     };
     setCanteenInfo(updated);
-    localStorage.setItem('aust-canteen-data', JSON.stringify(updated));
+    saveShared('aust-canteen-data', updated);
   };
 
   return (

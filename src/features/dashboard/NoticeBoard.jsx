@@ -4,6 +4,7 @@ import { BellRing, Pin, ChevronDown, ChevronUp, Sparkles, Plus, X, Trash2, UserR
 import { notices } from '../../data/mockData';
 import { useAuth } from '../../context/AuthContext';
 import useWebSocket from '../../hooks/useWebSocket';
+import { loadSharedSync, loadSharedAsync, saveShared } from '../../utils/storageService';
 import { addNotification, makeNotifId, showNativeNotification, removeNotificationById, removeNotificationsByTitle } from '../../utils/inAppNotifications';
 
 const CRSR_KEY = 'aust-cr-sr-notices';
@@ -34,14 +35,8 @@ export default function NoticeBoard() {
     }, []),
   });
 
-  const [adminNotices] = useState(() => {
-    try {
-      const stored = localStorage.getItem('aust-notices');
-      return stored ? JSON.parse(stored) : notices;
-    } catch {
-      return notices;
-    }
-  });
+  const [adminNotices, setAdminNotices] = useState(() => loadSharedSync('aust-notices', notices));
+  useEffect(() => { loadSharedAsync('aust-notices', notices).then(setAdminNotices); }, []);
 
   const [crsrNotices, setCrsrNotices] = useState(() => {
     try {
