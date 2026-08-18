@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { HelpCircle, Plus, X, MapPin, Upload, Trash2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import useWebSocket from '../../hooks/useWebSocket';
 import {
   addLostFoundItem,
   claimLostFoundItem,
@@ -62,7 +63,12 @@ export default function LostAndFound() {
   const fileInputRef = useRef(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const refresh = () => setItems(listLostFoundItems());
+  const refresh = useCallback(() => setItems(listLostFoundItems()), []);
+
+  // Real-time: when another device adds/removes a listing, refresh the list
+  useWebSocket(user?.id || null, {
+    onMarketplaceListing: useCallback(() => refresh(), [refresh]),
+  });
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];

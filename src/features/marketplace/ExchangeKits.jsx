@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { ShoppingCart, Plus, X, Upload, Trash2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import useWebSocket from '../../hooks/useWebSocket';
 import {
   addExchangeItem,
   copyContact,
@@ -64,7 +65,12 @@ export default function ExchangeKits() {
   const fileInputRef = useRef(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const refresh = () => setItems(listExchangeItems());
+  const refresh = useCallback(() => setItems(listExchangeItems()), []);
+
+  // Real-time: when another device adds/removes a listing, refresh the list
+  useWebSocket(user?.id || null, {
+    onMarketplaceListing: useCallback(() => refresh(), [refresh]),
+  });
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];

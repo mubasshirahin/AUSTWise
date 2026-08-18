@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Home, Plus, MapPin, X, Upload, Trash2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import useWebSocket from '../../hooks/useWebSocket';
 import {
   addToLetListing,
   copyContact,
@@ -69,7 +70,12 @@ export default function ToLetListings() {
   const fileInputRef = useRef(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const refresh = () => setListings(listToLetListings());
+  const refresh = useCallback(() => setListings(listToLetListings()), []);
+
+  // Real-time: when another device adds/removes a listing, refresh the list
+  useWebSocket(user?.id || null, {
+    onMarketplaceListing: useCallback(() => refresh(), [refresh]),
+  });
 
   const toggleAmenity = (amenity) => {
     setForm((current) => ({
