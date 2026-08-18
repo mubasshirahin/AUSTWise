@@ -6,6 +6,7 @@ import {
   updateAccountProfile,
   getAllAccounts,
 } from '../utils/authStorage';
+import { runMigrationOnLogin } from '../utils/storageService';
 
 const AuthContext = createContext();
 const userStorageKey = 'aust-user-profile';
@@ -82,6 +83,8 @@ export function AuthProvider({ children }) {
           const hydrated = hydrateUser(data.user);
           setSessionUser(hydrated);
           localStorage.setItem(userStorageKey, JSON.stringify(hydrated));
+          // Sync localStorage → server on first load after login
+          runMigrationOnLogin(data.user.id);
         } else {
           // Server says not authenticated — keep the cached session (login
           // writes it) so the app doesn't log the user out on every reload
@@ -162,6 +165,7 @@ export function AuthProvider({ children }) {
     const hydrated = hydrateUser(data.user);
     setSessionUser(hydrated);
     localStorage.setItem(userStorageKey, JSON.stringify(hydrated));
+    runMigrationOnLogin(data.user.id);
     return hydrated;
   };
 
@@ -200,6 +204,7 @@ export function AuthProvider({ children }) {
       });
       localStorage.setItem('aust-auth-accounts-v1', JSON.stringify(accounts));
     } catch { /* best effort */ }
+    runMigrationOnLogin(data.user.id);
     return hydrated;
   };
 

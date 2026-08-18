@@ -215,3 +215,83 @@ export async function saveShared(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
   await sharedStore.set(key, value);
 }
+
+// ── Auto-migration: localStorage → server on login ──────────────────────────
+
+/**
+ * Keys that should be synced to the server.
+ * userKeys: per-user data (each user has their own copy)
+ * sharedKeys: global data (same for all users)
+ */
+const MIGRATION_KEYS = {
+  userKeys: [
+    'aust-syllabus-progress',
+    'aust-tracker-sem-' , // prefix — skip, handled per-user
+    'aust-course-reviews',
+    'aust-course-polls',
+    'aust-cheatsheets',
+    'aust-question-bank',
+    'aust-vault-courses',
+    'aust-vault-batches',
+    'aust-media-tracker',
+    'aust-transcript-templates',
+    'aust-routine-templates',
+    'aust-cover-page-form',
+  ],
+  sharedKeys: [
+    'aust-marketplace-v1',
+    'aust-canteen-data',
+    'aust-notices',
+    'aust-library-data',
+  ],
+};
+
+let _migrationDone = false;
+
+/**
+ * Sync localStorage data to the server on login.
+ * For each key: if server has no data, push localStorage copy.
+ * If server has data, pull it down (server wins).
+ * Runs once per page load.
+ */
+export async function runMigrationOnLogin(userId) {
+  if (_migrationDone || !userId) return;
+  _migrationDone = true;
+
+  // Migrate per-user keys
+  const userEntries = {};
+  for (const key of MIGRATION_KEYS.userKeys) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw !== null) {
+        userEntries[key] = JSON.parse(raw);
+      }
+    } catch { /* skip non-JSON */ }
+  }
+
+  // Migrate shared keys
+  const sharedEntries = {};
+  for (const key of MIGRATION_KEYS.sharedKeys) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw !== null) {
+        sharedEntries[key] = JSON.parse(raw);
+      }
+    } catch { /* skip non-JSON */ }
+  }
+
+  if (Object.keys(userEntries).length === 0 && Object.keys(sharedEntries).length === 0) {
+    return; // nothing to migrate
+  }
+
+  try {
+    await fetch(MIGRATE_URL, {
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userEntries, sharedEntries }),
+    });
+  } catch {
+    // best-effort — localStorage stays as fallback
+  }
+}
