@@ -226,7 +226,9 @@ export function destroyLiveStore() {
 function connect() {
   if (stopped) return;
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = `${protocol}//${window.location.host}/socket.io/`;
+  // Production: connect directly to the backend origin (VITE_WS_URL).
+  // Dev: same-origin /api/ws hits the local server.
+  const wsUrl = (import.meta.env.VITE_WS_URL || `${protocol}//${window.location.host}/api/ws`);
 
   try {
     ws = new WebSocket(wsUrl);

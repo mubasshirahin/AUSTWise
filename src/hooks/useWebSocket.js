@@ -46,7 +46,10 @@ export default function useWebSocket(userId, options = {}) {
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
-    const wsUrl = `${protocol}//${host}/socket.io/`;
+    // Production: Vercel rewrites don't reliably proxy WebSocket upgrades, so
+    // connect directly to the backend origin (VITE_WS_URL, e.g. wss://api.domain.com).
+    // Dev: same-origin /api/ws hits the local server.
+    const wsUrl = (import.meta.env.VITE_WS_URL || `${protocol}//${host}/api/ws`);
 
     try {
       const ws = new WebSocket(wsUrl);
