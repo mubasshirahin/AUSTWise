@@ -284,7 +284,20 @@ function isSameSiteRequest(req) {
   if (isOriginAllowed(origin)) return true;
   try {
     const o = new URL(origin);
+    // Same-origin (SPA and API behind the same host, e.g. local dev).
     if (req.headers.host && o.host === req.headers.host) return true;
+    // Vercel → Railway proxy: the backend sees the Railway host in
+    // req.headers.host, but the browser's real host arrives via
+    // x-forwarded-host (first hop) and/or the PUBLIC_BASE_URL config.
+    // A matching origin is same-site; foreign origins still fail, so the
+    // CSRF defense holds.
+    const forwardedHost = (req.headers['x-forwarded-host'] || '').split(',')[0].trim();
+    if (forwardedHost && o.host === forwardedHost) return true;
+    if (process.env.PUBLIC_BASE_URL) {
+      try {
+        if (o.host === new URL(process.env.PUBLIC_BASE_URL).host) return true;
+      } catch { /* invalid PUBLIC_BASE_URL — ignore */ }
+    }
   } catch { /* fall through */ }
   if (isDevMode && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
   return false;

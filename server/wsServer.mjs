@@ -27,6 +27,16 @@ function isAllowedWsUpgrade(request) {
       const o = new URL(origin);
       if (request.headers.host && o.host === request.headers.host) return true;
       if (ALLOWED_WS_ORIGINS.includes(origin)) return true;
+      // Vercel → Railway proxy: the browser's real host arrives via
+      // x-forwarded-host (first hop) and/or PUBLIC_BASE_URL while
+      // request.headers.host is the Railway domain. Same-site, not cross-site.
+      const forwardedHost = (request.headers['x-forwarded-host'] || '').split(',')[0].trim();
+      if (forwardedHost && o.host === forwardedHost) return true;
+      if (process.env.PUBLIC_BASE_URL) {
+        try {
+          if (o.host === new URL(process.env.PUBLIC_BASE_URL).host) return true;
+        } catch { /* invalid PUBLIC_BASE_URL — ignore */ }
+      }
       if (DEV_ORIGIN_RE.test(origin)) return true;
     } catch {
       return false;
