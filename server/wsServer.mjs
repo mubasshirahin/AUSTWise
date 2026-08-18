@@ -23,18 +23,26 @@ const DEV_ORIGIN_RE = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 function isAllowedWsUpgrade(request) {
   const origin = request.headers.origin;
   if (origin) {
+    // Sec-Fetch-Site is set by the browser and cannot be forged by web content.
+    // Behind the Vercel → Railway proxy the browser sees the WS endpoint as
+    // same-origin with the frontend, so accept same-origin/same-site/none
+    // upgrades while the Origin checks below still reject cross-site ones.
+    const secFetchSite = (request.headers['sec-fetch-site'] || '').toLowerCase();
+    if (secFetchSite === 'same-origin' || secFetchSite === 'same-site' || secFetchSite === 'none') return true;
     try {
       const o = new URL(origin);
       if (request.headers.host && o.host === request.headers.host) return true;
       if (ALLOWED_WS_ORIGINS.includes(origin)) return true;
-      // Vercel → Railway proxy: the browser's real host arrives via
-      // x-forwarded-host (first hop) and/or PUBLIC_BASE_URL while
+      // Vercel → Railway proxy: the browser's real host may arrive via
+      // x-forwarded-host (any hop) and/or PUBLIC_BASE_URL while
       // request.headers.host is the Railway domain. Same-site, not cross-site.
-      const forwardedHost = (request.headers['x-forwarded-host'] || '').split(',')[0].trim();
-      if (forwardedHost && o.host === forwardedHost) return true;
+      const originHost = o.host.toLowerCase();
+      const forwardedHosts = (request.headers['x-forwarded-host'] || '')
+        .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+      if (forwardedHosts.includes(originHost)) return true;
       if (process.env.PUBLIC_BASE_URL) {
         try {
-          if (o.host === new URL(process.env.PUBLIC_BASE_URL).host) return true;
+          if (originHost === new URL(process.env.PUBLIC_BASE_URL).host.toLowerCase()) return true;
         } catch { /* invalid PUBLIC_BASE_URL — ignore */ }
       }
       if (DEV_ORIGIN_RE.test(origin)) return true;

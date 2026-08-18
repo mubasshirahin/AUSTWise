@@ -282,20 +282,28 @@ function isSameSiteRequest(req) {
   const origin = req.headers.origin;
   if (!origin) return true; // non-browser clients carry no Origin
   if (isOriginAllowed(origin)) return true;
+  // Sec-Fetch-Site is set by the browser and cannot be forged by web content.
+  // Behind the Vercel → Railway proxy the browser sees the API as same-origin
+  // with the frontend, so accept same-origin/same-site/none here while the
+  // Origin checks below still reject genuinely cross-site requests.
+  const secFetchSite = (req.headers['sec-fetch-site'] || '').toLowerCase();
+  if (secFetchSite === 'same-origin' || secFetchSite === 'same-site' || secFetchSite === 'none') return true;
   try {
     const o = new URL(origin);
     // Same-origin (SPA and API behind the same host, e.g. local dev).
     if (req.headers.host && o.host === req.headers.host) return true;
     // Vercel → Railway proxy: the backend sees the Railway host in
-    // req.headers.host, but the browser's real host arrives via
-    // x-forwarded-host (first hop) and/or the PUBLIC_BASE_URL config.
-    // A matching origin is same-site; foreign origins still fail, so the
-    // CSRF defense holds.
-    const forwardedHost = (req.headers['x-forwarded-host'] || '').split(',')[0].trim();
-    if (forwardedHost && o.host === forwardedHost) return true;
+    // req.headers.host, but the browser's real host may arrive via
+    // x-forwarded-host (any hop in the chain) and/or the PUBLIC_BASE_URL
+    // config. A matching origin is same-site; foreign origins still fail, so
+    // the CSRF defense holds.
+    const originHost = o.host.toLowerCase();
+    const forwardedHosts = (req.headers['x-forwarded-host'] || '')
+      .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    if (forwardedHosts.includes(originHost)) return true;
     if (process.env.PUBLIC_BASE_URL) {
       try {
-        if (o.host === new URL(process.env.PUBLIC_BASE_URL).host) return true;
+        if (originHost === new URL(process.env.PUBLIC_BASE_URL).host.toLowerCase()) return true;
       } catch { /* invalid PUBLIC_BASE_URL — ignore */ }
     }
   } catch { /* fall through */ }
