@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Calendar, Clock, MapPin, Plus } from 'lucide-react';
 import { useRoutine } from '../../context/RoutineContext';
 import { useAuth } from '../../context/AuthContext';
+import { useLiveValue } from '../../utils/liveStore';
 
 export default function NextWeekSchedule() {
   const { routine, weekDays } = useRoutine();
@@ -82,20 +83,10 @@ export default function NextWeekSchedule() {
     return date.toDateString() === today.toDateString();
   };
 
-  // Load deadlines from localStorage
-  const [deadlines, setDeadlines] = useState([]);
+  // Load deadlines — live-synced across devices
+  const [deadlines, setDeadlines] = useLiveValue('user', 'aust-deadlines', []);
 
-  useEffect(() => {
-    const stored = localStorage.getItem('aust-deadlines');
-    if (stored) {
-      setDeadlines(JSON.parse(stored));
-    }
-  }, []);
-
-  const saveDeadlines = (updatedDeadlines) => {
-    setDeadlines(updatedDeadlines);
-    localStorage.setItem('aust-deadlines', JSON.stringify(updatedDeadlines));
-  };
+  const saveDeadlines = (updatedDeadlines) => setDeadlines(updatedDeadlines);
 
   const handleAddDeadline = (e) => {
     e.preventDefault();

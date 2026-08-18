@@ -248,6 +248,29 @@ const MIGRATION_KEYS = {
     'aust-cover-page-form',
     'aust-user-routine',
     'aust-user-weekdays',
+    // Dashboard widgets
+    'aust-week-tasks',
+    'aust-deadlines',
+    'aust-semester-start',
+    'aust-exam-tracker',
+    'aust-study-streak',
+    // Attendance tracker
+    'aust-user-routine-attendance-enabled',
+    'aust-user-routine-attendance-data',
+    'aust-user-routine-attendance-sessions',
+    'aust-attendance-overall-average',
+    // Notebook / canvas notes
+    'aust-notebook-index',
+    // Course reviews / polls / canteen feedback
+    'aust-course-review-upvotes',
+    'aust-course-poll-ballots',
+    'aust-canteen-reviews',
+    'aust-canteen-complaints',
+    // Media tracker
+    'media-tracker-data',
+    // Austeddit posts
+    'aust-buzz-posts',
+    'aust-buzz-votes',
   ],
   sharedKeys: [
     'aust-marketplace-v1',

@@ -4,6 +4,8 @@ import {
   Edit3, Trash2, Save, ListVideo, ExternalLink,
   Key, Loader2, AlertCircle,
 } from 'lucide-react';
+import { liveLoad, liveSave } from '../../../utils/liveStorage';
+import { useLiveRefresh } from '../../../utils/liveStore';
 import './MediaTracker.css';
 import './ChillMasthead.css';
 
@@ -42,15 +44,11 @@ function generateId() {
 }
 
 function loadData() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch { /* ignore */ }
-  return { movies: [], series: [], anime: [], games: [] };
+  return liveLoad('user', STORAGE_KEY, { movies: [], series: [], anime: [], games: [] }, ['aust-media-tracker']);
 }
 
 function saveData(data) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  liveSave('user', STORAGE_KEY, data);
 }
 
 function loadApiKeys() {
@@ -392,6 +390,9 @@ export default function MediaTracker() {
   const [editingItem, setEditingItem] = useState(null);
 
   useEffect(() => { saveData(data); }, [data]);
+
+  // Live-sync: adopt the server copy when another device edits the tracker.
+  useLiveRefresh([STORAGE_KEY], () => setData(loadData()));
 
   const currentItems = data[activeCat] || [];
   const filteredItems = currentItems.filter((item) => {

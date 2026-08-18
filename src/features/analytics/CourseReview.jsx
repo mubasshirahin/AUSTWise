@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Star, MessageSquare, ThumbsUp, ArrowUpDown, Send, Plus, X } from 'lucide-react';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
 import { sanitizeUserInput, MAX_TEXT_LENGTH, MAX_TITLE_LENGTH } from '../../utils/sanitize';
+import { useLiveRefresh } from '../../utils/liveStore';
 import {
   addCommentToCourse,
   addCourseReview,
@@ -62,6 +63,9 @@ export default function CourseReview() {
     setReviews(nextReviews);
     return nextReviews;
   };
+
+  // Live-sync: reload when another device submits a review/comment/upvote.
+  useLiveRefresh(['aust-course-reviews-v2'], refreshReviews);
 
   const filteredReviews = useMemo(() => {
     const term = searchTerm.toLowerCase();

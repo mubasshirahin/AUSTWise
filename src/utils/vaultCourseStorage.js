@@ -1,4 +1,5 @@
 import { inferCourseTypeFromCode } from '../features/vault/vaultExamTypes';
+import { liveLoad, liveSave } from './liveStorage';
 
 const storageKey = 'aust-vault-courses-v1';
 const userStorageKey = 'aust-user-profile';
@@ -13,22 +14,11 @@ function loadUserProfile() {
 }
 
 function loadCourses() {
-  try {
-    const raw = localStorage.getItem(storageKey);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  return liveLoad('user', storageKey, [], ['aust-vault-courses']);
 }
 
 function saveCourses(items) {
-  try {
-    localStorage.setItem(storageKey, JSON.stringify(items));
-  } catch {
-    throw new Error('Could not save course. Your browser storage may be full.');
-  }
+  liveSave('user', storageKey, items);
 }
 
 export function getVaultCourses(department, yearSem) {

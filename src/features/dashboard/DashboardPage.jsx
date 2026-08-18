@@ -18,6 +18,7 @@ import {
 import { getUserStorageItemWithGuestFallback, getCurrentUserId } from '../../utils/authStorage';
 import useTabUrlState from '../../hooks/useTabUrlState';
 import { useAuth } from '../../context/AuthContext';
+import { useLiveValue } from '../../utils/liveStore';
 import './DashboardPage.css';
 import './dashboard-premium.css';
 import './dashboard-tokens.css';
@@ -39,45 +40,46 @@ function StudyStreak() {
   const [justUpdated, setJustUpdated] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const { user } = useAuth();
+  const [streakData, setStreakData] = useLiveValue('user', 'aust-study-streak', null);
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem('aust-study-streak');
       const today = new Date().toDateString();
 
-      if (stored) {
-        const data = JSON.parse(stored);
-        const lastActive = data.lastActive;
-
-        if (lastActive === today) {
-          setStreak(data.count || 0);
-          setDisplayStreak(data.count || 0);
-        } else {
-          const lastDate = new Date(lastActive);
-          const todayDate = new Date();
-          const diffDays = Math.floor((todayDate - lastDate) / (1000 * 60 * 60 * 24));
-
-          if (diffDays === 1) {
-            const newCount = (data.count || 0) + 1;
-            setStreak(newCount);
-            setDisplayStreak(data.count || 0);
-            localStorage.setItem('aust-study-streak', JSON.stringify({ count: newCount, lastActive: today }));
-            setJustUpdated(true);
-          } else if (diffDays > 1) {
-            setStreak(1);
-            setDisplayStreak(1);
-            localStorage.setItem('aust-study-streak', JSON.stringify({ count: 1, lastActive: today }));
-            setJustUpdated(true);
-          }
-        }
-      } else {
+      if (streakData === null) {
+        // No streak recorded anywhere yet — start a new one
         setStreak(1);
         setDisplayStreak(1);
-        localStorage.setItem('aust-study-streak', JSON.stringify({ count: 1, lastActive: today }));
         setJustUpdated(true);
+        setStreakData({ count: 1, lastActive: today });
+        return;
+      }
+
+      const lastActive = streakData.lastActive;
+
+      if (lastActive === today) {
+        setStreak(streakData.count || 0);
+        setDisplayStreak(streakData.count || 0);
+      } else {
+        const lastDate = new Date(lastActive);
+        const todayDate = new Date();
+        const diffDays = Math.floor((todayDate - lastDate) / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 1) {
+          const newCount = (streakData.count || 0) + 1;
+          setStreak(newCount);
+          setDisplayStreak(streakData.count || 0);
+          setStreakData({ count: newCount, lastActive: today });
+          setJustUpdated(true);
+        } else if (diffDays > 1) {
+          setStreak(1);
+          setDisplayStreak(1);
+          setStreakData({ count: 1, lastActive: today });
+          setJustUpdated(true);
+        }
       }
     } catch {}
-  }, []);
+  }, [streakData, setStreakData]);
 
   /* Animate displayStreak → streak */
   useEffect(() => {
@@ -361,6 +363,9 @@ function QuickStats() {
   const navigate = useNavigate();
   const [userResults, setUserResults] = useState(null);
   const [isGuest, setIsGuest] = useState(false);
+  const [liveDeadlines] = useLiveValue('user', 'aust-deadlines', []);
+  const [liveTasks] = useLiveValue('user', 'aust-week-tasks', []);
+  const [liveAvgAttendance] = useLiveValue('user', 'aust-attendance-overall-average', null);
 
   useEffect(() => {
     const userId = getCurrentUserId();
@@ -370,10 +375,8 @@ function QuickStats() {
   }, []);
 
   const stats = useMemo(() => {
-    const stored = localStorage.getItem('aust-deadlines');
-    const allDeadlines = stored ? (() => { try { return JSON.parse(stored); } catch { return []; } })() : [];
-    const storedTasks = localStorage.getItem('aust-week-tasks');
-    const allTasks = storedTasks ? (() => { try { return JSON.parse(storedTasks); } catch { return []; } })() : [];
+    const allDeadlines = Array.isArray(liveDeadlines) ? liveDeadlines : [];
+    const allTasks = Array.isArray(liveTasks) ? liveTasks : [];
     const now = Date.now();
     const pendingDeadlines = allDeadlines.filter((d) => {
       const due = d.dueDate ? new Date(d.dueDate).getTime() : 0;
@@ -394,8 +397,10 @@ function QuickStats() {
 
     let avgAttendance = null;
     try {
-      const v = localStorage.getItem('aust-attendance-overall-average');
-      if (v) { avgAttendance = parseFloat(v); if (isNaN(avgAttendance)) avgAttendance = null; }
+      if (liveAvgAttendance != null) {
+        avgAttendance = parseFloat(liveAvgAttendance);
+        if (isNaN(avgAttendance)) avgAttendance = null;
+      }
     } catch {}
 
     if (isGuest || !userResults) {
@@ -421,7 +426,7 @@ function QuickStats() {
       creditsCompleted,
       semestersCompleted: completedSems.length,
     };
-  }, [userResults, isGuest]);
+  }, [userResults, isGuest, liveDeadlines, liveTasks, liveAvgAttendance]);
 
   const animatedCgpa = useAnimatedValue(stats.currentCgpa);
   const animatedCredits = useAnimatedValue(stats.creditsCompleted, 900, true);

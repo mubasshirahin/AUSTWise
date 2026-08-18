@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useRoutine } from '../../context/RoutineContext';
 import { useAuth } from '../../context/AuthContext';
+import { useLiveValue } from '../../utils/liveStore';
 import { BookOpen, PenLine, X, Check } from 'lucide-react';
 import './ExamTracker.css';
 
@@ -35,10 +36,7 @@ function formatDate(dateStr) {
 export default function ExamTracker() {
   const { routine } = useRoutine();
   const { user } = useAuth();
-  const [examData, setExamData] = useState(() => {
-    try { const stored = localStorage.getItem(STORAGE_KEY); return stored ? JSON.parse(stored) : {}; }
-    catch { return {}; }
-  });
+  const [examData, setExamData] = useLiveValue('user', STORAGE_KEY, {});
   const [detailModal, setDetailModal] = useState(null); // { slotKey, slotLabel, date, syllabus, courseCode, courseName, isEditing, editDate, editSyllabus }
 
   const canEdit = user?.role === 'admin' || user?.role === 'cr' || user?.role === 'sr';
@@ -87,7 +85,6 @@ export default function ExamTracker() {
       syllabus: editSyllabus || ''
     };
     setExamData(updated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     setDetailModal(null);
   };
 

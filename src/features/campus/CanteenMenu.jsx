@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { useLiveRefresh } from '../../utils/liveStore';
 import { createPortal } from 'react-dom';
 import { Coffee, Flame, Star, MessageSquare, AlertTriangle, Plus, X, Info, MoreVertical, Check, Search, Trash2 } from 'lucide-react';
 import { canteenData, currentDayOfWeek } from '../../data/mockData';
@@ -97,6 +98,12 @@ function StarPicker({ value, onChange }) {
 function FoodCard({ food, onDelete }) {
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [, setFeedbackVersion] = useState(0);
+
+  // Live-sync: refresh ratings/complaints when another device reviews or
+  // complains, without a manual page reload.
+  useLiveRefresh(['aust-canteen-reviews-v1', 'aust-canteen-complaints-v1'], () =>
+    setFeedbackVersion((v) => v + 1),
+  );
 
   // Read review data during render so a feedback submit (which bumps
   // feedbackVersion and re-renders) always shows fresh results.

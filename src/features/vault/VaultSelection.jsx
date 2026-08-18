@@ -1,5 +1,6 @@
 import { useMemo, useState, useCallback } from 'react';
 import { BookOpen, Library, ArrowLeft, ChevronRight } from 'lucide-react';
+import { useLiveRefresh } from '../../utils/liveStore';
 import {
   heatmapDepartments,
   departmentLabels,
@@ -36,6 +37,9 @@ export default function VaultSelection({
   const refreshCourses = useCallback(() => {
     setRefreshKey((key) => key + 1);
   }, []);
+
+  // Live-sync: re-render the course grid when another device adds a course.
+  useLiveRefresh(['aust-vault-courses-v1'], refreshCourses);
 
   const yearSemOptions = useMemo(
     () => (department ? getYearSemOptions(department) : []),

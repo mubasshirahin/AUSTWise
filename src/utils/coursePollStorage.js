@@ -16,6 +16,8 @@
 const ballotsKey = 'aust-course-poll-ballots-v1';
 const contributorKey = 'aust-course-poll-contributor-id';
 
+import { liveLoad, liveSave, liveDelete } from './liveStorage';
+
 export const MAX_PICKS = 3;
 
 export function getContributorId() {
@@ -33,16 +35,11 @@ export function getContributorId() {
 }
 
 function loadBallots() {
-  try {
-    const raw = localStorage.getItem(ballotsKey);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+  return liveLoad('shared', ballotsKey, [], ['aust-course-poll-ballots']);
 }
 
 function saveBallots(ballots) {
-  localStorage.setItem(ballotsKey, JSON.stringify(ballots));
+  liveSave('shared', ballotsKey, ballots);
 }
 
 /** Normalise a course code so "cse3101" and "CSE 3101" count as the same course. */
@@ -121,6 +118,6 @@ export function getTotalVoters() {
 
 /** Clear all poll ballots and contributor ID (start fresh). */
 export function clearAllPollData() {
-  try { localStorage.removeItem(ballotsKey); } catch {}
+  liveDelete('shared', ballotsKey);
   try { localStorage.removeItem(contributorKey); } catch {}
 }

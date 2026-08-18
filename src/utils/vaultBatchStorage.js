@@ -1,20 +1,13 @@
+import { liveLoad, liveSave } from './liveStorage';
+
 const BATCH_STORAGE_KEY = 'aust-vault-batches';
 
 function getBatchStore() {
-  try {
-    const stored = localStorage.getItem(BATCH_STORAGE_KEY);
-    return stored ? JSON.parse(stored) : {};
-  } catch {
-    return {};
-  }
+  return liveLoad('user', BATCH_STORAGE_KEY, {});
 }
 
 function saveBatchStore(store) {
-  try {
-    localStorage.setItem(BATCH_STORAGE_KEY, JSON.stringify(store));
-  } catch (e) {
-    console.error('Failed to save batch config:', e);
-  }
+  liveSave('user', BATCH_STORAGE_KEY, store);
 }
 
 function getKey(department, yearSem) {

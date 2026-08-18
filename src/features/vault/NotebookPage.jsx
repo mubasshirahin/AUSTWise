@@ -2,39 +2,37 @@ import { useState, useCallback, useMemo } from 'react';
 import { NotebookPen } from 'lucide-react';
 import Notebook from './Notebook';
 import NotebookLibrary from './NotebookLibrary';
+import { liveLoad, liveSave } from '../../utils/liveStorage';
+import { useLiveRefresh } from '../../utils/liveStore';
 import './Notebook.css';
 import './VaultPage.css';
 import './vault-tokens.css';
 
-// Standalone Notebook page — the user's notes live entirely in their own
-// localStorage. `aust-notebook-index` holds a flat list of items (folders and
-// notes) linked by `parentId` (null = at the library root), and one
-// `aust-notebook-<id>` key per note holds the canvas itself. No backend.
+// Standalone Notebook page — the user's notes are synced across their devices.
+// `aust-notebook-index` holds a flat list of items (folders and notes) linked
+// by `parentId` (null = at the library root), and one `aust-notebook-<id>` key
+// per note holds the canvas itself.
 const DEFAULT_CONTEXT = { department: 'General', yearSem: 'All' };
 
 const INDEX_KEY = 'aust-notebook-index';
 const STORAGE_PREFIX = 'aust-notebook-';
 
 function loadIndex() {
-  try {
-    const raw = localStorage.getItem(INDEX_KEY);
-    const list = raw ? JSON.parse(raw) : null;
-    if (!Array.isArray(list)) return null;
-    // Normalize older flat-note entries into the folder/note model.
-    return list.map(e => ({
-      id: e.id,
-      type: e.type || 'note',
-      title: e.title || 'Untitled Note',
-      parentId: e.parentId ?? null,
-      createdAt: e.createdAt || Date.now(),
-      updatedAt: e.updatedAt || Date.now(),
-    }));
-  } catch { return null; }
+  const list = liveLoad('user', INDEX_KEY, null);
+  if (!Array.isArray(list)) return null;
+  // Normalize older flat-note entries into the folder/note model.
+  return list.map(e => ({
+    id: e.id,
+    type: e.type || 'note',
+    title: e.title || 'Untitled Note',
+    parentId: e.parentId ?? null,
+    createdAt: e.createdAt || Date.now(),
+    updatedAt: e.updatedAt || Date.now(),
+  }));
 }
 
 function saveIndex(list) {
-  try { localStorage.setItem(INDEX_KEY, JSON.stringify(list)); }
-  catch (e) { console.error('Failed to save notebook index:', e); }
+  liveSave('user', INDEX_KEY, list);
 }
 
 // First-run migration: before the library existed, all notes lived in one
@@ -61,7 +59,7 @@ function migrateLegacyNotes() {
 
 export default function NotebookPage() {
   const [items, setItems] = useState(() => {
-    // Lazily load the item index on first render (client-only localStorage).
+    // Lazily load the item index on first render (server-synced via liveStore).
     let list = loadIndex();
     if (!list || list.length === 0) {
       const migrated = migrateLegacyNotes();
@@ -72,6 +70,13 @@ export default function NotebookPage() {
   });
   const [folderPath, setFolderPath] = useState([]); // stack of folder ids; [] = library root
   const [openNote, setOpenNote] = useState(null);
+
+  // Live-sync: when another device renames/creates/deletes notebook items,
+  // adopt the server's index without a manual refresh.
+  useLiveRefresh([INDEX_KEY], () => {
+    const next = loadIndex();
+    if (Array.isArray(next)) setItems(next);
+  });
 
   const currentFolderId = folderPath.length ? folderPath[folderPath.length - 1] : null;
 
@@ -154,10 +159,8 @@ export default function NotebookPage() {
     const m = {};
     items.forEach(i => {
       if (i.type !== 'note') return;
-      try {
-        const d = JSON.parse(localStorage.getItem(STORAGE_PREFIX + i.id) || 'null');
-        m[i.id] = Array.isArray(d?.items) ? d.items.length : 0;
-      } catch { m[i.id] = 0; }
+      const d = liveLoad('user', STORAGE_PREFIX + i.id, null);
+      m[i.id] = Array.isArray(d?.items) ? d.items.length : 0;
     });
     return m;
   }, [items]);

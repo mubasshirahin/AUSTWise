@@ -17,6 +17,8 @@ const reviewsKey = 'aust-canteen-reviews-v1';
 const complaintsKey = 'aust-canteen-complaints-v1';
 const contributorKey = 'aust-canteen-contributor-id';
 
+import { liveLoad, liveSave } from './liveStorage';
+
 const roundOne = (value) => Number(value.toFixed(1));
 
 export function getContributorId() {
@@ -34,16 +36,11 @@ export function getContributorId() {
 }
 
 function loadList(key) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+  return liveLoad('shared', key, [], [key.replace(/-v1$/, '')]);
 }
 
 function saveList(key, list) {
-  localStorage.setItem(key, JSON.stringify(list));
+  liveSave('shared', key, list);
 }
 
 function formatDate(iso) {

@@ -10,6 +10,7 @@ import {
   formatPostedDate,
   getSellerLabel,
   listLostFoundItems,
+  reloadMarketplaceStore,
 } from '../../utils/marketplaceStorage';
 import ConfirmDialog from './ConfirmDialog';
 import { sanitizeUserInput, MAX_TITLE_LENGTH, MAX_SHORT_TEXT_LENGTH } from '../../utils/sanitize';
@@ -65,9 +66,15 @@ export default function LostAndFound() {
 
   const refresh = useCallback(() => setItems(listLostFoundItems()), []);
 
-  // Real-time: when another device adds/removes a listing, refresh the list
+  // Real-time: when another device adds/removes a listing, refresh the list.
+  // The storage util writes through sharedStore, which the server reports as a
+  // store-change event (not marketplace-listing), so we listen to both.
   useWebSocket(user?.id || null, {
     onMarketplaceListing: useCallback(() => refresh(), [refresh]),
+    onStoreChange: useCallback(({ scope, key }) => {
+      if (scope !== 'shared' || key !== 'aust-marketplace-v1') return;
+      reloadMarketplaceStore().then(() => refresh());
+    }, [refresh]),
   });
 
   const handleFileChange = async (e) => {

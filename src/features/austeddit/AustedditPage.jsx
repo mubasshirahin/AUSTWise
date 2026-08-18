@@ -6,11 +6,13 @@ import {
 import {
   getShadowIdentity, regenerateShadowNickname, shadowInitials,
 } from '../../utils/shadowName';
+import { liveLoad, liveSave } from '../../utils/liveStorage';
+import { useLiveRefresh } from '../../utils/liveStore';
 import './AustedditPage.css';
 import '../../components/PageHero.css';
 
-const POSTS_KEY = 'aust-buzz-posts';
-const VOTES_KEY = 'aust-buzz-votes'; // { [postOrCommentId]: 1 | -1 }
+const POSTS_KEY = 'aust-buzz-posts';       // shared across all students
+const VOTES_KEY = 'aust-buzz-votes';       // per-user: { [postOrCommentId]: 1 | -1 }
 
 const CHANNELS = [
   { id: 'general',    label: 'General' },
@@ -34,19 +36,9 @@ function getTimeAgo(ts) {
   return new Date(ts).toLocaleDateString();
 }
 
-const loadPosts = () => {
-  try {
-    const raw = localStorage.getItem(POSTS_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
-};
+const loadPosts = () => liveLoad('shared', POSTS_KEY, [], ['aust-buzz-posts-v0']);
 
-const loadVotes = () => {
-  try {
-    const raw = localStorage.getItem(VOTES_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch { return {}; }
-};
+const loadVotes = () => liveLoad('user', VOTES_KEY, {});
 
 export default function AustedditPage() {
   const [identity, setIdentity] = useState(getShadowIdentity);
@@ -62,8 +54,12 @@ export default function AustedditPage() {
   const [openComments, setOpenComments] = useState({}); // { [postId]: true }
   const [commentDrafts, setCommentDrafts] = useState({}); // { [postId]: string }
 
-  useEffect(() => { localStorage.setItem(POSTS_KEY, JSON.stringify(posts)); }, [posts]);
-  useEffect(() => { localStorage.setItem(VOTES_KEY, JSON.stringify(votes)); }, [votes]);
+  useEffect(() => { liveSave('shared', POSTS_KEY, posts); }, [posts]);
+  useEffect(() => { liveSave('user', VOTES_KEY, votes); }, [votes]);
+
+  // Live-sync: adopt new posts/votes the moment another device publishes them.
+  useLiveRefresh([POSTS_KEY], () => setPosts(loadPosts()));
+  useLiveRefresh([VOTES_KEY], () => setVotes(loadVotes()));
 
   // Refresh relative timestamps periodically.
   const [, forceTick] = useState(0);

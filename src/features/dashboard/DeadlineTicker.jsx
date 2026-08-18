@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Hourglass, AlertTriangle, Timer } from 'lucide-react';
 import { deadlines } from '../../data/mockData';
 import { useAuth } from '../../context/AuthContext';
+import { useLiveValue } from '../../utils/liveStore';
 
 export default function DeadlineTicker() {
   const { user } = useAuth();
@@ -22,15 +23,9 @@ export default function DeadlineTicker() {
     return 'A1';
   })();
 
-  const [timers] = useState(() => {
-    // Load deadlines from localStorage or use empty array
-    const stored = localStorage.getItem('aust-deadlines');
-    return stored ? JSON.parse(stored) : [...deadlines];
-  });
-  const [calendarTasks] = useState(() => {
-    const stored = localStorage.getItem('aust-week-tasks');
-    return stored ? JSON.parse(stored) : [];
-  });
+  // Deadlines & calendar tasks are live-synced across devices
+  const [timers] = useLiveValue('user', 'aust-deadlines', [...deadlines]);
+  const [calendarTasks] = useLiveValue('user', 'aust-week-tasks', []);
 
   // Combine manual deadlines with calendar tasks for user's batch.
   // Note: past-task filtering happens inside the countdown effect (where the
@@ -60,8 +55,14 @@ export default function DeadlineTicker() {
         };
       });
 
-    // Combine with manual deadlines
-    return [...timers, ...taskDeadlines];
+    // Combine with manual deadlines (dates may arrive as ISO strings from
+    // storage — normalise to Date objects so countdown math works)
+    const manualDeadlines = timers.map(dl => ({
+      ...dl,
+      dueDate: dl.dueDate instanceof Date ? dl.dueDate : new Date(dl.dueDate),
+    }));
+
+    return [...manualDeadlines, ...taskDeadlines];
   }, [timers, calendarTasks, userBatchGroup]);
 
   // State for live countdown display

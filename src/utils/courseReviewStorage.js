@@ -7,6 +7,7 @@ const semesterResultsKey = 'aust-helper-semester-results-v2';
 
 import { getShadowIdentity } from './shadowName';
 import { sanitizeUserInput, MAX_TEXT_LENGTH } from './sanitize';
+import { liveLoad, liveSave } from './liveStorage';
 
 const roundOne = (value) => Number(value.toFixed(1));
 
@@ -23,29 +24,20 @@ export function getContributorId() {
 }
 
 function loadRawEntries() {
-  try {
-    const raw = localStorage.getItem(reviewsKey);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+  return liveLoad('shared', reviewsKey, [], ['aust-course-reviews']);
 }
 
 function saveRawEntries(entries) {
-  localStorage.setItem(reviewsKey, JSON.stringify(entries));
+  liveSave('shared', reviewsKey, entries);
 }
 
 function loadUpvotedCommentIds() {
-  try {
-    const raw = localStorage.getItem(upvotesKey);
-    return raw ? new Set(JSON.parse(raw)) : new Set();
-  } catch {
-    return new Set();
-  }
+  const ids = liveLoad('user', upvotesKey, []);
+  return new Set(Array.isArray(ids) ? ids : []);
 }
 
 function saveUpvotedCommentIds(ids) {
-  localStorage.setItem(upvotesKey, JSON.stringify([...ids]));
+  liveSave('user', upvotesKey, [...ids]);
 }
 
 export function courseKey(course, name, faculty) {

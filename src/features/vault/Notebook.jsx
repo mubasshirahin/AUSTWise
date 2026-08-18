@@ -2,19 +2,16 @@ import { useState, useEffect, useRef, useCallback, useMemo, Fragment } from 'rea
 import { ImageIcon, Trash2, Move, Type, Check, Link2, Link2Off, Download, MoreVertical, NotebookPen, ZoomIn, ZoomOut, Pencil, Star } from 'lucide-react';
 import html2canvas from 'html2canvas-pro';
 import jsPDF from 'jspdf';
+import { liveLoad, liveSave } from '../../utils/liveStorage';
 
 const STORAGE_PREFIX = 'aust-notebook-';
 
 function loadNotes(key) {
-  try {
-    const raw = localStorage.getItem(STORAGE_PREFIX + key);
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
+  return liveLoad('user', STORAGE_PREFIX + key, null);
 }
 
 function saveNotes(key, data) {
-  try { localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(data)); }
-  catch (e) { console.error('Failed to save notebook:', e); }
+  liveSave('user', STORAGE_PREFIX + key, data);
 }
 
 // Resolve a theme CSS variable to its concrete color. html2canvas 1.4.1 reads

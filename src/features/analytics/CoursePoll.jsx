@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { ThumbsUp, ThumbsDown, Trophy, Users, Send, Award, CheckCircle } from 'lucide-react';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
+import { useLiveRefresh } from '../../utils/liveStore';
 import {
   MAX_PICKS,
   saveMyBallot,
@@ -112,6 +113,10 @@ function Leaderboard({ title, icon, accent, rows, totalVoters }) {
 
 export default function CoursePoll() {
   const [error, setError] = useState('');
+  const [refreshTick, setRefreshTick] = useState(0);
+
+  // Live-sync: re-render leaderboards when another device submits a ballot.
+  useLiveRefresh(['aust-course-poll-ballots-v1'], () => setRefreshTick((t) => t + 1));
 
   // Restore a previously submitted ballot (if any) directly in the lazy
   // initializers — no effect needed.
@@ -147,9 +152,10 @@ export default function CoursePoll() {
    * mount before any submit handler can fire.
    */
 
-  const bestBoard = getBestLeaderboard();
-  const worstBoard = getWorstLeaderboard();
-  const totalVoters = getTotalVoters();
+  // Recompute the leaderboards whenever the live store refreshes (local or remote).
+  const bestBoard = useMemo(() => getBestLeaderboard(), [refreshTick]);
+  const worstBoard = useMemo(() => getWorstLeaderboard(), [refreshTick]);
+  const totalVoters = useMemo(() => getTotalVoters(), [refreshTick]);
 
   const submit = (e) => {
     e.preventDefault();

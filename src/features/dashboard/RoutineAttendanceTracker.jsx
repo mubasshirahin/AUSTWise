@@ -4,35 +4,20 @@ import {
   Percent,
   Info, BookOpen, Clock, MapPin, CheckCircle2, XCircle,
 } from 'lucide-react';
-import { setUserStorageItem, getUserStorageKey } from '../../utils/authStorage';
+import { useLiveValue } from '../../utils/liveStore';
 import { getCalculatedAttendanceDates, getSemesterStartDate } from '../../utils/semesterDates';
 import './attendance-widget.css';
 
 const SEMESTER_WEEKS = 14;
 const MIN_ATTENDANCE = 75;
 
-const storageKeyTypes = {
-  enabled: 'routineAttendanceEnabled',
-  // Legacy aggregate counts (attended integer per course key)
-  data: 'routineAttendanceData',
-  // Per-session Present/Absent map: { [sessionId]: 'present' | 'absent' }
-  sessions: 'routineAttendanceSessions',
+// Server-side (bare) keys — synced across all of the user's devices.
+const liveKeys = {
+  enabled: 'aust-user-routine-attendance-enabled',
+  data: 'aust-user-routine-attendance-data',
+  sessions: 'aust-user-routine-attendance-sessions',
+  overallAverage: 'aust-attendance-overall-average',
 };
-
-function loadInitialState() {
-  try {
-    const enabledKey = getUserStorageKey(storageKeyTypes.enabled);
-    const dataKey    = getUserStorageKey(storageKeyTypes.data);
-    const sessionsKey = getUserStorageKey(storageKeyTypes.sessions);
-    return {
-      isEnabled:      enabledKey    ? localStorage.getItem(enabledKey) === 'true' : false,
-      attendanceData: dataKey       ? JSON.parse(localStorage.getItem(dataKey)    || '{}') : {},
-      sessionMarks:   sessionsKey   ? JSON.parse(localStorage.getItem(sessionsKey) || '{}') : {},
-    };
-  } catch {
-    return { isEnabled: false, attendanceData: {}, sessionMarks: {} };
-  }
-}
 
 function loadTelegramChatId() { return localStorage.getItem('telegram_chat_id') || ''; }
 function loadIsTelegramRegistered() { return localStorage.getItem('telegram_is_registered') === 'true'; }
@@ -53,11 +38,12 @@ function MiniSegBar({ attended, missed, unmarked, total }) {
 export default function RoutineAttendanceTracker() {
   const { routine, weekDays } = useRoutine();
 
-  const initial = useMemo(() => loadInitialState(), []);
-  const [isEnabled,      setIsEnabled]      = useState(initial.isEnabled);
-  const [attendanceData, setAttendanceData] = useState(initial.attendanceData);
+  // Attendance state is live-synced across all of the user's devices.
+  const [isEnabled,      setIsEnabled]      = useLiveValue('user', liveKeys.enabled, false);
+  const [attendanceData, setAttendanceData] = useLiveValue('user', liveKeys.data, {});
   // sessionMarks: { [sessionId]: 'present' | 'absent' }
-  const [sessionMarks,   setSessionMarks]   = useState(initial.sessionMarks);
+  const [sessionMarks,   setSessionMarks]   = useLiveValue('user', liveKeys.sessions, {});
+  const [, setOverallAverage] = useLiveValue('user', liveKeys.overallAverage, null);
 
   const [telegramChatId]       = useState(loadTelegramChatId);
   const [isTelegramRegistered] = useState(loadIsTelegramRegistered);
@@ -172,9 +158,9 @@ export default function RoutineAttendanceTracker() {
   }, [isEnabled, loadTelegramAttendance, telegramChatId]);
 
   // ---------- Persistence ----------
-  useEffect(() => { setUserStorageItem(storageKeyTypes.enabled,  isEnabled);      }, [isEnabled]);
-  useEffect(() => { setUserStorageItem(storageKeyTypes.data,     attendanceData);  }, [attendanceData]);
-  useEffect(() => { setUserStorageItem(storageKeyTypes.sessions, sessionMarks);    }, [sessionMarks]);
+  // liveStore persists isEnabled / attendanceData / sessionMarks automatically
+  // on every change and re-fetches them when another device edits them, so the
+  // per-user localStorage effects are no longer needed.
 
   // ---------- Course structure ----------
   const courseStats = useMemo(() => {
@@ -301,7 +287,10 @@ export default function RoutineAttendanceTracker() {
     };
   }, [courseStats, attendanceData, sessionMarks, telegramAttendance]);
 
-  useEffect(() => { try { localStorage.setItem('aust-attendance-overall-average', String(overallStats.average)); } catch {} }, [overallStats.average]);
+  useEffect(() => {
+    try { setOverallAverage(String(overallStats.average)); } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overallStats.average]);
 
   // ── Server sync ──
   // Push the computed overall attendance % to the server so the Active

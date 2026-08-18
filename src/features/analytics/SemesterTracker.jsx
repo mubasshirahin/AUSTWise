@@ -7,6 +7,7 @@ import {
 import { getUserStorageItemWithGuestFallback, getCurrentUserId } from '../../utils/authStorage';
 import { useAuth } from '../../context/AuthContext';
 import { formatSemesterLabel } from '../../utils/semester';
+import { getLiveValue, setLiveValue, onLiveChange, ensureFetched } from '../../utils/liveStore';
 import './SemesterTracker.css';
 
 const STORAGE_PREFIXES = {
@@ -18,26 +19,42 @@ const STORAGE_PREFIXES = {
   labMarks: 'aust-user-tracker-lab-marks',
 };
 
+/* Server-side (bare) per-semester keys — synced across all the user's devices. */
 const getSemKey = (type, sem) => {
   const prefix = STORAGE_PREFIXES[type];
   if (!prefix) return null;
-  const uid = getCurrentUserId();
-  return `${prefix}-${uid || 'guest'}_${sem}`;
+  return `${prefix}_${sem}`;
 };
 
 const getSemItem = (type, sem) => {
   const key = getSemKey(type, sem);
   if (!key) return null;
+  const cached = getLiveValue('user', key, null);
+  if (cached !== null) return cached;
   try {
     const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  // One-time migration from the old per-user suffixed keys
+  // (e.g. aust-user-tracker-marks-<uid>_<sem>).
+  try {
+    const uid = getCurrentUserId();
+    const legacyKey = `${STORAGE_PREFIXES[type]}-${uid || 'guest'}_${sem}`;
+    const raw = localStorage.getItem(legacyKey);
+    if (raw) {
+      const value = JSON.parse(raw);
+      // Seed the server copy off the render path (see liveStorage.liveLoad).
+      queueMicrotask(() => setLiveValue('user', key, value));
+      return value;
+    }
+  } catch { /* ignore */ }
+  return null;
 };
 
 const setSemItem = (type, sem, value) => {
   const key = getSemKey(type, sem);
   if (!key) return;
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+  setLiveValue('user', key, value);
 };
 
 const isLabCourse = (code) => {
@@ -259,6 +276,45 @@ export default function SemesterTracker() {
   useEffect(() => { setSemItem('labCourses', currentSemRef.current, labCourses); }, [labCourses]);
   useEffect(() => { setSemItem('labConfig', currentSemRef.current, labConfig); }, [labConfig]);
   useEffect(() => { setSemItem('labMarks', currentSemRef.current, labMarks); }, [labMarks]);
+
+  /* ── Real-time sync: when another device edits the current semester's data,
+     reload it so this device updates without a refresh. A JSON round-trip
+     comparison prevents the server echo from triggering a save loop. ── */
+  const stateDeps = [theoryCourses, theoryMarks, theoryConfig, labCourses, labConfig, labMarks];
+  const currentSnapshotRef = useRef(null);
+  useEffect(() => {
+    currentSnapshotRef.current = stateDeps.map(v => JSON.stringify(v || null));
+  }, stateDeps);
+
+  /* Fetch the active semester's server data whenever it's shown, so a brand-new
+     device (empty localStorage) still gets the user's saved data. */
+  useEffect(() => {
+    const sem = currentSemRef.current;
+    Object.values(STORAGE_PREFIXES).forEach(p => ensureFetched('user', `${p}_${sem}`));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSemester]);
+
+  useEffect(() => {
+    return onLiveChange((composite) => {
+      const [scope, rawKey] = String(composite || '').split(':');
+      if (scope !== 'user') return;
+      const sem = currentSemRef.current;
+      const currentKeys = Object.values(STORAGE_PREFIXES).map(p => `${p}_${sem}`);
+      if (!currentKeys.includes(rawKey)) return;
+      const nd = loadSemesterData(sem);
+      const next = [nd.theoryCourses, nd.theoryMarks, nd.theoryConfig, nd.labCourses, nd.labConfig, nd.labMarks];
+      const snap = currentSnapshotRef.current || [];
+      if (next.every((v, i) => JSON.stringify(v || null) === snap[i])) return;
+      setTheoryCourses(next[0]);
+      setTheoryMarks(next[1]);
+      setTheoryConfig(next[2]);
+      setLabCourses(next[3]);
+      setLabConfig(next[4]);
+      setLabMarks(next[5]);
+      setQuizDrafts({});
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* ── Semester switch: save old semester's data, then load the new one ── */
   const switchToSemester = (next) => {

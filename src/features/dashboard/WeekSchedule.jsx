@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Calendar, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, FileDown, MoreVertical, Settings, Check } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useLiveValue } from '../../utils/liveStore';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
 import { findCourseByCode } from '../../data/courses';
 import jsPDF from 'jspdf';
@@ -10,10 +11,9 @@ import logoUrl from '../../assets/logo-silver.png';
 export default function WeekSchedule() {
   const { user } = useAuth();
   const [viewMode, setViewMode] = useState('weekly');
-  const [semesterStart, setSemesterStart] = useState(() => {
-    const stored = localStorage.getItem('aust-semester-start');
-    return stored || new Date().toISOString().split('T')[0];
-  });
+  const [semesterStart, setSemesterStart] = useLiveValue(
+    'user', 'aust-semester-start', new Date().toISOString().split('T')[0]
+  );
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [showAddModal, setShowAddModal] = useState(false);
   const [, setSelectedDay] = useState(null);
@@ -74,7 +74,6 @@ export default function WeekSchedule() {
   const saveSemesterStart = (date) => {
     setSemesterStart(date);
     setCurrentDate(new Date(date + 'T00:00:00'));
-    localStorage.setItem('aust-semester-start', date);
   };
 
   // Handle course code selection
@@ -149,20 +148,10 @@ export default function WeekSchedule() {
   const canGoNext = () => getCurrentWeekNum() < 17;
   const canGoPrev = () => getCurrentWeekNum() > 1;
 
-  // Load tasks from localStorage
-  const [tasks, setTasks] = useState([]);
+  // Load tasks from localStorage — now live-synced across devices
+  const [tasks, setTasks] = useLiveValue('user', 'aust-week-tasks', []);
 
-  useEffect(() => {
-    const stored = localStorage.getItem('aust-week-tasks');
-    if (stored) {
-      setTasks(JSON.parse(stored));
-    }
-  }, []);
-
-  const saveTasks = (updatedTasks) => {
-    setTasks(updatedTasks);
-    localStorage.setItem('aust-week-tasks', JSON.stringify(updatedTasks));
-  };
+  const saveTasks = (updatedTasks) => setTasks(updatedTasks);
 
   const formatDateKey = (date) => {
     const y = date.getFullYear();

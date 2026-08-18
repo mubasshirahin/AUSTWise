@@ -7,6 +7,7 @@ import {
   getAllAccounts,
 } from '../utils/authStorage';
 import { runMigrationOnLogin } from '../utils/storageService';
+import { initLiveStore, destroyLiveStore } from '../utils/liveStore';
 
 const AuthContext = createContext();
 const userStorageKey = 'aust-user-profile';
@@ -85,6 +86,8 @@ export function AuthProvider({ children }) {
           localStorage.setItem(userStorageKey, JSON.stringify(hydrated));
           // Sync localStorage → server on first load after login
           runMigrationOnLogin(data.user.id);
+          // Open the real-time channel so data changes propagate across devices
+          initLiveStore(data.user.id);
         } else {
           // Server says not authenticated — keep the cached session (login
           // writes it) so the app doesn't log the user out on every reload
@@ -95,6 +98,7 @@ export function AuthProvider({ children }) {
             if (parsed && parsed.id && parsed.id !== 'guest') {
               const hydrated = hydrateUser(parsed);
               setSessionUser(hydrated);
+              initLiveStore(parsed.id);
             }
           } else {
             localStorage.removeItem(userStorageKey);
@@ -113,6 +117,7 @@ export function AuthProvider({ children }) {
             if (parsed && parsed.id && parsed.id !== 'guest') {
               const hydrated = hydrateUser(parsed);
               setSessionUser(hydrated);
+              initLiveStore(parsed.id);
             }
           }
         } catch { /* ignore corrupt cache */ }
@@ -166,6 +171,7 @@ export function AuthProvider({ children }) {
     setSessionUser(hydrated);
     localStorage.setItem(userStorageKey, JSON.stringify(hydrated));
     runMigrationOnLogin(data.user.id);
+    initLiveStore(data.user.id);
     return hydrated;
   };
 
@@ -205,6 +211,7 @@ export function AuthProvider({ children }) {
       localStorage.setItem('aust-auth-accounts-v1', JSON.stringify(accounts));
     } catch { /* best effort */ }
     runMigrationOnLogin(data.user.id);
+    initLiveStore(data.user.id);
     return hydrated;
   };
 
@@ -237,11 +244,13 @@ export function AuthProvider({ children }) {
     });
     setSessionUser(hydrated);
     localStorage.setItem(userStorageKey, JSON.stringify(hydrated));
+    initLiveStore(account.id);
     return hydrated;
   };
 
   const loginGuest = () => {
     setSessionUser(null);
+    destroyLiveStore();
     localStorage.setItem('aust-auth-session-v1', JSON.stringify({
       userId: 'guest', role: 'guest', startedAt: new Date().toISOString(),
     }));
@@ -251,6 +260,7 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     try { await api('/api/auth/logout', { method: 'POST' }); } catch { /* best effort */ }
     clearSession();
+    destroyLiveStore();
     setSessionUser(null);
   };
 

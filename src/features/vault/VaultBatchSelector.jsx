@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, X, Users, Check, Link, Unlink } from 'lucide-react';
 import { getBatchConfigs, addBatchConfig, updateBatchDriveUrl } from '../../utils/vaultBatchStorage';
+import { useLiveRefresh } from '../../utils/liveStore';
 import { extractFolderId } from '../../utils/googleDrive';
 import VaultMasthead from './VaultMasthead';
 
@@ -15,6 +16,9 @@ export default function VaultBatchSelector({ department, yearSem, onSelectBatch,
   const refresh = () => {
     setBatches(getBatchConfigs(department, yearSem));
   };
+
+  // Live-sync: reload batches when another device adds/edits them.
+  useLiveRefresh(['aust-vault-batches'], refresh);
 
   const handleAdd = () => {
     if (!batchNo.trim() || !batchName.trim()) return;

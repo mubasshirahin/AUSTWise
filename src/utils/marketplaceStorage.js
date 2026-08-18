@@ -74,6 +74,16 @@ export function invalidateMarketplaceCache() {
   _loading = null;
 }
 
+/**
+ * Force a fresh copy of the whole marketplace store from the server.
+ * Use this when a real-time store-change event arrives so stale cached
+ * listings (added on another device) are replaced immediately.
+ */
+export async function reloadMarketplaceStore() {
+  invalidateMarketplaceCache();
+  return loadStoreAsync();
+}
+
 // ── Auto-load on module init ─────────────────────────────────────────────────
 loadStoreAsync();
 

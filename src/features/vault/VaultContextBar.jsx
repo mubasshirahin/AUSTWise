@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ArrowLeft, ChevronRight } from 'lucide-react';
+import { useLiveRefresh } from '../../utils/liveStore';
 import {
   heatmapDepartments,
   departmentLabels,
@@ -17,10 +18,14 @@ export default function VaultContextBar({
   onYearSemChange,
   onCourseChange,
 }) {
+  const [refreshTick, setRefreshTick] = useState(0);
+  useLiveRefresh(['aust-vault-courses-v1'], () => setRefreshTick((k) => k + 1));
+
   const yearSemOptions = useMemo(() => getYearSemOptions(department), [department]);
   const courseOptions = useMemo(
     () => getCourseCategories(department, yearSem),
-    [department, yearSem],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [department, yearSem, refreshTick],
   );
 
   return (

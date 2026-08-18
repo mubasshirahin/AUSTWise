@@ -9,6 +9,7 @@ import {
   formatPostedDate,
   getSellerLabel,
   listToLetListings,
+  reloadMarketplaceStore,
   setToLetAvailability,
 } from '../../utils/marketplaceStorage';
 import ConfirmDialog from './ConfirmDialog';
@@ -72,9 +73,15 @@ export default function ToLetListings() {
 
   const refresh = useCallback(() => setListings(listToLetListings()), []);
 
-  // Real-time: when another device adds/removes a listing, refresh the list
+  // Real-time: when another device adds/removes a listing, refresh the list.
+  // The storage util writes through sharedStore, which the server reports as a
+  // store-change event (not marketplace-listing), so we listen to both.
   useWebSocket(user?.id || null, {
     onMarketplaceListing: useCallback(() => refresh(), [refresh]),
+    onStoreChange: useCallback(({ scope, key }) => {
+      if (scope !== 'shared' || key !== 'aust-marketplace-v1') return;
+      reloadMarketplaceStore().then(() => refresh());
+    }, [refresh]),
   });
 
   const toggleAmenity = (amenity) => {

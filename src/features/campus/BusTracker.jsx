@@ -15,24 +15,21 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
+import { liveLoad, liveSave } from '../../utils/liveStorage';
+import { useLiveRefresh } from '../../utils/liveStore';
 import './SemesterViewWidget.css';
 import './BusTracker.css';
 
-// ─── LocalStorage Helpers ───
+// ─── LiveStore Helpers ───
 
 const CUSTOM_BUSES_KEY = 'aust-bus-custom-routes';
 
 function loadCustomBuses() {
-  try {
-    const raw = localStorage.getItem(CUSTOM_BUSES_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+  return liveLoad('user', CUSTOM_BUSES_KEY, []);
 }
 
 function saveCustomBuses(buses) {
-  localStorage.setItem(CUSTOM_BUSES_KEY, JSON.stringify(buses));
+  liveSave('user', CUSTOM_BUSES_KEY, buses);
 }
 
 // ─── ID Generator ───
@@ -113,6 +110,9 @@ export default function BusTracker() {
   const [editingBusId, setEditingBusId] = useState(null);
   const [form, setForm] = useState(INITIAL_FORM_STATE);
   const [formErrors, setFormErrors] = useState({});
+
+  // Live-sync: adopt custom routes saved from another device.
+  useLiveRefresh([CUSTOM_BUSES_KEY], () => setCustomBuses(loadCustomBuses()));
 
   // One shared rail — measured to span exactly first→last dot centers
   const timelineRef = useRef(null);

@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { BookCheck, CheckSquare, Square, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
 import { buildSyllabusData, SEMESTER_COURSES } from '../../data/syllabusCompletionData';
+import { useLiveValue } from '../../utils/liveStore';
 
 const STORAGE_KEY = 'aust-syllabus-progress';
 const SEM_KEY = 'aust-syllabus-sem';
 
 const allSyllabusData = buildSyllabusData();
+const defaultCourses = () => allSyllabusData.map(c => ({ ...c, completed: [...c.completed], progress: c.progress }));
 
 function getProgressColor(p) {
   if (p >= 70) return 'var(--accent-emerald)';
@@ -14,18 +16,7 @@ function getProgressColor(p) {
 }
 
 export default function SyllabusProgress() {
-  const [courses, setCourses] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      }
-    } catch { /* ignore */ }
-    return allSyllabusData.map(c => ({ ...c, completed: [...c.completed], progress: c.progress }));
-  });
+  const [courses, setCourses] = useLiveValue('user', STORAGE_KEY, null);
 
   const [selectedSem, setSelectedSem] = useState(() => {
     const saved = localStorage.getItem(SEM_KEY);
@@ -38,10 +29,7 @@ export default function SyllabusProgress() {
 
   const [expandedCourse, setExpandedCourse] = useState(null);
 
-  const saveCourses = (next) => {
-    setCourses(next);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  };
+  const saveCourses = (next) => setCourses(next);
 
   const handleSemChange = (sem) => {
     setSelectedSem(sem);
@@ -50,7 +38,7 @@ export default function SyllabusProgress() {
   };
 
   const toggleTopic = (code, topicIdx) => {
-    saveCourses(courses.map(c => {
+    saveCourses(activeCourses.map(c => {
       if (c.course !== code) return c;
       const completed = [...c.completed];
       completed[topicIdx] = !completed[topicIdx];
@@ -60,18 +48,18 @@ export default function SyllabusProgress() {
   };
 
   const resetSemester = () => {
-    saveCourses(courses.map(c => {
+    saveCourses(activeCourses.map(c => {
       if (c.semester !== selectedSem) return c;
       return { ...c, completed: new Array(c.topics.length).fill(false), progress: 0 };
     }));
   };
 
   const resetAll = () => {
-    localStorage.removeItem(STORAGE_KEY);
-    setCourses(allSyllabusData.map(c => ({ ...c, completed: [...c.completed], progress: c.progress })));
+    setCourses(defaultCourses());
   };
 
-  const semCourses = courses.filter(c => c.semester === selectedSem);
+  const activeCourses = Array.isArray(courses) && courses.length > 0 ? courses : defaultCourses();
+  const semCourses = activeCourses.filter(c => c.semester === selectedSem);
   const totalTopics = semCourses.reduce((s, c) => s + c.topics.length, 0);
   const totalDone = semCourses.reduce((s, c) => s + c.completed.filter(Boolean).length, 0);
   const overallPct = totalTopics > 0 ? Math.round((totalDone / totalTopics) * 100) : 0;
