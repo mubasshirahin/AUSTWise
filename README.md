@@ -96,4 +96,4 @@ pm2 save && pm2 startup
 | `npm run dev` | Dev server with HMR |
 | `npm run build` | Production build to `dist/` |
 | `npm run lint` | ESLint over `src/`, `server/`, `scripts/` |
-| `node scripts/seed-sqlserver.mjs` | One-time seed of courses/locations into SQL Server (idempotent) |
+| `node scripts/seed-sqlserver.mjs` | One-time seed of courses/locations into SQL Server (idempotent) |  
