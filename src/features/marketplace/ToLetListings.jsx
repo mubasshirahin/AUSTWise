@@ -104,13 +104,13 @@ export default function ToLetListings() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
     setMessage('');
 
     try {
-      addToLetListing({ ...form, title: sanitizeUserInput(form.title, MAX_TITLE_LENGTH), location: sanitizeUserInput(form.location, MAX_TITLE_LENGTH), description: sanitizeUserInput(form.description, MAX_SHORT_TEXT_LENGTH), utilities: sanitizeUserInput(form.utilities, MAX_SHORT_TEXT_LENGTH), contact: sanitizeUserInput(form.contact, MAX_TITLE_LENGTH), owner: getSellerLabel(user) });
+      await addToLetListing({ ...form, title: sanitizeUserInput(form.title, MAX_TITLE_LENGTH), location: sanitizeUserInput(form.location, MAX_TITLE_LENGTH), description: sanitizeUserInput(form.description, MAX_SHORT_TEXT_LENGTH), utilities: sanitizeUserInput(form.utilities, MAX_SHORT_TEXT_LENGTH), contact: sanitizeUserInput(form.contact, MAX_TITLE_LENGTH), owner: getSellerLabel(user) });
       setForm({ ...defaultForm, contact: form.contact });
       setPreviewUrl('');
       if (fileInputRef.current) fileInputRef.current.value = '';

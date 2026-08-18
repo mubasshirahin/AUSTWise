@@ -1,13 +1,12 @@
-// TODO: Swap localStorage for API calls — see MIGRATION.md Phase 3
-//   GET  /api/marketplace?type=EXCHANGE  → listExchangeItems()
-//   POST /api/marketplace                → addExchangeItem()
-//   DELETE /api/marketplace/:id          → deleteExchangeItem()
-// Keep function signatures identical so UI components don't change.
+// Marketplace storage — backed by server-side sharedStore for cross-device sync.
+// All functions keep identical signatures so UI components don't change.
+
 const storageKey = 'aust-marketplace-v1';
 const contributorKey = 'aust-marketplace-contributor-id';
 const userStorageKey = 'aust-user-profile';
 
 import { sanitizeUserInput, MAX_SHORT_TEXT_LENGTH, MAX_TITLE_LENGTH } from './sanitize';
+import { sharedStore } from './storageService';
 
 const emptyStore = () => ({
   exchange: [],
@@ -17,6 +16,68 @@ const emptyStore = () => ({
   mentors: [],
   mentorRequests: [],
 });
+
+// ── Local cache + async server sync ──────────────────────────────────────────
+
+let _cache = null;
+let _loading = null;
+
+/** Load the full marketplace store (server-first, localStorage cache). */
+async function loadStoreAsync() {
+  if (_cache) return _cache;
+  if (_loading) return _loading;
+  _loading = (async () => {
+    // Try server first
+    const serverData = await sharedStore.get(storageKey);
+    if (serverData && typeof serverData === 'object' && serverData.exchange) {
+      _cache = { ...emptyStore(), ...serverData };
+      // Update localStorage cache
+      try { localStorage.setItem(storageKey, JSON.stringify(_cache)); } catch { /* ignore */ }
+      _loading = null;
+      return _cache;
+    }
+    // Fallback to localStorage
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) {
+        _cache = { ...emptyStore(), ...JSON.parse(raw) };
+        // Push to server for future reads
+        await sharedStore.set(storageKey, _cache);
+      } else {
+        _cache = emptyStore();
+      }
+    } catch {
+      _cache = emptyStore();
+    }
+    _loading = null;
+    return _cache;
+  })();
+  return _loading;
+}
+
+function loadStore() {
+  // Synchronous fallback (for initial render) — returns cache or empty
+  return _cache || emptyStore();
+}
+
+async function saveStore(store) {
+  _cache = store;
+  // Write to localStorage immediately (instant, offline-safe)
+  try { localStorage.setItem(storageKey, JSON.stringify(store)); } catch { /* ignore */ }
+  // Push to server async (cross-device sync)
+  await sharedStore.set(storageKey, store);
+}
+
+/** Invalidate cache so next read fetches fresh from server. */
+export function invalidateMarketplaceCache() {
+  _cache = null;
+  _loading = null;
+}
+
+// ── Auto-load on module init ─────────────────────────────────────────────────
+loadStoreAsync();
+
+// ── Existing helpers (unchanged) ─────────────────────────────────────────────
 
 export function getContributorId() {
   try {
@@ -67,29 +128,6 @@ export function getUserInitials(name) {
   return initials || 'ST';
 }
 
-const seedData = {
-  exchange: [],
-  tolet: [],
-  lostFound: [],
-  partners: [],
-  mentors: [],
-  mentorRequests: [],
-};
-
-function loadStore() {
-  try {
-    const raw = localStorage.getItem(storageKey);
-    if (!raw) return { ...seedData };
-    return { ...emptyStore(), ...JSON.parse(raw) };
-  } catch {
-    return { ...seedData };
-  }
-}
-
-function saveStore(store) {
-  localStorage.setItem(storageKey, JSON.stringify(store));
-}
-
 export function formatPostedDate(iso) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return 'recently';
@@ -110,13 +148,15 @@ function createBaseEntry() {
   };
 }
 
+// ── Exchange ─────────────────────────────────────────────────────────────────
+
 export function listExchangeItems() {
   return loadStore().exchange.sort(
     (left, right) => new Date(right.postedAt).getTime() - new Date(left.postedAt).getTime(),
   );
 }
 
-export function addExchangeItem(payload) {
+export async function addExchangeItem(payload) {
   const title = sanitizeUserInput(String(payload.title || '').trim(), MAX_TITLE_LENGTH);
   const price = Number(payload.price);
   const contact = sanitizeUserInput(String(payload.contact || '').trim(), MAX_TITLE_LENGTH);
@@ -125,7 +165,7 @@ export function addExchangeItem(payload) {
   if (!Number.isFinite(price) || price < 0) throw new Error('Enter a valid price.');
   if (!contact) throw new Error('Contact number is required.');
 
-  const store = loadStore();
+  const store = await loadStoreAsync();
   const entry = {
     ...createBaseEntry(),
     title,
@@ -138,9 +178,23 @@ export function addExchangeItem(payload) {
   };
 
   store.exchange.unshift(entry);
-  saveStore(store);
+  await saveStore(store);
   return entry;
 }
+
+export function deleteExchangeItem(id, userId, userRole) {
+  const store = loadStore();
+  const item = store.exchange.find((entry) => entry.id === id);
+  if (!item) return;
+  const isOwner = item.contributorId === (userId || getContributorId());
+  const isAdmin = userRole === 'admin';
+  if (!isOwner && !isAdmin) return;
+
+  store.exchange = store.exchange.filter((entry) => entry.id !== id);
+  saveStore(store); // async but fire-and-forget
+}
+
+// ── ToLet ────────────────────────────────────────────────────────────────────
 
 export function listToLetListings() {
   return loadStore().tolet.sort(
@@ -148,7 +202,7 @@ export function listToLetListings() {
   );
 }
 
-export function addToLetListing(payload) {
+export async function addToLetListing(payload) {
   const title = sanitizeUserInput(String(payload.title || '').trim(), MAX_TITLE_LENGTH);
   const location = sanitizeUserInput(String(payload.location || '').trim(), MAX_TITLE_LENGTH);
   const rent = Number(payload.rent);
@@ -158,7 +212,7 @@ export function addToLetListing(payload) {
   if (!Number.isFinite(rent) || rent < 0) throw new Error('Enter a valid monthly rent.');
   if (!contact) throw new Error('Contact number is required.');
 
-  const store = loadStore();
+  const store = await loadStoreAsync();
   const entry = {
     ...createBaseEntry(),
     title,
@@ -169,24 +223,39 @@ export function addToLetListing(payload) {
     image: payload.image || '',
     available: true,
     contact,
-    owner: payload.owner || getSellerLabel(),      description: sanitizeUserInput(payload.description || '', MAX_SHORT_TEXT_LENGTH),
-      environment: payload.environment || 'Male',
-      utilities: sanitizeUserInput(payload.utilities || '', MAX_SHORT_TEXT_LENGTH),
+    owner: payload.owner || getSellerLabel(),
+    description: sanitizeUserInput(payload.description || '', MAX_SHORT_TEXT_LENGTH),
+    environment: payload.environment || 'Male',
+    utilities: sanitizeUserInput(payload.utilities || '', MAX_SHORT_TEXT_LENGTH),
   };
 
   store.tolet.unshift(entry);
-  saveStore(store);
+  await saveStore(store);
   return entry;
 }
 
 export function setToLetAvailability(id, available) {
   const store = loadStore();
-  store.tolet = store.tolet.map((listing) => (
-    listing.id === id ? { ...listing, available: Boolean(available) } : listing
-  ));
+  store.tolet = store.tolet.map((listing) =>
+    listing.id === id ? { ...listing, available: Boolean(available) } : listing,
+  );
   saveStore(store);
   return store.tolet;
 }
+
+export function deleteToLetListing(id, userId, userRole) {
+  const store = loadStore();
+  const item = store.tolet.find((entry) => entry.id === id);
+  if (!item) return;
+  const isOwner = item.contributorId === (userId || getContributorId());
+  const isAdmin = userRole === 'admin';
+  if (!isOwner && !isAdmin) return;
+
+  store.tolet = store.tolet.filter((entry) => entry.id !== id);
+  saveStore(store);
+}
+
+// ── Lost & Found ─────────────────────────────────────────────────────────────
 
 export function listLostFoundItems() {
   return loadStore().lostFound.sort(
@@ -194,7 +263,7 @@ export function listLostFoundItems() {
   );
 }
 
-export function addLostFoundItem(payload) {
+export async function addLostFoundItem(payload) {
   const title = sanitizeUserInput(String(payload.title || '').trim(), MAX_TITLE_LENGTH);
   const location = sanitizeUserInput(String(payload.location || '').trim(), MAX_TITLE_LENGTH);
   const description = sanitizeUserInput(String(payload.description || '').trim(), MAX_SHORT_TEXT_LENGTH);
@@ -206,7 +275,7 @@ export function addLostFoundItem(payload) {
   }
   if (!contact) throw new Error('Contact number is required.');
 
-  const store = loadStore();
+  const store = await loadStoreAsync();
   const entry = {
     ...createBaseEntry(),
     title,
@@ -220,7 +289,7 @@ export function addLostFoundItem(payload) {
   };
 
   store.lostFound.unshift(entry);
-  saveStore(store);
+  await saveStore(store);
   return entry;
 }
 
@@ -239,6 +308,20 @@ export function claimLostFoundItem(id) {
   saveStore(store);
   return updated;
 }
+
+export function deleteLostFoundItem(id, userId, userRole) {
+  const store = loadStore();
+  const item = store.lostFound.find((entry) => entry.id === id);
+  if (!item) return;
+  const isOwner = item.contributorId === (userId || getContributorId());
+  const isAdmin = userRole === 'admin';
+  if (!isOwner && !isAdmin) return;
+
+  store.lostFound = store.lostFound.filter((entry) => entry.id !== id);
+  saveStore(store);
+}
+
+// ── Study Partners ───────────────────────────────────────────────────────────
 
 export function listStudyPartners() {
   return loadStore().partners.sort(
@@ -265,7 +348,7 @@ export function calcPartnerCompatibility(leftSkills, rightSkills) {
   return Math.max(35, Math.min(98, score || 50));
 }
 
-export function addStudyPartner(payload) {
+export async function addStudyPartner(payload) {
   const name = String(payload.name || '').trim();
   const contact = String(payload.contact || '').trim();
   const skills = splitTags(payload.skills);
@@ -278,7 +361,7 @@ export function addStudyPartner(payload) {
   if (!contact) throw new Error('Contact number is required.');
 
   const user = loadUserProfile();
-  const store = loadStore();
+  const store = await loadStoreAsync();
   const contributorId = getContributorId();
 
   store.partners = store.partners.filter((partner) => partner.contributorId !== contributorId);
@@ -295,7 +378,7 @@ export function addStudyPartner(payload) {
   };
 
   store.partners.unshift(entry);
-  saveStore(store);
+  await saveStore(store);
   return entry;
 }
 
@@ -304,13 +387,15 @@ export function getMyStudyPartner() {
   return listStudyPartners().find((partner) => partner.contributorId === contributorId) || null;
 }
 
+// ── Mentors ──────────────────────────────────────────────────────────────────
+
 export function listMentors() {
   return loadStore().mentors.sort(
     (left, right) => new Date(right.postedAt).getTime() - new Date(left.postedAt).getTime(),
   );
 }
 
-export function addMentor(payload) {
+export async function addMentor(payload) {
   const name = String(payload.name || '').trim();
   const expertise = String(payload.expertise || '').trim();
   const company = String(payload.company || '').trim();
@@ -323,7 +408,7 @@ export function addMentor(payload) {
   if (!contact) throw new Error('Contact number is required.');
 
   const user = loadUserProfile();
-  const store = loadStore();
+  const store = await loadStoreAsync();
   const contributorId = getContributorId();
 
   store.mentors = store.mentors.filter((mentor) => mentor.contributorId !== contributorId);
@@ -342,18 +427,20 @@ export function addMentor(payload) {
   };
 
   store.mentors.unshift(entry);
-  saveStore(store);
+  await saveStore(store);
   return entry;
 }
 
 export function incrementMentorSessions(id) {
   const store = loadStore();
-  store.mentors = store.mentors.map((mentor) => (
-    mentor.id === id ? { ...mentor, sessions: (mentor.sessions || 0) + 1 } : mentor
-  ));
+  store.mentors = store.mentors.map((mentor) =>
+    mentor.id === id ? { ...mentor, sessions: (mentor.sessions || 0) + 1 } : mentor,
+  );
   saveStore(store);
   return store.mentors;
 }
+
+// ── Mentor Requests ──────────────────────────────────────────────────────────
 
 export function listMentorRequests() {
   return loadStore().mentorRequests.sort(
@@ -361,7 +448,7 @@ export function listMentorRequests() {
   );
 }
 
-export function addMentorRequest(payload) {
+export async function addMentorRequest(payload) {
   const topic = sanitizeUserInput(String(payload.topic || '').trim(), MAX_TITLE_LENGTH);
   const description = sanitizeUserInput(String(payload.description || '').trim(), MAX_SHORT_TEXT_LENGTH);
   const contact = sanitizeUserInput(String(payload.contact || '').trim(), MAX_TITLE_LENGTH);
@@ -370,7 +457,7 @@ export function addMentorRequest(payload) {
   if (!contact) throw new Error('Contact number is required.');
 
   const user = loadUserProfile();
-  const store = loadStore();
+  const store = await loadStoreAsync();
   const entry = {
     ...createBaseEntry(),
     requesterName: payload.requesterName || user?.name || 'Anonymous',
@@ -383,7 +470,7 @@ export function addMentorRequest(payload) {
   };
 
   store.mentorRequests.unshift(entry);
-  saveStore(store);
+  await saveStore(store);
   return entry;
 }
 
@@ -412,6 +499,20 @@ export function addMentorResponse(requestId, payload) {
   return request;
 }
 
+export function deleteMentorRequest(id, userId, userRole) {
+  const store = loadStore();
+  const item = store.mentorRequests.find((entry) => entry.id === id);
+  if (!item) return;
+  const isOwner = item.contributorId === (userId || getContributorId());
+  const isAdmin = userRole === 'admin';
+  if (!isOwner && !isAdmin) return;
+
+  store.mentorRequests = store.mentorRequests.filter((entry) => entry.id !== id);
+  saveStore(store);
+}
+
+// ── Clipboard helper ─────────────────────────────────────────────────────────
+
 export async function copyContact(contact, label = 'Contact') {
   const value = String(contact || '').trim();
   if (!value) {
@@ -422,48 +523,4 @@ export async function copyContact(contact, label = 'Contact') {
     return `${label} copied: ${value}`;
   }
   return `${label}: ${value}`;
-}
-
-export function deleteExchangeItem(id, userId, userRole) {
-  const store = loadStore();
-  const item = store.exchange.find((entry) => entry.id === id);
-  if (!item) return;
-  const isOwner = item.contributorId === (userId || getContributorId());
-  const isAdmin = userRole === 'admin';
-  if (!isOwner && !isAdmin) return;
-  store.exchange = store.exchange.filter((entry) => entry.id !== id);
-  saveStore(store);
-}
-
-export function deleteToLetListing(id, userId, userRole) {
-  const store = loadStore();
-  const item = store.tolet.find((entry) => entry.id === id);
-  if (!item) return;
-  const isOwner = item.contributorId === (userId || getContributorId());
-  const isAdmin = userRole === 'admin';
-  if (!isOwner && !isAdmin) return;
-  store.tolet = store.tolet.filter((entry) => entry.id !== id);
-  saveStore(store);
-}
-
-export function deleteLostFoundItem(id, userId, userRole) {
-  const store = loadStore();
-  const item = store.lostFound.find((entry) => entry.id === id);
-  if (!item) return;
-  const isOwner = item.contributorId === (userId || getContributorId());
-  const isAdmin = userRole === 'admin';
-  if (!isOwner && !isAdmin) return;
-  store.lostFound = store.lostFound.filter((entry) => entry.id !== id);
-  saveStore(store);
-}
-
-export function deleteMentorRequest(id, userId, userRole) {
-  const store = loadStore();
-  const item = store.mentorRequests.find((entry) => entry.id === id);
-  if (!item) return;
-  const isOwner = item.contributorId === (userId || getContributorId());
-  const isAdmin = userRole === 'admin';
-  if (!isOwner && !isAdmin) return;
-  store.mentorRequests = store.mentorRequests.filter((entry) => entry.id !== id);
-  saveStore(store);
 }

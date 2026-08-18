@@ -109,6 +109,10 @@ import {
   revealPassword,
 } from './passwordVaultDB.mjs';
 import { createWSServer, broadcastToAll, broadcastToUsers, getPresenceMap } from './wsServer.mjs';
+import {
+  getUserStoreValue, setUserStoreValue, deleteUserStoreValue, listUserStoreKeys,
+  getSharedStoreValue, setSharedStoreValue, deleteSharedStoreValue,
+} from './storeDB.mjs';
 
 // Helper function to answer callback query
 async function answerCallbackQueryFn(botToken, callbackQueryId, text) {
@@ -2262,6 +2266,128 @@ async function handleApiRequest(req, res) {
       sendJson(res, 200, { success: true, settings: { ...next, telegram: { ...next.telegram, registered } } });
     } catch (error) {
       sendJson(res, 500, { success: false, error: error.message || 'Failed to save settings.' });
+    }
+    return;
+  }
+
+  // ── Generic KV Store API ──────────────────────────────────────────────
+  // GET /api/store/user/:key — read a per-user stored value
+  if (req.url.startsWith('/api/store/user/') && req.method === 'GET') {
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    const key = decodeURIComponent(req.url.slice('/api/store/user/'.length));
+    try {
+      const value = await getUserStoreValue(auth.id, key, null);
+      sendJson(res, 200, { success: true, key, value });
+    } catch (err) {
+      sendJson(res, 500, { success: false, error: err.message || 'Failed to read store.' });
+    }
+    return;
+  }
+
+  // PUT /api/store/user/:key — write a per-user stored value
+  if (req.url.startsWith('/api/store/user/') && req.method === 'PUT') {
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    const key = decodeURIComponent(req.url.slice('/api/store/user/'.length));
+    try {
+      const body = await readJsonBody(req);
+      await setUserStoreValue(auth.id, key, body.value);
+      sendJson(res, 200, { success: true, key });
+    } catch (err) {
+      sendJson(res, 500, { success: false, error: err.message || 'Failed to write store.' });
+    }
+    return;
+  }
+
+  // DELETE /api/store/user/:key — delete a per-user stored value
+  if (req.url.startsWith('/api/store/user/') && req.method === 'DELETE') {
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    const key = decodeURIComponent(req.url.slice('/api/store/user/'.length));
+    try {
+      await deleteUserStoreValue(auth.id, key);
+      sendJson(res, 200, { success: true, key });
+    } catch (err) {
+      sendJson(res, 500, { success: false, error: err.message || 'Failed to delete store.' });
+    }
+    return;
+  }
+
+  // GET /api/store/user — list all keys for the current user
+  if (req.url === '/api/store/user' && req.method === 'GET') {
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    try {
+      const keys = await listUserStoreKeys(auth.id);
+      sendJson(res, 200, { success: true, keys });
+    } catch (err) {
+      sendJson(res, 500, { success: false, error: err.message || 'Failed to list store keys.' });
+    }
+    return;
+  }
+
+  // GET /api/store/shared/:key — read a shared stored value
+  if (req.url.startsWith('/api/store/shared/') && req.method === 'GET') {
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    const key = decodeURIComponent(req.url.slice('/api/store/shared/'.length));
+    try {
+      const value = await getSharedStoreValue(key, null);
+      sendJson(res, 200, { success: true, key, value });
+    } catch (err) {
+      sendJson(res, 500, { success: false, error: err.message || 'Failed to read shared store.' });
+    }
+    return;
+  }
+
+  // PUT /api/store/shared/:key — write a shared stored value
+  if (req.url.startsWith('/api/store/shared/') && req.method === 'PUT') {
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    const key = decodeURIComponent(req.url.slice('/api/store/shared/'.length));
+    try {
+      const body = await readJsonBody(req);
+      await setSharedStoreValue(key, body.value, auth.id);
+      broadcastToAll({ type: 'store-change', payload: { scope: 'shared', key } });
+      sendJson(res, 200, { success: true, key });
+    } catch (err) {
+      sendJson(res, 500, { success: false, error: err.message || 'Failed to write shared store.' });
+    }
+    return;
+  }
+
+  // DELETE /api/store/shared/:key — delete a shared stored value
+  if (req.url.startsWith('/api/store/shared/') && req.method === 'DELETE') {
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    const key = decodeURIComponent(req.url.slice('/api/store/shared/'.length));
+    try {
+      await deleteSharedStoreValue(key);
+      broadcastToAll({ type: 'store-change', payload: { scope: 'shared', key } });
+      sendJson(res, 200, { success: true, key });
+    } catch (err) {
+      sendJson(res, 500, { success: false, error: err.message || 'Failed to delete shared store.' });
+    }
+    return;
+  }
+
+  // PUT /api/store/migrate — bulk migrate localStorage keys to server
+  if (req.url === '/api/store/migrate' && req.method === 'PUT') {
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    try {
+      const body = await readJsonBody(req);
+      const { userEntries = {}, sharedEntries = {} } = body || {};
+      for (const [key, value] of Object.entries(userEntries)) {
+        await setUserStoreValue(auth.id, key, value);
+      }
+      for (const [key, value] of Object.entries(sharedEntries)) {
+        await setSharedStoreValue(key, value, auth.id);
+      }
+      sendJson(res, 200, { success: true, migrated: Object.keys(userEntries).length + Object.keys(sharedEntries).length });
+    } catch (err) {
+      sendJson(res, 500, { success: false, error: err.message || 'Migration failed.' });
     }
     return;
   }

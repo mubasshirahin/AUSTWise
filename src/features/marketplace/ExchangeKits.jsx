@@ -90,13 +90,13 @@ export default function ExchangeKits() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
     setMessage('');
 
     try {
-      addExchangeItem({ ...form, title: sanitizeUserInput(form.title, MAX_TITLE_LENGTH), contact: sanitizeUserInput(form.contact, MAX_TITLE_LENGTH), seller: getSellerLabel(user) });
+      await addExchangeItem({ ...form, title: sanitizeUserInput(form.title, MAX_TITLE_LENGTH), contact: sanitizeUserInput(form.contact, MAX_TITLE_LENGTH), seller: getSellerLabel(user) });
       setForm({ ...defaultForm });
       setPreviewUrl('');
       if (fileInputRef.current) fileInputRef.current.value = '';

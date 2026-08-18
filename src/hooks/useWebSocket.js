@@ -25,6 +25,7 @@ const PING_INTERVAL = 30000;
  * @param {function} options.onRoutineShared - Called with { action: 'publish'|'delete', crId } when a routine is shared/removed
  * @param {function} options.onNoticeNew - Called with { title, content, postedByName, postedByRole } when a notice is posted
  * @param {function} options.onLibraryOccupancy - Called with { action, userId, isInside? } when library checkin/checkout happens
+ * @param {function} options.onStoreChange - Called with { scope: 'user'|'shared', key } when a stored value changes
  */
 export default function useWebSocket(userId, options = {}) {
   const wsRef = useRef(null);
@@ -162,6 +163,10 @@ export default function useWebSocket(userId, options = {}) {
 
             case 'library-occupancy':
               opts.onLibraryOccupancy?.(payload);
+              break;
+
+            case 'store-change':
+              opts.onStoreChange?.(payload);
               break;
 
             case 'error':

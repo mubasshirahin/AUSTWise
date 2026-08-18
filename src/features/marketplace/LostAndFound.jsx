@@ -88,13 +88,13 @@ export default function LostAndFound() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
     setMessage('');
 
     try {
-      addLostFoundItem({ ...form, title: sanitizeUserInput(form.title, MAX_TITLE_LENGTH), location: sanitizeUserInput(form.location, MAX_TITLE_LENGTH), description: sanitizeUserInput(form.description, MAX_SHORT_TEXT_LENGTH), contact: sanitizeUserInput(form.contact, MAX_TITLE_LENGTH), reporter: getSellerLabel(user) });
+      await addLostFoundItem({ ...form, title: sanitizeUserInput(form.title, MAX_TITLE_LENGTH), location: sanitizeUserInput(form.location, MAX_TITLE_LENGTH), description: sanitizeUserInput(form.description, MAX_SHORT_TEXT_LENGTH), contact: sanitizeUserInput(form.contact, MAX_TITLE_LENGTH), reporter: getSellerLabel(user) });
       setForm({ ...defaultForm });
       setPreviewUrl('');
       if (fileInputRef.current) fileInputRef.current.value = '';

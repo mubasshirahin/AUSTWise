@@ -439,3 +439,30 @@ model Course {
 
   @@index([department])
 }
+
+// ─── Generic KV Store (replaces localStorage for cross-device sync) ──────
+// UserStore: per-user data (grades, syllabus progress, etc.)
+// SharedStore: shared data (marketplace, notices, canteen, etc.)
+
+model UserStore {
+  id        String   @id @default(uuid())
+  userId    String
+  key       String
+  value     String   @default("{}") // JSON string
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@unique([userId, key])
+  @@index([userId])
+}
+
+model SharedStore {
+  id        String   @id @default(uuid())
+  key       String
+  value     String   @default("{}") // JSON string
+  updatedBy String   @default("")
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@unique([key])
+}
