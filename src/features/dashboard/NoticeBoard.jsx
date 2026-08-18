@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { BellRing, Pin, ChevronDown, ChevronUp, Sparkles, Plus, X, Trash2, UserRound } from 'lucide-react';
 import { notices } from '../../data/mockData';
 import { useAuth } from '../../context/AuthContext';
+import useWebSocket from '../../hooks/useWebSocket';
 import { addNotification, makeNotifId, showNativeNotification, removeNotificationById, removeNotificationsByTitle } from '../../utils/inAppNotifications';
 
 const CRSR_KEY = 'aust-cr-sr-notices';
@@ -14,6 +15,24 @@ export default function NoticeBoard() {
   const [formTitle, setFormTitle] = useState('');
   const [formContent, setFormContent] = useState('');
   const [formPinned, setFormPinned] = useState(false);
+
+  // Real-time: when another device posts a notice, show a notification
+  useWebSocket(user?.id || null, {
+    onNoticeNew: useCallback(({ title, content, postedByName }) => {
+      const notif = {
+        id: makeNotifId(),
+        title: `New Notice: ${title}`,
+        body: content || `Posted by ${postedByName || 'CR/SR'}`,
+        icon: 'BellRing',
+        path: '/',
+        timestamp: Date.now(),
+        read: false,
+        priority: 'medium',
+      };
+      addNotification(notif);
+      showNativeNotification(notif);
+    }, []),
+  });
 
   const [adminNotices] = useState(() => {
     try {

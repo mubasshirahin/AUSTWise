@@ -873,6 +873,7 @@ async function handleApiRequest(req, res) {
         sendJson(res, 404, { success: false, error: 'User not found.' });
         return;
       }
+      broadcastToAll({ type: 'profile-update', payload: { userId, fields: ['role'] } });
       sendJson(res, 200, { success: true, user: updated });
     } catch (error) {
       sendJson(res, 500, { success: false, error: error.message || 'Failed to update role.' });
@@ -1003,6 +1004,7 @@ async function handleApiRequest(req, res) {
         postedByName: payload.postedByName || '',
         postedByRole: auth.role,
       });
+      broadcastToAll({ type: 'notice-new', payload: { title: payload.title, content: payload.content, postedByName: payload.postedByName || '', postedByRole: auth.role } });
       sendJson(res, 200, result);
     } catch (error) {
       sendJson(res, 500, {
@@ -1404,6 +1406,7 @@ async function handleApiRequest(req, res) {
       const { deviceId, lat, lng } = await readJsonBody(req);
       const device = deviceId || auth.id;
       const result = await recordCheckIn(device, Number(lat), Number(lng));
+      broadcastToAll({ type: 'library-occupancy', payload: { action: 'checkin', userId: auth.id } });
       sendJson(res, 200, { success: true, ...result });
     } catch (error) {
       sendJson(res, 400, {
@@ -1423,6 +1426,7 @@ async function handleApiRequest(req, res) {
       const { deviceId } = await readJsonBody(req);
       const device = deviceId || auth.id;
       const result = await recordCheckOut(device);
+      broadcastToAll({ type: 'library-occupancy', payload: { action: 'checkout', userId: auth.id } });
       sendJson(res, 200, { success: true, ...result });
     } catch (error) {
       sendJson(res, 500, {
@@ -1477,6 +1481,7 @@ async function handleApiRequest(req, res) {
         }
       }
       const result = await trackUserPresence(auth.id, verified, Number(lat), Number(lng));
+      broadcastToAll({ type: 'library-occupancy', payload: { action: 'track', userId: auth.id, isInside: verified } });
       sendJson(res, 200, { success: true, verified, ...result });
     } catch (error) {
       sendJson(res, 400, {
@@ -2280,6 +2285,7 @@ async function handleApiRequest(req, res) {
         return;
       }
       const updated = await updateUserProfile(auth.id, { attendancePct: Math.round(pct * 10) / 10 });
+      broadcastToAll({ type: 'profile-update', payload: { userId: auth.id, fields: ['attendancePct'] } });
       sendJson(res, 200, { success: true, user: updated });
     } catch (error) {
       sendJson(res, 500, { success: false, error: error.message || 'Failed to update attendance.' });
@@ -2337,6 +2343,7 @@ async function handleApiRequest(req, res) {
         weekDays: JSON.stringify(weekDays || ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday']),
       });
       sendJson(res, 200, { success: true, routine: { ...record, routine, weekDays: weekDays || [] } });
+      broadcastToAll({ type: 'routine-shared', payload: { action: 'publish', crId: user.id } });
     } catch (error) {
       sendJson(res, 500, { success: false, error: error.message || 'Failed to share routine.' });
     }
@@ -2359,6 +2366,7 @@ async function handleApiRequest(req, res) {
         section: user.section,
         labSection: user.labSection,
       });
+      broadcastToAll({ type: 'routine-shared', payload: { action: 'delete', crId: user.id } });
       sendJson(res, 200, { success: true, removed });
     } catch (error) {
       sendJson(res, 500, { success: false, error: error.message || 'Failed to remove shared routine.' });
@@ -3094,6 +3102,7 @@ async function handleApiRequest(req, res) {
       }
       if (status === 'approved') {
         await updateUserProfile(app.userId, { role: app.appliedRole }, { allowRole: true });
+        broadcastToAll({ type: 'profile-update', payload: { userId: app.userId, fields: ['role'] } });
       }
       // Notify the applicant with the decision.
       const approved = status === 'approved';
@@ -3138,6 +3147,7 @@ async function handleApiRequest(req, res) {
       }
       const resignedRole = user.role;
       await updateUserProfile(auth.id, { role: 'student' }, { allowRole: true });
+      broadcastToAll({ type: 'profile-update', payload: { userId: auth.id, fields: ['role'] } });
       const all = await listRoleApplications();
       for (const app of all) {
         if (app.userId === auth.id && app.status === 'approved') {

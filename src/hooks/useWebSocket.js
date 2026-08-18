@@ -22,6 +22,9 @@ const PING_INTERVAL = 30000;
  * @param {function} options.onConnectionChange - Called with boolean (connected/disconnected)
  * @param {function} options.onMarketplaceListing - Called with { action: 'create'|'delete', item?, id? } when a listing changes
  * @param {function} options.onProfileUpdate - Called with { userId, fields } when a user profile is updated
+ * @param {function} options.onRoutineShared - Called with { action: 'publish'|'delete', crId } when a routine is shared/removed
+ * @param {function} options.onNoticeNew - Called with { title, content, postedByName, postedByRole } when a notice is posted
+ * @param {function} options.onLibraryOccupancy - Called with { action, userId, isInside? } when library checkin/checkout happens
  */
 export default function useWebSocket(userId, options = {}) {
   const wsRef = useRef(null);
@@ -147,6 +150,18 @@ export default function useWebSocket(userId, options = {}) {
 
             case 'profile-update':
               opts.onProfileUpdate?.(payload);
+              break;
+
+            case 'routine-shared':
+              opts.onRoutineShared?.(payload);
+              break;
+
+            case 'notice-new':
+              opts.onNoticeNew?.(payload);
+              break;
+
+            case 'library-occupancy':
+              opts.onLibraryOccupancy?.(payload);
               break;
 
             case 'error':
