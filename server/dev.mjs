@@ -359,7 +359,7 @@ function applySecurityHeaders(res) {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
-  if (process.env.ENABLE_CSP) {
+  if (process.env.ENABLE_CSP === '1') {
     res.setHeader('Content-Security-Policy', process.env.CSP_HEADER || "default-src 'self'");
   }
   if (process.env.ENABLE_HSTS === '1' || process.env.NODE_ENV === 'production') {
