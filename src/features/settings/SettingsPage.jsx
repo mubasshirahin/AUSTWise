@@ -8,6 +8,7 @@ import AboutUs from './AboutUs';
 import LinkedAccountsSection from './LinkedAccountsSection';
 import GliderTabs from '../../components/GliderTabs';
 import { useNotifications } from '../../hooks/useNotifications';
+import useWebSocket from '../../hooks/useWebSocket';
 import { OrbitsProvider, useOrbits } from '../orbits/OrbitsContext';
 import OrbitsConfigurationPanel from '../orbits/OrbitsConfigurationPanel';
 import { useStalk } from '../stalk-road/StalkContext';
@@ -268,6 +269,13 @@ export default function SettingsPage() {
   const { user, isAuthenticated, updateUser, logout, refreshUserFromServer } = useAuth();
   const { routine, weekDays } = useRoutine();
   const { supported, permission, settings: notifSettings, enable: enableNotifs, disable: disableNotifs, updateSetting } = useNotifications(routine, weekDays);
+
+  // Real-time: when another device edits this user's profile, refresh from server
+  useWebSocket(isAuthenticated ? user?.id : null, {
+    onProfileUpdate: useCallback(({ userId: changedId }) => {
+      if (changedId === user?.id) refreshUserFromServer();
+    }, [user?.id, refreshUserFromServer]),
+  });
 
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
