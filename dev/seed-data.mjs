@@ -11,8 +11,20 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 
-const prisma = new PrismaClient();
+const adapter = new PrismaPg(
+  process.env.DATABASE_URL
+    ? { connectionString: process.env.DATABASE_URL }
+    : {
+        host: process.env.PGHOST || process.env.DB_SERVER || 'localhost',
+        port: Number(process.env.PGPORT || process.env.DB_PORT || 5432),
+        database: process.env.PGDATABASE || process.env.DB_DATABASE || 'AUSTWise',
+        user: process.env.PGUSER || process.env.DB_USER || 'postgres',
+        password: process.env.PGPASSWORD || process.env.DB_PASSWORD || '',
+      }
+);
+const prisma = new PrismaClient({ adapter });
 
 // ─── Course data (from src/data/courses.js) ───────────────────────────────────
 

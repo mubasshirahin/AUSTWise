@@ -36,31 +36,25 @@ async function isDbAvailable() {
 // ── Ensure tables exist ──────────────────────────────────────────────────────
 
 const TABLES_DDL = `
-IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'UserStore')
-BEGIN
-  CREATE TABLE UserStore (
-    id        NVARCHAR(50) DEFAULT (NEWID()) PRIMARY KEY,
-    userId    NVARCHAR(50) NOT NULL,
-    [key]     NVARCHAR(200) NOT NULL,
-    value     NVARCHAR(MAX) DEFAULT '{}',
-    updatedAt DATETIME2 DEFAULT GETDATE(),
-    createdAt DATETIME2 DEFAULT GETDATE(),
-    CONSTRAINT UQ_UserStore UNIQUE (userId, [key])
-  );
-  CREATE INDEX IX_UserStore_userId ON UserStore(userId);
-END;
+CREATE TABLE IF NOT EXISTS "UserStore" (
+  id        TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
+  userId    TEXT NOT NULL,
+  "key"     TEXT NOT NULL,
+  value     TEXT DEFAULT '{}',
+  updatedAt TIMESTAMPTZ DEFAULT NOW(),
+  createdAt TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT uq_userstore UNIQUE (userId, "key")
+);
+CREATE INDEX IF NOT EXISTS ix_userstore_userid ON "UserStore" (userId);
 
-IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'SharedStore')
-BEGIN
-  CREATE TABLE SharedStore (
-    id        NVARCHAR(50) DEFAULT (NEWID()) PRIMARY KEY,
-    [key]     NVARCHAR(200) NOT NULL UNIQUE,
-    value     NVARCHAR(MAX) DEFAULT '{}',
-    updatedBy NVARCHAR(50) DEFAULT '',
-    updatedAt DATETIME2 DEFAULT GETDATE(),
-    createdAt DATETIME2 DEFAULT GETDATE()
-  );
-END;
+CREATE TABLE IF NOT EXISTS "SharedStore" (
+  id        TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
+  "key"     TEXT NOT NULL UNIQUE,
+  value     TEXT DEFAULT '{}',
+  updatedBy TEXT DEFAULT '',
+  updatedAt TIMESTAMPTZ DEFAULT NOW(),
+  createdAt TIMESTAMPTZ DEFAULT NOW()
+);
 `;
 
 let _tablesEnsured = false;
@@ -86,7 +80,7 @@ export async function getUserStoreValue(userId, key, fallback = null) {
     await ensureTables();
     try {
       const rows = await query(
-        'SELECT value FROM UserStore WHERE userId = @userId AND [key] = @key',
+        'SELECT value FROM "UserStore" WHERE userId = @userId AND "key" = @key',
         [
           { name: 'userId', type: sql.NVarChar(50), value: userId },
           { name: 'key', type: sql.NVarChar(200), value: key },
@@ -113,13 +107,11 @@ export async function setUserStoreValue(userId, key, value) {
     await ensureTables();
     try {
       await query(`
-        MERGE UserStore AS target
-        USING (SELECT @userId AS userId, @key AS [key], @val AS value) AS source
-        ON target.userId = source.userId AND target.[key] = source.[key]
-        WHEN MATCHED THEN
-          UPDATE SET value = source.value, updatedAt = GETDATE()
-        WHEN NOT MATCHED THEN
-          INSERT (userId, [key], value) VALUES (source.userId, source.[key], source.value);
+        INSERT INTO "UserStore" (userId, "key", value, updatedAt)
+        VALUES (@userId, @key, @val, NOW())
+        ON CONFLICT (userId, "key") DO UPDATE SET
+          value = EXCLUDED.value,
+          updatedAt = NOW();
       `, [
         { name: 'userId', type: sql.NVarChar(50), value: userId },
         { name: 'key', type: sql.NVarChar(200), value: key },
@@ -144,7 +136,7 @@ export async function deleteUserStoreValue(userId, key) {
     await ensureTables();
     try {
       await query(
-        'DELETE FROM UserStore WHERE userId = @userId AND [key] = @key',
+        'DELETE FROM "UserStore" WHERE userId = @userId AND "key" = @key',
         [
           { name: 'userId', type: sql.NVarChar(50), value: userId },
           { name: 'key', type: sql.NVarChar(200), value: key },
@@ -166,7 +158,7 @@ export async function listUserStoreKeys(userId) {
     await ensureTables();
     try {
       const rows = await query(
-        'SELECT [key] FROM UserStore WHERE userId = @userId',
+        'SELECT "key" FROM "UserStore" WHERE userId = @userId',
         [{ name: 'userId', type: sql.NVarChar(50), value: userId }]
       );
       return rows.map(r => r.key);
@@ -185,7 +177,7 @@ export async function getSharedStoreValue(key, fallback = null) {
     await ensureTables();
     try {
       const rows = await query(
-        'SELECT value FROM SharedStore WHERE [key] = @key',
+        'SELECT value FROM "SharedStore" WHERE "key" = @key',
         [{ name: 'key', type: sql.NVarChar(200), value: key }]
       );
       if (rows.length > 0) {
@@ -208,13 +200,12 @@ export async function setSharedStoreValue(key, value, updatedBy = '') {
     await ensureTables();
     try {
       await query(`
-        MERGE SharedStore AS target
-        USING (SELECT @key AS [key], @val AS value, @by AS updatedBy) AS source
-        ON target.[key] = source.[key]
-        WHEN MATCHED THEN
-          UPDATE SET value = source.value, updatedBy = source.updatedBy, updatedAt = GETDATE()
-        WHEN NOT MATCHED THEN
-          INSERT ([key], value, updatedBy) VALUES (source.[key], source.value, source.updatedBy);
+        INSERT INTO "SharedStore" ("key", value, updatedBy, updatedAt)
+        VALUES (@key, @val, @by, NOW())
+        ON CONFLICT ("key") DO UPDATE SET
+          value = EXCLUDED.value,
+          updatedBy = EXCLUDED.updatedBy,
+          updatedAt = NOW();
       `, [
         { name: 'key', type: sql.NVarChar(200), value: key },
         { name: 'val', type: sql.NVarChar(-1), value: jsonValue },
@@ -236,7 +227,7 @@ export async function deleteSharedStoreValue(key) {
   if (await isDbAvailable()) {
     await ensureTables();
     try {
-      await query('DELETE FROM SharedStore WHERE [key] = @key',
+      await query('DELETE FROM "SharedStore" WHERE "key" = @key',
         [{ name: 'key', type: sql.NVarChar(200), value: key }]);
       return;
     } catch { /* fall through */ }

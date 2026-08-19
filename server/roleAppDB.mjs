@@ -21,13 +21,10 @@ const DB_PATH = path.join(__dirname, 'roleApplications.json');
 // ── SQL table ────────────────────────────────────────────────────────────────
 
 const ROLE_APP_DDL = `
-IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'RoleApplications')
-BEGIN
-  CREATE TABLE RoleApplications (
-    id    NVARCHAR(50) PRIMARY KEY,
-    data  NVARCHAR(MAX) DEFAULT '{}'
-  );
-END;
+CREATE TABLE IF NOT EXISTS "RoleApplications" (
+  id   TEXT PRIMARY KEY,
+  data TEXT DEFAULT '{}'
+);
 `;
 
 let _tablesEnsured = false;
@@ -58,7 +55,7 @@ async function ensureTables() {
 
 async function listFromDb() {
   await ensureTables();
-  const rows = await query('SELECT data FROM RoleApplications');
+  const rows = await query('SELECT data FROM "RoleApplications"');
   return rows.map((r) => {
     try { return JSON.parse(r.data); } catch { return null; }
   }).filter(Boolean);
@@ -67,11 +64,9 @@ async function listFromDb() {
 async function upsertRow(app) {
   const data = typeof app === 'string' ? app : JSON.stringify(app);
   await query(`
-    MERGE RoleApplications AS target
-    USING (SELECT @id AS id, @data AS data) AS source
-    ON target.id = source.id
-    WHEN MATCHED THEN UPDATE SET data = source.data
-    WHEN NOT MATCHED THEN INSERT (id, data) VALUES (source.id, source.data);
+    INSERT INTO "RoleApplications" (id, data)
+    VALUES (@id, @data)
+    ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data;
   `, [
     { name: 'id', type: sql.NVarChar(50), value: app.id },
     { name: 'data', type: sql.NVarChar(-1), value: data },

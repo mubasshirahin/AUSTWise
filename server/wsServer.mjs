@@ -69,6 +69,11 @@ const PRESENCE_SWEEP_MS = 30 * 1000;      // sweep every 30s
 let presenceSweepTimer = null;
 
 /** Snapshot of current presence for all known users (plain object) */
+export function closeWSServer() {
+  for (const ws of wss.clients) ws.terminate();
+  try { wss.close(); } catch { /* already closed */ }
+}
+
 export function getPresenceMap() {
   const out = {};
   for (const [userId, p] of presenceState) {
@@ -183,10 +188,12 @@ function removeFromShadowQueue(ws) {
   shadowQueue = shadowQueue.filter((entry) => entry.ws !== ws);
 }
 
+let wss = null;
+
 export function createWSServer(httpServer) {
   // noServer: true — we handle upgrades manually so Vite HMR and app
   // WebSocket connections can coexist on the same HTTP server.
-  const wss = new WebSocketServer({ noServer: true });
+  wss = new WebSocketServer({ noServer: true });
 
   // Route upgrades: skip Vite HMR connections (identified by
   // sec-websocket-protocol header), handle app connections here.

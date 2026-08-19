@@ -52,13 +52,10 @@ export { ALLOWED_TYPES, MAX_SIZE_BYTES, UPLOADS_DIR };
 // ── SQL table ────────────────────────────────────────────────────────────────
 
 const VAULT_NOTES_DDL = `
-IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'VaultNotes')
-BEGIN
-  CREATE TABLE VaultNotes (
-    id   NVARCHAR(100) PRIMARY KEY,
-    data NVARCHAR(MAX) DEFAULT '{}'
-  );
-END;
+CREATE TABLE IF NOT EXISTS "VaultNotes" (
+  id   TEXT PRIMARY KEY,
+  data TEXT DEFAULT '{}'
+);
 `;
 
 let _tablesEnsured = false;
@@ -89,7 +86,7 @@ async function ensureTables() {
 
 async function readNotesFromDb() {
   await ensureTables();
-  const rows = await query('SELECT data FROM VaultNotes');
+  const rows = await query('SELECT data FROM "VaultNotes"');
   return rows.map((r) => {
     try { return JSON.parse(r.data); } catch { return null; }
   }).filter(Boolean);
@@ -98,11 +95,9 @@ async function readNotesFromDb() {
 async function upsertNoteRow(note) {
   const data = JSON.stringify(note);
   await query(`
-    MERGE VaultNotes AS target
-    USING (SELECT @id AS id, @data AS data) AS source
-    ON target.id = source.id
-    WHEN MATCHED THEN UPDATE SET data = source.data
-    WHEN NOT MATCHED THEN INSERT (id, data) VALUES (source.id, source.data);
+    INSERT INTO "VaultNotes" (id, data)
+    VALUES (@id, @data)
+    ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data;
   `, [
     { name: 'id', type: sql.NVarChar(100), value: note.id },
     { name: 'data', type: sql.NVarChar(-1), value: data },
@@ -110,7 +105,7 @@ async function upsertNoteRow(note) {
 }
 
 async function deleteNoteRow(id) {
-  await query('DELETE FROM VaultNotes WHERE id = @id',
+  await query('DELETE FROM "VaultNotes" WHERE id = @id',
     [{ name: 'id', type: sql.NVarChar(100), value: id }]);
 }
 

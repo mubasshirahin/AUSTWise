@@ -10,6 +10,10 @@ import { query } from './db.mjs';
 import { readJson, writeJson } from './jsonDB.mjs';
 import { encrypt, decrypt, serialize, parse } from './passwordCrypto.mjs';
 
+// PostgreSQL path when a connection is configured (either DATABASE_URL or
+// legacy DB_* split vars). The raw SQL below maps 1:1 from the old mssql one.
+const useDb = !!(process.env.DATABASE_URL || process.env.DB_SERVER);
+
 // ── JSON fallback ────────────────────────────────────────────────────────────
 
 async function readVault() {
@@ -56,20 +60,20 @@ export async function saveCredential(userId, { platform, email, username, enc })
     authTag: String(enc.authTag),
   };
 
-  // SQL Server path
-  if (process.env.DB_SERVER) {
+  // PostgreSQL path
+  if (useDb) {
     const existing = await query(
-      'SELECT TOP 1 Id FROM PasswordVault WHERE UserId = @userId AND Platform = @platform',
+      'SELECT "Id" FROM "PasswordVault" WHERE "UserId" = @userId AND "Platform" = @platform LIMIT 1',
       { userId: { value: userId }, platform: { value: platformName } }
     );
     if (existing.recordset.length > 0) {
       const result = await query(
-        `UPDATE PasswordVault
-           SET Email = @email, Username = @username,
-               EncIv = @iv, EncContent = @content, EncAuthTag = @authTag,
-               UpdatedAt = GETDATE()
-           OUTPUT INSERTED.*
-           WHERE Id = @id`,
+        `UPDATE "PasswordVault"
+           SET "Email" = @email, "Username" = @username,
+               "EncIv" = @iv, "EncContent" = @content, "EncAuthTag" = @authTag,
+               "UpdatedAt" = NOW()
+           WHERE "Id" = @id
+           RETURNING *`,
         {
           email: { value: String(email).trim() },
           username: { value: String(username || '').trim() || null },
@@ -82,9 +86,9 @@ export async function saveCredential(userId, { platform, email, username, enc })
       return toDto(result.recordset[0]);
     }
     const result = await query(
-      `INSERT INTO PasswordVault (UserId, Platform, Email, Username, EncIv, EncContent, EncAuthTag)
-         VALUES (@userId, @platform, @email, @username, @iv, @content, @authTag);
-       SELECT TOP 1 * FROM PasswordVault WHERE UserId = @userId AND Platform = @platform;`,
+      `INSERT INTO "PasswordVault" ("UserId", "Platform", "Email", "Username", "EncIv", "EncContent", "EncAuthTag")
+         VALUES (@userId, @platform, @email, @username, @iv, @content, @authTag)
+       RETURNING *`,
       {
         userId: { value: userId },
         platform: { value: platformName },
@@ -142,14 +146,14 @@ export async function updateCredential(id, userId, { platform, email, username, 
     authTag: String(enc.authTag),
   };
 
-  if (process.env.DB_SERVER) {
+  if (useDb) {
     const result = await query(
-      `UPDATE PasswordVault
-         SET Platform = @platform, Email = @email, Username = @username,
-             EncIv = @iv, EncContent = @content, EncAuthTag = @authTag,
-             UpdatedAt = GETDATE()
-         OUTPUT INSERTED.*
-         WHERE Id = @id AND UserId = @userId`,
+      `UPDATE "PasswordVault"
+         SET "Platform" = @platform, "Email" = @email, "Username" = @username,
+             "EncIv" = @iv, "EncContent" = @content, "EncAuthTag" = @authTag,
+             "UpdatedAt" = NOW()
+         WHERE "Id" = @id AND "UserId" = @userId
+         RETURNING *`,
       {
         platform: { value: platformName },
         email: { value: String(email).trim() },
@@ -184,9 +188,9 @@ export async function updateCredential(id, userId, { platform, email, username, 
 export async function listCredentials(userId) {
   if (!userId) throw new Error('userId is required.');
 
-  if (process.env.DB_SERVER) {
+  if (useDb) {
     const result = await query(
-      'SELECT * FROM PasswordVault WHERE UserId = @userId ORDER BY Platform ASC',
+      'SELECT * FROM "PasswordVault" WHERE "UserId" = @userId ORDER BY "Platform" ASC',
       { userId: { value: userId } }
     );
     return result.recordset.map(toDto);
@@ -209,9 +213,9 @@ export function revealPassword(record) {
 export async function deleteCredential(id, userId) {
   if (!id || !userId) return false;
 
-  if (process.env.DB_SERVER) {
+  if (useDb) {
     const result = await query(
-      'DELETE FROM PasswordVault WHERE Id = @id AND UserId = @userId',
+      'DELETE FROM "PasswordVault" WHERE "Id" = @id AND "UserId" = @userId',
       { id: { value: id }, userId: { value: userId } }
     );
     return result.rowsAffected[0] > 0;

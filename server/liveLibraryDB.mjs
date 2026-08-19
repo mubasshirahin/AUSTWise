@@ -1,13 +1,13 @@
 /**
  * Live Library Occupancy — real-time geofence tracking backed by MSSQL.
  *
- * Table: live_library_occupancy
- *   id            INT IDENTITY(1,1) PRIMARY KEY
+ * Table: live_library_occupancy (created by server/db.mjs initializeDatabase)
+ *   id            SERIAL PRIMARY KEY
  *   user_id       INT NOT NULL UNIQUE
- *   is_inside     BIT DEFAULT 0
- *   last_updated  DATETIME DEFAULT GETDATE()
+ *   is_inside     BOOLEAN DEFAULT FALSE
+ *   last_updated  TIMESTAMPTZ DEFAULT NOW()
  *
- * Falls back to a JSON file when no SQL Server connection is configured,
+ * Falls back to a JSON file when no Postgres connection is configured,
  * mirroring the pattern used across the other DB modules.
  */
 
@@ -53,7 +53,7 @@ function buildHourPeaks() {
   }));
 }
 
-let useJsonFallback = !process.env.DB_PASSWORD;
+let useJsonFallback = !(process.env.DATABASE_URL || process.env.DB_PASSWORD);
 
 /**
  * Haversine distance between two coordinates, in meters.
@@ -115,15 +115,13 @@ export async function trackUserPresence(userId, isInside, lat, lng) {
     try {
       if (inside) {
         await query(
-          `MERGE live_library_occupancy AS target
-           USING (SELECT @userId AS user_id) AS source ON target.user_id = source.user_id
-           WHEN MATCHED THEN UPDATE
-             SET is_inside = @isInside,
-                 lat = COALESCE(@lat, target.lat),
-                 lng = COALESCE(@lng, target.lng),
-                 last_updated = GETDATE()
-           WHEN NOT MATCHED THEN INSERT (user_id, is_inside, lat, lng, last_updated)
-             VALUES (@userId, @isInside, @lat, @lng, GETDATE());`,
+          `INSERT INTO live_library_occupancy (user_id, is_inside, lat, lng, last_updated)
+           VALUES (@userId, @isInside, @lat, @lng, NOW())
+           ON CONFLICT (user_id) DO UPDATE SET
+             is_inside = EXCLUDED.is_inside,
+             lat = COALESCE(EXCLUDED.lat, live_library_occupancy.lat),
+             lng = COALESCE(EXCLUDED.lng, live_library_occupancy.lng),
+             last_updated = NOW();`,
           {
             userId: { type: sql.Int, value: normUserId },
             isInside: { type: sql.Bit, value: 1 },
@@ -140,7 +138,7 @@ export async function trackUserPresence(userId, isInside, lat, lng) {
       }
       return getLivePulse();
     } catch (err) {
-      console.warn('⚠️  SQL Server track failed, using JSON database fallback:', err.message);
+      console.warn('⚠️  PostgreSQL track failed, using JSON database fallback:', err.message);
       useJsonFallback = true;
     }
   }
@@ -181,27 +179,27 @@ export async function getLivePulse() {
     try {
       await query(
         `UPDATE live_library_occupancy
-         SET is_inside = 0
-         WHERE last_updated < DATEADD(MINUTE, @stale, GETDATE());`,
+         SET is_inside = FALSE
+         WHERE last_updated < NOW() - (@stale * INTERVAL '1 minute');`,
         { stale: { type: sql.Int, value: STALE_MINUTES } }
       );
       const r = await query(
         `SELECT user_id, lat, lng
          FROM live_library_occupancy
-         WHERE is_inside = 1 AND last_updated >= DATEADD(MINUTE, -@stale, GETDATE());`,
+         WHERE is_inside = TRUE AND last_updated >= NOW() - (@stale * INTERVAL '1 minute');`,
         { stale: { type: sql.Int, value: STALE_MINUTES } }
       );
       const insideEntries = r.recordset || [];
       const reportingRows = await query(
-        `SELECT COUNT(*) AS cnt
+        `SELECT COUNT(*)::int AS cnt
          FROM live_library_occupancy
-         WHERE last_updated >= DATEADD(MINUTE, -@stale, GETDATE());`,
+         WHERE last_updated >= NOW() - (@stale * INTERVAL '1 minute');`,
         { stale: { type: sql.Int, value: STALE_MINUTES } }
       );
       const reporting = reportingRows.recordset[0]?.cnt || 0;
       return pulsePayload(reporting, insideEntries.length, insideEntries);
     } catch (err) {
-      console.warn('⚠️  SQL Server pulse failed, using JSON database fallback:', err.message);
+      console.warn('⚠️  PostgreSQL pulse failed, using JSON database fallback:', err.message);
       useJsonFallback = true;
     }
   }

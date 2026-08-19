@@ -1,247 +1,206 @@
 /**
- * SQL Server Database Connection Module
- * Auto-creates database + tables on first run — no manual SSMS needed.
+ * PostgreSQL connection module.
+ * Auto-creates tables on first run.
  *
- * .env config:
- *   DB_SERVER=localhost\SQLEXPRESS
- *   DB_DATABASE=AUSTWise
- *   DB_USER=sa
- *   DB_PASSWORD=your_password
- *   DB_PORT=1433
- *   DB_ENCRYPT=false
+ * Env (Railway injects DATABASE_URL automatically):
+ *   DATABASE_URL=postgresql://user:pass@host:port/db
+ *   — or the split form:
+ *   DB_SERVER / PGHOST, DB_PORT / PGPORT, DB_DATABASE / PGDATABASE,
+ *   DB_USER / PGUSER, DB_PASSWORD / PGPASSWORD
+ *
+ * query() keeps the old mssql shape ({ recordset, rowsAffected }) so
+ * feature modules didn't have to change their result handling. Named
+ * @params are rewritten to $n::cast internally.
  */
 
-import sql from 'mssql';
+import pg from 'pg';
 
-const useTrusted = process.env.DB_TRUSTED === 'true';
+const { Pool } = pg;
 
-const config = {
-  server:   process.env.DB_SERVER   || 'localhost\\SQLEXPRESS',
-  database: process.env.DB_DATABASE || 'AUSTWise',
-  port:     Number(process.env.DB_PORT || 1433),
-  options: {
-    encrypt:                 process.env.DB_ENCRYPT === 'true',
-    trustServerCertificate:  true,
-    connectTimeout:          10000,
-    requestTimeout:          15000,
-  },
-  pool: {
+function poolConfig() {
+  if (process.env.DATABASE_URL) {
+    return {
+      connectionString: process.env.DATABASE_URL,
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
+      ssl: process.env.DATABASE_URL.includes('localhost')
+        ? false
+        : { rejectUnauthorized: false },
+    };
+  }
+  return {
+    host: process.env.PGHOST || process.env.DB_SERVER || 'localhost',
+    port: Number(process.env.PGPORT || process.env.DB_PORT || 5432),
+    database: process.env.PGDATABASE || process.env.DB_DATABASE || 'AUSTWise',
+    user: process.env.PGUSER || process.env.DB_USER || 'postgres',
+    password: process.env.PGPASSWORD || process.env.DB_PASSWORD || '',
     max: 10,
-    min: 0,
     idleTimeoutMillis: 30000,
-  },
-};
-
-if (useTrusted) {
-  config.authentication = {
-    type: 'ntlm',
-    options: {
-      userName: '',
-      password: '',
-      domain: '',
-    },
+    connectionTimeoutMillis: 10000,
   };
-} else {
-  config.user     = process.env.DB_USER     || 'sa';
-  config.password = process.env.DB_PASSWORD || '';
 }
 
-let pool = null;
+const pool = new Pool(poolConfig());
 
 export async function getPool() {
-  if (pool && pool.connected) return pool;
-  pool = await sql.connect(config);
   return pool;
 }
 
-export async function query(queryStr, params) {
-  const p = await getPool();
-  const request = p.request();
-  if (params) {
-    for (const [key, val] of Object.entries(params)) {
-      request.input(key, val.type || sql.NVarChar, val.value);
+function pgType(t) {
+  if (!t) return null;
+  if (typeof t === 'string') return t;
+  return null;
+}
+
+function toPositional(sqlStr, params) {
+  if (!params) return { text: sqlStr, values: [] };
+  const map = {};
+  if (Array.isArray(params)) {
+    for (const p of params) map[p.name] = p;
+  } else {
+    for (const [name, p] of Object.entries(params)) {
+      map[name] = p && typeof p === 'object' && 'value' in p ? p : { value: p };
     }
   }
-  return request.query(queryStr);
+  const values = [];
+  const used = new Map();
+  const text = sqlStr.replace(/@(\w+)/g, (m, name) => {
+    // Leave @@ROWCOUNT-style tokens (none should remain after the SQL port).
+    if (!(name in map)) return m;
+    if (!used.has(name)) {
+      used.set(name, values.length + 1);
+      values.push(map[name].value);
+    }
+    const n = used.get(name);
+    const cast = pgType(map[name].type);
+    return cast ? `$${n}::${cast}` : `$${n}`;
+  });
+  return { text, values };
+}
+
+export async function query(queryStr, params) {
+  const { text, values } = toPositional(queryStr, params);
+  const result = await pool.query(text, values);
+  const rows = result.rows || [];
+  // Array-like so storeDB/userStore can do `rows[0]` / `rows.map`, plus the
+  // mssql-shaped `.recordset` / `.rowsAffected` that telegramDB/dev.mjs use.
+  const out = rows.slice();
+  out.recordset = rows;
+  out.rowsAffected = [result.rowCount ?? rows.length];
+  return out;
 }
 
 /**
- * Initialize database — creates DB + tables if they don't exist.
- * Call once at server startup.
+ * mssql-compatible type tags. query() only reads the string they produce
+ * (`text`/`int`/`float`/`boolean`) to emit `$n::cast`.
  */
+function NVarChar() { return 'text'; }
+NVarChar.MAX = 'text';
+
+export const sql = {
+  NVarChar,
+  MAX: -1,
+  Int: 'int',
+  Float: 'float',
+  Bit: 'boolean',
+  DateTime: 'timestamptz',
+};
+
+const TABLE_DDL = `
+CREATE TABLE IF NOT EXISTS "TelegramUsers" (
+  "ChatId"    TEXT         NOT NULL PRIMARY KEY,
+  "Routine"   TEXT         NULL,
+  "Enabled"   BOOLEAN      NOT NULL DEFAULT TRUE,
+  "CreatedAt" TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  "UpdatedAt" TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS "AttendanceRecords" (
+  "Id"         SERIAL       PRIMARY KEY,
+  "ChatId"     TEXT         NOT NULL,
+  "CourseCode" TEXT         NOT NULL,
+  "Attended"   BOOLEAN      NOT NULL,
+  "RecordDate" DATE         NOT NULL DEFAULT CURRENT_DATE,
+  "Timestamp"  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  CONSTRAINT "FK_Attendance_TelegramUsers"
+    FOREIGN KEY ("ChatId") REFERENCES "TelegramUsers"("ChatId") ON DELETE CASCADE,
+  CONSTRAINT "UQ_Attendance_Daily" UNIQUE ("ChatId", "CourseCode", "RecordDate")
+);
+CREATE INDEX IF NOT EXISTS "IX_Attendance_ChatId" ON "AttendanceRecords" ("ChatId");
+
+CREATE TABLE IF NOT EXISTS "LibraryPresence" (
+  "DeviceId"  TEXT         NOT NULL PRIMARY KEY,
+  "Lat"       DOUBLE PRECISION NOT NULL,
+  "Lng"       DOUBLE PRECISION NOT NULL,
+  "UpdatedAt" TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS live_library_occupancy (
+  id            SERIAL       PRIMARY KEY,
+  user_id       INT          NOT NULL,
+  is_inside     BOOLEAN      NOT NULL DEFAULT FALSE,
+  lat           DOUBLE PRECISION NULL,
+  lng           DOUBLE PRECISION NULL,
+  last_updated  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  CONSTRAINT uq_live_library_occupancy_user UNIQUE (user_id)
+);
+
+CREATE TABLE IF NOT EXISTS "PasswordVault" (
+  "Id"         UUID         NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
+  "UserId"     TEXT         NOT NULL,
+  "Platform"   TEXT         NOT NULL,
+  "Email"      TEXT         NOT NULL,
+  "Username"   TEXT         NULL,
+  "EncIv"      TEXT         NOT NULL,
+  "EncContent" TEXT         NOT NULL,
+  "EncAuthTag" TEXT         NOT NULL,
+  "CreatedAt"  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  "UpdatedAt"  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  CONSTRAINT "UQ_PasswordVault_User" UNIQUE ("UserId", "Platform")
+);
+CREATE INDEX IF NOT EXISTS "IX_PasswordVault_UserId" ON "PasswordVault" ("UserId");
+
+CREATE TABLE IF NOT EXISTS "Invitations" (
+  "Id"         SERIAL       PRIMARY KEY,
+  "Email"      TEXT         NOT NULL,
+  "Role"       TEXT         NOT NULL,
+  "Token"      TEXT         NOT NULL,
+  "Status"     TEXT         NOT NULL DEFAULT 'pending',
+  "InvitedBy"  TEXT         NULL,
+  "CreatedAt"  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  "ExpiresAt"  TIMESTAMPTZ  NULL,
+  "AcceptedAt" TIMESTAMPTZ  NULL,
+  CONSTRAINT "UQ_Invitations_Token" UNIQUE ("Token")
+);
+CREATE INDEX IF NOT EXISTS "IX_Invitations_Email" ON "Invitations" ("Email");
+CREATE INDEX IF NOT EXISTS "IX_Invitations_Status" ON "Invitations" ("Status");
+`;
+
 export async function initializeDatabase() {
-  // Step 1: Connect to master to create the database if needed
-  const masterPool = await sql.connect({
-    ...config,
-    database: 'master',
-  });
-
-  const dbName = config.database;
-
-  // Create database if not exists
-  await masterPool.request().query(`
-    IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = '${dbName}')
-    BEGIN
-      CREATE DATABASE [${dbName}];
-    END
-  `);
-  await masterPool.close();
-
-  // Step 2: Connect to our database and create tables
-  const p = await getPool();
-
-  // Create TelegramUsers table
-  await p.request().query(`
-    IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[TelegramUsers]') AND type in (N'U'))
-    BEGIN
-      CREATE TABLE TelegramUsers (
-        ChatId      NVARCHAR(50)    NOT NULL PRIMARY KEY,
-        Routine     NVARCHAR(MAX)   NULL,
-        Enabled     BIT             NOT NULL DEFAULT 1,
-        CreatedAt   DATETIME2       NOT NULL DEFAULT GETDATE(),
-        UpdatedAt   DATETIME2       NOT NULL DEFAULT GETDATE()
-      );
-    END
-  `);
-
-  // Create AttendanceRecords table
-  await p.request().query(`
-    IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[AttendanceRecords]') AND type in (N'U'))
-    BEGIN
-      CREATE TABLE AttendanceRecords (
-        Id          INT             IDENTITY(1,1) PRIMARY KEY,
-        ChatId      NVARCHAR(50)    NOT NULL,
-        CourseCode  NVARCHAR(50)    NOT NULL,
-        Attended    BIT             NOT NULL,
-        RecordDate  DATE            NOT NULL DEFAULT CAST(GETDATE() AS DATE),
-        Timestamp   DATETIME2       NOT NULL DEFAULT GETDATE(),
-        CONSTRAINT FK_Attendance_TelegramUsers
-            FOREIGN KEY (ChatId) REFERENCES TelegramUsers(ChatId)
-            ON DELETE CASCADE,
-        CONSTRAINT UQ_Attendance_Daily
-            UNIQUE (ChatId, CourseCode, RecordDate)
-      );
-
-      CREATE NONCLUSTERED INDEX IX_Attendance_ChatId
-        ON AttendanceRecords (ChatId)
-        INCLUDE (CourseCode, Attended, RecordDate);
-    END
-  `);
-
-  // Create LibraryPresence table
-  await p.request().query(`
-    IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[LibraryPresence]') AND type in (N'U'))
-    BEGIN
-      CREATE TABLE LibraryPresence (
-        DeviceId    NVARCHAR(100)   NOT NULL PRIMARY KEY,
-        Lat         FLOAT           NOT NULL,
-        Lng         FLOAT           NOT NULL,
-        UpdatedAt   DATETIME2       NOT NULL DEFAULT GETDATE()
-      );
-    END
-  `);
-
-  // Create live library occupancy table (real-time geofence occupancy)
-  await p.request().query(`
-    IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[live_library_occupancy]') AND type in (N'U'))
-    BEGIN
-      CREATE TABLE live_library_occupancy (
-        id            INT             IDENTITY(1,1) PRIMARY KEY,
-        user_id       INT             NOT NULL,
-        is_inside     BIT             NOT NULL DEFAULT 0,
-        lat           FLOAT           NULL,
-        lng           FLOAT           NULL,
-        last_updated  DATETIME2       NOT NULL DEFAULT GETDATE(),
-        CONSTRAINT UQ_live_library_occupancy_user UNIQUE (user_id)
-      );
-    END
-  `);
-
-  // Backfill lat/lng columns on existing installs (idempotent).
-  await p.request().query(`
-    IF COL_LENGTH('dbo.live_library_occupancy', 'lat') IS NULL
-      ALTER TABLE live_library_occupancy ADD lat FLOAT NULL;
-    IF COL_LENGTH('dbo.live_library_occupancy', 'lng') IS NULL
-      ALTER TABLE live_library_occupancy ADD lng FLOAT NULL;
-  `);
-
-  // Create PasswordVault table (Password Manager — credentials stored
-  // AES-256-GCM encrypted, never plaintext)
-  await p.request().query(`
-    IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PasswordVault]') AND type in (N'U'))
-    BEGIN
-      CREATE TABLE PasswordVault (
-        Id           UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWID(),
-        UserId       NVARCHAR(100)    NOT NULL,
-        Platform     NVARCHAR(120)    NOT NULL,
-        Email        NVARCHAR(255)    NOT NULL,
-        Username     NVARCHAR(120)    NULL,
-        EncIv        NVARCHAR(500)    NOT NULL,
-        EncContent   NVARCHAR(MAX)    NOT NULL,
-        EncAuthTag   NVARCHAR(500)    NOT NULL,
-        CreatedAt    DATETIME2        NOT NULL DEFAULT GETDATE(),
-        UpdatedAt    DATETIME2        NOT NULL DEFAULT GETDATE(),
-        CONSTRAINT UQ_PasswordVault_User UNIQUE (UserId, Platform)
-      );
-      CREATE NONCLUSTERED INDEX IX_PasswordVault_UserId
-        ON PasswordVault (UserId);
-    END
-  `);
-
-  // Create Invitations table
-  await p.request().query(`
-    IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Invitations]') AND type in (N'U'))
-    BEGIN
-      CREATE TABLE Invitations (
-        Id          INT             IDENTITY(1,1) PRIMARY KEY,
-        Email       NVARCHAR(255)   NOT NULL,
-        Role        NVARCHAR(50)    NOT NULL,
-        Token       NVARCHAR(500)   NOT NULL,
-        Status      NVARCHAR(20)    NOT NULL DEFAULT 'pending',
-        InvitedBy   NVARCHAR(255)   NULL,
-        CreatedAt   DATETIME2       NOT NULL DEFAULT GETDATE(),
-        ExpiresAt   DATETIME2       NULL,
-        AcceptedAt  DATETIME2       NULL,
-        CONSTRAINT UQ_Invitations_Token UNIQUE (Token)
-      );
-
-      CREATE NONCLUSTERED INDEX IX_Invitations_Email
-        ON Invitations (Email);
-
-      CREATE NONCLUSTERED INDEX IX_Invitations_Status
-        ON Invitations (Status)
-        INCLUDE (Email, Role, CreatedAt);
-    END
-  `);
-
+  await pool.query(TABLE_DDL);
   console.log('✅ Database tables ready (auto-created if missing)');
   return true;
 }
 
-/**
- * Test connection and return boolean.
- */
 export async function testConnection() {
   try {
-    const result = await query('SELECT @@VERSION AS version');
-    console.log('✅ SQL Server:', result.recordset[0].version?.substring(0, 50) + '...');
+    const result = await pool.query('SELECT version() AS version');
+    const v = result.rows[0]?.version || '';
+    console.log('✅ PostgreSQL:', v.substring(0, 60) + (v.length > 60 ? '...' : ''));
     return true;
   } catch (err) {
-    console.error('❌ SQL Server connection failed:', err.message);
+    console.error('❌ PostgreSQL connection failed:', err.message);
     return false;
   }
 }
 
-/**
- * Truncate all application data tables (dangerous — wipes all data).
- */
 export async function resetDatabase() {
-  const p = await getPool();
-  await p.request().query('DELETE FROM AttendanceRecords;');
-  await p.request().query('DELETE FROM TelegramUsers;');
-  await p.request().query('DELETE FROM LibraryPresence;');
-  await p.request().query('DELETE FROM Invitations;');
+  await pool.query('DELETE FROM "AttendanceRecords"');
+  await pool.query('DELETE FROM "TelegramUsers"');
+  await pool.query('DELETE FROM "LibraryPresence"');
+  await pool.query('DELETE FROM "Invitations"');
   return true;
 }
 
-export { sql };
+export { pool };

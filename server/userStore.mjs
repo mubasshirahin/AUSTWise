@@ -23,18 +23,15 @@ const BCRYPT_ROUNDS = 10;
 // ── SQL table (AuthUsers) ────────────────────────────────────────────────────
 
 const AUTH_USERS_DDL = `
-IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'AuthUsers')
-BEGIN
-  CREATE TABLE AuthUsers (
-    id              NVARCHAR(50) PRIMARY KEY,
-    awid            NVARCHAR(50) NOT NULL,
-    email           NVARCHAR(200) NOT NULL UNIQUE,
-    name            NVARCHAR(200) NOT NULL DEFAULT '',
-    data            NVARCHAR(MAX) DEFAULT '{}'
-  );
-  CREATE INDEX IX_AuthUsers_email ON AuthUsers(email);
-  CREATE INDEX IX_AuthUsers_awid ON AuthUsers(awid);
-END;
+CREATE TABLE IF NOT EXISTS "AuthUsers" (
+  id    TEXT PRIMARY KEY,
+  awid  TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  name  TEXT NOT NULL DEFAULT '',
+  data  TEXT DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS ix_authusers_email ON "AuthUsers" (email);
+CREATE INDEX IF NOT EXISTS ix_authusers_awid ON "AuthUsers" (awid);
 `;
 
 let _authTablesEnsured = false;
@@ -96,7 +93,7 @@ export async function readUsers() {
   if (await isDbAvailable()) {
     await ensureAuthTables();
     try {
-      const rows = await query('SELECT id, email, data FROM AuthUsers');
+      const rows = await query('SELECT id, email, data FROM "AuthUsers"');
       const users = rows.map(fromUserRow).filter(Boolean);
       // One-time migration: if the JSON file has rows and SQL is empty, push
       // the file's accounts up so nothing the user created before survives on
@@ -126,12 +123,9 @@ export async function readUsers() {
 
 async function upsertUserRow(row) {
   await query(`
-    MERGE AuthUsers AS target
-    USING (SELECT @id AS id, @email AS email, @data AS data) AS source
-    ON target.id = source.id
-    WHEN MATCHED THEN UPDATE SET email = source.email, data = source.data
-    WHEN NOT MATCHED THEN INSERT (id, awid, email, data)
-      VALUES (source.id, COALESCE(JSON_VALUE(source.data, '$.awid'), ''), source.email, source.data);
+    INSERT INTO "AuthUsers" (id, awid, email, data)
+    VALUES (@id, COALESCE(@data::jsonb->>'awid', ''), @email, @data)
+    ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email, data = EXCLUDED.data;
   `, [
     { name: 'id', type: sql.NVarChar(50), value: row.id },
     { name: 'email', type: sql.NVarChar(200), value: row.email },
@@ -143,7 +137,7 @@ async function deleteUserRow(id) {
   if (await isDbAvailable()) {
     await ensureAuthTables();
     try {
-      await query('DELETE FROM AuthUsers WHERE id = @id',
+      await query('DELETE FROM "AuthUsers" WHERE id = @id',
         [{ name: 'id', type: sql.NVarChar(50), value: id }]);
     } catch (err) {
       console.warn('⚠️  userStore: SQL delete failed:', err.message);

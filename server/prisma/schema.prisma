@@ -1,9 +1,10 @@
 // Prisma schema for AUST Student Helper
-// SQL Server 2022 provider — matches localStorage data shapes from src/utils/*.js
+// PostgreSQL provider — matches localStorage data shapes from src/utils/*.js
 // Run: npx prisma db push   (creates/updates tables without migration files)
 //
-// Notes for SQL Server:
-//  - Json type is unsupported → use String (NVARCHAR(MAX)) + JSON.parse/stringify in app
+// Notes for PostgreSQL:
+//  - Json type is supported natively (Json/JSONB) but existing JSON fields stay
+//    String + JSON.parse/stringify in app for byte-compat with JSON files.
 //  - Multiple cascade paths to User would fail → Message.receiver uses NoAction
 
 generator client {
@@ -12,7 +13,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlserver"
+  provider = "postgresql"
 }
 
 // ─── Users & Auth ────────────────────────────────────────────────────────────
