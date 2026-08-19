@@ -1,4 +1,6 @@
 import React, { useMemo } from 'react';
+import { useLiveValue } from '../../utils/liveStore';
+import { loadSubmissions } from '../../utils/deptHeatmapStorage';
 import { Grid3x3, MoreVertical, Check } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { formatSemesterLabel } from '../../utils/semester';
@@ -43,9 +45,10 @@ export default function DeptHeatmap() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  const [submissions] = useLiveValue('shared', 'aust-helper-dept-heatmap-submissions-v1', []);
   const heatmapView = useMemo(
-    () => buildHeatmapView(selectedDepartment),
-    [selectedDepartment],
+    () => buildHeatmapView(selectedDepartment, loadSubmissions()),
+    [selectedDepartment, submissions],
   );
 
   const totalBatches = heatmapView.visibleBatches.length + heatmapView.pendingBatches.length;

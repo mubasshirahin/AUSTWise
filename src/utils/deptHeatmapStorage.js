@@ -1,4 +1,5 @@
 import { getUserStorageItem } from './authStorage';
+import { liveLoad, liveSave } from './liveStorage';
 
 const submissionsKey = 'aust-helper-dept-heatmap-submissions-v1';
 const contributorKey = 'aust-helper-dept-heatmap-contributor-id';
@@ -36,16 +37,11 @@ export function getContributorId() {
 }
 
 export function loadSubmissions() {
-  try {
-    const raw = localStorage.getItem(submissionsKey);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+  return liveLoad('shared', submissionsKey, []);
 }
 
 function saveSubmissions(submissions) {
-  localStorage.setItem(submissionsKey, JSON.stringify(submissions));
+  liveSave('shared', submissionsKey, submissions);
 }
 
 /** Completed semester CGPA values from CGPA Calculator storage. */
@@ -130,10 +126,10 @@ function average(values) {
   return roundTwo(values.reduce((sum, value) => sum + value, 0) / values.length);
 }
 
-export function buildHeatmapView(department) {
+export function buildHeatmapView(department, submissionsSource = null) {
   syncHeatmapFromTracker();
 
-  const submissions = loadSubmissions().filter((entry) => entry.department === department);
+  const submissions = (submissionsSource || loadSubmissions()).filter((entry) => entry.department === department);
   const batchMap = new Map();
 
   for (const submission of submissions) {

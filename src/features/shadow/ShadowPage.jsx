@@ -9,6 +9,7 @@ import BuzzPage from '../austeddit/AustedditPage';
 import RoastCVPage from '../roast-cv/RoastCVPage';
 import GliderTabs from '../../components/GliderTabs';
 import useTabUrlState from '../../hooks/useTabUrlState';
+import { useLiveValue } from '../../utils/liveStore';
 import './ShadowPage.css';
 import './shadow-tokens.css';
 
@@ -45,25 +46,10 @@ function ShadowMasthead({ icon: Icon, title, subtitle, actions }) {
 }
 
 export default function ShadowPage() {
-  const [totalReviews] = useState(() => {
-    try {
-      const raw = localStorage.getItem('aust-course-reviews');
-      if (!raw) return 0;
-      const reviews = JSON.parse(raw);
-      return Array.isArray(reviews) ? reviews.length : 0;
-    } catch { return 0; }
-  });
-
-  const [uniqueUsers] = useState(() => {
-    try {
-      const raw = localStorage.getItem('aust-course-reviews');
-      if (!raw) return 0;
-      const reviews = JSON.parse(raw);
-      if (!Array.isArray(reviews) || reviews.length === 0) return 0;
-      const userSet = new Set(reviews.map(r => r.userId).filter(Boolean));
-      return userSet.size;
-    } catch { return 0; }
-  });
+  const [rawReviews] = useLiveValue('shared', 'aust-course-reviews-v2', []);
+  const reviews = Array.isArray(rawReviews) ? rawReviews : [];
+  const totalReviews = reviews.length;
+  const uniqueUsers = new Set(reviews.map(r => r.contributorId).filter(Boolean)).size;
 
   /* ─── Tab state ─── */
   const [searchParams] = useSearchParams();
