@@ -20,7 +20,11 @@ async function api(path, options = {}) {
     ...options,
   });
   const data = await res.json();
-  if (!res.ok && !data.success) throw new Error(data.error || 'Request failed');
+  if (!res.ok && !data.success) {
+    const err = new Error(data.error || 'Request failed');
+    err.status = res.status;
+    throw err;
+  }
   return data;
 }
 
@@ -105,22 +109,30 @@ export function AuthProvider({ children }) {
           }
         }
       } catch (err) {
-        // Server unreachable — fall back to cached user so the
-        // user doesn't get kicked to the landing page on every
-        // server restart / HMR cycle.
         if (cancelled) return;
-        console.warn('[Auth] /api/auth/me failed, trying localStorage fallback:', err.message);
-        try {
-          const cached = localStorage.getItem(userStorageKey);
-          if (cached) {
-            const parsed = JSON.parse(cached);
-            if (parsed && parsed.id && parsed.id !== 'guest') {
-              const hydrated = hydrateUser(parsed);
-              setSessionUser(hydrated);
-              initLiveStore(parsed.id);
+        // Server reachable but no valid session cookie (401) → the user is
+        // genuinely logged out on this device. Do NOT restore the cached
+        // profile here, or this device silently stops syncing (its store
+        // writes all return 401) while still looking logged in.
+        if (err?.status === 401) {
+          localStorage.removeItem(userStorageKey);
+        } else {
+          // Server unreachable — fall back to cached user so the
+          // user doesn't get kicked to the landing page on every
+          // server restart / HMR cycle.
+          console.warn('[Auth] /api/auth/me failed, trying localStorage fallback:', err.message);
+          try {
+            const cached = localStorage.getItem(userStorageKey);
+            if (cached) {
+              const parsed = JSON.parse(cached);
+              if (parsed && parsed.id && parsed.id !== 'guest') {
+                const hydrated = hydrateUser(parsed);
+                setSessionUser(hydrated);
+                initLiveStore(parsed.id);
+              }
             }
-          }
-        } catch { /* ignore corrupt cache */ }
+          } catch { /* ignore corrupt cache */ }
+        }
       } finally {
         if (!cancelled) setIsLoading(false);
       }
