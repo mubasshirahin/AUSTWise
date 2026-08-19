@@ -33,6 +33,7 @@ const PING_INTERVAL = 30000;
 
 const cache = new Map(); // `${scope}:${key}` -> value (already parsed)
 const inFlight = new Set(); // `${scope}:${key}` currently being fetched
+const fetched = new Set(); // `${scope}:${key}` already reconciled with the server
 const subscribers = new Set(); // callbacks invoked on any cache change
 
 let ws = null;
@@ -90,12 +91,13 @@ function storeFor(scope) {
 /** Seed the cache from localStorage (instant paint) + fetch fresh from server. */
 export function ensureFetched(scope, key) {
   const k = cacheKey(scope, key);
-  if (cache.has(k) || inFlight.has(k)) return;
+  if (cache.has(k) || inFlight.has(k) || fetched.has(k)) return;
   try {
     const raw = localStorage.getItem(key);
     if (raw !== null) cache.set(k, JSON.parse(raw));
   } catch { /* ignore */ }
   inFlight.add(k);
+  fetched.add(k);
   fetchKey(scope, key);
 }
 
@@ -132,6 +134,8 @@ async function fetchKey(scope, key) {
     if (value !== null) {
       cache.set(k, value);
       try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
+      fetched.add(k);
+      emit(k, false);
     } else if (cache.has(k)) {
       // The server no longer has this key (e.g. a delete we missed over WS).
       // Drop the stale copy so readers fall back to their default state.
@@ -141,10 +145,19 @@ async function fetchKey(scope, key) {
         try { localStorage.removeItem(`${key}-guest`); } catch { /* ignore */ }
         if (wsUserId) { try { localStorage.removeItem(`${key}-${wsUserId}`); } catch { /* ignore */ } }
       }
+      fetched.add(k);
+      emit(k, false);
+    } else {
+      // Server has nothing and we have nothing — nothing changed, so emit only
+      // if this is the first time we learned the key is absent. That closes the
+      // "fetch → null → re-render → fetch again" loop without spamming.
+      if (!fetched.has(k)) {
+        fetched.add(k);
+        emit(k, false);
+      }
     }
   } catch { /* keep whatever we have */ }
   inFlight.delete(k);
-  emit(k, false);
 }
 
 /** Write a value optimistically, then persist to the server (which broadcasts). */
@@ -230,6 +243,8 @@ export function destroyLiveStore() {
   if (ws) { ws.onclose = null; ws.close(); ws = null; }
   wsUserId = null;
   cache.clear();
+  inFlight.clear();
+  fetched.clear();
 }
 
 function connect() {
@@ -248,6 +263,15 @@ function connect() {
   ws.onopen = () => {
     reconnectAttempt = 0;
     ws.send(JSON.stringify({ type: 'subscribe', payload: { userId: wsUserId } }));
+    // Re-converge every key we've ever reconciled, so a value another device
+    // changed/deleted while we were offline gets picked up without a refresh.
+    for (const k of Array.from(fetched)) {
+      const idx = k.indexOf(':');
+      if (idx === -1) continue;
+      const scope = k.slice(0, idx);
+      const key = k.slice(idx + 1);
+      if (scope && key) fetchKey(scope, key);
+    }
     if (pingTimer) clearInterval(pingTimer);
     pingTimer = setInterval(() => {
       if (ws && ws.readyState === WebSocket.OPEN) {
