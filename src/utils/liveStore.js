@@ -137,6 +137,10 @@ async function fetchKey(scope, key) {
       // Drop the stale copy so readers fall back to their default state.
       cache.delete(k);
       try { localStorage.removeItem(key); } catch { /* ignore */ }
+      if (scope === 'user') {
+        try { localStorage.removeItem(`${key}-guest`); } catch { /* ignore */ }
+        if (wsUserId) { try { localStorage.removeItem(`${key}-${wsUserId}`); } catch { /* ignore */ } }
+      }
     }
   } catch { /* keep whatever we have */ }
   inFlight.delete(k);

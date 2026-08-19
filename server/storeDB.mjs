@@ -56,6 +56,24 @@ CREATE TABLE IF NOT EXISTS "SharedStore" (
   "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Tombstones remember keys that were deliberately deleted, so the
+-- localStorage→server migration never resurrects them from a stale copy
+-- on a device that missed the live delete broadcast.
+CREATE TABLE IF NOT EXISTS "UserStoreDeleted" (
+  "id"        TEXT NOT NULL PRIMARY KEY,
+  "userId"    TEXT NOT NULL,
+  "key"       TEXT NOT NULL,
+  "deletedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT uq_userstore_deleted UNIQUE ("userId", "key")
+);
+CREATE INDEX IF NOT EXISTS ix_userstore_deleted_userid ON "UserStoreDeleted" ("userId");
+
+CREATE TABLE IF NOT EXISTS "SharedStoreDeleted" (
+  "id"        TEXT NOT NULL PRIMARY KEY,
+  "key"       TEXT NOT NULL UNIQUE,
+  "deletedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 `;
 
 let _tablesEnsured = false;
@@ -134,6 +152,9 @@ export async function setUserStoreValue(userId, key, value) {
 /** Delete a user's stored value for a key. */
 export async function deleteUserStoreValue(userId, key) {
   if (!userId || !key) return;
+  // Remember the deletion so a stale localStorage copy on another device can't
+  // resurrect this key during the login migration.
+  await markUserStoreDeleted(userId, key);
   if (await isDbAvailable()) {
     await ensureTables();
     try {
@@ -227,6 +248,8 @@ export async function setSharedStoreValue(key, value, updatedBy = '') {
 /** Delete a shared stored value for a key. */
 export async function deleteSharedStoreValue(key) {
   if (!key) return;
+  // Remember the deletion so stale local copies can't resurrect it on migrate.
+  await markSharedStoreDeleted(key);
   if (await isDbAvailable()) {
     await ensureTables();
     try {
@@ -238,4 +261,101 @@ export async function deleteSharedStoreValue(key) {
   const store = await readSharedStoreFile();
   delete store[key];
   await writeSharedStoreFile(store);
+}
+
+// ── Tombstones (deleted-key memory, prevents migration resurrection) ─────────
+
+const USER_DELETED_FILE = 'userStoreDeleted.json'; // { [userId]: { [key]: timestamp } }
+const SHARED_DELETED_FILE = 'sharedStoreDeleted.json'; // { [key]: timestamp }
+
+async function readUserDeletedFile() { return (await readJson(USER_DELETED_FILE, {})) || {}; }
+async function writeUserDeletedFile(data) { await writeJson(USER_DELETED_FILE, data); }
+async function readSharedDeletedFile() { return (await readJson(SHARED_DELETED_FILE, {})) || {}; }
+async function writeSharedDeletedFile(data) { await writeJson(SHARED_DELETED_FILE, data); }
+
+/** Record that a user's key was deliberately deleted. */
+export async function markUserStoreDeleted(userId, key) {
+  if (!userId || !key) return;
+  if (await isDbAvailable()) {
+    await ensureTables();
+    try {
+      await query(`
+        INSERT INTO "UserStoreDeleted" ("id", "userId", "key", "deletedAt")
+        VALUES (@id, @userId, @key, NOW())
+        ON CONFLICT ("userId", "key") DO UPDATE SET "deletedAt" = NOW();
+      `, [
+        { name: 'id', type: sql.NVarChar(50), value: randomUUID() },
+        { name: 'userId', type: sql.NVarChar(50), value: userId },
+        { name: 'key', type: sql.NVarChar(200), value: key },
+      ]);
+      return;
+    } catch (err) {
+      console.warn('⚠️  markUserStoreDeleted DB error:', err.message);
+    }
+  }
+  const store = await readUserDeletedFile();
+  if (!store[userId]) store[userId] = {};
+  store[userId][key] = new Date().toISOString();
+  await writeUserDeletedFile(store);
+}
+
+/** Was a user's key deliberately deleted (so migration should skip it)? */
+export async function isUserStoreDeleted(userId, key) {
+  if (!userId || !key) return false;
+  if (await isDbAvailable()) {
+    await ensureTables();
+    try {
+      const rows = await query(
+        'SELECT 1 FROM "UserStoreDeleted" WHERE "userId" = @userId AND "key" = @key',
+        [
+          { name: 'userId', type: sql.NVarChar(50), value: userId },
+          { name: 'key', type: sql.NVarChar(200), value: key },
+        ]
+      );
+      return rows.length > 0;
+    } catch { /* fall through */ }
+  }
+  const store = await readUserDeletedFile();
+  return Boolean(store[userId]?.[key]);
+}
+
+/** Record that a shared key was deliberately deleted. */
+export async function markSharedStoreDeleted(key) {
+  if (!key) return;
+  if (await isDbAvailable()) {
+    await ensureTables();
+    try {
+      await query(`
+        INSERT INTO "SharedStoreDeleted" ("id", "key", "deletedAt")
+        VALUES (@id, @key, NOW())
+        ON CONFLICT ("key") DO UPDATE SET "deletedAt" = NOW();
+      `, [
+        { name: 'id', type: sql.NVarChar(50), value: randomUUID() },
+        { name: 'key', type: sql.NVarChar(200), value: key },
+      ]);
+      return;
+    } catch (err) {
+      console.warn('⚠️  markSharedStoreDeleted DB error:', err.message);
+    }
+  }
+  const store = await readSharedDeletedFile();
+  store[key] = new Date().toISOString();
+  await writeSharedDeletedFile(store);
+}
+
+/** Was a shared key deliberately deleted (so migration should skip it)? */
+export async function isSharedStoreDeleted(key) {
+  if (!key) return false;
+  if (await isDbAvailable()) {
+    await ensureTables();
+    try {
+      const rows = await query(
+        'SELECT 1 FROM "SharedStoreDeleted" WHERE "key" = @key',
+        [{ name: 'key', type: sql.NVarChar(200), value: key }]
+      );
+      return rows.length > 0;
+    } catch { /* fall through */ }
+  }
+  const store = await readSharedDeletedFile();
+  return Boolean(store[key]);
 }

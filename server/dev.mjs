@@ -121,6 +121,7 @@ import { createWSServer, closeWSServer, broadcastToAll, broadcastToUsers, broadc
 import {
   getUserStoreValue, setUserStoreValue, deleteUserStoreValue, listUserStoreKeys,
   getSharedStoreValue, setSharedStoreValue, deleteSharedStoreValue,
+  isUserStoreDeleted, isSharedStoreDeleted,
 } from './storeDB.mjs';
 
 // Helper function to answer callback query
@@ -2372,13 +2373,25 @@ async function handleApiRequest(req, res) {
     try {
       const body = await readJsonBody(req);
       const { userEntries = {}, sharedEntries = {} } = body || {};
+      let migrated = 0;
+      // Server wins over stale localStorage: skip keys the user deliberately
+      // deleted (tombstones) and keys the server already has a value for, so
+      // a device that missed a live delete/reset can never resurrect it.
       for (const [key, value] of Object.entries(userEntries)) {
+        if (await isUserStoreDeleted(auth.id, key)) continue;
+        const existing = await getUserStoreValue(auth.id, key, null);
+        if (existing !== null) continue;
         await setUserStoreValue(auth.id, key, value);
+        migrated += 1;
       }
       for (const [key, value] of Object.entries(sharedEntries)) {
+        if (await isSharedStoreDeleted(key)) continue;
+        const existing = await getSharedStoreValue(key, null);
+        if (existing !== null) continue;
         await setSharedStoreValue(key, value, auth.id);
+        migrated += 1;
       }
-      sendJson(res, 200, { success: true, migrated: Object.keys(userEntries).length + Object.keys(sharedEntries).length });
+      sendJson(res, 200, { success: true, migrated });
     } catch (err) {
       sendJson(res, 500, { success: false, error: err.message || 'Migration failed.' });
     }
