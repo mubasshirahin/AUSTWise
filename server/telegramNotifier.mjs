@@ -411,7 +411,7 @@ export async function sendTestNotification(chatId, routine) {
  * @param {Object} routine - User's routine data
  * @returns {Object} Registered user object
  */
-export async function registerUserForNotifications(chatId, routine) {
+export async function registerUserForNotifications(chatId, routine, awid = null) {
   if (!TELEGRAM_BOT_TOKEN) {
     return { 
       success: false, 
@@ -433,7 +433,7 @@ export async function registerUserForNotifications(chatId, routine) {
     };
   }
   
-  const user = registerUser(chatId, routine);
+  const user = registerUser(chatId, routine, awid);
   
   return {
     success: true,

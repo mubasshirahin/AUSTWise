@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTheme, getThemeAccent } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
@@ -405,6 +405,39 @@ export default function SettingsPage() {
   const [libraryTracking, setLibraryTracking] = useState(() => {
     return localStorage.getItem('library_tracking_enabled') === 'true';
   });
+
+  // The Chat ID that is actually registered for THIS account on the server.
+  // Used to detect when the user edits the input to a different Chat ID, so we
+  // stop showing a stale "registered" status for the old one.
+  const registeredChatIdRef = useRef('');
+
+  // Telegram Chat ID + registration status are per-account (one Chat ID ↔ one
+  // awid). Load them from the server on mount so a different user logging in on
+  // the same browser sees THEIR OWN Chat ID — not a leftover from localStorage.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch('/api/user/settings');
+        if (cancelled || !response.ok) return;
+        const result = await response.json();
+        if (!result.success) return;
+        const chatId = (result.settings?.telegram?.chatId || '').trim();
+        registeredChatIdRef.current = chatId;
+        if (!cancelled) {
+          setTelegramChatId(chatId);
+          setIsTelegramRegistered(!!result.settings?.telegram?.registered);
+          // Keep the dashboard's Telegram sync pointing at the current user's
+          // Chat ID rather than the previous user's.
+          localStorage.setItem('telegram_chat_id', chatId);
+          localStorage.setItem('telegram_is_registered', (!!result.settings?.telegram?.registered).toString());
+        }
+      } catch {
+        /* offline — keep current values */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   
   // Webhook status
   const [webhookInfo, setWebhookInfo] = useState(null);
@@ -1376,7 +1409,15 @@ export default function SettingsPage() {
                     <input 
                       type="text"
                       value={telegramChatId} 
-                      onChange={(e) => setTelegramChatId(e.target.value)} 
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setTelegramChatId(value);
+                        // If the user types a different Chat ID than the one
+                        // registered, don't show the old "registered" status.
+                        if (value.trim() !== registeredChatIdRef.current) {
+                          setIsTelegramRegistered(false);
+                        }
+                      }} 
                       className="input" 
                       placeholder="Enter your Telegram Chat ID"
                     />
@@ -1421,6 +1462,7 @@ export default function SettingsPage() {
                             const result = await response.json();
                             if (result.success) {
                               setTelegramMsg('✅ Registered successfully! You will receive daily notifications at 8 AM.');
+                              registeredChatIdRef.current = telegramChatId.trim();
                               setIsTelegramRegistered(true);
                             } else {
                               setTelegramMsg('❌ Failed: ' + (result.error || 'Unknown error'));
@@ -1451,6 +1493,7 @@ export default function SettingsPage() {
                             const result = await response.json();
                             if (result.success) {
                               setTelegramMsg('✅ You have been unsubscribed from notifications.');
+                              registeredChatIdRef.current = '';
                               setIsTelegramRegistered(false);
                             } else {
                               setTelegramMsg('❌ Failed: ' + (result.error || 'Unknown error'));

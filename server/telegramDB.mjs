@@ -3,21 +3,23 @@ import { readJson, writeJson } from './jsonDB.mjs';
 
 let useJsonFallback = !(process.env.DATABASE_URL || process.env.DB_PASSWORD);
 
-export async function registerUser(chatId, routine = null) {
+export async function registerUser(chatId, routine = null, awid = null) {
   const r = routine ? JSON.stringify(routine) : null;
 
   if (!useJsonFallback) {
     try {
       const result = await query(`
-        INSERT INTO "TelegramUsers" ("ChatId", "Routine", "Enabled", "CreatedAt", "UpdatedAt")
-        VALUES (@chatId, @routine, TRUE, NOW(), NOW())
+        INSERT INTO "TelegramUsers" ("ChatId", "Awid", "Routine", "Enabled", "CreatedAt", "UpdatedAt")
+        VALUES (@chatId, @awid, @routine, TRUE, NOW(), NOW())
         ON CONFLICT ("ChatId") DO UPDATE SET
+          "Awid" = EXCLUDED."Awid",
           "Routine" = COALESCE(EXCLUDED."Routine", "TelegramUsers"."Routine"),
           "Enabled" = TRUE,
           "UpdatedAt" = NOW()
         RETURNING *;
       `, {
         chatId: { value: String(chatId) },
+        awid: { value: awid ? String(awid) : null },
         routine: { type: sql.NVarChar(sql.MAX), value: r },
       });
       return result.recordset[0] || null;
@@ -32,6 +34,7 @@ export async function registerUser(chatId, routine = null) {
   const idx = list.findIndex(u => String(u.chatId) === String(chatId));
   const user = {
     chatId: String(chatId),
+    awid: awid ? String(awid) : (idx !== -1 ? list[idx].awid : null),
     routine: routine ? (typeof routine === 'string' ? routine : JSON.stringify(routine)) : (idx !== -1 ? list[idx].routine : null),
     enabled: true,
     createdAt: idx !== -1 ? list[idx].createdAt : new Date().toISOString(),
@@ -44,6 +47,41 @@ export async function registerUser(chatId, routine = null) {
   }
   await writeJson('telegram_users.json', list);
   return user;
+}
+
+export async function getUserByAwid(awid) {
+  if (!useJsonFallback) {
+    try {
+      const r = await query('SELECT * FROM "TelegramUsers" WHERE "Awid" = @awid ORDER BY "UpdatedAt" DESC', { awid: { value: String(awid) } });
+      return r.recordset[0] || null;
+    } catch (err) {
+      console.warn('⚠️  SQL Server getUserByAwid failed, using JSON database fallback:', err.message);
+      useJsonFallback = true;
+    }
+  }
+
+  // JSON Fallback
+  const list = await readJson('telegram_users.json');
+  return list.find(u => u.awid && String(u.awid) === String(awid)) || null;
+}
+
+export async function unregisterByAwid(awid) {
+  if (!useJsonFallback) {
+    try {
+      const r = await query('DELETE FROM "TelegramUsers" WHERE "Awid" = @awid', { awid: { value: String(awid) } });
+      return (r.rowsAffected && r.rowsAffected[0] > 0) || r.rowCount > 0;
+    } catch (err) {
+      console.warn('⚠️  SQL Server unregisterByAwid failed, using JSON database fallback:', err.message);
+      useJsonFallback = true;
+    }
+  }
+
+  // JSON Fallback
+  let list = await readJson('telegram_users.json');
+  const initialLen = list.length;
+  list = list.filter(u => !u.awid || String(u.awid) !== String(awid));
+  await writeJson('telegram_users.json', list);
+  return list.length < initialLen;
 }
 
 export async function unregisterUser(chatId) {

@@ -110,11 +110,13 @@ export const sql = {
 const TABLE_DDL = `
 CREATE TABLE IF NOT EXISTS "TelegramUsers" (
   "ChatId"    TEXT         NOT NULL PRIMARY KEY,
+  "Awid"      TEXT         NULL,
   "Routine"   TEXT         NULL,
   "Enabled"   BOOLEAN      NOT NULL DEFAULT TRUE,
   "CreatedAt" TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
   "UpdatedAt" TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
+ALTER TABLE "TelegramUsers" ADD COLUMN IF NOT EXISTS "Awid" TEXT NULL;
 
 CREATE TABLE IF NOT EXISTS "AttendanceRecords" (
   "Id"         SERIAL       PRIMARY KEY,

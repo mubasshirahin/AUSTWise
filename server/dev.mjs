@@ -28,6 +28,8 @@ import {
   toggleUserStatus,
   getStats,
   isRegistered,
+  getUserByAwid,
+  unregisterByAwid,
   saveAttendanceRecord,
   saveAttendanceRecordForDate,
   getTodayAttendanceRecord,
@@ -631,12 +633,16 @@ async function handleApiRequest(req, res) {
     return;
   }
 
-  // Register user for Telegram notifications (only Chat ID needed)
+  // Register the signed-in user's own Telegram Chat ID. Each Chat ID binds to
+  // exactly one account (awid): registering a Chat ID already owned by another
+  // account is rejected, and switching to a new Chat ID releases the old one.
   if (req.url === '/api/telegram/register' && req.method === 'POST') {
     if (!requireFeature('telegram', res, 'TELEGRAM_BOT_TOKEN')) return;
+    const auth = requireAuth(req, res);
+    if (!auth) return;
     try {
       const { chatId, routine } = await readJsonBody(req);
-      
+
       if (!chatId) {
         sendJson(res, 400, {
           success: false,
@@ -645,19 +651,42 @@ async function handleApiRequest(req, res) {
         return;
       }
 
-      // Check if already registered
-      if (await isRegistered(chatId)) {
+      const user = await getUserById(auth.id);
+      if (!user) {
+        sendJson(res, 404, {
+          success: false,
+          error: 'User not found.'
+        });
+        return;
+      }
+      const awid = user.awid;
+
+      // One Chat ID ↔ one account: reject if someone else already owns it.
+      const existing = await getUser(chatId);
+      const existingAwid = existing ? (existing.awid ?? existing.Awid) : null;
+      if (existingAwid && String(existingAwid) !== String(awid)) {
         sendJson(res, 409, {
           success: false,
-          error: 'This Chat ID is already registered.'
+          error: 'This Chat ID is already linked to another account. Each Telegram Chat ID can only be connected to one user.'
         });
         return;
       }
 
-      // Validate credentials and register
-      const result = await registerUserForNotifications(chatId, routine);
-      
+      // Switching Chat IDs: release the previous one so it becomes reusable.
+      const previous = await getUserByAwid(awid);
+      const previousChatId = previous ? (previous.chatId ?? previous.ChatId) : null;
+      if (previousChatId && String(previousChatId) !== String(chatId)) {
+        await unregisterByAwid(awid);
+      }
+
+      const result = await registerUserForNotifications(chatId, routine, awid);
+
       if (result.success) {
+        // Persist the Chat ID on the account so /api/user/settings reflects it
+        // on every device.
+        const current = normalizeUserSettings(user.settings);
+        const next = { ...current, telegram: { ...current.telegram, chatId: String(chatId), enabled: true } };
+        await updateUserProfile(auth.id, { settings: next });
         sendJson(res, 201, result);
       } else {
         sendJson(res, 400, result);
@@ -671,11 +700,14 @@ async function handleApiRequest(req, res) {
     return;
   }
 
-  // Unregister user from Telegram notifications
+  // Unregister the signed-in user from Telegram notifications. Only the owner
+  // of the Chat ID (or an admin/moderator) may unregister it.
   if (req.url === '/api/telegram/unregister' && req.method === 'POST') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
     try {
       const { chatId } = await readJsonBody(req);
-      
+
       if (!chatId) {
         sendJson(res, 400, {
           success: false,
@@ -684,9 +716,30 @@ async function handleApiRequest(req, res) {
         return;
       }
 
+      const user = await getUserById(auth.id);
+      const awid = user?.awid;
+      const existing = await getUser(chatId);
+      const existingAwid = existing ? (existing.awid ?? existing.Awid) : null;
+      const isOwner = existing && awid && existingAwid && String(existingAwid) === String(awid);
+      const isManager = ['admin', 'moderator'].includes(auth.role);
+      if (!isOwner && !isManager) {
+        sendJson(res, 403, {
+          success: false,
+          error: 'You can only unregister your own Chat ID.'
+        });
+        return;
+      }
+
       const removed = await unregisterUser(chatId);
-      
+
       if (removed) {
+        if (user && isOwner) {
+          const current = normalizeUserSettings(user.settings);
+          if (String(current.telegram.chatId) === String(chatId)) {
+            const next = { ...current, telegram: { ...current.telegram, chatId: '', enabled: false } };
+            await updateUserProfile(auth.id, { settings: next });
+          }
+        }
         sendJson(res, 200, {
           success: true,
           message: 'User unregistered successfully.'
