@@ -50,7 +50,37 @@ const IDENTITY_KEY = 'aust-buzz-identity';
  * nickname is the display handle and can be refreshed with regenerateShadowNickname.
  * @returns {{ id: string, nickname: string }}
  */
-export function getShadowIdentity() {
+/** Build a stable per-account identity id so the same login keeps the same
+ * anonymous id across devices. Guests and anonymous visitors still get a
+ * device-local random id (they have no account to anchor to). */
+function identityIdForUser(user) {
+  return (user?.id && user.id !== 'guest')
+    ? 'uid_' + String(user.id)
+    : 'sid_' + Math.random().toString(36).slice(2, 11);
+}
+
+export function getShadowIdentity(userOrId) {
+  const user = userOrId && typeof userOrId === 'object' ? userOrId : null;
+  const userId = user?.id || (typeof userOrId === 'string' ? userOrId : '');
+
+  // Account-scoped identity — derive the id from the account, cache the
+  // nickname under a per-account key so every device of the same login
+  // converges on one anonymous handle.
+  if (userId && userId !== 'guest') {
+    const accountKey = IDENTITY_KEY + '-user-' + userId;
+    try {
+      const raw = localStorage.getItem(accountKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.nickname) return { id: identityIdForUser({ id: userId }), nickname: parsed.nickname };
+      }
+    } catch { /* fall through */ }
+    const fresh = { id: identityIdForUser({ id: userId }), nickname: generateShadowName() };
+    try { localStorage.setItem(accountKey, JSON.stringify(fresh)); } catch { /* ignore */ }
+    return fresh;
+  }
+
+  // Device-local identity for guests (no account to synch across devices).
   try {
     const raw = localStorage.getItem(IDENTITY_KEY);
     if (raw) {
@@ -60,7 +90,7 @@ export function getShadowIdentity() {
   } catch { /* fall through to create */ }
 
   const identity = {
-    id: 'sid_' + Math.random().toString(36).slice(2, 11),
+    id: identityIdForUser(),
     nickname: generateShadowName(),
   };
   localStorage.setItem(IDENTITY_KEY, JSON.stringify(identity));
@@ -71,9 +101,17 @@ export function getShadowIdentity() {
  * Refreshes the visitor's nickname (keeps the same stable id) and persists it.
  * @returns {{ id: string, nickname: string }} the updated identity
  */
-export function regenerateShadowNickname() {
-  const current = getShadowIdentity();
+export function regenerateShadowNickname(userOrId) {
+  const current = getShadowIdentity(userOrId);
+  const user = userOrId && typeof userOrId === 'object' ? userOrId : null;
+  const userId = user?.id || (typeof userOrId === 'string' ? userOrId : '');
   const next = { ...current, nickname: generateShadowName() };
-  localStorage.setItem(IDENTITY_KEY, JSON.stringify(next));
+  try {
+    if (userId && userId !== 'guest') {
+      localStorage.setItem(IDENTITY_KEY + '-user-' + userId, JSON.stringify(next));
+    } else {
+      localStorage.setItem(IDENTITY_KEY, JSON.stringify(next));
+    }
+  } catch { /* ignore */ }
   return next;
 }
