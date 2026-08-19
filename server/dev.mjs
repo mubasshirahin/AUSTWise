@@ -1,3 +1,4 @@
+import { drainBootLogs, rawConsole as rc } from './bootLog.mjs';
 import 'dotenv/config';
 import http from 'node:http';
 import { execFile } from 'node:child_process';
@@ -467,45 +468,6 @@ const dbVarMap = { DB_SERVER: 'Server', DB_DATABASE: 'Database', DB_USER: 'User'
 const missingDbVars = Object.entries(dbVarMap).filter(([k]) => !process.env[k]).map(([, label]) => label);
 FEATURES.dbConfig = !!process.env.DATABASE_URL || missingDbVars.length === 0;
 
-function validateEnv() {
-  const warnings = [];
-
-  if (!FEATURES.openai) {
-    warnings.push('⚠️  OPENAI_API_KEY not set — routine image extraction (/api/extract-routine) will return 503');
-  }
-  if (!FEATURES.telegram) {
-    warnings.push('⚠️  TELEGRAM_BOT_TOKEN not set — Telegram notifications, broadcasts & webhook will return 503');
-  }
-  if (!FEATURES.gemini) {
-    warnings.push('⚠️  GEMINI_API_KEY not set — AI chat proxy (/api/gemini/chat) will return an error');
-  }
-  if (!FEATURES.googleApi) {
-    warnings.push('⚠️  VITE_GOOGLE_API_KEY not set — YouTube search & PDF proxy will return an error');
-  }
-  if (process.env.NODE_ENV === 'production' && !process.env.TELEGRAM_WEBHOOK_SECRET) {
-    warnings.push('⚠️  TELEGRAM_WEBHOOK_SECRET not set — Telegram webhook updates will be rejected (set it and re-run setWebhook)');
-  }
-  if (process.env.NODE_ENV === 'production' && !process.env.ADMIN_DEFAULT_PASSWORD) {
-    warnings.push('⚠️  ADMIN_DEFAULT_PASSWORD not set — a default admin account will NOT be seeded');
-  }
-  if (!FEATURES.dbConfig) {
-    warnings.push(`ℹ️  Missing DB credentials (${missingDbVars.join(', ')}) — falling back to local JSON database`);
-  }
-
-  // Social OAuth checks (non-critical — just info)
-  if (!process.env.GITHUB_CLIENT_ID)    warnings.push('ℹ️  GITHUB_CLIENT_ID not set — GitHub OAuth login disabled');
-  if (!process.env.DISCORD_CLIENT_ID)   warnings.push('ℹ️  DISCORD_CLIENT_ID not set — Discord OAuth login disabled');
-  if (!process.env.SPOTIFY_CLIENT_ID)   warnings.push('ℹ️  SPOTIFY_CLIENT_ID not set — Spotify OAuth login disabled');
-  if (!process.env.FACEBOOK_CLIENT_ID)  warnings.push('ℹ️  FACEBOOK_CLIENT_ID not set — Facebook OAuth login disabled');
-  if (!process.env.STEAM_API_KEY)       warnings.push('ℹ️  STEAM_API_KEY not set — Steam OAuth login disabled');
-
-  if (warnings.length > 0) {
-    console.warn('\n🔧 Environment check:\n  ' + warnings.join('\n  ') + '\n');
-  } else {
-    console.log('✅ Environment check: all required variables present.');
-  }
-}
-
 // Guard helpers — return true if the feature is available, otherwise send 503
 function requireFeature(feature, res, label) {
   if (!FEATURES[feature]) {
@@ -531,24 +493,24 @@ async function ensurePrismaPush() {
   }
 }
 
-// Auto-create database & tables on startup
-if (FEATURES.dbConfig) {
-  initializeDatabase().then(() => {
-    FEATURES.db = true;
-    console.log('✅ PostgreSQL connected & tables ready');
-    ensurePrismaPush();
-  }).catch(err => {
-    console.warn('⚠️  PostgreSQL init failed:', err.message);
-    console.warn('ℹ️  Using local JSON file-based database fallback.');
-    FEATURES.db = true; // Enable database-backed features via JSON fallback
-  }).finally(() => {
-    validateEnv();
-  });
-} else {
-  console.log('ℹ️  SQL Server not configured. Using local JSON file-based database fallback.');
-  FEATURES.db = true;
-  validateEnv();
-}
+// Auto-create database & tables on startup.
+// The promise is awaited inside the listen callback so the boot logs settle
+// (and are drained) before the endpoint directory + env checkup print.
+let dbConnected = false;
+const dbInit = FEATURES.dbConfig
+  ? initializeDatabase()
+      .then(() => {
+        FEATURES.db = true;
+        dbConnected = true;
+        console.log('✅ PostgreSQL connected & tables ready');
+        return ensurePrismaPush();
+      })
+      .catch((err) => {
+        console.warn('⚠️  PostgreSQL init failed:', err.message);
+        console.warn('ℹ️  Using local JSON file-based database fallback.');
+        FEATURES.db = true;
+      })
+  : Promise.resolve(false);
 
 // Redirect HTTP → HTTPS in production behind a proxy that terminates TLS.
 // Relies on the standard `x-forwarded-proto` header set by the load balancer
@@ -3665,53 +3627,292 @@ process.on('unhandledRejection', (err) => {
 // Initialize WebSocket server for real-time messaging
 createWSServer(server);
 
-server.listen(port, '0.0.0.0', () => {
-  validateEnv();
-  console.log(`AUSTWise running at http://localhost:${port}`);
-  console.log(`Mode: ${useViteMiddleware ? 'Vite middleware' : 'static dist (no HMR)'}`);
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// ── Endpoint directory (broad, grouped) ───────────────────────────────────────
+
+const ENDPOINT_GROUPS = [
+  { title: '📱 Telegram Bot', items: [
+    ['POST', '/api/telegram/register', 'Register user (Chat ID only)'],
+    ['POST', '/api/telegram/unregister', 'Unregister user'],
+    ['GET',  '/api/telegram/status', 'Check user registration status'],
+    ['PUT',  '/api/telegram/routine', 'Update user routine'],
+    ['POST', '/api/telegram/toggle', 'Toggle notification status'],
+    ['GET',  '/api/telegram/users', 'List all users (admin)'],
+    ['POST', '/api/telegram/broadcast', 'Send notifications to all users'],
+    ['POST', '/api/telegram/send-notice', 'Broadcast a notice to all users (CR/SR)'],
+    ['POST', '/api/telegram/test', 'Send test notification (8 AM)'],
+    ['POST', '/api/telegram/test-attendance', 'Send test attendance message (9 PM)'],
+    ['POST', '/api/telegram/attendance-callback', 'Handle attendance button callback'],
+    ['POST', '/api/telegram/webhook', 'Telegram webhook handler (button clicks)'],
+    ['POST', '/api/telegram/set-webhook', 'Set Telegram webhook URL'],
+    ['GET',  '/api/telegram/webhook-info', 'Get webhook status'],
+    ['GET',  '/api/telegram/attendance', 'Get attendance records'],
+    ['POST', '/api/telegram/attendance', 'Record attendance manually'],
+    ['GET',  '/api/telegram/today-classes', "Get today's classes"],
+    ['POST', '/api/attendance/telegram-sync', 'Sync Telegram attendance to a student'],
+  ]},
+  { title: '🏫 Auth & Accounts', items: [
+    ['POST', '/api/auth/signup', 'Create an account (student only)'],
+    ['POST', '/api/auth/login', 'Email + password login'],
+    ['POST', '/api/auth/logout', 'Logout (clears auth cookie)'],
+    ['POST', '/api/auth/google', 'Verify Google OAuth JWT'],
+    ['GET',  '/api/auth/me', 'Current user'],
+    ['PUT',  '/api/auth/profile', 'Update profile'],
+    ['GET',  '/api/auth/admin', 'Admin user list'],
+    ['GET',  '/api/auth/:provider/(login|callback)', 'GitHub / Discord / Spotify / Facebook / Steam OAuth'],
+  ]},
+  { title: '🏛️ Admin & Dev', items: [
+    ['GET',  '/api/admin/users', 'List users (admin)'],
+    ['POST', '/api/admin/users/role', 'Assign a role'],
+    ['POST', '/api/admin/users/update', 'Update a user'],
+    ['POST', '/api/admin/users/delete', 'Delete a user'],
+    ['POST', '/api/admin/reset', 'Reset attendance/telegram data'],
+    ['POST', '/api/dev/switch-user', 'Dev: switch account'],
+    ['POST', '/api/dev/seed-users', 'Dev: seed demo users'],
+    ['GET',  '/__dev/users', 'Dev: list users'],
+  ]},
+  { title: '📚 Library Occupancy', items: [
+    ['POST', '/api/library/checkin', 'GPS check-in / heartbeat'],
+    ['POST', '/api/library/checkout', 'Leave the library'],
+    ['GET',  '/api/library/occupancy', 'Live occupancy count'],
+    ['POST', '/api/library/track', 'Geofence UPSERT (MERGE)'],
+    ['GET',  '/api/library/pulse', 'Real-time occupancy pulse'],
+  ]},
+  { title: '🎟️ Invitations', items: [
+    ['POST', '/api/invites', 'Create invitation'],
+    ['GET',  '/api/invites', 'List invitations (paginated)'],
+    ['GET',  '/api/invite/validate', 'Validate invitation token'],
+    ['POST', '/api/invite/accept', 'Accept invitation'],
+  ]},
+  { title: '🤖 AI & Proxies', items: [
+    ['POST', '/api/extract-routine', 'Extract routine from image (OpenAI)'],
+    ['POST', '/api/gemini/chat', 'AI chat proxy (Gemini)'],
+    ['POST', '/api/youtube/suggestions', 'YouTube suggestions'],
+    ['POST', '/api/youtube/search', 'YouTube search'],
+    ['GET',  '/api/proxy/pdf', 'Google Drive PDF proxy'],
+    ['POST', '/api/cleaner/scan', 'Digital Footprint: Gmail scan (SSE)'],
+  ]},
+  { title: '🔐 Password Vault', items: [
+    ['POST', '/api/passwords/save', 'Save credential'],
+    ['GET',  '/api/passwords/list', 'List credentials'],
+    ['PUT',  '/api/passwords/:id', 'Update credential'],
+    ['DELETE', '/api/passwords/:id', 'Delete credential'],
+  ]},
+  { title: '🗄️ Store (KV sync)', items: [
+    ['GET',  '/api/store/user/:key', 'Get a user-store value'],
+    ['PUT',  '/api/store/user/:key', 'Set a user-store value'],
+    ['DELETE', '/api/store/user/:key', 'Delete a user-store value'],
+    ['GET',  '/api/store/user', 'List all user-store keys'],
+    ['GET',  '/api/store/shared/:key', 'Get a shared-store value'],
+    ['PUT',  '/api/store/shared/:key', 'Set a shared-store value'],
+    ['DELETE', '/api/store/shared/:key', 'Delete a shared-store value'],
+    ['PUT',  '/api/store/migrate', 'Migrate localStorage → server store'],
+  ]},
+  { title: '📍 Presence & Routines', items: [
+    ['GET',  '/api/presence/members', 'Active members'],
+    ['POST', '/api/presence/privacy', 'Update presence privacy'],
+    ['POST', '/api/presence/attendance', 'Record class presence'],
+    ['GET',  '/api/routines/shared', 'List shared routines'],
+    ['POST', '/api/routines/shared', 'Share a routine'],
+    ['DELETE', '/api/routines/shared', 'Delete a shared routine slot'],
+    ['GET',  '/api/routines/shared/stats', 'Shared routine stats'],
+    ['GET',  '/api/rooms/availability', 'Room availability'],
+  ]},
+  { title: '🛒 Marketplace & Messaging', items: [
+    ['GET',  '/api/marketplace', 'List listings'],
+    ['POST', '/api/marketplace', 'Create listing'],
+    ['DELETE', '/api/marketplace/:id', 'Delete listing'],
+    ['GET',  '/api/messages', 'Get conversations'],
+    ['POST', '/api/messages', 'Send message'],
+    ['PUT',  '/api/messages/:id', 'Edit message'],
+    ['DELETE', '/api/messages/:id', 'Delete message'],
+    ['POST', '/api/messages/:id/reaction', 'Add a reaction'],
+  ]},
+  { title: '🎓 Academics & Community', items: [
+    ['GET',  '/api/grades', 'Semester results'],
+    ['POST', '/api/grades', 'Save semester result'],
+    ['GET',  '/api/courses', 'Course catalog'],
+    ['POST', '/api/courses', 'Add course'],
+    ['DELETE', '/api/courses/:code', 'Delete course'],
+    ['GET',  '/api/question-papers', 'List question papers'],
+    ['POST', '/api/question-papers', 'Upload question paper'],
+    ['GET',  '/api/question-papers/download/:id', 'Download question paper'],
+    ['DELETE', '/api/question-papers/:id', 'Delete question paper'],
+    ['POST', '/api/role-applications', 'Apply for CR/SR'],
+    ['GET',  '/api/role-applications', 'All applications'],
+    ['GET',  '/api/role-applications/mine', 'My applications'],
+    ['POST', '/api/role-applications/review', 'Review an application'],
+    ['POST', '/api/role-applications/resign', 'Resign a role'],
+    ['POST', '/api/role-applications/withdraw', 'Withdraw an application'],
+    ['POST', '/api/vault/notes/upload', 'Upload a vault note'],
+    ['GET',  '/api/vault/notes', 'List vault notes'],
+    ['GET',  '/api/vault/notes/download/:id', 'Download a vault note'],
+    ['DELETE', '/api/vault/notes/:id', 'Delete a vault note'],
+    ['GET',  '/api/notices', 'List notices'],
+    ['POST', '/api/notices', 'Create notice'],
+    ['DELETE', '/api/notices/:id', 'Delete notice'],
+    ['GET',  '/api/canteen', 'Canteen menu'],
+    ['POST', '/api/canteen', 'Add/update menu item'],
+    ['DELETE', '/api/canteen/:id', 'Delete menu item'],
+    ['GET',  '/api/clubs', 'List clubs'],
+    ['POST', '/api/clubs/:id/join', 'Join a club'],
+    ['POST', '/api/clubs/:id/leave', 'Leave a club'],
+    ['GET',  '/api/cheatsheets', 'List cheatsheets'],
+    ['POST', '/api/cheatsheets', 'Create cheatsheet'],
+    ['DELETE', '/api/cheatsheets/:id', 'Delete cheatsheet'],
+    ['GET',  '/api/campus-locations', 'Campus map / locations'],
+    ['POST', '/api/campus-locations', 'Add location'],
+    ['DELETE', '/api/campus-locations/:id', 'Delete location'],
+  ]},
+];
+
+function printEndpointDirectory() {
+  console.log('📚 Endpoint Directory');
+  for (const group of ENDPOINT_GROUPS) {
+    console.log('');
+    console.log(`  ${group.title}`);
+    for (const [method, path, desc] of group.items) {
+      console.log(`    ${method.padEnd(6)} ${path.padEnd(38)} ${desc}`);
+    }
+  }
+}
+
+// ── Environment checkup (every variable, with status) ─────────────────────────
+
+const ENV_GROUPS = [
+  { title: 'Core / Server', items: [
+    { key: 'PORT', desc: 'HTTP port (default 5174)', required: false },
+    { key: 'NODE_ENV', desc: 'development | production', required: false },
+    { key: 'PUBLIC_BASE_URL', desc: 'Public origin — OAuth redirects & webhook URL', required: false },
+    { key: 'ALLOWED_ORIGIN', desc: 'CORS / WebSocket allowlist (comma-separated)', required: false },
+  ]},
+  { title: 'Database (PostgreSQL)', items: [
+    { key: 'DATABASE_URL', desc: 'Connection string (Railway Postgres)' },
+    { key: 'DB_SERVER', desc: 'Host — split-form fallback' },
+    { key: 'DB_PORT', desc: 'Port — split-form fallback' },
+    { key: 'DB_DATABASE', desc: 'Database name — split-form fallback' },
+    { key: 'DB_USER', desc: 'Username — split-form fallback' },
+    { key: 'DB_PASSWORD', desc: 'Password — split-form fallback' },
+    { key: 'PGHOST', desc: 'PG_* host (alternative split-form)' },
+    { key: 'PGPORT', desc: 'PG_* port' },
+    { key: 'PGDATABASE', desc: 'PG_* database' },
+    { key: 'PGUSER', desc: 'PG_* user' },
+    { key: 'PGPASSWORD', desc: 'PG_* password' },
+  ]},
+  { title: 'AI Features', items: [
+    { key: 'OPENAI_API_KEY', desc: 'Routine image extraction (/api/extract-routine)' },
+    { key: 'OPENAI_ROUTINE_MODEL', desc: 'Routine model (default gpt-4.1)', required: false },
+    { key: 'GEMINI_API_KEY', desc: 'AI chat proxy (/api/gemini/chat)' },
+    { key: 'VITE_GOOGLE_API_KEY', desc: 'YouTube search & PDF proxy' },
+  ]},
+  { title: 'Telegram', items: [
+    { key: 'TELEGRAM_BOT_TOKEN', desc: 'Notifications, broadcasts & webhook' },
+    { key: 'TELEGRAM_WEBHOOK_SECRET', desc: 'Webhook secret (prod only)', required: false },
+  ]},
+  { title: 'Social OAuth', items: [
+    { key: 'GITHUB_CLIENT_ID', desc: 'GitHub login', required: false },
+    { key: 'GITHUB_CLIENT_SECRET', desc: 'GitHub secret', required: false },
+    { key: 'DISCORD_CLIENT_ID', desc: 'Discord login', required: false },
+    { key: 'DISCORD_CLIENT_SECRET', desc: 'Discord secret', required: false },
+    { key: 'SPOTIFY_CLIENT_ID', desc: 'Spotify login', required: false },
+    { key: 'SPOTIFY_CLIENT_SECRET', desc: 'Spotify secret', required: false },
+    { key: 'FACEBOOK_CLIENT_ID', desc: 'Facebook login', required: false },
+    { key: 'FACEBOOK_CLIENT_SECRET', desc: 'Facebook secret', required: false },
+    { key: 'STEAM_API_KEY', desc: 'Steam OpenID', required: false },
+  ]},
+  { title: 'Security', items: [
+    { key: 'JWT_SECRET', desc: 'Auth cookie signing (set one in prod!)' },
+    { key: 'CRYPTO_SECRET_KEY', desc: 'Password vault encryption' },
+    { key: 'ADMIN_DEFAULT_PASSWORD', desc: 'Default admin seed (prod)', required: false },
+    { key: 'ENABLE_CSP', desc: 'Content-Security-Policy toggle', required: false },
+    { key: 'CSP_HEADER', desc: 'Custom CSP header', required: false },
+    { key: 'ENABLE_HSTS', desc: 'HSTS header (prod)', required: false },
+  ]},
+  { title: 'Library Occupancy', items: [
+    { key: 'LIBRARY_LAT', desc: 'Library lat (default 23.7634)', required: false },
+    { key: 'LIBRARY_LNG', desc: 'Library lng (default 90.4074)', required: false },
+    { key: 'LIBRARY_RADIUS_M', desc: 'Geofence radius in metres', required: false },
+    { key: 'LIBRARY_CAPACITY', desc: 'Seat capacity (default 350)', required: false },
+  ]},
+  { title: 'Rate Limiting', items: [
+    { key: 'RATE_LIMIT_GLOBAL_MAX', desc: 'Global requests max / window', required: false },
+    { key: 'RATE_LIMIT_AUTH_MAX', desc: 'Auth max / window', required: false },
+    { key: 'RATE_LIMIT_AUTH_WINDOW_MS', desc: 'Auth window (ms)', required: false },
+    { key: 'RATE_LIMIT_AUTH_GLOBAL_MAX', desc: 'Auth global max', required: false },
+    { key: 'RATE_LIMIT_EXTRACT_MAX', desc: 'Extract-routine max / window', required: false },
+    { key: 'RATE_LIMIT_EXTRACT_WINDOW_MS', desc: 'Extract-routine window (ms)', required: false },
+  ]},
+  { title: 'Google Drive / Misc', items: [
+    { key: 'GOOGLE_DRIVE_ALLOWED_FOLDERS', desc: 'PDF proxy folder allowlist', required: false },
+    { key: 'VITE_GOOGLE_CLIENT_ID', desc: 'Google sign-in client ID', required: false },
+  ]},
+];
+
+const SECRET_KEYS = new Set([
+  'JWT_SECRET', 'CRYPTO_SECRET_KEY', 'ADMIN_DEFAULT_PASSWORD',
+  'GITHUB_CLIENT_SECRET', 'DISCORD_CLIENT_SECRET', 'SPOTIFY_CLIENT_SECRET',
+  'FACEBOOK_CLIENT_SECRET', 'STEAM_API_KEY', 'TELEGRAM_BOT_TOKEN',
+  'TELEGRAM_WEBHOOK_SECRET', 'DB_PASSWORD', 'PGPASSWORD',
+  'OPENAI_API_KEY', 'GEMINI_API_KEY', 'VITE_GOOGLE_API_KEY',
+]);
+
+function envStatusIcon(key, required) {
+  return process.env[key] ? '✅' : (required === false ? 'ℹ️' : '⚠️');
+}
+
+function printEnvironmentCheckup() {
+  console.log('🔍 Environment Checkup');
   console.log('');
-  console.log('Telegram API Endpoints:');
-  console.log('  POST /api/telegram/register           - Register user (Chat ID only)');
-  console.log('  POST /api/telegram/unregister         - Unregister user');
-  console.log('  GET  /api/telegram/status              - Check user registration status');
-  console.log('  PUT  /api/telegram/routine             - Update user routine');
-  console.log('  POST /api/telegram/toggle              - Toggle notification status');
-  console.log('  GET  /api/telegram/users               - List all users (admin)');
-  console.log('  POST /api/telegram/broadcast           - Send notifications to all users');
-  console.log('  POST /api/telegram/send-notice         - Broadcast a notice to all users (CR/SR)');
-  console.log('  POST /api/telegram/test                - Send test notification (8 AM)');
-  console.log('  POST /api/telegram/test-attendance     - Send test attendance message (9 PM)');
-  console.log('  POST /api/telegram/attendance-callback - Handle attendance button callback');
-  console.log('  POST /api/telegram/webhook             - Telegram webhook handler (for button clicks)');
-  console.log('  POST /api/telegram/set-webhook         - Set Telegram webhook URL');
-  console.log('  GET  /api/telegram/webhook-info        - Get webhook status');
-  console.log('  GET  /api/telegram/attendance          - Get attendance records');
-  console.log('  POST /api/telegram/attendance          - Record attendance manually');
-  console.log('  GET  /api/telegram/today-classes       - Get today\'s classes');
+  const dbState = dbConnected ? '✅ connected' : (FEATURES.dbConfig ? '⏳ connecting…' : 'ℹ️ not configured — JSON file fallback');
+  console.log(`  Database: ${dbState}`);
+  for (const group of ENV_GROUPS) {
+    console.log('');
+    console.log(`  ${group.title}`);
+    for (const item of group.items) {
+      const set = !!process.env[item.key];
+      const icon = envStatusIcon(item.key, item.required);
+      const optional = item.required === false && !set ? ' (optional)' : '';
+      const shown = set && !SECRET_KEYS.has(item.key) ? ` = ${process.env[item.key]}` : (set ? ' (set)' : '');
+      console.log(`    ${icon}  ${item.key.padEnd(28)} ${item.desc}${optional}${shown}`);
+    }
+  }
+  const warnings = [];
+  if (!FEATURES.openai) warnings.push('⚠️  OPENAI_API_KEY not set — routine image extraction (/api/extract-routine) returns 503');
+  if (!FEATURES.telegram) warnings.push('⚠️  TELEGRAM_BOT_TOKEN not set — Telegram notifications, broadcasts & webhook return 503');
+  if (!FEATURES.gemini) warnings.push('⚠️  GEMINI_API_KEY not set — AI chat proxy (/api/gemini/chat) returns an error');
+  if (!FEATURES.googleApi) warnings.push('⚠️  VITE_GOOGLE_API_KEY not set — YouTube search & PDF proxy return an error');
+  if (process.env.NODE_ENV === 'production' && !process.env.TELEGRAM_WEBHOOK_SECRET) warnings.push('⚠️  TELEGRAM_WEBHOOK_SECRET not set — Telegram webhook updates will be rejected');
+  if (process.env.NODE_ENV === 'production' && !process.env.ADMIN_DEFAULT_PASSWORD) warnings.push('⚠️  ADMIN_DEFAULT_PASSWORD not set — default admin account will NOT be seeded');
+  if (warnings.length) {
+    console.log('');
+    console.log('  Feature status:');
+    for (const w of warnings) console.log(`    ${w}`);
+  }
   console.log('');
-  console.log('Library Occupancy Endpoints:');
-  console.log('  POST /api/library/checkin              - GPS check-in / heartbeat');
-  console.log('  POST /api/library/checkout             - Leave the library');
-  console.log('  GET  /api/library/occupancy            - Live occupancy count');
-  console.log('  POST /api/library/track                - Geofence UPSERT (MERGE)');
-  console.log('  GET  /api/library/pulse                - Real-time occupancy pulse');
+  console.log('  ✅ Server ready.');
+}
+
+server.listen(port, '0.0.0.0', async () => {
+  // 1) Link first — always on top, before any module boot log.
+  rc.log('');
+  rc.log('='.repeat(62));
+  rc.log('  🚀 AUSTWise is running at  http://localhost:' + port);
+  rc.log('  Mode: ' + (useViteMiddleware ? 'Vite middleware (HMR)' : 'static dist (no HMR)'));
+  rc.log('  Node: ' + process.version + '   Started: ' + new Date().toLocaleTimeString());
+  rc.log('='.repeat(62));
+  rc.log('');
+
+  // 2) Let async boot work (DB init, prisma tables, seeds) settle, then replay
+  //    every captured boot log in order. A 4s guard keeps the report snappy.
+  await Promise.race([dbInit, wait(4000)]);
+  drainBootLogs();
   console.log('');
-  console.log('Invitation Endpoints:');
-  console.log('  POST /api/invites                      - Create invitation');
-  console.log('  GET  /api/invites                      - List invitations (paginated)');
-  console.log('  GET  /api/invite/validate              - Validate invitation token');
-  console.log('  POST /api/invite/accept                - Accept invitation');
+
+  // 3) Broad endpoint directory.
+  printEndpointDirectory();
   console.log('');
-  console.log('Auth Endpoints:');
-  console.log('  POST /api/auth/google                  - Verify Google OAuth JWT');
-  console.log('  POST /api/cleaner/scan                 - Digital Footprint: scan Gmail inbox (SSE progress)');
-  console.log('  GET  /api/auth/github/(login|callback) - GitHub OAuth');
-  console.log('  GET  /api/auth/discord/(login|callback)- Discord OAuth');
-  console.log('  GET  /api/auth/spotify/(login|callback)- Spotify OAuth');
-  console.log('  GET  /api/auth/facebook/(login|callback)- Facebook OAuth');
-  console.log('  GET  /api/auth/steam/(login|callback)   - Steam OpenID');
-  console.log('');
-  console.log('📞 Telegram Webhook Setup:');
-  console.log('  To enable button clicks in Telegram, set your webhook URL using:');
-  console.log('  POST /api/telegram/set-webhook with body: { "webhookUrl": "https://your-domain.com/api/telegram/webhook" }');
+
+  // 4) Full environment checkup — every variable.
+  printEnvironmentCheckup();
 });

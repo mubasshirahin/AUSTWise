@@ -7,6 +7,7 @@
  *   SharedStore — global/shared data (key → JSON value)
  */
 
+import { randomUUID } from 'node:crypto';
 import { query, sql } from './db.mjs';
 import { readJson, writeJson } from './jsonDB.mjs';
 
@@ -15,9 +16,9 @@ import { readJson, writeJson } from './jsonDB.mjs';
 const USER_STORE_FILE = 'userStore.json';     // { [userId]: { [key]: value } }
 const SHARED_STORE_FILE = 'sharedStore.json'; // { [key]: value }
 
-async function readUserStoreFile() { return (await readJson(USER_STORE_FILE)) || {}; }
+async function readUserStoreFile() { return (await readJson(USER_STORE_FILE, {})) || {}; }
 async function writeUserStoreFile(data) { await writeJson(USER_STORE_FILE, data); }
-async function readSharedStoreFile() { return (await readJson(SHARED_STORE_FILE)) || {}; }
+async function readSharedStoreFile() { return (await readJson(SHARED_STORE_FILE, {})) || {}; }
 async function writeSharedStoreFile(data) { await writeJson(SHARED_STORE_FILE, data); }
 
 let _dbAvailable = null; // null = untested, true/false
@@ -37,23 +38,23 @@ async function isDbAvailable() {
 
 const TABLES_DDL = `
 CREATE TABLE IF NOT EXISTS "UserStore" (
-  id        TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
-  userId    TEXT NOT NULL,
-  "key"     TEXT NOT NULL,
-  value     TEXT DEFAULT '{}',
-  updatedAt TIMESTAMPTZ DEFAULT NOW(),
-  createdAt TIMESTAMPTZ DEFAULT NOW(),
-  CONSTRAINT uq_userstore UNIQUE (userId, "key")
+  "id"        TEXT NOT NULL PRIMARY KEY,
+  "userId"    TEXT NOT NULL,
+  "key"       TEXT NOT NULL,
+  "value"     TEXT NOT NULL DEFAULT '{}',
+  "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT uq_userstore UNIQUE ("userId", "key")
 );
-CREATE INDEX IF NOT EXISTS ix_userstore_userid ON "UserStore" (userId);
+CREATE INDEX IF NOT EXISTS ix_userstore_userid ON "UserStore" ("userId");
 
 CREATE TABLE IF NOT EXISTS "SharedStore" (
-  id        TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
-  "key"     TEXT NOT NULL UNIQUE,
-  value     TEXT DEFAULT '{}',
-  updatedBy TEXT DEFAULT '',
-  updatedAt TIMESTAMPTZ DEFAULT NOW(),
-  createdAt TIMESTAMPTZ DEFAULT NOW()
+  "id"        TEXT NOT NULL PRIMARY KEY,
+  "key"       TEXT NOT NULL UNIQUE,
+  "value"     TEXT NOT NULL DEFAULT '{}',
+  "updatedBy" TEXT NOT NULL DEFAULT '',
+  "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 `;
 
@@ -80,7 +81,7 @@ export async function getUserStoreValue(userId, key, fallback = null) {
     await ensureTables();
     try {
       const rows = await query(
-        'SELECT value FROM "UserStore" WHERE userId = @userId AND "key" = @key',
+        'SELECT value FROM "UserStore" WHERE "userId" = @userId AND "key" = @key',
         [
           { name: 'userId', type: sql.NVarChar(50), value: userId },
           { name: 'key', type: sql.NVarChar(200), value: key },
@@ -107,12 +108,13 @@ export async function setUserStoreValue(userId, key, value) {
     await ensureTables();
     try {
       await query(`
-        INSERT INTO "UserStore" (userId, "key", value, updatedAt)
-        VALUES (@userId, @key, @val, NOW())
-        ON CONFLICT (userId, "key") DO UPDATE SET
+        INSERT INTO "UserStore" ("id", "userId", "key", value, "updatedAt")
+        VALUES (@id, @userId, @key, @val, NOW())
+        ON CONFLICT ("userId", "key") DO UPDATE SET
           value = EXCLUDED.value,
-          updatedAt = NOW();
+          "updatedAt" = NOW();
       `, [
+        { name: 'id', type: sql.NVarChar(50), value: randomUUID() },
         { name: 'userId', type: sql.NVarChar(50), value: userId },
         { name: 'key', type: sql.NVarChar(200), value: key },
         { name: 'val', type: sql.NVarChar(-1), value: jsonValue },
@@ -136,7 +138,7 @@ export async function deleteUserStoreValue(userId, key) {
     await ensureTables();
     try {
       await query(
-        'DELETE FROM "UserStore" WHERE userId = @userId AND "key" = @key',
+        'DELETE FROM "UserStore" WHERE "userId" = @userId AND "key" = @key',
         [
           { name: 'userId', type: sql.NVarChar(50), value: userId },
           { name: 'key', type: sql.NVarChar(200), value: key },
@@ -158,7 +160,7 @@ export async function listUserStoreKeys(userId) {
     await ensureTables();
     try {
       const rows = await query(
-        'SELECT "key" FROM "UserStore" WHERE userId = @userId',
+        'SELECT "key" FROM "UserStore" WHERE "userId" = @userId',
         [{ name: 'userId', type: sql.NVarChar(50), value: userId }]
       );
       return rows.map(r => r.key);
@@ -200,13 +202,14 @@ export async function setSharedStoreValue(key, value, updatedBy = '') {
     await ensureTables();
     try {
       await query(`
-        INSERT INTO "SharedStore" ("key", value, updatedBy, updatedAt)
-        VALUES (@key, @val, @by, NOW())
+        INSERT INTO "SharedStore" ("id", "key", value, "updatedBy", "updatedAt")
+        VALUES (@id, @key, @val, @by, NOW())
         ON CONFLICT ("key") DO UPDATE SET
           value = EXCLUDED.value,
-          updatedBy = EXCLUDED.updatedBy,
-          updatedAt = NOW();
+          "updatedBy" = EXCLUDED."updatedBy",
+          "updatedAt" = NOW();
       `, [
+        { name: 'id', type: sql.NVarChar(50), value: randomUUID() },
         { name: 'key', type: sql.NVarChar(200), value: key },
         { name: 'val', type: sql.NVarChar(-1), value: jsonValue },
         { name: 'by', type: sql.NVarChar(50), value: updatedBy },
