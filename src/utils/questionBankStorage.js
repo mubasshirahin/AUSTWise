@@ -37,7 +37,28 @@ function paperHasStoredFile(item) {
   return Boolean(item?.hasFile || item?.fileData);
 }
 
-function loadUserQuestions() {
+// Server-backed question bank. localStorage/indexedDB stay as the offline
+// cache: reads try the API first, fall back to local copies when the server
+// is unreachable; writes push to the API and mirror locally.
+let _serverPapers = null; // full list from the API, cached per session
+let _serverFetchStarted = false;
+
+async function fetchServerPapers() {
+  if (_serverPapers) return _serverPapers;
+  try {
+    const res = await fetch('/api/question-papers', { credentials: 'same-origin' });
+    if (!res.ok) throw new Error('api');
+    const data = await res.json();
+    if (data?.success && Array.isArray(data.papers)) {
+      _serverPapers = data.papers;
+      _serverFetchStarted = true;
+      return data.papers;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+function loadLocalQuestions() {
   try {
     const raw = localStorage.getItem(storageKey);
     if (raw) {
@@ -60,14 +81,22 @@ function loadUserQuestions() {
   }
 }
 
+/** Synchronous read for the UI — returns the current local cache. Fresh
+ *  server data is pulled in the background by refreshQuestionBank(). */
+function loadUserQuestions() {
+  return loadLocalQuestions();
+}
+
+/** Pull the latest papers from the server and merge into local cache. */
+export async function refreshQuestionBank() {
+  const server = await fetchServerPapers();
+  if (!server) return loadLocalQuestions();
+  try { localStorage.setItem(storageKey, JSON.stringify(server)); } catch { /* ignore */ }
+  return server;
+}
+
 function saveUserQuestions(items) {
-  try {
-    localStorage.setItem(storageKey, JSON.stringify(items));
-  } catch {
-    throw new Error(
-      'Could not save this paper. Your browser storage may be full — try a smaller file or remove old uploads.',
-    );
-  }
+  try { localStorage.setItem(storageKey, JSON.stringify(items)); } catch { /* ignore */ }
 }
 
 async function resolvePaperFileData(item) {
@@ -163,10 +192,44 @@ export async function addQuestionPaper(payload) {
     uploadedAt: new Date().toISOString(),
   };
 
-  await saveQuestionPaperFile(entry.id, fileData);
-  const nextItems = [entry, ...loadUserQuestions()];
-  saveUserQuestions(nextItems);
-  return entry;
+  // Push to the server first (file included), keeping local copies as fallback.
+  try {
+    const res = await fetch('/api/question-papers', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fileData,
+        fileName,
+        fileType: fileType === 'pdf' ? 'application/pdf' : 'image/jpeg',
+        department: entry.department,
+        yearSem: entry.yearSem,
+        course: entry.course,
+        name: entry.name,
+        type,
+        year: entry.year,
+        semester: entry.semester,
+        paperNo: entry.paperNo,
+        solved: entry.solved,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data?.success) {
+      throw new Error(data?.error || 'Server rejected the upload.');
+    }
+    // Server is authoritative — refresh the local cache from it.
+    const serverEntry = data.paper;
+    await saveQuestionPaperFile(serverEntry.id, fileData);
+    const nextItems = [serverEntry, ...loadUserQuestions().filter((item) => item.id !== serverEntry.id)];
+    saveUserQuestions(nextItems);
+    return serverEntry;
+  } catch {
+    // Offline / server down — keep the local-only copy.
+    await saveQuestionPaperFile(entry.id, fileData);
+    const nextItems = [entry, ...loadUserQuestions()];
+    saveUserQuestions(nextItems);
+    return entry;
+  }
 }
 
 export async function deleteQuestionPaper(id, userId, isAdmin = false) {
@@ -180,6 +243,13 @@ export async function deleteQuestionPaper(id, userId, isAdmin = false) {
   await deleteQuestionPaperFile(id).catch(() => {});
   const nextItems = items.filter((item) => item.id !== id);
   saveUserQuestions(nextItems);
+  // Best-effort server delete.
+  try {
+    await fetch('/api/question-papers/' + encodeURIComponent(id), {
+      method: 'DELETE',
+      credentials: 'same-origin',
+    });
+  } catch { /* offline — local delete stands */ }
 }
 
 export async function readQuestionPaperFile(file, maxBytes = MAX_QUESTION_PAPER_BYTES) {

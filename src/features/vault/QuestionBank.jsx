@@ -5,6 +5,7 @@ import {
   getQuestionBankSummaries,
   deleteQuestionPaper,
   migrateQuestionBankFilesToIndexedDb,
+  refreshQuestionBank,
 } from '../../utils/questionBankStorage';
 import {
   getQuestionBankTerms,
@@ -29,7 +30,10 @@ export default function QuestionBank({ vaultContext }) {
   const typeFilters = useMemo(() => ['All', ...examTypes], [examTypes]);
   const terms = useMemo(() => getQuestionBankTerms(), []);
 
-  const refreshPapers = useCallback(() => {
+  const refreshPapers = useCallback(async () => {
+    // Pull the latest from the server first so a fresh device sees everyone's
+    // uploads; falls back to the local cache when offline.
+    try { await refreshQuestionBank(); } catch { /* offline */ }
     setRefreshKey((key) => key + 1);
   }, []);
 

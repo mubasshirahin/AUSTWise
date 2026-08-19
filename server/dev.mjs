@@ -87,6 +87,10 @@ import {
   listRoomBookings,
   computeRoomAvailabilityServer,
   serverRoomCatalog,
+  listQuestionPapers,
+  getQuestionPaperById,
+  addQuestionPaper,
+  deleteQuestionPaperById,
 } from './prisma.js';
 import {
   ensureUploadsDir,
@@ -112,7 +116,7 @@ import {
   deleteCredential,
   revealPassword,
 } from './passwordVaultDB.mjs';
-import { createWSServer, broadcastToAll, broadcastToUsers, broadcastToUser, getPresenceMap } from './wsServer.mjs';
+import { createWSServer, closeWSServer, broadcastToAll, broadcastToUsers, broadcastToUser, getPresenceMap } from './wsServer.mjs';
 import {
   getUserStoreValue, setUserStoreValue, deleteUserStoreValue, listUserStoreKeys,
   getSharedStoreValue, setSharedStoreValue, deleteSharedStoreValue,
@@ -511,19 +515,20 @@ function requireFeature(feature, res, label) {
   return true;
 }
 
-// Create the Prisma-managed tables (User, Routine, MarketplaceListing, …) by
-// running `prisma db push` once at boot. Idempotent, fire-and-forget.
-function ensurePrismaPush() {
+// Create the Prisma-managed tables (User, Routine, MarketplaceListing, …) at
+// boot. Runs the create-only, idempotent DDL in prismaTables.sql — the same
+// shape `prisma db push` would produce, but it never drops tables that aren't
+// in the Prisma schema (AuthUsers, TelegramUsers, PasswordVault, … are managed
+// by raw-SQL modules and must survive).
+async function ensurePrismaPush() {
   if (!process.env.DATABASE_URL && !process.env.DB_SERVER) return;
-  execFile(
-    'npx',
-    ['prisma', 'db', 'push', '--accept-data-loss'],
-    { cwd: path.resolve(__dirname, '..'), windowsHide: true },
-    (err, _stdout, stderr) => {
-      if (err) console.warn('⚠️  prisma db push failed:', stderr || err.message);
-      else console.log('✅ Prisma tables ready (db push)');
-    }
-  );
+  try {
+    const sqlFile = await readFile(path.resolve(__dirname, 'prismaTables.sql'), 'utf8');
+    await query(sqlFile);
+    console.log('✅ Prisma tables ready');
+  } catch (err) {
+    console.warn('⚠️  prisma tables bootstrap failed:', err.message);
+  }
 }
 
 // Auto-create database & tables on startup
@@ -3040,7 +3045,133 @@ async function handleApiRequest(req, res) {
     return;
   }
 
-  // List notes for a course/department/semester
+  // ── Question Bank routes ──
+
+  // ── Question Bank (shared papers) ──
+  // List papers, optionally filtered
+  if (req.url.startsWith('/api/question-papers') && req.method === 'GET' && !req.url.includes('/download/')) {
+    try {
+      const url = new URL(req.url, 'http://localhost');
+      const papers = await listQuestionPapers({
+        course: url.searchParams.get('course') || '',
+        department: url.searchParams.get('department') || '',
+        yearSem: url.searchParams.get('yearSem') || '',
+        type: url.searchParams.get('type') || '',
+      });
+      sendJson(res, 200, { success: true, papers });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  // Upload a question paper (metadata + file written to uploads/)
+  if (req.url === '/api/question-papers' && req.method === 'POST') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
+    try {
+      const body = await readJsonBody(req);
+      if (!body.fileData || !body.fileName || !body.course || !body.type) {
+        sendJson(res, 400, { success: false, error: 'fileData, fileName, course and type are required.' });
+        return;
+      }
+      let base64Data = body.fileData;
+      let mimeType = body.mimeType || 'application/octet-stream';
+      if (base64Data.startsWith('data:')) {
+        const match = base64Data.match(/^data:([^;]+);base64,(.+)$/);
+        if (match) {
+          mimeType = match[1];
+          base64Data = match[2];
+        }
+      }
+      if (!NOTE_ALLOWED_TYPES.includes(mimeType)) {
+        sendJson(res, 400, { success: false, error: 'Only PDF, PNG, JPG and DOCX question papers are accepted.' });
+        return;
+      }
+      const buffer = Buffer.from(base64Data, 'base64');
+      if (buffer.length > NOTE_MAX_SIZE) {
+        sendJson(res, 413, { success: false, error: 'File too large (max 15MB).' });
+        return;
+      }
+      if (!verifyMimeType(buffer, mimeType)) {
+        sendJson(res, 400, { success: false, error: 'File content does not match its type.' });
+        return;
+      }
+      await ensureUploadsDir();
+      const safeName = 'qp-' + Date.now() + '-' + body.fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const filePath = path.join(UPLOADS_DIR, safeName);
+      await writeFile(filePath, buffer);
+
+      const authPayload = readTokenCookie(req);
+      const paper = await addQuestionPaper({
+        contributorId: authPayload?.id || 'guest',
+        contributorName: authPayload?.name || body.contributorName || 'Anonymous',
+        department: body.department || '',
+        yearSem: body.yearSem || '',
+        course: body.course,
+        name: body.name || '',
+        type: body.type,
+        year: body.year || '',
+        semester: body.semester || '',
+        paperNo: body.paperNo ?? 1,
+        solved: Boolean(body.solved),
+        fileName: body.fileName,
+        fileType: mimeType === 'application/pdf' ? 'pdf' : 'image',
+        filename: safeName,
+        size: buffer.length,
+      });
+      sendJson(res, 201, { success: true, paper });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Upload failed.' });
+    }
+    return;
+  }
+
+  // Download a paper's binary file
+  if (req.url.startsWith('/api/question-papers/download/') && req.method === 'GET') {
+    try {
+      const id = new URL(req.url, `http://${req.headers.host}`).pathname.split('/').pop();
+      const paper = await getQuestionPaperById(id);
+      if (!paper || !paper.filename) {
+        sendJson(res, 404, { success: false, error: 'Paper not found.' });
+        return;
+      }
+      const filePath = path.join(UPLOADS_DIR, paper.filename);
+      const data = await readFile(filePath);
+      res.writeHead(200, {
+        'Content-Type': paper.fileType === 'pdf' ? 'application/pdf' : 'application/octet-stream',
+        'Content-Length': data.length,
+        'Content-Disposition': `attachment; filename="${encodeURIComponent(paper.fileName || 'question-paper')}"`,
+      });
+      res.end(data);
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message });
+    }
+    return;
+  }
+
+  // Delete a paper (owner or admin)
+  if (req.url.startsWith('/api/question-papers/') && req.method === 'DELETE') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
+    try {
+      const id = decodeURIComponent(req.url.split('/').pop());
+      const result = await deleteQuestionPaperById(id, auth.id, auth.role === 'admin' || auth.role === 'moderator');
+      if (!result.deleted) {
+        sendJson(res, 403, { success: false, error: result.error || 'Delete failed.' });
+        return;
+      }
+      if (result.paper?.filename) {
+        try { await unlink(path.join(UPLOADS_DIR, result.paper.filename)); } catch { /* already gone */ }
+      }
+      sendJson(res, 200, { success: true });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message });
+    }
+    return;
+  }
+
+// List notes for a course/department/semester
   if (req.url.startsWith('/api/vault/notes') && req.method === 'GET' && !req.url.includes('/download/')) {
     try {
       const url = new URL(req.url, `http://${req.headers.host}`);
@@ -3487,6 +3618,7 @@ function startGracefulShutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log(`\n${signal} received — shutting down gracefully...`);
+  closeWSServer();
   server.close(() => process.exit(0));
   setTimeout(() => {
     console.error('⚠️  Shutdown timed out — force exiting.');

@@ -12,45 +12,33 @@ let _prismaAvailable = false;
 
 function getPrisma() {
   if (!_prismaAvailable) {
-    throw new Error('PrismaClient unavailable — driver adapter required for Prisma v7. Use mssql-based DB modules instead.');
+    throw new Error('PrismaClient unavailable — set DATABASE_URL / DB_* env vars.');
   }
   return _prisma;
 }
 
-// Build the mssql connection config from the same env vars db.mjs uses, so
-// the Prisma driver adapter talks to the same SQL Server database.
-function mssqlConfig() {
-  const useTrusted = process.env.DB_TRUSTED === 'true';
-  const config = {
-    server: process.env.DB_SERVER || 'localhost',
-    port: Number(process.env.DB_PORT || 1433),
-    database: process.env.DB_DATABASE || 'AUSTWise',
-    options: {
-      encrypt: process.env.DB_ENCRYPT === 'true',
-      trustServerCertificate: true,
-    },
+function pgConfig() {
+  // Prefer the single DATABASE_URL (Railway injects this); fall back to the
+  // split vars so the same client connects to whichever you set.
+  if (process.env.DATABASE_URL) return { connectionString: process.env.DATABASE_URL };
+  return {
+    host: process.env.PGHOST || process.env.DB_SERVER || 'localhost',
+    port: Number(process.env.PGPORT || process.env.DB_PORT || 5432),
+    database: process.env.PGDATABASE || process.env.DB_DATABASE || 'AUSTWise',
+    user: process.env.PGUSER || process.env.DB_USER || 'postgres',
+    password: process.env.PGPASSWORD || process.env.DB_PASSWORD || '',
   };
-  if (useTrusted) {
-    config.authentication = { type: 'ntlm', options: { userName: '', password: '', domain: '' } };
-  } else {
-    config.user = process.env.DB_USER || 'sa';
-    config.password = process.env.DB_PASSWORD || '';
-  }
-  return config;
 }
 
 async function initPrisma() {
   try {
     const mod = await import('@prisma/client');
-    const { PrismaMssql } = await import('@prisma/adapter-mssql');
-    const adapter = new PrismaMssql(mssqlConfig());
+    const { PrismaPg } = await import('@prisma/adapter-pg');
+    const adapter = new PrismaPg(pgConfig());
     _prisma = new mod.PrismaClient({ adapter });
-    // Ping the database so a missing/incorrect connection is caught here
-    // (and falls back to JSON below) instead of failing lazily on the first
-    // API call.
     await _prisma.$queryRaw`SELECT 1`;
     _prismaAvailable = true;
-    console.log('✅ PrismaClient connected (SQL Server via @prisma/adapter-mssql)');
+    console.log('✅ PrismaClient connected (PostgreSQL via @prisma/adapter-pg)');
   } catch (e) {
     console.warn('⚠️  PrismaClient unavailable (' + (e?.message || e) + '). DB-backed features disabled, using JSON fallback.');
     _prismaAvailable = false;
@@ -1253,6 +1241,86 @@ export async function getSharedRoutineStats() {
 // ═══════════════════════════════════════════════════════════════════════════════
 // Room / Lab Availability (Free Rooms)
 //
+// Question Papers (shared question bank backed by Prisma QuestionPaper or JSON)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const QUESTION_PAPERS_FILE = 'questionPapers.json';
+
+export async function listQuestionPapers({ course, department, yearSem, type } = {}) {
+  if (!_prismaAvailable) {
+    const list = (await readJson(QUESTION_PAPERS_FILE)) || [];
+    return list
+      .filter((p) => (!course || p.course === course)
+        && (!department || p.department === department)
+        && (!yearSem || p.yearSem === yearSem)
+        && (!type || p.type === type))
+      .sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
+  }
+  return getPrisma().questionPaper.findMany({ orderBy: { uploadedAt: 'desc' } });
+}
+
+export async function getQuestionPaperById(id) {
+  if (!_prismaAvailable) {
+    const list = (await readJson(QUESTION_PAPERS_FILE)) || [];
+    return list.find((p) => p.id === id) || null;
+  }
+  return getPrisma().questionPaper.findUnique({ where: { id } });
+}
+
+/** Add a paper. fileData base64 stays out — callers write the file to disk
+ *  and pass the resulting filename. */
+export async function addQuestionPaper(data) {
+  const record = {
+    id: data.id || 'qp_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+    contributorId: data.contributorId || 'guest',
+    contributorName: data.contributorName || 'Anonymous',
+    department: data.department || '',
+    yearSem: data.yearSem || '',
+    course: data.course,
+    name: data.name || '',
+    type: data.type,
+    year: data.year || '',
+    semester: data.semester || '',
+    paperNo: Number(data.paperNo ?? 1),
+    solved: Boolean(data.solved),
+    fileName: data.fileName || '',
+    fileType: data.fileType || 'pdf',
+    filename: data.filename || '',
+    size: Number(data.size || 0),
+    uploadedAt: new Date().toISOString(),
+  };
+  if (!_prismaAvailable) {
+    const list = (await readJson(QUESTION_PAPERS_FILE)) || [];
+    list.push(record);
+    await writeJson(QUESTION_PAPERS_FILE, list);
+    return record;
+  }
+  await getPrisma().questionPaper.create({ data: record });
+  return record;
+}
+
+export async function deleteQuestionPaperById(id, userId, isAdmin = false) {
+  if (!_prismaAvailable) {
+    const list = (await readJson(QUESTION_PAPERS_FILE)) || [];
+    const idx = list.findIndex((p) => p.id === id);
+    if (idx === -1) return { deleted: false, error: 'Question paper not found.' };
+    if (list[idx].contributorId !== userId && !isAdmin) {
+      return { deleted: false, error: 'You can only delete your own uploads.' };
+    }
+    const [paper] = list.splice(idx, 1);
+    await writeJson(QUESTION_PAPERS_FILE, list);
+    return { deleted: true, paper };
+  }
+  const paper = await getQuestionPaperById(id);
+  if (!paper) return { deleted: false, error: 'Question paper not found.' };
+  if (paper.contributorId !== userId && !isAdmin) {
+    return { deleted: false, error: 'You can only delete your own uploads.' };
+  }
+  await getPrisma().questionPaper.delete({ where: { id } });
+  return { deleted: true, paper };
+}
+
+
 // Availability is *derived* from the routines CRs have published. Each shared
 // routine's JSON is keyed by day and each class carries { course, name, room,
 // teacher, time }. We flatten every (roomId, day, time, course, teacher) into
