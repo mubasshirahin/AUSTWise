@@ -70,3 +70,7 @@ strix/
 # Throwaway QA scripts (dev-only debugging)
 qa-*.mjs
 .agents/
+
+# Runtime store fallback data
+server/userStoreDeleted.json
+server/sharedStoreDeleted.json
