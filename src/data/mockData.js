@@ -1,6 +1,8 @@
 // Mock data for the AUSTWise application
 // All data is realistic but fictional
 
+import { getLiveValue, setLiveValue, ensureFetched } from '../utils/liveStore';
+
 export const currentUser = {
   id: '',
   name: '',
@@ -272,7 +274,12 @@ export const defaultAuditoriumEvent = {
 
 export function getAuditoriumEvent() {
   if (typeof window === 'undefined') return { ...defaultAuditoriumEvent };
+  // Pull fresh server copy in the background so a new device sees the event.
+  ensureFetched('shared', 'aust-auditorium-event');
   try {
+    // Server-synced copy wins (liveStore cache); localStorage is the offline cache.
+    const serverValue = getLiveValue('shared', 'aust-auditorium-event', null);
+    if (serverValue) return { ...defaultAuditoriumEvent, ...serverValue };
     const stored = JSON.parse(localStorage.getItem('aust-auditorium-event'));
     return stored ? { ...defaultAuditoriumEvent, ...stored } : { ...defaultAuditoriumEvent };
   } catch {
@@ -284,6 +291,8 @@ export function setAuditoriumEvent(evt) {
   if (typeof window === 'undefined') return;
   localStorage.setItem('aust-auditorium-event', JSON.stringify(evt));
   window.dispatchEvent(new Event('auditorium-updated'));
+  // Push to the shared server store (best-effort) so every user sees the event.
+  setLiveValue('shared', 'aust-auditorium-event', evt).catch(() => {});
 }
 
 // Routines shared by CRs via the CR/SR directory (persisted in localStorage)
