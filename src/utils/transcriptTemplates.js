@@ -1,3 +1,4 @@
+import { liveLoad, liveSave } from './liveStorage';
 /**
  * Transcript Templates Storage System
  * Global templates that admin can manage and users can load
@@ -7,28 +8,13 @@ const TEMPLATES_STORAGE_KEY = 'aust-transcript-templates-v1';
 
 // Load all templates from storage
 export function loadTemplates() {
-  try {
-    const stored = localStorage.getItem(TEMPLATES_STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      // Filter out legacy dummy templates that may have been persisted
-      // from the old defaultTemplates fallback (ids transcript-template-1..8)
-      return parsed.filter(t => !/^transcript-template-[1-8]$/.test(t.id));
-    }
-    // No stored templates yet — admin must create them
-    return [];
-  } catch {
-    return [];
-  }
+  // Shared (global) templates managed by admins — server-backed so every user
+  // sees the same set. localStorage stays as the fast offline cache.
+  return liveLoad('shared', TEMPLATES_STORAGE_KEY, []);
 }
 
-// Save all templates to storage
 export function saveTemplates(templates) {
-  try {
-    localStorage.setItem(TEMPLATES_STORAGE_KEY, JSON.stringify(templates));
-  } catch {
-    // Storage error
-  }
+  liveSave('shared', TEMPLATES_STORAGE_KEY, templates);
 }
 
 // Get a single template by ID
