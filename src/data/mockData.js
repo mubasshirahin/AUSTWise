@@ -368,32 +368,7 @@ export function computeRoomAvailability(day, time, baseFloors) {
         }),
       }));
   const withVenues = overlayVenueStatus(source);
-  const localShared = (typeof window !== 'undefined'
-    ? JSON.parse(localStorage.getItem('aust-shared-routines') || '[]')
-    : []);
-  if (!localShared.length) return withVenues;
-  return withVenues.map((floor) => ({
-    ...floor,
-    rooms: floor.rooms.map((room) => {
-      const entry = localShared.find(
-        (r) => r.roomId === room.id && r.day === day && timeInRange(r.time, time)
-      );
-      if (!entry) return room;
-      return {
-        ...room,
-        status: 'busy',
-        details: {
-          dept: entry.dept,
-          semester: entry.semester,
-          section: entry.section,
-          course: entry.course,
-          courseName: entry.courseName,
-          teacher: entry.teacher,
-          time: entry.time,
-        },
-      };
-    }),
-  }));
+  return withVenues;
 }
 
 // Demo floors: simulate Sunday mid-morning for demo purposes
