@@ -8,6 +8,7 @@ import Sidebar from './layout/Sidebar';
 import TopNavbar from './layout/TopNavbar';
 import SearchModal from './layout/SearchModal';
 import MobileNav from './layout/MobileNav';
+import ErrorBoundary from './components/ErrorBoundary';
 import ActiveMembersSidebar from './features/active-members/ActiveMembersSidebar';
 import { StalkProvider } from './features/stalk-road/StalkContext';
 import StalkRoadOverlay from './features/stalk-road/StalkRoadOverlay';
@@ -149,8 +150,9 @@ function AppContent() {
               membersOpen={membersOpen}
               onMembersToggle={() => setMembersOpen((o) => !o)}
             />
-            <div className="page-wrapper" key={location.pathname}>
-              <Suspense fallback={
+            <div className="page-wrapper">
+              <ErrorBoundary>
+                <Suspense fallback={
                 <div className="page-loading">
                   <div className="page-loading-spinner" />
                   <span>Loading…</span>
@@ -198,6 +200,7 @@ function AppContent() {
                   <Route path="/login" element={<Navigate to="/" replace />} />
                 </Routes>
               </Suspense>
+              </ErrorBoundary>
             </div>
           </div>
           <ActiveMembersSidebar

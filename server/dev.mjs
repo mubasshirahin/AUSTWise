@@ -212,7 +212,7 @@ const maxBodyBytes = 15 * 1024 * 1024;
 // their own stricter limits. Tune via RATE_LIMIT_GLOBAL_MAX.
 const globalRateLimiter = rateLimit({
   windowMs: 60_000,
-  max: Number(process.env.RATE_LIMIT_GLOBAL_MAX) || 300,
+  max: Number(process.env.RATE_LIMIT_GLOBAL_MAX) || 600,
 });
 const useViteMiddleware = process.argv.includes('--vite');
 
