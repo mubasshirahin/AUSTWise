@@ -248,6 +248,7 @@ const MIGRATION_KEYS = {
     'aust-cover-page-form',
     'aust-user-routine',
     'aust-user-weekdays',
+    'aust-user-semester-results',
     // Dashboard widgets
     'aust-week-tasks',
     'aust-deadlines',

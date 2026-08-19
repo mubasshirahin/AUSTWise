@@ -366,13 +366,14 @@ function QuickStats() {
   const [liveDeadlines] = useLiveValue('user', 'aust-deadlines', []);
   const [liveTasks] = useLiveValue('user', 'aust-week-tasks', []);
   const [liveAvgAttendance] = useLiveValue('user', 'aust-attendance-overall-average', null);
+  const [liveSemResults] = useLiveValue('user', 'aust-user-semester-results', null);
 
   useEffect(() => {
     const userId = getCurrentUserId();
     setIsGuest(!userId);
-    const stored = getUserStorageItemWithGuestFallback(storageKeyType);
+    const stored = (liveSemResults && liveSemResults.length ? liveSemResults : null) || getUserStorageItemWithGuestFallback(storageKeyType);
     setUserResults(stored);
-  }, []);
+  }, [liveSemResults]);
 
   const stats = useMemo(() => {
     const allDeadlines = Array.isArray(liveDeadlines) ? liveDeadlines : [];

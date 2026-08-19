@@ -7,7 +7,7 @@ import {
 import { getUserStorageItemWithGuestFallback, getCurrentUserId } from '../../utils/authStorage';
 import { useAuth } from '../../context/AuthContext';
 import { formatSemesterLabel } from '../../utils/semester';
-import { getLiveValue, setLiveValue, onLiveChange, ensureFetched } from '../../utils/liveStore';
+import { getLiveValue, setLiveValue, onLiveChange, ensureFetched, useLiveValue } from '../../utils/liveStore';
 import './SemesterTracker.css';
 
 const STORAGE_PREFIXES = {
@@ -160,6 +160,7 @@ function expandLabColumns(config) {
 ═══════════════════════════════════════════ */
 export default function SemesterTracker() {
   const { user } = useAuth();
+  const [liveSemResults] = useLiveValue('user', 'aust-user-semester-results', null);
   /* User's current semester (their standing in studies) */
   const getCurrentSemester = () => {
     const ysMatch = (user?.yearSemester || '').match(/Year (\d+) - Semester (\d+)/);
@@ -202,7 +203,7 @@ export default function SemesterTracker() {
 
   /* ── Load data for a semester ── */
   const loadTranscriptCourses = (sem) => {
-    const allResults = getUserStorageItemWithGuestFallback('semesterResults') || [];
+    const allResults = (liveSemResults && liveSemResults.length ? liveSemResults : null) || getUserStorageItemWithGuestFallback('semesterResults') || [];
     const semData = allResults.find(r => r.semester === sem);
     if (!semData?.courses?.length) return { theoryCourses: [], labCourses: [] };
     const theoryCourses = semData.courses
@@ -300,7 +301,9 @@ export default function SemesterTracker() {
       if (scope !== 'user') return;
       const sem = currentSemRef.current;
       const currentKeys = Object.values(STORAGE_PREFIXES).map(p => `${p}_${sem}`);
-      if (!currentKeys.includes(rawKey)) return;
+      // Grade Lab (CGPA calc) results also drive this view's course list, so a
+      // change from another device reloads the current semester's transcript.
+      if (!currentKeys.includes(rawKey) && rawKey !== 'aust-user-semester-results') return;
       const nd = loadSemesterData(sem);
       const next = [nd.theoryCourses, nd.theoryMarks, nd.theoryConfig, nd.labCourses, nd.labConfig, nd.labMarks];
       const snap = currentSnapshotRef.current || [];
@@ -647,7 +650,7 @@ export default function SemesterTracker() {
   /* ════════════════════════════════════════════
      RENDER
   ═══════════════════════════════════════════ */
-  const allResults = useMemo(() => getUserStorageItemWithGuestFallback('semesterResults') || [], []);
+  const allResults = useMemo(() => (liveSemResults && liveSemResults.length ? liveSemResults : null) || getUserStorageItemWithGuestFallback('semesterResults') || [], [liveSemResults]);
   const availableSemesters = (() => {
     const fromData = allResults
       .filter(r => r.courses?.some(c => c.code && c.code.trim()))

@@ -16,6 +16,7 @@ import {
 } from 'chart.js';
 import { getUserStorageItemWithGuestFallback, getCurrentUserId } from '../../utils/authStorage';
 import { useAuth } from '../../context/AuthContext';
+import { useLiveValue } from '../../utils/liveStore';
 
 ChartJS.register(
   CategoryScale,
@@ -37,17 +38,18 @@ export default function CGPAGraph() {
   const [resultsVersion, setResultsVersion] = useState(0);
   const [userResults, setUserResults] = useState(null);
   const [isGuest, setIsGuest] = useState(false);
+  const [liveResults] = useLiveValue('user', 'aust-user-semester-results', null);
 
   useEffect(() => {
     // Check if user is guest
     const userId = getCurrentUserId();
     setIsGuest(!userId);
 
-    // Load user-specific results (falls back to the guest bucket so data
-    // saved before server-auth user ids existed stays visible)
-    const stored = getUserStorageItemWithGuestFallback(storageKeyType);
+    // Prefer the live cross-device copy; fall back to the legacy scoped
+    // localStorage bucket (guest + pre-sync data stays visible).
+    const stored = (liveResults && liveResults.length ? liveResults : null) || getUserStorageItemWithGuestFallback(storageKeyType);
     setUserResults(stored);
-  }, [resultsVersion]);
+  }, [resultsVersion, liveResults]);
 
   const results = useMemo(() => {
     // For guest users, show empty data (no mock data)

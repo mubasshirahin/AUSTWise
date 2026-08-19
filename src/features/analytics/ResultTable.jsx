@@ -7,6 +7,7 @@ import { semesterResults as mockSemesterResults } from '../../data/mockData';
 import { getUserStorageItemWithGuestFallback, setUserStorageItem, removeUserStorageItem, removeGuestStorageItem } from '../../utils/authStorage';
 import { transcriptTemplates, getTemplateCredits } from '../../data/transcriptTemplateData';
 import { useAuth } from '../../context/AuthContext';
+import { useLiveValue } from '../../utils/liveStore';
 
 const gradePoints = {
   'A+': 4.00,
@@ -112,9 +113,11 @@ const calculateSemesterStats = (results) => {
   });
 };
 
-const loadStoredResults = (maxSemester) => {
+const loadStoredResults = (maxSemester, liveOverride = null) => {
   try {
-    const storedResults = getUserStorageItemWithGuestFallback(storageKeyType);
+    // Server/live value wins when present; fall back to the legacy scoped
+    // localStorage copy (or mock) so guests and first paint still work.
+    const storedResults = (liveOverride && liveOverride.length ? liveOverride : null) || getUserStorageItemWithGuestFallback(storageKeyType);
     if (storedResults) {
       // Preserve any semesters beyond the department grid that were previously
       // loaded (e.g. ARCH's 5-1/5-2), so a reload never drops the 5th-year
@@ -134,6 +137,10 @@ const loadStoredResults = (maxSemester) => {
 export default function ResultTable({ onResultsChange }) {
   const { user } = useAuth();
   const maxSemester = getSemesterCountForDepartment(user?.department);
+  // Live, cross-device source of truth for semester results. Seeds from
+  // localStorage cache for instant paint, reconciles with the server, and
+  // updates when another device saves grades (WS store-change).
+  const [liveResults, setLiveResults, delLiveResults] = useLiveValue('user', 'aust-user-semester-results', null);
   const getInitialSem = () => {
     const ysMatch = (user?.yearSemester || '').match(/Year (\d+) - Semester (\d+)/);
     if (ysMatch) { const y = parseInt(ysMatch[1]), s = parseInt(ysMatch[2]); if (y >= 1 && y <= Math.ceil(maxSemester / 2) && s >= 1 && s <= 2) return (y - 1) * 2 + s; }
@@ -141,7 +148,7 @@ export default function ResultTable({ onResultsChange }) {
     return 1;
   };
   const [expandedSemester, setExpandedSemester] = useState(getInitialSem);
-  const [results, setResults] = useState(() => loadStoredResults(maxSemester));
+  const [results, setResults] = useState(() => loadStoredResults(maxSemester, liveResults));
   const [draftResults, setDraftResults] = useState(() => cloneResults(results));
   const [editingSemester, setEditingSemester] = useState(null);
   const [showDeptModal, setShowDeptModal] = useState(false);
@@ -149,6 +156,13 @@ export default function ResultTable({ onResultsChange }) {
   const [showMenu, setShowMenu] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const menuRef = useRef(null);
+
+  // Persist to the live cross-device store AND the legacy scoped localStorage
+  // copy so guests and older readers on this device keep working instantly.
+  const persistResults = (value) => {
+    setLiveResults(value);
+    setUserStorageItem(storageKeyType, value);
+  };
 
   // Close the ⋮ menu on outside click
   useEffect(() => {
@@ -160,6 +174,19 @@ export default function ResultTable({ onResultsChange }) {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
+
+  // Adopt server/remote results when another device saves grades. Skipped while
+  // the user is actively editing on this device so in-progress drafts are never
+  // clobbered; local writes already update `results` directly.
+  useEffect(() => {
+    if (!liveResults || !Array.isArray(liveResults) || liveResults.length === 0) return;
+    if (editingSemester !== null) return;
+    const storedMaxSem = liveResults.reduce((max, sem) => Math.max(max, Number(sem.semester) || 0), 0);
+    const computed = calculateSemesterStats(normalizeResults(liveResults, Math.max(maxSemester, storedMaxSem)));
+    setResults(computed);
+    setDraftResults(cloneResults(computed));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveResults]);
 
   // Apply one or more curriculum templates to their mapped semesters at once.
   // targetCountOverride (used for full-curriculum loads) pins the grid to that
@@ -211,7 +238,7 @@ export default function ResultTable({ onResultsChange }) {
     const calculatedResults = calculateSemesterStats(updatedResults);
     setResults(calculatedResults);
     setDraftResults(cloneResults(calculatedResults));
-    setUserStorageItem(storageKeyType, calculatedResults);
+    persistResults(calculatedResults);
     setEditingSemester(null);
     syncHeatmapFromTracker();
     onResultsChange?.(calculatedResults);
@@ -281,7 +308,7 @@ export default function ResultTable({ onResultsChange }) {
     const updatedResults = calculateSemesterStats(draftResults);
     setResults(updatedResults);
     setDraftResults(cloneResults(updatedResults));
-    setUserStorageItem(storageKeyType, updatedResults);
+    persistResults(updatedResults);
     setEditingSemester(null);
     syncHeatmapFromTracker();
     onResultsChange?.(updatedResults);
@@ -291,6 +318,7 @@ export default function ResultTable({ onResultsChange }) {
     const defaultResults = calculateSemesterStats(getDefaultResults(maxSemester));
     setResults(defaultResults);
     setDraftResults(cloneResults(defaultResults));
+    delLiveResults();
     removeUserStorageItem(storageKeyType);
     removeGuestStorageItem(storageKeyType);
     setEditingSemester(null);
@@ -484,7 +512,7 @@ export default function ResultTable({ onResultsChange }) {
                     const calculatedResults = calculateSemesterStats(updatedResults);
                     setResults(calculatedResults);
                     setDraftResults(cloneResults(calculatedResults));
-                    setUserStorageItem(storageKeyType, calculatedResults);
+                    persistResults(calculatedResults);
                     syncHeatmapFromTracker();
                     onResultsChange?.(calculatedResults);
                   }}

@@ -1,5 +1,6 @@
 import { getUserStorageItem } from './authStorage';
 import { liveLoad, liveSave } from './liveStorage';
+import { getLiveValue } from './liveStore';
 
 const submissionsKey = 'aust-helper-dept-heatmap-submissions-v1';
 const contributorKey = 'aust-helper-dept-heatmap-contributor-id';
@@ -47,7 +48,8 @@ function saveSubmissions(submissions) {
 /** Completed semester CGPA values from CGPA Calculator storage. */
 export function getSemesterCgpasFromTracker() {
   try {
-    const results = getUserStorageItem('semesterResults');
+    const live = getLiveValue('user', 'aust-user-semester-results', null);
+    const results = (live && live.length ? live : null) || getUserStorageItem('semesterResults');
     if (!results) return {};
     const semesterCgpas = {};
 
