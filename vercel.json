@@ -2,15 +2,15 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://austwise-production.up.railway.app/api/:path*"
+      "destination": "https://austwise.onrender.com/api/:path*"
     },
     {
       "source": "/__dev/:path*",
-      "destination": "https://austwise-production.up.railway.app/__dev/:path*"
+      "destination": "https://austwise.onrender.com/__dev/:path*"
     },
     {
       "source": "/socket.io/:path*",
-      "destination": "https://austwise-production.up.railway.app/socket.io/:path*"
+      "destination": "https://austwise.onrender.com/socket.io/:path*"
     }
   ]
 }
