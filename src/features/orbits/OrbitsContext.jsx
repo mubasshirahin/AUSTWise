@@ -37,8 +37,12 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
  * legacy shared key is only trusted when its cp-01 user_details id matches the
  * target user (id or awid), so other accounts' old data is never shown.
  */
-export function loadUserOrbit(userId, awid) {
+export function loadUserOrbit(userId, awid, fromUser = null) {
   try {
+    // Server-synced orbit (cross-device) wins; localStorage is the offline cache.
+    if (Array.isArray(fromUser?.orbit?.checkpoints) && fromUser.orbit.checkpoints.length) {
+      return fromUser.orbit.checkpoints;
+    }
     const perUser = localStorage.getItem(getCheckpointsKey(userId));
     const raw = perUser || localStorage.getItem(LEGACY_STORAGE_KEY);
     if (!raw) return null;
@@ -57,8 +61,11 @@ export function loadUserOrbit(userId, awid) {
 }
 
 /** Read a user's favorite orbit color (per-user key, legacy key as fallback). */
-export function loadUserFavoriteColor(userId) {
+export function loadUserFavoriteColor(userId, fromUser = null) {
   try {
+    if (typeof fromUser?.orbit?.favoriteColor === 'string' && fromUser.orbit.favoriteColor) {
+      return fromUser.orbit.favoriteColor;
+    }
     return localStorage.getItem(getFavoriteColorKey(userId)) || localStorage.getItem(LEGACY_FAV_COLOR_KEY) || '';
   } catch {
     return '';
@@ -107,7 +114,7 @@ function prefillUserDetails(fields, user) {
 function buildInitial(user, fromSaved) {
   const savedMap = {};
   if (fromSaved) {
-    const parsed = loadUserOrbit(user?.id, user?.awid);
+    const parsed = loadUserOrbit(user?.id, user?.awid, user);
     if (parsed) parsed.forEach((cp) => { savedMap[cp.id] = cp; });
   }
   return MASTER_CHECKPOINTS.map((master) => {
@@ -174,7 +181,7 @@ export function OrbitsProvider({ user, children }) {
 
   // The road-trip accent. Defaults to the deterministic portfolio color unless
   // the user picks their own — then the drive uses theirs, live.
-  const [favoriteColor, setFavoriteColorState] = useState(() => loadUserFavoriteColor(user?.id));
+  const [favoriteColor, setFavoriteColorState] = useState(() => loadUserFavoriteColor(user?.id, user));
   const setFavoriteColor = useCallback((color) => {
     markDirty();
     const hex = /^#[0-9a-fA-F]{6}$/.test(color || '') ? color.toLowerCase() : '';
