@@ -2297,7 +2297,9 @@ async function handleApiRequest(req, res) {
     const key = decodeURIComponent(req.url.slice('/api/store/user/'.length));
     try {
       await deleteUserStoreValue(auth.id, key);
-      broadcastToUser(auth.id, { type: 'store-change', payload: { scope: 'user', key } });
+      // Notify other devices that this key was removed (not just changed) so
+      // they can drop it from their cache instead of re-fetching stale data.
+      broadcastToUser(auth.id, { type: 'store-change', payload: { scope: 'user', key, deleted: true } });
       sendJson(res, 200, { success: true, key });
     } catch (err) {
       sendJson(res, 500, { success: false, error: err.message || 'Failed to delete store.' });
@@ -2355,7 +2357,7 @@ async function handleApiRequest(req, res) {
     const key = decodeURIComponent(req.url.slice('/api/store/shared/'.length));
     try {
       await deleteSharedStoreValue(key);
-      broadcastToAll({ type: 'store-change', payload: { scope: 'shared', key } });
+      broadcastToAll({ type: 'store-change', payload: { scope: 'shared', key, deleted: true } });
       sendJson(res, 200, { success: true, key });
     } catch (err) {
       sendJson(res, 500, { success: false, error: err.message || 'Failed to delete shared store.' });

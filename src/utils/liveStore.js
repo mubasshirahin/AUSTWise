@@ -132,6 +132,11 @@ async function fetchKey(scope, key) {
     if (value !== null) {
       cache.set(k, value);
       try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
+    } else if (cache.has(k)) {
+      // The server no longer has this key (e.g. a delete we missed over WS).
+      // Drop the stale copy so readers fall back to their default state.
+      cache.delete(k);
+      try { localStorage.removeItem(key); } catch { /* ignore */ }
     }
   } catch { /* keep whatever we have */ }
   inFlight.delete(k);
@@ -251,11 +256,24 @@ function connect() {
     try {
       const { type, payload } = JSON.parse(event.data);
       if (type === 'store-change' && payload && (payload.scope === 'user' || payload.scope === 'shared') && payload.key) {
+        const k = cacheKey(payload.scope, payload.key);
+        // A key was deleted on another device: drop it everywhere locally so
+        // readers fall back to their empty/default state instead of keeping a
+        // stale copy. Also purge legacy user-scoped localStorage variants
+        // (`key-<userId>` / `key-guest`) that authStorage fallbacks read.
+        if (payload.deleted) {
+          if (isLocalWrite(k)) return;
+          cache.delete(k);
+          try { localStorage.removeItem(payload.key); } catch { /* ignore */ }
+          try { localStorage.removeItem(`${payload.key}-guest`); } catch { /* ignore */ }
+          if (wsUserId) { try { localStorage.removeItem(`${payload.key}-${wsUserId}`); } catch { /* ignore */ } }
+          emit(k, false);
+          return;
+        }
         // A key changed. If it was our own write (echo), skip the re-fetch —
         // the cache already has the value and subscribers were already notified
         // with isLocal=true. Otherwise a different device changed it, so pull
         // the fresh value so every device converges.
-        const k = cacheKey(payload.scope, payload.key);
         if (isLocalWrite(k)) return;
         fetchKey(payload.scope, payload.key);
       }

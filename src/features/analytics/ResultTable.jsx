@@ -7,7 +7,7 @@ import { semesterResults as mockSemesterResults } from '../../data/mockData';
 import { getUserStorageItemWithGuestFallback, setUserStorageItem, removeUserStorageItem, removeGuestStorageItem } from '../../utils/authStorage';
 import { transcriptTemplates, getTemplateCredits } from '../../data/transcriptTemplateData';
 import { useAuth } from '../../context/AuthContext';
-import { useLiveValue } from '../../utils/liveStore';
+import { useLiveValue, useLiveRefresh, getLiveValue } from '../../utils/liveStore';
 
 const gradePoints = {
   'A+': 4.00,
@@ -175,18 +175,33 @@ export default function ResultTable({ onResultsChange }) {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  // Adopt server/remote results when another device saves grades. Skipped while
-  // the user is actively editing on this device so in-progress drafts are never
-  // clobbered; local writes already update `results` directly.
-  useEffect(() => {
-    if (!liveResults || !Array.isArray(liveResults) || liveResults.length === 0) return;
+  // Adopt server/remote results when another device saves OR resets grades.
+  // Local writes already update `results` directly, so only non-local store
+  // changes land here. Skipped while the user is editing on this device so
+  // in-progress drafts are never clobbered. A remote reset (deleted key) falls
+  // back to the scoped localStorage copy, then to an empty grid.
+  useLiveRefresh(['aust-user-semester-results'], () => {
     if (editingSemester !== null) return;
-    const storedMaxSem = liveResults.reduce((max, sem) => Math.max(max, Number(sem.semester) || 0), 0);
-    const computed = calculateSemesterStats(normalizeResults(liveResults, Math.max(maxSemester, storedMaxSem)));
-    setResults(computed);
-    setDraftResults(cloneResults(computed));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liveResults]);
+    const live = getLiveValue('user', 'aust-user-semester-results', null);
+    if (live && Array.isArray(live) && live.length) {
+      const storedMaxSem = live.reduce((max, sem) => Math.max(max, Number(sem.semester) || 0), 0);
+      const computed = calculateSemesterStats(normalizeResults(live, Math.max(maxSemester, storedMaxSem)));
+      setResults(computed);
+      setDraftResults(cloneResults(computed));
+      return;
+    }
+    const scoped = getUserStorageItemWithGuestFallback(storageKeyType);
+    if (scoped && Array.isArray(scoped) && scoped.length) {
+      const storedMaxSem = scoped.reduce((max, sem) => Math.max(max, Number(sem.semester) || 0), 0);
+      const computed = calculateSemesterStats(normalizeResults(scoped, Math.max(maxSemester, storedMaxSem)));
+      setResults(computed);
+      setDraftResults(cloneResults(computed));
+      return;
+    }
+    const defaultResults = calculateSemesterStats(getDefaultResults(maxSemester));
+    setResults(defaultResults);
+    setDraftResults(cloneResults(defaultResults));
+  });
 
   // Apply one or more curriculum templates to their mapped semesters at once.
   // targetCountOverride (used for full-curriculum loads) pins the grid to that
