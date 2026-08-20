@@ -4,6 +4,7 @@ import Notebook from './Notebook';
 import NotebookLibrary from './NotebookLibrary';
 import { liveLoad, liveSave } from '../../utils/liveStorage';
 import { useLiveRefresh } from '../../utils/liveStore';
+import useAdminMode from '../../hooks/useAdminMode';
 import './Notebook.css';
 import './VaultPage.css';
 import './vault-tokens.css';
@@ -58,6 +59,7 @@ function migrateLegacyNotes() {
 }
 
 export default function NotebookPage() {
+  const { isAdmin } = useAdminMode();
   const [items, setItems] = useState(() => {
     // Lazily load the item index on first render (server-synced via liveStore).
     let list = loadIndex();
@@ -213,33 +215,35 @@ export default function NotebookPage() {
       </header>
 
       {/* ── 2. Main content box (own card) ── */}
-      <div className="nb-content-card">
-        {openNote ? (
-          <Notebook
-            vaultContext={DEFAULT_CONTEXT}
-            batch={null}
-            noteKey={openNote.id}
-            title={openNote.title}
-            path={openNotePath}
-            onBack={() => setOpenNote(null)}
-            onPathCrumb={handlePathCrumb}
-            onSaved={() => handleSaved(openNote.id)}
-          />
-        ) : (
-          <NotebookLibrary
-            items={items}
-            currentFolderId={currentFolderId}
-            noteCounts={noteCounts}
-            onOpenNote={setOpenNote}
-            onOpenFolder={handleOpenFolder}
-            onNavigateTo={handleNavigateTo}
-            onCreateNote={handleCreateNote}
-            onCreateFolder={handleCreateFolder}
-            onRename={handleRename}
-            onDelete={handleDelete}
-          />
-        )}
-      </div>
+      {!isAdmin && (
+        <div className="nb-content-card">
+          {openNote ? (
+            <Notebook
+              vaultContext={DEFAULT_CONTEXT}
+              batch={null}
+              noteKey={openNote.id}
+              title={openNote.title}
+              path={openNotePath}
+              onBack={() => setOpenNote(null)}
+              onPathCrumb={handlePathCrumb}
+              onSaved={() => handleSaved(openNote.id)}
+            />
+          ) : (
+            <NotebookLibrary
+              items={items}
+              currentFolderId={currentFolderId}
+              noteCounts={noteCounts}
+              onOpenNote={setOpenNote}
+              onOpenFolder={handleOpenFolder}
+              onNavigateTo={handleNavigateTo}
+              onCreateNote={handleCreateNote}
+              onCreateFolder={handleCreateFolder}
+              onRename={handleRename}
+              onDelete={handleDelete}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }

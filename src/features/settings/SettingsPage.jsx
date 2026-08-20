@@ -8,6 +8,7 @@ import AboutUs from './AboutUs';
 import LinkedAccountsSection from './LinkedAccountsSection';
 import GliderTabs from '../../components/GliderTabs';
 import { useNotifications } from '../../hooks/useNotifications';
+import useAdminMode from '../../hooks/useAdminMode';
 import useWebSocket from '../../hooks/useWebSocket';
 import { OrbitsProvider, useOrbits } from '../orbits/OrbitsContext';
 import OrbitsConfigurationPanel from '../orbits/OrbitsConfigurationPanel';
@@ -265,6 +266,7 @@ function FavoriteColorInput() {
 }
 
 export default function SettingsPage() {
+  const { isAdmin } = useAdminMode();
   const { theme, setTheme } = useTheme();
   const { user, isAuthenticated, updateUser, logout, refreshUserFromServer } = useAuth();
   const { routine, weekDays } = useRoutine();
@@ -926,6 +928,7 @@ export default function SettingsPage() {
       </div>
 
       {/* ── 3. Main content box (own card) ── */}
+      {!isAdmin && (
       <div className="st-content-card" key={activeSubTab}>
         {activeSubTab === 'about' && (
           <div className="st-mac-chrome" aria-hidden="true">
@@ -1934,6 +1937,7 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
+      )}
 
       {/* ── 4. CR / SR Leadership (own card, below the content box) ── */}
 {activeSubTab === 'profile' && isAuthenticated && !isEditingProfile && (

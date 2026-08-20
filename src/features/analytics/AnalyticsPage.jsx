@@ -8,6 +8,7 @@ import CoursePoll from './CoursePoll';
 import PrerequisiteTree from './PrerequisiteTree';
 import GliderTabs from '../../components/GliderTabs';
 import useTabUrlState from '../../hooks/useTabUrlState';
+import useAdminMode from '../../hooks/useAdminMode';
 import './AnalyticsPage.css';
 import './analytics-tokens.css';
 
@@ -22,6 +23,7 @@ const gradeLabTabs = [
 ];
 
 export default function AnalyticsPage() {
+  const { isAdmin } = useAdminMode();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => {
     return searchParams.get('tab') || localStorage.getItem(TAB_KEY) || 'cgpagraph';
@@ -82,11 +84,13 @@ export default function AnalyticsPage() {
       </div>
 
       {/* ── 3. Main content box (own card) ── */}
-      <div className="gl-content-card" key={activeTab}>
-        <div className="analytics-content-area">
-          {renderActiveTab()}
+      {!isAdmin && (
+        <div className="gl-content-card" key={activeTab}>
+          <div className="analytics-content-area">
+            {renderActiveTab()}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Zap, ScrollText, Code2, School, ExternalLink } from 'lucide-react';
 import GliderTabs from '../../components/GliderTabs';
 import useTabUrlState from '../../hooks/useTabUrlState';
+import useAdminMode from '../../hooks/useAdminMode';
 import CheatsheetsPage from '../vault/CheatsheetsPage';
 import CPHubPage from '../cp-hub/CPHubPage';
 import StudyRoomPage from '../study-room/StudyRoomPage';
@@ -20,6 +21,7 @@ const TABS = [
 const STORAGE_KEY = 'productivity-active-tab';
 
 export default function ProductivityPage() {
+  const { isAdmin } = useAdminMode();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(
     () => searchParams.get('tab') || localStorage.getItem(STORAGE_KEY) || 'study-room'
@@ -77,11 +79,13 @@ export default function ProductivityPage() {
       </div>
 
       {/* ── 3. Main content box (own card) ── */}
-      <div className="pr-content-card" key={activeTab}>
-        <div className="productivity-tab-content">
-          {renderTab()}
+      {!isAdmin && (
+        <div className="pr-content-card" key={activeTab}>
+          <div className="productivity-tab-content">
+            {renderTab()}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

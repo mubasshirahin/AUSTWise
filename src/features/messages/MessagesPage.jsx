@@ -25,6 +25,7 @@ import useWebSocket from '../../hooks/useWebSocket';
 import useMessageNotifications from '../../hooks/useMessageNotifications';
 import { getAccountById, getRoleLabel } from '../../utils/authStorage';
 import { sanitizeUserInput, MAX_TEXT_LENGTH } from '../../utils/sanitize';
+import useAdminMode from '../../hooks/useAdminMode';
 import '../campus/SemesterViewWidget.css';
 import './MessagesPage.css';
 
@@ -771,6 +772,7 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
 }
 
 export default function MessagesPage() {
+  const { isAdmin } = useAdminMode();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1102,6 +1104,7 @@ export default function MessagesPage() {
       </header>
 
       {/* ── 2. Main box — masthead header + chat layout (one card) ── */}
+      {!isAdmin && (
       <div className="ms-content-card">
         {/* Masthead header */}
         <div className="schedule-masthead ms-masthead">
@@ -1283,6 +1286,7 @@ export default function MessagesPage() {
           </section>
         </div>
       </div>
+      )}
     </div>
   );
 }

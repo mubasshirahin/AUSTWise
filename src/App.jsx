@@ -30,7 +30,6 @@ import FloatingBackground from './components/FloatingBackground';
 
 const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage'));
 const RoutineTemplatesPage = lazy(() => import('./features/dashboard/RoutineTemplatesPage'));
-const TranscriptTemplatesPage = lazy(() => import('./features/dashboard/TranscriptTemplatesPage'));
 const AnalyticsPage = lazy(() => import('./features/analytics/AnalyticsPage'));
 const VaultPage = lazy(() => import('./features/vault/VaultPage'));
 const NotebookPage = lazy(() => import('./features/vault/NotebookPage'));
@@ -61,12 +60,8 @@ const DailyLifePage = lazy(() => import('./features/daily-life/DailyLifePage'));
 
 import './App.css';
 
-// Admin Route - redirects admin/moderator users to admin panel
+// Admin Route - admins see the student dashboard like everyone else
 function AdminRoute() {
-  const { hasRole } = useAuth();
-  if (hasRole?.('admin') || hasRole?.('moderator')) {
-    return <Navigate to="/admin" replace />;
-  }
   return <DashboardPage />;
 }
 
@@ -161,7 +156,6 @@ function AppContent() {
                 <Routes>
                   <Route path="/" element={<AdminRoute />} />
                   <Route path="/routine-templates" element={<RoutineTemplatesPage />} />
-                  <Route path="/admin/transcript-templates" element={<TranscriptTemplatesPage />} />
                   <Route path="/analytics" element={<AnalyticsPage />} />
                   <Route path="/vault" element={<VaultPage />} />
                   <Route path="/notebook" element={<NotebookPage />} />
@@ -173,7 +167,6 @@ function AppContent() {
                   <Route path="/messages" element={<MessagesPage />} />
                   <Route path="/admin" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
                   <Route path="/admin/overview" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
-                  <Route path="/admin/notice-board" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
                   <Route path="/admin/canteen" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
                   <Route path="/admin/library" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
                   <Route path="/admin/users" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />

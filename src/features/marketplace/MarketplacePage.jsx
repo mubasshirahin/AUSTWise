@@ -7,6 +7,7 @@ import ToLetListings from './ToLetListings';
 import LostAndFound from './LostAndFound';
 import GliderTabs from '../../components/GliderTabs';
 import useTabUrlState from '../../hooks/useTabUrlState';
+import useAdminMode from '../../hooks/useAdminMode';
 import MarketplaceMasthead from './MarketplaceMasthead';
 import './MarketplacePage.css';
 import '../../components/PageHero.css';
@@ -21,6 +22,7 @@ const marketplaceTabs = [
 
 export default function MarketplacePage() {
   const { theme } = useTheme();
+  const { isAdmin } = useAdminMode();
   const isNewsprint = theme === 'newsprint';
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => {
@@ -47,9 +49,11 @@ export default function MarketplacePage() {
       {isNewsprint ? (
         <>
           <MarketplaceMasthead />
-          <div className="marketplace-content-area">
-            {renderActiveTab()}
-          </div>
+          {!isAdmin && (
+            <div className="marketplace-content-area">
+              {renderActiveTab()}
+            </div>
+          )}
         </>
       ) : (
         <>
@@ -85,11 +89,13 @@ export default function MarketplacePage() {
           </div>
 
           {/* ── 3. Main content box (own card) ── */}
-          <div className="mp-content-card" key={activeTab}>
-            <div className="marketplace-content-area">
-              {renderActiveTab()}
+          {!isAdmin && (
+            <div className="mp-content-card" key={activeTab}>
+              <div className="marketplace-content-area">
+                {renderActiveTab()}
+              </div>
             </div>
-          </div>
+          )}
         </>
       )}
     </div>

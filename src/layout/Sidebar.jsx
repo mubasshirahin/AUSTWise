@@ -5,10 +5,9 @@ import { getUnreadCount } from '../utils/messageStorage';
 
 import {
   LayoutDashboard, BarChart3, BookOpen, MapPin, Users, ShoppingBag, Settings, MessageSquare,
-  LogIn, Shield, Eye, Megaphone, Utensils,
-  Library, FileText, FolderOpen, FileSpreadsheet,
+  LogIn, Shield,
   ChevronLeft, ChevronRight, Crown,
-  NotebookPen, Coffee, Mic,
+  NotebookPen, Coffee,
   Zap, Home, Moon
 } from 'lucide-react';
 import './Sidebar.css';
@@ -52,22 +51,10 @@ export default function Sidebar({ collapsed, onToggle }) {
   let navList = [...navItems];
   let bottomList = [...bottomNavItems];
   if (user?.role === 'admin' || user?.role === 'moderator') {
-    // For admin users, show Admin Panel related navigation
+    // For admin users, show the Admin Panel plus the normal student links.
     navList = [
       { path: '/admin', label: 'Admin Panel', icon: Shield },
-      { path: '/admin/transcript-templates', label: 'Transcript Templates', icon: FileSpreadsheet },
-      { path: '/admin/overview', label: 'Overview', icon: Eye },
-      { path: '/admin/notice-board', label: 'Notice Board', icon: Megaphone },
-      { path: '/admin/canteen', label: 'Canteen', icon: Utensils },
-      { path: '/admin/library', label: 'Library', icon: Library },
-      { path: '/admin/users', label: 'Users', icon: Users },
-      { path: '/admin/applications', label: 'Applications', icon: FileText },
-      { path: '/admin/cr-sr-directory', label: 'CR/SR Directory', icon: FolderOpen },
-      { path: '/admin/auditorium', label: 'Auditorium', icon: Mic },
-      { path: '/messages', label: 'ConnectBox', icon: MessageSquare },
-      { path: '/daily-life', label: 'Daily Life', icon: Home },
-      { path: '/productivity', label: 'Productivity', icon: Zap },
-      { path: '/notebook', label: 'Notebook', icon: NotebookPen },
+      ...navItems,
     ];
     bottomList = [{ path: '/settings', label: 'Settings', icon: Settings }];
   }

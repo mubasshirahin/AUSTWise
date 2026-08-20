@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Home, DollarSign, NotebookPen, UtensilsCrossed, Banknote, ShieldCheck, KeyRound } from 'lucide-react';
 import GliderTabs from '../../components/GliderTabs';
 import useTabUrlState from '../../hooks/useTabUrlState';
+import useAdminMode from '../../hooks/useAdminMode';
 import MoneyTrackerPage from '../money-tracker/MoneyTrackerPage';
 import CoverPageGeneratorPage from '../cover-page-generator/CoverPageGeneratorPage';
 import MessMealTrackerPage from './MessMealTrackerPage';
@@ -24,6 +25,7 @@ const TABS = [
 const STORAGE_KEY = 'daily-life-active-tab';
 
 export default function DailyLifePage() {
+  const { isAdmin } = useAdminMode();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(
     () => searchParams.get('tab') || localStorage.getItem(STORAGE_KEY) || 'cover-page-generator'
@@ -82,11 +84,13 @@ export default function DailyLifePage() {
       </div>
 
       {/* ── 3. Main content box (own card) ── */}
-      <div className="dl-content-card" key={activeTab}>
-        <div className="daily-life-tab-content">
-          {renderTab()}
+      {!isAdmin && (
+        <div className="dl-content-card" key={activeTab}>
+          <div className="daily-life-tab-content">
+            {renderTab()}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

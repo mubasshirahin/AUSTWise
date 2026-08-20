@@ -1,13 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Shield, BellRing, Coffee, Activity, Users, Trash2, Plus, AlertCircle, Eye, Edit3, Search, X, Save, CheckCircle2, XCircle, ClipboardList, CalendarDays, Mic, CalendarClock, Ban } from 'lucide-react';
-import { notices, getAuditoriumEvent, setAuditoriumEvent, defaultAuditoriumEvent } from '../../data/mockData';
+import { Shield, Coffee, Activity, Users, Trash2, Plus, AlertCircle, Eye, Edit3, Search, X, Save, CheckCircle2, XCircle, ClipboardList, CalendarDays, Mic, CalendarClock, Ban } from 'lucide-react';
+import { getAuditoriumEvent, setAuditoriumEvent, defaultAuditoriumEvent } from '../../data/mockData';
 import { loadSharedSync, loadSharedAsync, saveShared } from '../../utils/storageService';
 import { getRoleLabel, getRoleBadgeClass, getAllAccounts, reviewRoleApplication, resetAllLocalData, getCurrentUserId } from '../../utils/authStorage';
 import { sendMessage } from '../../utils/messageStorage';
 import RoutineTemplatesPanel from './RoutineTemplatesPanel';
-import TranscriptTemplatesPanel from './TranscriptTemplatesPanel';
 import './AdminPanelPage.css';
 
 export default function AdminPanelPage() {
@@ -17,14 +16,12 @@ export default function AdminPanelPage() {
   // Determine active tab from URL path
   const getTabFromPath = () => {
     const path = location.pathname;
-    if (path === '/admin/notice-board') return 'notices';
     if (path === '/admin/canteen') return 'canteen';
     if (path === '/admin/library') return 'library';
     if (path === '/admin/users') return 'accounts';
     if (path === '/admin/applications') return 'applications';
     if (path === '/admin/cr-sr-directory') return 'representatives';
     if (path === '/admin/templates') return 'templates';
-    if (path === '/admin/transcript-templates') return 'transcript-templates';
     if (path === '/admin/auditorium') return 'auditorium';
     if (path === '/admin/cheatsheets') return 'cheatsheets';
     if (path === '/admin/campus-map') return 'campus-map';
@@ -38,30 +35,18 @@ export default function AdminPanelPage() {
   const navigateToTab = (tab) => {
     const paths = {
       'overview': '/admin',
-      'notices': '/admin/notice-board',
       'canteen': '/admin/canteen',
       'library': '/admin/library',
       'accounts': '/admin/users',
       'applications': '/admin/applications',
       'representatives': '/admin/cr-sr-directory',
       'templates': '/admin/templates',
-      'transcript-templates': '/admin/transcript-templates',
       'auditorium': '/admin/auditorium',
       'cheatsheets': '/admin/cheatsheets',
       'campus-map': '/admin/campus-map'
     };
     navigate(paths[tab] || '/admin');
   };
-
-  // Notices State — lazy-initialized from localStorage, synced from server
-  const [noticesList, setNoticesList] = useState(() => loadSharedSync('aust-notices', notices));
-  useEffect(() => { loadSharedAsync('aust-notices', notices).then(setNoticesList); }, []);
-  const [noticeForm, setNoticeForm] = useState({
-    title: '',
-    category: 'Admin',
-    pinned: false,
-    content: ''
-  });
 
   // Canteen State — lazy-initialized from localStorage, synced from server
   const defaultCanteen = { status: 'closed', crowdLevel: 0, hours: '8:00 AM - 7:00 PM', menu: [] };
@@ -158,40 +143,6 @@ if (!res.ok || !Array.isArray(data.applications)) return;
     
     return result;
   }, [searchQuery, roleFilter, accounts]);
-
-  // Save Notices
-  const saveNotices = (newList) => {
-    setNoticesList(newList);
-    saveShared('aust-notices', newList);
-  };
-
-  // Add Notice
-  const handleAddNotice = (e) => {
-    e.preventDefault();
-    if (!noticeForm.title.trim() || !noticeForm.content.trim()) return;
-
-    const newNotice = {
-      id: Date.now(),
-      title: noticeForm.title.trim(),
-      category: noticeForm.category,
-      date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
-      pinned: noticeForm.pinned,
-      content: noticeForm.content.trim()
-    };
-
-    const updated = noticeForm.pinned 
-      ? [newNotice, ...noticesList] 
-      : [...noticesList, newNotice];
-
-    saveNotices(updated);
-    setNoticeForm({ title: '', category: 'Admin', pinned: false, content: '' });
-  };
-
-  // Delete Notice
-  const handleDeleteNotice = (id) => {
-    const updated = noticesList.filter(n => n.id !== id);
-    saveNotices(updated);
-  };
 
   // Update Canteen
   const handleUpdateCanteen = (field, value) => {
@@ -419,7 +370,6 @@ if (!res.ok || !Array.isArray(data.applications)) return;
   // Helper stats
   const stats = {
     totalUsers: accounts.length,
-    activeNotices: noticesList.length,
     canteenIsOpen: canteenInfo.status === 'open',
     libraryOccupancy: libraryInfo.totalSeats > 0 ? Math.round((libraryInfo.occupied / libraryInfo.totalSeats) * 100) : 0
   };
@@ -518,15 +468,6 @@ if (!res.ok || !Array.isArray(data.applications)) return;
           </div>
           <span className="stat-value">{stats.totalUsers}</span>
           <span className="stat-change positive">Registered users</span>
-        </div>
-
-        <div className="glass-card stat-card" onClick={() => navigateToTab('notices')} style={{ cursor: 'pointer' }}>
-          <div className="flex justify-between items-center">
-            <span className="stat-label">Active Notices</span>
-            <BellRing size={18} style={{ color: 'var(--accent-amber)' }} />
-          </div>
-          <span className="stat-value">{stats.activeNotices}</span>
-          <span className="stat-change" style={{ color: 'var(--text-tertiary)' }}>Announcements live</span>
         </div>
 
         <div className="glass-card stat-card" onClick={() => navigateToTab('canteen')} style={{ cursor: 'pointer' }}>
@@ -656,108 +597,6 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                 >
                   <Trash2 size={16} /> Reset Everything
                 </button>
-              </div>
-            </div>
-          </div>
-        )}
-        {activeTab === 'notices' && (
-          <div className="grid-2" style={{ gridTemplateColumns: '1.1fr 0.9fr' }}>
-            {/* Publisher Form */}
-            <div className="glass-card-static">
-              <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', marginBottom: '16px' }}>Publish Announcement</h3>
-              <form onSubmit={handleAddNotice} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div>
-                  <label className="input-label">Announcement Title</label>
-                  <input 
-                    type="text" 
-                    placeholder="Enter short notice title..."
-                    value={noticeForm.title}
-                    onChange={(e) => setNoticeForm({ ...noticeForm, title: e.target.value })}
-                    className="input"
-                    required
-                  />
-                </div>
-
-                <div className="grid-2" style={{ gap: '10px' }}>
-                  <div>
-                    <label className="input-label">Category</label>
-                    <select 
-                      value={noticeForm.category}
-                      onChange={(e) => setNoticeForm({ ...noticeForm, category: e.target.value })}
-                      className="input"
-                      style={{ padding: '8px 12px' }}
-                    >
-                      <option value="Admin">Admin</option>
-                      <option value="Exam">Exam</option>
-                      <option value="Library">Library</option>
-                      <option value="Event">Event</option>
-                      <option value="IT">IT</option>
-                    </select>
-                  </div>
-
-                  <div className="flex items-center" style={{ paddingTop: '20px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: 'var(--fs-xs)' }}>
-                      <input 
-                        type="checkbox" 
-                        checked={noticeForm.pinned}
-                        onChange={(e) => setNoticeForm({ ...noticeForm, pinned: e.target.checked })}
-                      />
-                      Pin notice at the top
-                    </label>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="input-label">Notice Details</label>
-                  <textarea 
-                    placeholder="Provide full description of the announcement..."
-                    value={noticeForm.content}
-                    onChange={(e) => setNoticeForm({ ...noticeForm, content: e.target.value })}
-                    className="input"
-                    style={{ minHeight: '100px', resize: 'vertical' }}
-                    required
-                  />
-                </div>
-
-                <button type="submit" className="btn btn-primary" style={{ width: '100%', display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                  <Plus size={16} /> Publish Notice
-                </button>
-              </form>
-            </div>
-
-            {/* List & Delete notices */}
-            <div className="glass-card-static" style={{ display: 'flex', flexDirection: 'column' }}>
-              <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', marginBottom: '16px' }}>Manage Announcements</h3>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto', flex: 1, maxHeight: '350px' }}>
-                {noticesList.length === 0 ? (
-                  <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--fs-xs)', textAlign: 'center', padding: '32px 0' }}>
-                    No notices currently active.
-                  </div>
-                ) : noticesList.map(notice => (
-                  <div 
-                    key={notice.id} 
-                    className="p-3 flex justify-between items-start gap-4" 
-                    style={{ background: 'var(--bg-input)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-md)' }}
-                  >
-                    <div style={{ minWidth: 0 }}>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {notice.pinned && <span className="badge badge-amber" style={{ fontSize: '7px', padding: '1px 3px' }}>PINNED</span>}
-                        <span className="badge badge-blue" style={{ fontSize: '7px', padding: '1px 3px' }}>{notice.category}</span>
-                        <span style={{ fontSize: '9px', color: 'var(--text-tertiary)' }}>{notice.date}</span>
-                      </div>
-                      <h4 style={{ fontSize: '13px', fontWeight: 'bold', margin: '4px 0 2px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{notice.title}</h4>
-                      <p style={{ fontSize: '11px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', lineHeight: '1.3' }}>{notice.content}</p>
-                    </div>
-                    <button 
-                      className="btn btn-secondary btn-icon"
-                      onClick={() => handleDeleteNotice(notice.id)}
-                      style={{ color: 'var(--accent-rose)', border: 'none', background: 'transparent', padding: '4px', width: '28px', height: '28px' }}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))}
               </div>
             </div>
           </div>
@@ -1485,11 +1324,6 @@ if (!res.ok || !Array.isArray(data.applications)) return;
         {/* TEMPLATES PANEL (Routine) */}
         {activeTab === 'templates' && (
           <RoutineTemplatesPanel />
-        )}
-
-        {/* TRANSCRIPT TEMPLATES PANEL */}
-        {activeTab === 'transcript-templates' && (
-          <TranscriptTemplatesPanel />
         )}
 
         {/* APPLICATIONS PANEL */}

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Coffee, LayoutGrid, MessageCircleQuestion, Brain, Gamepad2, Film } from 'lucide-react';
 import GliderTabs from '../../components/GliderTabs';
 import useTabUrlState from '../../hooks/useTabUrlState';
+import useAdminMode from '../../hooks/useAdminMode';
 import OrganizingArea from './tabs/OrganizingArea';
 import RumourOrReal from './tabs/RumourOrReal';
 import Trivia from './tabs/Trivia';
@@ -23,6 +24,7 @@ const TABS = [
 const STORAGE_KEY = 'chill-zone-active-tab';
 
 export default function ChillZonePage() {
+  const { isAdmin } = useAdminMode();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(
     () => searchParams.get('tab') || localStorage.getItem(STORAGE_KEY) || 'organizing'
@@ -80,11 +82,13 @@ export default function ChillZonePage() {
       </div>
 
       {/* ── 3. Main content box (own card) ── */}
-      <div className="cz-content-card" key={activeTab}>
-        <div className="chill-tab-content">
-          {renderTab()}
+      {!isAdmin && (
+        <div className="cz-content-card" key={activeTab}>
+          <div className="chill-tab-content">
+            {renderTab()}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

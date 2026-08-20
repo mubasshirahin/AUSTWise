@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import GliderTabs from '../../components/GliderTabs';
 import useTabUrlState from '../../hooks/useTabUrlState';
+import useAdminMode from '../../hooks/useAdminMode';
 import AlumniDirectory from './AlumniDirectory';
 import ClubPortal from './ClubPortal';
 import StudentDirectory from './StudentDirectory';
@@ -26,6 +27,7 @@ const communityTabs = [
 ];
 
 export default function CommunityPage() {
+  const { isAdmin } = useAdminMode();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => {
     return searchParams.get('tab') || localStorage.getItem(COMMUNITY_TAB_KEY) || 'alumni';
@@ -86,11 +88,13 @@ export default function CommunityPage() {
       </div>
 
       {/* ── 3. Main content box (own card) ── */}
-      <div className="cm-content-card" key={activeTab}>
-        <div className="community-content-area">
-          {renderActiveTab()}
+      {!isAdmin && (
+        <div className="cm-content-card" key={activeTab}>
+          <div className="community-content-area">
+            {renderActiveTab()}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

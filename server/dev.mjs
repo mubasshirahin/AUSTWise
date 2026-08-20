@@ -1012,6 +1012,38 @@ async function handleApiRequest(req, res) {
     return;
   }
 
+  // Semester-view task tracker (admin) — reads every CR's `aust-week-tasks` so
+  // the admin can verify the CR → students visibility flow for every section
+  // and semester. Tasks are stored per-user, so this surfaces which CRs added
+  // tasks and how many students sit under each of them.
+  if (req.url === '/api/admin/semester-tasks' && req.method === 'GET') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const users = await getAllUsersSafe();
+      const crs = users.filter((u) => u.role === 'cr');
+      const rows = [];
+      for (const cr of crs) {
+        const stored = await getUserStoreValue(cr.id, 'aust-week-tasks', null);
+        const tasks = Array.isArray(stored) ? stored : [];
+        rows.push({
+          id: cr.id,
+          name: cr.name,
+          department: cr.department,
+          yearSemester: cr.yearSemester,
+          section: cr.section,
+          labSection: cr.labSection,
+          taskCount: tasks.length,
+          tasks,
+        });
+      }
+      sendJson(res, 200, { success: true, rows });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to load semester tasks.' });
+    }
+    return;
+  }
+
   // Send notifications to all users (admin endpoint - for testing)
   if (req.url === '/api/telegram/broadcast' && req.method === 'POST') {
     if (!requireFeature('telegram', res, 'TELEGRAM_BOT_TOKEN')) return;

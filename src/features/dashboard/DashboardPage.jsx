@@ -9,6 +9,8 @@ import WeeklyPlanner from './WeeklyPlanner';
 import WeekSchedule from './WeekSchedule';
 import NotificationBanner from './NotificationBanner';
 import RoutineAttendanceTracker from './RoutineAttendanceTracker';
+import RoutineSharingStatus from './RoutineSharingStatus';
+import SemesterTaskTracker from './SemesterTaskTracker';
 import GliderTabs from '../../components/GliderTabs';
 import { leaderboardData } from '../../data/mockData';
 import {
@@ -17,6 +19,7 @@ import {
 } from 'lucide-react';
 import { getUserStorageItemWithGuestFallback, getCurrentUserId } from '../../utils/authStorage';
 import useTabUrlState from '../../hooks/useTabUrlState';
+import useAdminMode from '../../hooks/useAdminMode';
 import { useAuth } from '../../context/AuthContext';
 import { useLiveValue } from '../../utils/liveStore';
 import './DashboardPage.css';
@@ -561,6 +564,7 @@ function QuickStats() {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const { isAdmin } = useAdminMode();
   const [searchParams] = useSearchParams();
   const [focusMode, setFocusMode] = useState(() => {
     const urlTab = searchParams.get('tab');
@@ -654,6 +658,8 @@ export default function DashboardPage() {
         />
       </div>
 
+      {!isAdmin && (
+      <>
       {isVisible('stats') && (
         <section className="dash-section-group">
           <div className="dash-section">
@@ -726,6 +732,24 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+      </>
+      )}
+
+      {isAdmin && isVisible('routine') && (
+        <section className="dash-section-group">
+          <div className="dash-section">
+            <RoutineSharingStatus />
+          </div>
+        </section>
+      )}
+
+      {isAdmin && isVisible('calendar') && (
+        <section className="dash-section-group">
+          <div className="dash-section">
+            <SemesterTaskTracker />
+          </div>
+        </section>
+      )}
     </div>
   );
 }
