@@ -50,6 +50,11 @@ export function getCalculatedAttendanceDates(startDate, scheduledDays, { biWeekl
   const semEnd = new Date(firstSunday);
   semEnd.setDate(firstSunday.getDate() + 15 * 7); // exclusive end (the following Sunday)
 
+// Week 1 spans semesterStart through the Saturday before firstSunday.
+// A Sunday start makes Week 1 just that single Sunday itself.
+const week1End = new Date(firstSunday);
+if (startDow !== 0) week1End.setDate(week1End.getDate() - 1);
+
   // Calendar-week offset from firstSunday → academic week mapping:
   //   offset < 0           → Week 1 (partial, before firstSunday)
   //   offset 0–5           → Week 2–7  (offset + 2)
@@ -84,7 +89,7 @@ export function getCalculatedAttendanceDates(startDate, scheduledDays, { biWeekl
       let weekNum;
       let label;
 
-      if (date < firstSunday) {
+      if (date < week1End || (startDow === 0 && date.getTime() === firstSunday.getTime())) {
         // Partial Week 1
         weekNum = 1;
         label = 'Week 1';
