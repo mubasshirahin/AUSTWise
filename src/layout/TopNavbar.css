@@ -925,6 +925,12 @@
     max-width: calc(100% - 84px);
   }
 
+  .topbar-logo .logo-icon-wrapper {
+    width: 48px;
+    height: 48px;
+    margin-left: 2px;
+  }
+
   .topbar-right {
     position: absolute;
     right: var(--sp-3);
