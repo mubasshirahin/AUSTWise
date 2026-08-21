@@ -927,7 +927,7 @@
 
   .topbar-right {
     position: absolute;
-    right: 0;
+    right: var(--sp-3);
     top: 50%;
     transform: translateY(-50%);
     gap: 2px;
