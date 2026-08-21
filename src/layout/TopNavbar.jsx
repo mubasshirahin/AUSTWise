@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { getRoleLabel, getRoleBadgeClass, AUTH_ROLES } from '../utils/authStorage';
 import NavPomodoro from './NavPomodoro';
 import {
-  Search, Bell, BellRing, Sun, Moon, Menu, Newspaper, Terminal, SquareTerminal, Check, User,
+  Search, Bell, BellRing, Sun, Moon, Newspaper, Terminal, SquareTerminal, Check, User,
   Clock, Hourglass, AlertTriangle, CalendarCheck, Info, CheckCheck, Trash2,
   Settings, LogOut, Gauge, MoonStar, Pen, PenTool, Zap,
   Building2, Type, Grid2x2, Cpu, Users, Orbit,
@@ -182,9 +182,7 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
           </div>
           */}
         </div>
-        <button className="topbar-menu-btn hide-desktop" onClick={onMenuClick}>
-          <Menu size={20} />
-        </button>
+
 
       </div>
 
