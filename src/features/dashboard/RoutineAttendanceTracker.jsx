@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, Fragment } from 'react';
 import { useRoutine } from '../../context/RoutineContext';
 import {
   Percent, Clock, MapPin, CheckCircle2, XCircle,
@@ -387,12 +387,25 @@ export default function RoutineAttendanceTracker() {
                   {stat.instances.map((inst, instIdx) => {
                     const mark = markFor(inst);
                     const isToday = toISODate(inst.date) === toISODate(new Date());
+                    // Show a week divider when the academic week changes, and
+                    // a "Mid Break / Mid-Term — no classes" marker in the gap.
+                    const prev = instIdx > 0 ? stat.instances[instIdx - 1] : null;
+                    const newWeek = !prev || prev.weekNum !== inst.weekNum;
+                    const crossedGap = prev && inst.weekNum - prev.weekNum === 1 && inst.weekNum === 8;
                     return (
-                      <div
-                        key={inst.id}
-                        className={`att-instance-row${mark ? ` state-${mark}` : ''}${isToday ? ' is-today' : ''}`}
-                        style={{ animationDelay: `${0.02 + instIdx * 0.03}s` }}
-                      >
+                      <Fragment key={inst.id}>
+                        {newWeek && (
+                          <>
+                            {crossedGap && (
+                              <div className="att-week-gap">Mid Break · Mid-Term — no classes</div>
+                            )}
+                            <div className="att-week-divider">Week {inst.weekNum}</div>
+                          </>
+                        )}
+                        <div
+                          className={`att-instance-row${mark ? ` state-${mark}` : ''}${isToday ? ' is-today' : ''}`}
+                          style={{ animationDelay: `${0.02 + instIdx * 0.03}s` }}
+                        >
                         <span className="att-instance-date">
                           {inst.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </span>
@@ -419,6 +432,7 @@ export default function RoutineAttendanceTracker() {
                           />
                         </span>
                       </div>
+                      </Fragment>
                     );
                   })}
                 </div>

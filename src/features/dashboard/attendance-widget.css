@@ -394,6 +394,28 @@
 .att-instance-row:hover { border-color: var(--border-focus); }
 .att-instance-row.state-present { border-left-color: var(--accent-emerald); }
 .att-instance-row.state-absent { border-left-color: var(--accent-rose); }
+.att-week-divider {
+  margin: 10px 0 4px;
+  font-size: 9px;
+  font-weight: var(--fw-bold);
+  color: var(--accent-blue);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.att-week-divider:first-child { margin-top: 0; }
+.att-week-gap {
+  margin: 8px 0 0;
+  padding: 6px 10px;
+  border: 1px dashed color-mix(in srgb, var(--accent-amber) 40%, var(--border-primary));
+  border-radius: var(--radius-sm);
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
+  font-size: 9px;
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-align: center;
+}
 .att-instance-row.is-today {
   border-color: color-mix(in srgb, var(--accent-blue) 45%, var(--border-primary));
   background: color-mix(in srgb, var(--accent-blue) 5%, var(--bg-input));
