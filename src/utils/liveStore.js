@@ -247,6 +247,18 @@ export function destroyLiveStore() {
   fetched.clear();
 }
 
+/** Current real-time channel state, for status indicators. */
+export function getLiveStoreStatus() {
+  const state = !ws
+    ? 'offline'
+    : ws.readyState === WebSocket.OPEN
+      ? 'live'
+      : ws.readyState === WebSocket.CONNECTING
+        ? 'connecting'
+        : 'reconnecting';
+  return { connected: state === 'live', state };
+}
+
 function connect() {
   if (stopped) return;
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';

@@ -2427,6 +2427,18 @@ async function handleApiRequest(req, res) {
     const key = decodeURIComponent(req.url.slice('/api/store/shared/'.length));
     try {
       const body = await readJsonBody(req);
+      // The semester start date is a single admin/CR-controlled value: everyone
+      // reads the same date and students must not be able to override it.
+      if (key === 'semester-start-date' && !['admin', 'moderator', 'cr'].includes(auth.role)) {
+        sendJson(res, 403, { success: false, error: 'Only admin or CR can change the semester start date.' });
+        return;
+      }
+      // The shared exam schedule (Zero Hour) is CR/SR-controlled per section:
+      // every section member reads the same key, but only editors may write it.
+      if (key.startsWith('aust-exam-schedule:') && !['admin', 'moderator', 'cr', 'sr'].includes(auth.role)) {
+        sendJson(res, 403, { success: false, error: 'Only CR/SR or admin can update the shared exam schedule.' });
+        return;
+      }
       await setSharedStoreValue(key, body.value, auth.id);
       broadcastToAll({ type: 'store-change', payload: { scope: 'shared', key } });
       sendJson(res, 200, { success: true, key });
@@ -2441,6 +2453,10 @@ async function handleApiRequest(req, res) {
     const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
     if (!auth) return;
     const key = decodeURIComponent(req.url.slice('/api/store/shared/'.length));
+    if (key.startsWith('aust-exam-schedule:') && !['admin', 'moderator', 'cr', 'sr'].includes(auth.role)) {
+      sendJson(res, 403, { success: false, error: 'Only CR/SR or admin can modify the shared exam schedule.' });
+      return;
+    }
     try {
       await deleteSharedStoreValue(key);
       broadcastToAll({ type: 'store-change', payload: { scope: 'shared', key, deleted: true } });

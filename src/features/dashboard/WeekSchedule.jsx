@@ -12,7 +12,7 @@ export default function WeekSchedule() {
   const { user } = useAuth();
   const [viewMode, setViewMode] = useState('weekly');
   const [semesterStart, setSemesterStart] = useLiveValue(
-    'user', 'aust-semester-start', new Date().toISOString().split('T')[0]
+    'shared', 'semester-start-date', new Date().toISOString().split('T')[0]
   );
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [showAddModal, setShowAddModal] = useState(false);
@@ -38,6 +38,13 @@ export default function WeekSchedule() {
 
   // Check if user can add tasks (admin, CR, SR only)
   const canAddTask = user?.role === 'admin' || user?.role === 'cr' || user?.role === 'sr';
+
+  // Semester start date is admin/CR-controlled — students only view it.
+  const canManageStartDate = user?.role === 'admin' || user?.role === 'moderator' || user?.role === 'cr';
+
+  // Local draft of the start date before the admin/CR saves it.
+  const [startDraft, setStartDraft] = useState(null);
+  const [startSaved, setStartSaved] = useState(false);
 
   // Get CR group info
   const crGroup = (() => {
@@ -70,8 +77,9 @@ export default function WeekSchedule() {
     return 'A1';
   })();
 
-  // Save semester start date
+  // Save semester start date (shared value — admin/CR only)
   const saveSemesterStart = (date) => {
+    if (!canManageStartDate) return;
     setSemesterStart(date);
     setCurrentDate(new Date(date + 'T00:00:00'));
   };
@@ -583,6 +591,50 @@ export default function WeekSchedule() {
 
       <div className="schedule-dotted-divider" />
 
+      {/* Semester Start Date box — one shared value for everyone; admin/CR can
+          change it, students see it read-only */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
+        background: 'var(--accent-blue-glow)',
+        border: '1px solid color-mix(in srgb, var(--accent-blue) 18%, transparent)',
+        borderRadius: 'var(--radius-sm)', padding: '10px 12px', marginBottom: '12px',
+      }}>
+        <span style={{ fontSize: '16px' }}>📅</span>
+        <div style={{ flex: 1, minWidth: '160px' }}>
+          <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+            Semester Start Date
+          </div>
+          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
+            {semesterStart
+              ? new Date(semesterStart).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+              : 'Not set yet'}
+            {' · '}
+            {getWeekLabel()}
+          </div>
+        </div>
+        {canManageStartDate ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <input
+              type="date"
+              className="input"
+              value={startDraft ?? semesterStart}
+              onChange={(e) => setStartDraft(e.target.value)}
+              style={{ maxWidth: '150px', fontSize: '11px', padding: '4px 6px' }}
+            />
+            <button
+              className="btn btn-primary btn-sm"
+              disabled={startDraft == null || startDraft === semesterStart}
+              onClick={() => { saveSemesterStart(startDraft); setStartDraft(null); setStartSaved(true); setTimeout(() => setStartSaved(false), 2000); }}
+              style={{ fontSize: 'var(--fs-xs)' }}
+            >
+              {startSaved ? 'Saved ✓' : 'Save'}
+            </button>
+          </div>
+        ) : (
+          <span className="badge badge-blue" style={{ fontSize: '10px' }}>Set by admin · view only</span>
+        )}
+      </div>
+
       <div ref={scheduleRef}>
       {viewMode === 'daily' ? (() => {
         const date = currentDate;
@@ -697,9 +749,18 @@ export default function WeekSchedule() {
                 <label style={{ fontSize: 'var(--fs-xs)', fontWeight: 'var(--fw-semibold)', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
                   Semester Start Date
                 </label>
-                <input type="date" value={semesterStart} onChange={(e) => saveSemesterStart(e.target.value)} className="input" />
+                <input
+                  type="date"
+                  value={semesterStart}
+                  onChange={(e) => saveSemesterStart(e.target.value)}
+                  className="input"
+                  disabled={!canManageStartDate}
+                  title={!canManageStartDate ? 'Only admin or CR can change the semester start date.' : ''}
+                />
                 <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: '4px' }}>
-                  Sets when <strong>Week 1</strong> begins.
+                  {canManageStartDate
+                    ? 'Sets when <strong>Week 1</strong> begins — everyone sees this same date.'
+                    : 'This date is set by admin/CR — students can only view it.'}
                 </p>
               </div>
 

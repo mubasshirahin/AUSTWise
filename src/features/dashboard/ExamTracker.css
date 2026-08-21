@@ -104,3 +104,162 @@
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
 }
+
+/* ─── Access badge (masthead) ─── */
+.exam-access-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.03em;
+}
+.exam-access-badge.editor {
+  color: var(--accent-emerald);
+  background: var(--accent-emerald-glow);
+}
+.exam-access-badge.viewer {
+  color: var(--text-secondary);
+  background: var(--bg-input);
+}
+
+/* ─── Last-updated traceability line ─── */
+.exam-updated-meta {
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
+.exam-updated-meta strong {
+  color: var(--text-secondary);
+}
+
+/* ─── Admin system-flow tracker ─── */
+.exam-flow-tracker {
+  margin-top: var(--sp-3);
+  padding: 14px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+}
+
+.exam-flow-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.exam-flow-live {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  border: 1px solid var(--border-secondary);
+}
+
+.exam-flow-checks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.exam-flow-checks li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.exam-flow-checks li > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.exam-flow-checks li strong {
+  font-size: var(--fs-xs);
+  color: var(--text-primary);
+}
+.exam-flow-checks li span:not(.badge) {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.spin {
+  animation: exam-spin 0.9s linear infinite;
+}
+@keyframes exam-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── CR coverage groups ─── */
+.exam-flow-groups {
+  margin-top: 12px;
+  font-size: var(--fs-xs);
+}
+.exam-flow-groups summary {
+  cursor: pointer;
+  color: var(--accent-blue);
+  font-weight: var(--fw-semibold);
+  user-select: none;
+}
+.exam-flow-group-grid {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 6px;
+}
+.exam-flow-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 7px 9px;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+}
+.exam-flow-group.problem {
+  border-color: var(--accent-rose);
+}
+.exam-flow-group-key {
+  font-size: 10px;
+  font-weight: var(--fw-bold);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ─── Flow explainer (all roles) ─── */
+.exam-flow-info {
+  margin-top: var(--sp-3);
+  padding: 10px 14px;
+  border: 1px dashed var(--border-primary);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+.exam-flow-info summary {
+  cursor: pointer;
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+  user-select: none;
+}
+.exam-flow-info ul {
+  margin: 10px 0 4px;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  line-height: 1.55;
+}

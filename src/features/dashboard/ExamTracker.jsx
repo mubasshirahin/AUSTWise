@@ -3,9 +3,16 @@ import { useRoutine } from '../../context/RoutineContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLiveValue } from '../../utils/liveStore';
 import { BookOpen, PenLine, X, Check } from 'lucide-react';
+import ExamFlowTracker from './ExamFlowTracker';
 import './ExamTracker.css';
 
 const STORAGE_KEY = 'aust-exam-tracker';
+const SHARED_PREFIX = 'aust-exam-schedule:';
+const EDITOR_ROLES = ['admin', 'moderator', 'cr', 'sr'];
+
+/* One shared schedule per section slot — the same key the server and
+   RoutineSharingStatus use to group a CR with their students. */
+export const examSlotKeyOf = (u) => `${u?.department || ''}|${u?.yearSemester || ''}|${u?.section || ''}|${u?.labSection || ''}`;
 
 const EXAM_SLOTS = [
   { key: 'quiz1', label: 'Quiz 1', color: 'var(--accent-blue)', glow: 'var(--accent-blue-glow)' },
@@ -36,10 +43,20 @@ function formatDate(dateStr) {
 export default function ExamTracker() {
   const { routine } = useRoutine();
   const { user } = useAuth();
-  const [examData, setExamData] = useLiveValue('user', STORAGE_KEY, {});
+  const [exams, setExams] = useLiveValue('shared', `${SHARED_PREFIX}${examSlotKeyOf(user)}`, {});
+  const [legacyExams] = useLiveValue('user', STORAGE_KEY, {});
   const [detailModal, setDetailModal] = useState(null); // { slotKey, slotLabel, date, syllabus, courseCode, courseName, isEditing, editDate, editSyllabus }
 
-  const canEdit = user?.role === 'admin' || user?.role === 'cr' || user?.role === 'sr';
+  const isAdminView = user?.role === 'admin' || user?.role === 'moderator';
+  const canEdit = EDITOR_ROLES.includes(user?.role);
+
+  /* Everyone reads the shared section schedule. Until an editor saves the
+     first shared copy, fall back to this account's legacy personal data so
+     nothing that existed before sharing appears lost. */
+  const examData = useMemo(() => {
+    const hasShared = exams && Object.keys(exams).some((k) => k !== '_meta' && exams[k] && typeof exams[k] === 'object');
+    return hasShared ? exams : (legacyExams || {});
+  }, [exams, legacyExams]);
 
   const theoryCourses = useMemo(() => {
     const courses = []; const seen = new Set();
@@ -84,7 +101,12 @@ export default function ExamTracker() {
       date: editDate || '',
       syllabus: editSyllabus || ''
     };
-    setExamData(updated);
+    updated._meta = {
+      updatedBy: user?.name || user?.awid || 'Unknown',
+      role: user?.role || '',
+      updatedAt: new Date().toISOString(),
+    };
+    setExams(updated);
     setDetailModal(null);
   };
 
@@ -153,6 +175,12 @@ export default function ExamTracker() {
             <span className="schedule-subtitle">
               {user?.department || 'AUST'}
               {user?.yearSemester ? ` · ${fmtSem(user.yearSemester)}` : ''}
+              {user?.section ? ` · Section ${user.section}` : ''}
+              {user?.labSection ? ` · Lab ${user.labSection}` : ''}
+            </span>
+            <span className={`exam-access-badge ${canEdit ? 'editor' : 'viewer'}`}>
+              {canEdit ? <PenLine size={10} /> : <BookOpen size={10} />}
+              {canEdit ? 'Editor · updates visible to your section' : 'View only · updated by your CR'}
             </span>
           </div>
         </div>
@@ -172,6 +200,15 @@ export default function ExamTracker() {
 
       <div className="schedule-dotted-divider" />
 
+      {exams?._meta?.updatedAt && (
+        <p className="exam-updated-meta">
+          Last updated by <strong>{exams._meta.updatedBy}</strong>
+          {exams._meta.role ? ` (${exams._meta.role.toUpperCase()})` : ''}
+          {' · '}
+          {new Date(exams._meta.updatedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+        </p>
+      )}
+
       {theoryCourses.length === 0 ? (
         <div className="exam-empty">
           <BookOpen size={24} style={{ opacity: 0.3 }} />
@@ -183,6 +220,20 @@ export default function ExamTracker() {
           {theoryCourses.map(renderCourseCell)}
         </div>
       )}
+
+      {isAdminView && <ExamFlowTracker user={user} canEdit={canEdit} />}
+
+      {/* ─── System-flow explainer (visible to every role) ─── */}
+      <details className="exam-flow-info">
+        <summary>How the Zero Hour sharing system works</summary>
+        <ul>
+          <li><strong>Who updates:</strong> Only the section CR (and SR) can add or change exam dates &amp; syllabus. Admin/moderator have override access for verification.</li>
+          <li><strong>Who views:</strong> Every student in the same department · year-semester · section · lab group sees the exact schedule their CR publishes — read-only, with no Edit button.</li>
+          <li><strong>Enforcement:</strong> The view-only rule is enforced on the server, not just hidden in the UI — a student attempting to write the shared schedule receives a 403 rejection.</li>
+          <li><strong>Real-time sync:</strong> When the CR saves a change, it is pushed over WebSocket to every online section member within seconds — no refresh needed.</li>
+          <li><strong>Traceability:</strong> Each save records who updated the schedule and when, shown above so students always know how fresh the data is.</li>
+        </ul>
+      </details>
 
       {/* ─── Detail Overlay ─── */}
       {detailModal && (
