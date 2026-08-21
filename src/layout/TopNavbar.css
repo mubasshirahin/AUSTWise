@@ -957,6 +957,15 @@
     display: none;
   }
 
+  .topbar-mid {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    flex: 0;
+    justify-content: center;
+  }
+
   .topbar-search {
     display: none;
   }
