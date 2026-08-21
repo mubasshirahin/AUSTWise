@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef, Fragment } from 'react';
 import { useRoutine } from '../../context/RoutineContext';
 import {
-  Percent, Clock, MapPin, CheckCircle2, XCircle,
+  Percent, Clock, MapPin, CheckCircle2, XCircle, Eye, PenLine,
 } from 'lucide-react';
 import { useLiveValue } from '../../utils/liveStore';
 import { getCalculatedAttendanceDates, getSemesterStartDate } from '../../utils/semesterDates';
@@ -56,6 +56,7 @@ export default function RoutineAttendanceTracker() {
   const [isTelegramRegistered] = useState(loadIsTelegramRegistered);
   const [telegramRecords,      setTelegramRecords]     = useState([]);
   const [expandedCourseKey,    setExpandedCourseKey]   = useState(null);
+  const [editMode,             setEditMode]            = useState(false); // view by default
   const [inView,               setInView]              = useState(false);
   const widgetRef = useRef(null);
 
@@ -298,9 +299,10 @@ export default function RoutineAttendanceTracker() {
     });
   };
 
-  // ---------- Present / Absent toggle buttons ----------
+  // ---------- Present / Absent toggle buttons (edit mode only) ----------
   const ToggleBtn = ({ sessionId, currentStatus, targetStatus, label, icon: Icon }) => {
     const isActive = currentStatus === targetStatus;
+    if (!editMode) return null;
     return (
       <button
         className={`att-toggle-pill ${targetStatus}${isActive ? ' active' : ''}`}
@@ -381,7 +383,7 @@ export default function RoutineAttendanceTracker() {
                 <div className="att-instances-header">
                   <Clock size={12} />
                   {stat.instances.length} class sessions · {SEMESTER_WEEKS}-week semester
-                  <span className="att-instances-hint">tap Present / Absent to mark</span>
+                  <span className="att-instances-hint">{editMode ? 'tap Present / Absent to mark' : 'view mode — switch to Edit to mark'}</span>
                 </div>
                 <div className="att-instances-list">
                   {stat.instances.map((inst, instIdx) => {
@@ -481,6 +483,17 @@ export default function RoutineAttendanceTracker() {
               <span className="schedule-stat-label">at risk</span>
             </div>
           </div>
+        </div>
+
+        <div className="schedule-actions">
+          <button
+            className={`att-mode-toggle${editMode ? ' editing' : ''}`}
+            onClick={() => setEditMode(v => !v)}
+            title={editMode ? 'Switch to view-only' : 'Enable marking attendance'}
+          >
+            {editMode ? <PenLine size={13} /> : <Eye size={13} />}
+            {editMode ? 'Edit Mode' : 'View Mode'}
+          </button>
         </div>
       </div>
 
