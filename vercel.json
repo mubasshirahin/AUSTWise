@@ -11,6 +11,10 @@
     {
       "source": "/socket.io/:path*",
       "destination": "https://austwise.onrender.com/socket.io/:path*"
+    },
+    {
+      "source": "/((?!assets/).*)",
+      "destination": "/index.html"
     }
   ]
 }
