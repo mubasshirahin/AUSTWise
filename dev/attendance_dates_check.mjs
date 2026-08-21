@@ -27,13 +27,12 @@ sessions.forEach(s => {
   assert(ok, `weekNum ${s.weekNum} in range`);
 });
 
-// 4) No session inside the mid-term gap (calendar offset 6-7 from first Sunday)
-const startDow = start.getDay();
-const firstSunday = new Date(start);
-firstSunday.setDate(start.getDate() + ((7 - startDow) % 7));
+// 4) No session inside the mid-term gap: Semester View raw weeks 8-9
+//    (the calendar weeks ending 2 and 3 Fridays after week1's Friday).
 sessions.forEach(s => {
-  const off = Math.floor((s.date - firstSunday) / (7 * 24 * 60 * 60 * 1000));
-  assert(!(off === 6 || off === 7), `no class in mid gap (offset ${off}, ${s.id})`);
+  const toFriday = (d) => { const f = new Date(d); f.setDate(d.getDate() - ((d.getDay() - 5 + 7) % 7)); f.setHours(0, 0, 0, 0); return f; };
+  const raw = Math.floor((toFriday(s.date) - toFriday(new Date('2026-08-01T00:00:00'))) / (7 * 24 * 60 * 60 * 1000)) + 1;
+  assert(!(raw === 8 || raw === 9), `no class in mid break/exam (raw ${raw}, ${s.id})`);
 });
 
 // 5) IDs unique and embed the date

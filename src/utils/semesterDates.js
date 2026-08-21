@@ -41,25 +41,23 @@ export function getCalculatedAttendanceDates(startDate, scheduledDays, { biWeekl
 
   const startDow = semStart.getDay(); // 0=Sun … 6=Sat
 
-  // The first Sunday on or after semesterStart — this is the anchor for Week 2+
-  const daysToFirstSun = (7 - startDow) % 7;
-  const firstSunday = new Date(semStart);
-  firstSunday.setDate(semStart.getDate() + daysToFirstSun);
+  // Week numbering matches Semester View (WeekSchedule): weeks END on Friday.
+  // Week 1 = the calendar week containing semesterStart (partial if the
+  // semester starts mid-week). Week 2 opens the following Saturday.
+  const week1Friday = new Date(semStart);
+  week1Friday.setDate(semStart.getDate() + ((5 - startDow + 7) % 7));
+  const week2Start = new Date(week1Friday);
+  week2Start.setDate(week1Friday.getDate() + 1);
 
-  // End boundary: Sunday after Week 14 ends (allows full calOffset 14 week, Sep 27-Oct 3)
-  const semEnd = new Date(firstSunday);
-  semEnd.setDate(firstSunday.getDate() + 15 * 7); // exclusive end (the following Sunday)
+  // End boundary: Saturday after Week 14 ends (15 full weeks after Week 1).
+  const semEnd = new Date(week2Start);
+  semEnd.setDate(week2Start.getDate() + 15 * 7); // exclusive end
 
-// Week 1 spans semesterStart through the Saturday before firstSunday.
-// A Sunday start makes Week 1 just that single Sunday itself.
-const week1End = new Date(firstSunday);
-if (startDow !== 0) week1End.setDate(week1End.getDate() - 1);
-
-  // Calendar-week offset from firstSunday → academic week mapping:
-  //   offset < 0           → Week 1 (partial, before firstSunday)
-  //   offset 0–5           → Week 2–7  (offset + 2)
+  // Calendar-week offset from week2Start → academic week mapping:
+  //   date ≤ week1Friday   → Week 1 (partial)
+  //   offset 0–5           → Week 2–7
   //   offset 6–7           → Mid Break / Mid Exam (skip)
-  //   offset 8–14          → Week 8–14 (offset)
+  //   offset 8–14          → Week 8–14
   //   offset ≥ 15          → past semester end
 
   const sessions = [];
@@ -89,25 +87,28 @@ if (startDow !== 0) week1End.setDate(week1End.getDate() - 1);
       let weekNum;
       let label;
 
-      if (date < week1End || (startDow === 0 && date.getTime() === firstSunday.getTime())) {
+      if (date.getTime() <= week1Friday.getTime()) {
         // Partial Week 1
         weekNum = 1;
         label = 'Week 1';
       } else {
-        const calOffset = Math.floor((date.getTime() - firstSunday.getTime()) / (7 * 24 * 60 * 60 * 1000));
+        const calOffset = Math.floor((date.getTime() - week2Start.getTime()) / (7 * 24 * 60 * 60 * 1000));
 
-        // Skip mid-term gap (calOffset 6 = Mid Break, calOffset 7 = Mid Exam)
+        // Skip mid-term gap: Semester View raw weeks 8-9
+        // (= calOffset 6-7) are Mid Break and Mid-Term exams.
         if (calOffset === 6 || calOffset === 7) continue;
+        if (calOffset >= 15) {
+          // Beyond Week 14 → stop this class day.
+          break;
+        }
 
         if (calOffset <= 5) {
           // Weeks 2–7
           weekNum = calOffset + 2;
-        } else if (calOffset >= 8 && calOffset <= 14) {
-          // Weeks 8–14
-          weekNum = calOffset;
         } else {
-          // Beyond Week 14 → stop
-          break;
+          // Weeks 8–14: Semester View raw 10–16, offset = raw − 2
+          // equals the academic week number here.
+          weekNum = calOffset;
         }
         label = `Week ${weekNum}`;
       }
