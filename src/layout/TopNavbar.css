@@ -927,15 +927,33 @@
 
   .topbar-right {
     position: absolute;
-    right: var(--sp-4);
+    right: 0;
     top: 50%;
     transform: translateY(-50%);
-    gap: var(--sp-1);
+    gap: 2px;
+    align-items: center;
   }
 
   .topbar-icon-btn {
-    width: 44px; /* minimum comfortable touch target */
-    height: 44px;
+    width: 40px;
+    height: 40px;
+  }
+
+  /* Compact profile button on mobile — avatar only, no name/role text */
+  .topbar-profile-btn {
+    padding: 4px;
+    border-radius: 50%;
+    gap: 0;
+    border: 2px solid var(--border-primary);
+  }
+
+  .topbar-profile-btn:hover,
+  .topbar-profile-btn.open {
+    border-color: var(--accent-blue);
+  }
+
+  .profile-info {
+    display: none;
   }
 
   .topbar-search {
