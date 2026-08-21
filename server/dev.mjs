@@ -52,7 +52,7 @@ import { handleCleanerRequest } from './googleCleaner.mjs';
 import { handleAuthRoute, readTokenCookie, handleDevSwitchUser, handleDevSeedUsers, handleDevUsers } from './auth.mjs';
 import { requireRole, requireAuth } from './middleware.mjs';
 import { rateLimit, extractRoutineRateLimiter } from './rateLimiter.mjs';
-import { getUserById, getUserByEmail, getAllUsersSafe, updateUserProfile, deleteUserById, ADMIN_ASSIGNABLE_ROLES } from './userStore.mjs';
+import { getUserById, getUserByEmail, getAllUsersSafe, updateUserProfile, deleteUserById, countUsers, ADMIN_ASSIGNABLE_ROLES } from './userStore.mjs';
 import {
   listMarketplace,
   addMarketplaceListing,
@@ -125,6 +125,29 @@ import {
   getSharedStoreValue, setSharedStoreValue, deleteSharedStoreValue,
   isUserStoreDeleted, isSharedStoreDeleted,
 } from './storeDB.mjs';
+
+// ── SSE: member-count live stream ─────────────────────────────────────────
+const memberCountSSEClients = new Set();
+let memberCountSSETimer = null;
+let lastBroadcastedCount = -1;
+
+/** Push current member count to every connected SSE client. */
+async function broadcastMemberCount() {
+  const count = await countUsers();
+  if (count === lastBroadcastedCount) return;
+  lastBroadcastedCount = count;
+  const data = `data: ${JSON.stringify({ count })}\n\n`;
+  for (const res of memberCountSSEClients) {
+    try { res.write(data); } catch { memberCountSSEClients.delete(res); }
+  }
+}
+
+/** Start the SSE sweep (idempotent). Checks every 5 s; push only on change. */
+function ensureMemberCountSweep() {
+  if (memberCountSSETimer) return;
+  memberCountSSETimer = setInterval(broadcastMemberCount, 5_000);
+  memberCountSSETimer.unref?.();
+}
 
 // Helper function to answer callback query
 async function answerCallbackQueryFn(botToken, callbackQueryId, text) {
@@ -587,6 +610,46 @@ server.on('request', async (req, res) => {
 
 // API + non-static request dispatch (run inside the global rate limiter).
 async function handleApiRequest(req, res) {
+  // ── Public stats endpoints (no auth required) ───────────────────────
+  // GET /api/stats/count — lightweight member count (no user data)
+  if (req.url === '/api/stats/count' && req.method === 'GET') {
+    try {
+      const count = await countUsers();
+      lastBroadcastedCount = count; // keep SSE in sync
+      sendJson(res, 200, { success: true, count });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to get count.' });
+    }
+    return;
+  }
+
+  // GET /api/stats/count/stream — Server-Sent Events for real-time member count
+  if (req.url === '/api/stats/count/stream' && req.method === 'GET') {
+    ensureMemberCountSweep();
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+    res.write('\n');
+    memberCountSSEClients.add(res);
+    // Send initial count immediately
+    try {
+      const count = await countUsers();
+      lastBroadcastedCount = count;
+      res.write(`data: ${JSON.stringify({ count })}\n\n`);
+    } catch { /* ignore */ }
+    // Send keep-alive every 30s so proxies don't close the connection
+    const ka = setInterval(() => { try { res.write(': keep-alive\n\n'); } catch {} }, 30_000);
+    ka.unref?.();
+    req.on('close', () => {
+      clearInterval(ka);
+      memberCountSSEClients.delete(res);
+    });
+    return;
+  }
+
   // Extract routine from image (authenticated + rate-limited — OpenAI-backed)
   if (req.url === '/api/extract-routine' && req.method === 'POST') {
     const auth = requireAuth(req, res);

@@ -867,22 +867,52 @@ export default function LandingPage() {
   const [cursorPos, setCursorPos] = useState({ x: -100, y: -100 });
   const [activeMembers, setActiveMembers] = useState(null);
 
-  // Total registered members from the members API. We count ALL members, not
-  // just those online right now — the online count is a transient in-memory
-  // WebSocket state that resets on server restart, so it often shows 0 even
-  // though the site has registered users.
+  // Real-time member count via SSE with HTTP polling fallback.
+  // SSE pushes updates within seconds; the fallback polls /api/stats/count
+  // every 15 s when SSE is unavailable (e.g. older browsers, proxies).
   useEffect(() => {
     let cancelled = false;
-    const load = async () => {
-      const res = await fetch('/api/presence/members', { credentials: 'same-origin' }).catch(() => null);
+    let pollTimer = null;
+    let evtSource = null;
+
+    const fallbackPoll = async () => {
+      const res = await fetch('/api/stats/count', { credentials: 'same-origin' }).catch(() => null);
       if (cancelled || !res) return;
       const data = await res.json().catch(() => null);
       if (cancelled || !data?.success) return;
-      setActiveMembers((data.members || []).length);
+      setActiveMembers(data.count);
     };
-    load();
-    const t = setInterval(load, 30000);
-    return () => { cancelled = true; clearInterval(t); };
+
+    // Try SSE first
+    try {
+      evtSource = new EventSource('/api/stats/count/stream');
+      evtSource.onmessage = (e) => {
+        if (cancelled) return;
+        try {
+          const { count } = JSON.parse(e.data);
+          if (typeof count === 'number') setActiveMembers(count);
+        } catch { /* ignore malformed */ }
+      };
+      evtSource.onerror = () => {
+        // SSE failed — switch to polling
+        evtSource?.close();
+        fallbackPoll();
+        pollTimer = setInterval(fallbackPoll, 15_000);
+      };
+    } catch {
+      // EventSource not supported or construction failed — poll directly
+      fallbackPoll();
+      pollTimer = setInterval(fallbackPoll, 15_000);
+    }
+
+    // Initial fetch so the number appears instantly (SSE may take a tick)
+    fallbackPoll();
+
+    return () => {
+      cancelled = true;
+      evtSource?.close();
+      if (pollTimer) clearInterval(pollTimer);
+    };
   }, []);
   const heroRef = useRef(null);
 

@@ -877,6 +877,18 @@ export async function getAllUsersSafe() {
   return users.map(({ password: _, ...safe }) => safe);
 }
 
+/** Fast count of registered users — uses SQL COUNT(*) when available. */
+export async function countUsers() {
+  if (await isDbAvailable()) {
+    try {
+      const rows = await query('SELECT COUNT(*)::int AS cnt FROM "AuthUsers"');
+      return rows?.[0]?.cnt ?? 0;
+    } catch { /* fall through to JSON */ }
+  }
+  const users = await readUsers();
+  return users.length;
+}
+
 /** Update a user profile. Role changes require opts.allowRole (admin-only paths). */
 export async function updateUserProfile(id, patch, opts = {}) {
   const users = await readUsers();
