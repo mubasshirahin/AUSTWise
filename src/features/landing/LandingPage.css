@@ -193,15 +193,13 @@
   right: 0;
   z-index: 100;
   padding: 16px 24px;
-  background: rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(20px) saturate(1.5);
-  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-primary);
   transition: background var(--transition-base), transform var(--transition-base);
 }
 
 .landing-nav.scrolled {
-  background: var(--bg-glass-heavy);
+  background: var(--bg-secondary);
 }
 
 .landing-nav-inner {
