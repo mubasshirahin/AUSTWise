@@ -206,21 +206,26 @@ export default function RoutineAttendanceTracker() {
   const courseView = useMemo(() => {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     return Object.values(courseStats).map(stat => {
-      let attended = 0, absent = 0, held = 0;
+      let present = 0, absent = 0, held = 0;
       stat.instances.forEach(inst => {
-        if (inst.date <= today) held++;
+        if (inst.date > today) return; // future classes don't count yet
+        held++;
         const m = markFor(inst);
-        if (m === 'present') attended++;
+        if (m === 'present') present++;
         else if (m === 'absent') absent++;
       });
+      // Clamp against stray marks on dates that are no longer in the list
+      // (e.g. routine changed mid-semester) so pct can never exceed 100.
+      const attended = Math.min(present, held);
+      const realAbsent = Math.min(absent, Math.max(0, held - attended));
       const pct        = held > 0 ? (attended / held) * 100 : 0;
       const needed     = Math.ceil(stat.totalSemesterClasses * (MIN_ATTENDANCE / 100));
-      const canMiss    = Math.max(0, stat.totalSemesterClasses - needed - absent);
+      const canMiss    = Math.max(0, stat.totalSemesterClasses - needed - realAbsent);
       return {
         ...stat,
         attended,
-        absent,
-        unmarked: stat.totalSemesterClasses - attended - absent,
+        absent: realAbsent,
+        unmarked: stat.totalSemesterClasses - attended - realAbsent,
         held,
         pct,
         canMiss,

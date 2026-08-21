@@ -67,4 +67,22 @@ assert(canMiss === 0, `canMiss=0, got ${canMiss}`);
 const avg = totalSemesterClasses > 0 && held > 0 ? parseFloat(((attended / held) * 100).toFixed(1)) : 0;
 assert(avg === 75, `avg=75, got ${avg}`);
 
-console.log('attendance math OK:', { held, attended, absent, pct, canMiss, avg });
+// Edge: marks on future classes must not inflate the percentage (clamped).
+const futureInstances = [
+  { id: 'B::1', date: mk(-2) },
+  { id: 'B::2', date: mk(-1) },
+  { id: 'B::3', date: mk(+3) }, // future
+  { id: 'B::4', date: mk(+5) }, // future
+];
+const futureMarks = { 'B::1': 'present', 'B::2': 'present', 'B::3': 'present', 'B::4': 'present' };
+let fHeld = 0, fPresent = 0;
+futureInstances.forEach(inst => {
+  if (inst.date > today) return;
+  fHeld++;
+  if (futureMarks[inst.id] === 'present') fPresent++;
+});
+const fAttended = Math.min(fPresent, fHeld);
+const fPct = fHeld > 0 ? (fAttended / fHeld) * 100 : 0;
+assert(fAttended === 2 && fPct === 100, `future marks clamped (attended=${fAttended}, pct=${fPct})`);
+
+console.log('attendance math OK:', { held, attended, absent, pct, canMiss, avg, futureClamp: fPct });
