@@ -48,6 +48,9 @@ export default function RoutineAttendanceTracker() {
   // device edits it, so every device converges without a refresh.
   const [sessionMarks, setSessionMarks] = useLiveValue('user', liveKeys.sessions, {});
   const [, setOverallAverage] = useLiveValue('user', liveKeys.overallAverage, null);
+  // Semester start set by the CR in Semester View (WeekSchedule writes this
+  // shared key). Falls back to the legacy local value / today inside courseStats.
+  const [sharedSemStart] = useLiveValue('shared', 'semester-start-date', null);
 
   const [telegramChatId]       = useState(loadTelegramChatId);
   const [isTelegramRegistered] = useState(loadIsTelegramRegistered);
@@ -165,7 +168,11 @@ export default function RoutineAttendanceTracker() {
     });
 
     // Every class day of the whole semester, pre-computed per course.
-    const semStart = getSemesterStartDate();
+    // Prefer the CR-published shared start date; fall back to the legacy
+    // local setting, then today.
+    const semStart = sharedSemStart
+      ? new Date(`${sharedSemStart}T00:00:00`)
+      : getSemesterStartDate();
     Object.values(stats).forEach(stat => {
       stat.instances = getCalculatedAttendanceDates(semStart, stat.classDays, { biWeekly: stat.biWeekly })
         .map(session => ({
@@ -178,7 +185,7 @@ export default function RoutineAttendanceTracker() {
       stat.totalSemesterClasses = stat.instances.length;
     });
     return stats;
-  }, [routine, weekDays]);
+  }, [routine, weekDays, sharedSemStart]);
 
   // Telegram bot records → session marks overlay, matched by course + date.
   const telegramMarks = useMemo(() => {
@@ -482,6 +489,12 @@ export default function RoutineAttendanceTracker() {
       <div className="attendance-grid">
         {courseView.map(renderCourseCell)}
       </div>
+
+      {!sharedSemStart && (
+        <div className="att-telegram-syncing">
+          Semester start date not set — the list starts from today. Your CR can set it in Semester View.
+        </div>
+      )}
 
       {isTelegramSync && (
         <div className="att-telegram-syncing">Telegram auto-marking connected — bot answers appear here instantly</div>
