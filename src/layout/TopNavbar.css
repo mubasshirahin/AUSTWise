@@ -932,6 +932,7 @@
     transform: translateY(-50%);
     gap: 2px;
     align-items: center;
+    padding-right: 0;
   }
 
   .topbar-icon-btn {
