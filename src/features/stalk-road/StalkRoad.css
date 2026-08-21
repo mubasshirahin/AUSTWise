@@ -701,6 +701,19 @@
 .sr-stage.sr-scrolled .sr-hint {
   opacity: 0;
 }
+.sr-hint-rotate {
+  display: none;
+}
+@media (max-width: 640px) {
+  .sr-hint-rotate {
+    display: block;
+    max-width: 240px;
+    text-align: center;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    line-height: 1.5;
+  }
+}
 @keyframes sr-bounce {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(8px); }

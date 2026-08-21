@@ -19,6 +19,25 @@
   box-shadow: 1px 0 8px rgba(0, 0, 0, 0.03);
 }
 
+/* Tablet portrait band: the rail is forced narrow via --sidebar-width, so
+   mirror the collapsed look (icon-only items, hidden labels) without
+   touching JS state. */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .sidebar {
+    width: var(--sidebar-collapsed);
+  }
+  .sidebar .nav-label {
+    opacity: 0;
+    transform: translateX(-6px);
+    pointer-events: none;
+  }
+  .sidebar .nav-item,
+  .sidebar .logout-btn {
+    justify-content: center;
+    gap: 0;
+  }
+}
+
 /* ── Header ── */
 
 .sidebar-header {

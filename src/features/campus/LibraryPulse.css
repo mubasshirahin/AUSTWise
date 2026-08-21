@@ -169,7 +169,7 @@
 }
 
 .lib-chart-body {
-  height: 460px;
+  height: clamp(260px, 48vw, 460px);
   padding: var(--sp-4);
 }
 
@@ -199,7 +199,7 @@
 }
 
 .lib-heatmap-map {
-  height: 520px;
+  height: clamp(300px, 56vw, 520px);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-primary);
   overflow: hidden;

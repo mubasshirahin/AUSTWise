@@ -114,6 +114,13 @@ export default function LibraryHeatmap({ points = [], occupied = 0, capacity = 1
       .addTo(map)
       .bindPopup('<b>Central Library</b><br>AUST, Tejgaon');
 
+    // Keep Leaflet in sync with container size changes (drawer toggles,
+    // orientation change) or tiles render gray/offset.
+    const ro = new ResizeObserver(() => map.invalidateSize());
+    ro.observe(containerRef.current);
+    const onOrientationChange = () => setTimeout(() => map.invalidateSize(), 150);
+    window.addEventListener('orientationchange', onOrientationChange);
+
     // Geofence ring (60m radius).
     L.circle([LIBRARY_LAT, LIBRARY_LNG], {
       radius: 60,
@@ -148,6 +155,8 @@ export default function LibraryHeatmap({ points = [], occupied = 0, capacity = 1
 
     mapRef.current = map;
     return () => {
+      ro.disconnect();
+      window.removeEventListener('orientationchange', onOrientationChange);
       map.remove();
       mapRef.current = null;
       layersRef.current = [];

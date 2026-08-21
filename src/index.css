@@ -649,6 +649,15 @@ img {
   max-width: calc(100% - var(--sidebar-collapsed));
 }
 
+/* Tablet portrait (769-1024px): full 256px sidebar eats too much width.
+   Force the collapsed rail; the edge handle still toggles it visually. */
+@media (min-width: 769px) and (max-width: 1024px) {
+  :root {
+    /* Match the collapsed rail so icon-only rendering stays consistent */
+    --sidebar-width: var(--sidebar-collapsed);
+  }
+}
+
 .page-wrapper {
   padding: var(--sp-6);
   width: 100%;

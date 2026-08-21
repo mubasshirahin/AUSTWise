@@ -439,6 +439,7 @@ export default function StalkRoadScene() {
           <div className="sr-hint">
             <ChevronDown size={20} style={{ color: accent }} />
             <span>SCROLL TO DRIVE</span>
+            <span className="sr-hint-rotate">Best on a bigger screen — rotate your device for the full road</span>
           </div>
 
           {/* checkpoint detail panels — shown on the road itself */}
