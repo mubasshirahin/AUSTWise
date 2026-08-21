@@ -394,6 +394,10 @@
 .att-instance-row:hover { border-color: var(--border-focus); }
 .att-instance-row.state-present { border-left-color: var(--accent-emerald); }
 .att-instance-row.state-absent { border-left-color: var(--accent-rose); }
+.att-instance-row.is-today {
+  border-color: color-mix(in srgb, var(--accent-blue) 45%, var(--border-primary));
+  background: color-mix(in srgb, var(--accent-blue) 5%, var(--bg-input));
+}
 .att-instance-date { font-weight: var(--fw-medium); color: var(--text-primary); }
 .att-instance-day { color: var(--text-tertiary); font-size: 10px; text-transform: uppercase; }
 .att-instance-time { font-variant-numeric: tabular-nums; color: var(--accent-cyan); font-weight: var(--fw-medium); font-size: 10px; }
@@ -582,4 +586,28 @@
   .attendance-widget .schedule-day-count {
     animation: none;
   }
+}
+
+/* ─── Workflow explainer (same pattern as ExamTracker .exam-flow-info) ─── */
+.att-flow-info {
+  margin-top: var(--sp-3);
+  padding: 10px 14px;
+  border: 1px dashed var(--border-primary);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+.att-flow-info summary {
+  cursor: pointer;
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+  user-select: none;
+}
+.att-flow-info ul {
+  margin: 10px 0 4px;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  line-height: 1.55;
 }
