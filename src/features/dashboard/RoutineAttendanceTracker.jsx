@@ -299,18 +299,19 @@ export default function RoutineAttendanceTracker() {
     });
   };
 
-  // ---------- Present / Absent toggle buttons (edit mode only) ----------
+  // ---------- Present / Absent toggle pills (disabled in view mode) ----------
   const ToggleBtn = ({ sessionId, currentStatus, targetStatus, label, icon: Icon }) => {
     const isActive = currentStatus === targetStatus;
-    if (!editMode) return null;
     return (
       <button
-        className={`att-toggle-pill ${targetStatus}${isActive ? ' active' : ''}`}
+        className={`att-toggle-pill ${targetStatus}${isActive ? ' active' : ''}${editMode ? '' : ' is-disabled'}`}
         onClick={(e) => {
           e.stopPropagation();
+          if (!editMode) return;
           setSessionStatus(sessionId, targetStatus);
         }}
-        title={isActive ? `Clear ${label}` : `Mark ${label}`}
+        disabled={!editMode}
+        title={editMode ? (isActive ? `Clear ${label}` : `Mark ${label}`) : 'Switch to Edit Mode to mark'}
       >
         <Icon size={11} style={{ flexShrink: 0 }} />
         {label}
