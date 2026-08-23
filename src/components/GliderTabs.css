@@ -184,3 +184,54 @@
   width: 28px;
   height: 28px;
 }
+
+@media (max-width: 640px) {
+  .glider-tabs-wrap .glider-tab {
+    padding: 8px 10px;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    padding-left: 19px;
+  }
+
+  .glider-tabs-wrap .glider-tab-icon {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .glider-tab-icon svg {
+    transform: scale(1.2);
+    transform-origin: center;
+  }
+
+  .glider-tab-text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  .glider-tab-label {
+    font-size: 8px;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .glider-tab-desc {
+    display: none;
+  }
+
+  .glider-tab.active .glider-tab-icon {
+    color: #fff;
+  }
+
+  .glider-tabs-dashboard .glider-tab.active .glider-tab-icon {
+    background: var(--accent-amber) !important;
+    color: #fff !important;
+    box-shadow: none !important;
+  }
+}

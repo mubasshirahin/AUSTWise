@@ -197,17 +197,12 @@ export default function RoutineCard() {
             <span className="schedule-overline">Today's Schedule</span>
             <p className="schedule-title">Daily Flow</p>
             <span className="schedule-subtitle">
-              {classesForDay.length} classes · {selectedDay}
+              {selectedDay}
             </span>
           </div>
-        </div>
-
-        <div className="schedule-masthead-center">
-          <div className="schedule-stats">
-            <div className="schedule-stat">
-              <span className="schedule-stat-value">{classesForDay.length}</span>
-              <span className="schedule-stat-label">classes</span>
-            </div>
+          <div className="schedule-stat">
+            <span className="schedule-stat-value">{classesForDay.length}</span>
+            <span className="schedule-stat-label">classes</span>
           </div>
         </div>
 

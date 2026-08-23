@@ -19,22 +19,75 @@
   box-shadow: 1px 0 8px rgba(0, 0, 0, 0.03);
 }
 
-/* Tablet portrait band: the rail is forced narrow via --sidebar-width, so
-   mirror the collapsed look (icon-only items, hidden labels) without
-   touching JS state. */
+/* Tablet portrait band (769-1024px): icon-only rail with perfect centering.
+   --sidebar-width is already remapped to --sidebar-collapsed in index.css,
+   so we just enforce consistent sizing and alignment. */
 @media (min-width: 769px) and (max-width: 1024px) {
   .sidebar {
     width: var(--sidebar-collapsed);
   }
-  .sidebar .nav-label {
-    opacity: 0;
-    transform: translateX(-6px);
-    pointer-events: none;
-  }
+
+  /* ── Nav items: consistent icon-only cells ── */
   .sidebar .nav-item,
   .sidebar .logout-btn {
     justify-content: center;
     gap: 0;
+    padding: 10px 0;
+    min-height: 42px;
+    border-radius: var(--radius-md);
+  }
+
+  .sidebar .nav-item .nav-icon-wrapper {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* Hide all labels — icons only */
+  .sidebar .nav-label {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  /* Hide the collapse/expand toggle — no room for it on tablet rail */
+  .sidebar-collapse-btn {
+    display: none;
+  }
+
+  /* Active indicator bar: keep visible on the icon rail */
+  .sidebar .nav-item.active::before {
+    height: 50%;
+  }
+
+  /* Premium item: compact pill shape */
+  .sidebar .nav-item-premium {
+    margin: 2px 6px;
+    padding: 10px 0;
+    min-height: 42px;
+    border-radius: var(--radius-md);
+  }
+
+  .sidebar .nav-item-premium.collapsed {
+    transform: none;
+    margin: 2px 6px;
+  }
+
+  .sidebar .nav-item-premium.collapsed:hover {
+    transform: scale(1.08);
+  }
+
+  /* Tooltip: position to the right of the rail */
+  .sidebar .nav-tooltip {
+    left: calc(100% + 8px);
+  }
+
+  /* Footer: center the login button */
+  .sidebar-footer {
+    padding: var(--sp-3) 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 }
 

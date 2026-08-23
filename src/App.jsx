@@ -11,22 +11,22 @@ import MobileNav from './layout/MobileNav';
 import ErrorBoundary from './components/ErrorBoundary';
 import ActiveMembersSidebar from './features/active-members/ActiveMembersSidebar';
 import { StalkProvider } from './features/stalk-road/StalkContext';
-import StalkRoadOverlay from './features/stalk-road/StalkRoadOverlay';
-import AuthPage from './features/auth/AuthPage';
-import LandingPage from './features/landing/LandingPage';
-import TermsPage from './pages/TermsPage';
-import PrivacyPage from './pages/PrivacyPage';
-import CookiePolicyPage from './pages/CookiePolicyPage';
-import DocsPage from './pages/DocsPage';
-import BlogPage from './pages/BlogPage';
-import ChangelogPage from './pages/ChangelogPage';
-import FeedbackPage from './pages/FeedbackPage';
-import FeaturesPage from './pages/FeaturesPage';
-import PricingPage from './pages/PricingPage';
-import AboutUsPage from './pages/AboutUsPage';
-import NotificationRunner from './components/NotificationRunner';
-import QuotePopup from './features/dashboard/QuotePopup';
-import FloatingBackground from './components/FloatingBackground';
+const StalkRoadOverlay = lazy(() => import('./features/stalk-road/StalkRoadOverlay'));
+const AuthPage = lazy(() => import('./features/auth/AuthPage'));
+const LandingPage = lazy(() => import('./features/landing/LandingPage'));
+const TermsPage = lazy(() => import('./pages/TermsPage'));
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
+const CookiePolicyPage = lazy(() => import('./pages/CookiePolicyPage'));
+const DocsPage = lazy(() => import('./pages/DocsPage'));
+const BlogPage = lazy(() => import('./pages/BlogPage'));
+const ChangelogPage = lazy(() => import('./pages/ChangelogPage'));
+const FeedbackPage = lazy(() => import('./pages/FeedbackPage'));
+const FeaturesPage = lazy(() => import('./pages/FeaturesPage'));
+const PricingPage = lazy(() => import('./pages/PricingPage'));
+const AboutUsPage = lazy(() => import('./pages/AboutUsPage'));
+const NotificationRunner = lazy(() => import('./components/NotificationRunner'));
+const QuotePopup = lazy(() => import('./features/dashboard/QuotePopup'));
+const FloatingBackground = lazy(() => import('./components/FloatingBackground'));
 
 const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage'));
 const RoutineTemplatesPage = lazy(() => import('./features/dashboard/RoutineTemplatesPage'));
@@ -129,10 +129,12 @@ function AppContent() {
   return (
     <StalkProvider>
       <RoutineProvider>
-        <QuotePopup />
-        <NotificationRunner />
+        <Suspense fallback={null}>
+          <QuotePopup />
+          <NotificationRunner />
+          <FloatingBackground />
+        </Suspense>
         <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
-        <FloatingBackground />
         <div className="app-layout">
           <Sidebar
             collapsed={sidebarCollapsed}
@@ -204,7 +206,9 @@ function AppContent() {
           />
           <MobileNav />
         </div>
-        <StalkRoadOverlay />
+        <Suspense fallback={null}>
+          <StalkRoadOverlay />
+        </Suspense>
       </RoutineProvider>
     </StalkProvider>
   );
@@ -282,21 +286,27 @@ function AppShell() {
   // If not authenticated, show landing page at / and auth page at /login
   if (!isAuthenticated) {
     return (
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<AuthPage />} />
-        <Route path="/terms" element={<TermsPage />} />
-        <Route path="/privacy" element={<PrivacyPage />} />
-        <Route path="/cookie-policy" element={<CookiePolicyPage />} />
-        <Route path="/docs" element={<DocsPage />} />
-        <Route path="/blog" element={<BlogPage />} />
-        <Route path="/changelog" element={<ChangelogPage />} />
-        <Route path="/feedback" element={<FeedbackPage />} />
-        <Route path="/features" element={<FeaturesPage />} />
-        <Route path="/pricing" element={<PricingPage />} />
-        <Route path="/about" element={<AboutUsPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <Suspense fallback={
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#08090a', color: '#a1a1aa', fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
+          <div>Loading...</div>
+        </div>
+      }>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<AuthPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/cookie-policy" element={<CookiePolicyPage />} />
+          <Route path="/docs" element={<DocsPage />} />
+          <Route path="/blog" element={<BlogPage />} />
+          <Route path="/changelog" element={<ChangelogPage />} />
+          <Route path="/feedback" element={<FeedbackPage />} />
+          <Route path="/features" element={<FeaturesPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/about" element={<AboutUsPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     );
   }
 

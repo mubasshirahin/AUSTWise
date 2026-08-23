@@ -567,32 +567,27 @@ export default function WeeklyPlanner() {
      <div className="glass-card-static schedule-widget weekly-planner animate-fadeInUp">
        {/* ── Masthead (Semester View / Quick Stats design language) ── */}
        <div className="schedule-masthead weekly-masthead">
-         <div className="schedule-title-block">
-           <div className="schedule-icon-tile">
-             <CalendarDays size={20} />
-           </div>
-           <div>
-             <span className="schedule-overline">Dashboard</span>
-             <p className="schedule-title">Routine Grid</p>
-             <span className="schedule-subtitle">Tap a class to edit</span>
-           </div>
-         </div>
+          <div className="schedule-title-block">
+            <div className="schedule-icon-tile">
+              <CalendarDays size={20} />
+            </div>
+            <div>
+              <span className="schedule-overline">Dashboard</span>
+              <p className="schedule-title">Routine Grid</p>
+              <span className="schedule-subtitle">Tap a class to edit</span>
+            </div>
+          </div>
 
-         {/* Center: Load Routine — the primary action */}
-         <div className="schedule-masthead-center">
-           <button
-             className="btn btn-sm load-routine-btn"
-             onClick={openLoadModal}
-             title="Load a routine shared by a CR or an admin template"
-           >
-             <Download size={14} />
-             <span>Load Routine</span>
-           </button>
-
-           {/* Special CR-only Share Routine button.
-               Publishing one routine automatically feeds BOTH the Load Routine
-               list and the Free Rooms availability (derived server-side). */}
-           {isCR && (
+          <div className="schedule-actions">
+            <button
+              className="btn btn-sm load-routine-btn"
+              onClick={openLoadModal}
+              title="Load a routine shared by a CR or an admin template"
+            >
+              <Download size={14} />
+              <span>Load Routine</span>
+            </button>
+            {isCR && (
              <button
                className={`btn btn-sm cr-publish-btn${myShared ? ' is-shared' : ''}`}
                disabled={shareBusy}
@@ -605,12 +600,8 @@ export default function WeeklyPlanner() {
                <span>{myShared ? 'Routine Live ✓' : 'Share Routine'}</span>
              </button>
            )}
-         </div>
-
-         {/* Right: 3-dot menu (export / reset / ramadan / share) */}
-         <div className="schedule-actions">
            <div className="export-dropdown" ref={exportRef}>
-             <button className="schedule-nav-btn" onClick={() => setShowMenu(!showMenu)} aria-label="Routine options" aria-haspopup="true">
+              <button className="schedule-nav-btn" onClick={() => setShowMenu(!showMenu)} aria-label="Routine options" aria-haspopup="true">
                <MoreVertical size={18} />
              </button>
              {showMenu && (
@@ -936,7 +927,7 @@ export default function WeeklyPlanner() {
           <div className="modal glass-card-static" onClick={(e) => e.stopPropagation()} style={{ width: 'min(620px, 94vw)', height: 'auto', maxHeight: 'calc(100vh - clamp(64px, 14vh, 144px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', maxWidth: 'none', margin: 'auto', animation: 'none' }}>
             <div className="flex justify-between items-center" style={{ padding: '0 0 12px', borderBottom: '1px solid var(--border-primary)', flexShrink: 0 }}>
               <div>
-                <h3 style={{ fontSize: 'var(--fs-lg)', fontWeight: 'bold', margin: 0 }}>Load Routine</h3>
+                <h3 style={{ fontSize: 'var(--fs-lg)', fontWeight: 'bold', margin: 0, color: '#fff' }}>Load Routine</h3>
                 <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: '4px' }}>
                   Routines shared by CRs — select one to load
                 </p>

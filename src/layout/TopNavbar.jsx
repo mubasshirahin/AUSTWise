@@ -78,24 +78,21 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
   const [logoClicked, setLogoClicked] = useState(false);
   const logoClickTimes = useRef([]);
 
-  const checkEasterEgg = useCallback(() => {
-    const now = Date.now();
-    logoClickTimes.current.push(now);
-
-    const windowMs = 3000;
-    const threshold = 3;
-    logoClickTimes.current = logoClickTimes.current.filter(t => now - t < windowMs);
-
-    if (logoClickTimes.current.length >= threshold) {
-      logoClickTimes.current = [];
-      navigate('/terminal');
-    }
-  }, [navigate]);
 
   const toggleLogo = () => {
     setLogoClicked(true);
     setTimeout(() => setLogoClicked(false), 600);
-    checkEasterEgg();
+    const now = Date.now();
+    logoClickTimes.current.push(now);
+    const windowMs = 3000;
+    const threshold = 3;
+    logoClickTimes.current = logoClickTimes.current.filter(t => now - t < windowMs);
+    if (logoClickTimes.current.length >= threshold) {
+      logoClickTimes.current = [];
+      navigate('/terminal');
+    } else {
+      navigate('/');
+    }
   };
   const themeSwitcherRef = useRef(null);
   const notifRef = useRef(null);
