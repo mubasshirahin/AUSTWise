@@ -1108,7 +1108,7 @@ export default function WeeklyPlanner() {
           <form className="modal routine-edit-modal" onSubmit={saveEdit} onClick={(event) => event.stopPropagation()}>
             <div className="routine-edit-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h3>{editing.mode === 'add' ? 'Add Class' : 'Edit Class'}</h3>
+                <h3 style={{ color: '#fff' }}>{editing.mode === 'add' ? 'Add Class' : 'Edit Class'}</h3>
                 {editing.form.part && (
                   <span style={{
                     fontSize: '9px', fontWeight: 'bold',

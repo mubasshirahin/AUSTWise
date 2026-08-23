@@ -2342,6 +2342,29 @@
     display: none;
   }
 
+  .routine-widget .routine-class-row {
+    min-height: 80px;
+    height: 80px;
+  }
+  .routine-class-code {
+    font-size: 10px;
+  }
+  .routine-class-name {
+    font-size: 10px;
+  }
+  .routine-type-badge {
+    font-size: 8px;
+    padding: 1px 5px;
+  }
+  .routine-class-meta {
+    font-size: 9px;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  .routine-class-time {
+    font-size: 9px;
+  }
+
   .routine-edit-modal {
     width: calc(100% - 32px);
     max-height: none;
