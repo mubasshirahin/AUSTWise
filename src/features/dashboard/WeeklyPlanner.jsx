@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Trash2, X, Download, Check, RotateCcw, FileDown, Share2, Search, Loader2, MoreVertical, Moon, Image as ImageIcon, CalendarDays, Building2, GraduationCap } from 'lucide-react';
 import { useRoutine } from '../../context/RoutineContext';
@@ -26,6 +26,54 @@ export default function WeeklyPlanner() {
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
   const exportRef = useRef(null);
+
+  // ── Pinch-to-zoom for routine grid on mobile ──
+  const tableWrapRef = useRef(null);
+  const [gridScale, setGridScale] = useState(1);
+  const pinchRef = useRef({ initialDist: 0, initialScale: 1 });
+
+  const getDistance = useCallback((touches) => {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.hypot(dx, dy);
+  }, []);
+
+  const handleTouchStart = useCallback((e) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      pinchRef.current = {
+        initialDist: getDistance(e.touches),
+        initialScale: gridScale,
+      };
+    }
+  }, [gridScale, getDistance]);
+
+  const handleTouchMove = useCallback((e) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const dist = getDistance(e.touches);
+      const ratio = dist / pinchRef.current.initialDist;
+      const newScale = Math.min(Math.max(pinchRef.current.initialScale * ratio, 0.5), 3);
+      setGridScale(newScale);
+    }
+  }, [getDistance]);
+
+  const handleTouchEnd = useCallback(() => {
+    pinchRef.current.initialDist = 0;
+  }, []);
+
+  useEffect(() => {
+    const el = tableWrapRef.current;
+    if (!el) return;
+    el.addEventListener('touchstart', handleTouchStart, { passive: false });
+    el.addEventListener('touchmove', handleTouchMove, { passive: false });
+    el.addEventListener('touchend', handleTouchEnd);
+    return () => {
+      el.removeEventListener('touchstart', handleTouchStart);
+      el.removeEventListener('touchmove', handleTouchMove);
+      el.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
 
   // ── Shared routine (CR publishing) ──
   // One CR slot per (dept × semester × section × lab group). A-D sections × 2
@@ -645,7 +693,14 @@ export default function WeeklyPlanner() {
 
        <div className="schedule-dotted-divider" />
 
-       <div className="weekly-table-wrap">
+        {gridScale !== 1 && (
+          <div className="zoom-indicator" onClick={() => setGridScale(1)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '4px 0', cursor: 'pointer' }}>
+            <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>{Math.round(gridScale * 100)}% — tap to reset</span>
+          </div>
+        )}
+
+        <div className="weekly-table-wrap" ref={tableWrapRef}>
+        <div style={{ transform: `scale(${gridScale})`, transformOrigin: 'top center', transition: 'transform 0.1s ease' }}>
         <table className="weekly-table">
           <thead>
             <tr>
@@ -919,6 +974,7 @@ export default function WeeklyPlanner() {
             })}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Load Routine Modal */}
