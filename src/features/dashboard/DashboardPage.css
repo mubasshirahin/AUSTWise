@@ -2331,10 +2331,15 @@
   .weekly-class-block {
     border-left-width: 2px !important;
     padding: 3px 1px;
+    overflow: hidden;
+    max-width: 100%;
   }
 
   .weekly-course-code {
-    font-size: clamp(7px, 2vw, 9px);
+    font-size: clamp(6px, 2.8vw, 9px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .weekly-course-name,
@@ -2343,26 +2348,38 @@
   }
 
   .routine-widget .routine-class-row {
-    min-height: 80px;
-    height: 80px;
+    min-height: clamp(64px, 12vw, 80px);
+    height: clamp(64px, 12vw, 80px);
+    overflow: hidden;
   }
   .routine-class-code {
-    font-size: 10px;
+    font-size: clamp(8px, 2.6vw, 10px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .routine-class-name {
-    font-size: 10px;
+    font-size: clamp(8px, 2.4vw, 10px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .routine-type-badge {
-    font-size: 8px;
+    font-size: clamp(6px, 2vw, 8px);
     padding: 1px 5px;
   }
   .routine-class-meta {
-    font-size: 9px;
+    font-size: clamp(7px, 2.2vw, 9px);
     gap: 6px;
     margin-top: 4px;
   }
+  .routine-class-meta span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .routine-class-time {
-    font-size: 9px;
+    font-size: clamp(7px, 2.2vw, 9px);
   }
 
   .routine-edit-modal {
