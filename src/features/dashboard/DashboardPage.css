@@ -145,7 +145,8 @@
   border-radius: var(--radius-md);
   background: var(--bg-card);
   border: 1px solid var(--border-primary);
-  min-width: 90px;
+  min-width: 0;
+  flex: 1 1 0;
 }
 .podium-1 {
   transform: scale(1.08);
@@ -2272,6 +2273,7 @@
     gap: var(--sp-3);
   }
   .dash-hero-widgets {
+    display: flex;
     align-self: flex-start;
   }
   .dash-hero-orb-3 { display: none; }
@@ -2301,7 +2303,7 @@
   }
 
   .weekly-table {
-    font-size: 6px;
+    font-size: clamp(8px, 2.4vw, 10px);
   }
 
   .weekly-day-head,
@@ -2330,7 +2332,7 @@
   }
 
   .weekly-course-code {
-    font-size: 6px;
+    font-size: clamp(7px, 2vw, 9px);
   }
 
   .weekly-course-name,

@@ -101,7 +101,7 @@
   letter-spacing: -0.02em;
 }
 .att-cell-part {
-  font-size: 7px;
+  font-size: 9px;
   font-weight: var(--fw-bold);
   color: var(--accent-amber);
   background: var(--accent-amber-glow);
