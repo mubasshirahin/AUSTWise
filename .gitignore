@@ -71,6 +71,10 @@ strix/
 qa-*.mjs
 .agents/
 
+# Regenerable responsive-probe screenshots
+dev/dash*.png
+dev/resp_*.png
+
 # Runtime store fallback data
 server/userStoreDeleted.json
 server/sharedStoreDeleted.json
