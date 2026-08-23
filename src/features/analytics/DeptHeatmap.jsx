@@ -11,6 +11,7 @@ import {
   buildHeatmapView,
   getBatchNoFromUser,
   heatmapDepartments,
+  syncHeatmapFromTracker,
 } from '../../utils/deptHeatmapStorage';
 
 const semesterNumbers = Array.from({ length: HEATMAP_SEMESTER_COUNT }, (_, index) => index + 1);
@@ -46,6 +47,13 @@ export default function DeptHeatmap() {
   }, []);
 
   const [submissions] = useLiveValue('shared', 'aust-helper-dept-heatmap-submissions-v1', []);
+  // Push this device's CGPA Calculator saves into the shared pool — in an
+  // effect, NOT during render. buildHeatmapView used to call
+  // syncHeatmapFromTracker() internally, which liveSave()s → notifies
+  // subscribers → re-renders → syncs again: React error #301 crash.
+  React.useEffect(() => {
+    syncHeatmapFromTracker();
+  }, [submissions]);
   const heatmapView = useMemo(
     () => buildHeatmapView(selectedDepartment, loadSubmissions()),
     [selectedDepartment, submissions],

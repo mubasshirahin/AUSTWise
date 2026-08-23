@@ -42,6 +42,11 @@ export function loadSubmissions() {
 }
 
 function saveSubmissions(submissions) {
+  // Skip identical writes — every save notifies liveStore subscribers, which
+  // re-renders DeptHeatmap and re-triggers its sync effect. Without this
+  // guard the sync → save → render cycle loops forever (React error #301).
+  const prev = loadSubmissions();
+  if (JSON.stringify(prev) === JSON.stringify(submissions)) return;
   liveSave('shared', submissionsKey, submissions);
 }
 
@@ -129,8 +134,6 @@ function average(values) {
 }
 
 export function buildHeatmapView(department, submissionsSource = null) {
-  syncHeatmapFromTracker();
-
   const submissions = (submissionsSource || loadSubmissions()).filter((entry) => entry.department === department);
   const batchMap = new Map();
 
