@@ -31,6 +31,7 @@ export default function WeeklyPlanner() {
   const tableWrapRef = useRef(null);
   const [gridScale, setGridScale] = useState(1);
   const pinchRef = useRef({ initialDist: 0, initialScale: 1 });
+  const lastTapRef = useRef(0);
 
   const getDistance = useCallback((touches) => {
     const dx = touches[0].clientX - touches[1].clientX;
@@ -46,6 +47,14 @@ export default function WeeklyPlanner() {
         initialScale: gridScale,
       };
     }
+    if (e.touches.length === 1) {
+      const now = Date.now();
+      if (now - lastTapRef.current < 300) {
+        e.preventDefault();
+        setGridScale(prev => prev === 1 ? 1.8 : 1);
+      }
+      lastTapRef.current = now;
+    }
   }, [gridScale, getDistance]);
 
   const handleTouchMove = useCallback((e) => {
@@ -53,7 +62,7 @@ export default function WeeklyPlanner() {
       e.preventDefault();
       const dist = getDistance(e.touches);
       const ratio = dist / pinchRef.current.initialDist;
-      const newScale = Math.min(Math.max(pinchRef.current.initialScale * ratio, 0.5), 3);
+      const newScale = Math.min(Math.max(pinchRef.current.initialScale * ratio, 0.8), 3);
       setGridScale(newScale);
     }
   }, [getDistance]);
@@ -74,6 +83,12 @@ export default function WeeklyPlanner() {
       el.removeEventListener('touchend', handleTouchEnd);
     };
   }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
+
+  const zoomVars = gridScale > 1 ? {
+    '--cell-pad': `${3 * gridScale}px`,
+    '--cell-min-h': `${Math.min(Math.max(gridScale * 30, 30), 80)}px`,
+    '--code-size': `${Math.min(Math.max(7 * gridScale, 7), 14)}px`,
+  } : {};
 
   // ── Shared routine (CR publishing) ──
   // One CR slot per (dept × semester × section × lab group). A-D sections × 2
@@ -699,8 +714,7 @@ export default function WeeklyPlanner() {
           </div>
         )}
 
-        <div className="weekly-table-wrap" ref={tableWrapRef}>
-        <div style={{ transform: `scale(${gridScale})`, transformOrigin: 'top center', transition: 'transform 0.1s ease' }}>
+        <div className="weekly-table-wrap" ref={tableWrapRef} style={zoomVars}>
         <table className="weekly-table">
           <thead>
             <tr>
@@ -974,7 +988,6 @@ export default function WeeklyPlanner() {
             })}
           </tbody>
         </table>
-        </div>
       </div>
 
       {/* Load Routine Modal */}
