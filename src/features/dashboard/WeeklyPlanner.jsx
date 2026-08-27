@@ -8,8 +8,6 @@ import RoomAutocomplete from '../../components/RoomAutocomplete';
 import TeacherAutocomplete from '../../components/TeacherAutocomplete';
 import { getAutoColorForCourse } from '../../utils/autoColorPalette';
 import { loadTemplates, mergeTemplatesToRoutine } from '../../utils/routineTemplates';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas-pro';
 import logoUrl from '../../assets/logo-silver.png';
 import { useAuth } from '../../context/AuthContext';
 
@@ -446,6 +444,9 @@ export default function WeeklyPlanner() {
   const deptOptions = [...new Set([...CR_DEPTS, ...deptGroups])].sort();
 
   const downloadSchedulePDF = async () => {
+    const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+      import('html2canvas-pro'), import('jspdf')
+    ]);
     const tableWrap = document.querySelector('.weekly-table-wrap');
     if (!tableWrap) return;
 
@@ -551,6 +552,7 @@ export default function WeeklyPlanner() {
   };
 
   const downloadScheduleImage = async () => {
+    const { default: html2canvas } = await import('html2canvas-pro');
     const tableWrap = document.querySelector('.weekly-table-wrap');
     if (!tableWrap) return;
 

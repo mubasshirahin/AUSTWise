@@ -5,8 +5,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
-import html2canvas from 'html2canvas-pro';
-import jsPDF from 'jspdf';
 import austwiseLogo from '../../assets/logo-new.png';
 import austLogo from '../../assets/aust-logo.jpg';
 import './CoverPageGeneratorPage.css';
@@ -185,7 +183,11 @@ export default function CoverPageGeneratorPage() {
   };
 
   // ─── Generate cover page ───
-  const generateCover = useCallback(async (format) => {    const el = previewRef.current;
+  const generateCover = useCallback(async (format) => {
+    const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+      import('html2canvas-pro'), import('jspdf')
+    ]);
+    const el = previewRef.current;
     if (!el) {
       console.warn('Preview element not found');
       return;

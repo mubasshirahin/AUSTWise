@@ -4,8 +4,6 @@ import { useAuth } from '../../context/AuthContext';
 import { useLiveValue } from '../../utils/liveStore';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
 import { findCourseByCode } from '../../data/courses';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas-pro';
 import logoUrl from '../../assets/logo-silver.png';
 
 export default function WeekSchedule() {
@@ -319,6 +317,9 @@ export default function WeekSchedule() {
   const scheduleRef = useRef(null);
 
   const downloadSchedulePDF = useCallback(async () => {
+    const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+      import('html2canvas-pro'), import('jspdf')
+    ]);
     const el = scheduleRef.current;
     if (!el) return;
 
@@ -404,6 +405,7 @@ export default function WeekSchedule() {
   }, [user, viewMode]);
 
   const downloadScheduleImage = useCallback(async () => {
+    const { default: html2canvas } = await import('html2canvas-pro');
     const el = scheduleRef.current;
     if (!el) return;
 

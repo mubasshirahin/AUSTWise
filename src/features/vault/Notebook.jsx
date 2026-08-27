@@ -1,7 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, Fragment } from 'react';
 import { ImageIcon, Trash2, Move, Type, Check, Link2, Link2Off, Download, MoreVertical, NotebookPen, ZoomIn, ZoomOut, Pencil, Star } from 'lucide-react';
-import html2canvas from 'html2canvas-pro';
-import jsPDF from 'jspdf';
 import { liveLoad, liveSave } from '../../utils/liveStorage';
 
 const STORAGE_PREFIX = 'aust-notebook-';
@@ -880,6 +878,7 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
   // Temporarily sizes the canvas element to the full content bounds (selection
   // UI hidden), captures the whole board with html2canvas, then restores.
   const captureFullCanvas = async () => {
+    const { default: html2canvas } = await import('html2canvas-pro');
     const el = canvasRef.current;
     if (!el) return null;
     const PAD = 40;
@@ -965,6 +964,7 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
   };
 
   const exportAsPDF = async () => {
+    const { default: jsPDF } = await import('jspdf');
     try {
       const canvas = await captureFullCanvas();
       if (!canvas) { flashExport('Nothing to export'); return; }

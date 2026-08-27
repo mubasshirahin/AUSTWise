@@ -5,8 +5,6 @@ import {
   BadgeCheck, Star, Download, FileDown, Loader2,
   Crown, Briefcase,
 } from 'lucide-react';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas-pro';
 import logoUrl from '../../assets/logo-silver.png';
 import { getAllAccounts, createAwid } from '../../utils/authStorage';
 import { useAuth } from '../../context/AuthContext';
@@ -302,6 +300,9 @@ export default function StudentDirectory() {
   };
 
   const handleExport = async (dept, sem, format) => {
+    const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+      import('jspdf'), import('html2canvas-pro')
+    ]);
     const key = `${dept}-${sem}`;
     setExportOpen(null);
     setExporting(key);
