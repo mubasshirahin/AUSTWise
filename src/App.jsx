@@ -14,6 +14,7 @@ import { StalkProvider } from './features/stalk-road/StalkContext';
 const StalkRoadOverlay = lazy(() => import('./features/stalk-road/StalkRoadOverlay'));
 const AuthPage = lazy(() => import('./features/auth/AuthPage'));
 const LandingPage = lazy(() => import('./features/landing/LandingPage'));
+const CinematicLandingPage = lazy(() => import('./features/landing/cinematic/CinematicLandingPage'));
 const TermsPage = lazy(() => import('./pages/TermsPage'));
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
 const CookiePolicyPage = lazy(() => import('./pages/CookiePolicyPage'));
@@ -293,6 +294,7 @@ function AppShell() {
       }>
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/cinematic" element={<CinematicLandingPage />} />
           <Route path="/login" element={<AuthPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />

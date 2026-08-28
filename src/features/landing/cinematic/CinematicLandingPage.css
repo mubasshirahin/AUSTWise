@@ -1,0 +1,574 @@
+/*
+ * CinematicLandingPage.css — Scroll-to-explore landing styles
+ * Uses existing CSS variable tokens from index.css
+ */
+
+/* ─── Root ─── */
+.cine-root {
+  position: relative;
+  min-height: 100vh;
+  background: var(--bg-primary, #0E0E10);
+  color: var(--text-primary, #F2F2F3);
+  font-family: var(--font-primary, 'Inter', sans-serif);
+  overflow-x: hidden;
+}
+
+/* ─── 3D Canvas ─── */
+.cine-canvas-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.cine-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.cine-canvas-loader {
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at center, rgba(245, 166, 35, 0.05) 0%, transparent 70%);
+}
+
+.cine-fallback-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(245, 166, 35, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 50%, rgba(58, 193, 217, 0.06) 0%, transparent 50%),
+    var(--bg-primary, #0E0E10);
+}
+
+/* ─── Sections ─── */
+.cine-section {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 120px 24px 80px;
+}
+
+/* ─── Hero ─── */
+.cine-hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.cine-hero-content {
+  max-width: 720px;
+  animation: cineFadeUp 1s ease-out;
+}
+
+.cine-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-radius: var(--radius-full, 9999px);
+  background: rgba(245, 166, 35, 0.1);
+  border: 1px solid rgba(245, 166, 35, 0.2);
+  color: var(--accent-blue, #F5A623);
+  font-size: var(--fs-sm, 0.79rem);
+  font-weight: var(--fw-medium, 500);
+  margin-bottom: 24px;
+  letter-spacing: 0.02em;
+}
+
+.cine-hero-title {
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  font-weight: var(--fw-bold, 700);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  margin: 0 0 20px;
+}
+
+.cine-accent {
+  background: var(--gradient-primary, linear-gradient(135deg, #F9B93C, #F5A623, #E07A16));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.cine-hero-sub {
+  font-size: var(--fs-lg, 1.06rem);
+  color: var(--text-secondary, #9A9AA0);
+  line-height: 1.6;
+  max-width: 560px;
+  margin: 0 auto 36px;
+}
+
+.cine-hero-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ─── Buttons ─── */
+.cine-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  border-radius: var(--radius-lg, 14px);
+  font-size: var(--fs-base, 0.86rem);
+  font-weight: var(--fw-semibold, 600);
+  cursor: pointer;
+  transition: all var(--transition-base, 220ms ease);
+  border: none;
+  outline: none;
+}
+
+.cine-btn-primary {
+  background: var(--gradient-primary, linear-gradient(135deg, #F9B93C, #F5A623, #E07A16));
+  color: #0E0E10;
+}
+
+.cine-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(245, 166, 35, 0.3);
+}
+
+.cine-btn-ghost {
+  background: transparent;
+  color: var(--text-secondary, #9A9AA0);
+  border: 1px solid var(--border-primary, #2A2A2E);
+}
+
+.cine-btn-ghost:hover {
+  color: var(--text-primary, #F2F2F3);
+  border-color: var(--text-tertiary, #6E6E75);
+}
+
+.cine-btn-lg {
+  padding: 16px 40px;
+  font-size: var(--fs-md, 0.96rem);
+  border-radius: var(--radius-xl, 20px);
+}
+
+/* ─── Scroll indicator ─── */
+.cine-scroll-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 60px;
+  padding: 8px;
+  background: none;
+  border: none;
+  color: var(--text-tertiary, #6E6E75);
+  font-size: var(--fs-xs, 0.69rem);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--transition-base);
+}
+
+.cine-scroll-indicator:hover {
+  color: var(--text-secondary, #9A9AA0);
+}
+
+.cine-scroll-arrow {
+  animation: cineBounce 2s ease-in-out infinite;
+}
+
+@keyframes cineBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(6px); }
+}
+
+@keyframes cineFadeUp {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Section titles ─── */
+.cine-section-title {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: var(--fw-bold, 700);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  text-align: center;
+  margin: 0 0 16px;
+}
+
+.cine-section-sub {
+  font-size: var(--fs-lg, 1.06rem);
+  color: var(--text-secondary, #9A9AA0);
+  text-align: center;
+  max-width: 500px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* ─── Problems ─── */
+.cine-problems {
+  min-height: 100vh;
+}
+
+.cine-problems-inner {
+  max-width: 800px;
+  width: 100%;
+}
+
+.cine-problems-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 48px;
+}
+
+.cine-problem-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  background: var(--bg-card, #1B1B1F);
+  border: 1px solid var(--border-primary, #2A2A2E);
+  border-radius: var(--radius-lg, 14px);
+  transition: all var(--transition-base);
+}
+
+.cine-problem-card:hover {
+  border-color: rgba(245, 166, 35, 0.3);
+  background: var(--bg-card-hover, #232329);
+}
+
+.cine-problem-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.cine-problem-text {
+  font-size: var(--fs-md, 0.96rem);
+  color: var(--text-primary, #F2F2F3);
+  font-weight: var(--fw-medium, 500);
+}
+
+/* ─── Reassembly ─── */
+.cine-reassembly {
+  min-height: 80vh;
+}
+
+.cine-reassembly-content {
+  text-align: center;
+  max-width: 600px;
+}
+
+/* ─── Feature Showcase ─── */
+.cine-features {
+  min-height: 200vh;
+  align-items: flex-start;
+  padding-top: 15vh;
+}
+
+.cine-features-track {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 480px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.cine-feature-chapter {
+  transition: all 0.5s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.cine-feature-card {
+  background: var(--bg-card, #1B1B1F);
+  border: 1px solid var(--border-primary, #2A2A2E);
+  border-radius: var(--radius-xl, 20px);
+  padding: 28px 32px;
+  transition: all var(--transition-base);
+}
+
+.cine-feature-card:hover {
+  border-color: rgba(245, 166, 35, 0.3);
+}
+
+.cine-feature-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.cine-feature-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.cine-feature-title {
+  font-size: var(--fs-xl, 1.22rem);
+  font-weight: var(--fw-bold, 700);
+  margin: 0;
+}
+
+.cine-feature-tagline {
+  font-size: var(--fs-sm, 0.79rem);
+  color: var(--text-tertiary, #6E6E75);
+  margin: 0 0 16px;
+}
+
+.cine-feature-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cine-feature-list li {
+  padding: 4px 12px;
+  background: var(--bg-tertiary, #222227);
+  border-radius: var(--radius-full, 9999px);
+  font-size: var(--fs-xs, 0.69rem);
+  color: var(--text-secondary, #9A9AA0);
+  transition: all 0.4s ease;
+}
+
+.cine-feature-chapter.active .cine-feature-list li {
+  color: var(--text-primary, #F2F2F3);
+}
+
+/* ─── Roles ─── */
+.cine-roles {
+  min-height: 80vh;
+}
+
+.cine-roles-inner {
+  max-width: 800px;
+  width: 100%;
+}
+
+.cine-roles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+  margin-top: 48px;
+}
+
+.cine-role-card {
+  background: var(--bg-card, #1B1B1F);
+  border: 1px solid var(--border-primary, #2A2A2E);
+  border-radius: var(--radius-lg, 14px);
+  padding: 24px 20px;
+  text-align: center;
+  transition: all 0.5s ease;
+}
+
+.cine-role-card:hover {
+  border-color: rgba(245, 166, 35, 0.3);
+  transform: translateY(-4px);
+}
+
+.cine-role-badge {
+  display: inline-block;
+  padding: 4px 14px;
+  background: rgba(245, 166, 35, 0.1);
+  border: 1px solid rgba(245, 166, 35, 0.2);
+  border-radius: var(--radius-full, 9999px);
+  font-size: var(--fs-sm, 0.79rem);
+  font-weight: var(--fw-semibold, 600);
+  color: var(--accent-blue, #F5A623);
+  margin-bottom: 12px;
+}
+
+.cine-role-desc {
+  font-size: var(--fs-xs, 0.69rem);
+  color: var(--text-tertiary, #6E6E75);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ─── Final CTA ─── */
+.cine-cta {
+  min-height: 100vh;
+}
+
+.cine-cta-content {
+  text-align: center;
+  max-width: 600px;
+}
+
+.cine-cta-title {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: var(--fw-bold, 700);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin: 0 0 16px;
+}
+
+.cine-cta-sub {
+  font-size: var(--fs-lg, 1.06rem);
+  color: var(--text-secondary, #9A9AA0);
+  margin: 0 0 36px;
+}
+
+.cine-cta-actions {
+  margin-bottom: 60px;
+}
+
+.cine-cta-stats {
+  display: flex;
+  justify-content: center;
+  gap: 48px;
+}
+
+.cine-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.cine-stat-num {
+  font-size: var(--fs-2xl, 1.45rem);
+  font-weight: var(--fw-bold, 700);
+  color: var(--accent-blue, #F5A623);
+}
+
+.cine-stat-label {
+  font-size: var(--fs-xs, 0.69rem);
+  color: var(--text-tertiary, #6E6E75);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ─── Progress bar ─── */
+.cine-progress-bar {
+  position: fixed;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 120px;
+  background: var(--border-primary, #2A2A2E);
+  border-radius: 2px;
+  z-index: 100;
+}
+
+.cine-progress-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background: var(--gradient-primary, linear-gradient(135deg, #F9B93C, #F5A623, #E07A16));
+  border-radius: 2px;
+  transition: height 0.1s linear;
+}
+
+.cine-progress-dot {
+  position: absolute;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--bg-secondary, #1B1B1F);
+  border: 2px solid var(--border-primary, #2A2A2E);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  padding: 0;
+}
+
+.cine-progress-dot.active {
+  border-color: var(--accent-blue, #F5A623);
+  background: var(--accent-blue, #F5A623);
+  box-shadow: 0 0 12px rgba(245, 166, 35, 0.4);
+}
+
+.cine-progress-dot:hover {
+  border-color: var(--accent-blue, #F5A623);
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 768px) {
+  .cine-section {
+    padding: 100px 16px 60px;
+  }
+
+  .cine-hero-title {
+    font-size: clamp(2rem, 8vw, 3rem);
+  }
+
+  .cine-problems-grid {
+    gap: 12px;
+  }
+
+  .cine-problem-card {
+    padding: 16px 18px;
+  }
+
+  .cine-features-track {
+    max-width: 100%;
+  }
+
+  .cine-feature-card {
+    padding: 20px 24px;
+  }
+
+  .cine-roles-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .cine-cta-stats {
+    gap: 24px;
+  }
+
+  .cine-progress-bar {
+    right: 10px;
+    height: 80px;
+  }
+
+  .cine-btn {
+    padding: 10px 22px;
+    font-size: var(--fs-sm, 0.79rem);
+  }
+
+  .cine-btn-lg {
+    padding: 14px 32px;
+  }
+}
+
+@media (max-width: 480px) {
+  .cine-roles-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .cine-cta-stats {
+    flex-direction: column;
+    gap: 16px;
+  }
+}
+
+/* ─── Reduced motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  .cine-scroll-arrow {
+    animation: none;
+  }
+
+  .cine-hero-content {
+    animation: none;
+  }
+
+  .cine-problem-card,
+  .cine-feature-chapter,
+  .cine-role-card {
+    transition: none;
+  }
+}

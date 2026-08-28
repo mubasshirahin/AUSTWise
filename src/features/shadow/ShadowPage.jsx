@@ -77,6 +77,7 @@ export default function ShadowPage() {
   const [wsError, setWsError] = useState(false);
 
   const wsRef = useRef(null);
+  const reconnectAttemptsRef = useRef(0);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -98,7 +99,27 @@ export default function ShadowPage() {
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
+      // Heartbeat: production proxies (Vercel -> Railway) kill idle WS
+      // connections. Ping every 25s so the socket is never idle.
+      ws._heartbeat = setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'ping', payload: {} }));
+        }
+      }, 25000);
+
+      // Auto-reconnect with capped backoff. Without this a dropped socket
+      // left the badge stuck on "Disconnected" forever.
+      const attemptReconnect = () => {
+        if (wsRef.current !== ws) return; // superseded by a newer socket
+        reconnectAttemptsRef.current += 1;
+        const delay = Math.min(30000, 1000 * 2 ** Math.min(reconnectAttemptsRef.current, 5));
+        setTimeout(() => {
+          if (wsRef.current === ws && ws.readyState === WebSocket.CLOSED) connectWS();
+        }, delay);
+      };
+
       ws.onopen = () => {
+        reconnectAttemptsRef.current = 0;
         setWsConnected(true);
         setWsError(false);
       };
@@ -182,11 +203,13 @@ export default function ShadowPage() {
       };
 
       ws.onclose = () => {
+        clearInterval(ws._heartbeat);
         setWsConnected(false);
         if (chatStateRef.current === 'matched') {
           setChatState('ended');
           setEndReason('Connection lost.');
         }
+        attemptReconnect();
       };
 
       ws.onerror = () => {
@@ -195,12 +218,16 @@ export default function ShadowPage() {
     } catch {
       setWsError(true);
     }
-  }, []);  
+  }, []);
 
   useEffect(() => {
     connectWS();
     return () => {
       if (wsRef.current) {
+        clearInterval(wsRef.current._heartbeat);
+        // Mark superseded so pending reconnect timers do not resurrect the
+        // socket after unmount.
+        wsRef.current.onclose = null;
         wsRef.current.close();
         wsRef.current = null;
       }
