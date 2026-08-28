@@ -686,14 +686,26 @@
 .landing-hero {
   position: relative;
   z-index: 1;
-  max-width: 1200px;
+  width: 100%;
   margin: 0 auto;
   padding: 140px 24px 80px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.030) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.030) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.landing-hero-inner {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 60px;
   align-items: center;
-  min-height: 100vh;
+  width: 100%;
+  max-width: 1200px;
 }
 
 .landing-hero-content {
@@ -1055,9 +1067,13 @@
 .landing-section {
   position: relative;
   z-index: 1;
-  max-width: 1200px;
+  width: 100%;
   margin: 0 auto;
   padding: 100px 24px;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.030) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.030) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 
 .landing-section-alt {
@@ -1066,6 +1082,10 @@
   padding-right: calc((100% - 1200px) / 2 + 24px);
   border-top: 1px solid var(--border-primary);
   border-bottom: 1px solid var(--border-primary);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.030) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.030) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 
 .landing-section-header {
@@ -1099,16 +1119,23 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 20px;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* ─── Horizontal Feature Roll (GSAP ScrollTrigger) ─── */
 .landing-hscroll-section {
   position: relative;
   margin-top: -50px;
-  height: 280vh;               /* scroll runway — GSAP pins the viewport inside it */
+  height: 280vh;
   border-top: 1px solid var(--border-primary);
   border-bottom: 1px solid var(--border-primary);
-  background: var(--bg-primary);
+  background-color: var(--bg-primary);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.030) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.030) 1px, transparent 1px);
+  background-size: 40px 40px;
   overflow: hidden;
 }
 
@@ -1270,7 +1297,11 @@
   position: relative;
   border-top: 1px solid var(--border-primary);
   border-bottom: 1px solid var(--border-primary);
-  background: var(--bg-primary);
+  background-color: var(--bg-primary);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.030) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.030) 1px, transparent 1px);
+  background-size: 40px 40px;
   overflow: hidden;
 }
 
@@ -1521,7 +1552,11 @@
   position: relative;
   height: calc((var(--switch-count) + 1) * 100vh);
   border-bottom: 1px solid var(--border-primary);
-  background: var(--bg-primary);
+  background-color: var(--bg-primary);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.030) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.030) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 
 .landing-switch-layout {
@@ -3880,6 +3915,10 @@
   position: relative;
   z-index: 1;
   border-top: 1px solid var(--border-primary);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.030) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.030) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 
 .landing-footer-inner {
@@ -3972,12 +4011,15 @@
 
 /* ─── Responsive ─── */
 @media (max-width: 1024px) {
-  .landing-hero {
+  .landing-hero-inner {
     grid-template-columns: 1fr;
     text-align: center;
+    gap: 48px;
+  }
+
+  .landing-hero {
     padding-top: 120px;
     min-height: auto;
-    gap: 48px;
   }
 
   .landing-hero-desc {

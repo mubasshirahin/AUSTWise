@@ -973,6 +973,7 @@ export default function LandingPage() {
 
       {/* ─── HERO ─── */}
       <section className="landing-hero" ref={heroRef}>
+        <div className="landing-hero-inner">
         <div className={`landing-hero-content ${heroLoaded ? 'hero-visible' : ''}`}>
           <div className="landing-badge pulse-badge"><Sparkles size={12} className="sparkle-icon" /><span>Your All-in-One Campus Companion</span></div>
           <h1 className="landing-hero-title">
@@ -1024,6 +1025,7 @@ export default function LandingPage() {
               <div className="card-mock-content"><div className="card-mock-dots"><span style={{ background: 'var(--accent-purple)' }} /><span style={{ background: 'var(--accent-cyan)' }} /><span style={{ background: 'var(--accent-amber)' }} /><span style={{ background: 'var(--accent-emerald)' }} /></div><div className="card-mock-line" style={{ width: '85%' }} /><div className="card-mock-line" style={{ width: '65%' }} /></div>
             </div>
           </TiltCard>
+        </div>
         </div>
       </section>
 
