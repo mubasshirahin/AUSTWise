@@ -3907,6 +3907,7 @@
 .landing-footer {
   position: relative;
   z-index: 1;
+  border-top: 1px solid var(--border-primary);
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.030) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.030) 1px, transparent 1px);
