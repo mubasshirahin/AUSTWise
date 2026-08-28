@@ -1080,8 +1080,6 @@
   max-width: 100%;
   padding-left: calc((100% - 1200px) / 2 + 24px);
   padding-right: calc((100% - 1200px) / 2 + 24px);
-  border-top: 1px solid var(--border-primary);
-  border-bottom: 1px solid var(--border-primary);
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.030) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.030) 1px, transparent 1px);
@@ -1129,8 +1127,6 @@
   position: relative;
   margin-top: -50px;
   height: 280vh;
-  border-top: 1px solid var(--border-primary);
-  border-bottom: 1px solid var(--border-primary);
   background-color: var(--bg-primary);
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.030) 1px, transparent 1px),
@@ -1295,8 +1291,6 @@
 /* ─── Image Trail Showcase (GSAP cursor trail) ─── */
 .landing-trail-section {
   position: relative;
-  border-top: 1px solid var(--border-primary);
-  border-bottom: 1px solid var(--border-primary);
   background-color: var(--bg-primary);
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.030) 1px, transparent 1px),
@@ -1551,7 +1545,6 @@
 .landing-switch-section {
   position: relative;
   height: calc((var(--switch-count) + 1) * 100vh);
-  border-bottom: 1px solid var(--border-primary);
   background-color: var(--bg-primary);
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.030) 1px, transparent 1px),
@@ -3914,7 +3907,6 @@
 .landing-footer {
   position: relative;
   z-index: 1;
-  border-top: 1px solid var(--border-primary);
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.030) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.030) 1px, transparent 1px);
