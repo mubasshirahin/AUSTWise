@@ -2432,6 +2432,28 @@ tr.day-row-active {
   }
 }
 
+/* ─── Dashboard card (.dash-section > div) — mobile compactness ─── */
+@media (max-width: 560px) {
+  .dash-section > div {
+    border-radius: var(--radius-md);
+    padding: var(--sp-3);
+  }
+  .dashboard-page .glass-card-static.schedule-widget {
+    padding: var(--sp-3);
+  }
+  .dashboard-page .schedule-widget .schedule-masthead {
+    padding: var(--sp-2);
+    margin-bottom: 10px;
+  }
+  .dashboard-page .schedule-widget .schedule-title-block {
+    gap: 8px;
+  }
+  .dashboard-page .schedule-widget .schedule-masthead::after {
+    left: 16px;
+    right: 16px;
+  }
+}
+
 @media (max-width: 900px) {
   .dash-hero-content {
     padding: var(--sp-5);
