@@ -317,6 +317,22 @@
   flex-wrap: wrap;
 }
 
+@media (max-width: 768px) {
+  .cgpa-bol-widget .schedule-masthead {
+    grid-template-columns: 1fr;
+    gap: var(--sp-3);
+    padding: var(--sp-3);
+  }
+  .cgpa-bol-widget .schedule-masthead-center {
+    justify-content: flex-start;
+    gap: 12px;
+  }
+  .cgpa-bol-widget .schedule-stats {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+}
+
 .cgpa-bol-widget .schedule-title-block {
   display: flex;
   align-items: center;
@@ -635,6 +651,25 @@
   align-items: center;
   gap: 10px;
   justify-self: end;
+}
+
+/* Load Template: full-width strip below the masthead box on mobile */
+.cgpa-load-mobile-wrap {
+  display: none;
+}
+.cgpa-load-mobile-wrap .cgpa-load-template-btn {
+  width: 100%;
+  justify-content: center;
+  padding: 9px 14px;
+}
+@media (max-width: 640px) {
+  .cgpa-breakdown-box .cgpa-load-desktop {
+    display: none;
+  }
+  .cgpa-load-mobile-wrap {
+    display: flex;
+    margin: -4px 0 4px;
+  }
 }
 
 /* ─── Transcript section ─── */

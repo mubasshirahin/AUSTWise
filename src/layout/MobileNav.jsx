@@ -10,7 +10,7 @@ import './MobileNav.css';
 // Primary items shown in the fixed bottom bar (most-used campus tools)
 const primaryItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/analytics', label: 'Grades', icon: BarChart3 },
+  { path: '/analytics', label: 'GradeLab', icon: BarChart3 },
   { path: '/vault', label: 'Vault', icon: BookOpen },
   { path: '/community', label: 'Social', icon: Users },
   { path: '/messages', label: 'Chat', icon: MessageSquare },

@@ -230,7 +230,7 @@ export default function CGPAGraph() {
               <TrendingUp size={20} strokeWidth={2.2} />
             </div>
             <div>
-              <span className="schedule-overline">Grade Lab</span>
+              <span className="schedule-overline">GradeLab</span>
               <p className="schedule-title">CGPA Calculator</p>
               <span className="schedule-subtitle">
                 {user?.department

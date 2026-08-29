@@ -700,7 +700,7 @@ export default function ResultTable({ onResultsChange }) {
         </div>
         <div className="schedule-masthead-center" />
         <div className="cgpa-transcript-actions">
-          <button className="schedule-nav-btn cgpa-load-template-btn" onClick={() => setShowDeptModal(true)}>
+          <button className="schedule-nav-btn cgpa-load-template-btn cgpa-load-desktop" onClick={() => setShowDeptModal(true)}>
             <Layers size={15} /> Load Template
           </button>
           <div className="export-dropdown" ref={menuRef}>
@@ -729,6 +729,13 @@ export default function ResultTable({ onResultsChange }) {
       </div>
 
       <div className="schedule-dotted-divider" />
+
+      {/* Mobile: Load Template lives below the masthead box */}
+      <div className="cgpa-load-mobile-wrap">
+        <button className="schedule-nav-btn cgpa-load-template-btn" onClick={() => setShowDeptModal(true)}>
+          <Layers size={15} /> Load Template
+        </button>
+      </div>
 
       {/* Semester cells */}
       <div className="cgpa-sem-list">
