@@ -159,11 +159,6 @@
     min-width: 32px;
     justify-content: center;
   }
-  .poll-submit-hint {
-    white-space: normal;
-    text-align: center;
-    font-size: 9px;
-  }
 }
 
 /* ─── Hero: Shell ─── */
@@ -1681,17 +1676,17 @@
   color: var(--accent-blue);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-blue) 15%, transparent);
 }
-.poll-submit-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-}
-.poll-submit-hint {
-  font-size: 10px;
-  color: var(--text-tertiary);
-  white-space: nowrap;
-  line-height: 1.2;
+.poll-submit-warning {
+  padding: 8px 14px;
+  margin: 0 var(--sp-4) var(--sp-3);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--accent-amber);
+  background: color-mix(in srgb, var(--accent-amber) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 25%, transparent);
+  border-radius: var(--radius-md);
+  text-align: center;
+  line-height: 1.4;
 }
 .poll-recorded {
   display: inline-flex;
