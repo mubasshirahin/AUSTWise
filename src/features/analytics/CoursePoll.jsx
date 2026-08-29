@@ -195,9 +195,14 @@ export default function CoursePoll() {
               <CheckCircle size={15} /> Recorded
             </span>
           ) : (
-            <button type="submit" form="ballot-form" className="poll-submit">
-              Submit My Picks <Send size={14} />
-            </button>
+            <div className="poll-submit-wrap">
+              <button type="submit" form="ballot-form" className="poll-submit">
+                <span>Submit My Picks</span> <Send size={14} />
+              </button>
+              <span className="poll-submit-hint">
+                Pick courses wisely — you can only submit once!
+              </span>
+            </div>
           )}
         </div>
       </div>

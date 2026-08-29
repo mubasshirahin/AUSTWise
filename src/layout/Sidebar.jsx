@@ -16,7 +16,7 @@ import './Sidebar.css';
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/daily-life', label: 'Daily Life', icon: Home },
-  { path: '/analytics', label: 'Grade Lab', icon: BarChart3 },
+  { path: '/analytics', label: 'GradeLab', icon: BarChart3 },
   { path: '/campus', label: 'InsideAUST', icon: MapPin },
   { path: '/vault', label: 'Resource Vault', icon: BookOpen },
   { path: '/notebook', label: 'Notebook', icon: NotebookPen },
