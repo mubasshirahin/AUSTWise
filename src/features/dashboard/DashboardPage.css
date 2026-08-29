@@ -2452,6 +2452,22 @@ tr.day-row-active {
     left: 16px;
     right: 16px;
   }
+  /* Notification banner: minimal single-pile on phones — helper text hidden,
+     compact controls */
+  .notif-banner-helper {
+    display: none;
+  }
+  .notif-banner {
+    padding: 10px 12px !important;
+    gap: 8px !important;
+  }
+  .notif-banner > div:nth-child(3) {
+    gap: 6px !important;
+  }
+  .notif-banner .btn-sm {
+    font-size: 11px;
+    padding: 5px 8px;
+  }
 }
 
 @media (max-width: 900px) {
