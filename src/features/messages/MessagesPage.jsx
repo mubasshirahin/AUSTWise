@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   MessageSquare, Send, ArrowLeft, Inbox, Mail, Search, X,
   Check, CheckCheck, WifiOff, SmilePlus, ChevronUp, ChevronDown,
-  ChevronLeft, ChevronRight, MoreVertical, Edit3, Trash2, Bell, BellOff, Reply,
+  MoreVertical, Edit3, Trash2, Bell, BellOff, Reply,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -1000,22 +1000,6 @@ export default function MessagesPage() {
     toggleNotifEnabled();
   };
 
-  // Prev/next navigation through the filtered conversation list
-  const navigateConversation = (dir) => {
-    const list = filteredConversations;
-    if (list.length === 0) return;
-    const idx = list.findIndex((c) => c.peerId === activePeerId);
-    const next = idx === -1 ? (dir > 0 ? 0 : list.length - 1) : (idx + dir + list.length) % list.length;
-    openConversation(list[next].peerId);
-  };
-
-  // Pill label — position of the active conversation within the filtered list
-  const pillLabel = useMemo(() => {
-    const idx = filteredConversations.findIndex((c) => c.peerId === activePeerId);
-    if (idx === -1) return filteredConversations.length === 0 ? '0 / 0' : `0 / ${filteredConversations.length}`;
-    return `${idx + 1} / ${filteredConversations.length}`;
-  }, [filteredConversations, activePeerId]);
-
   // Single shared conversation-cell renderer — used by every list mode
   // (All / Unread / search results) so cells look identical everywhere.
   const renderConversationCell = (c) => {
@@ -1142,17 +1126,7 @@ export default function MessagesPage() {
 
           {/* Right: nav + ⋮ menu */}
           <div className="schedule-actions">
-            <div className="schedule-week-nav">
-              <button className="schedule-nav-btn" onClick={() => navigateConversation(-1)} title="Previous conversation" aria-label="Previous conversation">
-                <ChevronLeft size={20} />
-              </button>
-              <div className="schedule-week-pill">
-                <span className="schedule-week-pill-value">{pillLabel}</span>
-              </div>
-              <button className="schedule-nav-btn" onClick={() => navigateConversation(1)} title="Next conversation" aria-label="Next conversation">
-                <ChevronRight size={20} />
-              </button>
-            </div>
+
 
             <div className="export-dropdown" ref={menuRef}>
               <button

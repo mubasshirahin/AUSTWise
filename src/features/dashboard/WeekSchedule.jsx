@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Calendar, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, FileDown, MoreVertical, Check } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useLiveValue } from '../../utils/liveStore';
@@ -302,10 +303,13 @@ export default function WeekSchedule() {
 
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportRef = useRef(null);
+  const menuRef = useRef(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
+  const menuBtnRef = useRef(null);
 
   useEffect(() => {
     const handleClick = (e) => {
-      if (exportRef.current && !exportRef.current.contains(e.target)) {
+      if (exportRef.current && !exportRef.current.contains(e.target) && menuRef.current && !menuRef.current.contains(e.target)) {
         setShowExportMenu(false);
       }
     };
@@ -541,11 +545,17 @@ export default function WeekSchedule() {
             </button>
           </div>
           <div className="export-dropdown" ref={exportRef}>
-            <button className="schedule-nav-btn" onClick={() => setShowExportMenu(!showExportMenu)} aria-label="More options" aria-haspopup="true">
+            <button className="schedule-nav-btn" ref={menuBtnRef} onClick={() => {
+              if (!showExportMenu && menuBtnRef.current) {
+                const rect = menuBtnRef.current.getBoundingClientRect();
+                setMenuPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
+              }
+              setShowExportMenu(!showExportMenu);
+            }} aria-label="More options" aria-haspopup="true">
               <MoreVertical size={18} />
             </button>
-            {showExportMenu && (
-              <div className="export-menu">
+            {showExportMenu && createPortal(
+              <div ref={menuRef} className="export-menu routine-more-menu" style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 99999 }}>
                 <button
                   className={`export-menu-item${viewMode === 'daily' ? ' menu-active' : ''}`}
                   onClick={() => { setCurrentDate(new Date()); setViewMode('daily'); setShowExportMenu(false); }}
@@ -577,7 +587,8 @@ export default function WeekSchedule() {
                 <button className="export-menu-item" onClick={() => { downloadScheduleImage(); setShowExportMenu(false); }}>
                   <FileDown size={14} /> Export as Image
                 </button>
-              </div>
+              </div>,
+              document.body
             )}
           </div>
         </div>

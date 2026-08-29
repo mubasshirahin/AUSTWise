@@ -97,3 +97,6 @@ pm2 save && pm2 startup
 | `npm run build` | Production build to `dist/` |
 | `npm run lint` | ESLint over `src/`, `server/`, `scripts/` |
 | `node scripts/seed-sqlserver.mjs` | One-time seed of courses/locations into SQL Server (idempotent) |  
+
+
+![Alt](https://repobeats.axiom.co/api/embed/aa1520a9d2b4266306be390e45695fd787d58562.svg "Repobeats analytics image")
