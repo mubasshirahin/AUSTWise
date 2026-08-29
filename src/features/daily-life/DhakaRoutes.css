@@ -668,17 +668,19 @@
     min-width: 640px;
   }
   .dr-source {
-    width: 46vw;
-    max-width: 240px;
-    min-width: 46vw;
+    width: auto;
+    min-width: 0;
+    max-width: 44vw;
+    padding-right: 14px;
   }
   .dr-table thead th:first-child {
     /* Match the fixed source column so the header label scrolls with it */
     position: sticky;
     left: 0;
     z-index: 3;
-    width: 46vw;
-    max-width: 240px;
+    width: auto;
+    max-width: 44vw;
+    padding-right: 14px;
   }
   .dr-source-inner {
     font-size: var(--fs-xs);
