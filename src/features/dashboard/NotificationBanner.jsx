@@ -49,7 +49,7 @@ export default function NotificationBanner() {
 
   return (
     <div
-      className="animate-fadeIn"
+      className="animate-fadeIn notif-banner"
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -75,7 +75,7 @@ export default function NotificationBanner() {
         <p style={{ fontSize: 'var(--fs-sm)', fontWeight: 'var(--fw-semibold)' }}>
           Never miss a class or deadline
         </p>
-        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+        <p className="notif-banner-helper" style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
           Enable browser alerts — your browser will ask for <strong>notification permission</strong>, used only to alert you before your next class starts and when assignments are due.
         </p>
       </div>
