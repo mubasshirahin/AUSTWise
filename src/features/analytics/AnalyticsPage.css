@@ -658,17 +658,22 @@
   display: none;
 }
 .cgpa-load-mobile-wrap .cgpa-load-template-btn {
-  width: 100%;
+  width: auto;
   justify-content: center;
   padding: 9px 14px;
 }
-@media (max-width: 640px) {
-  .cgpa-breakdown-box .cgpa-load-desktop {
+@media (max-width: 768px) {
+  .cgpa-bol-widget .schedule-masthead {
+    margin-bottom: 4px;
+  }
+  .cgpa-breakdown-box .cgpa-load-desktop,
+  .cgpa-breakdown-box .cgpa-transcript-actions > button.cgpa-load-template-btn {
     display: none;
   }
   .cgpa-load-mobile-wrap {
     display: flex;
-    margin: -4px 0 4px;
+    justify-content: flex-end;
+    margin: 0 0 4px;
   }
 }
 
@@ -957,6 +962,53 @@
     grid-column: 1 / -1;
     order: 3;
   }
+  .cgpa-bol-widget .cgpa-sem-current {
+    display: none;
+  }
+}
+
+/* ─── Compact mastheads on mobile (matches dashboard 640px treatment) ─── */
+@media (max-width: 640px) {
+  .cgpa-bol-widget .schedule-masthead {
+    padding: var(--sp-3);
+    gap: var(--sp-2);
+    border-width: 1px;
+  }
+  .cgpa-bol-widget .schedule-icon-tile {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: var(--radius-sm);
+  }
+  .cgpa-bol-widget .schedule-icon-tile svg {
+    width: 20px;
+    height: 20px;
+  }
+  .cgpa-bol-widget .schedule-title-block {
+    gap: 10px;
+    min-width: 0;
+  }
+  .cgpa-bol-widget .schedule-overline {
+    font-size: 9px;
+  }
+  .cgpa-bol-widget .schedule-title {
+    font-size: var(--fs-sm);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .cgpa-bol-widget .schedule-subtitle {
+    font-size: 9px;
+    white-space: normal;
+    overflow: visible;
+    max-width: 100%;
+  }
+  .cgpa-bol-widget .schedule-masthead-center {
+    display: none;
+  }
+  .cgpa-bol-widget .schedule-stats {
+    display: none;
+  }
 }
 
 /* ─── Target Calculator ─── */
@@ -1243,7 +1295,52 @@
   }
 
   .grade-hero-orb-3 { display: none; }
+  .grade-hero-content .grade-hero-orb-3 { display: none; }
 
+  /* ── CGPA BOL: semester card compact on mobile ── */
+  .cgpa-bol-widget .cgpa-sem-card { padding: 4px 10px; gap: 2px; }
+  .cgpa-sem-head { gap: 8px; }
+  .cgpa-sem-code { font-size: 14px; }
+  .cgpa-sem-year { font-size: 9px; }
+  .cgpa-sem-current { font-size: 7px; padding: 1px 6px; }
+  .cgpa-sem-metrics { gap: 12px; }
+  .cgpa-sem-metric span { font-size: 7px; }
+  .cgpa-sem-metric b { font-size: 13px; }
+  .cgpa-sem-chev { display: none; }
+
+  /* Semester course body: compact + no horizontal scroll. Column layout
+     stays tabular but hugs the narrow viewport; credits/grade/GPA center. */
+  .cgpa-sem-body {
+    padding-top: 6px;
+    gap: 6px;
+    overflow-x: auto;
+  }
+  .cgpa-sem-table {
+    font-size: 11px;
+    width: 100%;
+    table-layout: auto;
+  }
+  .cgpa-sem-table th { padding: 4px 6px; font-size: 8px; }
+  .cgpa-sem-table td { padding: 6px 6px; }
+  .cgpa-course-name { font-size: 11px; }
+
+  /* Inline edit inputs — match display size, transparent, tight */
+  .cgpa-sem-body .input {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 2px 4px !important;
+    font-size: inherit !important;
+    min-height: 0 !important;
+  }
+  .cgpa-sem-body .input:focus { outline: none !important; }
+
+  .cgpa-credit-input, .cgpa-grade-select { padding: 4px 6px; font-size: 11px; }
+  .cgpa-credit-input { width: 60px; }
+  .cgpa-grade-select { width: 64px; padding-right: 20px; }
+  .cgpa-sem-foot { padding: 4px 0 0; }
+  .cgpa-sem-foot-stats { gap: 10px; font-size: 9px; }
+  .cgpa-sem-foot-stats b { font-size: 11px; }
 
 
   .target-calculator-grid,
@@ -1257,6 +1354,27 @@
   .grade-hero-content {
     padding: var(--sp-4) var(--sp-3) var(--sp-3);
   }
+
+  /* ── CGPA BOL: tighter semester card on small phones ── */
+  .cgpa-bol-widget .cgpa-sem-card { padding: 3px 8px; gap: 2px; }
+  .cgpa-sem-head { gap: 6px; }
+  .cgpa-sem-code { font-size: 13px; }
+  .cgpa-sem-year { display: none; }
+  .cgpa-sem-metrics { gap: 10px; }
+  .cgpa-sem-metric span { font-size: 7px; letter-spacing: 0.04em; }
+  .cgpa-sem-metric b { font-size: 12px; }
+  .cgpa-sem-body { padding-top: 5px; gap: 5px; }
+  .cgpa-sem-table, .cgpa-course-name { font-size: 10px; }
+  .cgpa-sem-table th { padding: 3px 4px; font-size: 7px; }
+  .cgpa-sem-body .input { padding: 1px 3px !important; font-size: 10px !important; }
+  .cgpa-credit-input, .cgpa-grade-select { width: 52px; padding: 2px 4px; font-size: 10px; }
+  .cgpa-grade-select { padding-right: 18px; }
+  .cgpa-sem-table td { padding: 5px 4px; }
+  .cgpa-credit-input, .cgpa-grade-select { font-size: 10px; padding: 3px 5px; }
+  .cgpa-credit-input { width: 52px; }
+  .cgpa-grade-select { width: 58px; padding-right: 18px; }
+  .cgpa-sem-foot-stats { gap: 8px; font-size: 8px; }
+  .cgpa-sem-foot-stats b { font-size: 10px; }
 }
 
 /* ════════════════════════════════════════════════════════════════

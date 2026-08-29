@@ -228,7 +228,40 @@
 @media (max-width: 640px) {
   .st-widget .schedule-masthead {
     grid-template-columns: 1fr auto;
+    padding: var(--sp-3);
+    gap: var(--sp-2);
+    border-width: 1px;
     padding-right: 120px;
+  }
+  .st-widget .schedule-icon-tile {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: var(--radius-sm);
+  }
+  .st-widget .schedule-icon-tile svg {
+    width: 20px;
+    height: 20px;
+  }
+  .st-widget .schedule-title-block {
+    gap: 10px;
+    min-width: 0;
+  }
+  .st-widget .schedule-overline {
+    font-size: 9px;
+  }
+  .st-widget .schedule-title {
+    font-size: var(--fs-sm);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .st-widget .schedule-subtitle {
+    font-size: 9px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
   }
   /* Load Template + three-dot pinned far right, stats hidden */
   .st-widget .schedule-masthead-center {
