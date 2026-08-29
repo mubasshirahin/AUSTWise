@@ -660,30 +660,34 @@
     align-items: stretch;
   }
 
-  /* ── Split table: source names fixed ~46% left, fares slide right ── */
+  /* ── Split table: source names fixed left, fares slide right ── */
   .dr-table-wrap {
     -webkit-overflow-scrolling: touch;
   }
   .dr-table {
-    min-width: 640px;
+    table-layout: fixed;
+    min-width: 560px;
   }
   .dr-source {
-    width: auto;
-    min-width: 0;
-    max-width: 44vw;
-    padding-right: 14px;
+    width: 34vw;
+    max-width: 34vw;
+    padding-right: 12px;
+    vertical-align: top;
+  }
+  .dr-source-inner {
+    font-size: var(--fs-xs);
+    line-height: 1.35;
+    white-space: normal;
+    word-break: break-word;
   }
   .dr-table thead th:first-child {
     /* Match the fixed source column so the header label scrolls with it */
     position: sticky;
     left: 0;
     z-index: 3;
-    width: auto;
-    max-width: 44vw;
-    padding-right: 14px;
-  }
-  .dr-source-inner {
-    font-size: var(--fs-xs);
+    width: 34vw;
+    max-width: 34vw;
+    padding-right: 12px;
   }
   .dr-source-inner svg {
     display: none;
