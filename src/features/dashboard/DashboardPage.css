@@ -740,7 +740,7 @@
 .quick-stat-value-row {
   display: flex;
   align-items: baseline;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 6px;
   margin-top: 0;
 }
@@ -2299,6 +2299,29 @@
   }
   .dash-hero-title-row {
     gap: var(--sp-2);
+  }
+  .quick-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .quick-stats-widget .quick-stat-cell {
+    padding: 10px 10px;
+    gap: 6px;
+  }
+  .quick-stat-name {
+    font-size: 8px;
+    letter-spacing: 0.04em;
+  }
+  .quick-stat-value {
+    font-size: var(--fs-md);
+  }
+  .quick-stat-icon {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+  }
+  .quick-stat-icon svg {
+    width: 12px;
+    height: 12px;
   }
 }
 
