@@ -8,122 +8,43 @@
   padding-bottom: var(--sp-10);
   overflow: hidden;
   background: transparent;
+  min-width: 0;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   MASTHEAD — scoped under .cpgen-widget so it renders even when
-   DashboardPage.css is not loaded (lazy route with its own CSS chunk).
+   MASTHEAD — inherits the global .schedule-masthead grid layout
+   (1fr auto 1fr) from index.css / DashboardPage.css, matching
+   the same pattern used by Routine, WeekSchedule, SemesterTracker, etc.
    ═══════════════════════════════════════════════════════════════════════ */
 .cpgen-widget .schedule-masthead {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-3);
-  margin-bottom: 20px;
-  padding: var(--sp-4);
-  background: transparent;
-  border: 2px solid var(--accent-amber);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  grid-template-columns: 1fr auto 1fr;
 }
-.cpgen-widget .schedule-masthead::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 24px;
-  right: 24px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent-amber) 55%, transparent), transparent);
-  opacity: 0.6;
-  pointer-events: none;
-}
-.cpgen-widget .schedule-title-block {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-.cpgen-widget .schedule-icon-tile {
-  width: 48px;
-  height: 48px;
-  min-width: 48px;
-  border-radius: var(--radius-md);
+
+.cpgen-widget .schedule-masthead-center {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  gap: 20px;
+}
+
+/* Icon tile: amber accent to match cover-page-generator identity */
+.cpgen-widget .schedule-icon-tile {
   background: var(--accent-amber-glow);
   color: var(--accent-amber);
-  transition: transform 0.3s cubic-bezier(0.34, 1.3, 0.64, 1);
-}
-.cpgen-widget .schedule-icon-tile:hover {
-  transform: scale(1.08) rotate(-3deg);
 }
 .cpgen-widget .schedule-icon-tile svg {
   filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-amber) 35%, transparent));
 }
-.cpgen-widget .schedule-overline {
-  font-size: 9px;
-  font-weight: var(--fw-bold);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-  display: block;
+.cpgen-widget .schedule-icon-tile:hover {
+  transform: scale(1.08) rotate(-3deg);
 }
-.cpgen-widget .schedule-title {
-  font-size: var(--fs-lg);
-  font-weight: var(--fw-bold);
-  color: var(--text-primary);
-  margin: 2px 0 0;
-  line-height: 1.2;
-}
-.cpgen-widget .schedule-subtitle {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  letter-spacing: 0.04em;
-  display: block;
-  margin-top: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 220px;
-}
-.cpgen-widget .schedule-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--sp-2);
-  flex-wrap: wrap;
-}
-.cpgen-widget .schedule-stats {
-  display: flex;
-  gap: 18px;
-}
-.cpgen-widget .schedule-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-.cpgen-widget .schedule-stat-value {
-  font-size: var(--fs-md);
-  font-weight: var(--fw-bold);
-  color: var(--text-primary);
-  line-height: 1.2;
-}
-.cpgen-widget .schedule-stat-label {
-  font-size: 9px;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-top: 2px;
-}
+
 .cpgen-widget .schedule-dotted-divider {
   border-top: 1px dashed var(--border-primary);
   margin: 14px 0 20px;
 }
 
-/* Nav square (⋮ trigger) */
+/* Nav button — scoped so this page works even when DashboardPage.css isn't loaded */
 .cpgen-widget .schedule-nav-btn {
   display: inline-flex;
   align-items: center;
@@ -141,6 +62,8 @@
   border-color: var(--border-focus);
   color: var(--text-primary);
 }
+
+
 
 /* ── ⋮ dropdown menu ── */
 .cpgen-widget .export-dropdown {
@@ -225,8 +148,109 @@
   }
 }
 
-/* ── Masthead collapse under 1000px ── */
+/* ── Mobile: masthead — matches dashboard compact pattern ── */
+@media (max-width: 640px) {
+  .cpgen-widget .schedule-masthead {
+    grid-template-columns: 1fr auto;
+    padding: var(--sp-3);
+    gap: var(--sp-2);
+    border-width: 1px;
+  }
+  .cpgen-widget .schedule-masthead-center {
+    display: none;
+  }
+  .cpgen-widget .schedule-title-block {
+    gap: 10px;
+    min-width: 0;
+  }
+  .cpgen-widget .schedule-title {
+    font-size: var(--fs-sm);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .cpgen-widget .schedule-subtitle {
+    font-size: 9px;
+    max-width: 100%;
+  }
+  .cpgen-widget .schedule-actions {
+    justify-content: flex-end;
+  }
+}
+
+/* ── Mobile: form panel ── */
+@media (max-width: 640px) {
+  .cpgen-form-panel {
+    padding: var(--sp-3);
+    gap: var(--sp-3);
+  }
+  .cpgen-type-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .cpgen-type-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .cpgen-type-tab {
+    flex: 0 0 auto;
+    padding: 6px 14px;
+  }
+}
+
+/* ── Mobile: member rows stack vertically ── */
+@media (max-width: 480px) {
+  .cpgen-member-row {
+    grid-template-columns: 1fr auto;
+  }
+  .cpgen-member-row .input:nth-child(2) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .cpgen-member-remove {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    align-self: center;
+  }
+}
+
+/* ── Mobile: preview panel ── */
+@media (max-width: 640px) {
+  .cpgen-preview-panel {
+    border-radius: var(--radius-md);
+  }
+  .cpgen-preview-frame {
+    min-height: 380px;
+    padding: 6px;
+  }
+  .cpgen-preview-placeholder {
+    max-width: 240px;
+  }
+  .cpgen-preview-placeholder p {
+    font-size: var(--fs-xs);
+  }
+}
+
+/* ── Mobile: profile card ── */
+@media (max-width: 480px) {
+  .cpgen-profile-card {
+    padding: var(--sp-3);
+  }
+  .cpgen-profile-grid {
+    gap: 4px 10px;
+  }
+}
+
+/* ── Tablet: masthead collapse ── */
 @media (max-width: 1000px) {
+  .cpgen-widget .schedule-masthead {
+    grid-template-columns: 1fr auto;
+  }
+  .cpgen-widget .schedule-masthead-center {
+    grid-column: 1 / -1;
+    order: 3;
+  }
   .cpgen-widget .schedule-actions {
     justify-content: flex-end;
   }
@@ -245,6 +269,8 @@
   flex-direction: column;
   gap: var(--sp-4);
   box-shadow: var(--shadow-sm);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .cpgen-form-header {

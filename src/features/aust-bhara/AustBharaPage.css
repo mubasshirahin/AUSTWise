@@ -50,3 +50,35 @@
   background: color-mix(in srgb, var(--accent-amber) 6%, transparent);
   color: var(--accent-amber);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE — compact masthead matching Cover Page Generator
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  .bhara-widget .schedule-masthead {
+    padding: var(--sp-3);
+    gap: var(--sp-2);
+    border-width: 1px;
+  }
+  .bhara-widget .schedule-title-block {
+    gap: 10px;
+    min-width: 0;
+  }
+  .bhara-widget .schedule-title {
+    font-size: var(--fs-sm);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .bhara-widget .schedule-subtitle {
+    font-size: 9px;
+    max-width: 100%;
+  }
+  .bhara-widget .schedule-actions {
+    justify-content: flex-end;
+  }
+  .bhara-cs-badge {
+    font-size: 9px;
+    padding: 2px 8px;
+  }
+}

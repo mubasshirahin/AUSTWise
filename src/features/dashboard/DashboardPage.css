@@ -1287,6 +1287,24 @@
   gap: 6px;
 }
 @media (max-width: 640px) {
+  .glass-card-static.schedule-widget .export-dropdown {
+    position: static;
+  }
+  .glass-card-static.schedule-widget .export-menu {
+    position: fixed;
+    top: auto;
+    left: 16px;
+    right: 16px;
+    bottom: 60px;
+    z-index: 99999;
+    max-height: 70vh;
+    overflow-y: auto;
+    border-radius: var(--radius-lg);
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    box-shadow: var(--shadow-popper);
+    padding: 4px 0;
+  }
   .week-schedule-widget {
     overflow-x: hidden;
   }
@@ -3425,7 +3443,7 @@ tr.day-row-active {
 /* ── Semester View widget redesign ── */
 .schedule-widget {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   background: transparent;
 }
 
@@ -3437,13 +3455,13 @@ tr.day-row-active {
 .schedule-masthead {
   position: relative;
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: var(--sp-3);
   padding: var(--sp-4);
   margin-bottom: 16px;
   background: transparent;
-  border: 1.5px solid var(--accent-amber);
+  border: 2px solid var(--accent-amber);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
 }
@@ -3672,7 +3690,7 @@ tr.day-row-active {
 
 @media (max-width: 640px) {
   .schedule-masthead {
-    grid-template-columns: 1fr auto auto;
+    grid-template-columns: 1fr auto;
   }
   .schedule-masthead-actions {
     grid-column: auto;

@@ -33,7 +33,7 @@
   margin-bottom: 20px;
   padding: var(--sp-4);
   background: transparent;
-  border: 1.5px solid var(--accent-amber);
+  border: 2px solid var(--accent-amber);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
 }
