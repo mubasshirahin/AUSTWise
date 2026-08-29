@@ -121,8 +121,34 @@
   .gl-hero-content {
     padding: var(--sp-4) var(--sp-3);
   }
+  .gl-hero-eyebrow {
+    margin-bottom: var(--sp-1);
+  }
+  .gl-hero-period-icon {
+    width: 26px;
+    height: 26px;
+  }
+  .gl-hero-title {
+    font-size: 1.6rem;
+    letter-spacing: -0.02em;
+  }
+  .gl-hero-subtitle {
+    font-size: var(--fs-xs);
+    max-width: 100%;
+    line-height: 1.5;
+  }
   .gl-content-card {
     padding: var(--sp-4);
+  }
+  /* Grade Lab content area: tighter padding + compact stat cards */
+  .analytics-content-area {
+    padding: 0 var(--sp-1);
+  }
+  .schedule-stat-value {
+    font-size: 15px;
+  }
+  .schedule-stat-label {
+    font-size: 8px;
   }
 }
 

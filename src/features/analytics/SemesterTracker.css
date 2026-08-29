@@ -225,6 +225,40 @@
   }
 }
 
+@media (max-width: 640px) {
+  .st-widget .schedule-masthead {
+    grid-template-columns: 1fr auto;
+    padding-right: 120px;
+  }
+  /* Load Template + three-dot pinned far right, stats hidden */
+  .st-widget .schedule-masthead-center {
+    display: none;
+  }
+  .st-widget .schedule-actions {
+    position: absolute;
+    top: 50%;
+    right: var(--sp-3);
+    transform: translateY(-50%);
+    margin: 0;
+    justify-content: flex-end;
+  }
+  /* Compact theory/lab tables on phones */
+  .st-table {
+    min-width: 640px;
+    font-size: 10px;
+  }
+  .st-th,
+  .st-td {
+    padding: 6px 4px;
+  }
+  .st-section-header {
+    gap: 6px;
+  }
+  .st-section-title {
+    font-size: 11px;
+  }
+}
+
 /* Masthead pill — flat card color, subtle border (no gradients) */
 .st-widget .schedule-week-pill {
   background: var(--bg-card);

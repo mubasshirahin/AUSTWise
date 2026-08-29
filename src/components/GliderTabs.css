@@ -5,6 +5,16 @@
   padding-bottom: 2px;
 }
 
+/* Mobile: hide the scrollbar (swipe to scroll) — keep the track tappable area */
+@media (hover: none) and (pointer: coarse) {
+  .glider-tabs-wrap {
+    scrollbar-width: none;
+  }
+  .glider-tabs-wrap::-webkit-scrollbar {
+    height: 0;
+  }
+}
+
 .glider-tabs-wrap::-webkit-scrollbar {
   height: 6px;
 }
