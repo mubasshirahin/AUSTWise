@@ -415,6 +415,64 @@ export default function PrerequisiteTree() {
 
   useEffect(() => () => clearTimeout(zoomTimerRef.current), []);
 
+  // ─── Touch gestures: pinch-to-zoom + one-finger pan ───
+  const touchRef = useRef({ dist: 0, panning: false, startX: 0, startY: 0 });
+
+  const getTouchDist = (t) => {
+    const dx = t[0].clientX - t[1].clientX;
+    const dy = t[0].clientY - t[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  const handleTouchStart = useCallback((e) => {
+    if (e.target.closest('.pt-node')) return;
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      touchRef.current.dist = getTouchDist(e.touches);
+    } else if (e.touches.length === 1) {
+      touchRef.current.panning = true;
+      touchRef.current.startX = e.touches[0].clientX - panX;
+      touchRef.current.startY = e.touches[0].clientY - panY;
+    }
+  }, [panX, panY]);
+
+  const handleTouchMove = useCallback((e) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const newDist = getTouchDist(e.touches);
+      const ratio = newDist / (touchRef.current.dist || 1);
+      touchRef.current.dist = newDist;
+      const rect = wrapperRef.current?.getBoundingClientRect();
+      const cx = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - (rect?.left || 0);
+      const cy = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - (rect?.top || 0);
+      setView((prev) => {
+        const next = Math.min(Math.max(prev.scale * ratio, MIN_ZOOM), MAX_ZOOM);
+        if (next === prev.scale) return prev;
+        const r = next / prev.scale;
+        const nv = {
+          scale: next,
+          x: cx - (cx - prev.x) * r,
+          y: cy - (cy - prev.y) * r,
+        };
+        panOffsetRef.current = { x: nv.x, y: nv.y };
+        return nv;
+      });
+      flashZoom();
+    } else if (e.touches.length === 1 && touchRef.current.panning) {
+      const tx = e.touches[0].clientX - touchRef.current.startX;
+      const ty = e.touches[0].clientY - touchRef.current.startY;
+      setView((prev) => ({ ...prev, x: tx, y: ty }));
+    }
+  }, [flashZoom]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (touchRef.current.panning) {
+      touchRef.current.panning = false;
+      panOffsetRef.current = { x: panX, y: panY };
+    }
+    touchRef.current.dist = 0;
+  }, [panX, panY]);
+
   // Close the ⋮ menu on outside click
   useEffect(() => {
     const handleClick = (event) => {
@@ -712,7 +770,10 @@ export default function PrerequisiteTree() {
           onMouseMove={handlePanMove}
           onMouseUp={handlePanEnd}
           onMouseLeave={handlePanEnd}
-          style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          style={{ cursor: isPanning ? 'grabbing' : 'grab', touchAction: 'none' }}
         >
           <div
             className={`prereq-transform-layer ${isZooming ? 'is-zooming' : ''}`}

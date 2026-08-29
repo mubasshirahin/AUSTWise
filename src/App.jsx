@@ -225,7 +225,7 @@ function AppShell() {
   const pageTitles = {
     '/dashboard': 'Dashboard',
     '/routine-templates': 'Routine Templates',
-    '/analytics': 'Grade Lab',
+    '/analytics': 'GradeLab',
     '/vault': 'Vault',
     '/notebook': 'Notebook',
     '/cheatsheets': 'Cheat Sheets',

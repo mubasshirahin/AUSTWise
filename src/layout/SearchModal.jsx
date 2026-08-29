@@ -59,7 +59,7 @@ const searchItems = [
   },
   { label: 'See Plans', path: '/pro', icon: Crown, keywords: 'pro plans pricing premium upgrade' },
   {
-    label: 'Grade Lab', path: '/analytics', icon: GraduationCap, keywords: 'analytics grades cgpa grade',
+    label: 'GradeLab', path: '/analytics', icon: GraduationCap, keywords: 'analytics grades cgpa grade',
     subs: [
       { id: 'cgpagraph', label: 'CGPA Calculator', keywords: 'cgpa calculator grade trends gpa' },
       { id: 'semestertracker', label: 'Semester Wise', keywords: 'semester wise grades per semester' },

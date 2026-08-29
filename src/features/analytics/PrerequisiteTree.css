@@ -142,6 +142,7 @@
   position: relative;
   user-select: none;
   -webkit-user-select: none;
+  touch-action: none;
 }
 
 .prereq-canvas.fullscreen .prereq-viewport {
@@ -418,6 +419,76 @@
   .prereq-toolbar {
     flex-direction: column;
     align-items: stretch;
+  }
+  .prereq-search {
+    min-width: 0;
+    width: 100%;
+  }
+  .prereq-viewport {
+    height: 400px;
+  }
+  .prereq-hint {
+    font-size: 10px;
+  }
+  .prereq-course-detail {
+    margin: 0;
+    border-radius: var(--radius-md);
+  }
+  .prereq-legend {
+    gap: var(--sp-3);
+  }
+  .prereq-legend-title {
+    font-size: 9px;
+  }
+  .prereq-legend-item {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  .prereq-viewport {
+    height: 320px;
+  }
+  .prereq-toolbar {
+    gap: var(--sp-2);
+  }
+  .prereq-search-input {
+    padding: 8px 10px 8px 30px;
+    font-size: var(--fs-xs);
+  }
+  .prereq-hint {
+    font-size: 9px;
+    padding: 0 var(--sp-2);
+  }
+  .prereq-hint strong {
+    font-size: 9px;
+  }
+  .prereq-legend {
+    gap: var(--sp-2);
+    padding: var(--sp-3);
+  }
+  .prereq-legend-group {
+    gap: var(--sp-1);
+  }
+  .prereq-legend-item {
+    font-size: 9px;
+    gap: 4px;
+  }
+  .prereq-legend-swatch {
+    width: 8px;
+    height: 8px;
+  }
+  .prereq-course-detail {
+    border-radius: var(--radius-sm);
+  }
+  .prereq-course-detail-code {
+    font-size: 10px;
+  }
+  .prereq-course-detail-name {
+    font-size: 10px;
+  }
+  .prereq-widget .schedule-week-nav {
+    display: none;
   }
 }
 

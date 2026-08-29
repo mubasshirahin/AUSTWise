@@ -193,7 +193,7 @@ export default function CourseReview() {
               });
             }}
           >
-            <ArrowUpDown size={14} /> {sortMode}
+            <ArrowUpDown size={14} />
           </button>
           <button
             type="button"

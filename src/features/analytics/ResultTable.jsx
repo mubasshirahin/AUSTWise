@@ -271,19 +271,20 @@ export default function ResultTable({ onResultsChange }) {
   const inputRefs = useRef({});
 
   const handleKeyDown = (e, semNum, rowIdx, fieldIdx) => {
-    const fieldsPerRow = 3; // name, credit, grade (skip course code)
+    const fields = ['code', 0, 1, 2]; // code, name, credit, grade
+    const currIdx = fields.indexOf(fieldIdx);
     if (e.key === 'ArrowRight') {
       e.preventDefault();
-      if (fieldIdx + 1 < fieldsPerRow) {
-        inputRefs.current[`r_${semNum}_${rowIdx}_${fieldIdx + 1}`]?.focus();
+      if (currIdx + 1 < fields.length) {
+        inputRefs.current[`r_${semNum}_${rowIdx}_${fields[currIdx + 1]}`]?.focus();
       } else if (rowIdx + 1 < (draftResults.find(s => s.semester === semNum)?.courses.length || 0)) {
-        inputRefs.current[`r_${semNum}_${rowIdx + 1}_0`]?.focus();
+        inputRefs.current[`r_${semNum}_${rowIdx + 1}_code`]?.focus();
       }
     }
     if (e.key === 'ArrowLeft') {
       e.preventDefault();
-      if (fieldIdx - 1 >= 0) {
-        inputRefs.current[`r_${semNum}_${rowIdx}_${fieldIdx - 1}`]?.focus();
+      if (currIdx - 1 >= 0) {
+        inputRefs.current[`r_${semNum}_${rowIdx}_${fields[currIdx - 1]}`]?.focus();
       } else if (rowIdx - 1 >= 0) {
         inputRefs.current[`r_${semNum}_${rowIdx - 1}_2`]?.focus();
       }
@@ -576,25 +577,27 @@ export default function ResultTable({ onResultsChange }) {
                   >
                     <td style={{ fontWeight: 'var(--fw-semibold)', position: 'relative', zIndex: 1000 }}>
                       {isEditing ? (
-                        <div style={{ position: 'relative', zIndex: 10001 }}>
-                          <CourseAutocomplete
-                            value={course.code}
-                            department={user?.department}
-                            onCourseSelect={(selectedCourse) => {
-                              updateCourseField(displaySemester.semester, courseIndex, 'code', selectedCourse.code);
-                              updateCourseField(displaySemester.semester, courseIndex, 'name', selectedCourse.name);
-                              // Auto-fill credit based on last digit of course code
-                              // Odd digit (1,3,5,7,9) = 3 credits, Even digit (0,2,4,6,8) = 1.5 credits
-                              const lastDigit = parseInt(selectedCourse.code.slice(-1));
-                              if (!isNaN(lastDigit)) {
-                                const autoCredit = lastDigit % 2 === 1 ? 3 : 1.5;
-                                updateCourseField(displaySemester.semester, courseIndex, 'credit', autoCredit.toString());
-                              }
-                            }}
-                            placeholder="CSE 4201"
-                            type="code"
-                          />
-                        </div>
+                        <input
+                          ref={el => inputRefs.current[`r_${displaySemester.semester}_${courseIndex}_code`] = el}
+                          className="input"
+                          value={course.code}
+                          onChange={(event) => updateCourseField(displaySemester.semester, courseIndex, 'code', event.target.value)}
+                          placeholder="CSE 4201"
+                          style={{
+                            width: '100%',
+                            minWidth: '90px',
+                            background: 'transparent',
+                            border: 'none',
+                            boxShadow: 'none',
+                            color: 'var(--accent-blue)',
+                            fontWeight: 'var(--fw-bold)',
+                            fontSize: 'inherit',
+                            padding: '2px 4px',
+                            outline: 'none'
+                          }}
+                          onFocus={(e) => e.target.select()}
+                          onKeyDown={e => handleKeyDown(e, displaySemester.semester, courseIndex, 'code')}
+                        />
                       ) : (
                         <span style={{ color: 'var(--accent-blue)', fontWeight: 'var(--fw-bold)' }}>{course.code || '-'}</span>
                       )}
@@ -607,7 +610,18 @@ export default function ResultTable({ onResultsChange }) {
                           value={course.name}
                           onChange={(event) => updateCourseField(displaySemester.semester, courseIndex, 'name', event.target.value)}
                           placeholder="Course title"
-                          style={{ minWidth: '220px' }}
+                          style={{
+                            width: '100%',
+                            minWidth: '180px',
+                            background: 'transparent',
+                            border: 'none',
+                            boxShadow: 'none',
+                            color: 'inherit',
+                            fontSize: 'inherit',
+                            padding: '2px 4px',
+                            outline: 'none'
+                          }}
+                          onFocus={(e) => e.target.select()}
                           onKeyDown={e => handleKeyDown(e, displaySemester.semester, courseIndex, 0)}
                         />
                       ) : (
@@ -622,9 +636,20 @@ export default function ResultTable({ onResultsChange }) {
                           type="number"
                           min="0"
                           step="0.5"
-                          value={course.credit}
+                          value={formatCredit(course.credit)}
                           onChange={(event) => updateCourseField(displaySemester.semester, courseIndex, 'credit', event.target.value)}
-                          style={{ width: '82px', margin: '0 auto', textAlign: 'center' }}
+                          style={{
+                            width: '56px',
+                            background: 'transparent',
+                            border: 'none',
+                            boxShadow: 'none',
+                            color: 'inherit',
+                            fontSize: 'inherit',
+                            textAlign: 'center',
+                            padding: '2px 4px',
+                            outline: 'none'
+                          }}
+                          onFocus={(e) => e.target.select()}
                           onKeyDown={e => handleKeyDown(e, displaySemester.semester, courseIndex, 1)}
                         />
                       ) : (
@@ -638,7 +663,24 @@ export default function ResultTable({ onResultsChange }) {
                           className="input cgpa-grade-select"
                           value={course.grade}
                           onChange={(event) => updateCourseField(displaySemester.semester, courseIndex, 'grade', event.target.value)}
-                          style={{ width: '76px', padding: '5px 8px', textAlign: 'center', margin: '0 auto' }}
+                          style={{
+                            width: '60px',
+                            minWidth: '60px',
+                            background: 'transparent',
+                            border: 'none',
+                            boxShadow: 'none',
+                            color: 'inherit',
+                            fontSize: 'inherit',
+                            fontWeight: '700',
+                            textAlign: 'center',
+                            padding: '2px 4px',
+                            outline: 'none',
+                            appearance: 'none',
+                            backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")",
+                            backgroundRepeat: 'no-repeat',
+                            backgroundPosition: 'right 4px center',
+                            paddingRight: '20px'
+                          }}
                           onKeyDown={e => handleKeyDown(e, displaySemester.semester, courseIndex, 2)}
                         >
                           {gradeOptions.map((grade) => (
@@ -693,14 +735,14 @@ export default function ResultTable({ onResultsChange }) {
             <FileSpreadsheet size={20} strokeWidth={2.2} />
           </div>
           <div>
-            <span className="schedule-overline">Transcript</span>
+            <span className="schedule-overline">GradeLab</span>
             <p className="schedule-title">Semester Breakdown</p>
             <span className="schedule-subtitle">Detailed semester-wise grade sheet breakdown</span>
           </div>
         </div>
         <div className="schedule-masthead-center" />
         <div className="cgpa-transcript-actions">
-          <button className="schedule-nav-btn cgpa-load-template-btn" onClick={() => setShowDeptModal(true)}>
+          <button className="schedule-nav-btn cgpa-load-template-btn cgpa-load-desktop" onClick={() => setShowDeptModal(true)}>
             <Layers size={15} /> Load Template
           </button>
           <div className="export-dropdown" ref={menuRef}>
@@ -726,6 +768,13 @@ export default function ResultTable({ onResultsChange }) {
           )}
           </div>
         </div>
+      </div>
+
+      {/* Mobile: Load Template sits right below the masthead box, right-aligned */}
+      <div className="cgpa-load-mobile-wrap">
+        <button className="schedule-nav-btn cgpa-load-template-btn" onClick={() => setShowDeptModal(true)}>
+          <Layers size={15} /> Load Template
+        </button>
       </div>
 
       <div className="schedule-dotted-divider" />

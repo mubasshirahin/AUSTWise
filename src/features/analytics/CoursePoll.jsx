@@ -113,6 +113,7 @@ function Leaderboard({ title, icon, accent, rows, totalVoters }) {
 
 export default function CoursePoll() {
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
 
   // Live-sync: re-render leaderboards when another device submits a ballot.
@@ -159,12 +160,20 @@ export default function CoursePoll() {
 
   const submit = (e) => {
     e.preventDefault();
+    const ok = window.confirm(
+      '⚠️ Are you sure?\n\nYou can only submit once. Your picks cannot be changed after submitting.\n\nClick OK to confirm your vote.'
+    );
+    if (!ok) return;
+
+    setSubmitting(true);
     try {
       saveMyBallot(best, worst);
       setError('');
       setVoted(true);
     } catch (err) {
       setError(err.message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -195,12 +204,22 @@ export default function CoursePoll() {
               <CheckCircle size={15} /> Recorded
             </span>
           ) : (
-            <button type="submit" form="ballot-form" className="poll-submit">
-              Submit My Picks <Send size={14} />
+            <button type="submit" form="ballot-form" className="poll-submit" disabled={submitting}>
+              {submitting ? (
+                <>Saving...</>
+              ) : (
+                <><span>Submit My Picks</span> <Send size={14} /></>
+              )}
             </button>
           )}
         </div>
       </div>
+
+      {!voted && (
+        <div className="poll-submit-warning">
+          ⚠️ Pick courses wisely — you can only submit once!
+        </div>
+      )}
 
       <div className="schedule-dotted-divider" />
 
