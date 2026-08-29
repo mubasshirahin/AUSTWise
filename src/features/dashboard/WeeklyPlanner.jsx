@@ -23,6 +23,9 @@ export default function WeeklyPlanner() {
   });
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
+  const [activeDay, setActiveDay] = useState(null);
+  const ActiveDayRef = useRef(null);
+  ActiveDayRef.current = activeDay;
   const exportRef = useRef(null);
 
   // ── Pinch-to-zoom for routine grid on mobile ──
@@ -30,6 +33,8 @@ export default function WeeklyPlanner() {
   const [gridScale, setGridScale] = useState(1);
   const pinchRef = useRef({ initialDist: 0, initialScale: 1 });
   const lastTapRef = useRef(0);
+
+
 
   const getDistance = useCallback((touches) => {
     const dx = touches[0].clientX - touches[1].clientX;
@@ -114,6 +119,10 @@ export default function WeeklyPlanner() {
       if (exportRef.current && !exportRef.current.contains(e.target)) {
         setShowMenu(false);
       }
+      // Clicking outside the routine grid clears the day highlight.
+      if (ActiveDayRef.current && tableWrapRef.current && !tableWrapRef.current.contains(e.target)) {
+        setActiveDay(null);
+      }
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
@@ -151,6 +160,7 @@ export default function WeeklyPlanner() {
     }
     return () => { document.body.style.overflow = ''; };
   }, [showLoadModal]);
+
 
   // Time slot columns — same grid always, just the labels change for Ramadan
   const timeSlots = [
@@ -691,6 +701,7 @@ export default function WeeklyPlanner() {
                    </div>
                  </button>
 
+
                </div>
              )}
            </div>
@@ -738,8 +749,12 @@ export default function WeeklyPlanner() {
                 .sort((a, b) => a.startIdx - b.startIdx);
 
               return (
-                <tr key={day}>
-                  <td className="weekly-day-cell">
+                <tr key={day} className={activeDay === day ? 'day-row-active' : undefined}>
+                  <td
+                    className="weekly-day-cell"
+                    title={activeDay === day ? 'Click again to deselect day' : `Highlight ${day}`}
+                    onClick={() => setActiveDay(activeDay === day ? null : day)}
+                  >
                     {day.substring(0, 3)}
                   </td>
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Calendar, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, FileDown, MoreVertical, Settings, Check } from 'lucide-react';
+import { Calendar, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, FileDown, MoreVertical, Check } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useLiveValue } from '../../utils/liveStore';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
@@ -15,7 +15,6 @@ export default function WeekSchedule() {
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [showAddModal, setShowAddModal] = useState(false);
   const [, setSelectedDay] = useState(null);
-  const [showSettings, setShowSettings] = useState(false);
   const [newTask, setNewTask] = useState({
     courseCode: '',
     courseName: '',
@@ -578,13 +577,6 @@ export default function WeekSchedule() {
                 <button className="export-menu-item" onClick={() => { downloadScheduleImage(); setShowExportMenu(false); }}>
                   <FileDown size={14} /> Export as Image
                 </button>
-                <div className="export-menu-sep" />
-                <button
-                  className="export-menu-item"
-                  onClick={() => { setShowExportMenu(false); setShowSettings(true); }}
-                >
-                  <Settings size={14} /> Semester Start Date
-                </button>
               </div>
             )}
           </div>
@@ -728,68 +720,6 @@ export default function WeekSchedule() {
           </span>
         )}
       </div>
-
-      {/* Settings Modal - Set Semester Start Date */}
-      {showSettings && (
-        <div className="modal-overlay" onClick={() => setShowSettings(false)} style={{ overflow: 'hidden', padding: '16px' }}>
-          <div className="modal glass-card-static" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '380px', width: '88%', padding: '18px 20px 16px', margin: 0, animation: 'scaleIn 0.2s ease' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px', paddingBottom: '12px', borderBottom: '1px solid var(--border-secondary)' }}>
-              <div className="btn-icon" style={{ background: 'var(--accent-blue-glow)', color: 'var(--accent-blue)', fontSize: '15px', borderRadius: 'var(--radius-sm)', width: '32px', height: '32px' }}>
-                📅
-              </div>
-              <div>
-                <h3 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'var(--fw-bold)', margin: 0, lineHeight: 1.3 }}>Semester Settings</h3>
-                <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', margin: '1px 0 0' }}>Start date for week calculation</p>
-              </div>
-              <button className="btn btn-icon btn-ghost" onClick={() => setShowSettings(false)} style={{ marginLeft: 'auto', fontSize: '14px' }}>
-                ✕
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div>
-                <label style={{ fontSize: 'var(--fs-xs)', fontWeight: 'var(--fw-semibold)', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
-                  Semester Start Date
-                </label>
-                <input
-                  type="date"
-                  value={semesterStart}
-                  onChange={(e) => saveSemesterStart(e.target.value)}
-                  className="input"
-                  disabled={!canManageStartDate}
-                  title={!canManageStartDate ? 'Only admin or CR can change the semester start date.' : ''}
-                />
-                <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: '4px' }}>
-                  {canManageStartDate
-                    ? 'Sets when <strong>Week 1</strong> begins — everyone sees this same date.'
-                    : 'This date is set by admin/CR — students can only view it.'}
-                </p>
-              </div>
-
-              <div style={{
-                background: 'var(--accent-blue-glow)',
-                border: '1px solid color-mix(in srgb, var(--accent-blue) 18%, transparent)',
-                borderRadius: 'var(--radius-sm)', padding: '10px 12px',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                  <span style={{ fontSize: 'var(--fs-xs)' }}>📊</span>
-                  <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 'var(--fw-semibold)', color: 'var(--accent-blue)' }}>
-                    {getWeekLabel()}
-                  </span>
-                </div>
-                <p style={{ margin: 0, fontSize: 'var(--fs-xs)', fontWeight: 'var(--fw-bold)' }}>
-                  {new Date(semesterStart).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} — started
-                </p>
-              </div>
-
-              <div className="flex gap-2" style={{ paddingTop: '2px' }}>
-                <button className="btn btn-secondary flex-1" onClick={() => setShowSettings(false)} style={{ fontSize: 'var(--fs-xs)' }}>Cancel</button>
-                <button className="btn btn-primary flex-1" onClick={() => setShowSettings(false)} style={{ fontSize: 'var(--fs-xs)' }}>Done</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Task Details Modal */}
       {selectedTask && (
