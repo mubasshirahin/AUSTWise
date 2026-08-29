@@ -240,26 +240,29 @@
   letter-spacing: 0.04em;
 }
 
-/* ─── Flow explainer (all roles) ─── */
-.exam-flow-info {
-  margin-top: var(--sp-3);
-  padding: 10px 14px;
-  border: 1px dashed var(--border-primary);
-  border-radius: var(--radius-md);
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-.exam-flow-info summary {
-  cursor: pointer;
-  font-weight: var(--fw-semibold);
-  color: var(--text-primary);
-  user-select: none;
-}
-.exam-flow-info ul {
-  margin: 10px 0 4px;
-  padding-left: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  line-height: 1.55;
+/* ─── Zero Hour masthead + grid: small-phone polish ─── */
+@media (max-width: 640px) {
+  /* Reuses the shared compact masthead rules from DashboardPage.css; add the
+     bits that are exam-specific. */
+  .exam-widget .exam-access-badge,
+  .exam-widget .schedule-title-block > div:last-child > .exam-access-badge {
+    display: none;
+  }
+  .exam-widget .schedule-stats {
+    gap: 12px;
+  }
+  .exam-widget .schedule-stat-value {
+    font-size: 13px;
+  }
+  .exam-widget .schedule-day-header,
+  .exam-widget .schedule-stat-label {
+    font-size: 8px;
+  }
+  /* Course grid: 1 column on small phones so cells aren't squished */
+  .exam-grid {
+    grid-template-columns: 1fr;
+  }
+  .exam-updated-meta {
+    font-size: 9px;
+  }
 }

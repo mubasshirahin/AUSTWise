@@ -223,18 +223,6 @@ export default function ExamTracker() {
 
       {isAdminView && <ExamFlowTracker user={user} canEdit={canEdit} />}
 
-      {/* ─── System-flow explainer (visible to every role) ─── */}
-      <details className="exam-flow-info">
-        <summary>How the Zero Hour sharing system works</summary>
-        <ul>
-          <li><strong>Who updates:</strong> Only the section CR (and SR) can add or change exam dates &amp; syllabus. Admin/moderator have override access for verification.</li>
-          <li><strong>Who views:</strong> Every student in the same department · year-semester · section · lab group sees the exact schedule their CR publishes — read-only, with no Edit button.</li>
-          <li><strong>Enforcement:</strong> The view-only rule is enforced on the server, not just hidden in the UI — a student attempting to write the shared schedule receives a 403 rejection.</li>
-          <li><strong>Real-time sync:</strong> When the CR saves a change, it is pushed over WebSocket to every online section member within seconds — no refresh needed.</li>
-          <li><strong>Traceability:</strong> Each save records who updated the schedule and when, shown above so students always know how fresh the data is.</li>
-        </ul>
-      </details>
-
       {/* ─── Detail Overlay ─── */}
       {detailModal && (
         <div className="modal-overlay" onClick={() => setDetailModal(null)}>

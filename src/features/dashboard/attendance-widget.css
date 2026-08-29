@@ -618,7 +618,32 @@
 
 @media (max-width: 576px) {
   .att-guide-stats { flex-direction: column; }
-  .att-instance-row { flex-wrap: wrap; }
+  .att-instance-row {
+    flex-wrap: nowrap;
+    gap: 4px;
+    padding: 4px 8px;
+    font-size: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* Keep one-line: date + time stay, label hidden, room truncates inline */
+  .att-instance-row > .att-instance-label {
+    display: none;
+  }
+  .att-instance-date,
+  .att-instance-day,
+  .att-instance-time {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .att-instance-room {
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -630,28 +655,4 @@
   .attendance-widget .schedule-day-count {
     animation: none;
   }
-}
-
-/* ─── Workflow explainer (same pattern as ExamTracker .exam-flow-info) ─── */
-.att-flow-info {
-  margin-top: var(--sp-3);
-  padding: 10px 14px;
-  border: 1px dashed var(--border-primary);
-  border-radius: var(--radius-md);
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-.att-flow-info summary {
-  cursor: pointer;
-  font-weight: var(--fw-semibold);
-  color: var(--text-primary);
-  user-select: none;
-}
-.att-flow-info ul {
-  margin: 10px 0 4px;
-  padding-left: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  line-height: 1.55;
 }

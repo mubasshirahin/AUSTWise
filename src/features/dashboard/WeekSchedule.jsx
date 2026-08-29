@@ -673,13 +673,15 @@ export default function WeekSchedule() {
         </>
       ) : (
         <>
-          <div className="schedule-grid schedule-days-row" style={{ marginBottom: '12px' }}>
-            {['Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu'].map((day, i) => (
-              <div key={day} className={`schedule-day-header${i < 2 ? ' weekend' : ''}`}>{day}</div>
-            ))}
-          </div>
-          <div className="schedule-grid" style={{ alignItems: 'start' }}>
-            {weekDates.map(date => renderDayCard(date))}
+          <div className="schedule-week-scroll">
+            <div className="schedule-grid schedule-days-row" style={{ marginBottom: '12px' }}>
+              {['Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu'].map((day, i) => (
+                <div key={day} className={`schedule-day-header${i < 2 ? ' weekend' : ''}`}>{day}</div>
+              ))}
+            </div>
+            <div className="schedule-grid" style={{ alignItems: 'start' }}>
+              {weekDates.map(date => renderDayCard(date))}
+            </div>
           </div>
         </>
       )}

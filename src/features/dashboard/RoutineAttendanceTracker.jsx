@@ -493,7 +493,7 @@ export default function RoutineAttendanceTracker() {
             title={editMode ? 'Switch to view-only' : 'Enable marking attendance'}
           >
             {editMode ? <PenLine size={13} /> : <Eye size={13} />}
-            {editMode ? 'Edit Mode' : 'View Mode'}
+            <span className="att-mode-label">{editMode ? 'Edit Mode' : 'View Mode'}</span>
           </button>
         </div>
       </div>
@@ -529,17 +529,7 @@ export default function RoutineAttendanceTracker() {
       )}
 
       {/* ─── Workflow explainer ─── */}
-      <details className="att-flow-info">
-        <summary>How this attendance tracker works</summary>
-        <ul>
-          <li><strong>Courses:</strong> auto-imported from your personal routine — nothing to set up.</li>
-          <li><strong>Semester list:</strong> tap a course to see every class day of the {SEMESTER_WEEKS}-week semester (mid-term break excluded).</li>
-          <li><strong>Manual update:</strong> hit Present / Absent on any class row — tap again to clear.</li>
-          <li><strong>Auto update:</strong> answer the 9 PM Telegram prompt; the bot's marks appear here instantly.</li>
-          <li><strong>Realtime sync:</strong> marks are stored server-side against your account, so your phone and every other device update live — no refresh needed.</li>
-          <li><strong>Average:</strong> semester average (attended ÷ classes held) feeds the dashboard's Avg. Attendance card automatically.</li>
-        </ul>
-      </details>
+      {/* details removed: explainer hidden via site-wide cleanup */}
     </div>
   );
 }
