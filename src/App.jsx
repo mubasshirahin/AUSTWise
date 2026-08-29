@@ -26,7 +26,6 @@ const FeaturesPage = lazy(() => import('./pages/FeaturesPage'));
 const PricingPage = lazy(() => import('./pages/PricingPage'));
 const AboutUsPage = lazy(() => import('./pages/AboutUsPage'));
 const NotificationRunner = lazy(() => import('./components/NotificationRunner'));
-const QuotePopup = lazy(() => import('./features/dashboard/QuotePopup'));
 const FloatingBackground = lazy(() => import('./components/FloatingBackground'));
 
 const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage'));
@@ -58,6 +57,8 @@ const ShadowPage = lazy(() => import('./features/shadow/ShadowPage'));
 const ProPage = lazy(() => import('./features/pro/ProPage'));
 const ProductivityPage = lazy(() => import('./features/productivity/ProductivityPage'));
 const DailyLifePage = lazy(() => import('./features/daily-life/DailyLifePage'));
+const PaymentSuccessPage = lazy(() => import('./pages/PaymentSuccessPage'));
+const PaymentCancelPage = lazy(() => import('./pages/PaymentCancelPage'));
 
 import './App.css';
 
@@ -131,7 +132,6 @@ function AppContent() {
     <StalkProvider>
       <RoutineProvider>
         <Suspense fallback={null}>
-          <QuotePopup />
           <NotificationRunner />
           <FloatingBackground />
         </Suspense>
@@ -193,6 +193,8 @@ function AppContent() {
                   <Route path="/daily-life" element={<DailyLifePage />} />
                   <Route path="/pro" element={<ProPage />} />
                   <Route path="/productivity" element={<ProductivityPage />} />
+                  <Route path="/payment/success" element={<PaymentSuccessPage />} />
+                  <Route path="/payment/cancel" element={<PaymentCancelPage />} />
                   <Route path="/login" element={<Navigate to="/" replace />} />
                 </Routes>
               </Suspense>
@@ -306,6 +308,8 @@ function AppShell() {
           <Route path="/features" element={<FeaturesPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/about" element={<AboutUsPage />} />
+          <Route path="/payment/success" element={<PaymentSuccessPage />} />
+          <Route path="/payment/cancel" element={<PaymentCancelPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

@@ -36,8 +36,9 @@ services:
         sync: false
         # Set after first deploy: https://austwise.onrender.com
       - key: ALLOWED_ORIGIN
-        sync: false
+        value: https://austwise.vercel.app
         # Frontend origin if split-host (Vercel/Netlify). Empty = same-origin.
+        # Restrict CORS/cookies to the live Vercel front-end only.
       - key: COOKIE_SECURE
         value: "1"
       - key: JWT_SECRET
@@ -88,4 +89,8 @@ services:
       - key: SSL_STORE_PASSWORD
         sync: false
       - key: SSL_IS_LIVE
+        sync: false
+      - key: PIPRAPAY_API_KEY
+        sync: false
+      - key: PIPRAPAY_BASE_URL
         sync: false

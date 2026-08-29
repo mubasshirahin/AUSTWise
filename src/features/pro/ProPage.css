@@ -243,6 +243,18 @@
   color: var(--text-tertiary);
   margin-top: 4px;
 }
+.pro-plan-note {
+  font-size: 10px;
+  color: var(--accent-emerald);
+  font-weight: var(--fw-semibold);
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  background: var(--accent-emerald-glow);
+}
 
 /* Price */
 .pro-plan-price {

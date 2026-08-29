@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import './ProPage.css';
 import { topTestimonials, bottomTestimonials } from '../../data/testimonials';
+import { API_URL, wakeBackend } from '../../utils/api';
 
 // ─── Plan Definitions ───
 const PLANS = [
@@ -39,9 +40,10 @@ const PLANS = [
     id: 'pro',
     name: 'Helix',
     subtitle: 'The toolkit',
-    price: { monthly: 50, yearly: 40 },
+    price: { monthly: 50 },
     period: '/month',
     originalPrice: null,
+    note: '1-month access, then back to Node (free)',
     icon: Crown,
     iconClass: 'helix',
     ctaClass: 'helix',
@@ -64,9 +66,9 @@ const PLANS = [
     id: 'premium',
     name: 'Apex',
     subtitle: 'The full suite',
-    price: { monthly: 60, yearly: 45 },
-    period: '/month',
-    originalPrice: { monthly: 75, yearly: 60 },
+    price: { yearly: 500 },
+    period: '/year',
+    originalPrice: { yearly: 600 },
     icon: Zap,
     iconClass: 'apex',
     ctaClass: 'apex',
@@ -157,7 +159,7 @@ const BENEFITS = [
 const FAQ_DATA = [
   {
     question: 'Can I cancel anytime?',
-    answer: 'Yes. Cancel anytime from Settings. Premium features stay active until the end of your billing period.',
+    answer: 'Yes. Cancel anytime from Settings. Premium features stay active until the end of your billing period. Helix auto-reverts to Node (free) after 1 month.',
   },
   {
     question: 'What if I don\'t upgrade?',
@@ -165,7 +167,7 @@ const FAQ_DATA = [
   },
   {
     question: 'Is there a student discount?',
-    answer: 'Our pricing is already student-first. Yearly billing saves 20% — that\'s ৳160/year on Helix. No promo codes needed.',
+    answer: 'Our pricing is already student-first. Helix is ৳50/month (1-month access, then back to Node free), Apex is ৳500/year (normally ৳600). No promo codes needed.',
   },
   {
     question: 'Can I switch between Helix and Apex?',
@@ -247,13 +249,14 @@ function TestimonialMarquee() {
 }
 
 // ─── Pricing Card ───
-function PricingCard({ plan, billing, isCurrent, onSelect }) {
+function PricingCard({ plan, isCurrent, onSelect }) {
   const Icon = plan.icon;
-  const activePrice = billing === 'yearly' ? plan.price.yearly : plan.price.monthly;
+  const activePrice = plan.price.monthly || plan.price.yearly;
   const originalPrice = plan.originalPrice
-    ? billing === 'yearly' ? plan.originalPrice.yearly : plan.originalPrice.monthly
+    ? plan.originalPrice.monthly || plan.originalPrice.yearly
     : null;
   const isFree = plan.id === 'free';
+  const periodLabel = plan.price.monthly ? '/month' : '/year';
 
   return (
     <div className={`pro-plan ${plan.featured ? 'featured' : ''}`}>
@@ -270,6 +273,9 @@ function PricingCard({ plan, billing, isCurrent, onSelect }) {
         </div>
         <div className="pro-plan-name">{plan.name}</div>
         <div className="pro-plan-subtitle">{plan.subtitle}</div>
+        {plan.note && (
+          <div className="pro-plan-note">{plan.note}</div>
+        )}
       </div>
 
       <div className="pro-plan-price">
@@ -280,15 +286,15 @@ function PricingCard({ plan, billing, isCurrent, onSelect }) {
             <div className="pro-plan-amount">
               <span className="cur">৳</span>
               <span className="num">{activePrice}</span>
-              <span className="per">{plan.period}</span>
+              <span className="per">{periodLabel}</span>
             </div>
             {originalPrice && (
               <div className="pro-plan-original">
-                <span className="pro-strike">৳{originalPrice}/month</span>
-                <span className="pro-save">Save 20%</span>
+                <span className="pro-strike">৳{originalPrice}{periodLabel}</span>
+                <span className="pro-save">Save ৳{originalPrice - activePrice}</span>
               </div>
             )}
-            <div className="pro-plan-perday">≈ ৳{(activePrice / 30).toFixed(1)}/day</div>
+            <div className="pro-plan-perday">≈ ৳{(activePrice / (plan.price.monthly ? 30 : 365)).toFixed(1)}/day</div>
           </>
         )}
       </div>
@@ -342,11 +348,26 @@ function PricingCard({ plan, billing, isCurrent, onSelect }) {
 
 // ─── Main Page ───
 export default function ProPage() {
-  const billing = 'yearly';
   const [showModal, setShowModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [upgradeState, setUpgradeState] = useState('pick');
-  const [currentPlan, setCurrentPlan] = useState(() => localStorage.getItem('austwise_plan') || 'free');
+
+  const checkPlanExpiry = () => {
+    const stored = localStorage.getItem('austwise_plan');
+    const storedDate = localStorage.getItem('austwise_plan_date');
+    if (stored === 'pro' && storedDate) {
+      const subDate = new Date(storedDate);
+      const now = new Date();
+      const diffDays = (now - subDate) / (1000 * 60 * 60 * 24);
+      if (diffDays > 30) {
+        localStorage.setItem('austwise_plan', 'free');
+        localStorage.removeItem('austwise_plan_date');
+      }
+    }
+  };
+
+  checkPlanExpiry();
+  const [currentPlan] = useState(() => localStorage.getItem('austwise_plan') || 'free');
 
   const handleSelectPlan = (planId) => {
     if (planId === 'free') return;
@@ -355,14 +376,37 @@ export default function ProPage() {
     setShowModal(true);
   };
 
-  const handleUpgrade = () => {
+  const handleUpgrade = async () => {
     if (!selectedPlan) return;
+    const plan = PLANS.find((p) => p.id === selectedPlan);
+    if (!plan) return;
+
     setUpgradeState('loading');
-    setTimeout(() => {
-      localStorage.setItem('austwise_plan', selectedPlan);
-      setCurrentPlan(selectedPlan);
-      setUpgradeState('success');
-    }, 900);
+    wakeBackend();
+
+    try {
+      const amount = plan.price.monthly || plan.price.yearly;
+      const res = await fetch(`${API_URL}/api/payment/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          amount,
+          purpose: `pro-${selectedPlan}`,
+          description: `AUSTWise ${plan.name} plan`,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.ppUrl) {
+        window.location.href = data.ppUrl;
+      } else {
+        alert(data.error || 'Payment creation failed. Please try again.');
+        setUpgradeState('pick');
+      }
+    } catch {
+      alert('Network error. Please try again.');
+      setUpgradeState('pick');
+    }
   };
 
   const closeModal = () => {
@@ -403,7 +447,7 @@ export default function ProPage() {
               <span>Free trial</span>
             </div>
             <div className="pro-stat">
-              <strong>৳40</strong>
+              <strong>৳50</strong>
               <span>From /month</span>
             </div>
           </div>
@@ -417,7 +461,6 @@ export default function ProPage() {
             <PricingCard
               key={plan.id}
               plan={plan}
-              billing={billing}
               isCurrent={currentPlan === plan.id}
               onSelect={handleSelectPlan}
             />
@@ -583,8 +626,8 @@ export default function ProPage() {
                 <div className="pro-modal-plans">
                   {PLANS.filter((p) => p.id !== 'free').map((plan) => {
                     const Icon = plan.icon;
-                    const price = billing === 'yearly' ? plan.price.yearly : plan.price.monthly;
-                    const period = billing === 'yearly' ? '/mo · billed yearly' : '/month';
+                    const price = plan.price.monthly || plan.price.yearly;
+                    const period = plan.price.monthly ? '/month' : '/year';
                     return (
                       <label
                         key={plan.id}

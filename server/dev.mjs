@@ -119,6 +119,7 @@ import {
   deleteCredential,
   revealPassword,
 } from './passwordVaultDB.mjs';
+import { createCharge, verifyPayment } from './payment.mjs';
 import { createWSServer, closeWSServer, broadcastToAll, broadcastToUsers, broadcastToUser, getPresenceMap } from './wsServer.mjs';
 import {
   getUserStoreValue, setUserStoreValue, deleteUserStoreValue, listUserStoreKeys,
@@ -312,7 +313,9 @@ function applyCorsHeaders(req, res) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, mh-piprapay-api-key');
+    // Allow the browser to send auth cookies cross-origin (Vercel FE → Render BE).
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
 }
 
@@ -393,7 +396,7 @@ function applySecurityHeaders(res) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(self)');
   if (process.env.ENABLE_CSP === '1') {
     res.setHeader('Content-Security-Policy', process.env.CSP_HEADER || "default-src 'self'");
   }
@@ -3676,6 +3679,145 @@ async function handleApiRequest(req, res) {
   }
 
   // ═══════════════════════════════════════════════════════════════════
+  // PipraPay Payment Gateway (self-hosted, free forever)
+
+  // POST /api/payment/create — create a payment charge
+  if (req.url === '/api/payment/create' && req.method === 'POST') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
+    try {
+      const body = await readJsonBody(req);
+      const { amount, purpose, description } = body;
+      if (!amount || Number(amount) <= 0) {
+        sendJson(res, 400, { success: false, error: 'Valid amount required.' });
+        return;
+      }
+      const user = await getUserById(auth.id);
+      if (!user) {
+        sendJson(res, 400, { success: false, error: 'User not found.' });
+        return;
+      }
+      const baseUrl = process.env.PUBLIC_BASE_URL || `http://localhost:${process.env.PORT || 5174}`;
+      const metadata = {
+        user_id: String(auth.id),
+        user_email: auth.email,
+        purpose: purpose || 'general',
+        description: description || 'AUSTWise payment',
+      };
+      console.log('💰 Creating PipraPay charge:', { amount, purpose, user: auth.email });
+      const result = await createCharge({
+        fullName: user.name || auth.email,
+        emailMobile: auth.email,
+        amount: Number(amount),
+        metadata,
+        redirectUrl: `${baseUrl}/payment/success`,
+        cancelUrl: `${baseUrl}/payment/cancel`,
+        webhookUrl: `${baseUrl}/api/payment/webhook`,
+      });
+      // PipraPay may return the checkout URL in different fields
+      const ppUrl = result.pp_url || result.checkout_url || result.url;
+      const ppId = result.pp_id || result.invoice_id;
+      const isOk = result.status === true || result.status === 'success' || result.status === true;
+      if (isOk && ppUrl) {
+        console.log('✅ PipraPay charge created:', ppId, ppUrl);
+        sendJson(res, 200, {
+          success: true,
+          ppId,
+          ppUrl,
+        });
+      } else {
+        console.error('❌ PipraPay create-charge failed:', (result.message || JSON.stringify(result)).slice(0, 500));
+        sendJson(res, 400, { success: false, error: result.message || 'Payment creation failed. Please try again.' });
+      }
+    } catch (error) {
+      console.error('❌ Payment create error:', error);
+      sendJson(res, 500, { success: false, error: error.message || 'Payment service unavailable. Please try again.' });
+    }
+    return;
+  }
+
+  // POST /api/payment/webhook — PipraPay sends payment status here
+  if (req.url === '/api/payment/webhook' && req.method === 'POST') {
+    try {
+      // Validate PipraPay webhook signature (API key)
+      const webhookApiKey = req.headers['mh-piprapay-api-key'];
+      const expectedKey = process.env.PIPRAPAY_API_KEY;
+      if (expectedKey && webhookApiKey !== expectedKey) {
+        console.warn('⚠️  Payment webhook: invalid API key');
+        sendJson(res, 403, { success: false, error: 'Unauthorized.' });
+        return;
+      }
+      const body = await readJsonBody(req);
+      const { pp_id, status, metadata: webhookMeta } = body;
+      if (!pp_id) {
+        sendJson(res, 400, { success: false, error: 'Missing pp_id.' });
+        return;
+      }
+      // Verify the payment with PipraPay
+      const verification = await verifyPayment(pp_id);
+      console.log(`💰 Payment webhook: pp_id=${pp_id} — status: ${status}`, JSON.stringify(verification).slice(0, 300));
+
+      // Handle both direct and nested response formats
+      const payStatus = verification.status || (verification.payment && verification.payment.status);
+      const payMeta = verification.metadata || (verification.payment && verification.payment.metadata) || webhookMeta || {};
+      const isCompleted = payStatus === 'completed' || payStatus === 'Completed' || payStatus === 'success';
+
+      // If payment is successful, update user's plan
+      if (isCompleted) {
+        const userId = payMeta.user_id;
+        const purpose = payMeta.purpose;
+
+        if (userId && purpose && purpose.startsWith('pro-')) {
+          const planId = purpose.replace('pro-', '');
+          try {
+            await updateUserProfile(userId, { plan: planId });
+            console.log(`✅ User ${userId} upgraded to ${planId}`);
+          } catch (err) {
+            console.error('Failed to update user plan:', err);
+          }
+        }
+      }
+
+      sendJson(res, 200, { success: true });
+    } catch (error) {
+      console.error('Payment webhook error:', error);
+      sendJson(res, 200, { success: true }); // always 200 to avoid retries
+    }
+    return;
+  }
+
+  // POST /api/payment/verify — manually verify a payment
+  if (req.url === '/api/payment/verify' && req.method === 'POST') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
+    try {
+      const body = await readJsonBody(req);
+      const { ppId } = body;
+      if (!ppId) {
+        sendJson(res, 400, { success: false, error: 'ppId required.' });
+        return;
+      }
+      const result = await verifyPayment(ppId);
+      // Normalize: PipraPay may return { status, metadata, ... } or { payment: { ... } }
+      const payStatus = result.status || (result.payment && result.payment.status);
+      const payMeta = result.metadata || (result.payment && result.payment.metadata) || {};
+      const isCompleted = payStatus === 'completed' || payStatus === 'Completed' || payStatus === 'success';
+      sendJson(res, 200, {
+        success: true,
+        payment: {
+          ...result,
+          status: payStatus,
+          metadata: payMeta,
+          isCompleted,
+        },
+      });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Verification failed.' });
+    }
+    return;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
   // Digital Footprint Cleaner — Gmail inbox → platform mapping
 
   // Digital Footprint Cleaner — authenticated only (it drives the caller's
@@ -3714,6 +3856,14 @@ async function handleApiRequest(req, res) {
     } catch (e) {
       sendJson(res, 503, { ok: false, error: e.message });
     }
+    return;
+  }
+
+  // Any /api/* route that wasn't matched above should return JSON, NOT the
+  // SPA index.html.  Without this guard the browser gets HTML back and shows
+  // "Unexpected token '<'" when it tries to parse it as JSON.
+  if (hp && hp.startsWith('/api/')) {
+    sendJson(res, 404, { success: false, error: `Not found: ${hp}` });
     return;
   }
 
@@ -3877,6 +4027,11 @@ const ENDPOINT_GROUPS = [
     ['GET',  '/api/passwords/list', 'List credentials'],
     ['PUT',  '/api/passwords/:id', 'Update credential'],
     ['DELETE', '/api/passwords/:id', 'Delete credential'],
+  ]},
+  { title: '💳 Payments (PipraPay)', items: [
+    ['POST', '/api/payment/create', 'Create a payment charge'],
+    ['POST', '/api/payment/webhook', 'PipraPay webhook (auto)'],
+    ['POST', '/api/payment/verify', 'Verify a payment'],
   ]},
   { title: '🗄️ Store (KV sync)', items: [
     ['GET',  '/api/store/user/:key', 'Get a user-store value'],
