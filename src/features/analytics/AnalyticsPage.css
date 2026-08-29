@@ -1671,10 +1671,18 @@
   cursor: pointer;
   transition: all var(--transition-base);
 }
-.poll-submit:hover {
+.poll-submit:hover:not(:disabled) {
   border-color: var(--accent-blue);
   color: var(--accent-blue);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-blue) 15%, transparent);
+}
+.poll-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+  border-color: var(--border-primary);
+  color: var(--text-secondary);
+  box-shadow: none;
 }
 .poll-submit-warning {
   padding: 8px 14px;
