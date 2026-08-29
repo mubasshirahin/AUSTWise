@@ -18,8 +18,6 @@ export default function MessMealTrackerPage() {
           </div>
         </div>
 
-        <div className="schedule-masthead-center" />
-
         <div className="schedule-actions">
           <button className="schedule-nav-btn" disabled aria-label="More options">
             <MoreVertical size={18} />

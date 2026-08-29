@@ -303,11 +303,7 @@ export default function DhakaRoutes() {
           </div>
         </div>
 
-        <div className="schedule-actions">
-          <span className="dr-badge">
-            <Info size={12} /> Live data
-          </span>
-        </div>
+        <div className="schedule-actions" />
       </div>
 
       <div className="schedule-dotted-divider" />

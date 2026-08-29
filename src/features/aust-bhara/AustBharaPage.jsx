@@ -19,14 +19,9 @@ export default function AustBharaPage() {
               Semester fees, tuition &amp; AUST-related payments
             </span>
           </div>
-        </div>
-
-        <div className="schedule-masthead-center">
-          <div className="schedule-stats">
-            <div className="schedule-stat">
-              <span className="schedule-stat-value bhara-cs-badge">Soon</span>
-              <span className="schedule-stat-label">Status</span>
-            </div>
+          <div className="schedule-stat">
+            <span className="schedule-stat-value bhara-cs-badge">Soon</span>
+            <span className="schedule-stat-label">Status</span>
           </div>
         </div>
 

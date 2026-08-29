@@ -289,7 +289,7 @@ export default function CoverPageGeneratorPage() {
           </div>
         </div>
 
-        <div className="schedule-actions">
+        <div className="schedule-masthead-center">
           {generating ? (
             <span className="cpgen-status-badge">
               <span className="cpgen-spinner" /> Generating…
@@ -299,6 +299,9 @@ export default function CoverPageGeneratorPage() {
               <Check size={14} /> Generated!
             </span>
           ) : null}
+        </div>
+
+        <div className="schedule-actions">
           <div className="export-dropdown" ref={menuRef}>
             <button
               className="schedule-nav-btn"
