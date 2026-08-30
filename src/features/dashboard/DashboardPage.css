@@ -3644,7 +3644,7 @@ tr.day-row-active {
     position: absolute;
     top: 50%;
     right: var(--sp-3);
-    transform: translateY(-50%);
+    transform: translate(-10px, calc(-50% - 5px));
     margin: 0;
   }
 }
@@ -3656,7 +3656,7 @@ tr.day-row-active {
     position: absolute;
     top: 50%;
     right: var(--sp-3);
-    transform: translateY(-50%);
+    transform: translate(-10px, calc(-50% - 5px));
   }
 }
 
