@@ -3681,6 +3681,16 @@ tr.day-row-active {
   .week-schedule-widget .schedule-actions .export-menu {
     z-index: 999999;
   }
+  /* Ensure the three-dot button is never clipped or covered on mobile */
+  .week-schedule-widget .schedule-actions .schedule-nav-btn {
+    position: relative;
+    z-index: 999999;
+  }
+  /* Prevent the title block from extending under the three-dot button */
+  .week-schedule-widget .schedule-title-block {
+    max-width: calc(100% - 56px);
+    min-width: 0;
+  }
 }
 
 /* 14-Weeks View — keep the tasks/busy-days stats centered in the top row
