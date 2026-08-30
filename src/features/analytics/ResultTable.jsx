@@ -164,15 +164,15 @@ export default function ResultTable({ onResultsChange }) {
     setUserStorageItem(storageKeyType, value);
   };
 
-  // Close the ⋮ menu on outside click
+  // Close the ⋮ menu on outside click (desktop + mobile)
   useEffect(() => {
-    const handleClick = (e) => {
+    const handleOutsideClick = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
         setShowMenu(false);
       }
     };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    document.addEventListener('pointerdown', handleOutsideClick);
+    return () => document.removeEventListener('pointerdown', handleOutsideClick);
   }, []);
 
   // Adopt server/remote results when another device saves OR resets grades.
@@ -746,7 +746,7 @@ export default function ResultTable({ onResultsChange }) {
             <Layers size={15} /> Load Template
           </button>
           <div className="export-dropdown" ref={menuRef}>
-          <button className="schedule-nav-btn cgpa-more-btn" onClick={() => setShowMenu((v) => !v)} aria-label="More options" aria-haspopup="true">
+          <button type="button" className="schedule-nav-btn cgpa-more-btn" onClick={() => setShowMenu((v) => !v)} aria-label="More options" aria-haspopup="true">
             <MoreVertical size={18} />
           </button>
           {showMenu && (

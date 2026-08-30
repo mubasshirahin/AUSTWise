@@ -78,3 +78,6 @@ dev/resp_*.png
 # Runtime store fallback data
 server/userStoreDeleted.json
 server/sharedStoreDeleted.json
+
+# Playwright / test artifacts
+test-results/

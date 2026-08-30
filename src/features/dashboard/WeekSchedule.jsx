@@ -488,6 +488,7 @@ export default function WeekSchedule() {
   return (
     <div className="glass-card-static schedule-widget week-schedule-widget animate-fadeInUp" style={{ minHeight: '480px' }}>
 
+      <div className="schedule-fixed-header">
       <div className="schedule-masthead">
         <div className="schedule-title-block">
           <div className="schedule-icon-tile">
@@ -515,35 +516,6 @@ export default function WeekSchedule() {
           </div>
         </div>
         <div className="schedule-actions">
-          <div className="schedule-week-nav">
-            <button className="schedule-nav-btn" onClick={() => {
-              const d = new Date(currentDate);
-              if (viewMode === 'daily') d.setDate(d.getDate() - 1);
-              else if (viewMode === 'monthly') d.setMonth(d.getMonth() - 1);
-              else if (canGoPrev()) d.setDate(d.getDate() - 7);
-              setCurrentDate(d);
-            }}>
-              <ChevronLeft size={20} />
-            </button>
-            <div className="schedule-week-pill">
-              <span className="schedule-week-pill-value">
-                {viewMode === 'daily'
-                  ? currentDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
-                  : viewMode === 'monthly'
-                    ? currentDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-                    : getWeekLabel()}
-              </span>
-            </div>
-            <button className="schedule-nav-btn" onClick={() => {
-              const d = new Date(currentDate);
-              if (viewMode === 'daily') d.setDate(d.getDate() + 1);
-              else if (viewMode === 'monthly') d.setMonth(d.getMonth() + 1);
-              else if (canGoNext()) d.setDate(d.getDate() + 7);
-              setCurrentDate(d);
-            }}>
-              <ChevronRight size={20} />
-            </button>
-          </div>
           <div className="export-dropdown" ref={exportRef}>
             <button className="schedule-nav-btn" ref={menuBtnRef} onClick={() => {
               if (!showExportMenu && menuBtnRef.current) {
@@ -594,11 +566,42 @@ export default function WeekSchedule() {
         </div>
       </div>
 
+      <div className="week-schedule-mobile-nav">
+        <div className="schedule-week-nav">
+          <button className="schedule-nav-btn" onClick={() => {
+            const d = new Date(currentDate);
+            if (viewMode === 'daily') d.setDate(d.getDate() - 1);
+            else if (viewMode === 'monthly') d.setMonth(d.getMonth() - 1);
+            else if (canGoPrev()) d.setDate(d.getDate() - 7);
+            setCurrentDate(d);
+          }}>
+            <ChevronLeft size={20} />
+          </button>
+          <div className="schedule-week-pill">
+            <span className="schedule-week-pill-value">
+              {viewMode === 'daily'
+                ? currentDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
+                : viewMode === 'monthly'
+                  ? currentDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                  : getWeekLabel()}
+            </span>
+          </div>
+          <button className="schedule-nav-btn" onClick={() => {
+            const d = new Date(currentDate);
+            if (viewMode === 'daily') d.setDate(d.getDate() + 1);
+            else if (viewMode === 'monthly') d.setMonth(d.getMonth() + 1);
+            else if (canGoNext()) d.setDate(d.getDate() + 7);
+            setCurrentDate(d);
+          }}>
+            <ChevronRight size={20} />
+          </button>
+        </div>
+      </div>
+
       <div className="schedule-dotted-divider" />
 
-      {/* Semester Start Date box — one shared value for everyone; admin/CR can
-          change it, students see it read-only */}
-      <div style={{
+      {/* Semester Start Date box */}
+      <div className="schedule-semester-box" style={{
         display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
         background: 'var(--accent-blue-glow)',
         border: '1px solid color-mix(in srgb, var(--accent-blue) 18%, transparent)',
@@ -639,8 +642,9 @@ export default function WeekSchedule() {
           <span className="badge badge-blue" style={{ fontSize: '10px' }}>Set by admin · view only</span>
         )}
       </div>
+      </div>{/* end schedule-fixed-header */}
 
-      <div ref={scheduleRef}>
+      <div className="schedule-scroll-body" ref={scheduleRef}>
       {viewMode === 'daily' ? (() => {
         const date = currentDate;
         return (
@@ -696,7 +700,6 @@ export default function WeekSchedule() {
           </div>
         </>
       )}
-      </div>
 
       {canAddTask && viewMode !== 'daily' && (
         <button className="schedule-add-btn" onClick={() => {
@@ -708,6 +711,8 @@ export default function WeekSchedule() {
           + Add Task
         </button>
       )}
+
+      </div>{/* end schedule-scroll-body */}
 
       {/* Batch Filter */}
       <div className="schedule-filter-bar">
