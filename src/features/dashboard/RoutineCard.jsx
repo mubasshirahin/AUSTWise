@@ -256,7 +256,7 @@ export default function RoutineCard() {
                   </div>
                 </div>
                 <div className="routine-class-name">
-                  {cls.name}
+                  <span className="routine-class-name-text">{cls.name}</span>
                   <span className={`routine-type-badge ${cls.type === 'Lab' ? 'lab' : 'theory'}`}>{cls.type}</span>
                 </div>
                 <div className="routine-class-meta">
