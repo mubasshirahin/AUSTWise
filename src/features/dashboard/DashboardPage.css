@@ -821,6 +821,13 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.routine-class-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+}
 .routine-type-badge {
   flex-shrink: 0;
   font-size: 10px;
@@ -2031,7 +2038,6 @@
   border-spacing: 0;
   table-layout: fixed;
   text-align: center;
-  overflow: hidden;
 }
 
 .weekly-table thead {
@@ -2553,29 +2559,52 @@ tr.day-row-active {
 @media (max-width: 768px) {
   .weekly-planner {
     padding: var(--sp-3);
+    overflow: visible;
   }
 
   .weekly-planner .section-title {
     font-size: var(--fs-sm) !important;
   }
 
+  .weekly-table-wrap {
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--radius-md);
+  }
+
   .weekly-table {
-    font-size: clamp(8px, 2.4vw, 10px);
+    table-layout: auto;
+    width: max-content;
+    min-width: 800px;
+    overflow: visible;
   }
 
   .weekly-day-head,
   .weekly-day-cell {
-    width: 34px;
+    width: 40px;
+    min-width: 40px;
+    padding: 5px 2px;
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--bg-input);
   }
 
-  .weekly-day-head,
-  .weekly-time-head,
-  .weekly-day-cell {
-    padding: 4px 1px;
+  .weekly-day-head {
+    z-index: 3;
+    background: var(--bg-tertiary);
   }
 
-  .weekly-class-cell {
-    padding: 1px;
+  .weekly-time-head {
+    min-width: 80px;
+    padding: 6px 4px;
+    white-space: nowrap;
+  }
+
+  .weekly-class-cell,
+  .weekly-empty-cell {
+    min-width: 80px;
   }
 
   .weekly-empty-cell > div,
@@ -2586,8 +2615,6 @@ tr.day-row-active {
   .weekly-class-block {
     border-left-width: 2px !important;
     padding: 3px 1px;
-    overflow: hidden;
-    max-width: 100%;
   }
 
   .weekly-course-code {
@@ -2603,38 +2630,40 @@ tr.day-row-active {
   }
 
   .routine-widget .routine-class-row {
-    min-height: clamp(64px, 12vw, 80px);
-    height: clamp(64px, 12vw, 80px);
-    overflow: hidden;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
   }
   .routine-class-code {
-    font-size: clamp(8px, 2.6vw, 10px);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    font-size: clamp(10px, 3vw, 12px);
   }
   .routine-class-name {
-    font-size: clamp(8px, 2.4vw, 10px);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    flex-wrap: wrap;
+  }
+  .routine-class-name-text {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    font-size: clamp(11px, 3.2vw, 13px);
   }
   .routine-type-badge {
-    font-size: clamp(6px, 2vw, 8px);
-    padding: 1px 5px;
+    font-size: clamp(8px, 2.6vw, 10px);
+    padding: 2px 7px;
+    flex-shrink: 0;
   }
   .routine-class-meta {
-    font-size: clamp(7px, 2.2vw, 9px);
-    gap: 6px;
-    margin-top: 4px;
+    font-size: clamp(10px, 2.8vw, 12px);
+    gap: 8px;
+    margin-top: 6px;
+    flex-wrap: wrap;
   }
   .routine-class-meta span {
-    overflow: hidden;
-    text-overflow: ellipsis;
+    overflow: visible;
+    text-overflow: unset;
     white-space: nowrap;
-  }
-  .routine-class-time {
-    font-size: clamp(7px, 2.2vw, 9px);
   }
 
   .routine-edit-modal {
@@ -2880,7 +2909,7 @@ tr.day-row-active {
 [data-theme="cyberpunk"] .weekly-table-wrap {
   border: 1px solid var(--border-primary);
   border-radius: 2px;
-  overflow: hidden;
+  overflow: auto;
 }
 
 [data-theme="cyberpunk"] .weekly-table {
@@ -3797,14 +3826,14 @@ tr.day-row-active {
   .schedule-actions > button .att-mode-label {
     display: none;
   }
-  /* Attendance view/edit toggle: nudge up & center its icon on mobile */
+  /* Attendance view/edit toggle: adjust position on mobile */
   .schedule-actions > button.att-mode-toggle {
     width: 28px;
     height: 28px;
     min-width: 28px;
     padding: 0;
     position: relative;
-    top: -16px;
+    top: 0;
     margin-top: 0;
     justify-content: center;
     align-items: center;

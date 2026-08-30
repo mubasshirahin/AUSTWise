@@ -1412,6 +1412,12 @@ select.input {
   }
 }
 
+@media (max-width: 768px) {
+  .app-layout {
+    overflow-x: auto;
+  }
+}
+
 @media (max-width: 480px) {
   .page-wrapper {
     padding: var(--sp-3);

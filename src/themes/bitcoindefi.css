@@ -1073,7 +1073,7 @@
 [data-theme="bitcoindefi"] .weekly-table-wrap {
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  overflow: auto;
 }
 
 [data-theme="bitcoindefi"] .weekly-day-head,
