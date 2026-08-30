@@ -709,6 +709,8 @@ export default function WeekSchedule() {
         </button>
       )}
 
+      </div>{/* end schedule-scroll-body */}
+
       {/* Batch Filter */}
       <div className="schedule-filter-bar">
         <span className="schedule-filter-label">Filter:</span>
@@ -733,7 +735,6 @@ export default function WeekSchedule() {
           </span>
         )}
       </div>
-      </div>{/* end schedule-scroll-body */}
 
       {/* Task Details Modal */}
       {selectedTask && (
