@@ -82,7 +82,6 @@ export default function CommunityPage() {
             activeTab={activeTab}
             onChange={handleTabChange}
             variant="dashboard"
-            compact
           />
         </div>
       </div>
