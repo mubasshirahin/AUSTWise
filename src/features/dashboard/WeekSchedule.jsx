@@ -488,6 +488,7 @@ export default function WeekSchedule() {
   return (
     <div className="glass-card-static schedule-widget week-schedule-widget animate-fadeInUp" style={{ minHeight: '480px' }}>
 
+      <div className="schedule-fixed-header">
       <div className="schedule-masthead">
         <div className="schedule-title-block">
           <div className="schedule-icon-tile">
@@ -596,9 +597,8 @@ export default function WeekSchedule() {
 
       <div className="schedule-dotted-divider" />
 
-      {/* Semester Start Date box — one shared value for everyone; admin/CR can
-          change it, students see it read-only */}
-      <div style={{
+      {/* Semester Start Date box */}
+      <div className="schedule-semester-box" style={{
         display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
         background: 'var(--accent-blue-glow)',
         border: '1px solid color-mix(in srgb, var(--accent-blue) 18%, transparent)',
@@ -639,8 +639,9 @@ export default function WeekSchedule() {
           <span className="badge badge-blue" style={{ fontSize: '10px' }}>Set by admin · view only</span>
         )}
       </div>
+      </div>{/* end schedule-fixed-header */}
 
-      <div ref={scheduleRef}>
+      <div className="schedule-scroll-body" ref={scheduleRef}>
       {viewMode === 'daily' ? (() => {
         const date = currentDate;
         return (
@@ -696,7 +697,6 @@ export default function WeekSchedule() {
           </div>
         </>
       )}
-      </div>
 
       {canAddTask && viewMode !== 'daily' && (
         <button className="schedule-add-btn" onClick={() => {
@@ -733,6 +733,7 @@ export default function WeekSchedule() {
           </span>
         )}
       </div>
+      </div>{/* end schedule-scroll-body */}
 
       {/* Task Details Modal */}
       {selectedTask && (
