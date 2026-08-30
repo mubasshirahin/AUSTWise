@@ -1322,12 +1322,20 @@
   }
   .week-schedule-widget .schedule-fixed-header {
     flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+  }
+  .week-schedule-widget .schedule-masthead {
+    position: relative;
+    z-index: 10;
   }
   .week-schedule-widget .schedule-scroll-body {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    position: relative;
+    z-index: 1;
   }
   .week-schedule-widget .schedule-filter-bar {
     flex-shrink: 0;
@@ -3634,6 +3642,13 @@ tr.day-row-active {
 .week-schedule-widget .schedule-week-nav {
   margin-left: auto;
 }
+/* Desktop: position the week-nav inside the masthead (top-right) */
+.week-schedule-mobile-nav {
+  display: none;
+}
+.week-schedule-widget .schedule-actions .schedule-week-nav {
+  display: flex;
+}
 .week-schedule-widget .schedule-masthead > .schedule-title-block {
   max-width: calc(50% - 80px);
 }
@@ -3657,6 +3672,14 @@ tr.day-row-active {
     top: 50%;
     right: var(--sp-3);
     transform: translate(-10px, calc(-50% - 5px));
+    z-index: 999999;
+  }
+  .week-schedule-widget .schedule-actions .export-dropdown {
+    position: relative;
+    z-index: 999999;
+  }
+  .week-schedule-widget .schedule-actions .export-menu {
+    z-index: 999999;
   }
 }
 

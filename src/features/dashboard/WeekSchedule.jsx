@@ -516,35 +516,6 @@ export default function WeekSchedule() {
           </div>
         </div>
         <div className="schedule-actions">
-          <div className="schedule-week-nav">
-            <button className="schedule-nav-btn" onClick={() => {
-              const d = new Date(currentDate);
-              if (viewMode === 'daily') d.setDate(d.getDate() - 1);
-              else if (viewMode === 'monthly') d.setMonth(d.getMonth() - 1);
-              else if (canGoPrev()) d.setDate(d.getDate() - 7);
-              setCurrentDate(d);
-            }}>
-              <ChevronLeft size={20} />
-            </button>
-            <div className="schedule-week-pill">
-              <span className="schedule-week-pill-value">
-                {viewMode === 'daily'
-                  ? currentDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
-                  : viewMode === 'monthly'
-                    ? currentDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-                    : getWeekLabel()}
-              </span>
-            </div>
-            <button className="schedule-nav-btn" onClick={() => {
-              const d = new Date(currentDate);
-              if (viewMode === 'daily') d.setDate(d.getDate() + 1);
-              else if (viewMode === 'monthly') d.setMonth(d.getMonth() + 1);
-              else if (canGoNext()) d.setDate(d.getDate() + 7);
-              setCurrentDate(d);
-            }}>
-              <ChevronRight size={20} />
-            </button>
-          </div>
           <div className="export-dropdown" ref={exportRef}>
             <button className="schedule-nav-btn" ref={menuBtnRef} onClick={() => {
               if (!showExportMenu && menuBtnRef.current) {
@@ -592,6 +563,38 @@ export default function WeekSchedule() {
               document.body
             )}
           </div>
+        </div>
+      </div>
+
+      <div className="week-schedule-mobile-nav">
+        <div className="schedule-week-nav">
+          <button className="schedule-nav-btn" onClick={() => {
+            const d = new Date(currentDate);
+            if (viewMode === 'daily') d.setDate(d.getDate() - 1);
+            else if (viewMode === 'monthly') d.setMonth(d.getMonth() - 1);
+            else if (canGoPrev()) d.setDate(d.getDate() - 7);
+            setCurrentDate(d);
+          }}>
+            <ChevronLeft size={20} />
+          </button>
+          <div className="schedule-week-pill">
+            <span className="schedule-week-pill-value">
+              {viewMode === 'daily'
+                ? currentDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
+                : viewMode === 'monthly'
+                  ? currentDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                  : getWeekLabel()}
+            </span>
+          </div>
+          <button className="schedule-nav-btn" onClick={() => {
+            const d = new Date(currentDate);
+            if (viewMode === 'daily') d.setDate(d.getDate() + 1);
+            else if (viewMode === 'monthly') d.setMonth(d.getMonth() + 1);
+            else if (canGoNext()) d.setDate(d.getDate() + 7);
+            setCurrentDate(d);
+          }}>
+            <ChevronRight size={20} />
+          </button>
         </div>
       </div>
 
