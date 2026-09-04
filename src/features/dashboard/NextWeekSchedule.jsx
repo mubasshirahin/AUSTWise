@@ -3,6 +3,7 @@ import { Calendar, Clock, MapPin, Plus } from 'lucide-react';
 import { useRoutine } from '../../context/RoutineContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLiveValue } from '../../utils/liveStore';
+import { getUserBatchGroup } from '../../utils/getUserBatchGroup';
 
 export default function NextWeekSchedule() {
   const { routine, weekDays } = useRoutine();
@@ -31,23 +32,7 @@ export default function NextWeekSchedule() {
     return '';
   })();
 
-  // Get user's batch group (A1, A2, B1, B2, C1, C2, D1, D2)
-  // Priority: section > labSection > calculated from batchNo
-  const userBatchGroup = (() => {
-    // First check if user has a section (like B2, A1, etc.)
-    if (user?.section && ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2'].includes(user.section.toUpperCase())) {
-      return user.section.toUpperCase();
-    }
-    // Then check labSection
-    if (user?.labSection && ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2'].includes(user.labSection.toUpperCase())) {
-      return user.labSection.toUpperCase();
-    }
-    // Fallback: calculate from batch number
-    if (user?.batchNo) {
-      const batchNo = parseInt(user.batchNo);
-      // Map batch number to batch group (A1, A2, B1, B2, C1, C2, D1, D2)
-      // Batch 52 -> A1, 53 -> A2, 54 -> B1, 55 -> B2, 56 -> C1, 57 -> C2, 58 -> D1, 59 -> D2, 60 -> A1, etc.
-      const batchGroupIndex = (batchNo - 52) % 8;
+  const userBatchGroup = getUserBatchGroup(user);
       const groups = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2'];
       return groups[batchGroupIndex >= 0 ? batchGroupIndex : 0];
     }
@@ -125,10 +110,10 @@ export default function NextWeekSchedule() {
 
   const getDeadlinesForDate = (date) => {
     const key = date.toISOString().split('T')[0];
-    // Filter deadlines by user's batch group - only show deadlines for user's own batch
     return deadlines.filter(dl => {
-      const deadlineDate = dl.dueDate.toISOString().split('T')[0];
-      return deadlineDate === key && (dl.batchGroup === userBatchGroup || !dl.batchGroup);
+      const d = dl.dueDate instanceof Date ? dl.dueDate : new Date(dl.dueDate);
+      const deadlineDate = isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
+      return deadlineDate === key && dl.batchGroup === userBatchGroup;
     });
   };
 

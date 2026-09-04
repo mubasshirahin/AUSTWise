@@ -1,50 +1,42 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Hourglass, AlertTriangle, Timer } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Hourglass, AlertTriangle, Timer, CalendarDays } from 'lucide-react';
 import { deadlines } from '../../data/mockData';
 import { useAuth } from '../../context/AuthContext';
 import { useLiveValue } from '../../utils/liveStore';
+import { getUserBatchGroup } from '../../utils/getUserBatchGroup';
 
 export default function DeadlineTicker() {
   const { user } = useAuth();
-  // Get user's batch group (A1, A2, B1, B2, C1, C2, D1, D2)
-  const userBatchGroup = (() => {
-    if (user?.section && ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2'].includes(user.section.toUpperCase())) {
-      return user.section.toUpperCase();
-    }
-    if (user?.labSection && ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2'].includes(user.labSection.toUpperCase())) {
-      return user.labSection.toUpperCase();
-    }
-    if (user?.batchNo) {
-      const batchNo = parseInt(user.batchNo);
-      const batchGroupIndex = (batchNo - 52) % 8;
-      const groups = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2'];
-      return groups[batchGroupIndex >= 0 ? batchGroupIndex : 0];
-    }
-    return 'A1';
-  })();
+  const navigate = useNavigate();
+  const userBatchGroup = useMemo(() => getUserBatchGroup(user), [user]);
+  const canAddTask = user?.role === 'admin' || user?.role === 'cr' || user?.role === 'sr';
 
   // Deadlines & calendar tasks are live-synced across devices
   const [timers] = useLiveValue('user', 'aust-deadlines', [...deadlines]);
   const [calendarTasks] = useLiveValue('user', 'aust-week-tasks', []);
 
   // Combine manual deadlines with calendar tasks for user's batch.
-  // Note: past-task filtering happens inside the countdown effect (where the
-  // current time is available) so this derivation stays pure for render.
+  // Strict: task without valid batchGroup never leaks to all.
   const combinedDeadlines = useMemo(() => {
-    // Convert calendar tasks to deadline format (only for user's batch)
+    // Convert calendar tasks to deadline format (only for user's batch — no !batchGroup leak)
     const taskDeadlines = calendarTasks
-      .filter(task => task.batchGroup === userBatchGroup)
+      .filter(task => task.batchGroup && task.batchGroup === userBatchGroup)
       .map(task => {
-        const taskDate = new Date(task.date);
+        // TZ-safe: parse YYYY-MM-DD as local midnight, not UTC
+        const taskDate = task.date ? new Date(task.date + 'T00:00:00') : new Date();
+        if (isNaN(taskDate.getTime())) return null;
         if (task.time) {
           const [hours, minutes] = task.time.split(':');
-          taskDate.setHours(parseInt(hours), parseInt(minutes), 0);
+          const h = parseInt(hours, 10), m = parseInt(minutes, 10);
+          if (!Number.isNaN(h) && !Number.isNaN(m)) taskDate.setHours(h, m, 0, 0);
         } else {
-          taskDate.setHours(23, 59, 59);
+          taskDate.setHours(23, 59, 59, 999);
         }
+        if (isNaN(taskDate.getTime())) return null;
         return {
           id: `task-${task.id}`,
-          title: task.title,
+          title: typeof task.title === 'string' && task.title.length > 80 ? task.title.slice(0,80) : task.title,
           course: task.courseCode || task.courseName || 'General',
           dueDate: taskDate,
           type: 'Quiz',
@@ -53,12 +45,14 @@ export default function DeadlineTicker() {
           fromCalendar: true,
           batchGroup: task.batchGroup
         };
-      });
+      }).filter(Boolean);
 
-    // Combine with manual deadlines (dates may arrive as ISO strings from
-    // storage — normalise to Date objects so countdown math works)
+    // Manual deadlines are per-user (user-scoped store), so no batchGroup filter needed.
+    // Shared calendar tasks above are strictly filtered; here we just normalize dates and
+    // cap title length to prevent store bloat.
     const manualDeadlines = timers.map(dl => ({
       ...dl,
+      title: typeof dl.title === 'string' && dl.title.length > 80 ? dl.title.slice(0,80) : dl.title,
       dueDate: dl.dueDate instanceof Date ? dl.dueDate : new Date(dl.dueDate),
     }));
 
@@ -69,8 +63,7 @@ export default function DeadlineTicker() {
   const [displayDeadlines, setDisplayDeadlines] = useState([]);
 
   useEffect(() => {
-    if (combinedDeadlines.length === 0) return undefined;
-
+    if (combinedDeadlines.length === 0) { setDisplayDeadlines([]); return undefined; }
     const calculateTimeRemaining = () => {
       const nowTs = Date.now();
       const updated = combinedDeadlines
@@ -107,6 +100,12 @@ export default function DeadlineTicker() {
     };
 
     calculateTimeRemaining();
+    // Pause 1s tick when tab hidden
+    if (typeof document !== 'undefined' && document.hidden) {
+      const onVis = () => { if (!document.hidden) calculateTimeRemaining(); };
+      document.addEventListener('visibilitychange', onVis);
+      return () => document.removeEventListener('visibilitychange', onVis);
+    }
     const interval = setInterval(calculateTimeRemaining, 1000);
     return () => clearInterval(interval);
   }, [combinedDeadlines]);
@@ -133,9 +132,16 @@ export default function DeadlineTicker() {
 
       <div className="deadline-list">
         {displayDeadlines.length === 0 ? (
-          <div className="schedule-empty" style={{ padding: '2px 0 12px' }}>
+          <div className="schedule-empty" style={{ padding: '12px 0', display:'flex', flexDirection:'column', gap:'10px', alignItems:'center' }}>
             <Hourglass size={16} style={{ opacity: 0.3 }} />
-            No upcoming deadlines
+            <span>No upcoming deadlines</span>
+            {canAddTask ? (
+              <button className="btn btn-sm" onClick={() => navigate('/?tab=calendar')} style={{ display:'inline-flex', alignItems:'center', gap:'6px' }}>
+                <CalendarDays size={14} /> Add in Semester View
+              </button>
+            ) : (
+              <span style={{ fontSize:'11px', color:'var(--text-tertiary)' }}>Ask your CR to add tasks</span>
+            )}
           </div>
         ) : displayDeadlines.map((dl, idx) => {
           return (
