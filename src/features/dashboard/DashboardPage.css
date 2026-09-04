@@ -1845,12 +1845,83 @@
   top: calc(100% + 6px);
   right: 0;
   min-width: 180px;
-  background: var(--bg-card);
+  background: var(--bg-card) !important;
+  background-color: var(--bg-card) !important;
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-popper);
-  z-index: 20;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.28), 0 4px 12px rgba(0,0,0,0.18);
+  z-index: 99999;
   overflow: hidden;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  opacity: 1 !important;
+}
+/* Routine Grid three-dot — shobar upore, solid bg opacity 100 */
+.weekly-planner .weekly-more-dropdown .export-menu,
+.weekly-masthead .weekly-more-dropdown .export-menu,
+.routine-more-menu {
+  z-index: 99999 !important;
+  background: #1a1a24 !important;
+  background-color: #1a1a24 !important;
+  border: 1px solid #2a2a36 !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.45) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  opacity: 1 !important;
+}
+[data-theme="light"] .weekly-planner .weekly-more-dropdown .export-menu,
+[data-theme="light"] .weekly-masthead .weekly-more-dropdown .export-menu,
+[data-theme="light"] .routine-more-menu {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+.weekly-planner .weekly-more-dropdown,
+.weekly-masthead .weekly-more-dropdown {
+  z-index: 99999;
+}
+/* Exact selector from user — force SOLID opaque 100, no transparency */
+#root div.schedule-masthead.weekly-masthead div.export-dropdown.weekly-more-dropdown > div.export-menu,
+#root > div.app-layout > div.main-content > div > div > section > div > div > div.schedule-masthead.weekly-masthead > div.export-dropdown.weekly-more-dropdown > div,
+.weekly-masthead .weekly-more-dropdown .export-menu,
+.export-menu.routine-more-menu {
+  background: #1a1a24 !important;
+  background-color: #1a1a24 !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid #2a2a36 !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.45) !important;
+}
+/* Light theme solid white */
+[data-theme="light"] #root div.schedule-masthead.weekly-masthead div.export-dropdown.weekly-more-dropdown > div.export-menu,
+[data-theme="light"] .weekly-masthead .weekly-more-dropdown .export-menu,
+[data-theme="light"] .export-menu.routine-more-menu {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+/* Add class suggestion overlays — solid bg ekdom */
+.course-autocomplete-suggestions {
+  background: #1a1a24 !important;
+  background-color: #1a1a24 !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid #2a2a36 !important;
+}
+[data-theme="light"] .course-autocomplete-suggestions {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+.weekly-planner {
+  position: relative;
+  z-index: 1;
+}
+.weekly-planner .weekly-masthead {
+  position: relative;
+  z-index: 10;
 }
 .export-menu-item {
   display: flex;
@@ -2720,6 +2791,8 @@ tr.day-row-active {
     overflow-y: visible;
     -webkit-overflow-scrolling: touch;
     border-radius: var(--radius-md);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
   }
 
   .weekly-table {

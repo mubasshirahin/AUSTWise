@@ -13,7 +13,7 @@ import { useAuth } from '../../context/AuthContext';
 
 export default function WeeklyPlanner() {
   const { user } = useAuth();
-  const { routine, weekDays, updateRoutineClass, addRoutineClass, deleteRoutineClass, replaceRoutine } = useRoutine();
+  const { routine, weekDays, isLoading, updateRoutineClass, addRoutineClass, deleteRoutineClass, replaceRoutine } = useRoutine();
   const [editing, setEditing] = useState(null);
   const [showLoadModal, setShowLoadModal] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -241,15 +241,27 @@ export default function WeeklyPlanner() {
 
     // Some default/demo classes start between official AUST slot boundaries.
     // Place them in the nearest visible table slot instead of dropping them.
+    // Guard off-grid (e.g. 06:00) — clamp instead of snapping to 08:00 silently.
     if (startIdx === -1 && start) {
-      startIdx = slotBoundaries.findIndex((slot) => slot > start) - 1;
+      const found = slotBoundaries.findIndex((slot) => slot > start);
+      if (found === -1) { // after last slot → clamp to last-1
+        startIdx = slotBoundaries.length - 2;
+      } else if (found === 0) { // before first slot (e.g. 06:00)
+        startIdx = 0;
+      } else {
+        startIdx = found - 1;
+      }
     }
     if (endIdx === -1 && end) {
-      endIdx = slotBoundaries.findIndex((slot) => slot >= end);
+      const foundEnd = slotBoundaries.findIndex((slot) => slot >= end);
+      if (foundEnd === -1) endIdx = slotBoundaries.length - 1;
+      else endIdx = foundEnd;
     }
 
     if (startIdx < 0) startIdx = 0;
+    if (startIdx >= slotBoundaries.length - 1) startIdx = slotBoundaries.length - 2;
     if (endIdx <= startIdx) endIdx = startIdx + 1;
+    if (endIdx >= slotBoundaries.length) endIdx = slotBoundaries.length - 1;
 
     const colSpan = Math.min(timeSlots.length - startIdx, Math.max(1, endIdx - startIdx));
 
@@ -726,6 +738,18 @@ export default function WeeklyPlanner() {
           </div>
         )}
 
+        {isLoading ? (
+          <div className="routine-skeleton" style={{ display:'flex', flexDirection:'column', gap:'8px', padding:'12px 0' }}>
+            {[0,1,2].map(i => (
+              <div key={i} className="schedule-day-card skeleton-row" style={{ display:'flex', gap:'12px', alignItems:'center', padding:'14px', animationDelay:`${i*80}ms` }}>
+                <div className="skeleton-line" style={{ width:'60px', height:'14px' }} />
+                <div style={{ flex:1, display:'flex', gap:'8px' }}>
+                  {[0,1,2,3].map(j => <div key={j} className="skeleton-line" style={{ flex:1, height:'36px' }} />)}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
         <div className="weekly-table-wrap" ref={tableWrapRef} style={zoomVars}>
         <table className="weekly-table">
           <thead>
@@ -1005,6 +1029,7 @@ export default function WeeklyPlanner() {
           </tbody>
         </table>
       </div>
+        )}
 
       {/* Load Routine Modal */}
       {showLoadModal && createPortal(
