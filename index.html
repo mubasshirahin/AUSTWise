@@ -7,8 +7,21 @@
     <meta name="description" content="AUSTWise &mdash; Your all-in-one campus companion for schedules, grades, resources, and community." />
     <meta name="google-site-verification" content="h4IqLozAjXb9woYcmEjlGAbwBLh7UZEUi3mgYmt1PnQ" />
     <title>AUSTWise &mdash; Your Campus Companion</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Kalam:wght@400;700&family=Patrick+Hand&family=Playfair+Display:wght@500;600;700;800&family=EB+Garamond:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
     <meta name="theme-color" content="#171717" />
+    <script>
+      (function() {
+        try {
+          var t = localStorage.getItem('aust-theme');
+          var ok = ['light','dark','midnight','industrial','swiss','newsprint','sketchbook','minimalist-monochrome','terminal','art-deco','bitcoindefi','poster','nexus','cyberpunk','meshtopo'];
+          if (t && ok.indexOf(t) !== -1) document.documentElement.setAttribute('data-theme', t);
+          else if (window.matchMedia('(prefers-color-scheme: light)').matches) document.documentElement.setAttribute('data-theme', 'light');
+          else document.documentElement.setAttribute('data-theme', 'dark');
+        } catch(e) {}
+      })();
+    </script>
     <link rel="apple-touch-icon" href="/icon-192x192.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
   </head>

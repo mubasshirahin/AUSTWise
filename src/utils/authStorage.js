@@ -265,6 +265,8 @@ function loadAccounts() {
       localStorage.setItem(accountsKey, JSON.stringify(list));
     }
 
+    // No auto-seed — heatmap is real: syncHeatmapFromTracker creates entry from CGPA calc
+
     // NOTE: we intentionally do NOT prune accounts to "admin + signed-in user"
     // here. That filter ran on every read and wiped accounts that were created
     // before a session existed (e.g. the Google sign-up flow writes the account

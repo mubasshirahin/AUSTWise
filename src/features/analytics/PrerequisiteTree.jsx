@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   Search, Maximize2, Minimize2, ZoomIn, ZoomOut,
   ChevronsDownUp, ChevronsUpDown, GitBranch, RotateCcw,
-  MoreVertical, Check
+  MoreVertical, Check, ChevronDown
 } from 'lucide-react';
 import './PrerequisiteTree.css';
 
@@ -271,6 +271,8 @@ export default function PrerequisiteTree() {
   const [fullscreen, setFullscreen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
+  const [deptDropdownOpen, setDeptDropdownOpen] = useState(false);
+  const deptDropdownRef = useRef(null);
   // single transform state so zoom + pan update atomically (cursor-anchored zoom)
   const [view, setView] = useState({ scale: 1, x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
@@ -482,6 +484,33 @@ export default function PrerequisiteTree() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  // Close dept dropdown on outside click (mouse + touch) — also handles portal menu
+  useEffect(() => {
+    const handleClick = (event) => {
+      const dd = deptDropdownRef.current;
+      const menu = document.querySelector('.prereq-dept-menu');
+      const insideDD = dd && dd.contains(event.target);
+      const insideMenu = menu && menu.contains(event.target);
+      if (!insideDD && !insideMenu) setDeptDropdownOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('touchstart', handleClick, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('touchstart', handleClick);
+    };
+  }, []);
+
+  // Mobile: keep menu fixed under trigger (no scroll-move) — close on scroll instead
+  useEffect(() => {
+    if (!deptDropdownOpen) return;
+    const onScroll = () => setDeptDropdownOpen(false);
+    window.addEventListener('scroll', onScroll, true);
+    return () => window.removeEventListener('scroll', onScroll, true);
+  }, [deptDropdownOpen]);
+
+
+
   // ─── Pan (drag empty canvas) ───
   const handlePanStart = useCallback((e) => {
     if (e.target.closest('.pt-node')) return;
@@ -660,8 +689,46 @@ export default function PrerequisiteTree() {
               <ZoomIn size={16} />
             </button>
           </div>
+        </div>
+      </div>
 
-          <div className="export-dropdown" ref={menuRef}>
+      <div className="schedule-dotted-divider" />
+
+      {/* Dept dropdown — 8 options below box */}
+      <div className="prereq-dept-dropdown" ref={deptDropdownRef}>
+        <button
+          className="prereq-dept-trigger"
+          onClick={() => setDeptDropdownOpen((v) => !v)}
+          aria-expanded={deptDropdownOpen}
+          aria-haspopup="true"
+        >
+          <span>{DEPARTMENTS.find((d) => d.id === dept)?.label || dept}</span>
+          <ChevronDown size={14} className={deptDropdownOpen ? 'open' : ''} />
+        </button>
+        {deptDropdownOpen && (
+          <div className="prereq-dept-menu">
+            {DEPARTMENTS.map((d) => (
+              <button
+                key={d.id}
+                className={`prereq-dept-item ${dept === d.id ? 'active' : ''}`}
+                onClick={() => {
+                  if (!d.available) return;
+                  setDept(d.id);
+                  setDeptDropdownOpen(false);
+                }}
+                disabled={!d.available}
+              >
+                <span>{d.label}</span>
+                {!d.available && <em className="prereq-dept-soon">soon</em>}
+                {dept === d.id && <Check size={12} />}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: 'none' }}>
+          <div className="export-dropdown" ref={menuRef} style={{ display: 'none' }}>
             <button
               className="schedule-nav-btn"
               onClick={() => setMenuOpen((open) => !open)}
@@ -704,9 +771,6 @@ export default function PrerequisiteTree() {
             )}
           </div>
         </div>
-      </div>
-
-      <div className="schedule-dotted-divider" />
 
       <div className="prereq-coming-soon" style={{ display: !isDeptAvailable ? 'flex' : 'none' }}>
         <div className="prereq-coming-soon-icon">

@@ -400,8 +400,11 @@ export default function SemesterTracker() {
     if (type === 'custom') {
       setDraftComponents(p => [...p, { type:'custom', label:'', count:'', totalMarks:'' }]);
     } else {
-      // avoid duplicate non-custom
-      if (draftComponents.some(c=>c.type===type && c.type!=='custom')) return;
+      // toggle: second click removes/deselects
+      if (draftComponents.some(c=>c.type===type)) {
+        setDraftComponents(p => p.filter(c=>c.type!==type));
+        return;
+      }
       setDraftComponents(p => [...p, { type, label: meta.label, count:'', totalMarks:'' }]);
     }
   };
@@ -851,30 +854,36 @@ export default function SemesterTracker() {
                       const isActive = activeCell?.key===`t_${course.id}_${fIdx}`;
                       return (
                         <td key={field.id}
+                          data-label={`${field.label} /${field.id.startsWith('quiz') ? field.maxMarks.toFixed(2) : field.maxMarks}`}
                           className={`st-td st-td-input ${getCellClass(val,field.maxMarks)} ${isActive?'st-td-active':''}`}
                           style={{'--col-color':field.color}}
                         >
-                          <input
-                            ref={el=>inputRefs.current[`t_${course.id}_${fIdx}`]=el}
-                            type="number" min="0" max={field.maxMarks}
-                            step={field.id.startsWith('quiz') ? "0.01" : "0.5"}
-                            value={val??''} placeholder="—"
-                            className="st-cell-input"
-                            onFocus={()=>setActiveCell({key:`t_${course.id}_${fIdx}`})}
-                            onBlur={()=>setActiveCell(null)}
-                            onChange={e=>handleTheoryMark(course.id,field.id,e.target.value)}
-                            // eslint-disable-next-line react-hooks/refs -- handleKeyDown only runs in the keydown event, never during render
-                            onKeyDown={e=>handleKeyDown(e,theoryCourses,cIdx,fIdx,maxFields.length,'t')}
-                          />
+                          <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'1px'}}>
+                            <input
+                              ref={el=>inputRefs.current[`t_${course.id}_${fIdx}`]=el}
+                              type="number" min="0" max={field.maxMarks}
+                              step={field.id.startsWith('quiz') ? "0.01" : "0.5"}
+                              value={val??''} placeholder={`— /${field.maxMarks}`}
+                              title={`Out of ${field.maxMarks}`}
+                              className="st-cell-input"
+                              style={{height:'26px'}}
+                              onFocus={()=>setActiveCell({key:`t_${course.id}_${fIdx}`})}
+                              onBlur={()=>setActiveCell(null)}
+                              onChange={e=>handleTheoryMark(course.id,field.id,e.target.value)}
+                              // eslint-disable-next-line react-hooks/refs -- handleKeyDown only runs in the keydown event, never during render
+                              onKeyDown={e=>handleKeyDown(e,theoryCourses,cIdx,fIdx,maxFields.length,'t')}
+                            />
+                            <span style={{fontSize:'7px',color:'var(--text-tertiary)',lineHeight:1}}>/ {field.maxMarks}</span>
+                          </div>
                         </td>
                       );
                     })}
                     {/* Best */}
-                    <td className="st-td st-td-computed">
+                    <td className="st-td st-td-computed" data-label="Best /20">
                       <span className={`st-computed-val ${getCellClass(b2,20)}`}>{b2>0?b2:'—'}/20</span>
                     </td>
                     {/* Total */}
-                    <td className="st-td st-td-total-cell">
+                    <td className="st-td st-td-total-cell" data-label="Total /100">
                       <div className="st-total-wrap">
                         <span className="st-total-val" style={{color:hasAny?grade.color:'var(--text-tertiary)'}}>
                           {hasAny?tot.toFixed(1):'—'}
@@ -887,7 +896,7 @@ export default function SemesterTracker() {
                       </div>
                     </td>
                     {/* Grade */}
-                    <td className="st-td st-td-grade">
+                    <td className="st-td st-td-grade" data-label="Grade">
                       {hasAny?(
                         <div className="st-grade-badge" style={{'--grade-color':grade.color}}>
                           <span className="st-grade-letter">{grade.letter}</span>
@@ -1044,7 +1053,7 @@ export default function SemesterTracker() {
                               type="number" min="1" max="20"
                               className="st-draft-input st-draft-num"
                               value={comp.count}
-                              placeholder="1"
+                              placeholder="quantity"
                               onChange={e=>updateDraft(idx,'count',e.target.value)}
                             />
                             {/* Total Marks (user enters this) */}
@@ -1052,7 +1061,7 @@ export default function SemesterTracker() {
                               type="number" min="1" max="500"
                               className="st-draft-input st-draft-num"
                               value={comp.totalMarks}
-                              placeholder="10"
+                              placeholder={comp.type === 'online' ? 'total online marks' : `total ${comp.label.toLowerCase()} marks`}
                               onChange={e=>updateDraft(idx,'totalMarks',e.target.value)}
                             />
                             {/* Per Item (auto-calculated) */}
@@ -1131,19 +1140,21 @@ export default function SemesterTracker() {
                                     className={`st-td st-td-input ${getCellClass(val,col.max)} ${isActive?'st-td-active':''}`}
                                     style={{'--col-color':'var(--accent-blue)'}}
                                   >
-                                    <div className="st-raw-wrap">
+                                    <div className="st-raw-wrap" style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'1px'}}>
                                       <input
                                         ref={el=>inputRefs.current[`l_${course.id}_${gi}_${ii}`]=el}
                                         type="text" inputMode="decimal"
                                         value={displayVal}
-                                        placeholder="—"
+                                        placeholder={`— /${col.max}`}
+                                        title={`Out of ${col.max}`}
                                         className="st-cell-input st-raw-single"
-                                        style={{height:'28px',fontSize:'0.55rem',width:'52px',textAlign:'center'}}
+                                        style={{height:'24px',fontSize:'0.6rem',width:'52px',textAlign:'center'}}
                                         onFocus={()=>setActiveCell({key:`l_${course.id}_${gi}_${ii}`})}
                                         onBlur={()=>setActiveCell(null)}
                                         onChange={e=>handleRawMark(course.id,col.key,e.target.value,col.max)}
                                         onKeyDown={e=>handleLabKeyDown(e,course.id,gi,ii,groups.length,maxCount)}
                                       />
+                                      <span style={{fontSize:'7px',color:'var(--text-tertiary)',lineHeight:1}}>/ {col.max}</span>
                                     </div>
                                   </td>
                                 );

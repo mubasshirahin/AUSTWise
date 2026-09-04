@@ -675,7 +675,18 @@ export default function WeeklyPlanner() {
                <span>{myShared ? 'Routine Live ✓' : 'Share Routine'}</span>
              </button>
            )}
-           <div className="export-dropdown" ref={exportRef}>
+           {shareMsg && (
+             <div className="weekly-share-msg" style={{
+               position: 'absolute', right: '4px', top: 'calc(100% + 6px)',
+               fontSize: 'var(--fs-xs)', color: 'var(--accent-emerald)',
+               background: 'var(--bg-card)', padding: '4px 10px', borderRadius: 'var(--radius-sm)',
+               border: '1px solid var(--border-primary)', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', zIndex: 5,
+             }}>
+               {shareMsg}
+             </div>
+           )}
+         </div>
+           <div className="export-dropdown weekly-more-dropdown" ref={exportRef}>
               <button className="schedule-nav-btn" onClick={() => setShowMenu(!showMenu)} aria-label="Routine options" aria-haspopup="true">
                <MoreVertical size={18} />
              </button>
@@ -705,18 +716,6 @@ export default function WeeklyPlanner() {
                </div>
              )}
            </div>
-
-           {shareMsg && (
-             <div className="weekly-share-msg" style={{
-               position: 'absolute', right: '4px', top: 'calc(100% + 6px)',
-               fontSize: 'var(--fs-xs)', color: 'var(--accent-emerald)',
-               background: 'var(--bg-card)', padding: '4px 10px', borderRadius: 'var(--radius-sm)',
-               border: '1px solid var(--border-primary)', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', zIndex: 5,
-             }}>
-               {shareMsg}
-             </div>
-           )}
-         </div>
        </div>
 
        <div className="schedule-dotted-divider" />

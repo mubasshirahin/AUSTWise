@@ -158,6 +158,68 @@
   .cm-content-card {
     padding: var(--sp-4);
   }
+  /* Dashboard Routine masthead mobile treatment — single column, compact
+     tiles, title truncation, centered stats hidden so the bar stays lean. */
+  .community-page .schedule-masthead {
+    grid-template-columns: 1fr;
+    padding: var(--sp-3);
+    gap: var(--sp-2);
+    border-width: 1px;
+  }
+  .community-page .schedule-icon-tile,
+  .community-page .student-dir-header-icon,
+  .community-page .clubs-header-icon {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: var(--radius-sm);
+  }
+  .community-page .schedule-icon-tile svg,
+  .community-page .student-dir-header-icon svg,
+  .community-page .clubs-header-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+  .community-page .schedule-title-block,
+  .community-page .clubs-header-left {
+    gap: 10px;
+    min-width: 0;
+  }
+  .community-page .schedule-overline {
+    font-size: 9px;
+  }
+  .community-page .schedule-title,
+  .community-page .clubs-header-title,
+  .community-page .student-dir-header-title {
+    font-size: var(--fs-sm);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .community-page .schedule-subtitle,
+  .community-page .clubs-header-subtitle,
+  .community-page .student-dir-header-subtitle {
+    font-size: 9px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .community-page .schedule-masthead-center,
+  .community-page .schedule-stats {
+    display: none;
+  }
+  /* Controls inside the masthead action tray fill the row on mobile */
+  .community-page .schedule-actions {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  .community-page .alumni-select,
+  .community-page .alumni-search,
+  .community-page .clubs-search {
+    width: 100%;
+    min-width: 0;
+  }
 }
 
 /* ── Hub content area — animated swap on tab change ── */
@@ -2047,5 +2109,81 @@
   .stu-td-email,
   .stu-td-batch {
     display: none;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   RESPONSIVE ENGINEERING — touch / a11y / iOS hardening
+   Scoped to the Community hub only (shares no global class).
+   ════════════════════════════════════════════════════════════ */
+
+/* iOS Safari auto-zooms any focused input <16px. Searches + selects in
+   Community inherit --fs-sm (~12.6px), so force 16px on mobile/tablet. */
+@media (max-width: 1023px) {
+  .community-page .search-box input,
+  .community-page .clubs-search-input,
+  .community-page select.input {
+    font-size: 16px;
+  }
+}
+
+/* Touch targets — every tappable control meets ~44–48px height on coarse
+   pointers so taps don't misfire. Keeps visual padding tight on desktop. */
+@media (hover: none), (pointer: coarse) {
+  .community-page .clubs-social-link,
+  .community-page .faculty-card-linkedin,
+  .community-page .student-dir-export-trigger {
+    width: 44px;
+    height: 44px;
+  }
+
+  .community-page .student-dir-filter-btn,
+  .community-page .student-dir-clear-filter,
+  .community-page .clubs-card-expand {
+    min-height: 40px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    justify-content: center;
+  }
+
+  .community-page .clubs-join-btn {
+    min-height: 40px;
+    padding: 8px 14px;
+  }
+
+  .community-page .student-dir-export-item {
+    min-height: 44px;
+    padding: 10px 12px;
+  }
+
+  .community-page .mentor-req-card .btn.btn-ghost {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* Sticky-hover prevention — hover :hover() lift traps in a hovered/selected
+   state on touch. Kill the transform/position shifts on coarse pointers. */
+@media (hover: none) {
+  .community-page .alumni-card:hover,
+  .community-page .clubs-card:hover,
+  .community-page .community-cell:hover,
+  .community-page .student-dir-dept-section:hover,
+  .community-page .student-dir-exec-slot:hover,
+  .community-page .student-dir-slot-card:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .community-page .alumni-card-email:hover {
+    text-decoration: none;
+  }
+}
+
+/* Mentor-request responses + respond row hug the left avatar on desktop but
+   are inset 48px; on narrow screens that wastes width — collapse to full. */
+@media (max-width: 480px) {
+  .community-page .mentor-req-card div[style*="margin-left: 48px"] {
+    margin-left: 0;
   }
 }

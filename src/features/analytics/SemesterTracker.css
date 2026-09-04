@@ -231,7 +231,9 @@
     padding: var(--sp-3);
     gap: var(--sp-2);
     border-width: 1px;
-    padding-right: 120px;
+    position: relative;
+    margin-bottom: 52px;
+    overflow: visible;
   }
   .st-widget .schedule-icon-tile {
     width: 36px;
@@ -246,6 +248,8 @@
   .st-widget .schedule-title-block {
     gap: 10px;
     min-width: 0;
+    grid-column: 1;
+    grid-row: 1;
   }
   .st-widget .schedule-overline {
     font-size: 9px;
@@ -267,28 +271,171 @@
   .st-widget .schedule-masthead-center {
     display: none;
   }
+  /* Mobile: switcher outside box — below masthead, three-dot stays top-right */
   .st-widget .schedule-actions {
-    position: absolute;
-    top: 50%;
-    right: var(--sp-3);
-    transform: translateY(-50%);
-    margin: 0;
-    justify-content: flex-end;
+    display: contents;
   }
-  /* Compact theory/lab tables on phones */
+  .st-widget .schedule-actions .export-dropdown {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    align-self: center;
+  }
+  .st-widget .schedule-actions .schedule-week-nav {
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: max-content;
+    max-width: calc(100% - 16px);
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    padding: 6px 8px;
+    box-shadow: var(--shadow-sm);
+    z-index: 3;
+  }
+  /* ── Theory table: one box on mobile — all marks together, sticky first col ── */
+  .st-table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+  }
   .st-table {
-    min-width: 640px;
+    min-width: 560px;
+    width: max-content;
     font-size: 10px;
   }
   .st-th,
   .st-td {
     padding: 6px 4px;
   }
+  /* Mark boxes — responsive on phones */
+  .st-td-input {
+    padding: 4px !important;
+  }
+  .st-cell-input {
+    width: 100% !important;
+    max-width: 62px !important;
+    min-width: 44px !important;
+    height: 28px !important;
+    font-size: 11px !important;
+    padding: 0 4px !important;
+  }
+  .st-raw-wrap {
+    gap: 2px !important;
+  }
+  .st-raw-wrap span {
+    font-size: 7px !important;
+  }
+  /* Sticky first col: minimal, solid bg, z-up, scroll underneath */
+  .st-th-course,
+  .st-td-course {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 8 !important;
+    background: var(--bg-secondary) !important;
+    background-color: var(--bg-secondary) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-right: 1px solid var(--border-primary) !important;
+    box-shadow: 4px 0 10px rgba(0,0,0,0.18) !important;
+    min-width: 88px !important;
+    width: 88px !important;
+    max-width: 88px !important;
+    padding: 6px 6px !important;
+    overflow: hidden !important;
+    opacity: 1 !important;
+    isolation: isolate !important;
+  }
+  .st-th-course {
+    z-index: 9 !important;
+    background: var(--bg-secondary) !important;
+    background-color: var(--bg-secondary) !important;
+  }
+  /* Kill hover transparent that was making sticky look washed */
+  .st-row:hover .st-td-course {
+    background: var(--bg-secondary) !important;
+    background-color: var(--bg-secondary) !important;
+  }
+  .st-td-course .st-course-code {
+    font-size: 9px;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 76px;
+  }
+  .st-td-course .st-course-name {
+    font-size: 8px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 76px;
+  }
+  /* Lab marks table — same single-box scroll */
+  .st-lab-marks-table {
+    min-width: 560px;
+    width: max-content;
+  }
+  .st-table-scroll:has(.st-lab-marks-table) {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
   .st-section-header {
     gap: 6px;
   }
   .st-section-title {
     font-size: 11px;
+  }
+  /* ── Lab cards: stack on phones ── */
+  .st-lab-card-header {
+    padding: 10px 12px;
+  }
+  .st-lab-progress-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .st-lab-progress-row .st-total-bar {
+    flex: 1 1 100%;
+    width: auto;
+  }
+  .st-lab-header-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .st-draft-header-row {
+    display: none;
+  }
+  .st-draft-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+  .st-draft-label,
+  .st-draft-label-text {
+    flex: none;
+    width: 100%;
+  }
+  .st-draft-num {
+    flex: none;
+    width: 100%;
+  }
+  .st-draft-input {
+    flex: 1;
+    min-width: 0;
+  }
+  .st-setup-panel {
+    padding: 10px 12px;
   }
 }
 

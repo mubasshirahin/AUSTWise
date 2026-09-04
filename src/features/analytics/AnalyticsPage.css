@@ -494,11 +494,25 @@
   box-shadow: 0 4px 14px -4px color-mix(in srgb, var(--accent-blue) 45%, transparent);
 }
 
+/* Breakdown ⋮ dropdown — 1:1 with Dashboard .export-menu (solid bg, top, high z) */
+.cgpa-breakdown-box .export-dropdown {
+  position: relative;
+  z-index: 99999;
+}
+
 .cgpa-breakdown-box .export-menu {
-  border: 1px solid color-mix(in srgb, var(--accent-blue) 18%, var(--border-primary));
-  box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.35);
-  border-radius: var(--radius-lg);
-  padding: 6px;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 99999;
+  background: var(--bg-secondary);
+  background-color: var(--bg-secondary);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popper);
+  overflow: hidden;
   min-width: 220px;
 }
 
@@ -550,7 +564,7 @@
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-popper);
-  z-index: 40;
+  z-index: 99999;
   overflow: hidden;
 }
 
@@ -684,11 +698,32 @@
     justify-content: flex-end;
     margin: 0 0 4px;
   }
-  .cgpa-bol-widget {
+  .gl-content-card {
     overflow: visible;
   }
+  .cgpa-bol-widget,
+  .cgpa-breakdown-box,
+  .cgpa-transcript {
+    overflow: visible;
+  }
+  .cgpa-breakdown-box .export-dropdown {
+    position: relative;
+    z-index: 99999;
+  }
   .cgpa-breakdown-box .export-menu {
-    z-index: 50;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    left: auto;
+    bottom: auto;
+    z-index: 99999;
+    background: var(--bg-secondary);
+    background-color: var(--bg-secondary);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-popper);
     max-height: 70vh;
     overflow-y: auto;
   }
@@ -1530,84 +1565,145 @@
   font-weight: var(--fw-semibold);
 }
 
-/* ── Dept Heatmap ── */
+/* ── Dept Heatmap — premium heatmap look ── */
 .hm-table {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   overflow-x: auto;
-  padding-bottom: 2px;
+  padding: 4px 2px 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-primary) transparent;
 }
+.hm-table::-webkit-scrollbar { height: 6px; }
+.hm-table::-webkit-scrollbar-thumb { background: var(--border-primary); border-radius: 999px; }
 .hm-row {
   display: grid;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
-  min-width: 760px;
+  min-width: 780px;
 }
-.hm-header { margin-bottom: 2px; }
+.hm-header { margin-bottom: 0; }
 .hm-head {
   text-align: center;
-  font-weight: var(--fw-bold);
-  font-size: 11px;
-  color: var(--text-secondary);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  padding: 2px 0;
 }
-.hm-batch-head { text-align: left; padding-left: 10px; }
+.hm-batch-head {
+  text-align: left;
+  padding-left: 12px;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+}
 .hm-batch {
   position: relative;
-  padding: 4px 0;
-  border-radius: var(--radius-sm);
+  padding: 2px 0;
+  border-radius: var(--radius-md);
+  transition: background 0.2s ease;
+}
+.hm-batch:hover {
+  background: color-mix(in srgb, var(--bg-card) 80%, transparent);
 }
 .hm-batch.hm-user {
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-amber) 25%, transparent);
-  background: color-mix(in srgb, var(--accent-amber) 5%, transparent);
+  background: color-mix(in srgb, var(--accent-amber) 7%, var(--bg-card));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-amber) 22%, transparent), 0 4px 16px -10px color-mix(in srgb, var(--accent-amber) 20%, transparent);
+  border-radius: var(--radius-md);
 }
 .hm-cell {
-  background: var(--bg-card);
-  border: 1px solid var(--border-primary);
-  border-left-width: 2px;
-  border-radius: var(--radius-md);
-  min-height: 40px;
+  position: relative;
+  min-height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 11px;
-  font-weight: var(--fw-bold);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: color-mix(in srgb, currentColor 13%, var(--bg-card));
+  border-color: color-mix(in srgb, currentColor 18%, transparent);
+  color: currentColor;
+  transition: transform 0.18s cubic-bezier(0.34,1.3,0.64,1), box-shadow 0.18s ease, filter 0.18s ease;
+  overflow: hidden;
+}
+.hm-cell:hover {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 6px 18px -12px color-mix(in srgb, currentColor 40%, transparent), 0 0 0 1px color-mix(in srgb, currentColor 22%, transparent);
+  filter: brightness(1.06);
+}
+.hm-cell[style*="transparent"] {
+  background: var(--bg-input) !important;
+  border-color: var(--border-primary) !important;
+  color: var(--text-tertiary) !important;
+  border-style: dashed !important;
+  opacity: 0.9;
 }
 .hm-batch-label {
-  gap: 6px;
+  gap: 8px;
   justify-content: flex-start;
-  padding: 6px 10px;
-  font-weight: var(--fw-medium);
+  padding: 8px 12px;
+  font-weight: 600;
   white-space: nowrap;
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-primary) !important;
+  box-shadow: var(--shadow-sm);
+  color: var(--text-primary) !important;
+}
+.hm-batch-label:hover {
+  transform: none;
+  box-shadow: var(--shadow-sm);
+  filter: none;
 }
 .hm-batch-label .schedule-day-count {
   margin-left: auto;
   flex-shrink: 0;
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
 }
 .hm-batch-label em {
   font-style: normal;
   font-size: 9px;
-  font-weight: var(--fw-bold);
+  font-weight: 800;
+  letter-spacing: 0.04em;
   color: var(--accent-amber);
   background: var(--accent-amber-glow);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 18%, transparent);
   border-radius: var(--radius-full);
-  padding: 1px 6px;
+  padding: 2px 7px;
 }
 
 /* ── Dept Heatmap: collected data + legend ── */
 .hm-summary {
   margin-top: var(--sp-4);
-  padding: var(--sp-3);
-  background: var(--bg-card);
+  padding: var(--sp-4);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--bg-card) 96%, transparent), var(--bg-card));
   border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   font-size: var(--fs-xs);
+  box-shadow: var(--shadow-sm);
 }
 .hm-summary > strong {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   color: var(--text-primary);
   font-size: 11px;
-  margin-bottom: var(--sp-2);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: var(--sp-3);
+}
+.hm-summary > strong::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--accent-amber);
+  box-shadow: 0 0 0 4px var(--accent-amber-glow);
 }
 .hm-summary-chips {
   display: flex;
@@ -1617,34 +1713,60 @@
 .hm-summary-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   background: var(--bg-input);
   border: 1px solid var(--border-primary);
-  padding: 3px 10px;
+  padding: 6px 12px;
   border-radius: var(--radius-full);
   font-size: 11px;
+  font-weight: 600;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.hm-summary-chip:hover {
+  transform: translateY(-1px);
+  border-color: var(--border-focus);
+}
+.hm-summary-chip > span {
+  color: var(--text-primary);
+  font-weight: 700;
 }
 .hm-summary-chip b {
-  font-weight: var(--fw-bold);
+  font-weight: 800;
   color: var(--accent-amber);
+  background: var(--accent-amber-glow);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 18%, transparent);
+  padding: 1px 6px;
+  border-radius: 999px;
+  min-width: 22px;
+  text-align: center;
 }
-.hm-summary-chip.ready b { color: var(--accent-emerald); }
+.hm-summary-chip.ready b {
+  color: var(--accent-emerald);
+  background: var(--accent-emerald-glow);
+  border-color: color-mix(in srgb, var(--accent-emerald) 18%, transparent);
+}
 .hm-summary-chip em {
   font-style: normal;
   color: var(--text-tertiary);
+  font-size: 10px;
+}
+.hm-summary-chips > span:nth-child(2) > span {
+  color: var(--text-primary) !important;
 }
 .hm-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--sp-3);
+  gap: 10px;
   align-items: center;
   justify-content: center;
   margin-top: var(--sp-4);
-  padding: var(--sp-3);
+  padding: 12px 16px;
   background: var(--bg-card);
   border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   font-size: 11px;
+  box-shadow: var(--shadow-sm);
 }
 .hm-legend-title {
   color: var(--text-tertiary);
@@ -1662,6 +1784,45 @@
   height: 10px;
   border-radius: var(--radius-sm);
   background: var(--chip);
+}
+
+@media (max-width: 640px) {
+  .hm-table {
+    gap: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    padding-bottom: 6px;
+  }
+  .hm-row { min-width: 640px; gap: 6px; }
+  .hm-cell { min-height: 34px; font-size: 10px; border-radius: 8px; }
+  .hm-batch-head,
+  .hm-batch-label {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 5 !important;
+    background: var(--bg-secondary) !important;
+    background-color: var(--bg-secondary) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: 3px 0 8px rgba(0,0,0,0.12) !important;
+    border-right: 1px solid var(--border-primary) !important;
+    isolation: isolate !important;
+  }
+  .hm-head.hm-batch-head {
+    z-index: 6 !important;
+    background: var(--bg-secondary) !important;
+    background-color: var(--bg-secondary) !important;
+  }
+  .hm-summary { padding: var(--sp-3); border-radius: var(--radius-md); }
+  .hm-summary > strong { font-size: 10px; margin-bottom: var(--sp-2); gap: 6px; }
+  .hm-summary > strong::before { width: 5px; height: 5px; }
+  .hm-summary-chips { gap: 6px; }
+  .hm-summary-chip { padding: 4px 8px; font-size: 10px; gap: 4px; }
+  .hm-summary-chip > span { font-size: 10px; }
+  .hm-summary-chip b { font-size: 10px; padding: 1px 5px; min-width: 18px; }
+  .hm-summary-chip em { font-size: 9px; }
+  .hm-legend { border-radius: var(--radius-md); padding: 10px 12px; gap: 8px; font-size: 10px; }
 }
 
 /* ── Course Poll ── */
@@ -1847,6 +2008,124 @@
   white-space: nowrap;
 }
 
+/* ── Best & Worst (Poll) — mobile responsive ── */
+@media (max-width: 640px) {
+  .poll-widget .schedule-masthead {
+    padding: var(--sp-3);
+    gap: var(--sp-2);
+    border-width: 1px;
+  }
+  .poll-widget .schedule-icon-tile {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: var(--radius-sm);
+  }
+  .poll-widget .schedule-icon-tile svg {
+    width: 20px;
+    height: 20px;
+  }
+  .poll-widget .schedule-overline { font-size: 9px; }
+  .poll-widget .schedule-title {
+    font-size: var(--fs-sm);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .poll-widget .schedule-subtitle {
+    font-size: 9px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .poll-widget .schedule-masthead-center { display: none; }
+  .poll-widget .schedule-stats { display: none; }
+  .poll-leaderboards.grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: var(--sp-3) !important;
+  }
+  /* Dropdown: Best/Worst side-by-side minimal on mobile */
+  .poll-pickers.mobile-open .grid-2 {
+    grid-template-columns: 1fr 1fr !important;
+    gap: var(--sp-2) !important;
+  }
+  .poll-pickers .grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: var(--sp-3) !important;
+  }
+  .poll-pickers.mobile-open .poll-pick-card {
+    padding: var(--sp-2) !important;
+    gap: var(--sp-2) !important;
+  }
+  /* Reduce gap above the two pick boxes */
+  .poll-widget .schedule-dotted-divider {
+    margin: 4px 0 4px !important;
+  }
+  .poll-pickers.mobile-open {
+    margin-top: 4px !important;
+  }
+  #ballot-form > div.grid-2 {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+  #ballot-form > div.grid-2 > div:nth-child(1),
+  #ballot-form > div.grid-2 > div:nth-child(2) {
+    margin-top: 0 !important;
+  }
+  .poll-widget > .poll-pickers.mobile-open + .poll-leaderboards,
+  .poll-widget > form + .poll-leaderboards {
+    margin-top: var(--sp-2) !important;
+  }
+  .poll-pickers.mobile-open .poll-pick-head {
+    font-size: 11px !important;
+    gap: 6px !important;
+  }
+  .poll-pickers.mobile-open .poll-pick-head h4 { font-size: 11px !important; }
+  .poll-pickers.mobile-open .poll-pick-slots { gap: 6px !important; }
+  .poll-pickers.mobile-open .poll-pick-slots input {
+    padding: 6px 8px !important;
+    font-size: 11px !important;
+    min-height: 32px !important;
+  }
+  .poll-pick-card,
+  .poll-board {
+    padding: var(--sp-3);
+  }
+  .poll-board-head {
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+  }
+  .poll-board-head h3 { font-size: var(--fs-sm); }
+  .poll-board-voters { font-size: 10px; }
+  .poll-rank { font-size: 11px; min-width: 16px; }
+  .poll-code { font-size: 12px; }
+  .poll-name {
+    font-size: 10px;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+  }
+  .poll-row { padding: 8px 10px; gap: 8px; }
+  .poll-submit { width: 100%; padding: 10px 14px; justify-content: center; }
+  .poll-submit span { display: inline !important; }
+  .poll-recorded { width: 100%; justify-content: center; }
+  .poll-recorded-banner { padding: var(--sp-3); gap: 10px; }
+  .poll-submit-warning { margin: 0 0 var(--sp-3); font-size: 11px; }
+  /* Mobile: pickers hidden first, dropdown on first Submit click */
+  .poll-pickers { display: none !important; }
+  .poll-pickers.mobile-open {
+    display: block !important;
+    animation: pollDropdownIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+    margin-top: var(--sp-3);
+  }
+  .poll-pickers.mobile-hidden { display: none !important; }
+  @keyframes pollDropdownIn {
+    from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════════
    MOBILE ONE-PAGE — everything visible without scrolling
    Aggressive compaction for mobile viewports (≤640px)
@@ -1858,43 +2137,17 @@
     padding-bottom: var(--sp-3);
   }
 
-  /* ── Hero: ultra-compact ── */
+  /* ── Hero: vault-style on mobile — matches .vl-hero ── */
   .gl-hero {
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-xl);
   }
   .gl-hero-content {
-    padding: var(--sp-2) var(--sp-3);
-  }
-  .gl-hero-eyebrow {
-    margin-bottom: 2px;
-  }
-  .gl-hero-period-icon {
-    width: 20px;
-    height: 20px;
-  }
-  .gl-hero-period-icon svg {
-    width: 12px;
-    height: 12px;
-  }
-  .gl-hero-date-label {
-    font-size: 8px;
-    letter-spacing: 0.04em;
-  }
-  .gl-hero-title {
-    font-size: 1.1rem;
-    letter-spacing: -0.02em;
-    margin-bottom: 0;
-  }
-  .gl-hero-subtitle {
-    font-size: 9px;
-    line-height: 1.3;
-    margin-top: 2px;
+    padding: var(--sp-4) var(--sp-3);
   }
 
-  /* ── Tabs card: compact ── */
+  /* ── Tabs card: matches dashboard .das-tabs-card on mobile ── */
   .gl-tabs-card {
-    padding: var(--sp-1);
-    border-radius: var(--radius-md);
+    padding: var(--sp-2);
   }
 
   /* ── Content card: zero extra padding ── */
@@ -1903,34 +2156,46 @@
     border-radius: var(--radius-md);
   }
 
-  /* ── CGPA Calculator widget ── */
+  /* ── CGPA Calculator widget — mobile masthead matches Dashboard ── */
   .cgpa-bol-widget .schedule-masthead {
-    padding: var(--sp-2);
+    padding: var(--sp-3);
     gap: var(--sp-2);
-    margin-bottom: 4px;
     border-width: 1px;
   }
   .cgpa-bol-widget .schedule-icon-tile {
-    width: 28px;
-    height: 28px;
-    min-width: 28px;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: var(--radius-sm);
   }
   .cgpa-bol-widget .schedule-icon-tile svg {
-    width: 16px;
-    height: 16px;
+    width: 20px;
+    height: 20px;
+  }
+  .cgpa-bol-widget .schedule-title-block {
+    gap: 10px;
+    min-width: 0;
   }
   .cgpa-bol-widget .schedule-overline {
-    font-size: 7px;
-    letter-spacing: 0.08em;
+    font-size: 9px;
   }
   .cgpa-bol-widget .schedule-title {
-    font-size: 12px;
+    font-size: var(--fs-sm);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   .cgpa-bol-widget .schedule-subtitle {
-    font-size: 8px;
+    font-size: 9px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .cgpa-bol-widget .schedule-masthead-center {
+    display: none;
+  }
+  .cgpa-bol-widget .schedule-stats {
     display: none;
   }
 
@@ -1981,11 +2246,11 @@
     margin-top: var(--sp-2);
   }
 
-  /* ── Transcript masthead ── */
+  /* ── Transcript masthead — same Dashboard mobile masthead ── */
   .cgpa-breakdown-box .schedule-masthead {
-    padding: var(--sp-2);
+    padding: var(--sp-3);
     gap: var(--sp-2);
-    margin-bottom: 2px;
+    border-width: 1px;
   }
   .cgpa-breakdown-box .schedule-masthead .cgpa-transcript-actions {
     gap: 6px;
@@ -2153,25 +2418,34 @@
     max-height: 110px;
   }
 
-  /* ── GliderTabs: ultra-compact for analytics ── */
+  /* ── GliderTabs: dashboard-consistent on mobile ──
+     Inherits the shared @media (max-width:640px) rules from
+     src/components/GliderTabs.css (icon 28px, label 8px, gap 4px).
+     No extra compaction here so Grade Lab stays 1:1 with Dashboard. */
   .gl-tabs-card .glider-tabs-wrap {
-    gap: 3px;
+    gap: 6px;
   }
   .gl-tabs-card .glider-tab {
-    padding: 4px 6px;
-    gap: 2px;
-    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    padding-left: 19px;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    border-radius: 12px;
   }
   .gl-tabs-card .glider-tab-icon {
-    width: 22px;
-    height: 22px;
+    width: 28px;
+    height: 28px;
   }
   .gl-tabs-card .glider-tab-icon svg {
-    width: 14px;
-    height: 14px;
+    transform: scale(1.2);
+    transform-origin: center;
   }
   .gl-tabs-card .glider-tab-label {
-    font-size: 7px;
+    font-size: 8px;
+    line-height: 1;
+    white-space: nowrap;
   }
 
   /* ── Grade badge: tighter ── */
@@ -2187,5 +2461,79 @@
   }
   .schedule-stat-label {
     font-size: 7px;
+  }
+}
+
+/* ───────────────────────────────────────────────────────────────
+   Semester Breakdown ⋮ dropdown — force Dashboard match
+   Selector from user: #root ... .cgpa-transcript-actions > div > div
+   Must be solid bg, on top (99999), absolute top-right like
+   Dashboard .export-menu — overrides any fixed bottom-sheet.
+   ─────────────────────────────────────────────────────────────── */
+.cgpa-breakdown-box .export-dropdown {
+  position: relative;
+  z-index: 99999;
+}
+.cgpa-breakdown-box .export-menu,
+.glass-card-static.schedule-widget.cgpa-bol-widget.cgpa-breakdown-box .export-menu,
+div.gl-content-card div.glass-card-static.schedule-widget.cgpa-bol-widget.cgpa-breakdown-box .schedule-masthead .cgpa-transcript-actions .export-dropdown .export-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  left: auto;
+  bottom: auto;
+  z-index: 99999;
+  background: var(--bg-secondary);
+  background-color: var(--bg-secondary);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popper);
+  overflow: hidden;
+  min-width: 220px;
+  opacity: 1;
+  transform: none;
+  isolation: isolate;
+}
+@media (max-width: 640px) {
+  .cgpa-breakdown-box .export-menu,
+  .glass-card-static.schedule-widget.cgpa-bol-widget.cgpa-breakdown-box .export-menu,
+  div.gl-content-card div.glass-card-static.schedule-widget.cgpa-bol-widget.cgpa-breakdown-box .schedule-masthead .cgpa-transcript-actions .export-dropdown .export-menu {
+    position: absolute !important;
+    top: calc(100% + 6px) !important;
+    right: 0 !important;
+    left: auto !important;
+    bottom: auto !important;
+    z-index: 99999 !important;
+    background: var(--bg-secondary) !important;
+    background-color: var(--bg-secondary) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: 1px solid var(--border-primary) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--shadow-popper) !important;
+    min-width: 220px !important;
+    max-width: calc(100vw - 32px) !important;
+    width: max-content !important;
+    opacity: 1 !important;
+  }
+}
+
+/* ── First content box inside gl-content-card — mobile responsive ── */
+@media (max-width: 640px) {
+  .gl-content-card > div > div:nth-child(1) {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: var(--sp-3) !important;
+    overflow: hidden !important;
+  }
+  .gl-content-card > div > div:nth-child(1) > * {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
   }
 }

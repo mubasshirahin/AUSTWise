@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
-import { ThumbsUp, ThumbsDown, Trophy, Users, Send, Award, CheckCircle } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { ThumbsUp, ThumbsDown, Trophy, Users, Send, Award, CheckCircle, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
 import { useLiveRefresh } from '../../utils/liveStore';
 import {
@@ -115,6 +116,17 @@ export default function CoursePoll() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobilePickersOpen, setMobilePickersOpen] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 640px)');
+    const handler = (e) => setIsMobile(e.matches);
+    setIsMobile(mql.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, []);
 
   // Live-sync: re-render leaderboards when another device submits a ballot.
   useLiveRefresh(['aust-course-poll-ballots-v1'], () => setRefreshTick((t) => t + 1));
@@ -160,11 +172,11 @@ export default function CoursePoll() {
 
   const submit = (e) => {
     e.preventDefault();
-    const ok = window.confirm(
-      '⚠️ Are you sure?\n\nYou can only submit once. Your picks cannot be changed after submitting.\n\nClick OK to confirm your vote.'
-    );
-    if (!ok) return;
+    setShowConfirm(true);
+  };
 
+  const confirmSubmit = () => {
+    setShowConfirm(false);
     setSubmitting(true);
     try {
       saveMyBallot(best, worst);
@@ -204,27 +216,27 @@ export default function CoursePoll() {
               <CheckCircle size={15} /> Recorded
             </span>
           ) : (
-            <button type="submit" form="ballot-form" className="poll-submit" disabled={submitting}>
-              {submitting ? (
-                <>Saving...</>
-              ) : (
-                <><span>Submit My Picks</span> <Send size={14} /></>
-              )}
+            <button
+              type="button"
+              className="schedule-nav-btn poll-toggle"
+              onClick={() => setMobilePickersOpen((v) => !v)}
+              aria-label={mobilePickersOpen ? 'Hide course picker' : 'Pick courses'}
+              aria-expanded={mobilePickersOpen}
+            >
+              {mobilePickersOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
             </button>
           )}
         </div>
       </div>
 
-      {!voted && (
-        <div className="poll-submit-warning">
-          ⚠️ Pick courses wisely — you can only submit once!
-        </div>
-      )}
-
       <div className="schedule-dotted-divider" />
 
       {!voted && (
-        <form id="ballot-form" onSubmit={submit} className="poll-pickers">
+        <form
+          id="ballot-form"
+          onSubmit={submit}
+          className={`poll-pickers ${isMobile ? (mobilePickersOpen ? 'mobile-open' : 'mobile-hidden') : ''}`}
+        >
           <div className="grid-2" style={{ gap: 'var(--sp-4)' }}>
             <PickList
               title="Your Best Courses"
@@ -240,6 +252,12 @@ export default function CoursePoll() {
               picks={worst}
               setPicks={setWorst}
             />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'var(--sp-3)' }}>
+            <button type="submit" className="poll-submit" disabled={submitting}>
+              {submitting ? <>Saving...</> : <><span>Submit My Picks</span> <Send size={14} /></>}
+            </button>
           </div>
 
           {error && <p className="poll-error">{error}</p>}
@@ -272,6 +290,51 @@ export default function CoursePoll() {
           totalVoters={totalVoters}
         />
       </div>
+
+      {showConfirm &&
+        createPortal(
+          <div
+            className="modal-overlay"
+            onClick={() => setShowConfirm(false)}
+            style={{
+              background: 'rgba(4, 6, 20, 0.52)',
+              backdropFilter: 'blur(16px) saturate(140%)',
+              WebkitBackdropFilter: 'blur(16px) saturate(140%)',
+              zIndex: 99999,
+            }}
+          >
+            <div className="modal glass-card-static" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px', textAlign: 'center', padding: 'var(--sp-5)' }}>
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  margin: '0 auto 12px',
+                  borderRadius: 'var(--radius-md)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'var(--accent-amber-glow)',
+                  color: 'var(--accent-amber)',
+                }}
+              >
+                <AlertTriangle size={22} />
+              </div>
+              <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 700, margin: 0 }}>Are you sure?</h3>
+              <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: '8px 0 0', lineHeight: 1.5 }}>
+                You can only submit once. Your picks cannot be changed after submitting.
+              </p>
+              <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+                <button className="btn btn-secondary" onClick={() => setShowConfirm(false)} style={{ flex: 1 }}>
+                  Cancel
+                </button>
+                <button className="btn btn-primary" onClick={confirmSubmit} style={{ flex: 1 }}>
+                  Submit
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
