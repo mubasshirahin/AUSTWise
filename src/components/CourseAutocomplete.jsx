@@ -260,17 +260,19 @@ export default function CourseAutocomplete({
             top: `${portalPosition.top}px`,
             left: `${portalPosition.left}px`,
             width: `${portalPosition.width}px`,
-            backgroundColor: 'var(--bg-card)',
-            border: '1px solid var(--border-primary)',
+            background: '#1a1a24',
+            backgroundColor: '#1a1a24',
+            border: '1px solid #2a2a36',
             borderRadius: '8px',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
             maxHeight: '240px',
             overflowY: 'auto',
             overflowX: 'visible',
             zIndex: 1000000,
             listStyle: 'none',
             padding: '4px',
-            margin: 0
+            margin: 0,
+            opacity: 1,
           }}
         >
           {suggestions.length > 0 ? (
