@@ -2614,6 +2614,31 @@ async function handleApiRequest(req, res) {
         sendJson(res, 403, { success: false, error: 'Only CR/SR or admin can update the shared exam schedule.' });
         return;
       }
+      // Validate Zero Hour slot key matches poster's profile (prevent cross-section write) + rate limit
+      if (key.startsWith('aust-exam-schedule:')) {
+        // Rate limit: 5s if >5 courses touched
+        const lastExam = noticePostLastByUser.get(auth.id + ':exam') || 0;
+        const courseCount = body.value && typeof body.value === 'object' ? Object.keys(body.value).filter(k=>k!=='_meta').length : 0;
+        if (Date.now() - lastExam < 5000 && courseCount > 5) {
+          sendJson(res, 429, { success: false, error: 'Rate limited — slow down edits.' }); return;
+        }
+        noticePostLastByUser.set(auth.id + ':exam', Date.now());
+        try {
+          const dbUser = await getUserById(auth.id);
+          if (!dbUser) { sendJson(res, 404, { success: false, error: 'User not found.' }); return; }
+          const expected = `${dbUser.department || ''}|${dbUser.yearSemester || ''}|${dbUser.section || ''}|${dbUser.labSection || ''}`;
+          const actualSlot = key.slice('aust-exam-schedule:'.length);
+          // Admin/moderator can write any slot (for diagnostics), CR/SR must match own
+          if (!['admin','moderator'].includes(auth.role) && actualSlot !== expected) {
+            // Allow if actualSlot is prefix of expected or vice versa due to empty lab? Strict
+            if (actualSlot !== expected) { sendJson(res, 403, { success: false, error: 'Slot key must match your profile (department|yearSemester|section|labSection).' }); return; }
+          }
+          // Empty profile guard
+          if (!dbUser.department || !dbUser.yearSemester || !dbUser.section || !dbUser.labSection) {
+            sendJson(res, 400, { success: false, error: 'Complete profile (dept/yearSemester/section/labSection) before editing.' }); return;
+          }
+        } catch {}
+      }
       await setSharedStoreValue(key, body.value, auth.id);
       broadcastToAll({ type: 'store-change', payload: { scope: 'shared', key } });
       sendJson(res, 200, { success: true, key });

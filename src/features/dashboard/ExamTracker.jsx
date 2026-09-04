@@ -12,7 +12,10 @@ const EDITOR_ROLES = ['admin', 'moderator', 'cr', 'sr'];
 
 /* One shared schedule per section slot — the same key the server and
    RoutineSharingStatus use to group a CR with their students. */
-export const examSlotKeyOf = (u) => `${u?.department || ''}|${u?.yearSemester || ''}|${u?.section || ''}|${u?.labSection || ''}`;
+export const examSlotKeyOf = (u) => {
+  if (!u?.department || !u?.yearSemester || !u?.section || !u?.labSection) return null;
+  return `${u.department}|${u.yearSemester}|${u.section}|${u.labSection}`;
+};
 
 const EXAM_SLOTS = [
   { key: 'quiz1', label: 'Quiz 1', color: 'var(--accent-blue)', glow: 'var(--accent-blue-glow)' },
@@ -26,7 +29,9 @@ const EXAM_SLOTS = [
 function getSlotState(dateStr) {
   if (!dateStr) return { label: '\u2014', cls: 'neutral' };
   const now = new Date(); now.setHours(0, 0, 0, 0);
-  const target = new Date(dateStr); target.setHours(0, 0, 0, 0);
+  // TZ-safe parse YYYY-MM-DD as local midnight
+  const target = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00'); target.setHours(0, 0, 0, 0);
+  if (isNaN(target.getTime())) return { label: '\u2014', cls: 'neutral' };
   const diff = Math.ceil((target - now) / (1000 * 60 * 60 * 24));
   if (diff < 0) return { label: 'Passed', cls: 'passed' };
   if (diff === 0) return { label: 'Today', cls: 'today' };
@@ -37,25 +42,34 @@ function getSlotState(dateStr) {
 
 function formatDate(dateStr) {
   if (!dateStr) return '\u2014';
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const d = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00');
+  if (isNaN(d.getTime())) return '\u2014';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export default function ExamTracker() {
   const { routine } = useRoutine();
   const { user } = useAuth();
-  const [exams, setExams] = useLiveValue('shared', `${SHARED_PREFIX}${examSlotKeyOf(user)}`, {});
+  const slotKey = examSlotKeyOf(user);
+  const sharedKey = slotKey ? `${SHARED_PREFIX}${slotKey}` : null;
+  const [exams, setExams] = useLiveValue('shared', sharedKey, {});
   const [legacyExams] = useLiveValue('user', STORAGE_KEY, {});
   const [detailModal, setDetailModal] = useState(null); // { slotKey, slotLabel, date, syllabus, courseCode, courseName, isEditing, editDate, editSyllabus }
 
   const isAdminView = user?.role === 'admin' || user?.role === 'moderator';
   const canEdit = EDITOR_ROLES.includes(user?.role);
 
+  const profileIncomplete = !user?.department || !user?.yearSemester || !user?.section || !user?.labSection;
+
   /* Everyone reads the shared section schedule. Until an editor saves the
      first shared copy, fall back to this account's legacy personal data so
      nothing that existed before sharing appears lost. */
   const examData = useMemo(() => {
-    const hasShared = exams && Object.keys(exams).some((k) => k !== '_meta' && exams[k] && typeof exams[k] === 'object');
-    return hasShared ? exams : (legacyExams || {});
+    const hasShared = exams && typeof exams === 'object' && Object.keys(exams).some((k) => k !== '_meta' && exams[k] && typeof exams[k] === 'object' && Object.keys(exams[k]).length > 0);
+    if (hasShared) return exams;
+    // If shared is empty but has stale _meta only, treat as empty and clear legacy fallback after first save
+    const legacyHas = legacyExams && typeof legacyExams === 'object' && Object.keys(legacyExams).some(k => k !== '_meta' && legacyExams[k] && typeof legacyExams[k] === 'object');
+    return legacyHas ? legacyExams : {};
   }, [exams, legacyExams]);
 
   const theoryCourses = useMemo(() => {
@@ -94,12 +108,15 @@ export default function ExamTracker() {
 
   const handleSaveSingleSlot = () => {
     if (!detailModal) return;
+    if (!slotKey) return;
     const { courseCode, slotKey, editDate, editSyllabus } = detailModal;
+    // Length guards
+    const safeSyllabus = (editSyllabus || '').slice(0, 2000);
     const updated = { ...examData };
     if (!updated[courseCode]) updated[courseCode] = {};
     updated[courseCode][slotKey] = {
       date: editDate || '',
-      syllabus: editSyllabus || ''
+      syllabus: safeSyllabus
     };
     updated._meta = {
       updatedBy: user?.name || user?.awid || 'Unknown',
@@ -209,7 +226,19 @@ export default function ExamTracker() {
         </p>
       )}
 
-      {theoryCourses.length === 0 ? (
+      {profileIncomplete ? (
+        <div className="exam-empty" style={{ border: '1px dashed var(--border-primary)', background: 'var(--bg-input)' }}>
+          <BookOpen size={24} style={{ opacity: 0.3 }} />
+          <p>Complete profile to view Zero Hour</p>
+          <span>Add department · yearSemester · section · labSection in Settings</span>
+        </div>
+      ) : !slotKey ? (
+        <div className="exam-empty">
+          <BookOpen size={24} style={{ opacity: 0.3 }} />
+          <p>Loading schedule…</p>
+          <span>Syncing shared section data</span>
+        </div>
+      ) : theoryCourses.length === 0 ? (
         <div className="exam-empty">
           <BookOpen size={24} style={{ opacity: 0.3 }} />
           <p>No theory courses found</p>

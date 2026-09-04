@@ -4177,3 +4177,15 @@ tr.day-row-active {
     display: block !important;
   }
 }
+/* User requested: modal h3 white to match theme */
+#root > div.app-layout > div.main-content > div > div > div.dashboard-grid > section > div > div > div.modal-overlay > div > div:nth-child(1) > div:nth-child(1) > h3,
+#root div.modal-overlay div div:nth-child(1) div:nth-child(1) h3,
+.dashboard-grid .modal-overlay h3 {
+  color: #ffffff !important;
+  color: var(--text-primary, #ffffff) !important;
+}
+[data-theme="light"] #root > div.app-layout > div.main-content > div > div > div.dashboard-grid > section > div > div > div.modal-overlay > div > div:nth-child(1) > div:nth-child(1) > h3,
+[data-theme="light"] .dashboard-grid .modal-overlay h3 {
+  color: #111827 !important;
+  color: var(--text-primary, #111827) !important;
+}
