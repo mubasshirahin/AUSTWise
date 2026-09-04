@@ -2008,6 +2008,124 @@
   white-space: nowrap;
 }
 
+/* ── Best & Worst (Poll) — mobile responsive ── */
+@media (max-width: 640px) {
+  .poll-widget .schedule-masthead {
+    padding: var(--sp-3);
+    gap: var(--sp-2);
+    border-width: 1px;
+  }
+  .poll-widget .schedule-icon-tile {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: var(--radius-sm);
+  }
+  .poll-widget .schedule-icon-tile svg {
+    width: 20px;
+    height: 20px;
+  }
+  .poll-widget .schedule-overline { font-size: 9px; }
+  .poll-widget .schedule-title {
+    font-size: var(--fs-sm);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .poll-widget .schedule-subtitle {
+    font-size: 9px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .poll-widget .schedule-masthead-center { display: none; }
+  .poll-widget .schedule-stats { display: none; }
+  .poll-leaderboards.grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: var(--sp-3) !important;
+  }
+  /* Dropdown: Best/Worst side-by-side minimal on mobile */
+  .poll-pickers.mobile-open .grid-2 {
+    grid-template-columns: 1fr 1fr !important;
+    gap: var(--sp-2) !important;
+  }
+  .poll-pickers .grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: var(--sp-3) !important;
+  }
+  .poll-pickers.mobile-open .poll-pick-card {
+    padding: var(--sp-2) !important;
+    gap: var(--sp-2) !important;
+  }
+  /* Reduce gap above the two pick boxes */
+  .poll-widget .schedule-dotted-divider {
+    margin: 4px 0 4px !important;
+  }
+  .poll-pickers.mobile-open {
+    margin-top: 4px !important;
+  }
+  #ballot-form > div.grid-2 {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+  #ballot-form > div.grid-2 > div:nth-child(1),
+  #ballot-form > div.grid-2 > div:nth-child(2) {
+    margin-top: 0 !important;
+  }
+  .poll-widget > .poll-pickers.mobile-open + .poll-leaderboards,
+  .poll-widget > form + .poll-leaderboards {
+    margin-top: var(--sp-2) !important;
+  }
+  .poll-pickers.mobile-open .poll-pick-head {
+    font-size: 11px !important;
+    gap: 6px !important;
+  }
+  .poll-pickers.mobile-open .poll-pick-head h4 { font-size: 11px !important; }
+  .poll-pickers.mobile-open .poll-pick-slots { gap: 6px !important; }
+  .poll-pickers.mobile-open .poll-pick-slots input {
+    padding: 6px 8px !important;
+    font-size: 11px !important;
+    min-height: 32px !important;
+  }
+  .poll-pick-card,
+  .poll-board {
+    padding: var(--sp-3);
+  }
+  .poll-board-head {
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+  }
+  .poll-board-head h3 { font-size: var(--fs-sm); }
+  .poll-board-voters { font-size: 10px; }
+  .poll-rank { font-size: 11px; min-width: 16px; }
+  .poll-code { font-size: 12px; }
+  .poll-name {
+    font-size: 10px;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+  }
+  .poll-row { padding: 8px 10px; gap: 8px; }
+  .poll-submit { width: 100%; padding: 10px 14px; justify-content: center; }
+  .poll-submit span { display: inline !important; }
+  .poll-recorded { width: 100%; justify-content: center; }
+  .poll-recorded-banner { padding: var(--sp-3); gap: 10px; }
+  .poll-submit-warning { margin: 0 0 var(--sp-3); font-size: 11px; }
+  /* Mobile: pickers hidden first, dropdown on first Submit click */
+  .poll-pickers { display: none !important; }
+  .poll-pickers.mobile-open {
+    display: block !important;
+    animation: pollDropdownIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+    margin-top: var(--sp-3);
+  }
+  .poll-pickers.mobile-hidden { display: none !important; }
+  @keyframes pollDropdownIn {
+    from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════════
    MOBILE ONE-PAGE — everything visible without scrolling
    Aggressive compaction for mobile viewports (≤640px)
@@ -2399,5 +2517,23 @@ div.gl-content-card div.glass-card-static.schedule-widget.cgpa-bol-widget.cgpa-b
     max-width: calc(100vw - 32px) !important;
     width: max-content !important;
     opacity: 1 !important;
+  }
+}
+
+/* ── First content box inside gl-content-card — mobile responsive ── */
+@media (max-width: 640px) {
+  .gl-content-card > div > div:nth-child(1) {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: var(--sp-3) !important;
+    overflow: hidden !important;
+  }
+  .gl-content-card > div > div:nth-child(1) > * {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
   }
 }
