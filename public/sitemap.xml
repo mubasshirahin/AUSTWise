@@ -3,6 +3,7 @@
 <urlset xmlns="https://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://austwise.example/</loc><changefreq>daily</changefreq></url>
   <url><loc>https://austwise.example/dashboard</loc><changefreq>hourly</changefreq></url>
+  <url><loc>https://austwise.example/analytics</loc><changefreq>daily</changefreq></url>
   <url><loc>https://austwise.example/routine</loc><changefreq>daily</changefreq></url>
   <url><loc>https://austwise.example/campus</loc><changefreq>weekly</changefreq></url>
   <url><loc>https://austwise.example/library</loc><changefreq>hourly</changefreq></url>

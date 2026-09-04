@@ -347,16 +347,20 @@ function useAnimatedValue(target, duration = 900, forceDecimals = false) {
 
     const isInt = Number.isInteger(num);
     const startTime = performance.now();
+    let rafId = null;
 
     const tick = (now) => {
       const progress = Math.min((now - startTime) / duration, 1);
       const eased = 1 - (1 - progress) ** 3;
       const current = num * eased;
       setDisplay(forceDecimals || !isInt ? current.toFixed(2) : String(Math.round(current)));
-      if (progress < 1) requestAnimationFrame(tick);
+      if (progress < 1) rafId = requestAnimationFrame(tick);
     };
 
-    requestAnimationFrame(tick);
+    rafId = requestAnimationFrame(tick);
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
   }, [target, duration, forceDecimals]);
 
   return display;
@@ -420,7 +424,8 @@ function QuickStats() {
     const completedSems = userResults.filter((r) => r.cgpa !== null);
     const currentCgpa = completedSems.at(-1)?.cgpa ?? null;
     const creditsCompleted = completedSems.reduce((total, sem) => {
-      return total + sem.courses.reduce((sum, c) => (c.point !== null ? sum + (Number(c.credit) || 0) : sum), 0);
+      const courses = Array.isArray(sem.courses) ? sem.courses : [];
+      return total + courses.reduce((sum, c) => (c.point !== null ? sum + (Number(c.credit) || 0) : sum), 0);
     }, 0);
 
     return {
@@ -497,6 +502,7 @@ function QuickStats() {
   const renderStatCell = (item, idx) => {
     const isActive = idx === 0 && hasCgpa;
     const Icon = item.icon;
+    const ariaLabel = `${item.label}: ${item.value}${item.trend ? ` trend ${item.trend}` : ''}`;
     return (
       <div
         key={item.code}
@@ -507,6 +513,7 @@ function QuickStats() {
         onClick={item.link ? () => navigate(item.link) : undefined}
         role={item.link ? 'button' : undefined}
         tabIndex={item.link ? 0 : undefined}
+        aria-label={item.link ? ariaLabel : undefined}
         onKeyDown={item.link ? (e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
@@ -558,6 +565,22 @@ function QuickStats() {
       <div className="quick-stats-grid">
         {items.map(renderStatCell)}
       </div>
+      {!hasCgpa && !isGuest && (
+        <div className="quick-stats-empty-cta">
+          <span className="quick-stats-empty-text">No semester data yet — add your first semester to see CGPA &amp; credits</span>
+          <button className="btn btn-sm btn-ghost quick-stats-empty-btn" onClick={() => navigate('/analytics?tab=cgpagraph')}>
+            Open CGPA Calculator
+          </button>
+        </div>
+      )}
+      {isGuest && (
+        <div className="quick-stats-empty-cta">
+          <span className="quick-stats-empty-text">Sign in to track CGPA, attendance &amp; deadlines</span>
+          <button className="btn btn-sm btn-ghost quick-stats-empty-btn" onClick={() => navigate('/login')}>
+            Sign in
+          </button>
+        </div>
+      )}
     </div>
   );
 }
