@@ -3890,6 +3890,22 @@ tr.day-row-active {
   }
 }
 
+/* 14-Weeks View — desktop: three-dot ekdom right e (absolute pinned) */
+@media (min-width: 1001px) {
+  .week-schedule-widget .schedule-masthead {
+    position: relative;
+    padding-right: 72px;
+  }
+  .week-schedule-widget .schedule-actions {
+    position: absolute !important;
+    right: 12px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    z-index: 2;
+    margin: 0 !important;
+  }
+}
+
 /* 14-Weeks View — keep the tasks/busy-days stats centered in the top row
    between the title (left) and nav/actions (right). */
 .week-schedule-widget .schedule-masthead {
