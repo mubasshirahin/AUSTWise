@@ -706,7 +706,7 @@ export default function WeekSchedule() {
             ))}
           </div>
           <div className="schedule-month-grid" style={{ alignItems: 'start' }}>
-            {getMonthDates().map((date, idx) => {
+            {monthDates.map((date, idx) => {
               if (!date) return <div key={`pad-${idx}`} />;
               return renderDayCard(date, { limit: 5 });
             })}

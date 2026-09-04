@@ -1947,6 +1947,23 @@
 }
 .export-menu-item:hover {
   background: var(--bg-input);
+  background-color: var(--bg-input);
+}
+/* 14 week view three-dot dropdown hover — solid visible */
+.routine-more-menu .export-menu-item:hover,
+.week-schedule-widget .export-menu-item:hover,
+.export-menu.routine-more-menu .export-menu-item:hover {
+  background: #2a2a36 !important;
+  background-color: #2a2a36 !important;
+  color: var(--text-primary) !important;
+}
+[data-theme="light"] .routine-more-menu .export-menu-item:hover,
+[data-theme="light"] .week-schedule-widget .export-menu-item:hover {
+  background: #f4f4f5 !important;
+  background-color: #f4f4f5 !important;
+}
+.routine-more-menu .export-menu-item.menu-active:hover {
+  background: var(--accent-blue-glow) !important;
 }
 .export-menu-sep {
   height: 1px;
