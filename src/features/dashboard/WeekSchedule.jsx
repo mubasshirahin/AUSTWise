@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Calendar, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, FileDown, MoreVertical, Check } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useLiveValue } from '../../utils/liveStore';
 import { getUserBatchGroup } from '../../utils/getUserBatchGroup';
@@ -10,7 +11,23 @@ import logoUrl from '../../assets/logo-silver.png';
 
 export default function WeekSchedule() {
   const { user } = useAuth();
-  const [viewMode, setViewMode] = useState('weekly');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [viewMode, setViewMode] = useState(() => {
+    const v = searchParams.get('view');
+    if (v && ['daily','weekly','monthly'].includes(v)) return v;
+    try { const s = localStorage.getItem('aust-semester-view'); if (s && ['daily','weekly','monthly'].includes(s)) return s; } catch {}
+    return 'weekly';
+  });
+  useEffect(() => {
+    try { localStorage.setItem('aust-semester-view', viewMode); } catch {}
+    const v = searchParams.get('view');
+    if (v !== viewMode) {
+      const next = new URLSearchParams(searchParams);
+      next.set('view', viewMode);
+      setSearchParams(next, { replace: true });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode]);
   const [semesterStart, setSemesterStart] = useLiveValue(
     'shared', 'semester-start-date', new Date().toISOString().split('T')[0]
   );
@@ -80,7 +97,7 @@ export default function WeekSchedule() {
     }
   };
 
-  const getWeekDates = (refDate) => {
+  const getWeekDates = useCallback((refDate) => {
     const startOfWeek = new Date(refDate);
     startOfWeek.setDate(refDate.getDate() - ((refDate.getDay() - 5 + 7) % 7));
     const dates = [];
@@ -90,11 +107,11 @@ export default function WeekSchedule() {
       dates.push(date);
     }
     return dates;
-  };
+  }, []);
 
-  const weekDates = getWeekDates(currentDate);
+  const weekDates = useMemo(() => getWeekDates(currentDate), [currentDate, getWeekDates]);
 
-  const getMonthDates = () => {
+  const monthDates = useMemo(() => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const firstDay = new Date(year, month, 1);
@@ -104,7 +121,7 @@ export default function WeekSchedule() {
     for (let i = 0; i < startPad; i++) days.push(null);
     for (let d = 1; d <= lastDay.getDate(); d++) days.push(new Date(year, month, d));
     return days;
-  };
+  }, [currentDate]);
 
   const getCurrentWeekNum = () => {
     // Normalize both Fridays to midnight so diff is always exact 7-day multiples
@@ -133,6 +150,20 @@ export default function WeekSchedule() {
 
   const canGoNext = () => getCurrentWeekNum() < 17;
   const canGoPrev = () => getCurrentWeekNum() > 1;
+  // Clamp currentDate inside 14-week semester window (1-17) to prevent infinite scroll
+  useEffect(() => {
+    const wn = getCurrentWeekNum();
+    if (wn < 1) {
+      const d = new Date(currentDate);
+      d.setDate(d.getDate() + (1 - wn) * 7);
+      setCurrentDate(d);
+    } else if (wn > 17) {
+      const d = new Date(currentDate);
+      d.setDate(d.getDate() - (wn - 17) * 7);
+      setCurrentDate(d);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentDate, semesterStart]);
 
   // Load tasks from localStorage — now live-synced across devices
   const [tasks, setTasks] = useLiveValue('user', 'aust-week-tasks', []);
@@ -168,6 +199,14 @@ export default function WeekSchedule() {
   // Shared day-cell renderer — used identically by Day, Week and Month views.
   const renderDayCard = (date, opts = {}) => {
     const { limit } = opts;
+    if (isInitialLoading) {
+      return (
+        <div key={formatDateKey(date)} className="schedule-day-card skeleton-row">
+          <div className="skeleton-line skeleton-line--short" style={{ width:'40%', height:'10px' }} />
+          <div className="skeleton-line skeleton-line--full" style={{ height:'24px', marginTop:'8px' }} />
+        </div>
+      );
+    }
     const dayTasks = getTasksForDate(date);
     const visibleTasks = limit ? dayTasks.slice(0, limit) : dayTasks;
     const densityColor = getDayDensityColor(dayTasks.length);
@@ -203,7 +242,12 @@ export default function WeekSchedule() {
           {limit && dayTasks.length > limit && (
             <div style={{ fontSize: '9px', color: 'var(--text-tertiary)', textAlign: 'center' }}>+{dayTasks.length - limit} more</div>
           )}
-          {dayTasks.length === 0 && <div className="schedule-empty">Clear</div>}
+          {dayTasks.length === 0 && (
+            <div className="schedule-empty" style={{ display:'flex', flexDirection:'column', gap:'4px', alignItems:'center' }}>
+              <span>Clear</span>
+              {canAddTask && <span style={{ fontSize:'10px', color:'var(--text-tertiary)' }}>Tap + Add Task</span>}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -217,16 +261,16 @@ export default function WeekSchedule() {
     return `${ord} Year, ${m[2]} Sem`;
   };
 
-  // Week stats for the current visible range
-  const weekTaskCount = weekDates.reduce((sum, d) => sum + getTasksForDate(d).length, 0);
-  const weekDaysWithTasks = weekDates.filter(d => getTasksForDate(d).length > 0).length;
+  // Week stats for the current visible range — memoized via weekDates
+  const weekTaskCount = useMemo(() => weekDates.reduce((sum, d) => sum + getTasksForDate(d).length, 0), [weekDates, tasks, batchFilter]);
+  const weekDaysWithTasks = useMemo(() => weekDates.filter(d => getTasksForDate(d).length > 0).length, [weekDates, tasks, batchFilter]);
 
   const handleAddTask = (e) => {
     e.preventDefault();
     if (!newTask.title.trim() || !newTask.date) return;
 
     const task = {
-      id: Date.now(),
+      id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
       courseCode: newTask.courseCode.trim(),
       courseName: newTask.courseName.trim(),
       title: newTask.title.trim(),
@@ -282,6 +326,8 @@ export default function WeekSchedule() {
   const getTypeColor = () => 'var(--accent-amber)';
 
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  useEffect(() => { const t = setTimeout(() => setIsInitialLoading(false), 700); return () => clearTimeout(t); }, []);
   const exportRef = useRef(null);
   const menuRef = useRef(null);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
@@ -660,7 +706,7 @@ export default function WeekSchedule() {
             ))}
           </div>
           <div className="schedule-month-grid" style={{ alignItems: 'start' }}>
-            {getMonthDates().map((date, idx) => {
+            {monthDates.map((date, idx) => {
               if (!date) return <div key={`pad-${idx}`} />;
               return renderDayCard(date, { limit: 5 });
             })}
