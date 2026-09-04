@@ -325,8 +325,8 @@ function escapeMarkdown(text) {
 }
 
 /**
- * Broadcast a notice to all registered users via the system bot
- * @param {Object} notice - { title, content, pinned, postedByName, postedByRole }
+ * Broadcast a notice to scoped users via the system bot
+ * @param {Object} notice - { title, content, pinned, postedByName, postedByRole, scope? {department,semester,section,labSection} }
  * @returns {Object} Summary of all send attempts
  */
 export async function sendNoticeToAllUsers(notice) {
@@ -341,7 +341,7 @@ export async function sendNoticeToAllUsers(notice) {
     };
   }
 
-  const users = await getAllUsers();
+  let users = await getAllUsers();
   if (users.length === 0) {
     return {
       success: true,
@@ -350,6 +350,27 @@ export async function sendNoticeToAllUsers(notice) {
       failed: 0,
       results: []
     };
+  }
+  // Scope-aware filtering: CR (lab 25) vs SR (section 50) — only deliver to matching cohort
+  if (notice.scope && (notice.scope.labSection || notice.scope.section)) {
+    try {
+      const { getUserById: getAustUserById } = await import('./userStore.mjs');
+      const filtered = [];
+      for (const tu of users) {
+        if (!tu.awid) continue;
+        const u = await getAustUserById(String(tu.awid));
+        if (!u) continue;
+        if (notice.scope.department && String(notice.scope.department) !== String(u.department || '')) continue;
+        if (notice.scope.semester && String(notice.scope.semester) !== String(u.semester || '')) continue;
+        if (notice.scope.labSection && String(notice.scope.labSection) !== String(u.labSection || '')) continue;
+        if (notice.scope.section && String(notice.scope.section) !== String(u.section || '')) continue;
+        filtered.push(tu);
+      }
+      users = filtered;
+      if (users.length === 0) {
+        return { success: true, totalUsers: 0, sent: 0, failed: 0, results: [], scoped: true, note: 'No Telegram users matched scope' };
+      }
+    } catch { /* fallback to broadcast all */ }
   }
 
   const title = escapeMarkdown(notice.title || 'New Notice');

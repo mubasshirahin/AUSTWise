@@ -29,18 +29,30 @@ export function RoutineProvider({ children }) {
     return saved || ocrImportedWeekDays;
   });
 
+  const [isLoading, setIsLoading] = useState(() => isAuthenticated);
+
   const loadFromServer = useCallback(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    let pending = 2;
+    const done = () => { pending -= 1; if (pending <= 0) setIsLoading(false); };
     userStore.get(ROUTINE_KEY).then((serverRoutine) => {
-      if (serverRoutine === null) return; // nothing saved on server — keep local
-      setRoutine(serverRoutine);
-      setUserStorageItem(storageKeyTypes.routine, serverRoutine);
-    });
+      if (serverRoutine !== null) {
+        setRoutine(serverRoutine);
+        setUserStorageItem(storageKeyTypes.routine, serverRoutine);
+      }
+      done();
+    }).catch(done);
     userStore.get(WEEKDAYS_KEY).then((serverWeekDays) => {
-      if (serverWeekDays === null) return;
-      setWeekDays(serverWeekDays);
-      setUserStorageItem(storageKeyTypes.weekDays, serverWeekDays);
-    });
+      if (serverWeekDays !== null) {
+        setWeekDays(serverWeekDays);
+        setUserStorageItem(storageKeyTypes.weekDays, serverWeekDays);
+      }
+      done();
+    }).catch(done);
   }, [isAuthenticated]);
 
   // Pull the server copy once on mount/login. The websocket (see below)
@@ -147,6 +159,7 @@ export function RoutineProvider({ children }) {
     <RoutineContext.Provider value={{
       routine,
       weekDays,
+      isLoading,
       importOcrRoutine,
       resetRoutine,
       replaceRoutine,

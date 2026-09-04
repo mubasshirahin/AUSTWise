@@ -277,6 +277,7 @@ const MIGRATION_KEYS = {
     'aust-marketplace-v1',
     'aust-canteen-data',
     'aust-notices',
+    'aust-cr-sr-notices',
     'aust-library-data',
   ],
 };

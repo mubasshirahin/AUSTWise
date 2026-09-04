@@ -5,9 +5,14 @@ import { notices } from '../../data/mockData';
 import { useAuth } from '../../context/AuthContext';
 import useWebSocket from '../../hooks/useWebSocket';
 import { loadSharedSync, loadSharedAsync, saveShared } from '../../utils/storageService';
+import { getLiveValue } from '../../utils/liveStore';
 import { addNotification, makeNotifId, showNativeNotification, removeNotificationById, removeNotificationsByTitle } from '../../utils/inAppNotifications';
 
 const CRSR_KEY = 'aust-cr-sr-notices';
+const NOTICE_TITLE_MAX = 80;
+const NOTICE_CONTENT_MAX = 5000;
+const NOTICE_RATE_KEY = 'aust-notice-last-post';
+const NOTICE_RATE_MS = 30000; // 1 post per 30s client-side throttle
 
 export default function NoticeBoard() {
   const { user } = useAuth();
@@ -36,16 +41,24 @@ export default function NoticeBoard() {
   });
 
   const [adminNotices, setAdminNotices] = useState(() => loadSharedSync('aust-notices', notices));
-  useEffect(() => { loadSharedAsync('aust-notices', notices).then(setAdminNotices); }, []);
+  const [adminLoading, setAdminLoading] = useState(true);
+  useEffect(() => { loadSharedAsync('aust-notices', notices).then(v => { setAdminNotices(v); setAdminLoading(false); }); }, []);
 
-  const [crsrNotices, setCrsrNotices] = useState(() => {
-    try {
-      const stored = localStorage.getItem(CRSR_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [crsrNotices, setCrsrNotices] = useState(() => loadSharedSync(CRSR_KEY, []));
+  const [crsrLoading, setCrsrLoading] = useState(true);
+  useEffect(() => { loadSharedAsync(CRSR_KEY, []).then(v => { setCrsrNotices(Array.isArray(v) ? v : []); setCrsrLoading(false); }); }, []);
+
+  // Cross-device sync: if another CR posts, reflect immediately via polling + liveStore
+  useEffect(() => {
+    const poll = () => { loadSharedAsync(CRSR_KEY, []).then(v => { if (Array.isArray(v)) setCrsrNotices(v); }); };
+    const id = setInterval(poll, 30000);
+    const check = () => {
+      const live = getLiveValue('shared', CRSR_KEY, null);
+      if (Array.isArray(live)) setCrsrNotices(live);
+    };
+    window.addEventListener('storage', check);
+    return () => { clearInterval(id); window.removeEventListener('storage', check); };
+  }, []);
 
   const isCrSr = user?.hasRole
     ? (user.hasRole('cr') || user.hasRole('sr'))
@@ -66,19 +79,36 @@ export default function NoticeBoard() {
 
   const saveCrsr = (next) => {
     setCrsrNotices(next);
-    try { localStorage.setItem(CRSR_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+    // Server-synced shared store (CR/SR only via ACL) + local fallback
+    saveShared(CRSR_KEY, next);
   };
+
+  const [formError, setFormError] = useState('');
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
 
   const handleAdd = (e) => {
     e.preventDefault();
-    if (!formTitle.trim() || !formContent.trim()) return;
+    const t = formTitle.trim();
+    const c = formContent.trim();
+    if (!t || !c) { setFormError('Title and content are required.'); return; }
+    if (t.length < 5) { setFormError('Title must be at least 5 characters.'); return; }
+    if (t.length > NOTICE_TITLE_MAX) { setFormError(`Title must be ≤ ${NOTICE_TITLE_MAX} characters.`); return; }
+    if (c.length > NOTICE_CONTENT_MAX) { setFormError(`Content must be ≤ ${NOTICE_CONTENT_MAX} characters.`); return; }
+    // Client-side rate limit
+    const last = Number(localStorage.getItem(NOTICE_RATE_KEY) || 0);
+    if (Date.now() - last < NOTICE_RATE_MS) {
+      const wait = Math.ceil((NOTICE_RATE_MS - (Date.now() - last)) / 1000);
+      setFormError(`Please wait ${wait}s before posting another notice.`);
+      return;
+    }
+    setFormError('');
     const isCr = user.role === 'cr';
     const notice = {
-      id: `cr-${Date.now()}`,
+      id: `cr-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
       pinned: formPinned,
       date: new Date().toISOString().slice(0, 10),
-      title: formTitle.trim(),
-      content: formContent.trim(),
+      title: t.slice(0, NOTICE_TITLE_MAX),
+      content: c.slice(0, NOTICE_CONTENT_MAX),
       postedBy: user.id,
       postedByName: user.name,
       postedByRole: user.role,
@@ -100,6 +130,8 @@ export default function NoticeBoard() {
     addNotification(notif);
     showNativeNotification(notif);
     saveCrsr([{ ...notice, notifId: notif.id }, ...crsrNotices]);
+    try { localStorage.setItem(NOTICE_RATE_KEY, String(Date.now())); } catch {}
+    // Send only title/content/pinned — server derives name/role from auth to prevent spoofing
     fetch('/api/telegram/send-notice', {
       method: 'POST',
       credentials: 'same-origin',
@@ -108,8 +140,6 @@ export default function NoticeBoard() {
         title: notice.title,
         content: notice.content,
         pinned: notice.pinned,
-        postedByName: notice.postedByName,
-        postedByRole: notice.postedByRole,
       }),
     }).catch(() => { /* Telegram broadcast is best-effort */ });
     setFormTitle('');
@@ -125,6 +155,7 @@ export default function NoticeBoard() {
       removeNotificationsByTitle(target.title);
     }
     saveCrsr(crsrNotices.filter(n => n.id !== id));
+    setDeleteConfirmId(null);
   };
 
   const toggleExpand = (id) => {
@@ -183,10 +214,26 @@ export default function NoticeBoard() {
       <div className="schedule-dotted-divider" />
 
       <div className="notice-list">
-        {visibleNotices.length === 0 ? (
-          <div className="schedule-empty" style={{ padding: '28px 0' }}>
-            <BellRing size={22} style={{ opacity: 0.3, marginBottom: '6px' }} />
-            No notices posted
+        {(adminLoading || crsrLoading) ? (
+          <div className="notice-skeleton">
+            {[0,1,2].map(i => (
+              <div key={i} className="schedule-day-card skeleton-row" style={{ animationDelay: `${i*80}ms` }}>
+                <div className="skeleton-line skeleton-line--short" />
+                <div className="skeleton-line skeleton-line--mid" />
+              </div>
+            ))}
+          </div>
+        ) : visibleNotices.length === 0 ? (
+          <div className="schedule-empty" style={{ padding: '28px 0', display:'flex', flexDirection:'column', gap:'10px', alignItems:'center' }}>
+            <BellRing size={22} style={{ opacity: 0.3, marginBottom: '2px' }} />
+            <span>No notices for your section yet</span>
+            {isCrSr ? (
+              <button className="btn btn-sm" onClick={() => setShowForm(true)} style={{ display:'inline-flex', alignItems:'center', gap:'6px' }}>
+                <Plus size={14} /> Post first notice
+              </button>
+            ) : (
+              <span style={{ fontSize:'11px', color:'var(--text-tertiary)' }}>CR/SR will post lab/section updates here</span>
+            )}
           </div>
         ) : visibleNotices.map((notice, idx) => {
           const isExpanded = expandedNotice === notice.id;
@@ -227,13 +274,20 @@ export default function NoticeBoard() {
                     </span>
                   )}
                   {isOwn && (
-                    <button
-                      className="notice-tag delete"
-                      aria-label="Delete notice"
-                      onClick={(e) => { e.stopPropagation(); handleDelete(notice.id); }}
-                    >
-                      <Trash2 size={10} />
-                    </button>
+                    deleteConfirmId === notice.id ? (
+                      <span className="notice-delete-confirm" onClick={e => e.stopPropagation()}>
+                        <button className="btn btn-xs btn-danger" onClick={() => handleDelete(notice.id)}>Confirm</button>
+                        <button className="btn btn-xs btn-ghost" onClick={() => setDeleteConfirmId(null)}>Cancel</button>
+                      </span>
+                    ) : (
+                      <button
+                        className="notice-tag delete"
+                        aria-label="Delete notice"
+                        onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(notice.id); }}
+                      >
+                        <Trash2 size={10} />
+                      </button>
+                    )
                   )}
                   <span className="notice-toggle">
                     {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -273,13 +327,18 @@ export default function NoticeBoard() {
               </button>
             </div>
             <form onSubmit={handleAdd} className="notice-form-body">
+              {formError && (
+                <div className="notice-form-error" style={{ padding:'8px 12px', borderRadius:'var(--radius-sm)', background:'var(--accent-rose-glow)', border:'1px solid var(--accent-rose)', color:'var(--accent-rose)', fontSize:'var(--fs-xs)' }}>
+                  {formError}
+                </div>
+              )}
               <label className="notice-form-field">
-                <span>Title</span>
-                <input className="input" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder="Notice title" required />
+                <span>Title <small style={{ color:'var(--text-tertiary)', fontWeight:400 }}>({formTitle.length}/{NOTICE_TITLE_MAX})</small></span>
+                <input className="input" value={formTitle} maxLength={NOTICE_TITLE_MAX} onChange={(e) => setFormTitle(e.target.value)} placeholder="Notice title (5-80 chars)" required />
               </label>
               <label className="notice-form-field">
-                <span>Content</span>
-                <textarea className="input" rows="4" value={formContent} onChange={(e) => setFormContent(e.target.value)} placeholder="Notice details" required />
+                <span>Content <small style={{ color:'var(--text-tertiary)', fontWeight:400 }}>({formContent.length}/{NOTICE_CONTENT_MAX})</small></span>
+                <textarea className="input" rows="4" value={formContent} maxLength={NOTICE_CONTENT_MAX} onChange={(e) => setFormContent(e.target.value)} placeholder="Notice details" required />
               </label>
               <label className="notice-form-pin">
                 <input type="checkbox" checked={formPinned} onChange={(e) => setFormPinned(e.target.checked)} />

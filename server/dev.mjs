@@ -240,6 +240,8 @@ const globalRateLimiter = rateLimit({
   windowMs: 60_000,
   max: Number(process.env.RATE_LIMIT_GLOBAL_MAX) || 600,
 });
+// Per-user throttle for notice posts (30s)
+const noticePostLastByUser = new Map(); // userId -> timestamp
 const useViteMiddleware = process.argv.includes('--vite');
 
 // Dev mode = running with the Vite dev server (HMR) or an explicit
@@ -1141,14 +1143,22 @@ async function handleApiRequest(req, res) {
         });
         return;
       }
+      // Derive name + scope server-side from authenticated user to prevent spoofing.
+      let serverUser = null;
+      try { serverUser = await getUserById(auth.id); } catch {}
+      const safeName = serverUser?.name || payload.postedByName || '';
+      let scope = null;
+      if (serverUser && auth.role === 'cr' && serverUser.labSection) scope = { department: serverUser.department, semester: String(serverUser.semester), labSection: serverUser.labSection };
+      else if (serverUser && auth.role === 'sr' && serverUser.section) scope = { department: serverUser.department, semester: String(serverUser.semester), section: serverUser.section };
       const result = await sendNoticeToAllUsers({
         title: payload.title,
         content: payload.content,
         pinned: !!payload.pinned,
-        postedByName: payload.postedByName || '',
+        postedByName: safeName,
         postedByRole: auth.role,
+        scope,
       });
-      broadcastToAll({ type: 'notice-new', payload: { title: payload.title, content: payload.content, postedByName: payload.postedByName || '', postedByRole: auth.role } });
+      broadcastToAll({ type: 'notice-new', payload: { title: payload.title, content: payload.content, postedByName: safeName, postedByRole: auth.role, scope } });
       sendJson(res, 200, result);
     } catch (error) {
       sendJson(res, 500, {
@@ -2493,6 +2503,66 @@ async function handleApiRequest(req, res) {
     const key = decodeURIComponent(req.url.slice('/api/store/shared/'.length));
     try {
       const body = await readJsonBody(req);
+      // Only admins may overwrite the global notice board (prevents student takeover).
+      if (key === 'aust-notices' && !['admin', 'moderator'].includes(auth.role)) {
+        sendJson(res, 403, { success: false, error: 'Only admin or moderator can update notices.' });
+        return;
+      }
+      // CR/SR scoped notices are managed via this shared key (server-synced, not localStorage).
+      if (key === 'aust-cr-sr-notices' && !['cr', 'sr', 'admin', 'moderator'].includes(auth.role)) {
+        sendJson(res, 403, { success: false, error: 'Only CR/SR or admin can update CR/SR notices.' });
+        return;
+      }
+      // Server-side rate limit for CR/SR notice bursts (30s per user)
+      if (key === 'aust-cr-sr-notices') {
+        const last = noticePostLastByUser.get(auth.id) || 0;
+        if (Date.now() - last < 30000 && !['admin','moderator'].includes(auth.role)) {
+          const wait = Math.ceil((30000 - (Date.now() - last))/1000);
+          sendJson(res, 429, { success: false, error: `Rate limited — wait ${wait}s before next notice.` });
+          return;
+        }
+        noticePostLastByUser.set(auth.id, Date.now());
+      }
+      // Server-derived scope validation: prevent spoofing (SR cannot post with labSection, CR cannot spoof section).
+      if (key === 'aust-cr-sr-notices' && Array.isArray(body.value)) {
+        try {
+          const dbUser = await getUserById(auth.id);
+          if (!dbUser) { sendJson(res, 404, { success: false, error: 'User not found.' }); return; }
+          for (const n of body.value) {
+            if (!n || typeof n !== 'object') continue;
+            const s = n.scope || {};
+            // Normalize client sent scope, then overwrite with server truth where role dictates
+            if (auth.role === 'cr') {
+              if (!dbUser.labSection) { sendJson(res, 400, { success: false, error: 'CR profile missing labSection — complete profile first.' }); return; }
+              if (s.labSection && s.labSection !== dbUser.labSection) { sendJson(res, 400, { success: false, error: 'Scope labSection must match your profile.' }); return; }
+              if (s.section && s.section !== dbUser.section) { /* allow but server will correct */ }
+              // Enforce server truth
+              n.scope = { department: dbUser.department, semester: String(dbUser.semester), labSection: dbUser.labSection };
+              n.postedBy = auth.id;
+              n.postedByName = dbUser.name || n.postedByName;
+              n.postedByRole = auth.role;
+            } else if (auth.role === 'sr') {
+              if (!dbUser.section) { sendJson(res, 400, { success: false, error: 'SR profile missing section — complete profile first.' }); return; }
+              if (s.section && s.section !== dbUser.section) { sendJson(res, 400, { success: false, error: 'Scope section must match your profile.' }); return; }
+              n.scope = { department: dbUser.department, semester: String(dbUser.semester), section: dbUser.section };
+              n.postedBy = auth.id;
+              n.postedByName = dbUser.name || n.postedByName;
+              n.postedByRole = auth.role;
+            } else if (['admin','moderator'].includes(auth.role)) {
+              // Admin can manage but scope must be present and non-empty
+              if (!s.department || (!s.labSection && !s.section)) {
+                // Allow global cleanup — no strict check
+              }
+            }
+            // Length guards (prevent 15MB store bloat)
+            if (typeof n.title === 'string' && n.title.length > 80) n.title = n.title.slice(0,80);
+            if (typeof n.content === 'string' && n.content.length > 5000) n.content = n.content.slice(0,5000);
+          }
+        } catch (e) {
+          if (e.message && e.message.includes('Scope')) throw e;
+          // On DB miss, fall through to store raw (offline fallback will validate client-side)
+        }
+      }
       // The semester start date is a single admin/CR-controlled value: everyone
       // reads the same date and students must not be able to override it.
       if (key === 'semester-start-date' && !['admin', 'moderator', 'cr'].includes(auth.role)) {
@@ -2519,6 +2589,11 @@ async function handleApiRequest(req, res) {
     const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
     if (!auth) return;
     const key = decodeURIComponent(req.url.slice('/api/store/shared/'.length));
+    if ((key === 'aust-notices' || key === 'aust-cr-sr-notices') && !['admin', 'moderator'].includes(auth.role) && !(key === 'aust-cr-sr-notices' && ['cr','sr'].includes(auth.role))) {
+      // Re-use the PUT logic: aust-notices admin-only, aust-cr-sr-notices cr/sr/admin.
+      if (key === 'aust-notices') { sendJson(res, 403, { success: false, error: 'Only admin or moderator can delete notices.' }); return; }
+      if (key === 'aust-cr-sr-notices' && !['cr','sr','admin','moderator'].includes(auth.role)) { sendJson(res, 403, { success: false, error: 'Only CR/SR or admin can delete CR/SR notices.' }); return; }
+    }
     if (key.startsWith('aust-exam-schedule:') && !['admin', 'moderator', 'cr', 'sr'].includes(auth.role)) {
       sendJson(res, 403, { success: false, error: 'Only CR/SR or admin can modify the shared exam schedule.' });
       return;

@@ -1047,15 +1047,25 @@
   cursor: pointer;
 }
 
-/* Post-notice button — small circular ghost with subtle gray border */
+/* Post-notice button — circular ghost, 44px hit area for WCAG */
 .notice-widget .schedule-actions .schedule-nav-btn {
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   border-radius: 50%;
   background: transparent;
   border: 1px solid var(--border-primary);
   color: var(--text-tertiary);
   transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+}
+@media (min-width: 768px) {
+  .notice-widget .schedule-actions .schedule-nav-btn {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+  }
 }
 .notice-widget .schedule-actions .schedule-nav-btn:hover {
   color: var(--text-secondary);
@@ -1097,6 +1107,10 @@
   color: var(--accent-rose);
   border-color: var(--accent-rose);
 }
+.notice-delete-confirm { display: inline-flex; gap: 4px; align-items: center; }
+.notice-delete-confirm .btn-xs { padding: 2px 8px; font-size: 10px; border-radius: var(--radius-sm); }
+.notice-skeleton { display: flex; flex-direction: column; gap: var(--sp-3); }
+.notice-form-error { animation: fadeIn 0.2s ease; }
 .notice-author {
   margin-top: 8px;
   font-size: 10px;
@@ -1296,8 +1310,11 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 6px;
   border-width: 1px;
   border-style: solid;
   border-color: #ffffff14;
@@ -1309,6 +1326,24 @@
   cursor: pointer;
   transition: all var(--transition-base);
 }
+/* Keep compact 32px visual on large screens but retain 44px hit area via padding */
+@media (min-width: 768px) {
+  .schedule-nav-btn {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+  }
+}
+
+/* Daily Flow skeleton shimmer */
+.routine-skeleton { display: flex; flex-direction: column; gap: var(--sp-3); }
+.skeleton-row { position: relative; overflow: hidden; border-left-color: var(--border-primary) !important; }
+.skeleton-line { height: 10px; border-radius: 4px; background: linear-gradient(90deg, var(--bg-input) 25%, var(--border-primary) 37%, var(--bg-input) 63%); background-size: 400% 100%; animation: skeletonShimmer 1.2s ease-in-out infinite; }
+.skeleton-line--short { width: 40%; margin-bottom: 10px; }
+.skeleton-line--mid { width: 70%; margin-bottom: 10px; }
+.skeleton-line--full { width: 100%; }
+@keyframes skeletonShimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
 .schedule-nav-btn:hover {
   border-color: var(--border-focus);
   color: var(--text-primary);
@@ -3902,6 +3937,14 @@ tr.day-row-active {
     position: absolute;
     top: var(--sp-3);
     right: var(--sp-3);
+  }
+  /* MOBILE: Daily Flow week-nav 2px upore — exact selector from user */
+  .dashboard-grid .dashboard-main-col section:nth-child(1) .schedule-masthead .schedule-actions > div {
+    transform: translateY(-2px);
+  }
+  /* Fallback for exact #root hierarchy if dashboard-grid wrapper changes */
+  #root .dashboard-grid .dashboard-main-col section:nth-child(1) .schedule-masthead .schedule-actions > div {
+    transform: translateY(-2px);
   }
   .routine-widget .schedule-stat {
     display: none;

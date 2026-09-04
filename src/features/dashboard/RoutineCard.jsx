@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
-import { CalendarDays, Clock, MapPin, User, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { CalendarDays, Clock, MapPin, User, ChevronLeft, ChevronRight, Plus, AlertTriangle } from 'lucide-react';
 import { useRoutine } from '../../context/RoutineContext';
 import { normalizeAccentColor } from '../../utils/colorPalette';
 
@@ -69,16 +70,24 @@ function parseEndTimeToMinutes(timeStr) {
 }
 
 export default function RoutineCard() {
-  const { routine, weekDays } = useRoutine();
+  const { routine, weekDays, isLoading } = useRoutine();
+  const navigate = useNavigate();
   const [selectedDay, setSelectedDay] = useState(weekDays[0] || 'Saturday');
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  // Update current time every minute
+  // Update current time aligned to the next minute edge (no 59s drift)
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 60000); // Update every minute
-    return () => clearInterval(timer);
+    let timer;
+    const schedule = () => {
+      const now = new Date();
+      const msToNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+      timer = setTimeout(() => {
+        setCurrentTime(new Date());
+        timer = setInterval(() => setCurrentTime(new Date()), 60000);
+      }, msToNextMinute);
+    };
+    schedule();
+    return () => clearTimeout(timer) || clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -104,17 +113,10 @@ export default function RoutineCard() {
   const { nowIndex, nextIndex } = useMemo(() => {
     let nowIdx = -1;
     let nextIdx = -1;
-    
-    // Only calculate for today
-    if (selectedDay !== weekDays[0]) {
-      return { nowIndex: -1, nextIndex: -1 };
-    }
-    
-    const currentDay = currentTime.getDay();
-    const dayIndex = weekDays.indexOf(selectedDay);
-    
-    // Check if we're viewing today's schedule
-    if (dayIndex !== currentDay) {
+
+    // Only show NOW/NEXT when viewing the actual current weekday (locale-aware)
+    const todayName = currentTime.toLocaleDateString('en-US', { weekday: 'long' });
+    if (selectedDay !== todayName) {
       return { nowIndex: -1, nextIndex: -1 };
     }
     
@@ -224,15 +226,30 @@ export default function RoutineCard() {
       <div className="schedule-dotted-divider" />
 
       <div className="routine-list">
-        {classesForDay.length === 0 ? (
-          <div className="schedule-empty" style={{ padding: '28px 0' }}>
-            No classes scheduled for {selectedDay}
+        {isLoading ? (
+          <div className="routine-skeleton">
+            {[0,1,2].map(i => (
+              <div key={i} className="schedule-day-card routine-class-row skeleton-row" style={{ animationDelay: `${i*80}ms` }}>
+                <div className="skeleton-line skeleton-line--short" />
+                <div className="skeleton-line skeleton-line--mid" />
+                <div className="skeleton-line skeleton-line--full" />
+              </div>
+            ))}
+          </div>
+        ) : classesForDay.length === 0 ? (
+          <div className="schedule-empty" style={{ padding: '28px 0', display:'flex', flexDirection:'column', gap:'12px', alignItems:'center' }}>
+            <span>No classes scheduled for {selectedDay}</span>
+            <button className="btn btn-sm" onClick={() => navigate('/?tab=routine')} style={{ display:'inline-flex', alignItems:'center', gap:'6px' }}>
+              <Plus size={14} /> Add in Weekly Planner
+            </button>
+            <span style={{ fontSize:'11px', color:'var(--text-tertiary)' }}>Or load a shared routine via <b>Load Routine</b> in Weekly Planner</span>
           </div>
         ) : (
           classesForDay.map((cls, idx) => {
             const isNow = idx === nowIndex;
             const isNext = idx === nextIndex;
             const accentColor = normalizeAccentColor(cls.color);
+            const hasValidTime = parseTimeToMinutes(cls.time) !== null && parseEndTimeToMinutes(cls.time) !== null;
 
             return (
               <div
@@ -260,7 +277,10 @@ export default function RoutineCard() {
                   <span className={`routine-type-badge ${cls.type === 'Lab' ? 'lab' : 'theory'}`}>{cls.type}</span>
                 </div>
                 <div className="routine-class-meta">
-                  <span><Clock size={11} /> {cls.time}</span>
+                  <span>
+                    <Clock size={11} /> {cls.time}
+                    {!hasValidTime && <AlertTriangle size={11} style={{ marginLeft: 4, color: 'var(--accent-amber)' }} title="Invalid time format" />}
+                  </span>
                   <span><MapPin size={11} /> Room {cls.room}</span>
                   <span><User size={11} /> {cls.teacher}</span>
                 </div>
