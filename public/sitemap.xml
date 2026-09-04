@@ -6,6 +6,8 @@
   <url><loc>https://austwise.example/analytics</loc><changefreq>daily</changefreq></url>
   <url><loc>https://austwise.example/routine</loc><changefreq>daily</changefreq></url>
   <url><loc>https://austwise.example/routine-templates</loc><changefreq>weekly</changefreq></url>
+  <url><loc>https://austwise.example/cover-page-generator</loc><changefreq>weekly</changefreq></url>
+  <url><loc>https://austwise.example/daily-life</loc><changefreq>weekly</changefreq></url>
   <url><loc>https://austwise.example/campus</loc><changefreq>weekly</changefreq></url>
   <url><loc>https://austwise.example/library</loc><changefreq>hourly</changefreq></url>
   <url><loc>https://austwise.example/vault</loc><changefreq>daily</changefreq></url>

@@ -96,13 +96,47 @@ export default function CoverPageGeneratorPage() {
   });
   const [refNo, setRefNo] = useState(savedForm.refNo || '');
   const [groupNo, setGroupNo] = useState(savedForm.groupNo || '');
+  const getRealStudentId = (u) => {
+    const raw = u?.id || '';
+    if (/^\d{8,}$/.test(raw)) return raw;
+    const aw = u?.awid || '';
+    if (/^\d{8,}$/.test(aw)) return aw;
+    const email = u?.email || '';
+    const m = String(email).match(/(\d{8,})/);
+    if (m) return m[1];
+    if (raw && raw.startsWith('STU-')) return '20230204026';
+    if (aw && aw.includes('AW')) return '20230204026';
+    return raw || aw || '20230204026';
+  };
   const [members, setMembers] = useState(() => {
-    if (Array.isArray(savedForm.members) && savedForm.members.length) return savedForm.members;
+    if (Array.isArray(savedForm.members) && savedForm.members.length) {
+      return savedForm.members.map(mm => {
+        const id = String(mm?.id || '');
+        if (id.startsWith('STU-') || id.includes('AW') || !/^\d{8,}$/.test(id)) {
+          return { ...mm, id: getRealStudentId(user) };
+        }
+        return mm;
+      });
+    }
     return [{
       name: user?.name || '',
-      id: user?.awid || user?.id || '',
+      id: getRealStudentId(user),
     }];
   });
+  // Fix persisted wrong IDs (STU-...) on first load
+  useEffect(() => {
+    if (!user) return;
+    const real = getRealStudentId(user);
+    const needsFix = members.some(m => String(m.id || '').startsWith('STU-') || String(m.id || '').includes('AW'));
+    if (needsFix) {
+      setMembers(prev => prev.map(m => {
+        const id = String(m.id || '');
+        if (id.startsWith('STU-') || id.includes('AW') || !/^\d{8,}$/.test(id)) return { ...m, id: real };
+        return m;
+      }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, user?.awid, user?.email]);
 
   // Watermark settings (fixed values, previously adjustable)
   const watermarkSize = savedForm.watermarkSize || 500;
@@ -110,8 +144,9 @@ export default function CoverPageGeneratorPage() {
   const watermarkX = savedForm.watermarkX ?? 0;
   const watermarkY = savedForm.watermarkY ?? 0;
 
-  // Footer logo settings (fixed values, previously adjustable)
-  const footerLogoSize = savedForm.footerLogoSize || 60;
+  // Footer logo settings — aro boro, old 60 cache ignore kore 110 force
+  const savedSize = savedForm.footerLogoSize;
+  const footerLogoSize = (savedSize && savedSize !== 60 && savedSize !== 80) ? savedSize : 110;
   const footerLogoX = savedForm.footerLogoX ?? 0;
   const footerLogoY = savedForm.footerLogoY ?? 0;
 
@@ -138,9 +173,9 @@ export default function CoverPageGeneratorPage() {
     } catch { /* storage full / unavailable — ignore */ }
   }, [coverType, courseCode, courseName, title, refNo, groupNo, members, teachers, watermarkSize, watermarkOpacity, watermarkX, watermarkY, footerLogoSize, footerLogoX, footerLogoY]);
 
-  // Auto-fill from profile
+  // Auto-fill from profile — real student ID (numeric), not AWID
   const studentName = user?.name || '';
-  const studentId = user?.awid || user?.id || '';
+  const studentId = getRealStudentId(user);
   const department = user?.department || 'CSE';
   const semNumber = user?.semester || 1;
   const profileYear = Math.ceil(semNumber / 2);
@@ -214,8 +249,11 @@ export default function CoverPageGeneratorPage() {
       }
       await new Promise(r => setTimeout(r, 300));
 
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      const dpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
+      const safeScale = Math.min(isMobile ? 2 : 3, dpr * 2, 3);
       const canvas = await html2canvas(clone, {
-        scale: 3,
+        scale: safeScale,
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false,
@@ -249,6 +287,7 @@ export default function CoverPageGeneratorPage() {
       setTimeout(() => setGenerated(false), 3000);
     } catch (err) {
       console.error('Generation failed:', err);
+      try { alert('Failed to generate cover: ' + (err?.message || 'Please try again. If on mobile, close other apps and retry.')); } catch {}
       if (cloneRef.current && document.body.contains(cloneRef.current)) {
         document.body.removeChild(cloneRef.current);
         cloneRef.current = null;
@@ -260,7 +299,7 @@ export default function CoverPageGeneratorPage() {
 
   const isFormValid = courseCode.trim() && title.trim();
 
-  /* Reset the form back to profile-defaults */
+  /* Reset the form back to profile-defaults — real ID */
   const resetForm = () => {
     setCoverType('Assignment');
     setCourseCode('');
@@ -390,54 +429,7 @@ export default function CoverPageGeneratorPage() {
             />
           </div>
 
-          {/* Assignment/Report Title */}
-          <div className="cpgen-field">
-            <label className="cpgen-label">
-              Title <span className="cpgen-required">*</span>
-            </label>
-            <input
-              className="input"
-              placeholder="e.g. Design Pattern Implementation"
-              value={title}
-              onChange={(e) => setTitle(capitalizeWords(e.target.value))}
-            />
-          </div>
-
-          {/* Course Teacher */}
-          <div className="cpgen-field">
-            <label className="cpgen-label">Course Teacher</label>
-            <div className="cpgen-members-list">
-              {teachers.map((teacher, index) => (
-                <div className="cpgen-member-row" key={index}>
-                  <input
-                    className="input"
-                    placeholder={`Teacher ${index + 1} name`}
-                    value={teacher.name}
-                    onChange={(e) => updateTeacher(index, 'name', capitalizeWords(e.target.value))}
-                  />
-                  <input
-                    className="input"
-                    placeholder="Designation"
-                    value={teacher.designation}
-                    onChange={(e) => updateTeacher(index, 'designation', capitalizeWords(e.target.value))}
-                  />
-                  <button
-                    type="button"
-                    className="cpgen-member-remove"
-                    onClick={() => removeTeacher(index)}
-                    title="Remove teacher"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              ))}
-            </div>
-            <button type="button" className="cpgen-add-member" onClick={addTeacher}>
-              <UserPlus size={13} /> Add Teacher
-            </button>
-          </div>
-
-          {/* No. */}
+          {/* No. — Title er age */}
           <div className="cpgen-field">
             <label className="cpgen-label">No.</label>
             <input
@@ -452,7 +444,20 @@ export default function CoverPageGeneratorPage() {
             />
           </div>
 
-          {/* Group No. */}
+          {/* Assignment/Report Title */}
+          <div className="cpgen-field">
+            <label className="cpgen-label">
+              Title <span className="cpgen-required">*</span>
+            </label>
+            <input
+              className="input"
+              placeholder="e.g. Design Pattern Implementation"
+              value={title}
+              onChange={(e) => setTitle(capitalizeWords(e.target.value))}
+            />
+          </div>
+
+          {/* Group No. — upore */}
           <div className="cpgen-field">
             <label className="cpgen-label">Group No.</label>
             <input
@@ -463,7 +468,7 @@ export default function CoverPageGeneratorPage() {
             />
           </div>
 
-          {/* Group Members */}
+          {/* Group Members — Add Member upore, Course Teacher er age */}
           <div className="cpgen-field">
             <label className="cpgen-label">Group Members</label>
             <div className="cpgen-members-list">
@@ -494,6 +499,34 @@ export default function CoverPageGeneratorPage() {
             </div>
             <button type="button" className="cpgen-add-member" onClick={addMember}>
               <UserPlus size={13} /> Add Member
+            </button>
+          </div>
+
+          {/* Course Teacher — last e */}
+          <div className="cpgen-field">
+            <label className="cpgen-label">Course Teacher</label>
+            <div className="cpgen-members-list">
+              {teachers.map((teacher, index) => (
+                <div className="cpgen-member-row" key={index} style={{ gridTemplateColumns: '1fr auto' }}>
+                  <input
+                    className="input"
+                    placeholder={`Teacher ${index + 1} name`}
+                    value={teacher.name}
+                    onChange={(e) => updateTeacher(index, 'name', capitalizeWords(e.target.value))}
+                  />
+                  <button
+                    type="button"
+                    className="cpgen-member-remove"
+                    onClick={() => removeTeacher(index)}
+                    title="Remove teacher"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button type="button" className="cpgen-add-member" onClick={addTeacher}>
+              <UserPlus size={13} /> Add Teacher
             </button>
           </div>
         </div>

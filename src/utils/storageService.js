@@ -245,6 +245,7 @@ const MIGRATION_KEYS = {
     'aust-media-tracker',
     'aust-transcript-templates',
     'aust-routine-templates',
+    'aust-cover-form-v1',
     'aust-cover-page-form',
     'aust-user-routine',
     'aust-user-weekdays',
