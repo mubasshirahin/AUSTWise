@@ -2442,6 +2442,45 @@ async function handleApiRequest(req, res) {
     const key = decodeURIComponent(req.url.slice('/api/store/user/'.length));
     try {
       const body = await readJsonBody(req);
+      // Throttle burst writes for deadline/task stores (5s per user)
+      if ((key === 'aust-week-tasks' || key === 'aust-deadlines') && Array.isArray(body.value)) {
+        const lastDeadline = noticePostLastByUser.get(auth.id + ':' + key) || 0;
+        if (Date.now() - lastDeadline < 5000 && body.value.length > 5) {
+          sendJson(res, 429, { success: false, error: 'Rate limited — slow down edits.' }); return;
+        }
+        noticePostLastByUser.set(auth.id + ':' + key, Date.now());
+      }
+      // Enforce batchGroup integrity for deadline/task payloads (prevent empty leak)
+      if ((key === 'aust-week-tasks' || key === 'aust-deadlines') && Array.isArray(body.value)) {
+        try {
+          const dbUser = await getUserById(auth.id);
+          const BATCH_GROUPS = ['A1','A2','B1','B2','C1','C2','D1','D2'];
+          const norm = (v) => String(v||'').trim().toUpperCase();
+          let expected = 'A1';
+          const lab = norm(dbUser?.labSection);
+          if (lab && BATCH_GROUPS.includes(lab)) expected = lab;
+          else {
+            const sec = norm(dbUser?.section);
+            if (sec && BATCH_GROUPS.includes(sec)) expected = sec;
+            else if (dbUser?.batchNo) {
+              const n = parseInt(dbUser.batchNo, 10);
+              if (!Number.isNaN(n)) { const idx = (n-52)%8; expected = BATCH_GROUPS[idx>=0?idx:0]; }
+            }
+          }
+          for (const item of body.value) {
+            if (!item || typeof item !== 'object') continue;
+            if (typeof item.batchGroup === 'string' && item.batchGroup && !BATCH_GROUPS.includes(item.batchGroup.toUpperCase())) {
+              sendJson(res, 400, { success: false, error: 'Invalid batchGroup' }); return;
+            }
+            // Auto-correct empty batchGroup to expected (prevents broadcast-to-all via '')
+            if (key === 'aust-week-tasks' && (!item.batchGroup || !String(item.batchGroup).trim())) {
+              item.batchGroup = expected;
+            }
+            if (typeof item.title === 'string' && item.title.length > 80) item.title = item.title.slice(0,80);
+            if (item.dueDate && String(item.dueDate).length > 100) { sendJson(res, 400, { success: false, error: 'Invalid dueDate' }); return; }
+          }
+        } catch {}
+      }
       await setUserStoreValue(auth.id, key, body.value);
       // Notify the user's OTHER open devices that this key changed in real time.
       broadcastToUser(auth.id, { type: 'store-change', payload: { scope: 'user', key } });
