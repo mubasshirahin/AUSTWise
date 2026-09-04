@@ -327,7 +327,11 @@ export default function ResultTable({ onResultsChange }) {
     setDraftResults(cloneResults(updatedResults));
     persistResults(updatedResults);
     setEditingSemester(null);
-    syncHeatmapFromTracker();
+    const sems = {};
+    updatedResults.forEach((sem) => {
+      if (sem.sgpa !== null && sem.sgpa !== undefined) sems[String(sem.semester)] = sem.sgpa;
+    });
+    syncHeatmapFromTracker(sems);
     onResultsChange?.(updatedResults);
   };
 
