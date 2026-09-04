@@ -399,7 +399,9 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 12px;
+  padding: 6px 14px;
+  min-height: 36px;
+  min-width: 44px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-primary);
   background: var(--bg-card);
@@ -409,6 +411,12 @@
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.15s ease;
+}
+@media (max-width: 768px) {
+  .att-mode-toggle {
+    min-height: 44px;
+    padding: 8px 14px;
+  }
 }
 .att-mode-toggle:hover { border-color: var(--border-focus); color: var(--text-primary); }
 .att-mode-toggle.editing {

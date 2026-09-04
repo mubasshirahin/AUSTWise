@@ -193,7 +193,13 @@ export default function RoutineAttendanceTracker() {
     if (!telegramRecords.length) return {};
     const idByDate = {};
     Object.values(courseStats).forEach(stat => {
-      stat.instances.forEach(inst => { idByDate[`${String(stat.fullKey).toUpperCase()}|${toISODate(inst.date)}`] = inst.id; });
+      // Use base course (without part) for Telegram match — bot stores CSE101 not CSE101-A
+      const base = String(stat.course || stat.fullKey).split('-')[0].toUpperCase();
+      stat.instances.forEach(inst => {
+        idByDate[`${base}|${toISODate(inst.date)}`] = inst.id;
+        // Also map fullKey for exact match
+        idByDate[`${String(stat.fullKey).toUpperCase()}|${toISODate(inst.date)}`] = inst.id;
+      });
     });
     const marks = {};
     telegramRecords.forEach(rec => {
@@ -201,7 +207,8 @@ export default function RoutineAttendanceTracker() {
       const dateStr   = String(rec.RecordDate || rec.recordDate || '').split('T')[0];
       const attended  = rec.Attended !== undefined ? rec.Attended : rec.attended;
       if (!courseKey || !dateStr) return;
-      const id = idByDate[`${String(courseKey).toUpperCase()}|${dateStr}`];
+      const baseKey = String(courseKey).split('-')[0].toUpperCase();
+      const id = idByDate[`${baseKey}|${dateStr}`] || idByDate[`${String(courseKey).toUpperCase()}|${dateStr}`];
       if (id) marks[id] = attended ? 'present' : 'absent';
     });
     return marks;
@@ -311,6 +318,8 @@ export default function RoutineAttendanceTracker() {
           setSessionStatus(sessionId, targetStatus);
         }}
         disabled={!editMode}
+        aria-disabled={!editMode}
+        tabIndex={!editMode ? -1 : 0}
         title={editMode ? (isActive ? `Clear ${label}` : `Mark ${label}`) : 'Switch to Edit Mode to mark'}
       >
         <Icon size={11} style={{ flexShrink: 0 }} />
@@ -319,7 +328,25 @@ export default function RoutineAttendanceTracker() {
     );
   };
 
-  if (Object.keys(courseStats).length === 0) return null;
+  if (Object.keys(courseStats).length === 0) {
+    return (
+      <div className="glass-card-static schedule-widget attendance-widget attendance-tracker-widget animate-fadeInUp">
+        <div className="schedule-masthead">
+          <div className="schedule-title-block">
+            <div className="schedule-icon-tile"><Percent size={20} /></div>
+            <div><span className="schedule-overline">Dashboard</span><p className="schedule-title">Attendance Tracker</p><span className="schedule-subtitle">Add routine to track attendance</span></div>
+          </div>
+        </div>
+        <div className="schedule-dotted-divider" />
+        <div className="att-empty">
+          <Percent size={24} style={{ opacity: 0.3 }} />
+          <p>No courses found</p>
+          <span>Add courses to your Routine Grid first</span>
+          <button className="btn btn-sm" style={{ marginTop: '8px' }} onClick={() => window.location.href='/?tab=routine'}>Go to Routine Grid</button>
+        </div>
+      </div>
+    );
+  }
 
   // Shared course-cell renderer — used identically for every course cell.
   const renderCourseCell = (stat, idx) => {

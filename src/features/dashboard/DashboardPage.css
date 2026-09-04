@@ -3922,6 +3922,37 @@ tr.day-row-active {
     margin: 0 !important;
   }
 }
+/* ATTENDANCE TRACKER — desktop: 6.3% avg / 1 at risk middle e, View Mode button right e */
+@media (min-width: 1001px) {
+  .attendance-tracker-widget .schedule-masthead,
+  .attendance-widget.schedule-widget .schedule-masthead {
+    position: relative;
+    grid-template-columns: 1fr auto 1fr;
+    padding-right: 140px;
+    align-items: center;
+  }
+  .attendance-tracker-widget .schedule-masthead-center,
+  .attendance-widget.schedule-widget .schedule-masthead-center {
+    position: absolute !important;
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    display: flex !important;
+    justify-content: center !important;
+    z-index: 1;
+    margin: 0 !important;
+  }
+  .attendance-tracker-widget .schedule-actions,
+  .attendance-widget.schedule-widget .schedule-actions {
+    position: absolute !important;
+    right: 12px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    z-index: 2;
+    margin: 0 !important;
+    justify-content: flex-end !important;
+  }
+}
 
 /* 14-Weeks View — keep the tasks/busy-days stats centered in the top row
    between the title (left) and nav/actions (right). */
