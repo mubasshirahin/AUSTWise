@@ -231,7 +231,9 @@
     padding: var(--sp-3);
     gap: var(--sp-2);
     border-width: 1px;
-    padding-right: 120px;
+    position: relative;
+    margin-bottom: 52px;
+    overflow: visible;
   }
   .st-widget .schedule-icon-tile {
     width: 36px;
@@ -246,6 +248,8 @@
   .st-widget .schedule-title-block {
     gap: 10px;
     min-width: 0;
+    grid-column: 1;
+    grid-row: 1;
   }
   .st-widget .schedule-overline {
     font-size: 9px;
@@ -267,22 +271,114 @@
   .st-widget .schedule-masthead-center {
     display: none;
   }
+  /* Mobile: switcher outside box — below masthead, three-dot stays top-right */
   .st-widget .schedule-actions {
+    display: contents;
+  }
+  .st-widget .schedule-actions .export-dropdown {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    align-self: center;
+  }
+  .st-widget .schedule-actions .schedule-week-nav {
     position: absolute;
-    top: 50%;
-    right: var(--sp-3);
-    transform: translateY(-50%);
-    margin: 0;
-    justify-content: flex-end;
+    top: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: max-content;
+    max-width: calc(100% - 16px);
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    padding: 6px 8px;
+    box-shadow: var(--shadow-sm);
+    z-index: 3;
   }
-  /* Compact theory/lab tables on phones */
+  /* ── Theory table → card layout on phones ── */
+  .st-table-scroll {
+    overflow: visible;
+    border: none;
+    background: transparent;
+    border-radius: 0;
+  }
   .st-table {
-    min-width: 640px;
-    font-size: 10px;
+    min-width: 0;
+    display: block;
+    font-size: 11px;
   }
-  .st-th,
-  .st-td {
-    padding: 6px 4px;
+  .st-table thead {
+    display: none;
+  }
+  .st-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .st-row {
+    display: block;
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    overflow: hidden;
+  }
+  .st-row .st-td-course {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 10px 12px;
+    border-right: none;
+    border-bottom: 1px solid var(--border-primary);
+    background: var(--bg-input);
+  }
+  .st-row .st-td-input,
+  .st-row .st-td-computed,
+  .st-row .st-td-total-cell,
+  .st-row .st-td-grade {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 12px;
+    border-left: none;
+    border-bottom: 1px solid var(--border-secondary);
+    min-height: 42px;
+  }
+  .st-row .st-td:last-child {
+    border-bottom: none;
+  }
+  .st-row .st-td:empty {
+    display: none;
+  }
+  .st-row .st-td[data-label]::before {
+    content: attr(data-label);
+    font-size: 10px;
+    font-weight: var(--fw-semibold);
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+  }
+  .st-row .st-td-input .st-cell-input {
+    width: 90px;
+    height: 30px;
+    text-align: center;
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+  }
+  .st-row .st-total-wrap {
+    flex-direction: row;
+    gap: 10px;
+    align-items: center;
+  }
+  .st-row .st-total-bar {
+    width: 60px;
   }
   .st-section-header {
     gap: 6px;

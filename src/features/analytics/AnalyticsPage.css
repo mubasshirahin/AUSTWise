@@ -494,11 +494,25 @@
   box-shadow: 0 4px 14px -4px color-mix(in srgb, var(--accent-blue) 45%, transparent);
 }
 
+/* Breakdown ⋮ dropdown — 1:1 with Dashboard .export-menu (solid bg, top, high z) */
+.cgpa-breakdown-box .export-dropdown {
+  position: relative;
+  z-index: 99999;
+}
+
 .cgpa-breakdown-box .export-menu {
-  border: 1px solid color-mix(in srgb, var(--accent-blue) 18%, var(--border-primary));
-  box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.35);
-  border-radius: var(--radius-lg);
-  padding: 6px;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 99999;
+  background: var(--bg-secondary);
+  background-color: var(--bg-secondary);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popper);
+  overflow: hidden;
   min-width: 220px;
 }
 
@@ -550,7 +564,7 @@
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-popper);
-  z-index: 40;
+  z-index: 99999;
   overflow: hidden;
 }
 
@@ -684,11 +698,32 @@
     justify-content: flex-end;
     margin: 0 0 4px;
   }
-  .cgpa-bol-widget {
+  .gl-content-card {
     overflow: visible;
   }
+  .cgpa-bol-widget,
+  .cgpa-breakdown-box,
+  .cgpa-transcript {
+    overflow: visible;
+  }
+  .cgpa-breakdown-box .export-dropdown {
+    position: relative;
+    z-index: 99999;
+  }
   .cgpa-breakdown-box .export-menu {
-    z-index: 50;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    left: auto;
+    bottom: auto;
+    z-index: 99999;
+    background: var(--bg-secondary);
+    background-color: var(--bg-secondary);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-popper);
     max-height: 70vh;
     overflow-y: auto;
   }
@@ -1858,43 +1893,17 @@
     padding-bottom: var(--sp-3);
   }
 
-  /* ── Hero: ultra-compact ── */
+  /* ── Hero: vault-style on mobile — matches .vl-hero ── */
   .gl-hero {
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-xl);
   }
   .gl-hero-content {
-    padding: var(--sp-2) var(--sp-3);
-  }
-  .gl-hero-eyebrow {
-    margin-bottom: 2px;
-  }
-  .gl-hero-period-icon {
-    width: 20px;
-    height: 20px;
-  }
-  .gl-hero-period-icon svg {
-    width: 12px;
-    height: 12px;
-  }
-  .gl-hero-date-label {
-    font-size: 8px;
-    letter-spacing: 0.04em;
-  }
-  .gl-hero-title {
-    font-size: 1.1rem;
-    letter-spacing: -0.02em;
-    margin-bottom: 0;
-  }
-  .gl-hero-subtitle {
-    font-size: 9px;
-    line-height: 1.3;
-    margin-top: 2px;
+    padding: var(--sp-4) var(--sp-3);
   }
 
-  /* ── Tabs card: compact ── */
+  /* ── Tabs card: matches dashboard .das-tabs-card on mobile ── */
   .gl-tabs-card {
-    padding: var(--sp-1);
-    border-radius: var(--radius-md);
+    padding: var(--sp-2);
   }
 
   /* ── Content card: zero extra padding ── */
@@ -1903,34 +1912,46 @@
     border-radius: var(--radius-md);
   }
 
-  /* ── CGPA Calculator widget ── */
+  /* ── CGPA Calculator widget — mobile masthead matches Dashboard ── */
   .cgpa-bol-widget .schedule-masthead {
-    padding: var(--sp-2);
+    padding: var(--sp-3);
     gap: var(--sp-2);
-    margin-bottom: 4px;
     border-width: 1px;
   }
   .cgpa-bol-widget .schedule-icon-tile {
-    width: 28px;
-    height: 28px;
-    min-width: 28px;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: var(--radius-sm);
   }
   .cgpa-bol-widget .schedule-icon-tile svg {
-    width: 16px;
-    height: 16px;
+    width: 20px;
+    height: 20px;
+  }
+  .cgpa-bol-widget .schedule-title-block {
+    gap: 10px;
+    min-width: 0;
   }
   .cgpa-bol-widget .schedule-overline {
-    font-size: 7px;
-    letter-spacing: 0.08em;
+    font-size: 9px;
   }
   .cgpa-bol-widget .schedule-title {
-    font-size: 12px;
+    font-size: var(--fs-sm);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   .cgpa-bol-widget .schedule-subtitle {
-    font-size: 8px;
+    font-size: 9px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .cgpa-bol-widget .schedule-masthead-center {
+    display: none;
+  }
+  .cgpa-bol-widget .schedule-stats {
     display: none;
   }
 
@@ -1981,11 +2002,11 @@
     margin-top: var(--sp-2);
   }
 
-  /* ── Transcript masthead ── */
+  /* ── Transcript masthead — same Dashboard mobile masthead ── */
   .cgpa-breakdown-box .schedule-masthead {
-    padding: var(--sp-2);
+    padding: var(--sp-3);
     gap: var(--sp-2);
-    margin-bottom: 2px;
+    border-width: 1px;
   }
   .cgpa-breakdown-box .schedule-masthead .cgpa-transcript-actions {
     gap: 6px;
@@ -2153,25 +2174,34 @@
     max-height: 110px;
   }
 
-  /* ── GliderTabs: ultra-compact for analytics ── */
+  /* ── GliderTabs: dashboard-consistent on mobile ──
+     Inherits the shared @media (max-width:640px) rules from
+     src/components/GliderTabs.css (icon 28px, label 8px, gap 4px).
+     No extra compaction here so Grade Lab stays 1:1 with Dashboard. */
   .gl-tabs-card .glider-tabs-wrap {
-    gap: 3px;
+    gap: 6px;
   }
   .gl-tabs-card .glider-tab {
-    padding: 4px 6px;
-    gap: 2px;
-    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    padding-left: 19px;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    border-radius: 12px;
   }
   .gl-tabs-card .glider-tab-icon {
-    width: 22px;
-    height: 22px;
+    width: 28px;
+    height: 28px;
   }
   .gl-tabs-card .glider-tab-icon svg {
-    width: 14px;
-    height: 14px;
+    transform: scale(1.2);
+    transform-origin: center;
   }
   .gl-tabs-card .glider-tab-label {
-    font-size: 7px;
+    font-size: 8px;
+    line-height: 1;
+    white-space: nowrap;
   }
 
   /* ── Grade badge: tighter ── */
@@ -2187,5 +2217,61 @@
   }
   .schedule-stat-label {
     font-size: 7px;
+  }
+}
+
+/* ───────────────────────────────────────────────────────────────
+   Semester Breakdown ⋮ dropdown — force Dashboard match
+   Selector from user: #root ... .cgpa-transcript-actions > div > div
+   Must be solid bg, on top (99999), absolute top-right like
+   Dashboard .export-menu — overrides any fixed bottom-sheet.
+   ─────────────────────────────────────────────────────────────── */
+.cgpa-breakdown-box .export-dropdown {
+  position: relative;
+  z-index: 99999;
+}
+.cgpa-breakdown-box .export-menu,
+.glass-card-static.schedule-widget.cgpa-bol-widget.cgpa-breakdown-box .export-menu,
+div.gl-content-card div.glass-card-static.schedule-widget.cgpa-bol-widget.cgpa-breakdown-box .schedule-masthead .cgpa-transcript-actions .export-dropdown .export-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  left: auto;
+  bottom: auto;
+  z-index: 99999;
+  background: var(--bg-secondary);
+  background-color: var(--bg-secondary);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popper);
+  overflow: hidden;
+  min-width: 220px;
+  opacity: 1;
+  transform: none;
+  isolation: isolate;
+}
+@media (max-width: 640px) {
+  .cgpa-breakdown-box .export-menu,
+  .glass-card-static.schedule-widget.cgpa-bol-widget.cgpa-breakdown-box .export-menu,
+  div.gl-content-card div.glass-card-static.schedule-widget.cgpa-bol-widget.cgpa-breakdown-box .schedule-masthead .cgpa-transcript-actions .export-dropdown .export-menu {
+    position: absolute !important;
+    top: calc(100% + 6px) !important;
+    right: 0 !important;
+    left: auto !important;
+    bottom: auto !important;
+    z-index: 99999 !important;
+    background: var(--bg-secondary) !important;
+    background-color: var(--bg-secondary) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: 1px solid var(--border-primary) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--shadow-popper) !important;
+    min-width: 220px !important;
+    max-width: calc(100vw - 32px) !important;
+    width: max-content !important;
+    opacity: 1 !important;
   }
 }

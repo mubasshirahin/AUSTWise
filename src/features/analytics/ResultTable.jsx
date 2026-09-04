@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Check, ChevronLeft, ChevronRight, FileDown, FileSpreadsheet, Layers, MoreVertical, Pencil, Plus, RotateCcw, Trash2, X } from 'lucide-react';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
 import { formatSemesterLabel, getSemesterCountForDepartment } from '../../utils/semester';
@@ -784,52 +785,75 @@ export default function ResultTable({ onResultsChange }) {
         {results.map(renderSemesterCard)}
       </div>
 
-      {/* Load Template — Department Picker Modal */}
-      {showDeptModal && (
-        <div className="modal-overlay" onClick={() => { setShowDeptModal(false); setSelectedDept(null); }}>
-          <div className="modal glass-card-static" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '620px', maxHeight: '75vh', overflowY: 'auto' }}>
-            <div className="flex justify-between items-center" style={{ marginBottom: '14px' }}>
-              <div>
-                <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', margin: 0 }}>
-                  {selectedDept ? `${DEPT_FULL_NAMES[selectedDept] || selectedDept}` : 'Load Transcript Template'}
+      {/* Load Template — Department Picker Modal — compact for 8 depts, portal + blurred */}
+      {showDeptModal && createPortal(
+        <div
+          className="modal-overlay"
+          onClick={() => { setShowDeptModal(false); setSelectedDept(null); }}
+          style={{
+            background: 'rgba(4, 6, 20, 0.52)',
+            backdropFilter: 'blur(16px) saturate(140%)',
+            WebkitBackdropFilter: 'blur(16px) saturate(140%)',
+            zIndex: 99999,
+            padding: 'var(--sp-4)',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <div
+            className="modal glass-card-static"
+            onClick={(e) => e.stopPropagation()}
+            style={
+              selectedDept
+                ? { maxWidth: '520px', maxHeight: '72vh', overflowY: 'auto', padding: 'var(--sp-4)' }
+                : { maxWidth: '400px', maxHeight: 'auto', overflowY: 'visible', padding: 'var(--sp-4)', width: 'min(400px, calc(100% - 32px))' }
+            }
+          >
+            <div className="flex justify-between items-center" style={{ marginBottom: '12px', gap: '12px' }}>
+              <div style={{ minWidth: 0 }}>
+                <h3 style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, margin: 0, letterSpacing: '-0.01em' }}>
+                  {selectedDept ? `${DEPT_FULL_NAMES[selectedDept] || selectedDept}` : 'Load Template'}
                 </h3>
-                <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
+                <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', margin: '2px 0 0', lineHeight: 1.4 }}>
                   {selectedDept
-                    ? `Choose a semester template for ${selectedDept}.`
-                    : 'Select your department to load the standard course template.'}
+                    ? `Pick a semester for ${selectedDept}.`
+                    : 'Choose your department — 8 options.'}
                 </p>
               </div>
               <button
                 className="btn btn-icon"
                 onClick={() => { setShowDeptModal(false); setSelectedDept(null); }}
-                style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-tertiary)' }}
+                style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-tertiary)', flexShrink: 0, width: 32, height: 32 }}
                 aria-label="Close"
               >
-                <X size={20} />
+                <X size={16} />
               </button>
             </div>
 
             {!selectedDept ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
                 {TRANSCRIPT_DEPARTMENTS.map(dept => (
                   <button
                     key={dept}
                     className="btn btn-secondary"
                     onClick={() => setSelectedDept(dept)}
                     style={{
-                      padding: '18px 12px',
-                      fontSize: 'var(--fs-sm)',
-                      fontWeight: 'bold',
-                      letterSpacing: '0.04em',
+                      padding: '10px 8px',
+                      fontSize: 'var(--fs-xs)',
+                      fontWeight: 700,
+                      letterSpacing: '0.03em',
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '4px',
+                      gap: '2px',
                       alignItems: 'center',
                       justifyContent: 'center',
+                      borderRadius: 'var(--radius-md)',
+                      lineHeight: 1.2,
+                      minHeight: 56,
                     }}
                   >
-                    <span style={{ fontSize: 'var(--fs-md)' }}>{dept}</span>
-                    <span style={{ fontSize: '10px', fontWeight: 'normal', opacity: 0.7, lineHeight: 1.3 }}>
+                    <span style={{ fontSize: '13px', fontWeight: 800 }}>{dept}</span>
+                    <span style={{ fontSize: '9px', fontWeight: 500, opacity: 0.65, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
                       {DEPT_FULL_NAMES[dept]}
                     </span>
                   </button>
@@ -937,12 +961,22 @@ export default function ResultTable({ onResultsChange }) {
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Reset All — Confirmation Modal */}
-      {showResetConfirm && (
-        <div className="modal-overlay" onClick={() => setShowResetConfirm(false)}>
+      {showResetConfirm && createPortal(
+        <div
+          className="modal-overlay"
+          onClick={() => setShowResetConfirm(false)}
+          style={{
+            background: 'rgba(4, 6, 20, 0.52)',
+            backdropFilter: 'blur(16px) saturate(140%)',
+            WebkitBackdropFilter: 'blur(16px) saturate(140%)',
+            zIndex: 99999,
+          }}
+        >
           <div className="modal glass-card-static" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px', textAlign: 'center' }}>
             <div style={{ marginBottom: '12px' }}>
               <div
@@ -981,7 +1015,8 @@ export default function ResultTable({ onResultsChange }) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

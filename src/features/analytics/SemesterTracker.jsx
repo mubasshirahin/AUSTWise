@@ -851,6 +851,7 @@ export default function SemesterTracker() {
                       const isActive = activeCell?.key===`t_${course.id}_${fIdx}`;
                       return (
                         <td key={field.id}
+                          data-label={`${field.label} /${field.id.startsWith('quiz') ? field.maxMarks.toFixed(2) : field.maxMarks}`}
                           className={`st-td st-td-input ${getCellClass(val,field.maxMarks)} ${isActive?'st-td-active':''}`}
                           style={{'--col-color':field.color}}
                         >
@@ -870,11 +871,11 @@ export default function SemesterTracker() {
                       );
                     })}
                     {/* Best */}
-                    <td className="st-td st-td-computed">
+                    <td className="st-td st-td-computed" data-label="Best /20">
                       <span className={`st-computed-val ${getCellClass(b2,20)}`}>{b2>0?b2:'—'}/20</span>
                     </td>
                     {/* Total */}
-                    <td className="st-td st-td-total-cell">
+                    <td className="st-td st-td-total-cell" data-label="Total /100">
                       <div className="st-total-wrap">
                         <span className="st-total-val" style={{color:hasAny?grade.color:'var(--text-tertiary)'}}>
                           {hasAny?tot.toFixed(1):'—'}
@@ -887,7 +888,7 @@ export default function SemesterTracker() {
                       </div>
                     </td>
                     {/* Grade */}
-                    <td className="st-td st-td-grade">
+                    <td className="st-td st-td-grade" data-label="Grade">
                       {hasAny?(
                         <div className="st-grade-badge" style={{'--grade-color':grade.color}}>
                           <span className="st-grade-letter">{grade.letter}</span>
