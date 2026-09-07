@@ -81,3 +81,9 @@ server/sharedStoreDeleted.json
 
 # Playwright / test artifacts
 test-results/
+
+# Draft logo uploads at repo root (originals with spaces) — use src/assets instead, keep lowercase assets
+/AUSTWise*.svg
+/Vector*.svg
+/AUSTWise.svg
+/AUSTWise-dark.svg
