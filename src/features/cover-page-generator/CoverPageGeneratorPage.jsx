@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
-import austwiseLogo from '../../assets/vector1-1.svg';
+import austwiseLogo from '../../assets/austwise-4.svg';
 import austLogo from '../../assets/aust-logo.jpg';
 import './CoverPageGeneratorPage.css';
 
@@ -144,10 +144,10 @@ export default function CoverPageGeneratorPage() {
   const watermarkX = savedForm.watermarkX ?? 0;
   const watermarkY = savedForm.watermarkY ?? 0;
 
-  // Footer logo settings — aro boro, old 60 cache ignore kore 110 force
+  // Footer logo settings — choto + left e (user request)
   const savedSize = savedForm.footerLogoSize;
-  const footerLogoSize = (savedSize && savedSize !== 60 && savedSize !== 80) ? savedSize : 110;
-  const footerLogoX = savedForm.footerLogoX ?? 0;
+  const footerLogoSize = (savedSize && savedSize !== 60 && savedSize !== 80 && savedSize !== 110) ? savedSize : 80;
+  const footerLogoX = savedForm.footerLogoX ?? -18;
   const footerLogoY = savedForm.footerLogoY ?? 0;
 
   // Save form to localStorage on every change
