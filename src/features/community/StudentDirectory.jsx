@@ -5,7 +5,7 @@ import {
   BadgeCheck, Star, Download, FileDown, Loader2,
   Crown, Briefcase,
 } from 'lucide-react';
-import logoUrl from '../../assets/logo-silver.png';
+import logoUrl from '../../assets/AUSTWise.svg';
 import { getAllAccounts, createAwid } from '../../utils/authStorage';
 import { useAuth } from '../../context/AuthContext';
 import { formatSemesterLabel, getSemesterCountForDepartment } from '../../utils/semester';

@@ -7,7 +7,7 @@ import { useLiveValue } from '../../utils/liveStore';
 import { getUserBatchGroup } from '../../utils/getUserBatchGroup';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
 import { findCourseByCode } from '../../data/courses';
-import logoUrl from '../../assets/logo-silver.png';
+import logoUrl from '../../assets/AUSTWise.svg';
 
 export default function WeekSchedule() {
   const { user } = useAuth();

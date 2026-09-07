@@ -5,7 +5,7 @@ import {
   Type, Orbit, Grid2x2, Newspaper, PenTool, Gauge, Pen, Sun, Check, ArrowRight,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
-import logoNew from '../../assets/logo-new.png';
+import logoNew from '../../assets/AUSTWise.svg';
 import './LandingPage.css';
 
 const darkThemeOptions = [

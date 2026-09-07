@@ -31,9 +31,9 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css}'],
+        globPatterns: ['**/*.{js,css,svg}'],
         globIgnores: ['**/vendor-three*', '**/vendor-pdfgen*', '**/vendor-pdfjs*', '**/vendor-diagram*', '**/vendor-gsap*'],
-        maximumFileSizeToCacheInBytes: 400 * 1024,
+        maximumFileSizeToCacheInBytes: 500 * 1024,
         cleanupOutdatedCaches: true,
         navigateFallback: null,
         runtimeCaching: [

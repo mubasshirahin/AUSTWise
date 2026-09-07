@@ -17,7 +17,7 @@ const HorizontalFeatures = lazy(() => import('./HorizontalFeatures'));
 const StickyContentSwitch = lazy(() => import('./StickyContentSwitch'));
 const ImageTrailShowcase = lazy(() => import('./ImageTrailShowcase'));
 import LandingNav from './LandingNav';
-import logoSilver from '../../assets/logo-silver.png';
+import logoSilver from '../../assets/AUSTWise.svg';
 import './LandingPage.css';
 import { topTestimonials, bottomTestimonials } from '../../data/testimonials';
 import { modules, stackingHighlights, cursorSpotlight, tickerFeatures } from '../../data/features';

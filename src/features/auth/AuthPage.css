@@ -1476,8 +1476,18 @@
     color-mix(in srgb, var(--accent-blue) 70%, transparent));
 }
 
-/* Permanent subtle glow so the logo stands out against dark backgrounds */
+/* New SVG logo is black/red — invert for dark backgrounds so black becomes white */
 .auth-brand-outside .topbar-logo-img {
+  filter: brightness(0) invert(1)
+          drop-shadow(0 0 6px color-mix(in srgb, var(--accent-blue) 20%, transparent))
+          drop-shadow(0 0 12px color-mix(in srgb, var(--accent-blue) 10%, transparent));
+}
+[data-theme="light"] .auth-brand-outside .topbar-logo-img,
+[data-theme="swiss"] .auth-brand-outside .topbar-logo-img,
+[data-theme="newsprint"] .auth-brand-outside .topbar-logo-img,
+[data-theme="sketchbook"] .auth-brand-outside .topbar-logo-img,
+[data-theme="minimalist-monochrome"] .auth-brand-outside .topbar-logo-img,
+[data-theme="industrial"] .auth-brand-outside .topbar-logo-img {
   filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent-blue) 20%, transparent))
           drop-shadow(0 0 12px color-mix(in srgb, var(--accent-blue) 10%, transparent));
 }

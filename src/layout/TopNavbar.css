@@ -74,6 +74,16 @@
   height: 100%;
   object-fit: contain;
   display: block;
+  /* New SVG logo is black/red on transparent — invert for dark themes so black becomes white */
+  filter: brightness(0) invert(1);
+}
+[data-theme="light"] .topbar-logo-img,
+[data-theme="swiss"] .topbar-logo-img,
+[data-theme="newsprint"] .topbar-logo-img,
+[data-theme="sketchbook"] .topbar-logo-img,
+[data-theme="minimalist-monochrome"] .topbar-logo-img,
+[data-theme="industrial"] .topbar-logo-img {
+  filter: none;
 }
 
 .topbar-logo .logo-burst {

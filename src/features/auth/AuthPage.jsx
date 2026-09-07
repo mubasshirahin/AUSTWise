@@ -7,8 +7,8 @@ import { getYearSemOptions } from '../../utils/semester';
 import { getPasswordGrade } from '../../utils/passwordStrength';
 import { getAllAccounts, signupWithGoogle, updateAccountProfile, createAwid } from '../../utils/authStorage';
 import ParticleField from './ParticleField';
-import logoSilver from '../../assets/logo-silver.png';
-import logoRed from '../../assets/logo-red.png';
+import logoSilver from '../../assets/AUSTWise.svg';
+import logoRed from '../../assets/AUSTWise.svg';
 import './AuthPage.css';
 
 const EMAIL_DOMAIN = '@aust.edu';
