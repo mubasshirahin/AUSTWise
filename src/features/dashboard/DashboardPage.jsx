@@ -627,7 +627,7 @@ export default function DashboardPage() {
     }
   }, [searchParams]);
 
-  const profileIncomplete = user && (!user.department || !user.batch || !user.section || !user.yearSemester);
+  const profileIncomplete = user && (!user.department || !user.yearSemester || !user.section || !user.labSection);
 
   const isVisible = (key) => FOCUS_SECTIONS[focusMode].includes(key);
 

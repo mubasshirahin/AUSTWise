@@ -873,6 +873,7 @@ export default function SettingsPage() {
     { key: 'batch', label: 'Batch' },
     { key: 'yearSemester', label: 'Year-Semester' },
     { key: 'section', label: 'Section' },
+    { key: 'labSection', label: 'Lab Group' },
     { key: 'bloodGroup', label: 'Blood Group' },
   ];
   const filledFields = profileFields.filter((f) => {
@@ -880,6 +881,7 @@ export default function SettingsPage() {
       : f.key === 'batch' ? quickProfile.batchName
       : f.key === 'yearSemester' ? quickProfile.yearSemester
       : f.key === 'section' ? quickProfile.section
+      : f.key === 'labSection' ? quickProfile.labSection
       : profileDetails[f.key];
     return Boolean(val && val.trim());
   });
