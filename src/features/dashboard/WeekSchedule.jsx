@@ -7,7 +7,8 @@ import { useLiveValue } from '../../utils/liveStore';
 import { getUserBatchGroup } from '../../utils/getUserBatchGroup';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
 import { findCourseByCode } from '../../data/courses';
-import logoUrl from '../../assets/AUSTWise.svg';
+import logoLight from '../../assets/vector1-1.svg';
+import logoDark from '../../assets/vector1-1.svg';
 
 export default function WeekSchedule() {
   const { user } = useAuth();
@@ -358,6 +359,9 @@ export default function WeekSchedule() {
     const textPri = cs('--text-primary');
     const textSec = cs('--text-secondary');
     const textTer = cs('--text-tertiary');
+    const themeAttr = root.getAttribute('data-theme') || 'dark';
+    const lightSet = new Set(['light','swiss','newsprint','sketchbook','minimalist-monochrome','industrial']);
+    const logoUrl = lightSet.has(themeAttr) ? logoLight : logoDark;
 
     const container = document.createElement('div');
     container.style.cssText = `
@@ -444,6 +448,9 @@ export default function WeekSchedule() {
     const textPri = cs('--text-primary');
     const textSec = cs('--text-secondary');
     const textTer = cs('--text-tertiary');
+    const themeAttr = root.getAttribute('data-theme') || 'dark';
+    const lightSet = new Set(['light','swiss','newsprint','sketchbook','minimalist-monochrome','industrial']);
+    const logoUrl = lightSet.has(themeAttr) ? logoLight : logoDark;
 
     const container = document.createElement('div');
     container.style.cssText = `

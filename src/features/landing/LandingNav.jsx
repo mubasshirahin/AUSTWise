@@ -5,7 +5,8 @@ import {
   Type, Orbit, Grid2x2, Newspaper, PenTool, Gauge, Pen, Sun, Check, ArrowRight,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
-import logoNew from '../../assets/AUSTWise.svg';
+import wordmarkLight from '../../assets/austwise-4.svg';
+import wordmarkDark from '../../assets/austwise-5.svg';
 import './LandingPage.css';
 
 const darkThemeOptions = [
@@ -70,30 +71,28 @@ export default function LandingNav() {
 
   const activeTheme = allThemeOptions.find((t) => t.id === theme) || allThemeOptions[0];
   const ThemeIcon = activeTheme.icon;
+  const lightThemes = new Set(lightThemeOptions.map((t) => t.id));
+  const wordmarkSrc = lightThemes.has(theme) ? wordmarkLight : wordmarkDark;
 
   return (
     <nav className="landing-nav">
       <div className="landing-nav-inner">
         <div className="landing-nav-left">
           <div className="topbar-logo">
-            <div className="logo-icon-wrapper">
-              <button
-                type="button"
-                className={`topbar-logo-icon ${logoClicked ? 'clicked' : ''}`}
-                onClick={toggleLogo}
-                title="Click 3x for Nexus Terminal"
-                aria-label="AUSTWise logo"
-              >
-                <img
-                  src={logoNew}
-                  alt="AUSTWise logo"
-                  className="topbar-logo-img"
-                />
-              </button>
-              <div className="logo-burst" aria-hidden="true">
-                <i></i><i></i><i></i><i></i>
-                <i></i><i></i><i></i><i></i>
-              </div>
+            <img
+              src={wordmarkSrc}
+              alt="AUSTWise"
+              className={`topbar-wordmark-img ${logoClicked ? 'clicked' : ''}`}
+              onClick={toggleLogo}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && toggleLogo()}
+              title="Click 3x for Nexus Terminal"
+              aria-label="AUSTWise logo"
+            />
+            <div className="logo-burst" aria-hidden="true">
+              <i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i>
             </div>
           </div>
         </div>

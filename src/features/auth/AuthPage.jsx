@@ -7,8 +7,8 @@ import { getYearSemOptions } from '../../utils/semester';
 import { getPasswordGrade } from '../../utils/passwordStrength';
 import { getAllAccounts, signupWithGoogle, updateAccountProfile, createAwid } from '../../utils/authStorage';
 import ParticleField from './ParticleField';
-import logoSilver from '../../assets/AUSTWise.svg';
-import logoRed from '../../assets/AUSTWise.svg';
+import logoLight from '../../assets/vector1-1.svg';
+import logoDark from '../../assets/vector1-1.svg';
 import './AuthPage.css';
 
 const EMAIL_DOMAIN = '@aust.edu';
@@ -90,19 +90,14 @@ export default function AuthPage() {
   const [focusKind, setFocusKind] = useState(null);
   const [sending, setSending] = useState(false);
   const signupFormRef = useRef(null);
-  const [logoVariant, setLogoVariant] = useState(
-    () => localStorage.getItem('logoVariant') || 'silver'
-  );
   const [logoClicked, setLogoClicked] = useState(false);
+  // Theme-aware logo: AuST black in light, ash (#9CA3AF) in dark — wise stays #A7181B
+  const lightThemes = new Set(lightThemeOptions.map((t) => t.id));
+  const logoSrc = lightThemes.has(theme) ? logoLight : logoDark;
 
   const toggleLogo = () => {
     setLogoClicked(true);
     setTimeout(() => setLogoClicked(false), 600);
-    setLogoVariant((prev) => {
-      const next = prev === 'silver' ? 'red' : 'silver';
-      localStorage.setItem('logoVariant', next);
-      return next;
-    });
   };
 
   // ─── Typewriter ticker ───
@@ -617,7 +612,7 @@ export default function AuthPage() {
                   aria-label="Toggle logo color"
                 >
                   <img
-                    src={logoVariant === 'silver' ? logoSilver : logoRed}
+                    src={logoSrc}
                     alt="AUSTWise logo"
                     className="topbar-logo-img"
                   />
