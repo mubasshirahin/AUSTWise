@@ -1476,20 +1476,10 @@
     color-mix(in srgb, var(--accent-blue) 70%, transparent));
 }
 
-/* New SVG logo is black/red — invert for dark backgrounds so black becomes white */
+/* SVG handles theme internally: AuST black in light, ash (#9CA3AF) in dark, wise red (#A7181B) always — no invert needed */
 .auth-brand-outside .topbar-logo-img {
-  filter: brightness(0) invert(1)
-          drop-shadow(0 0 6px color-mix(in srgb, var(--accent-blue) 20%, transparent))
-          drop-shadow(0 0 12px color-mix(in srgb, var(--accent-blue) 10%, transparent));
-}
-[data-theme="light"] .auth-brand-outside .topbar-logo-img,
-[data-theme="swiss"] .auth-brand-outside .topbar-logo-img,
-[data-theme="newsprint"] .auth-brand-outside .topbar-logo-img,
-[data-theme="sketchbook"] .auth-brand-outside .topbar-logo-img,
-[data-theme="minimalist-monochrome"] .auth-brand-outside .topbar-logo-img,
-[data-theme="industrial"] .auth-brand-outside .topbar-logo-img {
   filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent-blue) 20%, transparent))
-          drop-shadow(0 0 12px color-mix(in srgb, var(--accent-blue) 10%, transparent));
+           drop-shadow(0 0 12px color-mix(in srgb, var(--accent-blue) 10%, transparent));
 }
 
 /* ═══════════════════════════════════════════════════════

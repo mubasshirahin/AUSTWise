@@ -5,7 +5,8 @@ import {
   BadgeCheck, Star, Download, FileDown, Loader2,
   Crown, Briefcase,
 } from 'lucide-react';
-import logoUrl from '../../assets/AUSTWise.svg';
+import logoLight from '../../assets/vector1-1.svg';
+import logoDark from '../../assets/vector1-1.svg';
 import { getAllAccounts, createAwid } from '../../utils/authStorage';
 import { useAuth } from '../../context/AuthContext';
 import { formatSemesterLabel, getSemesterCountForDepartment } from '../../utils/semester';
@@ -192,6 +193,9 @@ export default function StudentDirectory() {
     const root = document.documentElement;
     const cs = (n) => getComputedStyle(root).getPropertyValue(n).trim();
     const bg = cs('--bg-primary') || '#0A0A0C';
+    const themeAttr = root.getAttribute('data-theme') || 'dark';
+    const lightSet = new Set(['light','swiss','newsprint','sketchbook','minimalist-monochrome','industrial']);
+    const logoUrl = lightSet.has(themeAttr) ? logoLight : logoDark;
     const card = cs('--bg-card') || '#1B1B1F';
     const input = cs('--bg-input') || '#1B1B1F';
     const border = cs('--border-primary') || '#2A2A35';

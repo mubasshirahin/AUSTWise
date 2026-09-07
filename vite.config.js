@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      includeAssets: ['favicon.svg', 'vector1.svg', 'favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
         name: 'AUSTWise',
         short_name: 'AUSTWise',
@@ -18,6 +18,12 @@ export default defineConfig({
         scope: '/',
         start_url: '/',
         icons: [
+          {
+            src: 'vector1.svg',
+            sizes: 'any',
+            type: 'image/svg+xml',
+            purpose: 'any maskable',
+          },
           {
             src: 'icon-192x192.png',
             sizes: '192x192',
@@ -33,7 +39,7 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,svg}'],
         globIgnores: ['**/vendor-three*', '**/vendor-pdfgen*', '**/vendor-pdfjs*', '**/vendor-diagram*', '**/vendor-gsap*'],
-        maximumFileSizeToCacheInBytes: 500 * 1024,
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         cleanupOutdatedCaches: true,
         navigateFallback: null,
         runtimeCaching: [

@@ -13,7 +13,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useInAppNotifications } from '../hooks/useInAppNotifications';
 // import logoSilver from '../assets/logo-silver.png';
 // import logoRed from '../assets/logo-red.png';
-import logoNew from '../assets/AUSTWise.svg';
+import wordmarkLight from '../assets/austwise-4.svg';
+import wordmarkDark from '../assets/austwise-5.svg';
 import './TopNavbar.css';
 
 // ─── Helpers ───
@@ -103,6 +104,8 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
   const allThemeOptions = [...darkThemeOptions, ...lightThemeOptions];
   const activeTheme = allThemeOptions.find((t) => t.id === theme) || allThemeOptions[0];
   const ThemeIcon = activeTheme.icon;
+  const lightThemes = new Set(lightThemeOptions.map((t) => t.id));
+  const wordmarkSrc = lightThemes.has(theme) ? wordmarkLight : wordmarkDark;
 
 
 
@@ -143,23 +146,20 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
     <header className="topbar">
       <div className="topbar-left">
         <div className="topbar-logo">
-          <div className="logo-icon-wrapper">
-            <button
-              type="button"
-              className={`topbar-logo-icon ${logoClicked ? 'clicked' : ''}`}
-              onClick={toggleLogo}
-               title="Click 3x for Nexus Terminal"
-               aria-label="AUSTWise logo"
-            >
-              <img
-                src={logoNew}
-                alt="AUSTWise logo"
-                className="topbar-logo-img"
-              />
-            </button>          <div className="logo-burst" aria-hidden="true">
-              <i></i><i></i><i></i><i></i>
-              <i></i><i></i><i></i><i></i>
-            </div>
+          <img
+            src={wordmarkSrc}
+            alt="AUSTWise"
+            className={`topbar-wordmark-img ${logoClicked ? 'clicked' : ''}`}
+            onClick={toggleLogo}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === 'Enter' && toggleLogo()}
+            title="Click 3x for Nexus Terminal"
+            aria-label="AUSTWise logo"
+          />
+          <div className="logo-burst" aria-hidden="true">
+            <i></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i>
           </div>
 
           {/* 

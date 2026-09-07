@@ -8,7 +8,8 @@ import RoomAutocomplete from '../../components/RoomAutocomplete';
 import TeacherAutocomplete from '../../components/TeacherAutocomplete';
 import { getAutoColorForCourse } from '../../utils/autoColorPalette';
 import { loadTemplates, mergeTemplatesToRoutine } from '../../utils/routineTemplates';
-import logoUrl from '../../assets/AUSTWise.svg';
+import logoLight from '../../assets/vector1-1.svg';
+import logoDark from '../../assets/vector1-1.svg';
 import { useAuth } from '../../context/AuthContext';
 
 export default function WeeklyPlanner() {
@@ -478,6 +479,9 @@ export default function WeeklyPlanner() {
     const textPri = cs('--text-primary');
     const textSec = cs('--text-secondary');
     const textTer = cs('--text-tertiary');
+    const themeAttr = root.getAttribute('data-theme') || 'dark';
+    const lightSet = new Set(['light','swiss','newsprint','sketchbook','minimalist-monochrome','industrial']);
+    const logoUrl = lightSet.has(themeAttr) ? logoLight : logoDark;
 
     const container = document.createElement('div');
     container.style.cssText = `
@@ -581,6 +585,9 @@ export default function WeeklyPlanner() {
     const root = document.documentElement;
     const cs = (name) => getComputedStyle(root).getPropertyValue(name).trim();
     const bg = cs('--bg-primary');
+    const themeAttr = root.getAttribute('data-theme') || 'dark';
+    const lightSet = new Set(['light','swiss','newsprint','sketchbook','minimalist-monochrome','industrial']);
+    const logoUrl = lightSet.has(themeAttr) ? logoLight : logoDark;
 
     const container = document.createElement('div');
     container.style.cssText = `

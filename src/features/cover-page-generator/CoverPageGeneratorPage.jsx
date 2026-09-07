@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
-import austwiseLogo from '../../assets/AUSTWise.svg';
+import austwiseLogo from '../../assets/vector1-1.svg';
 import austLogo from '../../assets/aust-logo.jpg';
 import './CoverPageGeneratorPage.css';
 

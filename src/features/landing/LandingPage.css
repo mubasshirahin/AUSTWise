@@ -222,24 +222,25 @@
 .landing-nav-left .topbar-logo {
   display: flex;
   align-items: center;
-  gap: 0;
+  gap: 8px;
   flex-shrink: 0;
   margin-left: 22px;
+  position: relative;
 }
 
 .landing-nav-left .logo-icon-wrapper {
   position: relative;
-  width: 56px;
-  height: 56px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .landing-nav-left .topbar-logo-icon {
-  width: 56px;
-  height: 56px;
-  min-width: 56px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
   border-radius: var(--radius-md);
   background: transparent;
   border: none;
@@ -269,16 +270,9 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  transform: scale(1.55);
+  transform: none;
   display: block;
-  filter: brightness(0) invert(1);
-}
-[data-theme="light"] .landing-nav-left .topbar-logo-img,
-[data-theme="swiss"] .landing-nav-left .topbar-logo-img,
-[data-theme="newsprint"] .landing-nav-left .topbar-logo-img,
-[data-theme="sketchbook"] .landing-nav-left .topbar-logo-img,
-[data-theme="minimalist-monochrome"] .landing-nav-left .topbar-logo-img,
-[data-theme="industrial"] .landing-nav-left .topbar-logo-img {
+  /* SVG handles theme: AuST ash in dark, black in light — no CSS filter */
   filter: none;
 }
 
@@ -310,18 +304,31 @@
 .landing-nav-left .logo-burst i:nth-child(7) { --bx: -28px;  --by: 28px; }
 .landing-nav-left .logo-burst i:nth-child(8) { --bx: -36px;  --by: 0px; }
 
-.landing-nav-left .topbar-logo-icon.clicked ~ .logo-burst i {
+.landing-nav-left .topbar-logo-icon.clicked ~ .logo-burst i,
+.landing-nav-left .topbar-wordmark-img.clicked ~ .logo-burst i {
   animation: topParticleBurst 0.6s ease-out forwards;
 }
 
-.landing-nav-left .topbar-logo-icon.clicked ~ .logo-burst i:nth-child(1) { animation-delay: 0s; }
-.landing-nav-left .topbar-logo-icon.clicked ~ .logo-burst i:nth-child(2) { animation-delay: 0.03s; }
-.landing-nav-left .topbar-logo-icon.clicked ~ .logo-burst i:nth-child(3) { animation-delay: 0.06s; }
-.landing-nav-left .topbar-logo-icon.clicked ~ .logo-burst i:nth-child(4) { animation-delay: 0.09s; }
-.landing-nav-left .topbar-logo-icon.clicked ~ .logo-burst i:nth-child(5) { animation-delay: 0.12s; }
-.landing-nav-left .topbar-logo-icon.clicked ~ .logo-burst i:nth-child(6) { animation-delay: 0.15s; }
-.landing-nav-left .topbar-logo-icon.clicked ~ .logo-burst i:nth-child(7) { animation-delay: 0.18s; }
-.landing-nav-left .topbar-logo-icon.clicked ~ .logo-burst i:nth-child(8) { animation-delay: 0.21s; }
+.landing-nav-left .topbar-logo-icon.clicked ~ .logo-burst i:nth-child(1),
+.landing-nav-left .topbar-wordmark-img.clicked ~ .logo-burst i:nth-child(1) { animation-delay: 0s; }
+.landing-nav-left .topbar-logo-icon.clicked ~ .logo-burst i:nth-child(2),
+.landing-nav-left .topbar-wordmark-img.clicked ~ .logo-burst i:nth-child(2) { animation-delay: 0.03s; }
+.landing-nav-left .topbar-logo-icon.clicked ~ .logo-burst i:nth-child(3),
+.landing-nav-left .topbar-wordmark-img.clicked ~ .logo-burst i:nth-child(3) { animation-delay: 0.06s; }
+.landing-nav-left .topbar-logo-icon.clicked ~ .logo-burst i:nth-child(4),
+.landing-nav-left .topbar-wordmark-img.clicked ~ .logo-burst i:nth-child(4) { animation-delay: 0.09s; }
+.landing-nav-left .topbar-logo-icon.clicked ~ .logo-burst i:nth-child(5),
+.landing-nav-left .topbar-wordmark-img.clicked ~ .logo-burst i:nth-child(5) { animation-delay: 0.12s; }
+.landing-nav-left .topbar-logo-icon.clicked ~ .logo-burst i:nth-child(6),
+.landing-nav-left .topbar-wordmark-img.clicked ~ .logo-burst i:nth-child(6) { animation-delay: 0.15s; }
+.landing-nav-left .topbar-logo-icon.clicked ~ .logo-burst i:nth-child(7),
+.landing-nav-left .topbar-wordmark-img.clicked ~ .logo-burst i:nth-child(7) { animation-delay: 0.18s; }
+.landing-nav-left .topbar-logo-icon.clicked ~ .logo-burst i:nth-child(8),
+.landing-nav-left .topbar-wordmark-img.clicked ~ .logo-burst i:nth-child(8) { animation-delay: 0.21s; }
+
+.landing-nav-left .topbar-wordmark-img.clicked {
+  animation: topLogoSpin 0.6s cubic-bezier(0.2, 0, 0, 1);
+}
 
 .landing-nav-left .logo-text {
   display: flex;
