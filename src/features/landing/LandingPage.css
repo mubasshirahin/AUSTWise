@@ -271,6 +271,15 @@
   object-fit: contain;
   transform: scale(1.55);
   display: block;
+  filter: brightness(0) invert(1);
+}
+[data-theme="light"] .landing-nav-left .topbar-logo-img,
+[data-theme="swiss"] .landing-nav-left .topbar-logo-img,
+[data-theme="newsprint"] .landing-nav-left .topbar-logo-img,
+[data-theme="sketchbook"] .landing-nav-left .topbar-logo-img,
+[data-theme="minimalist-monochrome"] .landing-nav-left .topbar-logo-img,
+[data-theme="industrial"] .landing-nav-left .topbar-logo-img {
+  filter: none;
 }
 
 .landing-nav-left .logo-burst {

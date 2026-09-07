@@ -8,7 +8,7 @@ import RoomAutocomplete from '../../components/RoomAutocomplete';
 import TeacherAutocomplete from '../../components/TeacherAutocomplete';
 import { getAutoColorForCourse } from '../../utils/autoColorPalette';
 import { loadTemplates, mergeTemplatesToRoutine } from '../../utils/routineTemplates';
-import logoUrl from '../../assets/logo-silver.png';
+import logoUrl from '../../assets/AUSTWise.svg';
 import { useAuth } from '../../context/AuthContext';
 
 export default function WeeklyPlanner() {

@@ -13,7 +13,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useInAppNotifications } from '../hooks/useInAppNotifications';
 // import logoSilver from '../assets/logo-silver.png';
 // import logoRed from '../assets/logo-red.png';
-import logoNew from '../assets/logo-new.png';
+import logoNew from '../assets/AUSTWise.svg';
 import './TopNavbar.css';
 
 // ─── Helpers ───
