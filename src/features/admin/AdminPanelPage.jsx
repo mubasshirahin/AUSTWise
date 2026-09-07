@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Shield, Coffee, Activity, Users, Trash2, Plus, AlertCircle, Eye, Edit3, Search, X, Save, CheckCircle2, XCircle, ClipboardList, CalendarDays, Mic, CalendarClock, Ban } from 'lucide-react';
+import { Shield, Coffee, Activity, Users, Trash2, Plus, AlertCircle, Eye, Edit3, Search, X, Save, CheckCircle2, XCircle, ClipboardList, CalendarDays, Mic, CalendarClock, Ban, Banknote } from 'lucide-react';
 import { getAuditoriumEvent, setAuditoriumEvent, defaultAuditoriumEvent } from '../../data/mockData';
 import { loadSharedSync, loadSharedAsync, saveShared } from '../../utils/storageService';
 import { getRoleLabel, getRoleBadgeClass, getAllAccounts, reviewRoleApplication, resetAllLocalData, getCurrentUserId } from '../../utils/authStorage';
 import { sendMessage } from '../../utils/messageStorage';
 import RoutineTemplatesPanel from './RoutineTemplatesPanel';
+import BharaKotoPanel from './BharaKotoPanel';
 import './AdminPanelPage.css';
 
 export default function AdminPanelPage() {
@@ -25,6 +26,7 @@ export default function AdminPanelPage() {
     if (path === '/admin/auditorium') return 'auditorium';
     if (path === '/admin/cheatsheets') return 'cheatsheets';
     if (path === '/admin/campus-map') return 'campus-map';
+    if (path === '/admin/bhara-koto') return 'bhara-koto';
     return 'overview';
   };
   
@@ -43,7 +45,8 @@ export default function AdminPanelPage() {
       'templates': '/admin/templates',
       'auditorium': '/admin/auditorium',
       'cheatsheets': '/admin/cheatsheets',
-      'campus-map': '/admin/campus-map'
+      'campus-map': '/admin/campus-map',
+      'bhara-koto': '/admin/bhara-koto'
     };
     navigate(paths[tab] || '/admin');
   };
@@ -493,6 +496,17 @@ if (!res.ok || !Array.isArray(data.applications)) return;
             {libraryInfo.occupied} / {libraryInfo.totalSeats} seats
           </span>
         </div>
+
+        <div className="glass-card stat-card" onClick={() => navigateToTab('bhara-koto')} style={{ cursor: 'pointer' }}>
+          <div className="flex justify-between items-center">
+            <span className="stat-label">Bhara Koto</span>
+            <Banknote size={18} style={{ color: 'var(--accent-amber)' }} />
+          </div>
+          <span className="stat-value" style={{ fontSize: '14px', marginTop: '10px' }}>Manage</span>
+          <span className="stat-change" style={{ color: 'var(--text-tertiary)' }}>
+            Admin table — Daily Life
+          </span>
+        </div>
       </div>
 
 
@@ -868,6 +882,11 @@ if (!res.ok || !Array.isArray(data.applications)) return;
 
             </div>
           </div>
+        )}
+
+        {/* BHARA KOTO PANEL — Admin only */}
+        {activeTab === 'bhara-koto' && (
+          <BharaKotoPanel />
         )}
 
         {/* User Profile Modal */}

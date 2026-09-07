@@ -176,6 +176,7 @@ function AppContent() {
                   <Route path="/admin/applications" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
                   <Route path="/admin/cr-sr-directory" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
                   <Route path="/admin/auditorium" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
+                  <Route path="/admin/bhara-koto" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
                   <Route path="/workspace" element={<WorkspacePage />} />
                   <Route path="/study-room" element={<StudyRoomPage />} />
                   <Route path="/cp-hub" element={<CPHubPage />} />

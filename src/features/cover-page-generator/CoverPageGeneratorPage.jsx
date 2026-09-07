@@ -60,7 +60,8 @@ function useCoverScale(frameRef) {
 }
 
 export default function CoverPageGeneratorPage() {
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
+  const isAdmin = hasRole ? hasRole('admin') || hasRole('moderator') : user?.role === 'admin' || user?.role === 'moderator';
   const previewRef = useRef(null);
   const cloneRef = useRef(null);
   const frameRef = useRef(null);
@@ -70,6 +71,58 @@ export default function CoverPageGeneratorPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [logoSrc] = useState(austLogo);
   const coverScale = useCoverScale(frameRef);
+  const [coverStats, setCoverStats] = useState({ uniqueUsers: 0, totalPdf: 0, totalPng: 0, lastMonthUsers: 0, todaysNewUsers: 0, avg6Months: 0 });
+  const loadCoverStats = async () => {
+    try {
+      const res = await fetch(isAdmin ? '/api/admin/cover-stats' : '/api/cover-stats', { credentials: 'same-origin' });
+      const data = await res.json();
+      if (data.success) setCoverStats({ uniqueUsers: data.uniqueUsers, totalPdf: data.totalPdf, totalPng: data.totalPng, lastMonthUsers: data.lastMonthUsers || 0, todaysNewUsers: data.todaysNewUsers || 0, avg6Months: data.avg6Months || 0 });
+    } catch {}
+  };
+  useEffect(() => { if (isAdmin) loadCoverStats(); }, [isAdmin]);
+  // Real-time server-connected instant update (SSE + polling fallback)
+  useEffect(() => {
+    if (!isAdmin) return;
+    let es = null;
+    try {
+      es = new EventSource('/api/cover-stats/stream');
+      es.onmessage = (e) => {
+        try {
+          const d = JSON.parse(e.data);
+          if (typeof d.uniqueUsers === 'number') setCoverStats({ uniqueUsers: d.uniqueUsers, totalPdf: d.totalPdf, totalPng: d.totalPng, lastMonthUsers: d.lastMonthUsers || 0, todaysNewUsers: d.todaysNewUsers || 0, avg6Months: d.avg6Months || 0 });
+        } catch {}
+      };
+    } catch {}
+    const iv = setInterval(loadCoverStats, 5000);
+    const onCoverStats = (e) => {
+      const d = e.detail || e;
+      if (d && d.type === 'cover-stats' && d.payload) {
+        setCoverStats({ uniqueUsers: d.payload.uniqueUsers, totalPdf: d.payload.totalPdf, totalPng: d.payload.totalPng, lastMonthUsers: d.payload.lastMonthUsers || 0, todaysNewUsers: d.payload.todaysNewUsers || 0, avg6Months: d.payload.avg6Months || 0 });
+      }
+    };
+    window.addEventListener('message', onCoverStats);
+    // also listen for WS broadcast via custom event if app dispatches
+    window.addEventListener('cover-stats', onCoverStats);
+    return () => {
+      if (es) try { es.close(); } catch {}
+      clearInterval(iv);
+      window.removeEventListener('message', onCoverStats);
+      window.removeEventListener('cover-stats', onCoverStats);
+    };
+  }, [isAdmin]);
+  const trackExport = async (format) => {
+    try {
+      const res = await fetch('/api/cover-stats/track', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ format }),
+      });
+      const data = await res.json();
+      if (data.success) setCoverStats({ uniqueUsers: data.uniqueUsers, totalPdf: data.totalPdf, totalPng: data.totalPng, lastMonthUsers: data.lastMonthUsers || 0, todaysNewUsers: data.todaysNewUsers || 0, avg6Months: data.avg6Months || 0 });
+      else loadCoverStats();
+    } catch {}
+  };
 
   /* Close ⋮ dropdown on outside click */
   useEffect(() => {
@@ -283,6 +336,7 @@ export default function CoverPageGeneratorPage() {
       document.body.removeChild(clone);
       cloneRef.current = null;
 
+      trackExport(format).catch(()=>{});
       setGenerated(true);
       setTimeout(() => setGenerated(false), 3000);
     } catch (err) {
@@ -341,51 +395,127 @@ export default function CoverPageGeneratorPage() {
         </div>
 
         <div className="schedule-actions">
-          <div className="export-dropdown" ref={menuRef}>
-            <button
-              className="schedule-nav-btn"
-              onClick={() => setMenuOpen((o) => !o)}
-              title="Options"
-              aria-haspopup="true"
-              aria-expanded={menuOpen}
-            >
-              <MoreVertical size={18} />
-            </button>
-            {menuOpen && (
-              <div className="export-menu" role="menu">
-                <button
-                  className="export-menu-item"
-                  onClick={() => { setMenuOpen(false); generateCover('pdf'); }}
-                  disabled={!isFormValid || generating}
-                  role="menuitem"
-                >
-                  <FileDown size={14} /> Download PDF
-                </button>
-                <button
-                  className="export-menu-item"
-                  onClick={() => { setMenuOpen(false); generateCover('png'); }}
-                  disabled={!isFormValid || generating}
-                  role="menuitem"
-                >
-                  <Image size={14} /> Download PNG
-                </button>
-                <div className="export-menu-sep" />
-                <button
-                  className="export-menu-item"
-                  onClick={resetForm}
-                  role="menuitem"
-                >
-                  <RotateCcw size={14} /> Reset Form
-                </button>
-              </div>
-            )}
-          </div>
+          {!isAdmin && (
+            <div className="export-dropdown" ref={menuRef}>
+              <button
+                className="schedule-nav-btn"
+                onClick={() => setMenuOpen((o) => !o)}
+                title="Options"
+                aria-haspopup="true"
+                aria-expanded={menuOpen}
+              >
+                <MoreVertical size={18} />
+              </button>
+              {menuOpen && (
+                <div className="export-menu" role="menu">
+                  <button
+                    className="export-menu-item"
+                    onClick={() => { setMenuOpen(false); generateCover('pdf'); }}
+                    disabled={!isFormValid || generating}
+                    role="menuitem"
+                  >
+                    <FileDown size={14} /> Download PDF
+                  </button>
+                  <button
+                    className="export-menu-item"
+                    onClick={() => { setMenuOpen(false); generateCover('png'); }}
+                    disabled={!isFormValid || generating}
+                    role="menuitem"
+                  >
+                    <Image size={14} /> Download PNG
+                  </button>
+                  <div className="export-menu-sep" />
+                  <button
+                    className="export-menu-item"
+                    onClick={resetForm}
+                    role="menuitem"
+                  >
+                    <RotateCcw size={14} /> Reset Form
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       <div className="schedule-dotted-divider" />
 
-      <div className="cpgen-layout">
+      {isAdmin && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '14px' }}>
+          <div className="glass-card" style={{ padding: '12px', textAlign: 'center' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Unique Users</div>
+            <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>{coverStats.uniqueUsers}</div>
+            <div style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>at least 1 export</div>
+          </div>
+          <div className="glass-card" style={{ padding: '12px', textAlign: 'center' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total PDF Exports</div>
+            <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent-blue)' }}>{coverStats.totalPdf}</div>
+            <div style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>all users</div>
+          </div>
+          <div className="glass-card" style={{ padding: '12px', textAlign: 'center' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total PNG Exports</div>
+            <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent-emerald)' }}>{coverStats.totalPng}</div>
+            <div style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>all users</div>
+          </div>
+          <div className="glass-card" style={{ padding: '12px', textAlign: 'center' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Last Month Users</div>
+            <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent-amber)' }}>{coverStats.lastMonthUsers}</div>
+            <div style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>prev month</div>
+          </div>
+          <div className="glass-card" style={{ padding: '12px', textAlign: 'center' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Today's New Users</div>
+            <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent-purple)' }}>{coverStats.todaysNewUsers}</div>
+            <div style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>first time today</div>
+          </div>
+          <div className="glass-card" style={{ padding: '12px', textAlign: 'center' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Avg Users / Month (6M)</div>
+            <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent-cyan)' }}>{coverStats.avg6Months}</div>
+            <div style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>last 6 months</div>
+          </div>
+        </div>
+      )}
+      {isAdmin && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>
+          <button
+            className="btn btn-rose btn-sm"
+            onClick={async () => {
+              if (!confirm('Reset all 6 counters to 0? New start hobe.')) return;
+              try {
+                const res = await fetch('/api/admin/cover-stats/reset', { method: 'POST', credentials: 'same-origin' });
+                const d = await res.json();
+                if (d.success) setCoverStats({ uniqueUsers: 0, totalPdf: 0, totalPng: 0, lastMonthUsers: 0, todaysNewUsers: 0, avg6Months: 0 });
+                else loadCoverStats();
+              } catch { loadCoverStats(); }
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '7px',
+              borderRadius: '999px',
+              padding: '8px 22px',
+              background: 'var(--accent-rose)',
+              color: 'var(--text-inverse, #fff)',
+              border: '1px solid var(--accent-rose)',
+              boxShadow: '0 4px 14px var(--accent-rose-glow, rgba(244,63,94,0.25)), 0 1px 3px rgba(0,0,0,0.08)',
+              fontWeight: 700,
+              fontSize: '12px',
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+              cursor: 'pointer',
+              transition: 'transform 0.15s, boxShadow 0.15s, background 0.15s',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 18px var(--accent-rose-glow, rgba(244,63,94,0.35))'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 14px var(--accent-rose-glow, rgba(244,63,94,0.25)), 0 1px 3px rgba(0,0,0,0.08)'; }}
+          >
+            <RotateCcw size={13} />
+            Reset
+          </button>
+        </div>
+      )}
+
+      {!isAdmin && (
+        <div className="cpgen-layout">
         {/* ─── Form Panel ─── */}
         <div className="cpgen-form-panel">
           <div className="cpgen-form-header">
@@ -589,9 +719,11 @@ export default function CoverPageGeneratorPage() {
           </div>
         </div>
       </div>
+      )}
 
       {/* ─── Profile Info (Read-only) — full-width, below the editor ─── */}
-      <div className="cpgen-profile-card">
+      {!isAdmin && (
+        <div className="cpgen-profile-card">
         <div className="cpgen-profile-header">
           <User size={14} />
           <span>Your Profile</span>
@@ -627,6 +759,7 @@ export default function CoverPageGeneratorPage() {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

@@ -255,6 +255,72 @@ if (!isDevMode) process.env.NODE_ENV = 'production';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.resolve(__dirname, '..', 'dist');
 
+const COVER_STATS_FILE = path.resolve(__dirname, 'data', 'coverStats.json');
+async function readCoverStats() {
+  try {
+    const raw = await readFile(COVER_STATS_FILE, 'utf8');
+    const j = JSON.parse(raw);
+    return {
+      uniqueUsers: Array.isArray(j.uniqueUsers) ? j.uniqueUsers : [],
+      totalPdf: Number(j.totalPdf)||0,
+      totalPng: Number(j.totalPng)||0,
+      exports: Array.isArray(j.exports) ? j.exports : [],
+      firstSeen: j.firstSeen && typeof j.firstSeen === 'object' ? j.firstSeen : {},
+    };
+  } catch { return { uniqueUsers: [], totalPdf: 0, totalPng: 0, exports: [], firstSeen: {} }; }
+}
+async function writeCoverStats(s) {
+  const dir = path.dirname(COVER_STATS_FILE);
+  const { mkdir } = await import('node:fs/promises');
+  await mkdir(dir, { recursive: true }).catch(()=>{});
+  await writeFile(COVER_STATS_FILE, JSON.stringify(s, null, 2), 'utf8');
+}
+function computeCoverMetrics(stats) {
+  const uniqueUsers = stats.uniqueUsers.length;
+  const totalPdf = stats.totalPdf;
+  const totalPng = stats.totalPng;
+  const exports = Array.isArray(stats.exports) ? stats.exports : [];
+  const firstSeen = stats.firstSeen || {};
+  const now = new Date();
+  const lastMonth = new Date(now.getFullYear(), now.getMonth()-1, 1);
+  const lmY = lastMonth.getFullYear(), lmM = lastMonth.getMonth();
+  const lastSet = new Set();
+  for (const e of exports) {
+    const d = new Date(e.ts);
+    if (d.getFullYear()===lmY && d.getMonth()===lmM) lastSet.add(e.userId);
+  }
+  const todayStr = now.toISOString().slice(0,10);
+  let todaysNewUsers = 0;
+  for (const ts of Object.values(firstSeen)) {
+    if (String(ts).slice(0,10) === todayStr) todaysNewUsers++;
+  }
+  let sum = 0;
+  for (let i=1;i<=6;i++) {
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    const y = d.getFullYear(), m = d.getMonth();
+    const set = new Set();
+    for (const e of exports) {
+      const ed = new Date(e.ts);
+      if (ed.getFullYear()===y && ed.getMonth()===m) set.add(e.userId);
+    }
+    sum += set.size;
+  }
+  const avg6Months = Math.round((sum/6)*10)/10;
+  return { uniqueUsers, totalPdf, totalPng, lastMonthUsers: lastSet.size, todaysNewUsers, avg6Months };
+}
+const coverStatsSSEClients = new Set();
+async function broadcastCoverStatsLive() {
+  try {
+    const stats = await readCoverStats();
+    const payload = computeCoverMetrics(stats);
+    const data = `data: ${JSON.stringify(payload)}\n\n`;
+    for (const res of coverStatsSSEClients) {
+      try { res.write(data); } catch { coverStatsSSEClients.delete(res); }
+    }
+    try { broadcastToAll({ type: 'cover-stats', payload }); } catch {}
+  } catch {}
+}
+
 const contentTypes = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -651,6 +717,29 @@ async function handleApiRequest(req, res) {
     req.on('close', () => {
       clearInterval(ka);
       memberCountSSEClients.delete(res);
+    });
+    return;
+  }
+
+  // GET /api/cover-stats/stream — SSE for real-time cover export stats
+  if (req.url === '/api/cover-stats/stream' && req.method === 'GET') {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+    res.write('\n');
+    coverStatsSSEClients.add(res);
+    try {
+      const stats = await readCoverStats();
+      res.write(`data: ${JSON.stringify({ uniqueUsers: stats.uniqueUsers.length, totalPdf: stats.totalPdf, totalPng: stats.totalPng })}\n\n`);
+    } catch {}
+    const ka = setInterval(() => { try { res.write(': keep-alive\n\n'); } catch {} }, 30_000);
+    ka.unref?.();
+    req.on('close', () => {
+      clearInterval(ka);
+      coverStatsSSEClients.delete(res);
     });
     return;
   }
@@ -1125,6 +1214,229 @@ async function handleApiRequest(req, res) {
         success: false,
         error: error.message || 'Broadcast failed.',
       });
+    }
+    return;
+  }
+
+  // ── Bhara Koto — Admin managed Dhaka → AUST table ─────────────
+  // Public: GET /api/bhara-koto — live table (admin input is source of truth)
+  if (req.url === '/api/bhara-koto' && req.method === 'GET') {
+    try {
+      const file = path.resolve(__dirname, '..', 'src', 'data', 'dhakaRouteCosts.json');
+      const raw = await readFile(file, 'utf8');
+      const json = JSON.parse(raw);
+      sendJson(res, 200, { success: true, meta: json.meta, rows: json.rows });
+    } catch (e) {
+      sendJson(res, 500, { success: false, error: 'Failed to load Bhara Koto table.' });
+    }
+    return;
+  }
+  // Admin: GET /api/admin/bhara-koto — same but admin-verified
+  if (req.url === '/api/admin/bhara-koto' && req.method === 'GET') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const file = path.resolve(__dirname, '..', 'src', 'data', 'dhakaRouteCosts.json');
+      const raw = await readFile(file, 'utf8');
+      const json = JSON.parse(raw);
+      sendJson(res, 200, { success: true, meta: json.meta, rows: json.rows });
+    } catch (e) {
+      sendJson(res, 500, { success: false, error: 'Failed to load Bhara Koto table.' });
+    }
+    return;
+  }
+  // Admin: POST /api/admin/bhara-koto — add new row
+  if (req.url === '/api/admin/bhara-koto' && req.method === 'POST') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const body = await readJsonBody(req);
+      if (!body.source || !body.source.trim()) {
+        sendJson(res, 400, { success: false, error: 'source is required.' });
+        return;
+      }
+      const file = path.resolve(__dirname, '..', 'src', 'data', 'dhakaRouteCosts.json');
+      const raw = await readFile(file, 'utf8');
+      const json = JSON.parse(raw);
+      const exists = json.rows.find(r => r.source.toLowerCase() === body.source.trim().toLowerCase());
+      if (exists) {
+        sendJson(res, 409, { success: false, error: 'Source already exists. Use PUT to update.' });
+        return;
+      }
+      const row = {
+        source: body.source.trim(),
+        destination: 'AUST Tejgaon Campus',
+        distance_km: Number(body.distance_km) || 0,
+        walking_time: body.walking_time || '-',
+        walking_cost: Number(body.walking_cost) || 0,
+        rickshaw_cost: body.rickshaw_cost || '-',
+        metro_cost: body.metro_cost || '-',
+        metro_station: body.metro_station || null,
+        local_bus_cost: body.local_bus_cost || '-',
+        aust_shuttle_cost: body.aust_shuttle_cost || '-',
+        tempo_cost: body.tempo_cost || '-',
+        taxi_cost: body.taxi_cost || '-',
+        rideshare_cost: body.rideshare_cost || '-',
+      };
+      json.rows.push(row);
+      json.rows.sort((a,b)=>a.source.localeCompare(b.source));
+      json.meta.generatedAt = new Date().toISOString();
+      await writeFile(file, JSON.stringify(json, null, 2), 'utf8');
+      sendJson(res, 201, { success: true, row });
+    } catch (e) {
+      sendJson(res, 500, { success: false, error: e.message || 'Failed to add row.' });
+    }
+    return;
+  }
+  // Admin: PUT /api/admin/bhara-koto — update existing row by source
+  if (req.url === '/api/admin/bhara-koto' && req.method === 'PUT') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const body = await readJsonBody(req);
+      if (!body.source || !body.source.trim()) {
+        sendJson(res, 400, { success: false, error: 'source is required.' });
+        return;
+      }
+      const file = path.resolve(__dirname, '..', 'src', 'data', 'dhakaRouteCosts.json');
+      const raw = await readFile(file, 'utf8');
+      const json = JSON.parse(raw);
+      const idx = json.rows.findIndex(r => r.source.toLowerCase() === body.source.trim().toLowerCase());
+      if (idx === -1) {
+        sendJson(res, 404, { success: false, error: 'Source not found.' });
+        return;
+      }
+      const prev = json.rows[idx];
+      json.rows[idx] = {
+        ...prev,
+        distance_km: body.distance_km !== undefined ? Number(body.distance_km) : prev.distance_km,
+        walking_time: body.walking_time !== undefined ? body.walking_time : prev.walking_time,
+        walking_cost: body.walking_cost !== undefined ? Number(body.walking_cost) : prev.walking_cost,
+        rickshaw_cost: body.rickshaw_cost !== undefined ? body.rickshaw_cost : prev.rickshaw_cost,
+        metro_cost: body.metro_cost !== undefined ? body.metro_cost : prev.metro_cost,
+        metro_station: body.metro_station !== undefined ? body.metro_station : prev.metro_station,
+        local_bus_cost: body.local_bus_cost !== undefined ? body.local_bus_cost : prev.local_bus_cost,
+        aust_shuttle_cost: body.aust_shuttle_cost !== undefined ? body.aust_shuttle_cost : prev.aust_shuttle_cost,
+        tempo_cost: body.tempo_cost !== undefined ? body.tempo_cost : prev.tempo_cost,
+        taxi_cost: body.taxi_cost !== undefined ? body.taxi_cost : prev.taxi_cost,
+        rideshare_cost: body.rideshare_cost !== undefined ? body.rideshare_cost : prev.rideshare_cost,
+      };
+      // allow renaming source via newSource
+      if (body.newSource && body.newSource.trim() && body.newSource.trim() !== body.source.trim()) {
+        json.rows[idx].source = body.newSource.trim();
+      }
+      json.rows.sort((a,b)=>a.source.localeCompare(b.source));
+      json.meta.generatedAt = new Date().toISOString();
+      await writeFile(file, JSON.stringify(json, null, 2), 'utf8');
+      sendJson(res, 200, { success: true, row: json.rows.find(r=>r.source=== (body.newSource?.trim() || body.source.trim())) });
+    } catch (e) {
+      sendJson(res, 500, { success: false, error: e.message || 'Failed to update row.' });
+    }
+    return;
+  }
+  // Admin: DELETE /api/admin/bhara-koto?source=... or body {source}
+  if (req.url.startsWith('/api/admin/bhara-koto') && req.method === 'DELETE') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      let source = null;
+      try {
+        const u = new URL(req.url, `http://${req.headers.host}`);
+        source = u.searchParams.get('source');
+      } catch {}
+      if (!source) {
+        const body = await readJsonBody(req).catch(()=>({}));
+        source = body.source;
+      }
+      if (!source || !source.trim()) {
+        sendJson(res, 400, { success: false, error: 'source is required.' });
+        return;
+      }
+      const file = path.resolve(__dirname, '..', 'src', 'data', 'dhakaRouteCosts.json');
+      const raw = await readFile(file, 'utf8');
+      const json = JSON.parse(raw);
+      const before = json.rows.length;
+      json.rows = json.rows.filter(r => r.source.toLowerCase() !== source.trim().toLowerCase());
+      if (json.rows.length === before) {
+        sendJson(res, 404, { success: false, error: 'Source not found.' });
+        return;
+      }
+      json.meta.generatedAt = new Date().toISOString();
+      await writeFile(file, JSON.stringify(json, null, 2), 'utf8');
+      sendJson(res, 200, { success: true });
+    } catch (e) {
+      sendJson(res, 500, { success: false, error: e.message || 'Failed to delete row.' });
+    }
+    return;
+  }
+
+  // ── Cover Page Export Stats ──────────────────────────────────
+  // File: server/data/coverStats.json — uses top-level helpers readCoverStats/writeCoverStats
+  // POST /api/cover-stats/track — any authenticated user, body {format: 'pdf'|'png'}
+  if (req.url === '/api/cover-stats/track' && req.method === 'POST') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
+    try {
+      const body = await readJsonBody(req);
+      const fmt = String(body.format || '').toLowerCase();
+      if (fmt !== 'pdf' && fmt !== 'png') {
+        sendJson(res, 400, { success: false, error: 'format must be pdf or png' });
+        return;
+      }
+      const stats = await readCoverStats();
+      const nowIso = new Date().toISOString();
+      if (!stats.uniqueUsers.includes(auth.id)) stats.uniqueUsers.push(auth.id);
+      if (!stats.firstSeen) stats.firstSeen = {};
+      if (!stats.firstSeen[auth.id]) stats.firstSeen[auth.id] = nowIso;
+      if (!Array.isArray(stats.exports)) stats.exports = [];
+      stats.exports.push({ userId: auth.id, format: fmt, ts: nowIso });
+      if (fmt === 'pdf') stats.totalPdf += 1;
+      else stats.totalPng += 1;
+      await writeCoverStats(stats);
+      const payload = computeCoverMetrics(stats);
+      broadcastCoverStatsLive().catch(()=>{});
+      sendJson(res, 200, { success: true, ...payload });
+    } catch (e) {
+      sendJson(res, 500, { success: false, error: e.message || 'Failed to track' });
+    }
+    return;
+  }
+  // GET /api/cover-stats — public
+  if (req.url === '/api/cover-stats' && req.method === 'GET') {
+    try {
+      const stats = await readCoverStats();
+      const payload = computeCoverMetrics(stats);
+      sendJson(res, 200, { success: true, ...payload });
+    } catch (e) {
+      sendJson(res, 500, { success: false, error: 'Failed to load stats' });
+    }
+    return;
+  }
+  // GET /api/admin/cover-stats — admin only (same data, plus ids)
+  if (req.url === '/api/admin/cover-stats' && req.method === 'GET') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const stats = await readCoverStats();
+      const payload = computeCoverMetrics(stats);
+      sendJson(res, 200, { success: true, ...payload, uniqueUserIds: stats.uniqueUsers });
+    } catch (e) {
+      sendJson(res, 500, { success: false, error: 'Failed to load stats' });
+    }
+    return;
+  }
+  // POST /api/admin/cover-stats/reset — admin only, reset all 6 cards to 0
+  if (req.url === '/api/admin/cover-stats/reset' && req.method === 'POST') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const stats = { uniqueUsers: [], totalPdf: 0, totalPng: 0, exports: [], firstSeen: {} };
+      await writeCoverStats(stats);
+      const payload = computeCoverMetrics(stats);
+      await broadcastCoverStatsLive().catch(()=>{});
+      sendJson(res, 200, { success: true, ...payload });
+    } catch (e) {
+      sendJson(res, 500, { success: false, error: e.message || 'Failed to reset' });
     }
     return;
   }

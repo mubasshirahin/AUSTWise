@@ -84,13 +84,11 @@ export default function DailyLifePage() {
       </div>
 
       {/* ── 3. Main content box (own card) ── */}
-      {!isAdmin && (
-        <div className="dl-content-card" key={activeTab}>
-          <div className="daily-life-tab-content">
-            {renderTab()}
-          </div>
+      <div className="dl-content-card" key={activeTab}>
+        <div className="daily-life-tab-content">
+          {renderTab()}
         </div>
-      )}
+      </div>
     </div>
   );
 }
