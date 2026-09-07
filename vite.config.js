@@ -31,13 +31,38 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,ico,png,svg}'],
+        globPatterns: ['**/*.{js,css}'],
+        globIgnores: ['**/vendor-three*', '**/vendor-pdfgen*', '**/vendor-pdfjs*', '**/vendor-diagram*', '**/vendor-gsap*'],
+        maximumFileSizeToCacheInBytes: 400 * 1024,
         cleanupOutdatedCaches: true,
         navigateFallback: null,
+        runtimeCaching: [
+          { urlPattern: /^https:\/\/cdnjs\.cloudflare\.com\/.*/i, handler: 'CacheFirst', options: { cacheName: 'cdnjs-cache', expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 30 } } },
+          { urlPattern: /\/assets\/vendor-(three|pdfgen|pdfjs|diagram|gsap)-.*/i, handler: 'CacheFirst', options: { cacheName: 'heavy-vendor', expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 30 } } },
+        ],
       },
     }),
   ],
   build: {
+    chunkSizeWarningLimit: 700,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (/[\\/]three[\\/]/.test(id)) return 'vendor-three';
+            if (/[\\/]pdfjs-dist[\\/]/.test(id)) return 'vendor-pdfjs';
+            if (/[\\/](jspdf|html2canvas-pro|html2canvas)[\\/]/.test(id)) return 'vendor-pdfgen';
+            if (/[\\/](mermaid|markmap-)[\\/]/.test(id)) return 'vendor-diagram';
+            if (/[\\/](react|react-dom|react-router|scheduler|use-sync-external-store)[\\/]/.test(id)) return 'vendor-react';
+            if (/[\\/](d3|d3-)[\\/]/.test(id)) return 'vendor-d3';
+            if (/[\\/](chart\.js|react-chartjs-2)[\\/]/.test(id)) return 'vendor-chartjs';
+            if (/[\\/]gsap[\\/]/.test(id)) return 'vendor-gsap';
+            if (/[\\/]leaflet[\\/]/.test(id)) return 'vendor-leaflet';
+          }
+        },
+      },
+    },
+    // Keep rolldownOptions for rolldown-based Vite (future compat) — mirrors rollupOptions
     rolldownOptions: {
       output: {
         codeSplitting: {
