@@ -6,6 +6,7 @@ import {
   MoreVertical, Edit3, Trash2, Bell, BellOff, Reply,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import GliderTabs from '../../components/GliderTabs';
 import {
   getConversations,
   getThread,
@@ -26,6 +27,7 @@ import useMessageNotifications from '../../hooks/useMessageNotifications';
 import { getAccountById, getRoleLabel } from '../../utils/authStorage';
 import { sanitizeUserInput, MAX_TEXT_LENGTH } from '../../utils/sanitize';
 import useAdminMode from '../../hooks/useAdminMode';
+import MastheadAccessControl from '../../components/MastheadAccessControl';
 import '../campus/SemesterViewWidget.css';
 import './MessagesPage.css';
 
@@ -1087,77 +1089,90 @@ export default function MessagesPage() {
         </div>
       </header>
 
-      {/* ── 2. Main box — masthead header + chat layout (one card) ── */}
-      {!isAdmin && (
-      <div className="ms-content-card">
-        {/* Masthead header */}
-        <div className="schedule-masthead ms-masthead">
-          {/* Left: title block */}
-          <div className="schedule-title-block">
-            <div className="schedule-icon-tile">
-              <MessageSquare size={20} strokeWidth={2.2} />
-            </div>
-            <div>
-              <span className="schedule-overline">ConnectBox</span>
-              <div className="schedule-title">Messages</div>
-              <span className="schedule-subtitle">Inbox &amp; filters</span>
-            </div>
-          </div>
+      {/* ── 2. Glider tabs bar (own card) — inbox filters as tabs ── */}
+      <div className="glass-card-static ms-tabs-card">
+        <GliderTabs
+          tabs={[
+            { id: 'all', label: 'All Chats', icon: MessageSquare, color: 'amber', desc: 'Every conversation' },
+            { id: 'unread', label: 'Unread', icon: Mail, color: 'amber', desc: 'New messages' },
+          ]}
+          activeTab={filterMode === 'unread' ? 'unread' : 'all'}
+          onChange={(t) => setFilterMode(t === 'unread' ? 'unread' : 'all')}
+          variant="dashboard"
+        />
+      </div>
 
-          {/* Center: stats */}
-          <div className="schedule-masthead-center">
-            <div className="schedule-stats">
-              <div className="schedule-stat">
-                <span className="schedule-stat-value">{conversations.length}</span>
-                <span className="schedule-stat-label">chats</span>
+      {/* ── 3. Main box — masthead header + chat layout (one card, gated by featureHidden) ── */}
+      <MastheadAccessControl pageKey="/messages">
+        <div className="ms-content-card">
+          {/* Masthead header */}
+          <div className="schedule-masthead ms-masthead">
+            {/* Left: title block */}
+            <div className="schedule-title-block">
+              <div className="schedule-icon-tile">
+                <MessageSquare size={20} strokeWidth={2.2} />
               </div>
-              <div className="schedule-stat">
-                <span className="schedule-stat-value" style={{ color: unreadTotal > 0 ? 'var(--accent-rose)' : undefined }}>
-                  {unreadTotal}
-                </span>
-                <span className="schedule-stat-label">unread</span>
-              </div>
-              <div className="schedule-stat">
-                <span className="schedule-stat-value">{onlineChatCount}</span>
-                <span className="schedule-stat-label">online</span>
+              <div>
+                <span className="schedule-overline">ConnectBox</span>
+                <div className="schedule-title">Messages</div>
+                <span className="schedule-subtitle">Inbox &amp; filters</span>
               </div>
             </div>
-          </div>
 
-          {/* Right: nav + ⋮ menu */}
-          <div className="schedule-actions">
+            {/* Center: stats */}
+            <div className="schedule-masthead-center">
+              <div className="schedule-stats">
+                <div className="schedule-stat">
+                  <span className="schedule-stat-value">{conversations.length}</span>
+                  <span className="schedule-stat-label">chats</span>
+                </div>
+                <div className="schedule-stat">
+                  <span className="schedule-stat-value" style={{ color: unreadTotal > 0 ? 'var(--accent-rose)' : undefined }}>
+                    {unreadTotal}
+                  </span>
+                  <span className="schedule-stat-label">unread</span>
+                </div>
+                <div className="schedule-stat">
+                  <span className="schedule-stat-value">{onlineChatCount}</span>
+                  <span className="schedule-stat-label">online</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: nav + ⋮ menu */}
+            <div className="schedule-actions">
 
 
-            <div className="export-dropdown" ref={menuRef}>
-              <button
-                className="schedule-nav-btn"
-                onClick={() => setMenuOpen((o) => !o)}
-                title="Options"
-                aria-haspopup="true"
-                aria-expanded={menuOpen}
-              >
-                <MoreVertical size={18} />
-              </button>
-              {menuOpen && (
-                <div className="export-menu" role="menu">
-                  <button
-                    className={`export-menu-item${filterMode === 'all' ? ' menu-active' : ''}`}
-                    onClick={() => { setFilterMode('all'); setMenuOpen(false); }}
-                    role="menuitem"
-                  >
-                    <Inbox size={14} /> All conversations
-                    {filterMode === 'all' && <Check size={14} className="menu-check" />}
-                  </button>
-                  <button
-                    className={`export-menu-item${filterMode === 'unread' ? ' menu-active' : ''}`}
-                    onClick={() => { setFilterMode('unread'); setMenuOpen(false); }}
-                    role="menuitem"
-                  >
-                    <Mail size={14} /> Unread only
-                    {filterMode === 'unread' && <Check size={14} className="menu-check" />}
-                  </button>
-                  <div className="export-menu-sep" />
-                  {notifSupported && (
+              <div className="export-dropdown" ref={menuRef}>
+                <button
+                  className="schedule-nav-btn"
+                  onClick={() => setMenuOpen((o) => !o)}
+                  title="Options"
+                  aria-haspopup="true"
+                  aria-expanded={menuOpen}
+                >
+                  <MoreVertical size={18} />
+                </button>
+                {menuOpen && (
+                  <div className="export-menu" role="menu">
+                    <button
+                      className={`export-menu-item${filterMode === 'all' ? ' menu-active' : ''}`}
+                      onClick={() => { setFilterMode('all'); setMenuOpen(false); }}
+                      role="menuitem"
+                    >
+                      <Inbox size={14} /> All conversations
+                      {filterMode === 'all' && <Check size={14} className="menu-check" />}
+                    </button>
+                    <button
+                      className={`export-menu-item${filterMode === 'unread' ? ' menu-active' : ''}`}
+                      onClick={() => { setFilterMode('unread'); setMenuOpen(false); }}
+                      role="menuitem"
+                    >
+                      <Mail size={14} /> Unread only
+                      {filterMode === 'unread' && <Check size={14} className="menu-check" />}
+                    </button>
+                    <div className="export-menu-sep" />
+                    {notifSupported && (
                     <button
                       className={`export-menu-item${notifEnabled ? ' menu-active' : ''}`}
                       onClick={handleNotifToggle}
@@ -1259,8 +1274,8 @@ export default function MessagesPage() {
             )}
           </section>
         </div>
-      </div>
-      )}
+        </div>
+      </MastheadAccessControl>
     </div>
   );
 }

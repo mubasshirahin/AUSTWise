@@ -7,6 +7,7 @@ import DeptHeatmap from './DeptHeatmap';
 import CoursePoll from './CoursePoll';
 import PrerequisiteTree from './PrerequisiteTree';
 import GliderTabs from '../../components/GliderTabs';
+import MastheadAccessControl from '../../components/MastheadAccessControl';
 import useTabUrlState from '../../hooks/useTabUrlState';
 import useAdminMode from '../../hooks/useAdminMode';
 import './AnalyticsPage.css';
@@ -23,7 +24,7 @@ const gradeLabTabs = [
 ];
 
 export default function AnalyticsPage() {
-  const { isAdmin } = useAdminMode();
+  const { isAdmin: _isAdmin } = useAdminMode();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => {
     return searchParams.get('tab') || localStorage.getItem(TAB_KEY) || 'cgpagraph';
@@ -72,7 +73,7 @@ export default function AnalyticsPage() {
         </div>
       </header>
 
-      {/* ── 2. Glider tabs bar (own card) ── */}
+      {/* ── 2. Glider tabs bar (always visible) ── */}
       <div className="glass-card-static gl-tabs-card">
         <GliderTabs
           tabs={gradeLabTabs}
@@ -82,14 +83,14 @@ export default function AnalyticsPage() {
         />
       </div>
 
-      {/* ── 3. Main content box (own card) ── */}
-      {!isAdmin && (
+      {/* ── 3. Main content box (gated per-tab by featureHidden) ── */}
+      <MastheadAccessControl pageKey={`analytics:${activeTab}`}>
         <div className="gl-content-card" key={activeTab}>
           <div className="analytics-content-area">
             {renderActiveTab()}
           </div>
         </div>
-      )}
+      </MastheadAccessControl>
     </div>
   );
 }

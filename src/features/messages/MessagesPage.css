@@ -26,6 +26,11 @@
   --page-hero-gradient-start: var(--accent-blue);
 }
 
+/* ── 2. Glider tabs bar (own card) ── */
+.ms-tabs-card {
+  padding: var(--sp-2);
+}
+
 /* ── 1. Hero box — its own card (matches dashboard hero) ── */
 .ms-hero {
   position: relative;

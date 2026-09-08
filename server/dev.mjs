@@ -295,7 +295,7 @@ function computeCoverMetrics(stats) {
     if (String(ts).slice(0,10) === todayStr) todaysNewUsers++;
   }
   let sum = 0;
-  for (let i=1;i<=6;i++) {
+  for (let i=0;i<6;i++) {
     const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
     const y = d.getFullYear(), m = d.getMonth();
     const set = new Set();
@@ -1412,23 +1412,56 @@ async function handleApiRequest(req, res) {
     }
     return;
   }
-  // GET /api/admin/cover-stats — admin only (same data, plus ids)
+  // GET /api/admin/cover-stats — per-page dynamic (cover)
   if (req.url === '/api/admin/cover-stats' && req.method === 'GET') {
-    const auth = requireRole('admin', 'moderator')(req, res);
-    if (!auth) return;
+    const payload = readTokenCookie(req);
+    if (!payload) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: 'Authentication required.' }));
+      return;
+    }
     try {
+      // per-page check for cover
+      let cfg = { statsAllowed: ['admin', 'moderator'] };
+      try {
+        const p = path.join(path.dirname(fileURLToPath(import.meta.url)), 'roleAccess.json');
+        const raw = await readFile(p, 'utf-8');
+        const all = JSON.parse(raw);
+        cfg = (all && all['cover']) || all['default'] || cfg;
+      } catch {}
+      if (!cfg.statsAllowed.includes(payload.role)) {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: `Forbidden: ${cfg.statsAllowed.join(' or ')} role required.` }));
+        return;
+      }
       const stats = await readCoverStats();
-      const payload = computeCoverMetrics(stats);
-      sendJson(res, 200, { success: true, ...payload, uniqueUserIds: stats.uniqueUsers });
+      const computed = computeCoverMetrics(stats);
+      sendJson(res, 200, { success: true, ...computed, uniqueUserIds: stats.uniqueUsers });
     } catch (e) {
       sendJson(res, 500, { success: false, error: 'Failed to load stats' });
     }
     return;
   }
-  // POST /api/admin/cover-stats/reset — admin only, reset all 6 cards to 0
+  // POST /api/admin/cover-stats/reset — per-page dynamic (cover)
   if (req.url === '/api/admin/cover-stats/reset' && req.method === 'POST') {
-    const auth = requireRole('admin', 'moderator')(req, res);
-    if (!auth) return;
+    const payload = readTokenCookie(req);
+    if (!payload) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: 'Authentication required.' }));
+      return;
+    }
+    let cfg = { statsAllowed: ['admin', 'moderator'] };
+    try {
+      const p = path.join(path.dirname(fileURLToPath(import.meta.url)), 'roleAccess.json');
+      const raw = await readFile(p, 'utf-8');
+      const all = JSON.parse(raw);
+      cfg = (all && all['cover']) || all['default'] || cfg;
+    } catch {}
+    if (!cfg.statsAllowed.includes(payload.role)) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: `Forbidden: ${cfg.statsAllowed.join(' or ')} role required.` }));
+      return;
+    }
     try {
       const stats = { uniqueUsers: [], totalPdf: 0, totalPng: 0, exports: [], firstSeen: {} };
       await writeCoverStats(stats);
@@ -1437,6 +1470,67 @@ async function handleApiRequest(req, res) {
       sendJson(res, 200, { success: true, ...payload });
     } catch (e) {
       sendJson(res, 500, { success: false, error: e.message || 'Failed to reset' });
+    }
+    return;
+  }
+
+  // ── Role Access per-page config (real enforcement) ──
+  async function readRoleAccess() {
+    try {
+      const p = path.join(path.dirname(fileURLToPath(import.meta.url)), 'roleAccess.json');
+      const raw = await readFile(p, 'utf-8');
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch { return {}; }
+  }
+  async function writeRoleAccess(data) {
+    const p = path.join(path.dirname(fileURLToPath(import.meta.url)), 'roleAccess.json');
+    await writeFile(p, JSON.stringify(data, null, 2));
+  }
+  function getRoleAccessForKey(all, key) {
+    if (key && all[key]) return all[key];
+    if (all['default']) return all['default'];
+    return { featureHidden: ['admin','moderator'], statsAllowed: ['admin','moderator'] };
+  }
+  // GET /api/role-access?key=xxx — public, returns per-page config (fallback to default)
+  if (req.url.startsWith('/api/role-access') && req.method === 'GET') {
+    try {
+      const url = new URL(req.url, `http://${req.headers.host}`);
+      const key = url.searchParams.get('key') || url.searchParams.get('pageKey') || 'default';
+      const all = await readRoleAccess();
+      const cfg = getRoleAccessForKey(all, key);
+      // also try pathname-based fallback for cover
+      if (!all[key] && key.includes('/')) {
+        const alt = key.split('?')[0].split('/').pop() || key;
+        if (all[alt]) {
+          sendJson(res, 200, { success: true, key: alt, ...all[alt] });
+          return;
+        }
+      }
+      sendJson(res, 200, { success: true, key, ...cfg });
+    } catch (e) {
+      sendJson(res, 500, { success: false, error: e.message || 'Failed to load role access' });
+    }
+    return;
+  }
+  // POST /api/admin/role-access — admin only, body {pageKey, featureHidden, statsAllowed}
+  if (req.url === '/api/admin/role-access' && req.method === 'POST') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const body = await readJsonBody(req);
+      const pageKey = String(body.pageKey || body.key || '').trim();
+      const featureHidden = Array.isArray(body.featureHidden) ? body.featureHidden : null;
+      const statsAllowed = Array.isArray(body.statsAllowed) ? body.statsAllowed : null;
+      if (!pageKey) { sendJson(res, 400, { success: false, error: 'pageKey required' }); return; }
+      if (!featureHidden || !statsAllowed) { sendJson(res, 400, { success: false, error: 'featureHidden and statsAllowed arrays required' }); return; }
+      const all = await readRoleAccess();
+      all[pageKey] = { featureHidden, statsAllowed };
+      await writeRoleAccess(all);
+      try { broadcastToAll({ type: 'role-access', payload: { pageKey, featureHidden, statsAllowed } }); } catch {}
+      sendJson(res, 200, { success: true, pageKey, featureHidden, statsAllowed });
+    } catch (e) {
+      sendJson(res, 500, { success: false, error: e.message || 'Failed to save role access' });
     }
     return;
   }
@@ -1734,6 +1828,42 @@ async function handleApiRequest(req, res) {
         success: false,
         error: error.message || 'Failed to get attendance records.',
       });
+    }
+    return;
+  }
+
+  // Admin: get all attendance records (no chatId required)
+  if (req.url === '/api/admin/attendance' && req.method === 'GET') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      let records = [];
+      try {
+        const r = await query('SELECT * FROM "AttendanceRecords" ORDER BY "RecordDate" DESC, "Timestamp" DESC');
+        if (r && r.recordset && Array.isArray(r.recordset)) {
+          records = r.recordset.map(row => ({
+            chatId: row.ChatId ?? row.chatId,
+            courseCode: row.CourseCode ?? row.courseCode,
+            CourseCode: row.CourseCode ?? row.courseCode,
+            recordDate: row.RecordDate ?? row.recordDate,
+            RecordDate: row.RecordDate ?? row.recordDate,
+            attended: row.Attended ?? row.attended,
+            Attended: row.Attended ?? row.attended,
+            timestamp: row.Timestamp ?? row.timestamp,
+          }));
+        }
+      } catch {}
+      if (!records.length) {
+        try {
+          const attendancePath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'attendance.json');
+          const raw = await readFile(attendancePath, 'utf-8');
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) records = parsed;
+        } catch {}
+      }
+      sendJson(res, 200, { success: true, records, total: records.length });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to get admin attendance.' });
     }
     return;
   }

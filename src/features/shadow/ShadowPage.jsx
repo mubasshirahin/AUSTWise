@@ -8,6 +8,7 @@ import CourseReview from '../analytics/CourseReview';
 import BuzzPage from '../austeddit/AustedditPage';
 import RoastCVPage from '../roast-cv/RoastCVPage';
 import GliderTabs from '../../components/GliderTabs';
+import MastheadAccessControl from '../../components/MastheadAccessControl';
 import useTabUrlState from '../../hooks/useTabUrlState';
 import useAdminMode from '../../hooks/useAdminMode';
 import { useLiveValue } from '../../utils/liveStore';
@@ -47,7 +48,7 @@ function ShadowMasthead({ icon: Icon, title, subtitle, actions }) {
 }
 
 export default function ShadowPage() {
-  const { isAdmin } = useAdminMode();
+  const { isAdmin: _isAdmin } = useAdminMode();
   const [rawReviews] = useLiveValue('shared', 'aust-course-reviews-v2', []);
   const reviews = Array.isArray(rawReviews) ? rawReviews : [];
   const totalReviews = reviews.length;
@@ -354,8 +355,8 @@ export default function ShadowPage() {
         />
       </div>
 
-      {/* ── 3. Main content box (own card) ── */}
-      {!isAdmin && (
+      {/* ── 3. Main content box (own card, gated by per-subtab featureHidden) ── */}
+      <MastheadAccessControl pageKey={`shadow:${activeTab}`}>
         <div className="sh-content-card" key={activeTab}>
         <div className="shadow-content-area">
           {activeTab === 'buzz' ? (
@@ -526,8 +527,8 @@ export default function ShadowPage() {
             </>
           )}
         </div>
-      </div>
-      )}
+        </div>
+      </MastheadAccessControl>
     </div>
   );
 }

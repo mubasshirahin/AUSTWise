@@ -12,6 +12,7 @@ import RoutineAttendanceTracker from './RoutineAttendanceTracker';
 import RoutineSharingStatus from './RoutineSharingStatus';
 import SemesterTaskTracker from './SemesterTaskTracker';
 import GliderTabs from '../../components/GliderTabs';
+import MastheadAccessControl from '../../components/MastheadAccessControl';
 import { leaderboardData } from '../../data/mockData';
 import {
   Gauge, Percent, BookOpen, CalendarDays, Zap, AlertTriangle, Calendar,
@@ -681,98 +682,96 @@ export default function DashboardPage() {
         />
       </div>
 
-      {!isAdmin && (
-      <>
       {isVisible('stats') && (
-        <section className="dash-section-group">
-          <div className="dash-section">
-            <QuickStats />
-          </div>
-        </section>
+        <MastheadAccessControl pageKey="dashboard:stats">
+          <section className="dash-section-group">
+            <div className="dash-section">
+              <QuickStats />
+            </div>
+          </section>
+        </MastheadAccessControl>
       )}
 
       {isVisible('notif') && (
-        <div className="dash-section">
-          <NotificationBanner />
-        </div>
+        <MastheadAccessControl pageKey="dashboard:stats">
+          <div className="dash-section">
+            <NotificationBanner />
+          </div>
+        </MastheadAccessControl>
       )}
 
       {isVisible('routine') && (
-        <section className="dash-section-group">
-          <div className="dash-section">
-            <WeeklyPlanner />
-          </div>
-        </section>
+        <MastheadAccessControl pageKey="dashboard:routine">
+          <section className="dash-section-group">
+            <div className="dash-section">
+              <WeeklyPlanner />
+            </div>
+          </section>
+        </MastheadAccessControl>
       )}
 
       {isVisible('calendar') && (
-        <section className="dash-section-group">
-          <div className="dash-section">
-            <WeekSchedule />
-          </div>
-        </section>
+        <MastheadAccessControl pageKey="dashboard:calendar">
+          <section className="dash-section-group">
+            <div className="dash-section">
+              <WeekSchedule />
+            </div>
+          </section>
+        </MastheadAccessControl>
       )}
 
       <div className="dashboard-grid">
         {isVisible('exams') && (
-          <section className="dash-section-group" style={{ gridColumn: '1 / -1' }}>
-            <div className="dash-section">
-              <ExamTracker />
-            </div>
-          </section>
+          <MastheadAccessControl pageKey="dashboard:exams">
+            <section className="dash-section-group" style={{ gridColumn: '1 / -1' }}>
+              <div className="dash-section">
+                <ExamTracker />
+              </div>
+            </section>
+          </MastheadAccessControl>
         )}
         <div className="dashboard-main-col">
           {isVisible('routine_day') && (
-            <section className="dash-section-group">
-              <div className="dash-section">
-                <RoutineCard />
-              </div>
-            </section>
+            <MastheadAccessControl pageKey="dashboard:routine">
+              <section className="dash-section-group">
+                <div className="dash-section">
+                  <RoutineCard />
+                </div>
+              </section>
+            </MastheadAccessControl>
           )}
           {isVisible('attendance') && (
-            <section className="dash-section-group">
-              <div className="dash-section">
-                <RoutineAttendanceTracker />
-              </div>
-            </section>
+            <MastheadAccessControl pageKey="dashboard:attendance">
+              <section className="dash-section-group">
+                <div className="dash-section">
+                  <RoutineAttendanceTracker />
+                </div>
+              </section>
+            </MastheadAccessControl>
           )}
           {isVisible('notices') && (
-            <section className="dash-section-group">
-              <div className="dash-section">
-                <NoticeBoard />
-              </div>
-            </section>
+            <MastheadAccessControl pageKey="dashboard:stats">
+              <section className="dash-section-group">
+                <div className="dash-section">
+                  <NoticeBoard />
+                </div>
+              </section>
+            </MastheadAccessControl>
           )}
         </div>
 
         <div className="dashboard-side-col">
           {isVisible('deadlines') && (
-            <section className="dash-section-group">
-              <div className="dash-section">
-                <DeadlineTicker />
-              </div>
-            </section>
+            <MastheadAccessControl pageKey="dashboard:stats">
+              <section className="dash-section-group">
+                <div className="dash-section">
+                  <DeadlineTicker />
+                </div>
+              </section>
+            </MastheadAccessControl>
           )}
         </div>
       </div>
-      </>
-      )}
-
-      {isAdmin && isVisible('routine') && (
-        <section className="dash-section-group">
-          <div className="dash-section">
-            <RoutineSharingStatus />
-          </div>
-        </section>
-      )}
-
-      {isAdmin && isVisible('calendar') && (
-        <section className="dash-section-group">
-          <div className="dash-section">
-            <SemesterTaskTracker />
-          </div>
-        </section>
-      )}
     </div>
   );
 }

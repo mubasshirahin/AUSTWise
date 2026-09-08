@@ -63,7 +63,7 @@ export function requireRole(...allowedRoles) {
 }
 
 /** Every role that maps to a real authenticated account (excludes guest). */
-export const AUTH_ROLES = ['student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior', 'vp', 'gs'];
+export const AUTH_ROLES = ['student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior', 'vp', 'gs', 'bus_coordinator', 'guest', 'clubs_representative', 'help_desk', 'banned'];
 
 /** Require any authenticated (non-guest) session. */
 export const requireAuth = requireRole(...AUTH_ROLES);

@@ -10,6 +10,8 @@ import SearchModal from './layout/SearchModal';
 import MobileNav from './layout/MobileNav';
 import ErrorBoundary from './components/ErrorBoundary';
 import ActiveMembersSidebar from './features/active-members/ActiveMembersSidebar';
+import RoleAccessControlCard from './features/admin/RoleAccessControlCard';
+import { useRoleAccess } from './hooks/useRoleAccess';
 import { StalkProvider } from './features/stalk-road/StalkContext';
 const StalkRoadOverlay = lazy(() => import('./features/stalk-road/StalkRoadOverlay'));
 const AuthPage = lazy(() => import('./features/auth/AuthPage'));
@@ -102,6 +104,8 @@ function ProtectedAdminRoute({ children }) {
 
 // Main App Content Component (authenticated routes)
 function AppContent() {
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole ? hasRole('admin') || hasRole('moderator') : false;
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(() => {
@@ -128,6 +132,38 @@ function AppContent() {
     window.scrollTo(0, 0);
   }, [location.pathname]);
 
+  function PageGuard({ children }) {
+    const { user } = useAuth();
+    // Skip guard for pages that gate their own content internally — their hero
+    // box + glider tab bar must stay visible at all times (like the dashboard),
+    // with only the content box below the tabs hidden for feature-hidden roles.
+    const skipPaths = ['/', '/cover-page-generator', '/daily-life', '/analytics', '/campus', '/community', '/marketplace', '/vault', '/notebook', '/settings', '/messages', '/productivity', '/chill-zone', '/shadow'];
+    const isSkipped = skipPaths.includes(location.pathname) || location.pathname.startsWith('/admin');
+    if (isSkipped) return children;
+    // Admin/moderator always see page shell (hero + GliderTabs). Pages hide
+    // feature boxes via useAdminMode. Default featureHidden includes these
+    // roles, so without this bypass they only get Access Denied.
+    const isStaff = user?.role === 'admin' || user?.role === 'moderator';
+    if (isStaff) return children;
+    const pageKey = location.pathname;
+    const { config, loading } = useRoleAccess(pageKey);
+    if (loading) return children;
+    const hidden = config.featureHidden.includes(user?.role);
+    if (hidden) {
+      return (
+        <div className="glass-card-static" style={{ padding: '24px', textAlign: 'center', border: '1px solid var(--accent-rose)', margin: '24px' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--accent-rose-glow)', color: 'var(--accent-rose)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+            <span style={{ fontSize: '18px' }}>🚫</span>
+          </div>
+          <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--accent-rose)' }}>Access Denied for this page</h3>
+          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '6px' }}>Your role <code>{user?.role}</code> is currently in “Feature Hidden” for <code>{pageKey}</code> by admin. Move your pill to “Can Use” to regain access.</p>
+          <div style={{ marginTop: '16px', textAlign: 'left' }}><RoleAccessControlCard pageKey={pageKey} /></div>
+        </div>
+      );
+    }
+    return children;
+  }
+
   return (
     <StalkProvider>
       <RoutineProvider>
@@ -150,13 +186,14 @@ function AppContent() {
             />
             <div className="page-wrapper">
               <ErrorBoundary>
-                <Suspense fallback={
-                <div className="page-loading">
-                  <div className="page-loading-spinner" />
-                  <span>Loading…</span>
-                </div>
-              }>
-                <Routes>
+                <PageGuard>
+                  <Suspense fallback={
+                  <div className="page-loading">
+                    <div className="page-loading-spinner" />
+                    <span>Loading…</span>
+                  </div>
+                }>
+                  <Routes>
                   <Route path="/" element={<AdminRoute />} />
                   <Route path="/routine-templates" element={<RoutineTemplatesPage />} />
                   <Route path="/analytics" element={<AnalyticsPage />} />
@@ -177,6 +214,7 @@ function AppContent() {
                   <Route path="/admin/cr-sr-directory" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
                   <Route path="/admin/auditorium" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
                   <Route path="/admin/bhara-koto" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
+                  <Route path="/admin/attendance" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
                   <Route path="/workspace" element={<WorkspacePage />} />
                   <Route path="/study-room" element={<StudyRoomPage />} />
                   <Route path="/cp-hub" element={<CPHubPage />} />
@@ -198,8 +236,16 @@ function AppContent() {
                   <Route path="/payment/cancel" element={<PaymentCancelPage />} />
                   <Route path="/login" element={<Navigate to="/" replace />} />
                 </Routes>
-              </Suspense>
+                </Suspense>
+                </PageGuard>
               </ErrorBoundary>
+              {isAdmin && location.pathname !== '/cover-page-generator' && location.pathname !== '/daily-life' && location.pathname !== '/' && location.pathname !== '/analytics' && location.pathname !== '/campus' && !location.pathname.startsWith('/admin') && (
+                <div style={{ padding: '0 24px 24px' }}>
+                  {/* pageKey = pathname only (no ?tab=) so it configures the
+                      same key the page's internal content gate reads. */}
+                  <RoleAccessControlCard pageKey={location.pathname} />
+                </div>
+              )}
             </div>
           </div>
           <ActiveMembersSidebar

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Zap, ScrollText, Code2, School, ExternalLink } from 'lucide-react';
 import GliderTabs from '../../components/GliderTabs';
+import MastheadAccessControl from '../../components/MastheadAccessControl';
 import useTabUrlState from '../../hooks/useTabUrlState';
 import useAdminMode from '../../hooks/useAdminMode';
 import CheatsheetsPage from '../vault/CheatsheetsPage';
@@ -21,7 +22,7 @@ const TABS = [
 const STORAGE_KEY = 'productivity-active-tab';
 
 export default function ProductivityPage() {
-  const { isAdmin } = useAdminMode();
+  const { isAdmin: _isAdmin } = useAdminMode();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(
     () => searchParams.get('tab') || localStorage.getItem(STORAGE_KEY) || 'study-room'
@@ -78,14 +79,14 @@ export default function ProductivityPage() {
         </div>
       </div>
 
-      {/* ── 3. Main content box (own card) ── */}
-      {!isAdmin && (
+      {/* ── 3. Main content box (own card, gated by per-tab featureHidden) ── */}
+      <MastheadAccessControl pageKey={`productivity:${activeTab}`}>
         <div className="pr-content-card" key={activeTab}>
           <div className="productivity-tab-content">
             {renderTab()}
           </div>
         </div>
-      )}
+      </MastheadAccessControl>
     </div>
   );
 }

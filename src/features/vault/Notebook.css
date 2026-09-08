@@ -91,6 +91,11 @@
   padding-bottom: var(--sp-10);
 }
 
+/* ── 2. Glider tabs bar (own card) ── */
+.nb-tabs-card {
+  padding: var(--sp-2);
+}
+
 /* ── 1. Hero box ── */
 .nb-hero {
   position: relative;

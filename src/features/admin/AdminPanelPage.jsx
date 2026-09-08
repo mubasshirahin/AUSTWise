@@ -1,14 +1,39 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Shield, Coffee, Activity, Users, Trash2, Plus, AlertCircle, Eye, Edit3, Search, X, Save, CheckCircle2, XCircle, ClipboardList, CalendarDays, Mic, CalendarClock, Ban, Banknote } from 'lucide-react';
+import { Shield, ShieldCheck, ShieldX, Coffee, Activity, Users, Trash2, Plus, AlertCircle, Eye, EyeOff, Edit3, Search, X, Save, Check, CheckCircle2, XCircle, ClipboardList, CalendarDays, Mic, CalendarClock, Ban, Banknote, FileText, Percent } from 'lucide-react';
 import { getAuditoriumEvent, setAuditoriumEvent, defaultAuditoriumEvent } from '../../data/mockData';
 import { loadSharedSync, loadSharedAsync, saveShared } from '../../utils/storageService';
 import { getRoleLabel, getRoleBadgeClass, getAllAccounts, reviewRoleApplication, resetAllLocalData, getCurrentUserId } from '../../utils/authStorage';
 import { sendMessage } from '../../utils/messageStorage';
 import RoutineTemplatesPanel from './RoutineTemplatesPanel';
 import BharaKotoPanel from './BharaKotoPanel';
+import RoleAccessControlCard from './RoleAccessControlCard';
+import AdminAttendancePanel from './AdminAttendancePanel';
+import { useAuth } from '../../context/AuthContext';
+import { useRoleAccess } from '../../hooks/useRoleAccess';
 import './AdminPanelPage.css';
+
+function AdminTabGuard({ pageKey, children }) {
+  const { user } = useAuth();
+  const { config, loading } = useRoleAccess(pageKey);
+  if (loading) return <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '12px' }}>Checking access…</div>;
+  const hidden = config.featureHidden.includes(user?.role);
+  if (hidden) {
+    return (
+      <div className="glass-card-static" style={{ padding: '24px', textAlign: 'center', border: '1px solid var(--accent-rose)' }}>
+        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--accent-rose-glow)', color: 'var(--accent-rose)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+          <Shield size={20} />
+        </div>
+        <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--accent-rose)' }}>YOU DONT HAVE ACCESS</h3>
+        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '6px' }}>Your role <code>{user?.role}</code> is in “Feature Hidden” for <code>{pageKey}</code>. Admin can move your pill to “Can Use” to regain access.</p>
+        <div style={{ marginTop: '16px', textAlign: 'left' }}><RoleAccessControlCard pageKey={pageKey} /></div>
+      </div>
+    );
+  }
+  return children;
+}
+
 
 export default function AdminPanelPage() {
   const navigate = useNavigate();
@@ -27,6 +52,7 @@ export default function AdminPanelPage() {
     if (path === '/admin/cheatsheets') return 'cheatsheets';
     if (path === '/admin/campus-map') return 'campus-map';
     if (path === '/admin/bhara-koto') return 'bhara-koto';
+    if (path === '/admin/attendance') return 'attendance';
     return 'overview';
   };
   
@@ -46,7 +72,8 @@ export default function AdminPanelPage() {
       'auditorium': '/admin/auditorium',
       'cheatsheets': '/admin/cheatsheets',
       'campus-map': '/admin/campus-map',
-      'bhara-koto': '/admin/bhara-koto'
+      'bhara-koto': '/admin/bhara-koto',
+      'attendance': '/admin/attendance'
     };
     navigate(paths[tab] || '/admin');
   };
@@ -297,9 +324,9 @@ if (!res.ok || !Array.isArray(data.applications)) return;
     setEditFormData({});
   };
 
-  // Get role stats
+  // Get role stats — all 15 AUTH_ROLES
   const getRoleStats = () => {
-    const stats = { student: 0, faculty: 0, alumni: 0, admin: 0, cr: 0, sr: 0, vp: 0, gs: 0 };
+    const stats = { student: 0, faculty: 0, alumni: 0, admin: 0, cr: 0, sr: 0, vp: 0, gs: 0, bus_coordinator: 0, moderator: 0, senior: 0, guest: 0, clubs_representative: 0, help_desk: 0, banned: 0 };
     accounts.forEach(acc => {
       if (stats[acc.role] !== undefined) {
         stats[acc.role]++;
@@ -507,11 +534,26 @@ if (!res.ok || !Array.isArray(data.applications)) return;
             Admin table — Daily Life
           </span>
         </div>
+
+        <div className="glass-card stat-card" onClick={() => navigateToTab('attendance')} style={{ cursor: 'pointer' }}>
+          <div className="flex justify-between items-center">
+            <span className="stat-label">Attendance</span>
+            <Percent size={18} style={{ color: 'var(--accent-cyan)' }} />
+          </div>
+          <span className="stat-value" style={{ fontSize: '14px', marginTop: '10px' }}>Monitor</span>
+          <span className="stat-change" style={{ color: 'var(--text-tertiary)' }}>
+            Telegram synced
+          </span>
+        </div>
       </div>
+
+      {/* Role Access Control — visible on every admin subpage, anchored under quick stats */}
+      <RoleAccessControlCard pageKey={`admin:${activeTab}`} />
 
 
       {/* Tab Panels */}
       <div className="tab-panels animate-fadeIn">
+        <AdminTabGuard pageKey={`admin:${activeTab}`} >
         {/* OVERVIEW PANEL */}
         {activeTab === 'overview' && (
           <div className="grid-2">
@@ -1725,6 +1767,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
 
         {/* CAMPUS MAP ADMIN PANEL */}
         {activeTab === 'campus-map' && <AdminCampusMapPanel />}
+        </AdminTabGuard>
       </div>
     </div>
   );
