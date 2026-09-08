@@ -432,13 +432,14 @@ export function deleteStep(doc, stepId) {
   return withStatuses({ ...doc, steps: doc.steps.filter((s) => s.id !== stepId) });
 }
 
-export function addPhase(doc, { title, subtitle, color }) {
+export function addPhase(doc, { title, subtitle, color, milestoneId = null }) {
   return {
     ...doc,
     phases: [...doc.phases, {
       id: uid(), title: title.trim(), subtitle: subtitle?.trim() || null,
       color: color || PHASE_COLORS[doc.phases.length % PHASE_COLORS.length],
-      order: nextOrder(doc.phases),
+      order: nextOrder(doc.phases.filter((p) => p.milestoneId === milestoneId)),
+      milestoneId: milestoneId || null,
     }],
   };
 }

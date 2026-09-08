@@ -50,5 +50,15 @@
       "admin",
       "moderator"
     ]
+  },
+  "dashboard:routine": {
+    "featureHidden": [
+      "moderator",
+      "admin"
+    ],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ]
   }
 }

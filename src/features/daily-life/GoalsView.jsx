@@ -1,25 +1,25 @@
 import { useState, useMemo } from 'react';
-import { Plus, Search, ChevronDown, ChevronUp, Lock, ArrowUp, ArrowDown, FolderPlus } from 'lucide-react';
+import { Plus, Search, ChevronDown, ChevronUp, Lock, ArrowUp, ArrowDown, FolderPlus, Flag, CheckCircle2, Folder, FolderOpen, ArrowLeft, ChevronRight, Sparkles, Target, Trash2, ListChecks } from 'lucide-react';
 import { LpEmpty, LpBar } from './LifePlannerUI';
 import {
   goalsOfPhase, goalProgress, goalLocked, depsOfGoal, byId, TYPE_META,
-  nextOrder, uid,
+  nextOrder, uid, createGoal, phaseProgress, tasksOfGoal, stepsOfTask, toggleStep, deleteStep,
 } from './lifePlannerStorage';
 
-/**
- * Goals view (Section 5.2): search + type filter + sort, collapsible phase
- * sections with their goal cards. Reorder within a phase via arrow buttons;
- * move between phases via the per-card menu.
- */
 export default function GoalsView({
   doc, update, onOpenGoal, onNewGoal, onEditGoal, onDeleteGoal, onConfirm,
+  activeMilestoneId, setActiveMilestoneId, activePhaseId, setActivePhaseId,
+  activeGoalId, setActiveGoalId, activeTaskId, setActiveTaskId,
 }) {
   const [query, setQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState([]); // subset of GOAL_TYPES
-  const [sortBy, setSortBy] = useState('phase');    // 'phase' | 'due' | 'alpha'
-  const [collapsed, setCollapsed] = useState({});   // phaseId -> bool
+  const [typeFilter, setTypeFilter] = useState([]);
+  const [sortBy, setSortBy] = useState('phase');
+  const [collapsed, setCollapsed] = useState({});
   const [showPhaseForm, setShowPhaseForm] = useState(false);
   const [newPhase, setNewPhase] = useState({ title: '', subtitle: '' });
+  const [newGoalTitle, setNewGoalTitle] = useState('');
+
+  const hasMilestone = useMemo(() => doc.goals.some((g) => (g.types || []).includes('milestone')), [doc.goals]);
 
   const q = query.trim().toLowerCase();
 
@@ -43,6 +43,14 @@ export default function GoalsView({
     [doc.phases]
   );
 
+  const milestones = useMemo(() => doc.goals.filter((g) => (g.types || []).includes('milestone')), [doc.goals]);
+
+  const activeMilestone = useMemo(() => milestones.find((m) => m.id === activeMilestoneId) || null, [milestones, activeMilestoneId]);
+  const milestonePhases = useMemo(() => {
+    if (!activeMilestoneId) return [];
+    return visiblePhases.filter((p) => p.milestoneId === activeMilestoneId);
+  }, [visiblePhases, activeMilestoneId]);
+
   const unphased = sortGoals(doc.goals.filter((g) => !g.phaseId).filter(matches));
   const anyVisible = visiblePhases.some((p) => goalsOfPhase(doc, p.id).some(matches)) || unphased.length > 0;
 
@@ -52,7 +60,6 @@ export default function GoalsView({
   const toggleCollapse = (phaseId) =>
     setCollapsed((prev) => ({ ...prev, [phaseId]: !prev[phaseId] }));
 
-  // ── Reordering / moving ──
   const moveGoal = (goalId, dir) => {
     update((d) => {
       const goal = byId(d.goals, goalId);
@@ -82,18 +89,36 @@ export default function GoalsView({
   };
 
   const addPhaseInline = () => {
-    if (!newPhase.title.trim()) return;
+    if (!activeMilestoneId) return;
+    const title = newPhase.title.trim() || `Phase ${milestonePhases.length + 1}`;
     update((d) => ({
       ...d,
       phases: [...d.phases, {
-        id: uid(), title: newPhase.title.trim(),
+        id: uid(), title,
         subtitle: newPhase.subtitle.trim() || null,
         color: ['var(--accent-amber)', 'var(--accent-emerald)', 'var(--accent-cyan)', 'var(--accent-purple)'][d.phases.length % 4],
-        order: nextOrder(d.phases),
+        order: nextOrder(d.phases.filter((p) => p.milestoneId === activeMilestoneId)),
+        milestoneId: activeMilestoneId,
       }],
     }));
     setNewPhase({ title: '', subtitle: '' });
     setShowPhaseForm(false);
+  };
+
+  const handleAddGoalInline = () => {
+    if (!newGoalTitle.trim() || !activePhaseId) return;
+    update((d) => createGoal(d, {
+      phaseId: activePhaseId,
+      title: newGoalTitle.trim(),
+      types: ['goal'],
+      costLabel: null,
+      timingLabel: null,
+      timingDate: null,
+      definitionOfDone: null,
+      dependsOn: [],
+      tasks: [],
+    }));
+    setNewGoalTitle('');
   };
 
   const removePhase = (phase) => {
@@ -112,143 +137,212 @@ export default function GoalsView({
     });
   };
 
+  const activePhase = activePhaseId ? doc.phases.find((p) => p.id === activePhaseId) : null;
+  const activeGoal = activeGoalId ? byId(doc.goals, activeGoalId) : null;
+  const activeTask = activeTaskId ? doc.tasks.find((t) => t.id === activeTaskId) : null;
+
   return (
     <div>
-      {/* Toolbar */}
-      <div className="lp-toolbar">
-        <div style={{ position: 'relative', flex: 1, minWidth: 160, maxWidth: 260 }}>
-          <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
-          <input
-            className="input"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search goals…"
-            style={{ paddingLeft: 28, width: '100%' }}
-            aria-label="Search goals"
-          />
-        </div>
-        {Object.keys(TYPE_META).map((t) => (
-          <button
-            key={t}
-            type="button"
-            className={`lp-type-chip${typeFilter.includes(t) ? ` on-${t}` : ''}`}
-            aria-pressed={typeFilter.includes(t)}
-            onClick={() => toggleType(t)}
-          >
-            {TYPE_META[t].label}
-          </button>
-        ))}
-        <select className="input" value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label="Sort goals" style={{ maxWidth: 150 }}>
-          <option value="phase">Sort: manual</option>
-          <option value="due">Sort: by date</option>
-          <option value="alpha">Sort: A → Z</option>
-        </select>
-        <span className="lp-spacer" />
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowPhaseForm((v) => !v)}>
-          <FolderPlus size={13} /> Add Phase
-        </button>
-        <button type="button" className="lp-add-btn" onClick={onNewGoal}>
-          <Plus size={14} /> Add Goal
-        </button>
-      </div>
-
-      {/* Inline phase form */}
-      {showPhaseForm && (
-        <div className="lp-panel">
-          <div className="lp-form-row">
-            <input className="input" value={newPhase.title} onChange={(e) => setNewPhase((p) => ({ ...p, title: e.target.value }))} placeholder="Phase title (e.g. Phase 1 — Foundation)" />
-            <input className="input" value={newPhase.subtitle} onChange={(e) => setNewPhase((p) => ({ ...p, subtitle: e.target.value }))} placeholder="Subtitle (optional)" />
-            <button type="button" className="btn btn-primary btn-sm" onClick={addPhaseInline}>Add</button>
-          </div>
-        </div>
-      )}
-
-      {/* Phase sections */}
-      {!anyVisible && (
-        <LpEmpty
-          title={doc.goals.length ? 'No goals match your filters' : 'No goals yet'}
-          hint={doc.goals.length ? 'Try clearing the search or type filters.' : 'Goals group into phases — create your first one to get going.'}
-        />
-      )}
-
-      {visiblePhases.map((phase) => {
-        const goals = sortGoals(goalsOfPhase(doc, phase.id).filter(matches));
-        const isCollapsed = collapsed[phase.id];
-        return (
-          <div key={phase.id} className="lp-phase-section">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      {/* ── Premium breadcrumb — clickable, hierarchy visible ── */}
+      {(activeMilestoneId || activePhaseId || activeGoalId || activeTaskId) && (
+        <div className="lp-breadcrumb">
+          <button type="button" className="lp-breadcrumb-item" onClick={() => { setActiveMilestoneId(null); setActivePhaseId(null); if (setActiveGoalId) setActiveGoalId(null); if (setActiveTaskId) setActiveTaskId(null); }} style={{ cursor: 'pointer' }}><Flag size={10} /> Milestones</button>
+          {activeMilestone && (
+            <>
+              <ChevronRight size={12} className="lp-breadcrumb-sep" />
               <button
                 type="button"
-                className="lp-phase-header"
-                onClick={() => toggleCollapse(phase.id)}
-                aria-expanded={!isCollapsed}
-                style={{ flex: 1 }}
+                className="lp-breadcrumb-item purple active"
+                onClick={() => { setActivePhaseId(null); if (setActiveGoalId) setActiveGoalId(null); if (setActiveTaskId) setActiveTaskId(null); }}
+                style={{ cursor: 'pointer' }}
+                title="Go to milestone phases"
               >
-                <span className="lp-phase-dot" style={{ background: phase.color }} />
-                <span className="lp-phase-header-title">{phase.title}</span>
-                {phase.subtitle && <span className="lp-phase-header-sub">{phase.subtitle}</span>}
-                <span className="lp-phase-header-sub">{goals.length} goal{goals.length === 1 ? '' : 's'}</span>
-                {isCollapsed ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
+                <Flag size={10} /> Milestone {milestones.findIndex((m) => m.id === activeMilestone.id) + 1} : {activeMilestone.title}
               </button>
-              <button type="button" className="lp-icon-btn" onClick={() => removePhase(phase)} aria-label={`Remove phase ${phase.title}`} title="Remove phase">
-                <Trash />
+            </>
+          )}
+          {activePhase && (
+            <>
+              <ChevronRight size={12} className="lp-breadcrumb-sep" />
+              <button
+                type="button"
+                className="lp-breadcrumb-item active"
+                onClick={() => { if (setActiveGoalId) setActiveGoalId(null); if (setActiveTaskId) setActiveTaskId(null); }}
+                style={{ cursor: 'pointer' }}
+                title="Go to phase goals"
+              >
+                <Folder size={10} /> Phase {milestonePhases.findIndex((p) => p.id === activePhaseId) + 1} : {activePhase.title}
               </button>
-            </div>
-            {!isCollapsed && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
-                {goals.length === 0 && (
-                  <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', padding: '2px 10px' }}>
-                    No goals here yet.
-                  </span>
-                )}
-                {goals.map((g, idx) => (
-                  <GoalCard
-                    key={g.id}
-                    doc={doc}
-                    goal={g}
-                    phaseColor={phase.color}
-                    onOpenGoal={onOpenGoal}
-                    onEditGoal={onEditGoal}
-                    onDeleteGoal={onDeleteGoal}
-                    onMove={moveGoal}
-                    canMoveUp={idx > 0}
-                    canMoveDown={idx < goals.length - 1}
-                    onMoveToPhase={moveGoalToPhase}
-                    phases={doc.phases.filter((p) => p.id !== phase.id)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
+            </>
+          )}
+          {activeGoal && (
+            <>
+              <ChevronRight size={12} className="lp-breadcrumb-sep" />
+              <button
+                type="button"
+                className="lp-breadcrumb-item active"
+                onClick={() => { if (setActiveTaskId) setActiveTaskId(null); }}
+                style={{ cursor: 'pointer', background: 'var(--accent-amber-glow)', borderColor: 'var(--accent-amber)', color: 'var(--accent-amber)' }}
+                title="Go to goal tasks"
+              >
+                <Target size={10} /> G{activeGoal.number} : {activeGoal.title}
+              </button>
+            </>
+          )}
+          {activeTask && (
+            <>
+              <ChevronRight size={12} className="lp-breadcrumb-sep" />
+              <span className="lp-breadcrumb-item active" style={{ cursor: 'default', background: 'var(--accent-emerald-glow)', borderColor: 'var(--accent-emerald)', color: 'var(--accent-emerald)' }}><ListChecks size={10} /> {activeTask.name}</span>
+            </>
+          )}
+        </div>
+      )}
 
-      {/* Unphased goals */}
-      {unphased.length > 0 && (
-        <div className="lp-phase-section">
-          <div className="lp-phase-header" style={{ cursor: 'default' }}>
-            <span className="lp-phase-dot" style={{ background: 'var(--text-tertiary)' }} />
-            <span className="lp-phase-header-title">No phase</span>
-            <span className="lp-phase-header-sub">{unphased.length} goal{unphased.length === 1 ? '' : 's'}</span>
+      {/* Milestones — blank page even when no milestone: always show panel */}
+      {!activeMilestoneId && (
+        <div className="lp-panel">
+          <h4 className="lp-panel-title"><Flag size={15} style={{ color: 'var(--accent-purple)' }} /> Milestones</h4>
+          {hasMilestone ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {milestones.map((m, idx) => {
+                const pct = goalProgress(doc, m.id);
+                return (
+                  <div key={m.id} style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+                    <button
+                      type="button"
+                      onClick={() => setActiveMilestoneId(m.id)}
+                      title={`Milestone ${idx + 1} : ${m.title} — click to see phases`}
+                      style={{
+                        display: 'flex', flexDirection: 'column', gap: 10,
+                        flex: 1, padding: '16px 16px', textAlign: 'left',
+                        background: 'var(--bg-card)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-md)',
+                        cursor: 'pointer', transition: 'all var(--transition-base)',
+                      }}
+                    >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--accent-purple)', fontSize: 'var(--fs-md)', fontWeight: 700, lineHeight: 1.3 }}>
+                    <Flag size={18} style={{ flexShrink: 0 }} /> <span style={{ flex: 1, wordBreak: 'break-word', color: 'var(--text-primary)' }}>Milestone {idx + 1} : {m.title}</span>
+                  </span>
+                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Click to open phases</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="lp-icon-btn"
+                      onClick={(e) => { e.stopPropagation(); onDeleteGoal(m); }}
+                      title={`Delete milestone ${m.title}`}
+                      aria-label={`Delete milestone ${m.title}`}
+                      style={{ alignSelf: 'center', width: 36, height: 36, borderRadius: 10, background: 'var(--bg-tertiary)', border: '1px solid var(--border-primary)' }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <LpEmpty icon={Flag} title="No milestones yet" hint="Click Add Milestone at the top to create your first milestone." />
+          )}
+        </div>
+      )}
+      {/* Milestone er bhitore — phase ashbe, phase add er option — merged single box (milestone + phases ekshathe) */}
+      {activeMilestoneId && !activeGoalId && (
+        <div className="lp-panel">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <Folder size={20} style={{ color: 'var(--accent-purple)', flexShrink: 0 }} />
+            <h3 style={{ margin: 0, fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2, wordBreak: 'break-word' }}>Milestone {activeMilestone ? milestones.findIndex((m) => m.id === activeMilestone.id) + 1 : ''} : {activeMilestone?.title}</h3>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
-            {unphased.map((g) => (
-              <GoalCard
-                key={g.id}
-                doc={doc}
-                goal={g}
-                phaseColor="var(--text-tertiary)"
-                onOpenGoal={onOpenGoal}
-                onEditGoal={onEditGoal}
-                onDeleteGoal={onDeleteGoal}
-                onMove={moveGoal}
-                canMoveUp={false}
-                canMoveDown={false}
-                onMoveToPhase={moveGoalToPhase}
-                phases={doc.phases}
-              />
-            ))}
+          {milestonePhases.length === 0 ? (
+            <LpEmpty icon={Folder} title="No phases yet" hint="Add a phase inside this milestone to organize goals." />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {milestonePhases.map((phase, idx) => {
+                const goals = goalsOfPhase(doc, phase.id);
+                const isCollapsed = collapsed[phase.id] ?? true;
+                return (
+                  <div key={phase.id} className="lp-phase-section" style={{ marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <button type="button" className="lp-phase-header" onClick={() => { setActivePhaseId(phase.id); setCollapsed((p) => ({ ...p, [phase.id]: !isCollapsed })); }} aria-expanded={!isCollapsed} style={{ flex: 1, padding: '14px 16px' }}>
+                        <span className="lp-phase-dot" style={{ background: phase.color, width: 12, height: 12, minWidth: 12, minHeight: 12 }} />
+                        <span className="lp-phase-header-title" style={{ fontSize: 'var(--fs-sm)', fontWeight: 700 }}>Phase {idx + 1} : {phase.title}</span>
+                        {phase.subtitle && <span className="lp-phase-header-sub">{phase.subtitle}</span>}
+                        <span className="lp-phase-header-sub">{goals.length} goal{goals.length === 1 ? '' : 's'}</span>
+                        {isCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                      </button>
+                      <button type="button" className="lp-icon-btn" onClick={() => removePhase(phase)} aria-label={`Remove phase ${phase.title}`} title="Remove phase">
+                        <Trash />
+                      </button>
+                    </div>
+                    
+                    {!isCollapsed && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+                        {goals.length === 0 ? (
+                          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', padding: '2px 10px' }}>{activePhaseId === phase.id ? 'No goals here yet.' : 'No goals yet.'}</span>
+                        ) : (
+                          goals.map((g, idx) => (
+                            <GoalCard key={g.id} doc={doc} goal={g} phaseColor={phase.color} onOpenGoal={onOpenGoal} onEditGoal={onEditGoal} onDeleteGoal={onDeleteGoal} onMove={(id, dir) => {
+                              update((d) => {
+                                const goal = byId(d.goals, id);
+                                if (!goal) return d;
+                                const siblings = d.goals.filter((x) => x.phaseId === goal.phaseId).sort((a,b)=>a.order-b.order);
+                                const i = siblings.findIndex((x)=>x.id===id);
+                                const swap = dir==='up'?siblings[i-1]:siblings[i+1];
+                                if(!swap) return d;
+                                return { ...d, goals: d.goals.map((x)=> x.id===goal.id?{...x, order: swap.order}: x.id===swap.id?{...x, order: goal.order}: x) };
+                              });
+                            }} canMoveUp={idx>0} canMoveDown={idx < goals.length-1} onMoveToPhase={(gid, pid)=> update((d)=> ({...d, goals: d.goals.map((x)=> x.id===gid?{...x, phaseId: pid, order: nextOrder(d.goals.filter((y)=> y.phaseId===pid))}: x)}))} phases={milestonePhases.filter((p)=>p.id!==phase.id)} setActiveGoalId={setActiveGoalId} setActivePhaseId={setActivePhaseId} setActiveTaskId={setActiveTaskId} />
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+      {activeGoalId && (
+        <div className="lp-panel">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <Target size={16} style={{ color: 'var(--accent-amber)', flexShrink: 0 }} />
+            <h3 style={{ margin: 0, fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2, wordBreak: 'break-word' }}>Goal {activeGoal?.number} : {activeGoal?.title}</h3>
           </div>
+          {(() => {
+            const tasks = tasksOfGoal(doc, activeGoalId);
+            if (tasks.length === 0) return <LpEmpty icon={Target} title="No tasks yet" hint="Add a task for this goal — click Add Task at the top." />;
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {tasks.map((task) => {
+                  const steps = stepsOfTask(doc, task.id);
+                  const done = steps.filter((s) => s.isDone).length;
+                  const pct = steps.length ? Math.round((done / steps.length) * 100) : 0;
+                  const isActiveTask = activeTaskId === task.id;
+                  return (
+                    <div key={task.id} className="lp-task" style={{ borderColor: isActiveTask ? 'var(--accent-amber)' : undefined }}>
+                      <button type="button" className="lp-task-header" onClick={() => setActiveTaskId(isActiveTask ? null : task.id)} aria-expanded={isActiveTask}>
+                        <span className="lp-task-name">{task.name}</span>
+                        {steps.length > 0 && <span className="lp-badge lp-badge-muted">{done}/{steps.length}</span>}
+                        <span className="lp-badge" style={{ background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)' }}>{pct}%</span>
+                      </button>
+                      {isActiveTask && (
+                        <div className="lp-task-body">
+                          {steps.length === 0 ? <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>No subtasks yet.</span> : steps.map((s) => (
+                            <div key={s.id} className="lp-step-row">
+                              <input type="checkbox" className="lp-step-check" checked={s.isDone} onChange={() => update((d) => toggleStep(d, s.id))} />
+                              <span className={`lp-step-text${s.isDone ? ' done' : ''}`}>{s.text}</span>
+                              <button type="button" className="lp-icon-btn" onClick={() => update((d) => deleteStep(d, s.id))}><Trash2 size={12} /></button>
+                            </div>
+                          ))}
+                          <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center', padding: '8px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }}>
+                            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Click Add Subtask at the top to add</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>
@@ -269,6 +363,7 @@ function Trash() {
 function GoalCard({
   doc, goal, phaseColor, onOpenGoal, onEditGoal, onDeleteGoal,
   onMove, canMoveUp, canMoveDown, onMoveToPhase, phases,
+  setActiveGoalId, setActivePhaseId, setActiveTaskId,
 }) {
   const [showMenu, setShowMenu] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
@@ -278,7 +373,6 @@ function GoalCard({
 
   return (
     <div style={{ display: 'flex', alignItems: 'stretch', gap: 6 }}>
-      {/* Reorder arrows (only where meaningful) */}
       {(canMoveUp || canMoveDown) && (
         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2 }}>
           <button type="button" className="lp-icon-btn" disabled={!canMoveUp} onClick={() => onMove(goal.id, 'up')} aria-label="Move goal up">
@@ -290,7 +384,7 @@ function GoalCard({
         </div>
       )}
 
-      <button type="button" className="lp-goal-card" onClick={() => onOpenGoal(goal.id)} style={{ borderLeft: `3px solid ${phaseColor}` }}>
+      <button type="button" className="lp-goal-card" onClick={() => { if (setActiveGoalId) { if (setActivePhaseId && goal.phaseId) setActivePhaseId(goal.phaseId); setActiveGoalId(goal.id); if (setActiveTaskId) setActiveTaskId(null); } else onOpenGoal(goal.id); }} style={{ borderLeft: `3px solid ${phaseColor}`, cursor: 'pointer' }}>
         <div className="lp-goal-main">
           <span className="lp-goal-title">
             <span style={{ color: 'var(--text-tertiary)', fontSize: 10, fontWeight: 'bold' }}>G{goal.number}</span>
@@ -310,14 +404,10 @@ function GoalCard({
               <span className="lp-badge lp-badge-cyan">{goal.timingLabel || goal.timingDate}</span>
             )}
           </div>
-          <div className="lp-goal-track">
-            <LpBar pct={pct} color={phaseColor} />
-            <span className="lp-goal-pct">{pct}% complete</span>
-          </div>
+          
         </div>
       </button>
 
-      {/* Card menu */}
       <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
         <button type="button" className="lp-icon-btn" onClick={(e) => { e.stopPropagation(); setShowMenu((v) => !v); }} aria-label={`Options for ${goal.title}`} aria-haspopup="true">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
