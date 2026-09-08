@@ -25,6 +25,7 @@ const searchItems = [
       { id: 'bhara-koto', label: 'Bhara Koto', keywords: 'bhara koto fare estimator distance cost transport rickshaw metro bus taxi' },
       { id: 'money-tracker', label: 'TakaGeloKoi', keywords: 'takagelokoi money tracker expenses budget' },
       { id: 'mess-meal', label: 'Mess Meal', keywords: 'mess meal planner food' },
+      { id: 'life-planner', label: 'Life Planner', keywords: 'life planner goals habits week plan' },
     ],
   },
   { label: 'Notebook', path: '/notebook', icon: NotebookPen, keywords: 'notebook notes canvas whiteboard editor writing' },

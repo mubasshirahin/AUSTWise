@@ -8,6 +8,7 @@ import CanteenMenu from './CanteenMenu';
 import BusTracker from './BusTracker';
 import EmptyClassroomPage from '../empty-classroom/EmptyClassroomPage';
 import GliderTabs from '../../components/GliderTabs';
+import MastheadAccessControl from '../../components/MastheadAccessControl';
 import useTabUrlState from '../../hooks/useTabUrlState';
 import useAdminMode from '../../hooks/useAdminMode';
 import './CampusPage.css';
@@ -25,7 +26,7 @@ const campusTabs = [
 const CAMPUS_TAB_KEY = 'aust-campus-active-tab';
 
 export default function CampusPage() {
-  const { isAdmin } = useAdminMode();
+  const { isAdmin: _isAdmin } = useAdminMode();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => {
     return searchParams.get('tab') || localStorage.getItem(CAMPUS_TAB_KEY) || 'map';
@@ -83,14 +84,14 @@ export default function CampusPage() {
         />
       </div>
 
-      {/* ── 3. Main content box (own card) ── */}
-      {!isAdmin && (
+      {/* ── 3. Main content box (own card, gated by per-tab featureHidden) ── */}
+      <MastheadAccessControl pageKey={`campus:${activeTab}`}>
         <div className="cp-content-card" key={activeTab}>
           <div className="campus-content-area">
             {renderActiveTab()}
           </div>
         </div>
-      )}
+      </MastheadAccessControl>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import ExchangeKits from './ExchangeKits';
 import ToLetListings from './ToLetListings';
 import LostAndFound from './LostAndFound';
 import GliderTabs from '../../components/GliderTabs';
+import MastheadAccessControl from '../../components/MastheadAccessControl';
 import useTabUrlState from '../../hooks/useTabUrlState';
 import useAdminMode from '../../hooks/useAdminMode';
 import MarketplaceMasthead from './MarketplaceMasthead';
@@ -22,7 +23,7 @@ const marketplaceTabs = [
 
 export default function MarketplacePage() {
   const { theme } = useTheme();
-  const { isAdmin } = useAdminMode();
+  const { isAdmin: _isAdmin } = useAdminMode();
   const isNewsprint = theme === 'newsprint';
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => {
@@ -49,11 +50,11 @@ export default function MarketplacePage() {
       {isNewsprint ? (
         <>
           <MarketplaceMasthead />
-          {!isAdmin && (
+          <MastheadAccessControl pageKey={`marketplace:${activeTab}`}>
             <div className="marketplace-content-area">
               {renderActiveTab()}
             </div>
-          )}
+          </MastheadAccessControl>
         </>
       ) : (
         <>
@@ -88,14 +89,14 @@ export default function MarketplacePage() {
             />
           </div>
 
-          {/* ── 3. Main content box (own card) ── */}
-          {!isAdmin && (
+          {/* ── 3. Main content box (own card, gated by per-tab featureHidden) ── */}
+          <MastheadAccessControl pageKey={`marketplace:${activeTab}`}>
             <div className="mp-content-card" key={activeTab}>
               <div className="marketplace-content-area">
                 {renderActiveTab()}
               </div>
             </div>
-          )}
+          </MastheadAccessControl>
         </>
       )}
     </div>

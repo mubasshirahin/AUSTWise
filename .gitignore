@@ -42,6 +42,7 @@ server.log
 .commandcode/
 .claude/
 .sleepycode/
+.kilo/
 skills-lock.json
 
 # Telegram user database (contains sensitive bot tokens)
@@ -57,12 +58,13 @@ server/users.json
 server/messages.json
 
 # Runtime state & sensitive user data (library presence/occupancy, encrypted
-# password vault, role applications, shared routines) — never commit
+# password vault, role applications, shared routines, cover export stats) — never commit
 server/library_occupancy.json
 server/library_presence.json
 server/password_vault.json
 server/roleApplications.json
 server/shared_routines.json
+server/data/coverStats.json
 
 # Nested third-party repo (unrelated to AUSTWise)
 strix/
@@ -81,3 +83,9 @@ server/sharedStoreDeleted.json
 
 # Playwright / test artifacts
 test-results/
+
+# Draft logo uploads at repo root (originals with spaces) — use src/assets instead, keep lowercase assets
+/AUSTWise*.svg
+/Vector*.svg
+/AUSTWise.svg
+/AUSTWise-dark.svg

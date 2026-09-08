@@ -75,9 +75,9 @@ function fromUserRow(row) {
 // ── Data access ──────────────────────────────────────────────────────────────
 
 /** Every role the system understands (self-registration is always 'student'). */
-export const VALID_ROLES = ['student', 'faculty', 'alumni', 'admin', 'cr', 'sr', 'senior', 'moderator', 'vp', 'gs'];
+export const VALID_ROLES = ['student', 'faculty', 'alumni', 'admin', 'cr', 'sr', 'senior', 'moderator', 'vp', 'gs', 'bus_coordinator', 'guest', 'clubs_representative', 'help_desk', 'banned'];
 /** Roles an admin may assign to another user via the admin panel / approvals. */
-export const ADMIN_ASSIGNABLE_ROLES = ['student', 'cr', 'sr', 'vp', 'gs', 'faculty', 'alumni', 'senior', 'moderator'];
+export const ADMIN_ASSIGNABLE_ROLES = ['student', 'cr', 'sr', 'vp', 'gs', 'faculty', 'alumni', 'senior', 'moderator', 'bus_coordinator', 'guest', 'clubs_representative', 'help_desk', 'banned'];
 const DEV_PASSWORD = 'Dev@123456';
 
 const DEPARTMENTS = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'];
@@ -707,7 +707,7 @@ export async function createUser(payload) {
   const hash = await hashPassword(password);
   const batchNo = String(payload.batchNo || '').trim();
   const rnd = Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 6).toUpperCase();
-  const prefix = { student: 'STU', faculty: 'FAC', alumni: 'ALU', admin: 'ADM', cr: 'CR', sr: 'SR', senior: 'SNR', moderator: 'MOD' }[role] || 'USR';
+  const prefix = { student: 'STU', faculty: 'FAC', alumni: 'ALU', admin: 'ADM', cr: 'CR', sr: 'SR', senior: 'SNR', moderator: 'MOD', bus_coordinator: 'BUS', guest: 'GST', clubs_representative: 'CLB', help_desk: 'HLP', banned: 'BAN' }[role] || 'USR';
   const id = `${prefix}-${rnd}`;
   const awid = generateAwid(users, department);
 

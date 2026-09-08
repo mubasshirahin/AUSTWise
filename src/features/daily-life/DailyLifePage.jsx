@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Home, DollarSign, NotebookPen, UtensilsCrossed, Banknote, ShieldCheck, KeyRound } from 'lucide-react';
+import { Home, DollarSign, NotebookPen, UtensilsCrossed, Banknote, ShieldCheck, KeyRound, CalendarDays } from 'lucide-react';
 import GliderTabs from '../../components/GliderTabs';
+import MastheadAccessControl from '../../components/MastheadAccessControl';
 import useTabUrlState from '../../hooks/useTabUrlState';
 import useAdminMode from '../../hooks/useAdminMode';
 import MoneyTrackerPage from '../money-tracker/MoneyTrackerPage';
 import CoverPageGeneratorPage from '../cover-page-generator/CoverPageGeneratorPage';
 import MessMealTrackerPage from './MessMealTrackerPage';
+import LifePlannerPage from './LifePlannerPage';
 import DhakaRoutes from './DhakaRoutes';
 import DigitalFootprintCleaner from '../digital-footprint/DigitalFootprintCleaner';
 import PasswordManagerPage from '../password-manager/PasswordManagerPage';
@@ -18,6 +20,7 @@ const TABS = [
   { id: 'bhara-koto',           label: 'Bhara Koto',          icon: Banknote,       color: 'amber', desc: 'Distance & cost'     },
   { id: 'money-tracker',        label: 'TakaGeloKoi',         icon: DollarSign,     color: 'amber', desc: 'Expenses & budget'  },
   { id: 'mess-meal',            label: 'Mess Meal',           icon: UtensilsCrossed,color: 'amber', desc: 'Meal planner'       },
+  { id: 'life-planner',         label: 'Life Planner',        icon: CalendarDays,   color: 'amber', desc: 'Goals & week plan'  },
   { id: 'digital-footprint',    label: 'Footprint',           icon: ShieldCheck,    color: 'cyan',  desc: 'Map online accounts' },
   { id: 'password-manager',     label: 'Passwords',           icon: KeyRound,       color: 'amber', desc: 'Secure login vault' },
 ];
@@ -25,7 +28,7 @@ const TABS = [
 const STORAGE_KEY = 'daily-life-active-tab';
 
 export default function DailyLifePage() {
-  const { isAdmin } = useAdminMode();
+  const { isAdmin: _isAdmin } = useAdminMode();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(
     () => searchParams.get('tab') || localStorage.getItem(STORAGE_KEY) || 'cover-page-generator'
@@ -42,6 +45,7 @@ export default function DailyLifePage() {
       case 'money-tracker':        return <MoneyTrackerPage />;
       case 'cover-page-generator': return <CoverPageGeneratorPage />;
       case 'mess-meal':            return <MessMealTrackerPage />;
+      case 'life-planner':         return <LifePlannerPage />;
       case 'bhara-koto':           return <DhakaRoutes />;
       case 'digital-footprint':    return <DigitalFootprintCleaner />;
       case 'password-manager':     return <PasswordManagerPage />;
@@ -83,14 +87,14 @@ export default function DailyLifePage() {
         />
       </div>
 
-      {/* ── 3. Main content box (own card) ── */}
-      {!isAdmin && (
+      {/* ── 3. Main content box (gated per-tab by featureHidden) ── */}
+      <MastheadAccessControl pageKey={`daily-life:${activeTab}`}>
         <div className="dl-content-card" key={activeTab}>
           <div className="daily-life-tab-content">
             {renderTab()}
           </div>
         </div>
-      )}
+      </MastheadAccessControl>
     </div>
   );
 }

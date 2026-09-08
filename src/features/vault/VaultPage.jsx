@@ -6,6 +6,7 @@ import VaultStepProgress from './VaultStepProgress';
 import VaultBatchSelector from './VaultBatchSelector';
 import MaterialFolders from './MaterialFolders';
 import GliderTabs from '../../components/GliderTabs';
+import MastheadAccessControl from '../../components/MastheadAccessControl';
 import useTabUrlState from '../../hooks/useTabUrlState';
 import useAdminMode from '../../hooks/useAdminMode';
 import { loadVaultSelection, saveVaultSelection } from './vaultSelectionStorage';
@@ -21,7 +22,7 @@ function getSelectionStep(department, yearSem, batch) {
 }
 
 export default function VaultPage() {
-  const { isAdmin } = useAdminMode();
+  const { isAdmin: _isAdmin } = useAdminMode();
   const [initialSelection] = useState(loadVaultSelection);
   const [department, setDepartment] = useState(initialSelection.department);
   const [yearSem, setYearSem] = useState(initialSelection.yearSem);
@@ -229,14 +230,14 @@ export default function VaultPage() {
         />
       </div>
 
-      {/* ── 3. Main content box (own card) ── */}
-      {!isAdmin && (
+      {/* ── 3. Main content box (own card, gated by per-tab featureHidden) ── */}
+      <MastheadAccessControl pageKey={`vault:${vaultTab}`}>
         <div className="vl-content-card" key={vaultTab}>
           <div className="vault-content-area">
             {renderVaultContent()}
           </div>
         </div>
-      )}
+      </MastheadAccessControl>
     </div>
   );
 }

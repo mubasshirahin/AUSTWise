@@ -4,6 +4,7 @@ import {
   Users, GraduationCap, Building2, UserPlus, School,
 } from 'lucide-react';
 import GliderTabs from '../../components/GliderTabs';
+import MastheadAccessControl from '../../components/MastheadAccessControl';
 import useTabUrlState from '../../hooks/useTabUrlState';
 import useAdminMode from '../../hooks/useAdminMode';
 import AlumniDirectory from './AlumniDirectory';
@@ -27,7 +28,7 @@ const communityTabs = [
 ];
 
 export default function CommunityPage() {
-  const { isAdmin } = useAdminMode();
+  const { isAdmin: _isAdmin } = useAdminMode();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => {
     return searchParams.get('tab') || localStorage.getItem(COMMUNITY_TAB_KEY) || 'alumni';
@@ -86,14 +87,14 @@ export default function CommunityPage() {
         </div>
       </div>
 
-      {/* ── 3. Main content box (own card) ── */}
-      {!isAdmin && (
+      {/* ── 3. Main content box (own card, gated by per-tab featureHidden) ── */}
+      <MastheadAccessControl pageKey={`community:${activeTab}`}>
         <div className="cm-content-card" key={activeTab}>
           <div className="community-content-area">
             {renderActiveTab()}
           </div>
         </div>
-      )}
+      </MastheadAccessControl>
     </div>
   );
 }

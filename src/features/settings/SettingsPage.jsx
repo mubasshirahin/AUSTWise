@@ -9,6 +9,7 @@ import LinkedAccountsSection from './LinkedAccountsSection';
 import GliderTabs from '../../components/GliderTabs';
 import { useNotifications } from '../../hooks/useNotifications';
 import useAdminMode from '../../hooks/useAdminMode';
+import MastheadAccessControl from '../../components/MastheadAccessControl';
 import useWebSocket from '../../hooks/useWebSocket';
 import { OrbitsProvider, useOrbits } from '../orbits/OrbitsContext';
 import OrbitsConfigurationPanel from '../orbits/OrbitsConfigurationPanel';
@@ -930,8 +931,8 @@ export default function SettingsPage() {
       </div>
 
       {/* ── 3. Main content box (own card) ── */}
-      {!isAdmin && (
-      <div className="st-content-card" key={activeSubTab}>
+      <MastheadAccessControl pageKey="/settings">
+        <div className="st-content-card" key={activeSubTab}>
         {activeSubTab === 'about' && (
           <div className="st-mac-chrome" aria-hidden="true">
             <span className="st-mac-dot st-mac-dot--red" />
@@ -1939,7 +1940,7 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
-      )}
+      </MastheadAccessControl>
 
       {/* ── 4. CR / SR Leadership (own card, below the content box) ── */}
 {activeSubTab === 'profile' && isAuthenticated && !isEditingProfile && (

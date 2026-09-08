@@ -1,0 +1,54 @@
+{
+  "cover": {
+    "featureHidden": [
+      "admin",
+      "moderator"
+    ],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ]
+  },
+  "default": {
+    "featureHidden": [
+      "admin",
+      "moderator"
+    ],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ]
+  },
+  "/analytics": {
+    "featureHidden": [
+      "moderator",
+      "admin",
+      "cr"
+    ],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ]
+  },
+  "dashboard:stats": {
+    "featureHidden": [
+      "moderator",
+      "admin"
+    ],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ]
+  },
+  "/campus": {
+    "featureHidden": [
+      "admin",
+      "moderator",
+      "help_desk"
+    ],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ]
+  }
+}

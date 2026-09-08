@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   Banknote,
   MapPin,
@@ -18,7 +18,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import data from '../../data/dhakaRouteCosts.json';
+import staticData from '../../data/dhakaRouteCosts.json';
 import needsReviewData from '../../data/dhakaRouteCosts.needsReview.json';
 import '../campus/SemesterViewWidget.css';
 import './DhakaRoutes.css';
@@ -265,9 +265,20 @@ function NeedsReview({ list }) {
 export default function DhakaRoutes() {
   const { hasRole } = useAuth();
   const isAdmin = hasRole?.('admin') || hasRole?.('moderator');
-  const meta = data?.meta || {};
-  const rows = data?.rows || [];
+  const [liveData, setLiveData] = useState(staticData);
   const needsReview = needsReviewData?.needsReview || [];
+  useEffect(() => {
+    fetch('/api/bhara-koto', { credentials: 'same-origin' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d && d.success && Array.isArray(d.rows)) {
+          setLiveData({ meta: d.meta || staticData.meta, rows: d.rows });
+        }
+      })
+      .catch(() => {});
+  }, []);
+  const meta = liveData?.meta || {};
+  const rows = liveData?.rows || [];
 
   return (
     <div className="glass-card-static schedule-widget sv-widget dr-widget animate-fadeInUp">
@@ -353,9 +364,7 @@ export default function DhakaRoutes() {
       <div className="dr-footer">
         <Info size={12} />
         <span>
-          Research-based estimates only — fares update from{' '}
-          <code>src/data/dhakaRouteCosts.json</code>. Tap any column header to sort; search filters
-          by area name.
+          Admin er inputted table ekhane show kore — edit korte <code>Admin → Bhara Koto</code> e jan (only admin). Tap any column header to sort; search filters by area name.
         </span>
       </div>
     </div>

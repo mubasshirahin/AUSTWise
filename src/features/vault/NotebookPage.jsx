@@ -1,7 +1,9 @@
 import { useState, useCallback, useMemo } from 'react';
 import { NotebookPen } from 'lucide-react';
 import Notebook from './Notebook';
+import GliderTabs from '../../components/GliderTabs';
 import NotebookLibrary from './NotebookLibrary';
+import MastheadAccessControl from '../../components/MastheadAccessControl';
 import { liveLoad, liveSave } from '../../utils/liveStorage';
 import { useLiveRefresh } from '../../utils/liveStore';
 import useAdminMode from '../../hooks/useAdminMode';
@@ -59,7 +61,7 @@ function migrateLegacyNotes() {
 }
 
 export default function NotebookPage() {
-  const { isAdmin } = useAdminMode();
+  const { isAdmin: _isAdmin } = useAdminMode();
   const [items, setItems] = useState(() => {
     // Lazily load the item index on first render (server-synced via liveStore).
     let list = loadIndex();
@@ -214,8 +216,21 @@ export default function NotebookPage() {
         </div>
       </header>
 
-      {/* ── 2. Main content box (own card) ── */}
-      {!isAdmin && (
+      {/* ── 2. Glider tabs bar (own card) — single-section page, kept for the
+          shared hero + tabs layout every page follows ── */}
+      <div className="glass-card-static nb-tabs-card">
+        <GliderTabs
+          tabs={[
+            { id: 'notes', label: 'My Notes', icon: NotebookPen, color: 'amber', desc: 'Folders & notes' },
+          ]}
+          activeTab="notes"
+          onChange={() => {}}
+          variant="dashboard"
+        />
+      </div>
+
+      {/* ── 3. Main content box (own card, gated by featureHidden) ── */}
+      <MastheadAccessControl pageKey="/notebook">
         <div className="nb-content-card">
           {openNote ? (
             <Notebook
@@ -243,7 +258,7 @@ export default function NotebookPage() {
             />
           )}
         </div>
-      )}
+      </MastheadAccessControl>
     </div>
   );
 }

@@ -153,6 +153,12 @@
   animation: fadeInUp 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
+/* Admin role-access control for the active tab */
+.cp-admin-role-access {
+  margin-top: var(--sp-6);
+  padding: 0;
+}
+
 /* Sub-widget shells — subtle glow lift instead of heavy borders */
 .campus-page .glass-card-static.schedule-widget {
   border-color: var(--border-primary);

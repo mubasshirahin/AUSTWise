@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Coffee, LayoutGrid, MessageCircleQuestion, Brain, Gamepad2, Film } from 'lucide-react';
 import GliderTabs from '../../components/GliderTabs';
+import MastheadAccessControl from '../../components/MastheadAccessControl';
 import useTabUrlState from '../../hooks/useTabUrlState';
 import useAdminMode from '../../hooks/useAdminMode';
 import OrganizingArea from './tabs/OrganizingArea';
@@ -24,7 +25,7 @@ const TABS = [
 const STORAGE_KEY = 'chill-zone-active-tab';
 
 export default function ChillZonePage() {
-  const { isAdmin } = useAdminMode();
+  const { isAdmin: _isAdmin } = useAdminMode();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(
     () => searchParams.get('tab') || localStorage.getItem(STORAGE_KEY) || 'organizing'
@@ -81,14 +82,14 @@ export default function ChillZonePage() {
         />
       </div>
 
-      {/* ── 3. Main content box (own card) ── */}
-      {!isAdmin && (
+      {/* ── 3. Main content box (own card, gated by per-tab featureHidden) ── */}
+      <MastheadAccessControl pageKey={`chill-zone:${activeTab}`}>
         <div className="cz-content-card" key={activeTab}>
           <div className="chill-tab-content">
             {renderTab()}
           </div>
         </div>
-      )}
+      </MastheadAccessControl>
     </div>
   );
 }

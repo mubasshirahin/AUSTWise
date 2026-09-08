@@ -9,7 +9,18 @@
 * Abdullahpur
 * Adabor
 * Adarsha Nagar
-* Aftab Nagar (Block A - L)
+* Aftab Nagar Block A
+* Aftab Nagar Block B
+* Aftab Nagar Block C
+* Aftab Nagar Block D
+* Aftab Nagar Block E
+* Aftab Nagar Block F
+* Aftab Nagar Block G
+* Aftab Nagar Block H
+* Aftab Nagar Block I
+* Aftab Nagar Block J
+* Aftab Nagar Block K
+* Aftab Nagar Block L
 * Agargaon
 * Agargaon Taltola
 * Airport Area
@@ -41,7 +52,20 @@
 * Baridhara DIT Project
 * Baridhara DOHS
 * Bashabo
-* Bashundhara R/A (Block A - N)
+* Bashundhara R/A Block A
+* Bashundhara R/A Block B
+* Bashundhara R/A Block C
+* Bashundhara R/A Block D
+* Bashundhara R/A Block E
+* Bashundhara R/A Block F
+* Bashundhara R/A Block G
+* Bashundhara R/A Block H
+* Bashundhara R/A Block I
+* Bashundhara R/A Block J
+* Bashundhara R/A Block K
+* Bashundhara R/A Block L
+* Bashundhara R/A Block M
+* Bashundhara R/A Block N
 * Baunia
 * Begun Bari
 * Benaroshi Polli

@@ -111,6 +111,16 @@
   animation: gradeContentSwap 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
+.access-denied-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+}
+
 /* Sub-widget shells — subtle glow lift instead of heavy borders */
 .analytics-page .glass-card-static.schedule-widget {
   border-color: var(--border-primary);

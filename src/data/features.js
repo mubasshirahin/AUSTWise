@@ -61,6 +61,7 @@ export const modules = [
       { title: 'Bhara Koto', comingSoon: true },
       { title: 'Taka Gelo Koi', comingSoon: true },
       { title: 'Mass Meal Manager', comingSoon: true },
+      { title: 'Life Planner' },
       { title: 'Digital Footprint Cleaner', comingSoon: true },
       { title: 'Password Manager', comingSoon: true },
     ],

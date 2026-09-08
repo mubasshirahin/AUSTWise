@@ -147,7 +147,7 @@ export function resetAllLocalData() {
   }
 }
 
-export const AUTH_ROLES = ['student', 'faculty', 'alumni', 'admin', 'cr', 'sr', 'senior', 'moderator'];
+export const AUTH_ROLES = ['student', 'faculty', 'alumni', 'admin', 'cr', 'sr', 'senior', 'moderator', 'vp', 'gs', 'bus_coordinator', 'guest', 'clubs_representative', 'help_desk', 'banned'];
 export const ALLOWED_EMAIL_DOMAINS = ['aust.edu', 'www.aust.edu'];
 
 export const guestUser = {
@@ -173,6 +173,11 @@ const rolePrefixes = {
   sr: 'SR',
   senior: 'SNR',
   moderator: 'MOD',
+  bus_coordinator: 'BUS',
+  guest: 'GST',
+  clubs_representative: 'CLB',
+  help_desk: 'HLP',
+  banned: 'BAN',
 };
 
 export function getInitials(name) {
@@ -627,6 +632,10 @@ export function getRoleLabel(role) {
   if (role === 'vp') return 'Vice President';
   if (role === 'gs') return 'General Secretary';
   if (role === 'senior') return 'Senior';
+  if (role === 'bus_coordinator') return 'Bus Coordinator';
+  if (role === 'clubs_representative') return 'Clubs Representative';
+  if (role === 'help_desk') return 'Help Desk';
+  if (role === 'banned') return 'Banned';
   return 'Student';
 }
 
@@ -641,6 +650,11 @@ export function getRoleBadgeClass(role) {
     case 'vp': return 'badge-amber';
     case 'gs': return 'badge-emerald';
     case 'senior': return 'badge-purple';
+    case 'bus_coordinator': return 'badge-cyan';
+    case 'guest': return 'badge-blue';
+    case 'clubs_representative': return 'badge-amber';
+    case 'help_desk': return 'badge-emerald';
+    case 'banned': return 'badge-rose';
     default: return 'badge-blue';
   }
 }
