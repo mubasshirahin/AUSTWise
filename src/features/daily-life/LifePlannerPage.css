@@ -11,83 +11,281 @@
   box-shadow: none;
 }
 
-/* ── Masthead — premium glass, amber glow, three-dot at far right ── */
-.lp-widget .schedule-masthead {
-  grid-template-columns: 1fr auto 1fr;
-  padding: 18px 20px;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-amber) 10%, var(--bg-card)), var(--bg-card));
-  border: 1px solid color-mix(in srgb, var(--accent-amber) 18%, var(--border-primary));
-  border-radius: 16px;
-  box-shadow: 0 4px 20px color-mix(in srgb, var(--accent-amber) 12%, transparent);
-  position: relative;
-  overflow: hidden;
+/* ── Date input — calendar icon white in dark theme, dark in light theme ── */
+.lp-widget .input[type="date"] {
+  color-scheme: dark;
 }
-.lp-widget .schedule-masthead::before {
+[data-theme="light"] .lp-widget .input[type="date"] {
+  color-scheme: light;
+}
+.lp-widget .input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.85;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  margin-left: 4px;
+}
+:root:not([data-theme="light"]) .lp-widget .input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="dark"] .lp-widget .input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="midnight"] .lp-widget .input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="terminal"] .lp-widget .input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.15) contrast(1.05);
+  opacity: 1;
+}
+[data-theme="light"] .lp-widget .input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: none;
+  opacity: 0.75;
+}
+
+/* ── Exact fix for mm/dd/yyyy date input calendar icon — must be white in dark (user: dekhajacche na black) ──
+   Native filter alone fails on this deeply nested input (inside goal card button/div).
+   Force custom white SVG + color-scheme dark with max specificity and !important. */
+:root:not([data-theme="light"]) .lp-widget input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="dark"] .lp-widget input[type="date"]::-webkit-calendar-picker-indicator,
+:root:not([data-theme="light"]) #root > div.app-layout > div.main-content > div > div > div.dl-content-card input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="dark"] #root > div.app-layout > div.main-content > div > div > div.dl-content-card input[type="date"]::-webkit-calendar-picker-indicator,
+:root:not([data-theme="light"]) #root .dl-content-card .lp-widget input[type="date"]::-webkit-calendar-picker-indicator {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background-color: transparent !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: 16px 16px !important;
+  width: 16px !important;
+  height: 16px !important;
+  opacity: 1 !important;
+  filter: none !important;
+  cursor: pointer !important;
+}
+[data-theme="light"] .lp-widget input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="light"] #root > div.app-layout > div.main-content > div > div > div.dl-content-card input[type="date"]::-webkit-calendar-picker-indicator {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background-color: transparent !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23374151' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: 16px 16px !important;
+  filter: none !important;
+  opacity: 0.85 !important;
+}
+:root:not([data-theme="light"]) #root > div.app-layout > div.main-content > div > div > div.dl-content-card input[type="date"],
+:root:not([data-theme="light"]) #root .dl-content-card .lp-widget input[type="date"],
+:root:not([data-theme="light"]) .lp-widget input[type="date"] {
+  color-scheme: dark !important;
+}
+[data-theme="light"] #root > div.app-layout > div.main-content > div > div > div.dl-content-card input[type="date"],
+[data-theme="light"] .lp-widget input[type="date"] {
+  color-scheme: light !important;
+}
+/* Exact user-queried selector — highest specificity white (mm/dd/yyyy field) */
+#root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div:nth-child(4) > div > div > div > div > span > span > input[type="date"]::-webkit-calendar-picker-indicator {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: 16px 16px !important;
+  width: 16px !important;
+  height: 16px !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+[data-theme="light"] #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div:nth-child(4) > div > div > div > div > span > span > input[type="date"]::-webkit-calendar-picker-indicator {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23374151' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E") !important;
+  opacity: 0.85 !important;
+}
+
+/* ── Masthead — Mess Meal style (boxed amber, glow tile, top hairline) ──
+   overflow visible so the ⋮ dropdown is not clipped. */
+.lp-widget .schedule-masthead {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--sp-3);
+  position: relative;
+  margin-bottom: 20px;
+  padding: var(--sp-4);
+  background: transparent;
+  border: 2px solid var(--accent-amber);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: visible;
+  z-index: 40;
+  isolation: isolate;
+}
+.lp-widget .schedule-masthead::before { content: none; }
+.lp-widget .schedule-masthead::after {
   content: '';
   position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent-amber) 6%, transparent), transparent);
+  top: 0;
+  left: 24px;
+  right: 24px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent-amber) 55%, transparent), transparent);
   opacity: 0.6;
   pointer-events: none;
 }
-.lp-widget .schedule-masthead::after { display: none; }
-.lp-widget .schedule-masthead-center {
+.lp-widget .schedule-title-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.lp-widget .schedule-icon-tile {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 20px;
-}
-.lp-widget .schedule-icon-tile {
-  width: 52px;
-  height: 52px;
-  min-width: 52px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, var(--accent-amber), color-mix(in srgb, var(--accent-amber) 70%, var(--accent-purple)));
-  color: white;
-  box-shadow: 0 8px 20px color-mix(in srgb, var(--accent-amber) 35%, transparent);
-  border: 1px solid color-mix(in srgb, white 20%, transparent);
-}
-.lp-widget .schedule-icon-tile svg { filter: none; }
-.lp-widget .schedule-title { font-size: 19px; font-weight: 800; letter-spacing: -0.02em; }
-.lp-widget .schedule-subtitle { font-size: 12px; opacity: 0.8; }
-.lp-widget .schedule-dotted-divider { display: none; }
-.lp-widget .schedule-nav-btn {
-  width: 36px; height: 36px;
-  border-radius: 12px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-primary);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
-}
-.lp-widget .schedule-nav-btn:hover {
-  background: var(--bg-card);
-  border-color: var(--accent-amber);
+  flex-shrink: 0;
+  background: var(--accent-amber-glow);
   color: var(--accent-amber);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent-amber) 20%, transparent);
+  border: none;
+  box-shadow: none;
+  transition: transform 0.3s cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+.lp-widget .schedule-icon-tile:hover {
+  transform: scale(1.08) rotate(-3deg);
+}
+.lp-widget .schedule-icon-tile svg {
+  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-amber) 35%, transparent));
+}
+.lp-widget .schedule-overline {
+  font-size: 9px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  display: block;
+}
+.lp-widget .schedule-title {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  margin: 2px 0 0;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+.lp-widget .schedule-subtitle {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
+  display: block;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+  opacity: 1;
+}
+.lp-widget .schedule-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+.lp-widget .schedule-nav-btn:hover:not(:disabled) {
+  border-color: var(--border-focus);
+  color: var(--text-primary);
+}
+.lp-widget .schedule-dotted-divider {
+  border-top: 1px dashed var(--border-primary);
+  margin: 14px 0 20px;
+  display: block;
+}
+@media (max-width: 640px) {
+  .lp-widget .schedule-masthead {
+    padding: var(--sp-3);
+    gap: var(--sp-2);
+    border-width: 1px;
+  }
 }
 
-/* ── Dropdown — solid like cover page ── */
-.lp-widget .export-dropdown { position: relative; }
+/* ── ⋮ dropdown menu — 1:1 with Cover Page (solid bg, no transparency) ──
+   Stacking fix: keep the trigger + menu above the masthead pseudo + following panels */
+.lp-widget .schedule-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 2;
+  overflow: visible;
+}
+.lp-widget .export-dropdown {
+  position: relative;
+  z-index: 50;
+  overflow: visible;
+}
+.lp-widget .schedule-masthead > * {
+  position: relative;
+  z-index: 1;
+}
+.lp-widget .schedule-masthead .schedule-actions {
+  z-index: 50;
+}
 .lp-widget .export-menu {
-  position: absolute; top: calc(100% + 8px); right: 0;
-  min-width: 200px;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 180px;
   background: #1a1a24 !important;
+  background-color: #1a1a24 !important;
   border: 1px solid #2a2a36 !important;
-  border-radius: 12px;
-  box-shadow: 0 16px 40px rgba(0,0,0,0.5) !important;
-  overflow: hidden; padding: 6px; z-index: 99999;
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.45) !important;
+  z-index: 99999;
+  overflow: hidden;
+  padding: 4px 0;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
-[data-theme="light"] .lp-widget .export-menu { background: #fff !important; border-color: #e4e4e7 !important; }
+[data-theme="light"] .lp-widget .export-menu {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
 .lp-widget .export-menu-item {
-  display: flex; align-items: center; gap: 10px;
-  width: 100%; padding: 10px 12px;
-  border-radius: 8px; font-size: 13px; font-weight: 500;
-  color: var(--text-primary); background: transparent; border: none;
-  cursor: pointer; transition: all 0.15s; font-family: inherit; text-align: left;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
 }
-.lp-widget .export-menu-item:hover { background: color-mix(in srgb, var(--accent-amber) 10%, transparent); color: var(--accent-amber); }
-.lp-widget .export-menu-sep { height: 1px; background: var(--border-primary); margin: 6px 4px; }
+.lp-widget .export-menu-item:hover {
+  background: var(--bg-input);
+}
+.lp-widget .export-menu-item:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.lp-widget .export-menu-sep {
+  height: 1px;
+  background: var(--border-primary);
+  margin: 4px 8px;
+}
 
 /* ── Subnav — pill, premium ── */
 .lp-subnav {
@@ -412,6 +610,129 @@
 .lp-tl-item.overdue::before { border-color: var(--accent-rose); background: var(--accent-rose); }
 .lp-tl-date { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-tertiary); }
 .lp-tl-label { font-size: 13px; color: var(--text-primary); margin-top: 4px; }
+
+/* ── Mindmap — connected tree, left-to-right ── */
+.lp-mm { overflow-x: auto; padding: 2px 2px 24px; }
+.lp-mm-toolbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.lp-mm-hint {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12px; font-weight: 600; color: var(--text-secondary);
+  background: var(--bg-tertiary); border: 1px solid var(--border-primary);
+  border-radius: 999px; padding: 7px 14px;
+}
+.lp-mm-hint svg { color: var(--accent-amber); }
+.lp-mm-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.lp-mm-legend {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  margin-bottom: 16px; padding: 8px 14px;
+  background: color-mix(in srgb, var(--bg-tertiary) 50%, transparent);
+  border: 1px solid var(--border-primary); border-radius: 12px;
+}
+.lp-mm-legend-item {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 600; color: var(--text-secondary);
+}
+.lp-mm-legend-item i { width: 10px; height: 10px; border-radius: 50%; }
+
+.lp-mm-canvas {
+  display: flex; align-items: flex-start; gap: 10px;
+  min-width: max-content; padding: 10px 6px;
+}
+.lp-mm-root-node {
+  display: flex; align-items: center;
+  margin-top: 0; margin-right: 14px; flex-shrink: 0;
+}
+.lp-mm-root-node .lp-mm-node {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-amber) 14%, var(--bg-card)), var(--bg-card));
+  border-color: color-mix(in srgb, var(--accent-amber) 35%, var(--border-primary));
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--accent-amber) 18%, transparent);
+  min-width: 180px;
+}
+
+.lp-mm-branches { display: flex; flex-direction: column; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.lp-mm-branch { position: relative; margin: 0; padding: 0; list-style: none; }
+/* vertical spine — runs the full height of each branch row */
+.lp-mm-branch::before {
+  content: ''; position: absolute; left: -6px; top: 0; bottom: 0;
+  width: 2px; border-radius: 999px;
+  background: color-mix(in srgb, var(--mm, var(--border-primary)) 45%, transparent);
+}
+/* horizontal connector — from spine to the node card */
+.lp-mm-branch::after {
+  content: ''; position: absolute; left: -6px; top: 30px;
+  width: 40px; height: 2px; border-radius: 999px;
+  background: color-mix(in srgb, var(--mm, var(--border-primary)) 45%, transparent);
+}
+/* top-level branches: start the spine at the connector, no stub above */
+.lp-mm-canvas > .lp-mm-branches > .lp-mm-branch::before { top: 30px; }
+.lp-mm-children {
+  display: flex; flex-direction: column; gap: 12px;
+  margin: 14px 0 0; padding: 0; list-style: none;
+}
+
+.lp-mm-node {
+  position: relative;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  min-height: 62px; min-width: 240px; max-width: 340px;
+  padding: 9px 14px 9px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-left: 3px solid var(--mm);
+  border-radius: 12px;
+  margin-left: 40px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  cursor: pointer; user-select: none;
+  transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+}
+.lp-mm-node:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--mm) 55%, var(--border-primary));
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--mm) 18%, transparent);
+}
+.lp-mm-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; flex-shrink: 0;
+  border: 1px solid var(--border-primary); border-radius: 7px;
+  background: var(--bg-tertiary); color: var(--text-secondary);
+  cursor: pointer; transition: all 0.2s;
+}
+.lp-mm-toggle:hover { background: color-mix(in srgb, var(--mm) 16%, var(--bg-tertiary)); color: var(--mm); }
+.lp-mm-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; min-width: 32px; border-radius: 10px;
+  background: color-mix(in srgb, var(--mm) 14%, transparent); color: var(--mm);
+}
+.lp-mm-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.lp-mm-kicker {
+  font-size: 9px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--mm);
+}
+.lp-mm-title {
+  font-size: 13px; font-weight: 700; color: var(--text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 210px;
+}
+.lp-mm-sub { font-size: 10px; font-weight: 600; color: var(--text-tertiary); }
+.lp-mm-node.done .lp-mm-title { text-decoration: line-through; color: var(--text-tertiary); }
+.lp-mm-side { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; flex-shrink: 0; }
+.lp-mm-pct { font-size: 11px; font-weight: 800; color: var(--mm); }
+.lp-mm-lock { color: var(--accent-rose); flex-shrink: 0; }
+.lp-mm-bar {
+  display: block; flex-basis: 100%; height: 5px;
+  background: var(--bg-tertiary); border-radius: 999px; overflow: hidden;
+}
+.lp-mm-bar i {
+  display: block; height: 100%; border-radius: 999px;
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--mm) 40%, transparent);
+  transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+}
+
+@media (max-width: 640px) {
+  .lp-mm-toolbar { flex-direction: column; align-items: stretch; }
+  .lp-mm-hint { justify-content: center; }
+}
 
 /* ── Ledger — premium ── */
 .lp-ledger-table { width: 100%; border-collapse: collapse; font-size: 13px; }

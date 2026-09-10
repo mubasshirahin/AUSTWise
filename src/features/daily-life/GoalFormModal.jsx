@@ -1,19 +1,18 @@
 import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { LpModal } from './LifePlannerUI';
-import { PHASE_COLORS, GOAL_TYPES, TYPE_META } from './lifePlannerStorage';
+import { GOAL_TYPES, TYPE_META } from './lifePlannerStorage';
 
 /**
- * Add/Edit Goal modal (Section 5.7).
- * Fields: title, phase (+ new phase inline), types (multi), cost label,
- * timing label + optional date, dependencies (multi, cycle-safe), DoD,
- * repeatable tasks with repeatable steps. Zero tasks allowed.
+ * Add/Edit Goal modal — Phase removed, now Milestone → Goal directly.
+ * Fields: title, milestone (parent), types (multi), cost label,
+ * timing label + optional date, dependencies, DoD, repeatable tasks with steps.
  */
 export default function GoalFormModal({ doc, goal, onClose, onSave }) {
   const editing = !!goal;
+  const milestones = doc.goals.filter((g) => (g.types || []).includes('milestone'));
   const [title, setTitle] = useState(goal?.title || '');
-  const [phaseId, setPhaseId] = useState(goal?.phaseId || doc.phases[0]?.id || '');
-  const [newPhaseName, setNewPhaseName] = useState('');
+  const [milestoneId, setMilestoneId] = useState(goal?.milestoneId || '');
   const [types, setTypes] = useState(goal?.types?.length ? goal.types : ['goal']);
   const [costLabel, setCostLabel] = useState(goal?.costLabel || '');
   const [timingLabel, setTimingLabel] = useState(goal?.timingLabel || '');
@@ -37,19 +36,17 @@ export default function GoalFormModal({ doc, goal, onClose, onSave }) {
     setDependsOn((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
-  // Cycle check: adding `candidate` as a dependency of this goal is unsafe if
-  // this goal is (transitively) a dependency of `candidate`.
   const wouldCycle = (candidateId) => {
     const depMap = new Map(doc.goals.map((g) => [g.id,
       doc.deps.filter((d) => d.goalId === g.id).map((d) => d.dependsOnGoalId)]));
     const nextDeps = new Map(depMap);
-    nextDeps.set(goal.id, [...(depMap.get(goal.id) || []), candidateId].filter(Boolean));
-    // DFS from candidate following "depends on" edges; reaching goal.id ⇒ cycle.
+    const key = goal?.id || '__new__';
+    nextDeps.set(key, [...(depMap.get(key) || []), candidateId].filter(Boolean));
     const stack = [candidateId];
     const seen = new Set();
     while (stack.length) {
       const cur = stack.pop();
-      if (cur === goal.id) return true;
+      if (cur === key) return true;
       if (seen.has(cur)) continue;
       seen.add(cur);
       for (const n of nextDeps.get(cur) || []) stack.push(n);
@@ -86,20 +83,14 @@ export default function GoalFormModal({ doc, goal, onClose, onSave }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!title.trim()) { setError('Give the goal a title.'); return; }
-
-    if (newPhaseName.trim()) {
-      // Inline phase creation: hand the raw phase to the parent, which adds it
-      // to the doc first and then points the goal at the new phase id.
-      const payload = buildPayload(null);
-      payload.__newPhase = { title: newPhaseName.trim(), subtitle: null, color: PHASE_COLORS[doc.phases.length % PHASE_COLORS.length] };
-      onSave(payload);
-      return;
-    }
     onSave(buildPayload());
   };
 
-  const buildPayload = (forcedPhaseId) => ({
-    phaseId: forcedPhaseId ?? (phaseId || null),
+  const isMilestone = types.includes('milestone');
+
+  const buildPayload = () => ({
+    milestoneId: isMilestone ? null : (milestoneId || null),
+    phaseId: null,
     title,
     types,
     costLabel,
@@ -132,31 +123,21 @@ export default function GoalFormModal({ doc, goal, onClose, onSave }) {
             />
           </div>
 
-          <div className="lp-form-row">
-            <div>
-              <label className="lp-form-label" htmlFor="lp-goal-phase">Phase</label>
-              <select
-                id="lp-goal-phase"
-                className="input"
-                value={phaseId}
-                onChange={(e) => setPhaseId(e.target.value)}
-              >
-                <option value="">No phase</option>
-                {doc.phases.map((p) => (
-                  <option key={p.id} value={p.id}>{p.title}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="lp-form-label" htmlFor="lp-goal-newphase">…or create new phase</label>
-              <input
-                id="lp-goal-newphase"
-                className="input"
-                value={newPhaseName}
-                onChange={(e) => setNewPhaseName(e.target.value)}
-                placeholder="New phase name (optional)"
-              />
-            </div>
+          <div>
+            <label className="lp-form-label" htmlFor="lp-goal-milestone">Milestone (parent)</label>
+            <select
+              id="lp-goal-milestone"
+              className="input"
+              value={milestoneId}
+              onChange={(e) => setMilestoneId(e.target.value)}
+              disabled={isMilestone}
+            >
+              <option value="">{isMilestone ? 'Milestones have no parent' : 'No milestone (unassigned)'}</option>
+              {milestones.map((m) => (
+                <option key={m.id} value={m.id} disabled={m.id === goal?.id}>{m.title}</option>
+              ))}
+            </select>
+            {isMilestone && <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>Milestone goals sit at the top level, goals belong inside them.</span>}
           </div>
 
           <div>
@@ -288,7 +269,7 @@ export default function GoalFormModal({ doc, goal, onClose, onSave }) {
             />
           </div>
 
-          {/* Tasks (new goals only — edits happen in Goal Detail) */}
+          {/* Tasks (new goals only) */}
           {!editing && (
             <div className="lp-form-block">
               <div className="lp-form-block-title">
