@@ -152,14 +152,20 @@ export default function CoverPageGeneratorPage() {
     } catch {}
   };
 
-  /* Close ⋮ dropdown on outside click */
+  /* Close ⋮ dropdown on outside click — mobile fix: handle both mouse and touch, and click */
   useEffect(() => {
     if (!menuOpen) return;
     function handleOutside(e) {
       if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
     }
     document.addEventListener('mousedown', handleOutside);
-    return () => document.removeEventListener('mousedown', handleOutside);
+    document.addEventListener('touchstart', handleOutside, { passive: true });
+    document.addEventListener('click', handleOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('touchstart', handleOutside);
+      document.removeEventListener('click', handleOutside);
+    };
   }, [menuOpen]);
 
   // ─── Form state (persisted to localStorage) ───
@@ -697,50 +703,51 @@ export default function CoverPageGeneratorPage() {
             <span>Live Preview</span>
           </div>
           <div className="cpgen-preview-frame" ref={frameRef}>
-            <div
-              className="cpgen-cover-viewport"
-              style={{ width: `${A4_W * coverScale}px`, height: `${A4_H * coverScale}px` }}
-            >
+            {isFormValid ? (
               <div
-                style={{
-                  transform: `scale(${coverScale})`,
-                  transformOrigin: 'top left',
-                  width: `${A4_W}px`,
-                  height: `${A4_H}px`,
-                }}
+                className="cpgen-cover-viewport"
+                style={{ width: `${A4_W * coverScale}px`, height: `${A4_H * coverScale}px` }}
               >
-                <CoverPagePreview
-                  ref={previewRef}
-                  coverType={coverType}
-                  courseCode={courseCode}
-                  courseName={courseName}
-                  title={title}
-                  teachers={teachers}
-                  refNo={refNo}
-                  labGroup={labGroup}
-                  groupNo={groupNo}
-                  studentName={studentName}
-                  studentId={studentId}
-                  members={members}
-                  department={department}
-                  semester={semester}
-                  profileYear={profileYear}
-                  profileSemester={profileSemester}
-                  batch={batch}
-                  section={section}
-                  logoSrc={logoSrc}
-                  watermarkSize={watermarkSize}
-                  watermarkOpacity={watermarkOpacity}
-                  watermarkX={watermarkX}
-                  watermarkY={watermarkY}
-                  footerLogoSize={footerLogoSize}
-                  footerLogoX={footerLogoX}
-                  footerLogoY={footerLogoY}
-                />
+                <div
+                  style={{
+                    transform: `scale(${coverScale})`,
+                    transformOrigin: 'top left',
+                    width: `${A4_W}px`,
+                    height: `${A4_H}px`,
+                  }}
+                >
+                  <CoverPagePreview
+                    ref={previewRef}
+                    coverType={coverType}
+                    courseCode={courseCode}
+                    courseName={courseName}
+                    title={title}
+                    teachers={teachers}
+                    refNo={refNo}
+                    labGroup={labGroup}
+                    groupNo={groupNo}
+                    studentName={studentName}
+                    studentId={studentId}
+                    members={members}
+                    department={department}
+                    semester={semester}
+                    profileYear={profileYear}
+                    profileSemester={profileSemester}
+                    batch={batch}
+                    section={section}
+                    logoSrc={logoSrc}
+                    watermarkSize={watermarkSize}
+                    watermarkOpacity={watermarkOpacity}
+                    watermarkX={watermarkX}
+                    watermarkY={watermarkY}
+                    footerLogoSize={footerLogoSize}
+                    footerLogoX={footerLogoX}
+                    footerLogoY={footerLogoY}
+                  />
+                </div>
               </div>
-            </div>
-            {!isFormValid && (
-              <div className="cpgen-preview-placeholder">
+            ) : (
+              <div className="cpgen-preview-placeholder" style={{ position: 'relative', inset: 'auto' }}>
                 <NotebookPen size={40} strokeWidth={1.2} />
                 <p>Fill in the course code and title to see your cover page preview</p>
               </div>
