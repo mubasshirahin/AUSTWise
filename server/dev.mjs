@@ -240,6 +240,15 @@ const globalRateLimiter = rateLimit({
   windowMs: 60_000,
   max: Number(process.env.RATE_LIMIT_GLOBAL_MAX) || 600,
 });
+// Cover stats specific limiters — prevent spam inflating uniqueUsers/totalPdf
+const coverTrackLimiter = rateLimit({
+  windowMs: 60_000,
+  max: Number(process.env.RATE_LIMIT_COVER_TRACK_MAX) || 20,
+});
+const coverResetLimiter = rateLimit({
+  windowMs: 60_000,
+  max: Number(process.env.RATE_LIMIT_COVER_RESET_MAX) || 5,
+});
 // Per-user throttle for notice posts (30s)
 const noticePostLastByUser = new Map(); // userId -> timestamp
 const useViteMiddleware = process.argv.includes('--vite');
@@ -269,11 +278,32 @@ async function readCoverStats() {
     };
   } catch { return { uniqueUsers: [], totalPdf: 0, totalPng: 0, exports: [], firstSeen: {} }; }
 }
-async function writeCoverStats(s) {
+// Atomic write + mutex to prevent concurrent read-modify-write races on coverStats.json
+let coverStatsMutex = Promise.resolve();
+async function writeCoverStatsRaw(s) {
   const dir = path.dirname(COVER_STATS_FILE);
-  const { mkdir } = await import('node:fs/promises');
+  const { mkdir, rename: fsRename } = await import('node:fs/promises');
   await mkdir(dir, { recursive: true }).catch(()=>{});
-  await writeFile(COVER_STATS_FILE, JSON.stringify(s, null, 2), 'utf8');
+  const tmp = `${COVER_STATS_FILE}.tmp.${Date.now()}.${Math.random().toString(36).slice(2,6)}`;
+  await writeFile(tmp, JSON.stringify(s, null, 2), 'utf8');
+  await fsRename(tmp, COVER_STATS_FILE);
+}
+async function writeCoverStats(s) {
+  const task = () => writeCoverStatsRaw(s);
+  coverStatsMutex = coverStatsMutex.then(task, task);
+  return coverStatsMutex;
+}
+async function withCoverStatsLock(fn) {
+  let out;
+  const task = async () => {
+    const stats = await readCoverStats();
+    out = await fn(stats);
+    await writeCoverStatsRaw(stats);
+    return out;
+  };
+  coverStatsMutex = coverStatsMutex.then(task, task);
+  await coverStatsMutex;
+  return out;
 }
 function computeCoverMetrics(stats) {
   const uniqueUsers = stats.uniqueUsers.length;
@@ -1372,8 +1402,9 @@ async function handleApiRequest(req, res) {
 
   // ── Cover Page Export Stats ──────────────────────────────────
   // File: server/data/coverStats.json — uses top-level helpers readCoverStats/writeCoverStats
-  // POST /api/cover-stats/track — any authenticated user, body {format: 'pdf'|'png'}
+  // POST /api/cover-stats/track — any authenticated user, body {format: 'pdf'|'png'} — rate limited 20/min
   if (req.url === '/api/cover-stats/track' && req.method === 'POST') {
+    if (!coverTrackLimiter(req, res)) return;
     const auth = requireAuth(req, res);
     if (!auth) return;
     try {
@@ -1383,17 +1414,18 @@ async function handleApiRequest(req, res) {
         sendJson(res, 400, { success: false, error: 'format must be pdf or png' });
         return;
       }
-      const stats = await readCoverStats();
+      let payload;
       const nowIso = new Date().toISOString();
-      if (!stats.uniqueUsers.includes(auth.id)) stats.uniqueUsers.push(auth.id);
-      if (!stats.firstSeen) stats.firstSeen = {};
-      if (!stats.firstSeen[auth.id]) stats.firstSeen[auth.id] = nowIso;
-      if (!Array.isArray(stats.exports)) stats.exports = [];
-      stats.exports.push({ userId: auth.id, format: fmt, ts: nowIso });
-      if (fmt === 'pdf') stats.totalPdf += 1;
-      else stats.totalPng += 1;
-      await writeCoverStats(stats);
-      const payload = computeCoverMetrics(stats);
+      await withCoverStatsLock(async (stats) => {
+        if (!stats.uniqueUsers.includes(auth.id)) stats.uniqueUsers.push(auth.id);
+        if (!stats.firstSeen) stats.firstSeen = {};
+        if (!stats.firstSeen[auth.id]) stats.firstSeen[auth.id] = nowIso;
+        if (!Array.isArray(stats.exports)) stats.exports = [];
+        stats.exports.push({ userId: auth.id, format: fmt, ts: nowIso });
+        if (fmt === 'pdf') stats.totalPdf += 1;
+        else stats.totalPng += 1;
+        payload = computeCoverMetrics(stats);
+      });
       broadcastCoverStatsLive().catch(()=>{});
       sendJson(res, 200, { success: true, ...payload });
     } catch (e) {
@@ -1442,8 +1474,9 @@ async function handleApiRequest(req, res) {
     }
     return;
   }
-  // POST /api/admin/cover-stats/reset — per-page dynamic (cover)
+  // POST /api/admin/cover-stats/reset — per-page dynamic (cover) — rate limited 5/min
   if (req.url === '/api/admin/cover-stats/reset' && req.method === 'POST') {
+    if (!coverResetLimiter(req, res)) return;
     const payload = readTokenCookie(req);
     if (!payload) {
       res.writeHead(401, { 'Content-Type': 'application/json' });

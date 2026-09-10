@@ -108,19 +108,34 @@ export default function CoverPageGeneratorPage() {
     } catch {}
   };
   useEffect(() => { if (isAdmin) loadCoverStats(); }, [isAdmin]);
-  // Real-time server-connected instant update (SSE + polling fallback)
+  // Real-time server-connected instant update (SSE + polling fallback) — with reconnect for Safari/Firefox
   useEffect(() => {
     if (!isAdmin) return;
     let es = null;
-    try {
-      es = new EventSource('/api/cover-stats/stream');
-      es.onmessage = (e) => {
-        try {
-          const d = JSON.parse(e.data);
-          if (typeof d.uniqueUsers === 'number') setCoverStats({ uniqueUsers: d.uniqueUsers, totalPdf: d.totalPdf, totalPng: d.totalPng, lastMonthUsers: d.lastMonthUsers || 0, todaysNewUsers: d.todaysNewUsers || 0, avg6Months: d.avg6Months || 0 });
-        } catch {}
-      };
-    } catch {}
+    let retryTimer = null;
+    let closed = false;
+    const connectSSE = () => {
+      if (closed) return;
+      try {
+        es = new EventSource('/api/cover-stats/stream');
+        es.onmessage = (e) => {
+          try {
+            const d = JSON.parse(e.data);
+            if (typeof d.uniqueUsers === 'number') setCoverStats({ uniqueUsers: d.uniqueUsers, totalPdf: d.totalPdf, totalPng: d.totalPng, lastMonthUsers: d.lastMonthUsers || 0, todaysNewUsers: d.todaysNewUsers || 0, avg6Months: d.avg6Months || 0 });
+          } catch {}
+        };
+        es.onerror = () => {
+          try { es.close(); } catch {}
+          if (!closed) retryTimer = setTimeout(connectSSE, 3000);
+        };
+        es.onopen = () => {
+          if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
+        };
+      } catch {
+        if (!closed) retryTimer = setTimeout(connectSSE, 3000);
+      }
+    };
+    connectSSE();
     const iv = setInterval(loadCoverStats, 5000);
     const onCoverStats = (e) => {
       const d = e.detail || e;
@@ -132,6 +147,8 @@ export default function CoverPageGeneratorPage() {
     // also listen for WS broadcast via custom event if app dispatches
     window.addEventListener('cover-stats', onCoverStats);
     return () => {
+      closed = true;
+      if (retryTimer) clearTimeout(retryTimer);
       if (es) try { es.close(); } catch {}
       clearInterval(iv);
       window.removeEventListener('message', onCoverStats);
@@ -385,6 +402,7 @@ export default function CoverPageGeneratorPage() {
     }
   }, [courseCode]);
 
+  // Only Course Code * and Title * required — Course Name optional (auto-filled via autocomplete)
   const isFormValid = courseCode.trim() && title.trim();
 
   /* Reset the form back to profile-defaults — real ID */
@@ -749,7 +767,7 @@ export default function CoverPageGeneratorPage() {
             ) : (
               <div className="cpgen-preview-placeholder" style={{ position: 'relative', inset: 'auto' }}>
                 <NotebookPen size={40} strokeWidth={1.2} />
-                <p>Fill in the course code and title to see your cover page preview</p>
+                <p>Fill in <strong>Course Code *</strong> and <strong>Title *</strong> to preview — Course Name is optional (auto-filled via autocomplete)</p>
               </div>
             )}
           </div>

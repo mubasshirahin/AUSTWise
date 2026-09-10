@@ -2,6 +2,14 @@
    Cover Page Generator
    ═══════════════════════════════════════════════════════════════════════ */
 
+/* Cross-browser fallback: Safari 14-15 without color-mix — solid fallbacks */
+@supports not (color: color-mix(in srgb, red 50%, blue)) {
+  .cpgen-profile-card { background: var(--bg-card) !important; border: 1px solid var(--border-primary) !important; }
+  .cpgen-success-badge { background: var(--bg-card) !important; border: 1px solid var(--border-primary) !important; }
+  .cpgen-add-member { background: var(--bg-card) !important; border: 1px dashed var(--border-primary) !important; }
+  .cpgen-preview-frame { background: var(--bg-tertiary) !important; }
+}
+
 .cpgen-widget {
   max-width: 1440px;
   margin: 0 auto;
@@ -175,7 +183,7 @@
   }
 }
 
-/* ── Mobile: masthead — matches dashboard compact pattern + dropdown not clipped ── */
+/* ── Mobile: masthead — matches dashboard compact pattern + dropdown not clipped + a11y 44px touch target ── */
 @media (max-width: 640px) {
   .cpgen-widget {
     overflow: visible;
@@ -186,6 +194,12 @@
     gap: var(--sp-2);
     border-width: 1px;
     overflow: visible;
+  }
+  .cpgen-widget .schedule-nav-btn {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px;
+    min-height: 44px;
   }
   .cpgen-widget .schedule-masthead-center {
     display: none;
