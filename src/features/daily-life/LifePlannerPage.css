@@ -3,6 +3,12 @@
    Discarded old style, rebuilt from zero to match AUSTWise
    theme (dark glass + amber) — smooth, unique, hierarchy-first
    ═════════════════════════════════════════════════════════════ */
+/* Cross-browser fallback: Safari 14-15 without color-mix */
+@supports not (color: color-mix(in srgb, red 50%, blue)) {
+  .lp-widget .schedule-masthead { background: var(--bg-card) !important; border: 1px solid var(--border-primary) !important; }
+  .lp-hierarchy-card { background: var(--bg-card) !important; border: 1px solid var(--border-primary) !important; }
+  .lp-badge-amber, .lp-badge-purple, .lp-badge-emerald { background: var(--bg-card) !important; }
+}
 
 .lp-widget {
   overflow: visible;
@@ -750,10 +756,16 @@
 .lp-pdf-sheet th, .lp-pdf-sheet td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--border-primary); }
 .lp-pdf-card { border: 1px solid var(--border-primary); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; break-inside: avoid; }
 
-/* ── Responsive ── */
+/* ── Responsive + a11y touch target ── */
 @media (max-width: 640px) {
   .lp-stats { grid-template-columns: repeat(2, 1fr); }
   .lp-ring { width: 80px; height: 80px; }
   .lp-widget .schedule-masthead { padding: 14px; gap: 10px; }
   .lp-widget .schedule-icon-tile { width: 44px; height: 44px; min-width: 44px; }
+  .lp-widget .schedule-nav-btn {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
