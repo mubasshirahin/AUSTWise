@@ -20,8 +20,16 @@ export default function GoalDetail({
   doc, update, goalId, onBack, onOpenGoal, onEditGoal, onDeleteGoal, onConfirm,
 }) {
   const goal = byId(doc.goals, goalId);
-  const phase = goal ? doc.phases.find((p) => p.id === goal.phaseId) : null;
-  const accent = phase?.color || 'var(--accent-amber)';
+  // Phase removed — accent now from milestone (purple) or amber fallback
+  const accent = (() => {
+    if (!goal) return 'var(--accent-amber)';
+    if (goal.milestoneId) return 'var(--accent-purple)';
+    if (goal.phaseId) {
+      const ph = doc.phases.find((p) => p.id === goal.phaseId);
+      return ph?.color || 'var(--accent-amber)';
+    }
+    return (goal.types || []).includes('milestone') ? 'var(--accent-purple)' : 'var(--accent-amber)';
+  })();
   const [expanded, setExpanded] = useState({});
   const [showAddTask, setShowAddTask] = useState(false);
   const [newTask, setNewTask] = useState({ name: '', costLabel: '', dueLabel: '', dueDate: '' });

@@ -7,6 +7,7 @@ export function LpSubnav({ view, onChange }) {
   const views = [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'goals',     label: 'Goals' },
+    { id: 'mindmap',   label: 'Mindmap' },
     { id: 'habits',    label: 'Habits' },
     { id: 'timeline',  label: 'Timeline' },
     { id: 'ledger',    label: 'Ledger' },

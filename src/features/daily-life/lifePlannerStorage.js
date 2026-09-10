@@ -36,6 +36,16 @@ export const PHASE_COLORS = [
   '#b58cf5', '#5d9bf5', '#f5d15d',
 ];
 
+export const WEEKDAYS = [
+  { key: 'Sat', label: 'Sat', day: 6 },
+  { key: 'Sun', label: 'Sun', day: 0 },
+  { key: 'Mon', label: 'Mon', day: 1 },
+  { key: 'Tue', label: 'Tue', day: 2 },
+  { key: 'Wed', label: 'Wed', day: 3 },
+  { key: 'Thu', label: 'Thu', day: 4 },
+  { key: 'Fri', label: 'Fri', day: 5 },
+];
+
 export const EMPTY_DOC = {
   phases: [], goals: [], deps: [], tasks: [], steps: [],
   habits: [], habitLogs: {}, ledger: [],
@@ -133,6 +143,26 @@ export function goalsOfPhase(doc, phaseId) {
   return doc.goals.filter((g) => g.phaseId === phaseId).sort((a, b) => a.order - b.order);
 }
 
+export function goalsOfMilestone(doc, milestoneId) {
+  return doc.goals
+    .filter((g) => {
+      if ((g.types || []).includes('milestone')) return false;
+      if (g.milestoneId) return g.milestoneId === milestoneId;
+      if (g.phaseId) {
+        const ph = doc.phases.find((p) => p.id === g.phaseId);
+        return ph?.milestoneId === milestoneId;
+      }
+      return false;
+    })
+    .sort((a, b) => a.order - b.order);
+}
+
+export function milestoneProgress(doc, milestoneId) {
+  const goals = goalsOfMilestone(doc, milestoneId);
+  if (goals.length === 0) return 0;
+  return Math.round(goals.reduce((sum, g) => sum + goalProgress(doc, g.id), 0) / goals.length);
+}
+
 // ── derived: progress & status ───────────────────────────────────────────────
 
 export function goalProgress(doc, goalId) {
@@ -177,18 +207,51 @@ export function withStatuses(docDraft) {
 
 // ── derived: timeline ────────────────────────────────────────────────────────
 
-/** Union of Task.dueDate + Step.dueDate, sorted ascending, each linked to its goal. */
+/** Union of Goal.timingDate + Task.dueDate + Step.dueDate + recurring weekly expansion, sorted ascending. */
 export function buildTimeline(doc) {
   const entries = [];
+  for (const goal of doc.goals) {
+    if (goal.timingDate) {
+      entries.push({ date: goal.timingDate, kind: 'goal', label: `Deadline: ${goal.title}`, goal, done: goalProgress(doc, goal.id) === 100 });
+    }
+  }
   for (const task of doc.tasks) {
-    if (task.dueDate) {
+    if (task.isRecurring && Array.isArray(task.recurringWeekdays) && task.recurringWeekdays.length) {
+      const goal = byId(doc.goals, task.goalId);
+      const selectedDays = new Set(task.recurringWeekdays);
+      // map weekday key -> day number using WEEKDAYS
+      const keyToDay = Object.fromEntries(WEEKDAYS.map((w) => [w.key, w.day]));
+      for (let i = 0; i < 30; i++) {
+        const d = addDays(new Date(), i);
+        const dayNum = d.getDay();
+        const key = WEEKDAYS.find((w) => w.day === dayNum)?.key;
+        if (key && selectedDays.has(key)) {
+          const dateKey = todayKey(d);
+          entries.push({ date: dateKey, kind: 'task', label: `${task.name} (Recurring)`, goal, recurring: true, weekdays: task.recurringWeekdays });
+        }
+      }
+    } else if (task.dueDate) {
       const goal = byId(doc.goals, task.goalId);
       entries.push({ date: task.dueDate, kind: 'task', label: task.name, goal });
     }
   }
   for (const step of doc.steps) {
-    if (step.dueDate) {
-      const task = byId(doc.tasks, step.taskId);
+    const task = byId(doc.tasks, step.taskId);
+    const parentRecurring = !!task?.isRecurring;
+    if (parentRecurring && Array.isArray(task.recurringWeekdays) && task.recurringWeekdays.length) {
+      // auto recurring step — same weekdays as parent task
+      const goal = task ? byId(doc.goals, task.goalId) : null;
+      const selectedDays = new Set(task.recurringWeekdays);
+      for (let i = 0; i < 30; i++) {
+        const d = addDays(new Date(), i);
+        const dayNum = d.getDay();
+        const key = WEEKDAYS.find((w) => w.day === dayNum)?.key;
+        if (key && selectedDays.has(key)) {
+          const dateKey = todayKey(d);
+          entries.push({ date: dateKey, kind: 'step', label: `${step.text} (Recurring)`, step, goal, done: !!step.isDone, recurring: true });
+        }
+      }
+    } else if (step.dueDate) {
       const goal = task ? byId(doc.goals, task.goalId) : null;
       entries.push({
         date: step.dueDate, kind: 'step', label: step.text, step, goal,
@@ -287,11 +350,20 @@ export function nextOrder(list) {
 }
 
 /** Creates a goal (with optional nested tasks/steps) and returns the new doc. */
-export function createGoal(doc, { phaseId, title, types, costLabel, timingLabel, timingDate, definitionOfDone, dependsOn = [], tasks = [] }) {
+export function createGoal(doc, { phaseId = null, milestoneId = null, title, types, costLabel, timingLabel, timingDate, definitionOfDone, dependsOn = [], tasks = [] }) {
   const goals = [...doc.goals];
+  // Phase layer removed: milestoneId is the direct parent. Keep phaseId for backward-compat.
+  const resolvedMilestoneId = milestoneId || null;
+  const resolvedPhaseId = phaseId || null;
+  const siblings = resolvedMilestoneId
+    ? goals.filter((g) => g.milestoneId === resolvedMilestoneId)
+    : resolvedPhaseId
+      ? goals.filter((g) => g.phaseId === resolvedPhaseId)
+      : goals.filter((g) => !g.milestoneId && !g.phaseId);
   const goal = {
     id: uid(),
-    phaseId,
+    phaseId: resolvedPhaseId,
+    milestoneId: resolvedMilestoneId,
     number: nextGoalNumber(doc),
     title: title.trim(),
     types: types.length ? types : ['goal'],
@@ -300,7 +372,7 @@ export function createGoal(doc, { phaseId, title, types, costLabel, timingLabel,
     timingDate: timingDate || null,
     definitionOfDone: definitionOfDone?.trim() || null,
     status: 'not_started',
-    order: nextOrder(goals.filter((g) => g.phaseId === phaseId)),
+    order: nextOrder(siblings),
     createdAt: new Date().toISOString(),
   };
   goals.push(goal);
@@ -341,10 +413,11 @@ export function createGoal(doc, { phaseId, title, types, costLabel, timingLabel,
 }
 
 /** Updates a goal's own fields; replaces deps with the given list. */
-export function updateGoal(doc, goalId, { phaseId, title, types, costLabel, timingLabel, timingDate, definitionOfDone, dependsOn = [] }) {
+export function updateGoal(doc, goalId, { phaseId, milestoneId, title, types, costLabel, timingLabel, timingDate, definitionOfDone, dependsOn = [] }) {
   const goals = doc.goals.map((g) => (g.id === goalId ? {
     ...g,
-    phaseId: phaseId ?? g.phaseId,
+    phaseId: phaseId !== undefined ? (phaseId || null) : g.phaseId,
+    milestoneId: milestoneId !== undefined ? (milestoneId || null) : g.milestoneId,
     title: title?.trim() || g.title,
     types: types?.length ? types : g.types,
     costLabel: costLabel !== undefined ? (costLabel?.trim() || null) : g.costLabel,
@@ -374,7 +447,13 @@ export function deleteGoal(doc, goalId) {
   };
 }
 
-export function addTask(doc, goalId, { name, costLabel, dueLabel, dueDate }) {
+export function isTaskRecurring(task) { return !!task?.isRecurring; }
+export function isStepRecurring(doc, step) {
+  const task = byId(doc.tasks, step.taskId);
+  return !!task?.isRecurring;
+}
+
+export function addTask(doc, goalId, { name, costLabel, dueLabel, dueDate, isRecurring = false, recurringDaysPerWeek = null, recurringWeekdays = [] }) {
   const goalTasks = tasksOfGoal(doc, goalId);
   return {
     ...doc,
@@ -382,8 +461,11 @@ export function addTask(doc, goalId, { name, costLabel, dueLabel, dueDate }) {
       id: uid(), goalId, name: name.trim(),
       costLabel: costLabel?.trim() || null,
       dueLabel: dueLabel?.trim() || null,
-      dueDate: dueDate || null,
+      dueDate: isRecurring ? null : (dueDate || null),
       order: nextOrder(goalTasks),
+      isRecurring: !!isRecurring,
+      recurringDaysPerWeek: isRecurring ? (Number(recurringDaysPerWeek) || recurringWeekdays.length || null) : null,
+      recurringWeekdays: isRecurring ? [...(recurringWeekdays || [])] : [],
     }],
   };
 }
@@ -499,14 +581,14 @@ export function deleteTransaction(doc, txId) {
 
 export function examplePlan() {
   let doc = { ...EMPTY_DOC, habitLogs: {} };
-  const p1 = { id: uid(), title: 'Phase 1 — Foundation', subtitle: 'Skills & setup', color: PHASE_COLORS[0], order: 0 };
-  const p2 = { id: uid(), title: 'Phase 2 — Growth', subtitle: 'Build & apply', color: PHASE_COLORS[1], order: 1 };
-  doc.phases = [p1, p2];
+  doc.phases = [];
+  const ms1 = { id: uid(), phaseId: null, milestoneId: null, number: 1, title: 'Foundation — First Steps', types: ['milestone'], costLabel: null, timingLabel: 'This month', timingDate: null, definitionOfDone: null, status: 'not_started', order: 0, createdAt: new Date().toISOString() };
+  const ms2 = { id: uid(), phaseId: null, milestoneId: null, number: 2, title: 'Growth — Build & Apply', types: ['milestone'], costLabel: null, timingLabel: 'Next 2 months', timingDate: null, definitionOfDone: null, status: 'not_started', order: 1, createdAt: new Date().toISOString() };
 
-  const g1 = { id: uid(), phaseId: p1.id, number: 1, title: 'Learn a new skill', types: ['goal'], costLabel: 'Cost: 0', timingLabel: 'This month', timingDate: null, definitionOfDone: 'Finish the tutorial and build one small project.', status: 'not_started', order: 0, createdAt: new Date().toISOString() };
-  const g2 = { id: uid(), phaseId: p1.id, number: 2, title: 'Set a study routine', types: ['goal', 'habit'], costLabel: null, timingLabel: null, timingDate: null, definitionOfDone: null, status: 'not_started', order: 1, createdAt: new Date().toISOString() };
-  const g3 = { id: uid(), phaseId: p2.id, number: 3, title: 'Complete a personal project', types: ['milestone'], costLabel: 'Cost: 0', timingLabel: 'Next 2 months', timingDate: null, definitionOfDone: null, status: 'not_started', order: 0, createdAt: new Date().toISOString() };
-  doc.goals = [g1, g2, g3];
+  const g1 = { id: uid(), phaseId: null, milestoneId: ms1.id, number: 3, title: 'Learn a new skill', types: ['goal'], costLabel: 'Cost: 0', timingLabel: 'This month', timingDate: null, definitionOfDone: 'Finish the tutorial and build one small project.', status: 'not_started', order: 0, createdAt: new Date().toISOString() };
+  const g2 = { id: uid(), phaseId: null, milestoneId: ms1.id, number: 4, title: 'Set a study routine', types: ['goal', 'habit'], costLabel: null, timingLabel: null, timingDate: null, definitionOfDone: null, status: 'not_started', order: 1, createdAt: new Date().toISOString() };
+  const g3 = { id: uid(), phaseId: null, milestoneId: ms2.id, number: 5, title: 'Complete a personal project', types: ['goal', 'milestone'], costLabel: 'Cost: 0', timingLabel: 'Next 2 months', timingDate: null, definitionOfDone: null, status: 'not_started', order: 0, createdAt: new Date().toISOString() };
+  doc.goals = [ms1, ms2, g1, g2, g3];
   doc.deps = [{ id: uid(), goalId: g3.id, dependsOnGoalId: g1.id, note: null }];
 
   const t1 = { id: uid(), goalId: g1.id, name: 'Pick a course', costLabel: null, dueLabel: null, dueDate: todayKey(addDays(new Date(), 3)), order: 0 };
