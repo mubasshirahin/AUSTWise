@@ -158,9 +158,39 @@
   margin: 0;
 }
 
+/* ── TakaGeloKoi — budget + calendar ── */
+.tgk-panel { margin-bottom: 14px; }
+.tgk-badge { display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:999px; font-size:11px; font-weight:700; border:1px solid var(--border-primary); background:var(--bg-tertiary); color:var(--text-secondary); }
+.tgk-badge-amber { background:var(--accent-amber-glow); color:var(--accent-amber); border-color:color-mix(in srgb, var(--accent-amber) 20%, transparent); }
+.tgk-badge-rose { background:var(--accent-rose-glow); color:var(--accent-rose); border-color:color-mix(in srgb, var(--accent-rose) 20%, transparent); }
+.tgk-cal { display:grid; grid-template-columns: repeat(6, 1fr); gap:8px; }
+.tgk-day { display:flex; flex-direction:column; gap:4px; padding:10px 8px; background:var(--bg-card); border:1px solid var(--border-primary); border-radius:10px; cursor:pointer; transition: all 0.2s ease; text-align:left; font-family:inherit; min-height:92px; }
+.tgk-day:hover { border-color:var(--accent-amber); transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,0.08); }
+.tgk-day-today { border-color:var(--accent-amber) !important; box-shadow:0 0 0 2px color-mix(in srgb, var(--accent-amber) 20%, transparent); }
+.tgk-day-exceed { border-color:var(--accent-rose) !important; background:color-mix(in srgb, var(--accent-rose) 6%, var(--bg-card)); }
+.tgk-day-past { opacity:0.85; }
+.tgk-day-num { font-size:18px; font-weight:800; color:var(--text-primary); line-height:1; }
+.tgk-day-date { font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-tertiary); }
+.tgk-day-limit { font-size:10px; color:var(--text-tertiary); }
+.tgk-day-spent { font-size:12px; font-weight:700; color:var(--text-primary); }
+.tgk-day-spent.exceed { color:var(--accent-rose); }
+.tgk-day-bar { height:4px; background:var(--bg-tertiary); border-radius:999px; overflow:hidden; }
+.tgk-day-bar i { display:block; height:100%; border-radius:999px; transition:width 0.3s ease; }
+.tgk-day-add { font-size:9px; font-weight:700; color:var(--accent-amber); display:inline-flex; align-items:center; gap:3px; margin-top:auto; }
+.bhara-details-overlay { position:fixed; inset:0; background:var(--bg-primary); backdrop-filter:blur(20px) saturate(1.2); -webkit-backdrop-filter:blur(20px) saturate(1.2); display:flex; align-items:flex-start; justify-content:center; z-index:9999; padding:16px; padding-top:90px; animation: drFadeIn 0.2s ease; }
+.bhara-details-overlay .bhara-details-panel { max-height:88vh; overflow-y:auto; border-radius:16px; box-shadow:0 24px 64px rgba(0,0,0,0.32), 0 8px 24px rgba(0,0,0,0.18), 0 0 0 1px color-mix(in srgb, var(--border-primary) 50%, transparent); }
+@media (min-width:768px) {
+  .bhara-details-overlay { padding:90px 24px 24px; }
+  .bhara-details-overlay .bhara-details-panel { max-width:520px; padding:20px; border-radius:20px; }
+}
+@keyframes drFadeIn { from { opacity:0; } to { opacity:1; } }
+
 /* ════════════════════════════════════════
-   RESPONSIVE — compact on mobile
+    RESPONSIVE — compact on mobile
 ══════════════════════════════════════ */
+@media (max-width: 900px) {
+  .tgk-cal { grid-template-columns: repeat(5, 1fr); }
+}
 @media (max-width: 640px) {
   .mt-widget .schedule-masthead {
     padding: var(--sp-3);
@@ -170,4 +200,6 @@
   .mt-widget .schedule-actions {
     justify-content: flex-end;
   }
+  .tgk-cal { grid-template-columns: repeat(3, 1fr); gap:6px; }
+  .tgk-day { min-height:80px; padding:8px 6px; }
 }

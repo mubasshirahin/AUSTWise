@@ -18,6 +18,35 @@
   grid-template-columns: 1fr auto 1fr;
   margin: var(--sp-2) 0 20px;
 }
+.dr-widget .schedule-masthead {
+  grid-template-columns: 1fr auto 1fr;
+}
+.dr-widget .schedule-masthead-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+/* Daily Life Bhara Koto — 317 areas subtitle er upore ektu gap in masthead — stronger override */
+.dr-widget .schedule-masthead {
+  padding-top: 20px !important;
+  padding-bottom: 18px !important;
+  gap: 16px !important;
+}
+.dr-widget .schedule-title-block > div {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+}
+.dr-widget .schedule-subtitle {
+  margin-top: 10px !important;
+  display: block !important;
+  line-height: 1.4 !important;
+  padding-top: 2px !important;
+}
+.dr-widget .schedule-title + .schedule-subtitle {
+  margin-top: 10px !important;
+}
 
 /* ── Masthead ── */
 .dr-widget .dr-icon-tile {
@@ -431,6 +460,17 @@
   background: var(--accent-emerald-glow);
   border-color: color-mix(in srgb, var(--accent-emerald) 28%, transparent);
 }
+.dr-fare-chip.dr-fare-active {
+  background: var(--accent-orange) !important;
+  color: white !important;
+  border-color: var(--accent-orange) !important;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent-orange) 30%, transparent);
+}
+.dr-fare-chip:disabled {
+  cursor: default !important;
+  opacity: 0.6;
+  pointer-events: none;
+}
 
 .dr-row-empty td {
   text-align: center;
@@ -708,6 +748,119 @@
   .dr-table td:nth-child(5) {
     display: none;
   }
+}
+
+/* ── Pill details (Bhara Koto transport modes) — click pill → write briefly, optional ── */
+.dr-fare-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+.dr-pill {
+  border-color: color-mix(in srgb, var(--accent-orange) 20%, transparent) !important;
+  background: color-mix(in srgb, var(--accent-orange) 6%, transparent) !important;
+  color: var(--accent-orange) !important;
+}
+.dr-pill:hover {
+  background: color-mix(in srgb, var(--accent-orange) 12%, transparent) !important;
+  border-color: color-mix(in srgb, var(--accent-orange) 30%, transparent) !important;
+}
+.dr-pill-active {
+  background: var(--accent-orange) !important;
+  color: white !important;
+  border-color: var(--accent-orange) !important;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent-orange) 30%, transparent) !important;
+}
+.dr-details-panel {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+/* Shared details panel styles (duplicated from AustBharaPage for DhakaRoutes standalone) */
+.bhara-details-panel.dr-details-panel,
+.dr-details-panel {
+  margin-top: 0;
+  margin-bottom: 12px;
+  padding: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  text-align: left;
+  width: 100%;
+}
+.bhara-details-panel .bhara-details-head,
+.dr-details-panel .bhara-details-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.bhara-details-title { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--text-primary); }
+.bhara-details-close { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: none; border-radius: 6px; background: var(--bg-tertiary); color: var(--text-tertiary); cursor: pointer; }
+.bhara-details-hint { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-tertiary); margin: 0 0 8px; line-height: 1.4; }
+.bhara-details-input { width: 100%; min-height: 70px; resize: vertical; font-size: 12px; }
+.bhara-details-actions { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.bhara-details-count { font-size: 10px; color: var(--text-tertiary); margin-right: auto; }
+.bhara-details-preview { margin-top: 10px; padding: 8px 10px; background: var(--bg-tertiary); border: 1px solid var(--border-primary); border-radius: 8px; }
+.bhara-details-preview-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary); }
+.bhara-details-preview p { margin: 4px 0 0; font-size: 12px; color: var(--text-secondary); white-space: pre-wrap; }
+/* Reuse bhara-details-panel styles if AustBharaPage.css not loaded */
+.dr-details-panel .bhara-details-panel,
+.bhara-details-panel.dr-details-panel {
+  max-width: 100%;
+}
+.bhara-details-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-primary);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 9999;
+  padding: 16px;
+  padding-top: 90px;
+  animation: drFadeIn 0.2s ease;
+}
+.bhara-details-overlay .bhara-details-panel,
+.bhara-details-overlay .dr-details-panel {
+  width: 100%;
+  max-width: 480px;
+  margin: 0;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.32), 0 8px 24px rgba(0,0,0,0.18), 0 0 0 1px color-mix(in srgb, var(--border-primary) 50%, transparent);
+  animation: drShellIn 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (min-width: 768px) {
+  .bhara-details-overlay {
+    padding: 90px 24px 24px;
+  }
+  .bhara-details-overlay .bhara-details-panel,
+  .bhara-details-overlay .dr-details-panel {
+    max-width: 520px;
+    padding: 20px;
+    border-radius: 20px;
+  }
+  .bhara-details-overlay .bhara-details-title {
+    font-size: 14px;
+  }
+  .bhara-details-overlay .bhara-details-input {
+    min-height: 84px;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+}
+@keyframes drFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@media (max-width: 640px) {
+  .dr-fare-pills { gap: 6px; }
+  .dr-pill { padding: 5px 10px; font-size: 11px; }
 }
 
 /* Respect reduced motion */

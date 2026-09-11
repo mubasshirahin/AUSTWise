@@ -16,6 +16,7 @@ import {
   Info,
   ShieldAlert,
   RefreshCw,
+  PencilLine,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import staticData from '../../data/dhakaRouteCosts.json';
@@ -89,16 +90,27 @@ function Th({ col, sort, onSort }) {
   );
 }
 
-// ─── Fare cell ──────────────────────────────────────────────────
+// ─── Fare cell — pill inside table, click → details writing (optional, briefly) ──
 
-function FareCell({ value, title }) {
+function FareCell({ value, title, fareKey, source, activeFare, setActiveFare }) {
   const na = isDash(value);
   const isFree = !na && /free/i.test(String(value));
+  const isActive = activeFare && activeFare.source === source && activeFare.fareKey === fareKey;
   return (
     <td className="dr-td dr-fare" title={title}>
-      <span className={`dr-fare-chip${na ? ' dr-fare-na' : ''}${isFree ? ' dr-fare-free' : ''}`}>
+      <button
+        type="button"
+        className={`dr-fare-chip${na ? ' dr-fare-na' : ''}${isFree ? ' dr-fare-free' : ''}${isActive ? ' dr-fare-active' : ''}`}
+        onClick={() => {
+          if (na) return;
+          setActiveFare(isActive ? null : { source, fareKey });
+        }}
+        aria-expanded={isActive}
+        style={{ cursor: na ? 'default' : 'pointer' }}
+        disabled={na}
+      >
         {value}
-      </span>
+      </button>
     </td>
   );
 }
@@ -108,6 +120,8 @@ function FareCell({ value, title }) {
 function RouteTable({ rows }) {
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState(null);
+  const [activeFare, setActiveFare] = useState(null);
+  const [fareDetails, setFareDetails] = useState({});
 
   const filtered = useMemo(() => {
     const q = normalize(query);
@@ -131,6 +145,9 @@ function RouteTable({ rows }) {
   const toggleSort = (key) => {
     setSort((s) => (s?.key === key ? (s.dir === 'asc' ? { key, dir: 'desc' } : null) : { key, dir: 'asc' }));
   };
+
+  const activeKey = activeFare ? `${activeFare.source}__${activeFare.fareKey}` : null;
+  const activeLabel = activeFare ? FARE_COLS.find((c) => c.key === activeFare.fareKey)?.label : null;
 
   return (
     <div className="dr-table-area">
@@ -199,7 +216,7 @@ function RouteTable({ rows }) {
                   </td>
                   <td className="dr-td dr-num dr-free">৳{row.walking_cost}</td>
                   {FARE_COLS.map((col) => (
-                    <FareCell key={col.key} value={row[col.key]} title={col.label} />
+                    <FareCell key={col.key} value={row[col.key]} title={col.label} fareKey={col.key} source={row.source} activeFare={activeFare} setActiveFare={setActiveFare} />
                   ))}
                 </tr>
               ))
@@ -213,6 +230,44 @@ function RouteTable({ rows }) {
           </tbody>
         </table>
       </div>
+
+      {/* ── Fare pill details — OVERLAY (not niche) — click pill inside table → overlay ── */}
+      {activeFare && (
+        <div className="bhara-details-overlay" onClick={() => setActiveFare(null)}>
+          <div className="bhara-details-panel dr-details-panel animate-fadeInUp" onClick={(e) => e.stopPropagation()}>
+            <div className="bhara-details-head">
+              <span className="bhara-details-title">
+                <PencilLine size={13} /> {activeFare.source} — {activeLabel} — Details (optional)
+              </span>
+              <button type="button" className="bhara-details-close" onClick={() => setActiveFare(null)} aria-label="Close">
+                <X size={12} />
+              </button>
+            </div>
+            <p className="bhara-details-hint">
+              <Info size={11} /> {FARE_PILL_DETAILS[activeFare.fareKey] || 'Briefly bhenge bhenge likho — optional, e.g., point akare'}
+            </p>
+            <textarea
+              className="input bhara-details-input"
+              rows={3}
+              placeholder="Briefly bhenge bhenge likho — e.g., kon route, koto bhara, keno — optional..."
+              value={fareDetails[activeKey] || ''}
+              onChange={(e) => setFareDetails((prev) => ({ ...prev, [activeKey]: e.target.value }))}
+              autoFocus
+            />
+            <div className="bhara-details-actions">
+              <span className="bhara-details-count">{(fareDetails[activeKey] || '').length} chars • optional</span>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setFareDetails((prev) => ({ ...prev, [activeKey]: '' }))}>Clear</button>
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => setActiveFare(null)}>Done</button>
+            </div>
+            {(fareDetails[activeKey] || '').trim() && (
+              <div className="bhara-details-preview">
+                <span className="bhara-details-preview-label">Preview:</span>
+                <p>{fareDetails[activeKey]}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -259,6 +314,17 @@ function NeedsReview({ list }) {
     </div>
   );
 }
+
+// ─── Pill details hints per fare mode (used inside table fare chips) ──
+const FARE_PILL_DETAILS = {
+  rickshaw_cost: 'Rickshaw — e.g., Farmgate → AUST 40৳, traffic er upor 30-60৳ range — briefly bhenge likho (optional)',
+  metro_cost: 'Metro — e.g., Uttara → Farmgate 20৳ + Farmgate → AUST rickshaw 30৳ = 50৳ — optional details',
+  local_bus_cost: 'Local Bus — e.g., Mirpur → Tejgaon 15৳ + hete 10 min — briefly (optional)',
+  aust_shuttle_cost: 'AUST Shuttle — free / 10৳ — route & time briefly (optional)',
+  tempo_cost: 'Tempo/Leguna — e.g., Mohammadpur → Farmgate 20৳ — optional',
+  taxi_cost: 'Taxi — e.g., Dhanmondi → AUST 120-180৳ meter — optional',
+  rideshare_cost: 'Uber/Pathao — e.g., surge e 200-300৳ — briefly (optional)',
+};
 
 // ─── Main component ─────────────────────────────────────────────
 
@@ -330,7 +396,7 @@ export default function DhakaRoutes() {
         </span>
       </div>
 
-      {/* ── Live table ── */}
+      {/* ── Live table — fare chips inside are clickable pills (details optional) ── */}
       <RouteTable rows={rows} />
 
       {/* ── Needs Review (admin only) ── */}
