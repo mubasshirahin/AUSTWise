@@ -13,6 +13,25 @@ import {
   RefreshCw,
   KeyRound,
   FileSearch,
+  Zap,
+  History,
+  XCircle,
+  Layers,
+  LayoutGrid,
+  Users,
+  Clapperboard,
+  Gamepad2,
+  Briefcase,
+  Cpu,
+  GraduationCap,
+  ShoppingBag,
+  Plane,
+  Landmark,
+  HeartPulse,
+  Newspaper,
+  Smartphone,
+  Building2,
+  Shapes,
 } from 'lucide-react';
 import './DigitalFootprintCleaner.css';
 
@@ -26,40 +45,82 @@ const FAVICON_URL = (domain) => `https://www.google.com/s2/favicons?domain=${dom
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
+// How many result cards are rendered initially; the rest reveal on demand so
+// a 200+ platform list never blocks the first paint of the results screen.
+const PAGE_SIZE_CARDS = 60;
+const PAGE_STEP_CARDS = 60;
+
+// Category display config — order mirrors the server's grouping so the most
+// personally-identifying categories (Social, Streaming…) surface first.
+const CATEGORY_ORDER = [
+  'Social', 'Streaming', 'Gaming', 'Work', 'Tech', 'Education',
+  'Shopping', 'Travel', 'Fintech', 'Health', 'News', 'Telecom', 'Government', 'Other',
+];
+
+const CATEGORY_META = {
+  Social:      { icon: Users,         label: 'Social' },
+  Streaming:   { icon: Clapperboard,  label: 'Streaming' },
+  Gaming:      { icon: Gamepad2,      label: 'Gaming' },
+  Work:        { icon: Briefcase,     label: 'Work & Tools' },
+  Tech:        { icon: Cpu,           label: 'Tech' },
+  Education:   { icon: GraduationCap, label: 'Education' },
+  Shopping:    { icon: ShoppingBag,   label: 'Shopping' },
+  Travel:      { icon: Plane,         label: 'Travel & Ride' },
+  Fintech:     { icon: Landmark,      label: 'Fintech' },
+  Health:      { icon: HeartPulse,    label: 'Health' },
+  News:        { icon: Newspaper,     label: 'News' },
+  Telecom:     { icon: Smartphone,    label: 'Telecom' },
+  Government:  { icon: Building2,     label: 'Government' },
+  Other:       { icon: Shapes,        label: 'Other' },
+};
+
 const STEPS = [
   { n: 1, label: 'Enter your Gmail' },
   { n: 2, label: 'Verify it\'s you (Google login)' },
   { n: 3, label: 'Grant Inbox read access' },
+  { n: 4, label: 'Scan your history' },
 ];
 
 export default function DigitalFootprintCleaner() {
   const [email, setEmail] = useState('');
-  const [step, setStep] = useState('locked'); // locked | auth | permission | scanning | results | error
+  const [step, setStep] = useState('locked'); // locked | auth | permission | mode | scanning | results | error
   const [gisLoaded, setGisLoaded] = useState(
     () => typeof window !== 'undefined' && Boolean(window.google?.accounts?.oauth2)
   );
   const [authError, setAuthError] = useState(null);
   const [scanError, setScanError] = useState(null);
-  const [scanProgress, setScanProgress] = useState({ processed: 0, total: 0 });
+  const [scanProgress, setScanProgress] = useState({ processed: 0, total: 0, found: 0 });
+  const [listCount, setListCount] = useState(0);
   const [platforms, setPlatforms] = useState([]);
-  const [scanStats, setScanStats] = useState({ scanned: 0, total: 0 });
+  const [scanStats, setScanStats] = useState({ scanned: 0, total: 0, skipped: 0, mode: 'quick' });
   const [filter, setFilter] = useState('');
+  const [category, setCategory] = useState('all');
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE_CARDS);
 
   const emailValid = EMAIL_RE.test(email.trim());
   const stepRef = useRef(step);
+  const accessTokenRef = useRef(null);
+  const abortRef = useRef(null);
+  const cancelRequestedRef = useRef(false);
 
   useEffect(() => {
     stepRef.current = step;
   }, [step]);
 
   const startOver = useCallback(() => {
+    cancelRequestedRef.current = true;
+    if (abortRef.current) abortRef.current.abort();
     setStep('locked');
     setAuthError(null);
     setScanError(null);
     setPlatforms([]);
-    setScanStats({ scanned: 0, total: 0 });
-    setScanProgress({ processed: 0, total: 0 });
+    setScanStats({ scanned: 0, total: 0, skipped: 0, mode: 'quick' });
+    setScanProgress({ processed: 0, total: 0, found: 0 });
+    setListCount(0);
     setFilter('');
+    setCategory('all');
+    setVisibleCount(PAGE_SIZE_CARDS);
+    accessTokenRef.current = null;
   }, []);
 
   // ── Load Google Identity Services (GIS) once ──
@@ -133,7 +194,7 @@ export default function DigitalFootprintCleaner() {
     client.requestAccessToken();
   };
 
-  // ── Step 2 · Grant Inbox read permission, then scan ──
+  // ── Step 2 · Grant Inbox read permission, then pick a scan mode ──
   const handleGrantRead = () => {
     if (!gisLoaded) {
       setAuthError('Google sign-in is still loading. Please try again in a moment.');
@@ -153,8 +214,8 @@ export default function DigitalFootprintCleaner() {
           setStep('permission');
           return;
         }
-        setStep('scanning');
-        await runScan(response.access_token);
+        accessTokenRef.current = response.access_token;
+        setStep('mode');
       },
       error_callback: () => {
         setAuthError('Inbox read permission was denied. Please try again.');
@@ -165,14 +226,31 @@ export default function DigitalFootprintCleaner() {
   };
 
   // ── Consume the SSE scan stream from /api/cleaner/scan ──
-  const runScan = async (token) => {
-    setScanProgress({ processed: 0, total: 0 });
+  const runScan = async (mode) => {
+    const token = accessTokenRef.current;
+    if (!token) {
+      setStep('permission');
+      return;
+    }
+    cancelRequestedRef.current = false;
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setScanProgress({ processed: 0, total: 0, found: 0 });
+    setListCount(0);
     setScanError(null);
+    setStep('scanning');
     try {
       const res = await fetch('/api/cleaner/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accessToken: token, email: email.trim(), maxResults: 300 }),
+        body: JSON.stringify({
+          accessToken: token,
+          email: email.trim(),
+          mode,
+          ...(mode === 'quick' ? { maxResults: 1000 } : {}),
+        }),
+        signal: controller.signal,
       });
       if (!res.ok || !res.body) throw new Error('The scan could not be started. Please try again.');
 
@@ -192,12 +270,26 @@ export default function DigitalFootprintCleaner() {
           if (!line.startsWith('data:')) continue;
           let evt;
           try { evt = JSON.parse(line.slice(5).trim()); } catch { continue; }
-          if (evt.type === 'progress') {
-            setScanProgress({ processed: evt.processed, total: evt.total });
+          if (evt.type === 'list') {
+            setListCount(evt.listed || 0);
+          } else if (evt.type === 'progress') {
+            setScanProgress({
+              processed: evt.processed || 0,
+              total: evt.total || 0,
+              found: evt.found || 0,
+            });
           } else if (evt.type === 'done') {
             finished = true;
             setPlatforms(evt.platforms || []);
-            setScanStats({ scanned: evt.scanned || 0, total: evt.total || 0 });
+            setScanStats({
+              scanned: evt.scanned || 0,
+              total: evt.total || 0,
+              skipped: evt.skipped || 0,
+              mode: evt.mode || mode,
+            });
+            setVisibleCount(PAGE_SIZE_CARDS);
+            setFilter('');
+            setCategory('all');
             setStep('results');
           } else if (evt.type === 'error') {
             finished = true;
@@ -211,11 +303,23 @@ export default function DigitalFootprintCleaner() {
         setStep('error');
       }
     } catch (err) {
+      if (cancelRequestedRef.current) {
+        // User pressed Cancel — return to the mode picker, not the error screen.
+        if (stepRef.current === 'scanning') setStep('mode');
+        return;
+      }
       if (stepRef.current === 'scanning' || stepRef.current === 'error') {
         setScanError(err.message || 'Scan failed.');
         setStep('error');
       }
+    } finally {
+      abortRef.current = null;
     }
+  };
+
+  const handleCancelScan = () => {
+    cancelRequestedRef.current = true;
+    if (abortRef.current) abortRef.current.abort();
   };
 
   // ── Derived ──
@@ -225,14 +329,15 @@ export default function DigitalFootprintCleaner() {
 
   const scanPhase =
     scanProgress.total === 0
-      ? 'Fetching inbox message list…'
-      : scanProgress.processed < scanProgress.total * 0.6
-        ? `Reading sender headers… ${scanProgress.processed}/${scanProgress.total}`
-        : scanProgress.processed < scanProgress.total * 0.95
-          ? 'Parsing & deduplicating platforms…'
-          : 'Finalizing your digital footprint…';
+      ? listCount > 0
+        ? `Indexing mailbox… ${listCount} messages listed`
+        : 'Fetching mailbox index…'
+      : scanProgress.processed < scanProgress.total
+        ? `Scanned ${scanProgress.processed.toLocaleString()} of ${scanProgress.total.toLocaleString()} emails`
+        : 'Finalizing your digital footprint…';
 
   const filteredPlatforms = platforms.filter((p) => {
+    if (category !== 'all' && p.category !== category) return false;
     const q = filter.trim().toLowerCase();
     if (!q) return true;
     return (
@@ -241,6 +346,27 @@ export default function DigitalFootprintCleaner() {
       (p.sender || '').toLowerCase().includes(q)
     );
   });
+
+  const categoryCounts = {};
+  for (const p of platforms) {
+    categoryCounts[p.category] = (categoryCounts[p.category] || 0) + 1;
+  }
+  const activeCategories = CATEGORY_ORDER.filter((c) => categoryCounts[c] > 0);
+
+  // Split the filtered list into category sections, then reveal lazily across
+  // section boundaries so large scans still paint fast.
+  const sections = [];
+  let shownTotal = 0;
+  for (const cat of activeCategories) {
+    const items = filteredPlatforms.filter((p) => p.category === cat);
+    if (items.length === 0) continue;
+    const slice = shownTotal < visibleCount
+      ? items.slice(0, visibleCount - shownTotal)
+      : [];
+    shownTotal += slice.length;
+    sections.push({ category: cat, items: slice, total: items.length });
+  }
+  const hiddenCount = filteredPlatforms.length - shownTotal;
 
   const notConfigured = !GOOGLE_CLIENT_ID;
 
@@ -258,9 +384,9 @@ export default function DigitalFootprintCleaner() {
           <span className="dfc-eyebrow">Digital Footprint Cleaner</span>
           <h2 className="dfc-title">Clean Your Digital Footprint</h2>
           <p className="dfc-subtitle">
-            This tool scans <strong>your Gmail Inbox</strong> via Google&apos;s official API to map every
-            website where you registered or logged in with your Gmail address — no guesswork, no scraping,
-            no breach databases.
+            This tool scans <strong>your entire Gmail account</strong> via Google&apos;s official API to
+            map every website where you registered or logged in with your Gmail address — from account
+            creation to today. No guesswork, no scraping, no breach databases.
           </p>
         </div>
 
@@ -351,7 +477,7 @@ export default function DigitalFootprintCleaner() {
           <p className="dfc-wizard-desc">
             {onAuthStep
               ? `Google will ask you to sign in as ${email.trim()}.`
-              : 'One more step: allow AUSTWise to read your inbox messages so the scan can list your platforms.'}
+              : 'One more step: allow AUSTWise to read your inbox senders so the scan can list your platforms.'}
           </p>
         </div>
 
@@ -412,6 +538,86 @@ export default function DigitalFootprintCleaner() {
     );
   }
 
+  // ── Step 3 · Choose scan depth ──
+  if (step === 'mode') {
+    return (
+      <section className="dfc dfc-wizard">
+        <div className="dfc-wizard-head">
+          <span className="dfc-eyebrow">Access granted</span>
+          <h3 className="dfc-wizard-title">Choose your scan depth</h3>
+          <p className="dfc-wizard-desc">
+            How much of <strong>{email.trim()}</strong>&apos;s history should be searched for platform signups?
+          </p>
+        </div>
+
+        <div className="dfc-wizard-stepper">
+          {STEPS.map((s) => (
+            <div
+              key={s.n}
+              className={`dfc-stepper-item ${s.n < 4 ? 'is-done' : ''} ${s.n === 4 ? 'is-active' : ''}`}
+            >
+              <span className="dfc-stepper-dot">
+                {s.n < 4 ? <Check size={14} /> : s.n}
+              </span>
+              <span className="dfc-stepper-label">{s.label}</span>
+            </div>
+          ))}
+        </div>
+
+        {authError && (
+          <div className="dfc-banner dfc-banner-error">
+            <AlertTriangle size={18} />
+            <span>{authError}</span>
+          </div>
+        )}
+
+        <div className="dfc-modes">
+          <button
+            type="button"
+            className="dfc-mode-card"
+            onClick={() => runScan('quick')}
+          >
+            <span className="dfc-mode-icon dfc-mode-icon-quick">
+              <Zap size={20} />
+            </span>
+            <span className="dfc-mode-name">Quick Scan</span>
+            <span className="dfc-mode-desc">
+              Latest ~1,000 emails across your whole account. Fast preview — takes seconds.
+            </span>
+            <span className="dfc-mode-meta">⚡ Best for a quick look</span>
+          </button>
+
+          <button
+            type="button"
+            className="dfc-mode-card dfc-mode-card-full"
+            onClick={() => runScan('full')}
+          >
+            <span className="dfc-mode-icon dfc-mode-icon-full">
+              <History size={20} />
+            </span>
+            <span className="dfc-mode-name">Full Footprint Scan</span>
+            <span className="dfc-mode-desc">
+              Every email since your account was created — archived, spam and all. Finds years-old signups.
+            </span>
+            <span className="dfc-mode-meta">🕰 Complete history · can take a few minutes</span>
+          </button>
+        </div>
+
+        <div className="dfc-wizard-actions">
+          <button type="button" className="dfc-btn dfc-btn-ghost" onClick={startOver}>
+            <RotateCcw size={15} />
+            Start over
+          </button>
+        </div>
+
+        <div className="dfc-wizard-note">
+          <Lock size={14} />
+          <span>Only sender addresses are read — message bodies are never opened or stored.</span>
+        </div>
+      </section>
+    );
+  }
+
   // ── Scanning state ──
   if (step === 'scanning') {
     return (
@@ -423,15 +629,35 @@ export default function DigitalFootprintCleaner() {
             <span className="dfc-scan-ring dfc-scan-ring-2" />
             <span className="dfc-scan-line" />
           </div>
-          <h3 className="dfc-scan-title">Scanning your inbox</h3>
+          <h3 className="dfc-scan-title">Scanning your mailbox</h3>
           <p className="dfc-scan-phase">{scanPhase}</p>
 
           <div className="dfc-progress-track">
-            <div className="dfc-progress-fill" style={{ width: `${progressPct}%` }} />
+            <div
+              className={`dfc-progress-fill ${scanProgress.total === 0 ? 'is-indeterminate' : ''}`}
+              style={scanProgress.total === 0 ? undefined : { width: `${progressPct}%` }}
+            />
           </div>
           <div className="dfc-progress-meta">
-            <span>Scanning Inbox messages 0-{scanProgress.total || 100}…</span>
-            <span>{progressPct}%</span>
+            <span>
+              {scanStats.mode === 'full' || scanProgress.total === 0
+                ? 'Full history scan in progress…'
+                : `Scanning latest ${scanProgress.total || 1000} messages…`}
+            </span>
+            <span>{scanProgress.total ? `${progressPct}%` : ''}</span>
+          </div>
+
+          <div className="dfc-scan-live">
+            <div className="dfc-live-stat">
+              <Mail size={15} />
+              <span className="dfc-live-num">{scanProgress.processed.toLocaleString()}</span>
+              <span className="dfc-live-label">emails scanned</span>
+            </div>
+            <div className="dfc-live-stat is-accent">
+              <Layers size={15} />
+              <span className="dfc-live-num">{scanProgress.found.toLocaleString()}</span>
+              <span className="dfc-live-label">unique services found</span>
+            </div>
           </div>
         </div>
 
@@ -446,6 +672,11 @@ export default function DigitalFootprintCleaner() {
             <Loader2 size={14} className="dfc-spin" /> Mapping every sender to a platform…
           </li>
         </ul>
+
+        <button type="button" className="dfc-btn dfc-btn-danger" onClick={handleCancelScan}>
+          <XCircle size={15} />
+          Cancel scan
+        </button>
 
         <p className="dfc-privacy-inline">
           <FileSearch size={14} />
@@ -465,17 +696,31 @@ export default function DigitalFootprintCleaner() {
         <h3 className="dfc-error-title">Scan failed</h3>
         <p className="dfc-error-desc">{scanError}</p>
         <div className="dfc-wizard-actions">
-          <button
-            type="button"
-            className="dfc-btn dfc-btn-primary"
-            onClick={() => {
-              setStep('permission');
-              setScanError(null);
-            }}
-          >
-            <RefreshCw size={16} />
-            Grant access again
-          </button>
+          {accessTokenRef.current ? (
+            <button
+              type="button"
+              className="dfc-btn dfc-btn-primary"
+              onClick={() => {
+                setScanError(null);
+                setStep('mode');
+              }}
+            >
+              <RefreshCw size={16} />
+              Try again
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="dfc-btn dfc-btn-primary"
+              onClick={() => {
+                setStep('permission');
+                setScanError(null);
+              }}
+            >
+              <RefreshCw size={16} />
+              Grant access again
+            </button>
+          )}
           <button type="button" className="dfc-btn dfc-btn-ghost" onClick={startOver}>
             <RotateCcw size={15} />
             Start over
@@ -495,17 +740,21 @@ export default function DigitalFootprintCleaner() {
           <h3 className="dfc-results-title">Your Digital Footprint</h3>
           <p className="dfc-results-sub">
             <strong>{totalPlatforms}</strong> platform{totalPlatforms === 1 ? '' : 's'} found across{' '}
-            {scanStats.scanned} inbox message{scanStats.scanned === 1 ? '' : 's'} for{' '}
+            {scanStats.scanned.toLocaleString()} inbox message{scanStats.scanned === 1 ? '' : 's'} for{' '}
             <strong>{email.trim()}</strong>
+            {scanStats.skipped > 0 ? ` · ${scanStats.skipped.toLocaleString()} unreadable messages skipped` : ''}
           </p>
+          <span className={`dfc-mode-badge ${scanStats.mode === 'full' ? 'is-full' : ''}`}>
+            {scanStats.mode === 'full' ? 'Full history scan' : 'Quick scan (~1,000)'}
+          </span>
         </div>
         <div className="dfc-results-actions">
           <button
             type="button"
             className="dfc-btn dfc-btn-ghost"
             onClick={() => {
-              setStep('permission');
               setScanError(null);
+              setStep(accessTokenRef.current ? 'mode' : 'permission');
             }}
           >
             <RefreshCw size={15} />
@@ -518,12 +767,44 @@ export default function DigitalFootprintCleaner() {
         </div>
       </div>
 
+      {totalPlatforms > 0 && (
+        <div className="dfc-chips" aria-label="Filter by category">
+          <button
+            type="button"
+            className={`dfc-chip ${category === 'all' ? 'is-active' : ''}`}
+            onClick={() => {
+              setCategory('all');
+              setVisibleCount(PAGE_SIZE_CARDS);
+            }}
+          >
+            <LayoutGrid size={13} />
+            All
+            <span className="dfc-chip-count">{totalPlatforms}</span>
+          </button>
+          {activeCategories.map((cat) => (
+            <CategoryChip
+              key={cat}
+              cat={cat}
+              count={categoryCounts[cat]}
+              active={category === cat}
+              onClick={() => {
+                setCategory(category === cat ? 'all' : cat);
+                setVisibleCount(PAGE_SIZE_CARDS);
+              }}
+            />
+          ))}
+        </div>
+      )}
+
       <div className="dfc-search">
         <Search size={17} />
         <input
           type="text"
           value={filter}
-          onChange={(e) => setFilter(e.target.value)}
+          onChange={(e) => {
+            setFilter(e.target.value);
+            setVisibleCount(PAGE_SIZE_CARDS);
+          }}
           placeholder="Filter platforms… e.g. Netflix, spotify.com"
         />
         <span className="dfc-search-count">{filteredPlatforms.length} shown</span>
@@ -534,44 +815,95 @@ export default function DigitalFootprintCleaner() {
           <Globe size={28} />
           <p>
             {totalPlatforms === 0
-              ? 'No platforms found in the recent messages scanned. Try rescanning with a deeper window.'
+              ? 'No platforms found in the messages scanned. Try a Full Footprint Scan to search your entire account history.'
               : 'No platforms match your filter.'}
           </p>
+          {totalPlatforms > 0 && (
+            <button
+              type="button"
+              className="dfc-btn dfc-btn-ghost"
+              onClick={() => {
+                setFilter('');
+                setCategory('all');
+                setVisibleCount(PAGE_SIZE_CARDS);
+              }}
+            >
+              <RotateCcw size={14} />
+              Clear filters
+            </button>
+          )}
         </div>
       ) : (
-        <div className="dfc-grid">
-          {filteredPlatforms.map((p) => (
-            <article key={p.domain} className="dfc-card">
-              <div className="dfc-card-top">
-                <PlatformAvatar name={p.name} domain={p.domain} />
-                <span className="dfc-badge">
-                  <span className="dfc-badge-dot" /> Active Account
-                </span>
-              </div>
-              <h4 className="dfc-card-name">{p.name}</h4>
-              <a
-                className="dfc-card-domain"
-                href={`https://${p.domain}`}
-                target="_blank"
-                rel="noreferrer"
+        <>
+          {sections.map(({ category: cat, items, total }) => {
+            const meta = CATEGORY_META[cat] || CATEGORY_META.Other;
+            const CatIcon = meta.icon;
+            return (
+              <section key={cat} className="dfc-cat-section">
+                <header className="dfc-cat-head">
+                  <span className="dfc-cat-icon">
+                    <CatIcon size={14} />
+                  </span>
+                  <h4 className="dfc-cat-title">{meta.label}</h4>
+                  <span className="dfc-cat-count">{total.toLocaleString()}</span>
+                  {items.length < total && (
+                    <span className="dfc-cat-partial">
+                      showing {items.length.toLocaleString()} — use “Show more” below
+                    </span>
+                  )}
+                </header>
+                <div className="dfc-grid">
+                  {items.map((p) => (
+                    <article key={p.domain} className="dfc-card">
+                      <div className="dfc-card-top">
+                        <PlatformAvatar name={p.name} domain={p.domain} />
+                        <span className="dfc-badge">
+                          <span className="dfc-badge-dot" /> Active Account
+                        </span>
+                      </div>
+                      <h4 className="dfc-card-name">{p.name}</h4>
+                      <a
+                        className="dfc-card-domain"
+                        href={`https://${p.domain}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {p.domain}
+                        <ExternalLink size={12} />
+                      </a>
+                      <div className="dfc-card-stats">
+                        <span>{p.emailCount.toLocaleString()} email{p.emailCount === 1 ? '' : 's'}</span>
+                        <span>·</span>
+                        <span>{p.accountCount.toLocaleString()} sender{p.accountCount === 1 ? '' : 's'}</span>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+          {hiddenCount > 0 && (
+            <div className="dfc-show-more">
+              <span className="dfc-show-more-info">
+                Showing {shownTotal.toLocaleString()} of {filteredPlatforms.length.toLocaleString()} platforms
+              </span>
+              <button
+                type="button"
+                className="dfc-btn dfc-btn-ghost"
+                onClick={() => setVisibleCount((c) => c + PAGE_STEP_CARDS)}
               >
-                {p.domain}
-                <ExternalLink size={12} />
-              </a>
-              <div className="dfc-card-stats">
-                <span>{p.emailCount} email{p.emailCount === 1 ? '' : 's'}</span>
-                <span>·</span>
-                <span>{p.accountCount} sender{p.accountCount === 1 ? '' : 's'}</span>
-              </div>
-            </article>
-          ))}
-        </div>
+                <Layers size={15} />
+                Show {Math.min(PAGE_STEP_CARDS, hiddenCount)} more
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       <div className="dfc-privacy dfc-results-foot">
         <Globe size={15} />
         <span>
-          This list is rebuilt from your inbox every scan. It is never saved — revoke access anytime at{' '}
+          This list is rebuilt from your mailbox every scan. It is never saved — revoke access anytime at{' '}
           <a href="https://myaccount.google.com/permissions" target="_blank" rel="noreferrer">
             myaccount.google.com/permissions
           </a>
@@ -579,6 +911,23 @@ export default function DigitalFootprintCleaner() {
         </span>
       </div>
     </section>
+  );
+}
+
+function CategoryChip({ cat, count, active, onClick }) {
+  const meta = CATEGORY_META[cat] || CATEGORY_META.Other;
+  const Icon = meta.icon;
+  return (
+    <button
+      type="button"
+      className={`dfc-chip ${active ? 'is-active' : ''}`}
+      onClick={onClick}
+      title={`Show only ${meta.label} platforms`}
+    >
+      <Icon size={13} />
+      {meta.label}
+      <span className="dfc-chip-count">{count}</span>
+    </button>
   );
 }
 
