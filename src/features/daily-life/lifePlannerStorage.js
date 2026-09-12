@@ -13,9 +13,6 @@
  *   deps:     [{ id, goalId, dependsOnGoalId, note }],
  *   tasks:    [{ id, goalId, name, costLabel, dueLabel, dueDate, order }],
  *   steps:    [{ id, taskId, text, dueLabel, dueDate, isDone, doneAt, note, order }],
- *   habits:   [{ id, name, frequency, targetDaysPerWeek, startDate, archived, order }],
- *   habitLogs:{ [habitId]: { [YYYY-MM-DD]: true } },
- *   ledger:   [{ id, date, item, amount, category, relatedGoalId, order }],
  * }
  */
 
@@ -23,7 +20,7 @@ import { useLiveValue } from '../../utils/liveStore';
 
 export const STORE_KEY = 'aust-life-planner-v1';
 
-export const GOAL_TYPES = ['goal', 'milestone', 'habit'];
+export const GOAL_TYPES = ['goal', 'milestone'];
 
 export const TYPE_META = {
   goal:      { label: 'Goal',      color: 'var(--accent-amber)',   badge: 'lp-badge-amber' },
@@ -48,7 +45,6 @@ export const WEEKDAYS = [
 
 export const EMPTY_DOC = {
   phases: [], goals: [], deps: [], tasks: [], steps: [],
-  habits: [], habitLogs: {}, ledger: [],
 };
 
 // ── id helper ────────────────────────────────────────────────────────────────
@@ -163,11 +159,97 @@ export function milestoneProgress(doc, milestoneId) {
   return Math.round(goals.reduce((sum, g) => sum + goalProgress(doc, g.id), 0) / goals.length);
 }
 
+/** Display number for a milestone — order-based 1,2,3 across all milestones. */
+export function milestoneDisplayNumber(doc, milestone) {
+  if (!milestone) return '?';
+  const ms = doc.goals
+    .filter((g) => (g.types || []).includes('milestone'))
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+  const idx = ms.findIndex((x) => x.id === milestone.id);
+  return idx >= 0 ? idx + 1 : (milestone.number || '?');
+}
+
+/** Display number for a goal/milestone — per-milestone 1,2,3 (not global). Fixes "Goal 7" showing as first goal. */
+export function goalDisplayNumber(doc, goal) {
+  if (!goal) return '?';
+  const isMilestone = (goal.types || []).includes('milestone');
+  if (isMilestone) {
+    const ms = [...doc.goals].filter((g) => (g.types || []).includes('milestone')).sort((a, b) => (a.order || 0) - (b.order || 0));
+    const idx = ms.findIndex((x) => x.id === goal.id);
+    return idx >= 0 ? idx + 1 : goal.number;
+  }
+  if (goal.milestoneId) {
+    const sibs = goalsOfMilestone(doc, goal.milestoneId);
+    const idx = sibs.findIndex((x) => x.id === goal.id);
+    return idx >= 0 ? idx + 1 : goal.number;
+  }
+  if (goal.phaseId) {
+    const ph = doc.phases.find((p) => p.id === goal.phaseId);
+    if (ph?.milestoneId) {
+      const sibs = goalsOfMilestone(doc, ph.milestoneId);
+      const idx = sibs.findIndex((x) => x.id === goal.id);
+      return idx >= 0 ? idx + 1 : goal.number;
+    }
+  }
+  const unassigned = doc.goals.filter((g) => !(g.types || []).includes('milestone') && !g.milestoneId && !g.phaseId).sort((a, b) => (a.order || 0) - (b.order || 0));
+  const idx2 = unassigned.findIndex((x) => x.id === goal.id);
+  return idx2 >= 0 ? idx2 + 1 : goal.number;
+}
+
+// ── auto deadline for goals: latest end date among its tasks (dynamic) ─────────
+export function goalAutoDeadline(doc, goalId) {
+  const tasks = tasksOfGoal(doc, goalId);
+  if (tasks.length === 0) return null;
+  let latest = null;
+  for (const t of tasks) {
+    const end = t.isRecurring ? (t.recurringEndDate || t.recurringUntil || null) : (t.dueDate || t.startDate || null);
+    if (!end) continue;
+    if (!latest || end > latest) latest = end;
+  }
+  return latest; // YYYY-MM-DD or null
+}
+
 // ── derived: progress & status ───────────────────────────────────────────────
 
+export function goalHasSteps(doc, goalId) {
+  return stepsOfGoal(doc, goalId).length > 0;
+}
+
+export function toggleGoalDone(doc, goalId) {
+  return {
+    ...doc,
+    goals: doc.goals.map((g) => g.id === goalId ? { ...g, manualDone: !g.manualDone, status: !g.manualDone ? 'done' : 'not_started', doneAt: !g.manualDone ? new Date().toISOString() : null } : g),
+  };
+}
+
+export function toggleTaskDone(doc, taskId) {
+  return {
+    ...doc,
+    tasks: doc.tasks.map((t) => t.id === taskId ? { ...t, manualDone: !t.manualDone, doneAt: !t.manualDone ? new Date().toISOString() : null } : t),
+  };
+}
+
+export function taskProgress(doc, taskId) {
+  const steps = stepsOfTask(doc, taskId);
+  if (steps.length === 0) {
+    const t = byId(doc.tasks, taskId);
+    return t?.manualDone ? 100 : 0;
+  }
+  const done = steps.filter((s) => s.isDone).length;
+  return Math.round((done / steps.length) * 100);
+}
+
 export function goalProgress(doc, goalId) {
+  const tasks = tasksOfGoal(doc, goalId);
+  if (tasks.length > 0) {
+    const sum = tasks.reduce((s, t) => s + taskProgress(doc, t.id), 0);
+    return Math.round(sum / tasks.length);
+  }
   const steps = stepsOfGoal(doc, goalId);
-  if (steps.length === 0) return 0;
+  if (steps.length === 0) {
+    const g = byId(doc.goals, goalId);
+    return g?.manualDone ? 100 : 0;
+  }
   const done = steps.filter((s) => s.isDone).length;
   return Math.round((done / steps.length) * 100);
 }
@@ -179,8 +261,10 @@ export function phaseProgress(doc, phaseId) {
 }
 
 export function overallProgress(doc) {
-  if (doc.goals.length === 0) return 0;
-  return Math.round(doc.goals.reduce((sum, g) => sum + goalProgress(doc, g.id), 0) / doc.goals.length);
+  // Milestones are containers, not goals — exclude them from the overall average.
+  const realGoals = doc.goals.filter((g) => !(g.types || []).includes('milestone'));
+  if (realGoals.length === 0) return 0;
+  return Math.round(realGoals.reduce((sum, g) => sum + goalProgress(doc, g.id), 0) / realGoals.length);
 }
 
 /** A goal is "locked" while any prerequisite goal isn't 100% done. */
@@ -195,7 +279,11 @@ export function recomputeGoalStatus(doc, goalId) {
   const g = byId(doc.goals, goalId);
   if (!g) return;
   const steps = stepsOfGoal(doc, goalId);
-  g.status = steps.length > 0 && steps.every((s) => s.isDone) ? 'done'
+  if (steps.length === 0) {
+    g.status = g.manualDone ? 'done' : 'not_started';
+    return;
+  }
+  g.status = steps.every((s) => s.isDone) ? 'done'
     : steps.some((s) => s.isDone) ? 'in_progress' : 'not_started';
 }
 
@@ -207,131 +295,122 @@ export function withStatuses(docDraft) {
 
 // ── derived: timeline ────────────────────────────────────────────────────────
 
-/** Union of Goal.timingDate + Task.dueDate + Step.dueDate + recurring weekly expansion, sorted ascending. */
-export function buildTimeline(doc) {
+/** Build entries between fromKey..toKey inclusive (YYYY-MM-DD). Used for 10-year view. */
+export function buildTimelineRange(doc, fromKey, toKey) {
+  const from = fromKey ? new Date(`${fromKey}T00:00:00`) : null;
+  const to = toKey ? new Date(`${toKey}T00:00:00`) : null;
+  const inRange = (k) => {
+    if (!k) return false;
+    if (fromKey && k < fromKey) return false;
+    if (toKey && k > toKey) return false;
+    return true;
+  };
   const entries = [];
-  for (const goal of doc.goals) {
-    if (goal.timingDate) {
-      entries.push({ date: goal.timingDate, kind: 'goal', label: `Deadline: ${goal.title}`, goal, done: goalProgress(doc, goal.id) === 100 });
+  // Only tasks & steps from Goals page — no milestone/goal deadline entries
+  const dayToKey = Object.fromEntries(WEEKDAYS.map((w) => [w.day, w.key]));
+  const getMilestone = (goal) => {
+    if (!goal) return null;
+    if (goal.milestoneId) return byId(doc.goals, goal.milestoneId);
+    if (goal.phaseId) {
+      const ph = doc.phases.find((p) => p.id === goal.phaseId);
+      if (ph?.milestoneId) return byId(doc.goals, ph.milestoneId);
     }
-  }
+    return null;
+  };
+  // Helper: determine per-task recurring window [start .. end]
+  const taskWindow = (task) => {
+    // start = recurringStartDate / startDate / createdAt
+    let startKey = task.recurringStartDate || task.startDate || null;
+    if (!startKey && task.createdAt) {
+      try { startKey = todayKey(new Date(task.createdAt)); } catch {}
+    }
+    if (!startKey && task.createdAtKey) startKey = task.createdAtKey;
+    if (!startKey) startKey = fromKey;
+    let endKey = task.recurringEndDate || task.recurringUntil || task.recurringEnd || task.dueDate || null;
+    if (!endKey) endKey = toKey;
+    return { startKey, endKey };
+  };
   for (const task of doc.tasks) {
+    // Skip orphaned tasks left by legacy deleteGoal bug (goal already deleted)
+    if (!byId(doc.goals, task.goalId)) continue;
+    // Tasks belong to goals, not milestones — never timeline milestone-attached tasks
+    const parentGoal = byId(doc.goals, task.goalId);
+    if ((parentGoal.types || []).includes('milestone')) continue;
     if (task.isRecurring && Array.isArray(task.recurringWeekdays) && task.recurringWeekdays.length) {
       const goal = byId(doc.goals, task.goalId);
       const selectedDays = new Set(task.recurringWeekdays);
-      // map weekday key -> day number using WEEKDAYS
-      const keyToDay = Object.fromEntries(WEEKDAYS.map((w) => [w.key, w.day]));
-      for (let i = 0; i < 30; i++) {
-        const d = addDays(new Date(), i);
-        const dayNum = d.getDay();
-        const key = WEEKDAYS.find((w) => w.day === dayNum)?.key;
+      const { startKey, endKey } = taskWindow(task);
+      const effFrom = startKey && fromKey ? (startKey > fromKey ? startKey : fromKey) : (startKey || fromKey);
+      const effTo = endKey && toKey ? (endKey < toKey ? endKey : toKey) : (endKey || toKey);
+      if (effFrom && effTo && effFrom > effTo) continue;
+      const sD = effFrom ? new Date(`${effFrom}T00:00:00`) : (from ? new Date(from) : new Date());
+      const eD = effTo ? new Date(`${effTo}T00:00:00`) : (to ? new Date(to) : addDays(sD, 365));
+      const maxDays = 11 * 366;
+      const totalDays = Math.min(maxDays, Math.max(0, Math.round((eD - sD) / 86400000) + 1));
+      if (totalDays <= 0 || totalDays > maxDays) continue;
+      for (let i = 0; i < totalDays; i++) {
+        const d = addDays(sD, i);
+        const key = dayToKey[d.getDay()];
         if (key && selectedDays.has(key)) {
           const dateKey = todayKey(d);
-          entries.push({ date: dateKey, kind: 'task', label: `${task.name} (Recurring)`, goal, recurring: true, weekdays: task.recurringWeekdays });
+          if (!inRange(dateKey)) continue;
+          const milestone = getMilestone(goal);
+          entries.push({ date: dateKey, kind: 'task', label: `${task.name} (Recurring)`, goal, milestone, recurring: true, weekdays: task.recurringWeekdays, task });
         }
       }
-    } else if (task.dueDate) {
-      const goal = byId(doc.goals, task.goalId);
-      entries.push({ date: task.dueDate, kind: 'task', label: task.name, goal });
+    } else {
+      // Non-recurring: supports startDate .. dueDate range (daily entries) or single date
+      const s = task.startDate || null;
+      const e = task.dueDate || null;
+      if (s && e) {
+        if (s > e) { // swap if inverted
+          if (inRange(s)) { const goal = byId(doc.goals, task.goalId); entries.push({ date: s, kind: 'task', label: task.name, goal, milestone: getMilestone(goal), task, range: `${s} → ${e}` }); }
+          continue;
+        }
+        const effFrom = s && fromKey ? (s > fromKey ? s : fromKey) : (s || fromKey);
+        const effTo = e && toKey ? (e < toKey ? e : toKey) : (e || toKey);
+        if (effFrom && effTo && effFrom > effTo) continue;
+        const sD = effFrom ? new Date(`${effFrom}T00:00:00`) : (from ? new Date(from) : new Date(`${s}T00:00:00`));
+        const eD = effTo ? new Date(`${effTo}T00:00:00`) : (to ? new Date(to) : new Date(`${e}T00:00:00`));
+        const totalDays = Math.min(11*366, Math.max(0, Math.round((eD - sD)/86400000)+1));
+        if (totalDays <=0 || totalDays > 11*366) continue;
+        // If range is 1 day, single entry; if longer, daily entries so timeline shows duration
+        for (let i=0;i<totalDays;i++) {
+          const d = addDays(sD, i);
+          const dateKey = todayKey(d);
+          if (!inRange(dateKey)) continue;
+          const g = byId(doc.goals, task.goalId);
+          entries.push({ date: dateKey, kind: 'task', label: i===0 ? task.name : `${task.name} (→ ${fmtDate(e)})`, goal: g, milestone: getMilestone(g), task, range: `${s} → ${e}` });
+        }
+      } else if (e && inRange(e)) {
+        const goal = byId(doc.goals, task.goalId);
+        entries.push({ date: e, kind: 'task', label: task.name, goal, milestone: getMilestone(goal), task });
+      } else if (s && inRange(s)) {
+        const goal = byId(doc.goals, task.goalId);
+        entries.push({ date: s, kind: 'task', label: task.name, goal, milestone: getMilestone(goal), task });
+      }
     }
   }
   for (const step of doc.steps) {
     const task = byId(doc.tasks, step.taskId);
-    const parentRecurring = !!task?.isRecurring;
-    if (parentRecurring && Array.isArray(task.recurringWeekdays) && task.recurringWeekdays.length) {
-      // auto recurring step — same weekdays as parent task
+    if (!task) continue;
+    // Skip steps whose task is orphaned (legacy deleteGoal left DF ghosts)
+    if (!byId(doc.goals, task.goalId)) continue;
+    if (step.dueDate && inRange(step.dueDate)) {
       const goal = task ? byId(doc.goals, task.goalId) : null;
-      const selectedDays = new Set(task.recurringWeekdays);
-      for (let i = 0; i < 30; i++) {
-        const d = addDays(new Date(), i);
-        const dayNum = d.getDay();
-        const key = WEEKDAYS.find((w) => w.day === dayNum)?.key;
-        if (key && selectedDays.has(key)) {
-          const dateKey = todayKey(d);
-          entries.push({ date: dateKey, kind: 'step', label: `${step.text} (Recurring)`, step, goal, done: !!step.isDone, recurring: true });
-        }
-      }
-    } else if (step.dueDate) {
-      const goal = task ? byId(doc.goals, task.goalId) : null;
-      entries.push({
-        date: step.dueDate, kind: 'step', label: step.text, step, goal,
-        done: !!step.isDone,
-      });
+      const milestone = getMilestone(goal);
+      entries.push({ date: step.dueDate, kind: 'step', label: step.text, step, goal, milestone, task, done: !!step.isDone });
     }
   }
   return entries.sort((a, b) => a.date.localeCompare(b.date));
 }
 
-// ── derived: habits ──────────────────────────────────────────────────────────
-
-export function habitDone(doc, habitId, dateKey) {
-  return !!doc.habitLogs?.[habitId]?.[dateKey];
-}
-
-export function toggleHabitDay(doc, habitId, dateKey) {
-  const logs = { ...(doc.habitLogs || {}) };
-  const forHabit = { ...(logs[habitId] || {}) };
-  if (forHabit[dateKey]) delete forHabit[dateKey];
-  else forHabit[dateKey] = true;
-  logs[habitId] = forHabit;
-  return { ...doc, habitLogs: logs };
-}
-
-/** Consecutive done days counted back from today (or yesterday if today is not done yet). */
-export function habitStreak(doc, habit) {
-  const logs = doc.habitLogs?.[habit.id] || {};
-  let streak = 0;
-  let cursor = new Date();
-  if (!logs[todayKey(cursor)]) cursor = addDays(cursor, -1); // today not logged yet — don't break the streak
-  while (logs[todayKey(cursor)]) {
-    streak += 1;
-    cursor = addDays(cursor, -1);
-  }
-  return streak;
-}
-
-export function habitBestStreak(doc, habit) {
-  const logs = doc.habitLogs?.[habit.id] || {};
-  const keys = Object.keys(logs).filter((k) => logs[k]).sort();
-  let best = 0, run = 0, prev = null;
-  for (const k of keys) {
-    run = prev && daysBetween(prev, k) === 1 ? run + 1 : 1;
-    best = Math.max(best, run);
-    prev = k;
-  }
-  return best;
-}
-
-/** Done-count for a habit inside the week starting at `weekStart`. */
-export function habitWeekCount(doc, habit, weekStart) {
-  let count = 0;
-  for (let i = 0; i < 7; i++) {
-    if (habitDone(doc, habit.id, todayKey(addDays(weekStart, i)))) count += 1;
-  }
-  return count;
-}
-
-// ── derived: ledger ──────────────────────────────────────────────────────────
-
-/** Ledger rows ordered by date (then manual order), each with a running balance. */
-export function ledgerWithBalance(doc) {
-  const rows = [...doc.ledger].sort(
-    (a, b) => a.date.localeCompare(b.date) || (a.order || 0) - (b.order || 0)
-  );
-  let bal = 0;
-  return rows.map((r) => {
-    bal += Number(r.amount) || 0;
-    return { ...r, balance: bal };
-  });
-}
-
-export function ledgerTotals(doc) {
-  let inflow = 0, outflow = 0;
-  for (const r of doc.ledger) {
-    const amt = Number(r.amount) || 0;
-    if (amt >= 0) inflow += amt; else outflow += -amt;
-  }
-  return { inflow, outflow, balance: inflow - outflow };
+/** Union of Goal.timingDate + Task.dueDate + Step.dueDate + recurring weekly expansion, sorted ascending. */
+export function buildTimeline(doc) {
+  // Use 30-day window but respect per-task [createdAt .. recurringEndDate] bounds
+  const fromKey = todayKey();
+  const toKey = todayKey(addDays(new Date(), 30));
+  return buildTimelineRange(doc, fromKey, toKey);
 }
 
 export function fmtMoney(n) {
@@ -341,8 +420,14 @@ export function fmtMoney(n) {
 
 // ── mutations (pure transforms, applied via update()) ────────────────────────
 
-export function nextGoalNumber(doc) {
-  return doc.goals.reduce((max, g) => Math.max(max, g.number || 0), 0) + 1;
+/** Next stored number — counted per parent (per milestone), not globally. */
+export function nextGoalNumber(doc, milestoneId = null, phaseId = null) {
+  const siblings = milestoneId
+    ? doc.goals.filter((g) => g.milestoneId === milestoneId && !(g.types || []).includes('milestone'))
+    : phaseId
+      ? doc.goals.filter((g) => g.phaseId === phaseId)
+      : doc.goals.filter((g) => !(g.types || []).includes('milestone') && !g.milestoneId && !g.phaseId);
+  return siblings.reduce((max, g) => Math.max(max, g.number || 0), 0) + 1;
 }
 
 export function nextOrder(list) {
@@ -355,6 +440,9 @@ export function createGoal(doc, { phaseId = null, milestoneId = null, title, typ
   // Phase layer removed: milestoneId is the direct parent. Keep phaseId for backward-compat.
   const resolvedMilestoneId = milestoneId || null;
   const resolvedPhaseId = phaseId || null;
+  // Milestones are containers — never attach tasks to them (they'd be invisible ghosts).
+  const isMilestone = (types || []).includes('milestone');
+  const goalTasksIn = isMilestone ? [] : tasks;
   const siblings = resolvedMilestoneId
     ? goals.filter((g) => g.milestoneId === resolvedMilestoneId)
     : resolvedPhaseId
@@ -364,7 +452,7 @@ export function createGoal(doc, { phaseId = null, milestoneId = null, title, typ
     id: uid(),
     phaseId: resolvedPhaseId,
     milestoneId: resolvedMilestoneId,
-    number: nextGoalNumber(doc),
+    number: nextGoalNumber(doc, resolvedMilestoneId, resolvedPhaseId),
     title: title.trim(),
     types: types.length ? types : ['goal'],
     costLabel: costLabel?.trim() || null,
@@ -372,6 +460,8 @@ export function createGoal(doc, { phaseId = null, milestoneId = null, title, typ
     timingDate: timingDate || null,
     definitionOfDone: definitionOfDone?.trim() || null,
     status: 'not_started',
+    manualDone: false,
+    doneAt: null,
     order: nextOrder(siblings),
     createdAt: new Date().toISOString(),
   };
@@ -379,7 +469,7 @@ export function createGoal(doc, { phaseId = null, milestoneId = null, title, typ
 
   const tasksOut = [...doc.tasks];
   const stepsOut = [...doc.steps];
-  tasks.forEach((t, ti) => {
+  goalTasksIn.forEach((t, ti) => {
     if (!t.name?.trim()) return;
     const taskId = uid();
     tasksOut.push({
@@ -434,17 +524,81 @@ export function updateGoal(doc, goalId, { phaseId, milestoneId, title, types, co
   return { ...doc, goals, deps };
 }
 
-/** Deletes a goal and everything hanging off it (tasks, steps, deps). */
+/** Deletes a goal and everything hanging off it (tasks, steps, deps).
+ *  Deleting a milestone cascades to delete its child goals (unassigned = bad, auto-delete). */
 export function deleteGoal(doc, goalId) {
-  const taskIds = new Set(tasksOfGoal(doc, goalId).map((t) => t.id));
+  const goal = byId(doc.goals, goalId);
+  const wasMilestone = goal && (goal.types || []).includes('milestone');
+  const cascadeGoalIds = new Set([goalId]);
+  if (wasMilestone) {
+    for (const g of doc.goals) if (g.milestoneId === goalId) cascadeGoalIds.add(g.id);
+  }
+  const taskIds = new Set(doc.tasks.filter((t) => cascadeGoalIds.has(t.goalId)).map((t) => t.id));
   return {
     ...doc,
-    goals: doc.goals.filter((g) => g.id !== goalId),
-    tasks: doc.tasks.filter((t) => !taskIds.has(t.goalId)),
+    goals: doc.goals.filter((g) => !cascadeGoalIds.has(g.id)),
+    tasks: doc.tasks.filter((t) => !taskIds.has(t.id)),
     steps: doc.steps.filter((s) => !taskIds.has(s.taskId)),
-    deps: doc.deps.filter((d) => d.goalId !== goalId && d.dependsOnGoalId !== goalId),
-    ledger: doc.ledger.map((r) => (r.relatedGoalId === goalId ? { ...r, relatedGoalId: null } : r)),
+    deps: doc.deps.filter((d) => !cascadeGoalIds.has(d.goalId) && !cascadeGoalIds.has(d.dependsOnGoalId)),
   };
+}
+
+/** Purge orphaned tasks/steps whose parent no longer exists (fixes legacy DF ghosts). */
+export function purgeOrphans(doc) {
+  const goalIds = new Set(doc.goals.map((g) => g.id));
+  const taskIds = new Set(doc.tasks.filter((t) => goalIds.has(t.goalId)).map((t) => t.id));
+  const prunedTasks = doc.tasks.filter((t) => goalIds.has(t.goalId));
+  const prunedSteps = doc.steps.filter((s) => taskIds.has(s.taskId));
+  if (prunedTasks.length === doc.tasks.length && prunedSteps.length === doc.steps.length) return doc;
+  return { ...doc, tasks: prunedTasks, steps: prunedSteps };
+}
+
+/**
+ * One-time normalization (legacy-data cleanup):
+ * 1. Deletes tasks attached directly to a milestone — milestones are containers,
+ *    tasks live on goals; such tasks were invisible on the Goals page but leaked
+ *    into the Timeline (the "DF (Recurring)" ghosts).
+ * 2. Deletes goals whose milestone was already deleted (dangling) or truly
+ *    unassigned (no milestoneId/phaseId) — unassigned = bad, auto-delete.
+ */
+export function normalizePlanner(doc) {
+  // 0. Purge ledger & habits — features removed from Life Planner
+  if ('ledger' in doc) {
+    const { ledger: _omit, ...rest } = doc;
+    doc = rest;
+  }
+  if ('habits' in doc || 'habitLogs' in doc) {
+    const { habits: _h, habitLogs: _hl, ...rest } = doc;
+    doc = rest;
+  }
+  const milestoneIds = new Set(
+    doc.goals.filter((g) => (g.types || []).includes('milestone')).map((g) => g.id)
+  );
+  const goalIds = new Set(doc.goals.map((g) => g.id));
+
+  // 1. Tasks on milestones (and their steps) are removed entirely.
+  let tasks = doc.tasks.filter((t) => !milestoneIds.has(t.goalId));
+  let taskIds = new Set(tasks.map((t) => t.id));
+  let steps = doc.steps.filter((s) => taskIds.has(s.taskId));
+
+  // 2. Delete dangling or truly unassigned goals (and their tasks/steps).
+  const badGoalIds = new Set();
+  for (const g of doc.goals) {
+    const isMilestone = (g.types || []).includes('milestone');
+    if (isMilestone) continue;
+    if (g.milestoneId && !goalIds.has(g.milestoneId)) badGoalIds.add(g.id); // dangling
+    else if (!g.milestoneId && !g.phaseId) badGoalIds.add(g.id); // truly unassigned
+  }
+  if (badGoalIds.size === 0) {
+    if (tasks.length === doc.tasks.length && steps.length === doc.steps.length) return doc;
+    return { ...doc, tasks, steps };
+  }
+  const goals = doc.goals.filter((g) => !badGoalIds.has(g.id));
+  tasks = tasks.filter((t) => !badGoalIds.has(t.goalId));
+  taskIds = new Set(tasks.map((t) => t.id));
+  steps = steps.filter((s) => taskIds.has(s.taskId));
+  const deps = doc.deps.filter((d) => !badGoalIds.has(d.goalId) && !badGoalIds.has(d.dependsOnGoalId));
+  return { ...doc, goals, tasks, steps, deps };
 }
 
 export function isTaskRecurring(task) { return !!task?.isRecurring; }
@@ -453,19 +607,40 @@ export function isStepRecurring(doc, step) {
   return !!task?.isRecurring;
 }
 
-export function addTask(doc, goalId, { name, costLabel, dueLabel, dueDate, isRecurring = false, recurringDaysPerWeek = null, recurringWeekdays = [] }) {
+export function addTask(doc, goalId, { name, costLabel, dueLabel, dueDate, startDate = null, isRecurring = false, recurringDaysPerWeek = null, recurringWeekdays = [], recurringEndDate = null, recurringStartDate = null, createdAt = null }) {
   const goalTasks = tasksOfGoal(doc, goalId);
+  const today = todayKey();
+  const endDate = isRecurring ? (recurringEndDate || null) : null;
+  const startForRecurring = isRecurring ? (recurringStartDate || startDate || null) : null;
+  const taskStart = !isRecurring ? (startDate || null) : startForRecurring;
+  // Build dueLabel with range if both dates present
+  let label = dueLabel?.trim() || null;
+  if (!label) {
+    if (isRecurring && taskStart && endDate) label = `${fmtDate(taskStart)} → ${fmtDate(endDate)} • ${recurringWeekdays?.length || 0}/week`;
+    else if (isRecurring && endDate) label = `Recurring ${recurringWeekdays?.length || 0}/week → ${fmtDate(endDate)}`;
+    else if (!isRecurring && taskStart && dueDate) label = taskStart === dueDate ? fmtDate(dueDate) : `${fmtDate(taskStart)} → ${fmtDate(dueDate)}`;
+    else if (!isRecurring && dueDate) label = fmtDate(dueDate);
+    else if (!isRecurring && taskStart) label = fmtDate(taskStart);
+  }
   return {
     ...doc,
     tasks: [...doc.tasks, {
       id: uid(), goalId, name: name.trim(),
       costLabel: costLabel?.trim() || null,
-      dueLabel: dueLabel?.trim() || null,
+      dueLabel: label,
       dueDate: isRecurring ? null : (dueDate || null),
+      startDate: taskStart,
       order: nextOrder(goalTasks),
       isRecurring: !!isRecurring,
       recurringDaysPerWeek: isRecurring ? (Number(recurringDaysPerWeek) || recurringWeekdays.length || null) : null,
       recurringWeekdays: isRecurring ? [...(recurringWeekdays || [])] : [],
+      recurringEndDate: endDate,
+      recurringUntil: endDate, // alias for backward compat
+      recurringStartDate: startForRecurring,
+      manualDone: false,
+      doneAt: null,
+      createdAt: createdAt || new Date().toISOString(),
+      createdAtKey: today,
     }],
   };
 }
@@ -539,81 +714,32 @@ export function deletePhase(doc, phaseId) {
   };
 }
 
-export function addHabit(doc, { name, frequency, targetDaysPerWeek, startDate }) {
+// ── legacy example-data cleanup (the example seed was removed; purge leftovers) ─
+
+const EXAMPLE_GOAL_TITLES = new Set([
+  'Foundation — First Steps', 'Growth — Build & Apply',
+  'Learn a new skill', 'Set a study routine', 'Complete a personal project',
+]);
+const EXAMPLE_TASK_NAMES = new Set(['Pick a course', 'Finish the basics module']);
+const EXAMPLE_STEP_TEXTS = new Set([
+  'List 3 candidate courses', 'Compare syllabi and pick one',
+  'Complete lessons 1–5', 'Build the practice exercise',
+]);
+/** One-time purge of content created by the removed "Load example plan" seed.
+ *  Only exact example titles are matched — user-created tasks/steps are kept. */
+export function stripExampleContent(doc) {
+  const exampleGoals = doc.goals.filter((g) => EXAMPLE_GOAL_TITLES.has(g.title));
+  const exampleTasks = doc.tasks.filter((t) => EXAMPLE_TASK_NAMES.has(t.name));
+  const exampleSteps = doc.steps.filter((s) => EXAMPLE_STEP_TEXTS.has(s.text));
+  if (exampleGoals.length === 0 && exampleTasks.length === 0 && exampleSteps.length === 0) return doc;
+  const goalIds = new Set(exampleGoals.map((g) => g.id));
+  const tasks = doc.tasks.filter((t) => !goalIds.has(t.goalId) && !EXAMPLE_TASK_NAMES.has(t.name));
+  const taskIds = new Set(tasks.map((t) => t.id));
+  const steps = doc.steps.filter((s) => !taskIds.has(s.taskId) && !EXAMPLE_STEP_TEXTS.has(s.text));
+  const deps = doc.deps.filter((d) => !goalIds.has(d.goalId) && !goalIds.has(d.dependsOnGoalId));
   return {
     ...doc,
-    habits: [...doc.habits, {
-      id: uid(), name: name.trim(),
-      frequency: frequency || 'daily',
-      targetDaysPerWeek: targetDaysPerWeek || null,
-      startDate: startDate || todayKey(),
-      archived: false, order: nextOrder(doc.habits),
-    }],
+    goals: doc.goals.filter((g) => !goalIds.has(g.id)),
+    tasks, steps, deps,
   };
-}
-
-export function updateHabit(doc, habitId, patch) {
-  return { ...doc, habits: doc.habits.map((h) => (h.id === habitId ? { ...h, ...patch } : h)) };
-}
-
-export function addTransaction(doc, { date, item, amount, category, relatedGoalId }) {
-  return {
-    ...doc,
-    ledger: [...doc.ledger, {
-      id: uid(), date, item: item.trim(),
-      amount: Number(amount) || 0,
-      category: category?.trim() || null,
-      relatedGoalId: relatedGoalId || null,
-      order: nextOrder(doc.ledger),
-    }],
-  };
-}
-
-export function updateTransaction(doc, txId, patch) {
-  return { ...doc, ledger: doc.ledger.map((r) => (r.id === txId ? { ...r, ...patch } : r)) };
-}
-
-export function deleteTransaction(doc, txId) {
-  return { ...doc, ledger: doc.ledger.filter((r) => r.id !== txId) };
-}
-
-// ── example seed (generic placeholder content — no personal data) ────────────
-
-export function examplePlan() {
-  let doc = { ...EMPTY_DOC, habitLogs: {} };
-  doc.phases = [];
-  const ms1 = { id: uid(), phaseId: null, milestoneId: null, number: 1, title: 'Foundation — First Steps', types: ['milestone'], costLabel: null, timingLabel: 'This month', timingDate: null, definitionOfDone: null, status: 'not_started', order: 0, createdAt: new Date().toISOString() };
-  const ms2 = { id: uid(), phaseId: null, milestoneId: null, number: 2, title: 'Growth — Build & Apply', types: ['milestone'], costLabel: null, timingLabel: 'Next 2 months', timingDate: null, definitionOfDone: null, status: 'not_started', order: 1, createdAt: new Date().toISOString() };
-
-  const g1 = { id: uid(), phaseId: null, milestoneId: ms1.id, number: 3, title: 'Learn a new skill', types: ['goal'], costLabel: 'Cost: 0', timingLabel: 'This month', timingDate: null, definitionOfDone: 'Finish the tutorial and build one small project.', status: 'not_started', order: 0, createdAt: new Date().toISOString() };
-  const g2 = { id: uid(), phaseId: null, milestoneId: ms1.id, number: 4, title: 'Set a study routine', types: ['goal', 'habit'], costLabel: null, timingLabel: null, timingDate: null, definitionOfDone: null, status: 'not_started', order: 1, createdAt: new Date().toISOString() };
-  const g3 = { id: uid(), phaseId: null, milestoneId: ms2.id, number: 5, title: 'Complete a personal project', types: ['goal', 'milestone'], costLabel: 'Cost: 0', timingLabel: 'Next 2 months', timingDate: null, definitionOfDone: null, status: 'not_started', order: 0, createdAt: new Date().toISOString() };
-  doc.goals = [ms1, ms2, g1, g2, g3];
-  doc.deps = [{ id: uid(), goalId: g3.id, dependsOnGoalId: g1.id, note: null }];
-
-  const t1 = { id: uid(), goalId: g1.id, name: 'Pick a course', costLabel: null, dueLabel: null, dueDate: todayKey(addDays(new Date(), 3)), order: 0 };
-  const t2 = { id: uid(), goalId: g1.id, name: 'Finish the basics module', costLabel: null, dueLabel: null, dueDate: todayKey(addDays(new Date(), 14)), order: 1 };
-  doc.tasks = [t1, t2];
-  doc.steps = [
-    { id: uid(), taskId: t1.id, text: 'List 3 candidate courses', dueLabel: null, dueDate: todayKey(addDays(new Date(), 1)), isDone: true, doneAt: new Date().toISOString(), note: null, order: 0 },
-    { id: uid(), taskId: t1.id, text: 'Compare syllabi and pick one', dueLabel: null, dueDate: todayKey(addDays(new Date(), 3)), isDone: false, doneAt: null, note: null, order: 1 },
-    { id: uid(), taskId: t2.id, text: 'Complete lessons 1–5', dueLabel: null, dueDate: todayKey(addDays(new Date(), 10)), isDone: false, doneAt: null, note: null, order: 0 },
-    { id: uid(), taskId: t2.id, text: 'Build the practice exercise', dueLabel: null, dueDate: todayKey(addDays(new Date(), 14)), isDone: false, doneAt: null, note: null, order: 1 },
-  ];
-
-  const h1 = { id: uid(), name: 'Read 20 minutes', frequency: 'daily', targetDaysPerWeek: 5, startDate: todayKey(addDays(new Date(), -20)), archived: false, order: 0 };
-  const h2 = { id: uid(), name: 'Morning walk', frequency: 'daily', targetDaysPerWeek: null, startDate: todayKey(addDays(new Date(), -20)), archived: false, order: 1 };
-  doc.habits = [h1, h2];
-  const logs = {};
-  for (let i = 1; i <= 6; i++) logs[h1.id] = { ...(logs[h1.id] || {}), [todayKey(addDays(new Date(), -i))]: true };
-  for (let i = 1; i <= 3; i++) logs[h2.id] = { ...(logs[h2.id] || {}), [todayKey(addDays(new Date(), -i))]: true };
-  doc.habitLogs = logs;
-
-  doc.ledger = [
-    { id: uid(), date: todayKey(addDays(new Date(), -7)), item: 'Monthly allowance', amount: 5000, category: 'Income', relatedGoalId: null, order: 0 },
-    { id: uid(), date: todayKey(addDays(new Date(), -5)), item: 'Course materials', amount: -800, category: 'Learning', relatedGoalId: g1.id, order: 1 },
-    { id: uid(), date: todayKey(addDays(new Date(), -2)), item: 'Snacks', amount: -250, category: 'Food', relatedGoalId: null, order: 2 },
-  ];
-
-  return withStatuses(doc);
 }

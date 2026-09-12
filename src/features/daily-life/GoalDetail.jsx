@@ -7,7 +7,7 @@ import { LpBar, LpEmpty, LpConfirm, useConfirmState } from './LifePlannerUI';
 import {
   tasksOfGoal, stepsOfTask, depsOfGoal, unlocksWithGoal, byId, goalProgress,
   goalLocked, TYPE_META, toggleStep, addTask, addStep, deleteTask, deleteStep,
-  updateStep, fmtDate, todayKey,
+  updateStep, fmtDate, todayKey, goalDisplayNumber,
 } from './lifePlannerStorage';
 
 /**
@@ -100,7 +100,7 @@ export default function GoalDetail({
       <div className="lp-detail-band" style={{ '--lp-accent': accent }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
           <div className="lp-detail-title">
-            <span className="lp-detail-number">Goal {goal.number}</span>
+            <span className="lp-detail-number">Goal {goalDisplayNumber(doc, goal)}</span>
             <span className="lp-detail-name">{goal.title}</span>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
@@ -128,7 +128,7 @@ export default function GoalDetail({
           <div className="lp-lock-banner" role="status">
             <Lock size={14} />
             <span>
-              Waiting on: {blocking.map((b) => `Goal ${b.goalDep.number} — ${b.goalDep.title}`).join('; ')}
+              Waiting on: {blocking.map((b) => `Goal ${goalDisplayNumber(doc, b.goalDep)} — ${b.goalDep.title}`).join('; ')}
             </span>
           </div>
         )}
@@ -147,7 +147,7 @@ export default function GoalDetail({
                   const donePct = goalProgress(doc, g.id);
                   return (
                     <button key={d.id} type="button" className={`lp-dep-chip${donePct === 100 ? ' done' : donePct < 100 ? ' blocked' : ''}`} onClick={() => onOpenGoal(g.id)}>
-                      {donePct === 100 ? '✓' : <Lock size={10} />} G{g.number} {g.title}
+                      {donePct === 100 ? '✓' : <Lock size={10} />} G{goalDisplayNumber(doc, g)} {g.title}
                     </button>
                   );
                 })}
@@ -163,7 +163,7 @@ export default function GoalDetail({
                   if (!g) return null;
                   return (
                     <button key={d.id} type="button" className="lp-dep-chip" onClick={() => onOpenGoal(g.id)}>
-                      G{g.number} {g.title}
+                      G{goalDisplayNumber(doc, g)} {g.title}
                     </button>
                   );
                 })}

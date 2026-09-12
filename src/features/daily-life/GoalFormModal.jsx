@@ -94,8 +94,8 @@ export default function GoalFormModal({ doc, goal, onClose, onSave }) {
     title,
     types,
     costLabel,
-    timingLabel,
-    timingDate: timingDate || null,
+    timingLabel: isMilestone ? timingLabel : null,
+    timingDate: isMilestone ? (timingDate || null) : null,
     definitionOfDone: dod,
     dependsOn,
     tasks: editing ? [] : tasks.map((t) => ({
@@ -157,7 +157,40 @@ export default function GoalFormModal({ doc, goal, onClose, onSave }) {
             </div>
           </div>
 
-          <div className="lp-form-row">
+          {isMilestone ? (
+            <div className="lp-form-row">
+              <div>
+                <label className="lp-form-label" htmlFor="lp-goal-cost">Cost label</label>
+                <input
+                  id="lp-goal-cost"
+                  className="input"
+                  value={costLabel}
+                  onChange={(e) => setCostLabel(e.target.value)}
+                  placeholder="e.g. ≈12,000৳ or Cost: 0"
+                />
+              </div>
+              <div>
+                <label className="lp-form-label" htmlFor="lp-goal-timing">Timing label</label>
+                <input
+                  id="lp-goal-timing"
+                  className="input"
+                  value={timingLabel}
+                  onChange={(e) => setTimingLabel(e.target.value)}
+                  placeholder="e.g. Before Jan 27, 2027"
+                />
+              </div>
+              <div>
+                <label className="lp-form-label" htmlFor="lp-goal-date">Exact date (optional)</label>
+                <input
+                  id="lp-goal-date"
+                  type="date"
+                  className="input"
+                  value={timingDate}
+                  onChange={(e) => setTimingDate(e.target.value)}
+                />
+              </div>
+            </div>
+          ) : (
             <div>
               <label className="lp-form-label" htmlFor="lp-goal-cost">Cost label</label>
               <input
@@ -168,27 +201,7 @@ export default function GoalFormModal({ doc, goal, onClose, onSave }) {
                 placeholder="e.g. ≈12,000৳ or Cost: 0"
               />
             </div>
-            <div>
-              <label className="lp-form-label" htmlFor="lp-goal-timing">Timing label</label>
-              <input
-                id="lp-goal-timing"
-                className="input"
-                value={timingLabel}
-                onChange={(e) => setTimingLabel(e.target.value)}
-                placeholder="e.g. Before Jan 27, 2027"
-              />
-            </div>
-            <div>
-              <label className="lp-form-label" htmlFor="lp-goal-date">Exact date (optional)</label>
-              <input
-                id="lp-goal-date"
-                type="date"
-                className="input"
-                value={timingDate}
-                onChange={(e) => setTimingDate(e.target.value)}
-              />
-            </div>
-          </div>
+          )}
 
           {/* Dependencies */}
           <div className="lp-form-block">
@@ -269,8 +282,8 @@ export default function GoalFormModal({ doc, goal, onClose, onSave }) {
             />
           </div>
 
-          {/* Tasks (new goals only) */}
-          {!editing && (
+          {/* Tasks (new non-milestone entries only — milestones are containers) */}
+          {!editing && !isMilestone && (
             <div className="lp-form-block">
               <div className="lp-form-block-title">
                 <span>Tasks</span>
