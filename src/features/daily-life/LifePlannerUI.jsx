@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Target, Plus } from 'lucide-react';
+import { Target } from 'lucide-react';
 
 // ── Sub-navigation ───────────────────────────────────────────────────────────
 
@@ -7,10 +7,9 @@ export function LpSubnav({ view, onChange }) {
   const views = [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'goals',     label: 'Goals' },
+    { id: 'courses',   label: 'Courses' },
     { id: 'mindmap',   label: 'Mindmap' },
-    { id: 'habits',    label: 'Habits' },
     { id: 'timeline',  label: 'Timeline' },
-    { id: 'ledger',    label: 'Ledger' },
   ];
   return (
     <div className="lp-subnav" role="tablist" aria-label="Life Planner sections">
@@ -91,24 +90,6 @@ export function LpEmpty({ icon: Icon = Target, title, hint, action }) {
       <h4>{title}</h4>
       {hint && <p>{hint}</p>}
       {action}
-    </div>
-  );
-}
-
-export function LpStartEmpty({ onStart, onExample }) {
-  return (
-    <div className="lp-empty">
-      <Target size={44} />
-      <h4>Start your plan</h4>
-      <p>Break your goals into phases, tasks and steps — then track habits and money alongside them.</p>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginTop: 6 }}>
-        <button type="button" className="btn btn-primary btn-sm" onClick={onStart}>
-          <Plus size={14} style={{ marginRight: 4 }} /> New Goal
-        </button>
-        <button type="button" className="btn btn-secondary btn-sm" onClick={onExample}>
-          Load example plan
-        </button>
-      </div>
     </div>
   );
 }

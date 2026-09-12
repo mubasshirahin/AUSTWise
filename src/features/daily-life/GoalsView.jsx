@@ -1,15 +1,16 @@
-import { useState, useMemo } from 'react';
-import { Lock, ArrowUp, ArrowDown, Flag, Target, Trash2, ListChecks, ChevronRight, CalendarDays, Clock, X, Repeat, RefreshCw } from 'lucide-react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { Lock, ArrowUp, ArrowDown, Flag, Target, Trash2, ListChecks, ChevronRight, CalendarDays, Clock, X, Repeat, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { LpEmpty } from './LifePlannerUI';
 import {
   goalsOfMilestone, goalProgress, goalLocked, depsOfGoal, byId, TYPE_META,
-  tasksOfGoal, stepsOfTask, toggleStep, deleteStep, updateGoal, updateTask, fmtDate, todayKey, WEEKDAYS, isTaskRecurring,
+  tasksOfGoal, stepsOfTask, toggleStep, deleteStep, deleteTask, updateGoal, updateTask, fmtDate, todayKey, WEEKDAYS, isTaskRecurring, goalDisplayNumber, goalAutoDeadline, taskProgress, toggleTaskDone,
 } from './lifePlannerStorage';
 
 export default function GoalsView({
   doc, update, onOpenGoal, onEditGoal, onDeleteGoal, onConfirm,
   activeMilestoneId, setActiveMilestoneId,
   activeGoalId, setActiveGoalId, activeTaskId, setActiveTaskId,
+  hideBreadcrumb = false,
 }) {
   const milestones = useMemo(() => doc.goals.filter((g) => (g.types || []).includes('milestone')), [doc.goals]);
   const activeMilestone = useMemo(() => milestones.find((m) => m.id === activeMilestoneId) || null, [milestones, activeMilestoneId]);
@@ -17,7 +18,20 @@ export default function GoalsView({
   const activeTask = activeTaskId ? doc.tasks.find((t) => t.id === activeTaskId) : null;
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [taskDraftDate, setTaskDraftDate] = useState('');
+  const [taskDraftStartDate, setTaskDraftStartDate] = useState('');
   const [taskDraftWeekdays, setTaskDraftWeekdays] = useState([]);
+  const [taskDraftEndDate, setTaskDraftEndDate] = useState('');
+  // Single-open dropdown state — only one goal's ⋮ menu open at a time
+  const [openGoalMenuId, setOpenGoalMenuId] = useState(null);
+  useEffect(() => { setOpenGoalMenuId(null); }, [activeMilestoneId, activeGoalId]);
+
+  function fmtDoneAt(iso) {
+    if (!iso) return '';
+    try {
+      const d = new Date(iso);
+      return d.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+    } catch { return ''; }
+  }
 
   const hasMilestone = milestones.length > 0;
 
@@ -26,10 +40,34 @@ export default function GoalsView({
     return goalsOfMilestone(doc, activeMilestoneId);
   }, [doc, activeMilestoneId]);
 
+  // Auto-delete unassigned: any goal without milestone is considered bad (user request).
+  // We proactively purge them so the "Unassigned goals" box never appears.
+  useEffect(() => {
+    const badIds = doc.goals
+      .filter((g) => !(g.types || []).includes('milestone') && !g.milestoneId && !g.phaseId)
+      .map((g) => g.id);
+    if (badIds.length === 0) return;
+    // Defer to avoid setState during render
+    const t = setTimeout(() => {
+      update((d) => {
+        const badSet = new Set(badIds);
+        const taskIds = new Set(d.tasks.filter((x) => badSet.has(x.goalId)).map((x) => x.id));
+        return {
+          ...d,
+          goals: d.goals.filter((g) => !badSet.has(g.id)),
+          tasks: d.tasks.filter((x) => !badSet.has(x.goalId)),
+          steps: d.steps.filter((s) => !taskIds.has(s.taskId)),
+          deps: d.deps.filter((e) => !badSet.has(e.goalId) && !badSet.has(e.dependsOnGoalId)),
+        };
+      });
+    }, 0);
+    return () => clearTimeout(t);
+  }, [doc.goals, update]);
+
   return (
     <div>
       {/* ── Breadcrumb — Milestone → Goal → Task (Phase removed) ── */}
-      {(activeMilestoneId || activeGoalId || activeTaskId) && (
+      {!hideBreadcrumb && (activeMilestoneId || activeGoalId || activeTaskId) && (
         <div className="lp-breadcrumb">
           <button type="button" className="lp-breadcrumb-item" onClick={() => { setActiveMilestoneId(null); if (setActiveGoalId) setActiveGoalId(null); if (setActiveTaskId) setActiveTaskId(null); }} style={{ cursor: 'pointer' }}><Flag size={10} /> Milestones</button>
           {activeMilestone && (
@@ -39,10 +77,10 @@ export default function GoalsView({
                 type="button"
                 className="lp-breadcrumb-item purple active"
                 onClick={() => { if (setActiveGoalId) setActiveGoalId(null); if (setActiveTaskId) setActiveTaskId(null); }}
-                style={{ cursor: 'pointer' }}
-                title="Go to milestone goals"
+                style={{ cursor: 'pointer', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                title={`${activeMilestone.title} — click to see goals`}
               >
-                <Flag size={10} /> Milestone {milestones.findIndex((m) => m.id === activeMilestone.id) + 1} : {activeMilestone.title}
+                <Flag size={10} /> Milestone {milestones.findIndex((m) => m.id === activeMilestone.id) + 1}
               </button>
             </>
           )}
@@ -53,17 +91,17 @@ export default function GoalsView({
                 type="button"
                 className="lp-breadcrumb-item active"
                 onClick={() => { if (setActiveTaskId) setActiveTaskId(null); }}
-                style={{ cursor: 'pointer', background: 'var(--accent-amber-glow)', borderColor: 'var(--accent-amber)', color: 'var(--accent-amber)' }}
-                title="Go to goal tasks"
+                style={{ cursor: 'pointer', background: 'var(--accent-amber-glow)', borderColor: 'var(--accent-amber)', color: 'var(--accent-amber)', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                title={`${activeGoal.title} — click to see tasks`}
               >
-                <Target size={10} /> G{activeGoal.number} : {activeGoal.title}
+                <Target size={10} /> Goal {goalDisplayNumber(doc, activeGoal)}
               </button>
             </>
           )}
           {activeTask && (
             <>
               <ChevronRight size={12} className="lp-breadcrumb-sep" />
-              <span className="lp-breadcrumb-item active" style={{ cursor: 'default', background: 'var(--accent-emerald-glow)', borderColor: 'var(--accent-emerald)', color: 'var(--accent-emerald)' }}><ListChecks size={10} /> {activeTask.name}</span>
+              <span className="lp-breadcrumb-item active" style={{ cursor: 'default', background: 'var(--accent-emerald-glow)', borderColor: 'var(--accent-emerald)', color: 'var(--accent-emerald)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={activeTask.name}><ListChecks size={10} /> {activeTask.name}</span>
             </>
           )}
         </div>
@@ -71,7 +109,7 @@ export default function GoalsView({
 
       {/* Milestones list — when no milestone selected */}
       {!activeMilestoneId && (
-        <div className="lp-panel">
+        <div className="lp-panel" style={{ marginTop: 40 }}>
           <h4 className="lp-panel-title"><Flag size={15} style={{ color: 'var(--accent-purple)' }} /> Milestones</h4>
           {hasMilestone ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -87,8 +125,8 @@ export default function GoalsView({
 
       {/* Milestone → Goals (direct, no Phase) */}
       {activeMilestoneId && !activeGoalId && (
-        <div className="lp-panel">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        <div className={`lp-panel${openGoalMenuId && milestoneGoals.some((g)=>g.id===openGoalMenuId) ? ' lp-panel--menu-open' : ''}`} style={{ marginTop: 14, transform: 'translateY(-2px)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, marginTop: 8, paddingTop: 4 }}>
             <Flag size={20} style={{ color: 'var(--accent-purple)', flexShrink: 0 }} />
             <h3 style={{ margin: 0, fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2, wordBreak: 'break-word' }}>Milestone {activeMilestone ? milestones.findIndex((m) => m.id === activeMilestone.id) + 1 : ''} : {activeMilestone?.title}</h3>
           </div>
@@ -120,6 +158,9 @@ export default function GoalsView({
                   canMoveDown={idx < milestoneGoals.length - 1}
                   setActiveGoalId={setActiveGoalId}
                   setActiveTaskId={setActiveTaskId}
+                  isMenuOpen={openGoalMenuId === g.id}
+                  onToggleMenu={() => setOpenGoalMenuId((prev) => (prev === g.id ? null : g.id))}
+                  onCloseMenu={() => setOpenGoalMenuId(null)}
                 />
               ))}
             </div>
@@ -129,9 +170,9 @@ export default function GoalsView({
 
       {activeGoalId && (
         <div className="lp-panel">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, marginTop: 10, paddingTop: 6 }}>
             <Target size={16} style={{ color: 'var(--accent-amber)', flexShrink: 0 }} />
-            <h3 style={{ margin: 0, fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2, wordBreak: 'break-word' }}>Goal {activeGoal?.number} : {activeGoal?.title}</h3>
+            <h3 style={{ margin: 0, fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2, wordBreak: 'break-word' }}>Goal {activeGoal ? goalDisplayNumber(doc, activeGoal) : ''} : {activeGoal?.title}</h3>
           </div>
           {(() => {
             const tasks = tasksOfGoal(doc, activeGoalId);
@@ -141,65 +182,114 @@ export default function GoalsView({
                 {tasks.map((task) => {
                   const steps = stepsOfTask(doc, task.id);
                   const done = steps.filter((s) => s.isDone).length;
-                  const pct = steps.length ? Math.round((done / steps.length) * 100) : 0;
+                  const pct = taskProgress(doc, task.id);
                     const isActiveTask = activeTaskId === task.id;
                     const taskOverdue = task.dueDate && task.dueDate < todayKey() && pct < 100;
                     const isEditingThisTask = editingTaskId === task.id;
                     const taskIsRecurring = !!task.isRecurring;
                     return (
                     <div key={task.id} className="lp-task" style={{ borderColor: isActiveTask ? 'var(--accent-amber)' : undefined, borderLeft: taskIsRecurring ? '2px solid var(--accent-amber)' : undefined }}>
-                      <button type="button" className="lp-task-header" onClick={() => setActiveTaskId(isActiveTask ? null : task.id)} aria-expanded={isActiveTask}>
-                        <span className="lp-task-name">{task.name}</span>
-                        {steps.length > 0 && <span className="lp-badge lp-badge-muted">{done}/{steps.length}</span>}
-                        <span className="lp-badge" style={{ background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)' }}>{pct}%</span>
-                        {taskIsRecurring && !isEditingThisTask && (
-                          <span className="lp-badge lp-badge-amber" style={{ gap: 4, cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); setTaskDraftWeekdays(task.recurringWeekdays || []); setEditingTaskId(task.id); }}>
-                            <Repeat size={10} /> Recurring {task.recurringWeekdays?.length || 0}/week • {(task.recurringWeekdays || []).join(', ')}
-                          </span>
-                        )}
-                        {!taskIsRecurring && task.dueDate && !isEditingThisTask && <span className={`lp-badge ${taskOverdue ? 'lp-badge-rose' : 'lp-badge-cyan'}`} onClick={(e) => { e.stopPropagation(); setTaskDraftDate(task.dueDate); setEditingTaskId(task.id); }}><CalendarDays size={10} /> {fmtDate(task.dueDate)}</span>}
-                        {!taskIsRecurring && !task.dueDate && !isEditingThisTask && <span className="lp-badge lp-badge-muted" style={{ borderStyle: 'dashed', cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); setTaskDraftDate(''); setEditingTaskId(task.id); }}><CalendarDays size={10} /> Add deadline</span>}
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'stretch' }}>
+                        <button type="button" className="lp-task-header" onClick={() => setActiveTaskId(isActiveTask ? null : task.id)} aria-expanded={isActiveTask} style={{ flex: 1 }}>
+                          {steps.length === 0 && (
+                            <input
+                              type="checkbox"
+                              className="lp-check lp-task-check"
+                              checked={!!task.manualDone}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={() => update((d) => toggleTaskDone(d, task.id))}
+                              aria-label={`Mark task ${task.name} ${task.manualDone ? 'not done' : 'done'}`}
+                              title={task.manualDone && task.doneAt ? `Completed on ${fmtDoneAt(task.doneAt)} — click to undo` : task.manualDone ? 'Mark not done' : 'Mark done'}
+                            />
+                          )}
+                          <span className="lp-task-name">{task.name}</span>
+                          {steps.length > 0 && <span className="lp-badge lp-badge-muted">{done}/{steps.length}</span>}
+                          <span className="lp-badge" style={{ background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)' }}>{pct}%</span>
+                          {taskIsRecurring && !isEditingThisTask && (
+                            <span className="lp-badge lp-badge-amber" style={{ gap: 4, cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); setTaskDraftWeekdays(task.recurringWeekdays || []); setTaskDraftEndDate(task.recurringEndDate || task.recurringUntil || ''); setTaskDraftStartDate(task.recurringStartDate || task.startDate || ''); setEditingTaskId(task.id); }}>
+                              <Repeat size={10} /> Recurring {task.recurringWeekdays?.length || 0}/week • {(task.recurringWeekdays || []).join(', ')} {task.startDate || task.recurringStartDate ? `${fmtDate(task.startDate || task.recurringStartDate)} → ` : ''}{task.recurringEndDate ? fmtDate(task.recurringEndDate) : ''}
+                            </span>
+                          )}
+                          {!taskIsRecurring && (task.dueDate || task.startDate) && !isEditingThisTask && <span className={`lp-badge ${taskOverdue ? 'lp-badge-rose' : 'lp-badge-cyan'}`} onClick={(e) => { e.stopPropagation(); setTaskDraftDate(task.dueDate || ''); setTaskDraftStartDate(task.startDate || ''); setEditingTaskId(task.id); }}>{task.startDate && task.dueDate && task.startDate !== task.dueDate ? `${fmtDate(task.startDate)} → ${fmtDate(task.dueDate)}` : fmtDate(task.dueDate || task.startDate)}</span>}
+                          {!taskIsRecurring && !task.dueDate && !task.startDate && !isEditingThisTask && <span className="lp-badge lp-badge-muted" style={{ borderStyle: 'dashed', cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); setTaskDraftDate(''); setTaskDraftStartDate(''); setEditingTaskId(task.id); }}><CalendarDays size={10} /> Add dates</span>}
+                        </button>
+                        <button
+                          type="button"
+                          className="lp-icon-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onConfirm({
+                              title: 'Delete task?',
+                              message: `"${task.name}" and its ${steps.length} step${steps.length === 1 ? '' : 's'} will be permanently removed.`,
+                              confirmLabel: 'Delete',
+                              onConfirm: () => {
+                                update((d) => deleteTask(d, task.id));
+                                if (activeTaskId === task.id) setActiveTaskId(null);
+                                onConfirm(null);
+                              },
+                            });
+                          }}
+                          title={`Delete task ${task.name}`}
+                          aria-label={`Delete task ${task.name}`}
+                          style={{ margin: '6px 6px 6px 0', alignSelf: 'center', flexShrink: 0, width: 30, height: 30 }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                      {steps.length === 0 && task.manualDone && task.doneAt && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 16px', background: 'var(--accent-emerald-glow)', borderTop: '1px dashed var(--border-primary)', fontSize: 11, color: 'var(--accent-emerald)', fontWeight: 600 }}>
+                          <CheckCircle2 size={12} /> Completed on {fmtDoneAt(task.doneAt)}
+                        </div>
+                      )}
                       {isEditingThisTask && (
                         taskIsRecurring ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 16px', borderBottom: '1px dashed var(--border-primary)', background: 'var(--bg-tertiary)' }}>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}><Repeat size={12} /> Recurring — week e koidin • kon kon din</span>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}><Repeat size={12} /> Recurring — start → end + weekdays</span>
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                               {WEEKDAYS.map((w) => {
                                 const on = taskDraftWeekdays.includes(w.key);
                                 return <button key={w.key} type="button" className={`lp-badge ${on ? 'lp-badge-amber' : 'lp-badge-muted'}`} style={{ cursor: 'pointer', borderStyle: on ? 'solid' : 'dashed' }} onClick={() => setTaskDraftWeekdays((prev) => on ? prev.filter((x) => x !== w.key) : [...prev, w.key])}>{w.label}</button>;
                               })}
                             </div>
-                            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                              <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{taskDraftWeekdays.length} din selected</span>
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', display:'inline-flex', alignItems:'center', gap:4 }}><CalendarDays size={11}/> Start *</span>
+                              <input type="date" value={taskDraftStartDate} onChange={(e)=>setTaskDraftStartDate(e.target.value)} className="input" style={{ height: 30, maxWidth: 140 }} title="Recurring start date (required)" required />
+                              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)' }}>→</span>
+                              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', display:'inline-flex', alignItems:'center', gap:4 }}><CalendarDays size={11}/> End *</span>
+                              <input type="date" value={taskDraftEndDate} onChange={(e)=>setTaskDraftEndDate(e.target.value)} className="input" style={{ height: 30, maxWidth: 140 }} title="Recurring end date (required)" required />
+                            </div>
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{taskDraftWeekdays.length} din • {taskDraftWeekdays.join(', ')} {taskDraftStartDate ? `${fmtDate(taskDraftStartDate)} → ` : ''}{taskDraftEndDate ? fmtDate(taskDraftEndDate) : 'start & end must'}</span>
                               <span style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
-                                <button type="button" className="btn btn-primary btn-sm" style={{ height: 30 }} disabled={taskDraftWeekdays.length===0} onClick={() => { update((d) => updateTask(d, task.id, { recurringWeekdays: taskDraftWeekdays, recurringDaysPerWeek: taskDraftWeekdays.length })); setEditingTaskId(null); }}>Save</button>
-                                <button type="button" className="btn btn-ghost btn-sm" style={{ height: 30 }} onClick={() => { update((d) => updateTask(d, task.id, { isRecurring: false, recurringWeekdays: [], recurringDaysPerWeek: null })); setEditingTaskId(null); }}>Remove recurring</button>
+                                <button type="button" className="btn btn-primary btn-sm" style={{ height: 30 }} disabled={taskDraftWeekdays.length===0 || !taskDraftStartDate || !taskDraftEndDate} onClick={() => { update((d) => updateTask(d, task.id, { recurringWeekdays: taskDraftWeekdays, recurringDaysPerWeek: taskDraftWeekdays.length, recurringStartDate: taskDraftStartDate || null, startDate: taskDraftStartDate || null, recurringEndDate: taskDraftEndDate, recurringUntil: taskDraftEndDate, dueLabel: `${fmtDate(taskDraftStartDate)} → ${fmtDate(taskDraftEndDate)} • ${taskDraftWeekdays.length}/week` })); setEditingTaskId(null); }}>Save</button>
+                                <button type="button" className="btn btn-ghost btn-sm" style={{ height: 30 }} onClick={() => { update((d) => updateTask(d, task.id, { isRecurring: false, recurringWeekdays: [], recurringDaysPerWeek: null, recurringEndDate: null, recurringUntil: null, recurringStartDate: null })); setEditingTaskId(null); }}>Remove recurring</button>
                                 <button type="button" className="lp-icon-btn" onClick={() => setEditingTaskId(null)}><X size={12} /></button>
                               </span>
                             </div>
                           </div>
                         ) : (
-                          <div style={{ display: 'flex', gap: 6, padding: '8px 16px', alignItems: 'center', borderBottom: '1px dashed var(--border-primary)', background: 'var(--bg-tertiary)' }}>
-                            <input type="date" value={taskDraftDate} onChange={(e) => setTaskDraftDate(e.target.value)} className="input" style={{ height: 30, maxWidth: 150 }} />
-                            <button type="button" className="btn btn-primary btn-sm" style={{ height: 30 }} onClick={() => { update((d) => updateTask(d, task.id, { dueDate: taskDraftDate || null, dueLabel: taskDraftDate ? fmtDate(taskDraftDate) : '' })); setEditingTaskId(null); }}>Save</button>
-                            <button type="button" className="btn btn-ghost btn-sm" style={{ height: 30 }} onClick={() => { update((d) => updateTask(d, task.id, { dueDate: null, dueLabel: '' })); setTaskDraftDate(''); setEditingTaskId(null); }}>Clear</button>
+                          <div style={{ display: 'flex', gap: 6, padding: '8px 16px', alignItems: 'center', flexWrap: 'wrap', borderBottom: '1px dashed var(--border-primary)', background: 'var(--bg-tertiary)' }}>
+                            <span style={{ fontSize: 11, fontWeight: 600, color:'var(--text-secondary)' }}>End date</span>
+                            <input type="date" value={taskDraftDate} onChange={(e) => setTaskDraftDate(e.target.value)} className="input" required style={{ height: 30, maxWidth: 150 }} title="End date" />
+                            <button type="button" className="btn btn-primary btn-sm" style={{ height: 30 }} disabled={!taskDraftDate} onClick={() => { update((d) => updateTask(d, task.id, { startDate: null, dueDate: taskDraftDate || null, dueLabel: fmtDate(taskDraftDate) })); setEditingTaskId(null); }}>Save</button>
+                            <button type="button" className="btn btn-ghost btn-sm" style={{ height: 30 }} onClick={() => { update((d) => updateTask(d, task.id, { startDate: null, dueDate: null, dueLabel: '' })); setTaskDraftDate(''); setTaskDraftStartDate(''); setEditingTaskId(null); }}>Clear</button>
                             <button type="button" className="lp-icon-btn" onClick={() => setEditingTaskId(null)}><X size={12} /></button>
                           </div>
                         )
                       )}
                       {isActiveTask && (
                         <div className="lp-task-body">
-                          {steps.length === 0 ? <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>No subtasks yet.</span> : steps.map((s) => (
-                            <div key={s.id} className="lp-step-row">
-                              <input type="checkbox" className="lp-step-check" checked={s.isDone} onChange={() => update((d) => toggleStep(d, s.id))} />
+                          {steps.length === 0 ? <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>No steps yet.</span> : steps.map((s) => (
+                            <div key={s.id} className="lp-step-row" style={{ flexWrap: 'wrap' }}>
+                              <input type="checkbox" className="lp-step-check" checked={s.isDone} onChange={() => update((d) => toggleStep(d, s.id))} title={s.isDone && s.doneAt ? `Completed on ${fmtDoneAt(s.doneAt)}` : s.isDone ? 'Completed' : 'Mark done'} />
                               <span className={`lp-step-text${s.isDone ? ' done' : ''}`}>{s.text}</span>
+                              {s.isDone && s.doneAt && <span style={{ fontSize: 10, color: 'var(--accent-emerald)', display: 'inline-flex', alignItems: 'center', gap: 3, fontWeight: 600 }}><CheckCircle2 size={10} /> Completed on {fmtDoneAt(s.doneAt)}</span>}
                               {task.isRecurring && <span className="lp-badge lp-badge-amber" style={{ fontSize: 9, padding: '2px 6px', gap: 3 }} title={`Auto recurring — same as task: ${(task.recurringWeekdays||[]).join(', ')}`}><Repeat size={9} /> Auto</span>}
                               <button type="button" className="lp-icon-btn" onClick={() => update((d) => deleteStep(d, s.id))}><Trash2 size={12} /></button>
                             </div>
                           ))}
                           <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center', padding: '8px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }}>
-                            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Click Add Subtask at the top to add</span>
+                            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Click Add Step at the top to add</span>
                           </div>
                         </div>
                       )}
@@ -288,19 +378,33 @@ function GoalCard({
   doc, update, goal, phaseColor, onEditGoal, onDeleteGoal,
   onMove, canMoveUp, canMoveDown,
   setActiveGoalId, setActiveTaskId,
+  isMenuOpen = false, onToggleMenu, onCloseMenu,
 }) {
-  const [showMenu, setShowMenu] = useState(false);
-  const [editingDeadline, setEditingDeadline] = useState(false);
-  const [draft, setDraft] = useState(goal.timingDate || '');
   const pct = goalProgress(doc, goal.id);
   const locked = goalLocked(doc, goal.id);
   const deps = depsOfGoal(doc, goal.id);
-  const isOverdue = goal.timingDate && goal.timingDate < todayKey() && pct < 100;
+  const autoDeadline = goalAutoDeadline(doc, goal.id);
+  const isOverdue = autoDeadline && autoDeadline < todayKey() && pct < 100;
+  const menuRef = useRef(null);
+  const btnRef = useRef(null);
 
-  // we need update here — get it from closure via document hack: use window temp ? Instead pass update via prop — but GoalsView already has update in scope for MilestoneCard, for GoalCard we can use doc+update via import? We'll use a direct liveStore update through a custom event: fallback use document.
-  // Simpler: GoalsView passes `update` — add it to GoalCard props via GoalsView. For now use direct updateGoal via GoalsView's update in parent — we attach to window as hack, but better add update prop.
+  useEffect(() => {
+    if (!isMenuOpen) return undefined;
+    const handleDown = (e) => {
+      if (menuRef.current?.contains(e.target) || btnRef.current?.contains(e.target)) return;
+      onCloseMenu?.();
+    };
+    const handleEsc = (e) => { if (e.key === 'Escape') onCloseMenu?.(); };
+    document.addEventListener('mousedown', handleDown);
+    document.addEventListener('keydown', handleEsc);
+    return () => {
+      document.removeEventListener('mousedown', handleDown);
+      document.removeEventListener('keydown', handleEsc);
+    };
+  }, [isMenuOpen, onCloseMenu]);
+
   return (
-    <div style={{ display: 'flex', alignItems: 'stretch', gap: 6 }}>
+    <div className={isMenuOpen ? 'goal-row goal-row--menu-open' : 'goal-row'} style={{ display: 'flex', alignItems: 'stretch', gap: 6 }}>
       {(canMoveUp || canMoveDown) && (
         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2 }}>
           <button type="button" className="lp-icon-btn" disabled={!canMoveUp} onClick={() => onMove(goal.id, 'up')} aria-label="Move goal up">
@@ -315,7 +419,7 @@ function GoalCard({
       <div className="lp-goal-card" role="button" tabIndex={0} onClick={() => { if (setActiveGoalId) { setActiveGoalId(goal.id); if (setActiveTaskId) setActiveTaskId(null); } else if (onEditGoal) onEditGoal(goal); }} onKeyDown={(e) => { if (e.key === 'Enter') { if (setActiveGoalId) { setActiveGoalId(goal.id); if (setActiveTaskId) setActiveTaskId(null); } else if (onEditGoal) onEditGoal(goal); } }} style={{ borderLeft: `3px solid ${phaseColor}`, cursor: 'pointer', flex: 1, display: 'flex', alignItems: 'center', gap: 12 }}>
         <div className="lp-goal-main" style={{ flex: 1, minWidth: 0 }}>
           <span className="lp-goal-title">
-            <span style={{ color: 'var(--text-tertiary)', fontSize: 10, fontWeight: 'bold' }}>G{goal.number}</span>
+            <span style={{ color: 'var(--text-tertiary)', fontSize: 10, fontWeight: 'bold' }}>G{goalDisplayNumber(doc, goal)}</span>
             {goal.title}
             {locked && (
               <span title={`Waiting on: ${deps.map((d) => byId(doc.goals, d.dependsOnGoalId)?.title).filter(Boolean).join(', ')}`}>
@@ -331,45 +435,30 @@ function GoalCard({
           </div>
         </div>
         <span style={{ marginLeft: 'auto', alignSelf: 'center', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
-          {!editingDeadline ? (
-            (goal.timingLabel || goal.timingDate) ? (
-              <button type="button" className={`lp-badge ${isOverdue ? 'lp-badge-rose' : 'lp-badge-cyan'}`} style={{ border: 'none', cursor: 'pointer' }} onClick={() => { setDraft(goal.timingDate || ''); setEditingDeadline(true); }}>
-                <Clock size={10} /> {goal.timingLabel || fmtDate(goal.timingDate)}
-              </button>
-            ) : (
-              <button type="button" className="lp-badge lp-badge-muted" style={{ borderStyle: 'dashed', cursor: 'pointer' }} onClick={() => { setDraft(''); setEditingDeadline(true); }}>
-                <CalendarDays size={10} /> Add deadline
-              </button>
-            )
-          ) : (
-            <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <input type="date" value={draft} onChange={(e) => setDraft(e.target.value)} style={{ height: 30, maxWidth: 140 }} className="input" autoFocus />
-              <button type="button" className="btn btn-primary btn-sm" style={{ height: 30 }} onClick={() => { update((d) => updateGoal(d, goal.id, { timingDate: draft || null, timingLabel: draft ? fmtDate(draft) : null })); setEditingDeadline(false); }}>OK</button>
-              {(goal.timingDate || goal.timingLabel) && <button type="button" className="btn btn-ghost btn-sm" style={{ height: 30 }} onClick={() => { update((d) => updateGoal(d, goal.id, { timingDate: null, timingLabel: null })); setDraft(''); setEditingDeadline(false); }}>Clear</button>}
-              <button type="button" className="lp-icon-btn" onClick={() => setEditingDeadline(false)} style={{ width: 28, height: 28 }}><X size={12} /></button>
+          {autoDeadline ? (
+            <span className={`lp-badge ${isOverdue ? 'lp-badge-rose' : 'lp-badge-cyan'}`} title={`Auto from tasks’ last end date`}>
+              <Clock size={10} /> {fmtDate(autoDeadline)}
             </span>
+          ) : (
+            <span className="lp-badge lp-badge-muted" style={{ borderStyle: 'dashed' }} title="Add tasks with end dates to get auto deadline"><CalendarDays size={10} /> No deadline</span>
           )}
         </span>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, justifyContent: 'center', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-          <button type="button" className="lp-icon-btn" onClick={(e) => { e.stopPropagation(); setShowMenu((v) => !v); }} aria-label={`Options for ${goal.title}`} aria-haspopup="true">
+          <button ref={btnRef} type="button" className="lp-icon-btn" onClick={(e) => { e.stopPropagation(); onToggleMenu?.(); }} aria-label={`Options for ${goal.title}`} aria-haspopup="true" aria-expanded={isMenuOpen}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" />
             </svg>
           </button>
-          {showMenu && (
+          {isMenuOpen && (
             <div
-              style={{
-                position: 'absolute', right: 0, top: 30, zIndex: 60, minWidth: 170, padding: 4,
-                background: 'var(--bg-card)', border: '1px solid var(--border-primary)',
-                borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-md)',
-              }}
-              onClick={() => setShowMenu(false)}
+              ref={menuRef}
+              className="lp-goal-dropdown"
+              onClick={() => onCloseMenu?.()}
             >
               <button type="button" className="export-menu-item" onClick={() => onEditGoal(goal)}>Edit goal</button>
-              <button type="button" className="export-menu-item" onClick={() => { setDraft(goal.timingDate || ''); setEditingDeadline(true); setShowMenu(false); }}><CalendarDays size={12} /> {goal.timingDate ? 'Edit deadline' : 'Add deadline'}</button>
               <div className="export-menu-sep" />
               <button type="button" className="export-menu-item" style={{ color: 'var(--accent-rose)' }} onClick={() => onDeleteGoal(goal)}>Delete goal</button>
             </div>
