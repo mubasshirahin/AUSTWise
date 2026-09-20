@@ -219,6 +219,8 @@ export default function RoomAutocomplete({
           }}
         />
         <input
+          id="room-autocomplete-input"
+          name="roomAutocomplete"
           ref={inputRef}
           type="text"
           className="input"

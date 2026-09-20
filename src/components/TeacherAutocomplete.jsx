@@ -254,6 +254,8 @@ export default function TeacherAutocomplete({
           }}
         />
         <input
+          id="teacher-autocomplete-input"
+          name="teacherAutocomplete"
           ref={inputRef}
           type="text"
           className="input"

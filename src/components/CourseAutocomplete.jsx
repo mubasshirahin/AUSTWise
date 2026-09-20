@@ -214,6 +214,8 @@ export default function CourseAutocomplete({
           }} 
         />
         <input
+          id="course-autocomplete-input"
+          name="courseAutocomplete"
           ref={inputRef}
           type="text"
           className="input"

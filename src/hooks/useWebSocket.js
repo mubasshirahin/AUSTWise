@@ -1,11 +1,22 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
-
-const WS_RECONNECT_DELAY = 2000;
-const WS_MAX_RECONNECT_DELAY = 15000;
-const PING_INTERVAL = 30000;
+import { useEffect, useRef, useState, useCallback } from 'react';
+import {
+  initLiveStore,
+  onRealtimeMessage,
+  onRealtimeStatus,
+  sendRealtime,
+  getLiveStoreStatus,
+} from '../utils/liveStore';
 
 /**
- * Custom hook for WebSocket-based real-time messaging.
+ * Custom hook for real-time messaging — multiplexed over the app's single
+ * shared WebSocket (liveStore). Every consumer used to open its own
+ * connection (8+ sockets per user); they all share one now, which matters on
+ * hosts with per-user connection limits and slow cold starts (Render).
+ *
+ * The public API is unchanged: pass the same `options` callbacks, get the
+ * same send helpers back. The server protocol is unchanged too — the shared
+ * socket registers the user once (liveStore `subscribe`), and every message
+ * type is fanned out to each mounted consumer by the liveStore message bus.
  *
  * @param {string|null} userId - Current user's ID (null = not logged in)
  * @param {object} options
@@ -28,293 +39,110 @@ const PING_INTERVAL = 30000;
  * @param {function} options.onStoreChange - Called with { scope: 'user'|'shared', key } when a stored value changes
  */
 export default function useWebSocket(userId, options = {}) {
-  const wsRef = useRef(null);
-  const reconnectTimeoutRef = useRef(null);
-  const pingIntervalRef = useRef(null);
-  const reconnectAttemptRef = useRef(0);
-  const mountedRef = useRef(true);
-  const connectRef = useRef(null);
-  const [connected, setConnected] = useState(false);
+  const [socketConnected, setSocketConnected] = useState(getLiveStoreStatus().connected);
+  // Derived so a logged-out consumer never reports a stale live connection.
+  const connected = Boolean(userId) && socketConnected;
   const [onlineUsers, setOnlineUsers] = useState([]);
 
-  // Store callbacks in refs to avoid re-creating `connect` when callbacks change
+  // Store callbacks in a ref so bus subscriptions stay stable across renders
   const optionsRef = useRef(options);
-  useEffect(() => { optionsRef.current = options; }, [options]);
+  useEffect(() => { optionsRef.current = options; });
 
-  const connect = useCallback(() => {
-    if (!userId || !mountedRef.current) return;
-
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
-    // Production: Vercel rewrites don't reliably proxy WebSocket upgrades, so
-    // connect directly to the backend origin (VITE_WS_URL, e.g. wss://api.domain.com).
-    // Dev: same-origin /api/ws hits the local server.
-    const wsUrl = (import.meta.env.VITE_WS_URL || `${protocol}//${host}/api/ws`);
-
-    try {
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
-
-      ws.onopen = () => {
-        if (!mountedRef.current) {
-          ws.close();
-          return;
-        }
-        setConnected(true);
-        reconnectAttemptRef.current = 0;
-
-        // Notify parent and allow it to drain any pending message queue
-        optionsRef.current.onConnectionChange?.(true);
-
-        // Register user with server
-        ws.send(JSON.stringify({
-          type: 'subscribe',
-          payload: { userId },
-        }));
-
-        // Start ping interval
-        if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
-        pingIntervalRef.current = setInterval(() => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'ping', payload: {} }));
-          }
-        }, PING_INTERVAL);
-      };
-
-      ws.onmessage = (event) => {
-        if (!mountedRef.current) return;
-
-        try {
-          const { type, payload } = JSON.parse(event.data);
-          if (!type || !payload) return;
-
-          const opts = optionsRef.current;
-
-          switch (type) {
-            case 'connected':
-            case 'user-registered':
-            case 'subscribed':
-              break;
-
-            case 'message':
-              opts.onMessage?.(payload);
-              break;
-
-            case 'message-status':
-              opts.onMessageStatus?.(payload);
-              break;
-
-            case 'typing':
-              opts.onTyping?.(payload);
-              break;
-
-            case 'read':
-              opts.onRead?.(payload);
-              break;
-
-            case 'reaction':
-              opts.onReaction?.(payload);
-              break;
-
-            case 'delete-message':
-              opts.onDelete?.(payload);
-              break;
-
-            case 'edit-message':
-              opts.onEdit?.(payload);
-              break;
-
-            case 'online': {
-              setOnlineUsers((prev) => {
-                const updated = payload.online
-                  ? [...new Set([...prev, payload.userId])]
-                  : prev.filter((id) => id !== payload.userId);
-                opts.onOnlineUsers?.(updated);
-                return updated;
-              });
-              break;
-            }
-
-            case 'online-users':
-              setOnlineUsers(payload.userIds || []);
-              opts.onOnlineUsers?.(payload.userIds || []);
-              break;
-
-            case 'presence':
-              opts.onPresence?.(payload);
-              break;
-
-            case 'presence-snapshot':
-              opts.onPresenceSnapshot?.(payload.presence || {});
-              break;
-
-            case 'marketplace-listing':
-              opts.onMarketplaceListing?.(payload);
-              break;
-
-            case 'profile-update':
-              opts.onProfileUpdate?.(payload);
-              break;
-
-            case 'routine-shared':
-              opts.onRoutineShared?.(payload);
-              break;
-
-            case 'notice-new':
-              opts.onNoticeNew?.(payload);
-              break;
-
-            case 'library-occupancy':
-              opts.onLibraryOccupancy?.(payload);
-              break;
-
-            case 'store-change':
-              opts.onStoreChange?.(payload);
-              break;
-
-            case 'error':
-              console.warn('WebSocket message:', payload.message);
-              break;
-          }
-        } catch {
-          // Ignore malformed messages
-        }
-      };
-
-      ws.onclose = () => {
-        if (!mountedRef.current) return;
-        setConnected(false);
-        optionsRef.current.onConnectionChange?.(false);
-
-        if (pingIntervalRef.current) {
-          clearInterval(pingIntervalRef.current);
-          pingIntervalRef.current = null;
-        }
-
-        // Auto-reconnect with exponential backoff
-        if (userId && mountedRef.current) {
-          const delay = Math.min(
-            WS_RECONNECT_DELAY * Math.pow(1.5, reconnectAttemptRef.current),
-            WS_MAX_RECONNECT_DELAY
-          );
-          reconnectAttemptRef.current += 1;
-          reconnectTimeoutRef.current = setTimeout(() => connectRef.current?.(), delay);
-        }
-      };
-
-      ws.onerror = () => {
-        // Error triggers onclose, so we handle reconnection there
-      };
-    } catch {
-      // Connection failed, will retry via onclose
-    }
-  }, [userId]); // Only reconnect when userId changes — callbacks are read from ref
-
-  // Keep the latest connect in a ref so the reconnect timeout can call it
+  // One shared socket for the whole app — make sure it exists (idempotent).
   useEffect(() => {
-    connectRef.current = connect;
-  }, [connect]);
+    if (userId) initLiveStore(userId);
+  }, [userId]);
 
-  // Connect when userId changes
+  // Track the shared socket's connection status. onRealtimeStatus fires once
+  // with the current status on subscribe, so a consumer that mounts after the
+  // socket opened (or after login) syncs without a sync setState here.
   useEffect(() => {
-    mountedRef.current = true;
-    if (userId) {
-      connect();
-    }
+    if (!userId) return undefined;
+    return onRealtimeStatus((isConnected) => {
+      setSocketConnected(isConnected);
+      optionsRef.current.onConnectionChange?.(isConnected);
+    });
+  }, [userId]);
 
-    return () => {
-      mountedRef.current = false;
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-      if (pingIntervalRef.current) {
-        clearInterval(pingIntervalRef.current);
-      }
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-    };
-  }, [userId, connect]);
+  // Fan protocol messages out to this instance's callbacks. Unsubscribing on
+  // cleanup fully detaches this consumer from the bus — other consumers and
+  // the shared socket keep running.
+  useEffect(() => {
+    if (!userId) return undefined;
+    const opts = () => optionsRef.current;
+
+    const unsubs = [
+      onRealtimeMessage('message', (p) => opts().onMessage?.(p)),
+      onRealtimeMessage('message-status', (p) => opts().onMessageStatus?.(p)),
+      onRealtimeMessage('typing', (p) => opts().onTyping?.(p)),
+      onRealtimeMessage('read', (p) => opts().onRead?.(p)),
+      onRealtimeMessage('reaction', (p) => opts().onReaction?.(p)),
+      onRealtimeMessage('delete-message', (p) => opts().onDelete?.(p)),
+      onRealtimeMessage('edit-message', (p) => opts().onEdit?.(p)),
+      onRealtimeMessage('online', (p) => {
+        setOnlineUsers((prev) => {
+          const updated = p.online
+            ? [...new Set([...prev, p.userId])]
+            : prev.filter((id) => id !== p.userId);
+          opts().onOnlineUsers?.(updated);
+          return updated;
+        });
+      }),
+      onRealtimeMessage('online-users', (p) => {
+        setOnlineUsers(p.userIds || []);
+        opts().onOnlineUsers?.(p.userIds || []);
+      }),
+      onRealtimeMessage('presence', (p) => opts().onPresence?.(p)),
+      onRealtimeMessage('presence-snapshot', (p) => opts().onPresenceSnapshot?.(p.presence || {})),
+      onRealtimeMessage('marketplace-listing', (p) => opts().onMarketplaceListing?.(p)),
+      onRealtimeMessage('profile-update', (p) => opts().onProfileUpdate?.(p)),
+      onRealtimeMessage('routine-shared', (p) => opts().onRoutineShared?.(p)),
+      onRealtimeMessage('notice-new', (p) => opts().onNoticeNew?.(p)),
+      onRealtimeMessage('library-occupancy', (p) => opts().onLibraryOccupancy?.(p)),
+      onRealtimeMessage('store-change', (p) => opts().onStoreChange?.(p)),
+      onRealtimeMessage('error', (p) => console.warn('WebSocket message:', p?.message)),
+    ];
+    return () => unsubs.forEach((u) => u());
+  }, [userId]);
 
   /** Send a message to a peer */
   const sendMessage = useCallback((fromId, toId, text, id, timestamp) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
-        type: 'message',
-        payload: { fromId, toId, text, id, timestamp: timestamp || new Date().toISOString() },
-      }));
-    }
+    sendRealtime('message', { fromId, toId, text, id, timestamp: timestamp || new Date().toISOString() });
   }, []);
 
   /** Signal typing status to a peer */
   const sendTyping = useCallback((toId, isTyping) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
-        type: 'typing',
-        payload: { toId, isTyping },
-      }));
-    }
+    sendRealtime('typing', { toId, isTyping });
   }, []);
 
   /** Signal read receipt to a peer */
   const sendRead = useCallback((peerId, conversationId) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
-        type: 'read',
-        payload: { peerId, conversationId },
-      }));
-    }
+    sendRealtime('read', { peerId, conversationId });
   }, []);
 
   /** Send a reaction to a message */
   const sendReaction = useCallback((messageId, emoji, userId, conversationId) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
-        type: 'reaction',
-        payload: { messageId, emoji, userId, conversationId },
-      }));
-    }
+    sendRealtime('reaction', { messageId, emoji, userId, conversationId });
   }, []);
 
   /** Send a message deletion event */
   const sendDelete = useCallback((messageId, userId, conversationId) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
-        type: 'delete-message',
-        payload: { messageId, userId, conversationId },
-      }));
-    }
+    sendRealtime('delete-message', { messageId, userId, conversationId });
   }, []);
 
   /** Send a message edit event */
   const sendEdit = useCallback((messageId, text, userId, conversationId) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
-        type: 'edit-message',
-        payload: { messageId, text, userId, conversationId },
-      }));
-    }
+    sendRealtime('edit-message', { messageId, text, userId, conversationId });
   }, []);
 
   /** Subscribe to a specific conversation */
   const subscribe = useCallback((conversationId) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
-        type: 'subscribe',
-        payload: { conversationId },
-      }));
-    }
+    sendRealtime('subscribe', { conversationId });
   }, []);
 
   /** Unsubscribe from a specific conversation */
   const unsubscribe = useCallback((conversationId) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
-        type: 'unsubscribe',
-        payload: { conversationId },
-      }));
-    }
+    sendRealtime('unsubscribe', { conversationId });
   }, []);
 
   return {

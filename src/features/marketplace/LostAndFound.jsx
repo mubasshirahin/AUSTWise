@@ -181,11 +181,11 @@ export default function LostAndFound() {
           <div className="grid-2" style={{ gap: '10px' }}>
             <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               Item title
-              <input className="input" value={form.title} onChange={(e) => setForm((c) => ({ ...c, title: e.target.value }))} maxLength={MAX_TITLE_LENGTH} required />
+              <input id="laf-title" name="title" className="input" value={form.title} onChange={(e) => setForm((c) => ({ ...c, title: e.target.value }))} maxLength={MAX_TITLE_LENGTH} required />
             </label>
             <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               Type
-              <select className="input" value={form.type} onChange={(e) => setForm((c) => ({ ...c, type: e.target.value }))}>
+              <select id="laf-type" name="type" className="input" value={form.type} onChange={(e) => setForm((c) => ({ ...c, type: e.target.value }))}>
                 <option value="lost">Lost</option>
                 <option value="found">Found</option>
               </select>
@@ -193,11 +193,11 @@ export default function LostAndFound() {
           </div>
           <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             Location
-            <input className="input" value={form.location} onChange={(e) => setForm((c) => ({ ...c, location: e.target.value }))} maxLength={MAX_TITLE_LENGTH} required />
+            <input id="laf-location" name="location" className="input" value={form.location} onChange={(e) => setForm((c) => ({ ...c, location: e.target.value }))} maxLength={MAX_TITLE_LENGTH} required />
           </label>
           <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             Description
-            <textarea className="input" rows={3} value={form.description} onChange={(e) => setForm((c) => ({ ...c, description: e.target.value }))} maxLength={MAX_SHORT_TEXT_LENGTH} required />
+            <textarea id="laf-description" name="description" className="input" rows={3} value={form.description} onChange={(e) => setForm((c) => ({ ...c, description: e.target.value }))} maxLength={MAX_SHORT_TEXT_LENGTH} required />
           </label>
           <div className="grid-2" style={{ gap: '10px' }}>
             <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>

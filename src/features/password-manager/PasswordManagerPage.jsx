@@ -263,9 +263,11 @@ export default function PasswordManagerPage() {
         <section className="pm-form-card" aria-label="Add a new credential">
           <h3 className="pm-section-title"><Plus size={14} /> Add New Credential</h3>
           <form onSubmit={handleSave}>
-            <label className="pm-field">
+            <label className="pm-field" htmlFor="pm-add-platform">
               <span>Platform / Site <em>*</em></span>
               <input
+                id="pm-add-platform"
+                name="platform"
                 list="pm-platforms"
                 value={platform}
                 onChange={(e) => setPlatform(e.target.value)}
@@ -277,9 +279,11 @@ export default function PasswordManagerPage() {
               </datalist>
             </label>
 
-            <label className="pm-field">
+            <label className="pm-field" htmlFor="pm-add-email">
               <span>Email / Phone <em>*</em></span>
               <input
+                id="pm-add-email"
+                name="email"
                 type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -288,9 +292,11 @@ export default function PasswordManagerPage() {
               />
             </label>
 
-            <label className="pm-field">
+            <label className="pm-field" htmlFor="pm-add-username">
               <span>Username / Handle <small>(optional)</small></span>
               <input
+                id="pm-add-username"
+                name="username"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -298,10 +304,12 @@ export default function PasswordManagerPage() {
               />
             </label>
 
-            <label className="pm-field">
+            <label className="pm-field" htmlFor="pm-add-password">
               <span>Password <em>*</em></span>
               <div className="pm-pass-input">
                 <input
+                  id="pm-add-password"
+                  name="password"
                   type={showPass ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -459,22 +467,24 @@ export default function PasswordManagerPage() {
               </button>
             </div>
             <form onSubmit={handleUpdate}>
-              <label className="pm-field">
+              <label className="pm-field" htmlFor="pm-edit-platform">
                 <span>Platform / Site <em>*</em></span>
-                <input value={editFields.platform} onChange={(e) => setEditFields((f) => ({ ...f, platform: e.target.value }))} required />
+                <input id="pm-edit-platform" name="platform" value={editFields.platform} onChange={(e) => setEditFields((f) => ({ ...f, platform: e.target.value }))} required />
               </label>
-              <label className="pm-field">
+              <label className="pm-field" htmlFor="pm-edit-email">
                 <span>Email / Phone <em>*</em></span>
-                <input value={editFields.email} onChange={(e) => setEditFields((f) => ({ ...f, email: e.target.value }))} required />
+                <input id="pm-edit-email" name="email" value={editFields.email} onChange={(e) => setEditFields((f) => ({ ...f, email: e.target.value }))} required />
               </label>
-              <label className="pm-field">
+              <label className="pm-field" htmlFor="pm-edit-username">
                 <span>Username / Handle <small>(optional)</small></span>
-                <input value={editFields.username} onChange={(e) => setEditFields((f) => ({ ...f, username: e.target.value }))} />
+                <input id="pm-edit-username" name="username" value={editFields.username} onChange={(e) => setEditFields((f) => ({ ...f, username: e.target.value }))} />
               </label>
-              <label className="pm-field">
+              <label className="pm-field" htmlFor="pm-edit-password">
                 <span>Password <em>*</em></span>
                 <div className="pm-pass-input">
                   <input
+                    id="pm-edit-password"
+                    name="password"
                     type={editShowPass ? 'text' : 'password'}
                     value={editFields.password}
                     onChange={(e) => setEditFields((f) => ({ ...f, password: e.target.value }))}

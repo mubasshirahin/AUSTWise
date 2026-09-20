@@ -201,6 +201,8 @@ export default function SearchModal({ isOpen, onClose }) {
         <div className="search-header">
           <Search size={20} className="search-icon" />
           <input
+            id="global-search-input"
+            name="globalSearch"
             ref={inputRef}
             type="text"
             placeholder="Search pages, features..."

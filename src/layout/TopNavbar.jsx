@@ -190,6 +190,8 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
         <div className="topbar-search" onClick={() => onSearchOpen(true)} role="button" tabIndex={0}>
           <Search size={16} />
           <input
+            id="global-search-trigger"
+            name="globalSearchTrigger"
             type="text"
             placeholder="Search anything... (⌘K)"
             readOnly

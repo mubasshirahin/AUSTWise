@@ -192,23 +192,23 @@ export default function ExchangeKits() {
           <div className="grid-2" style={{ gap: '10px' }}>
             <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               Product title
-              <input className="input" value={form.title} onChange={(e) => setForm((c) => ({ ...c, title: e.target.value }))} maxLength={MAX_TITLE_LENGTH} required />
+              <input id="exchange-title" name="title" className="input" value={form.title} onChange={(e) => setForm((c) => ({ ...c, title: e.target.value }))} maxLength={MAX_TITLE_LENGTH} required />
             </label>
             <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               Price (৳)
-              <input className="input" type="number" min="0" value={form.price} onChange={(e) => setForm((c) => ({ ...c, price: e.target.value }))} required />
+              <input id="exchange-price" name="price" className="input" type="number" min="0" value={form.price} onChange={(e) => setForm((c) => ({ ...c, price: e.target.value }))} required />
             </label>
           </div>
           <div className="grid-3" style={{ gap: '10px' }}>
             <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               Category
-              <select className="input" value={form.category} onChange={(e) => setForm((c) => ({ ...c, category: e.target.value }))}>
+              <select id="exchange-category" name="category" className="input" value={form.category} onChange={(e) => setForm((c) => ({ ...c, category: e.target.value }))}>
                 {categories.map((category) => <option key={category} value={category}>{category}</option>)}
               </select>
             </label>
             <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               Condition
-              <select className="input" value={form.condition} onChange={(e) => setForm((c) => ({ ...c, condition: e.target.value }))}>
+              <select id="exchange-condition" name="condition" className="input" value={form.condition} onChange={(e) => setForm((c) => ({ ...c, condition: e.target.value }))}>
                 {conditions.map((condition) => <option key={condition} value={condition}>{condition}</option>)}
               </select>
             </label>

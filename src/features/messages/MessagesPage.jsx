@@ -752,6 +752,8 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
 
       <form className="chat-input" onSubmit={handleSend}>
         <input
+          id="chat-message-input"
+          name="message"
           type="text"
           maxLength={MAX_TEXT_LENGTH}
           placeholder={replyTarget ? `Reply to ${replyTarget.fromName}...` : `Message ${peer?.name || ''}...`}

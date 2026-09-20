@@ -855,11 +855,11 @@ export default function WeekSchedule() {
                   department={user?.department}
                 />
               </div>
-              <input type="text" value={newTask.courseName} onChange={(e) => setNewTask({ ...newTask, courseName: e.target.value })} className="input" placeholder="Course name" disabled style={{ opacity: newTask.courseName ? 1 : 0.6, width: '100%', boxSizing: 'border-box', fontSize: '11px', padding: '4px 6px' }} />
-              <input type="text" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} className="input" placeholder="Title (e.g. Quiz 1)" required style={{ width: '100%', boxSizing: 'border-box', fontSize: '11px', padding: '4px 6px' }} />
+              <input id="week-task-course-name" name="courseName" type="text" value={newTask.courseName} onChange={(e) => setNewTask({ ...newTask, courseName: e.target.value })} className="input" placeholder="Course name" disabled style={{ opacity: newTask.courseName ? 1 : 0.6, width: '100%', boxSizing: 'border-box', fontSize: '11px', padding: '4px 6px' }} />
+              <input id="week-task-title" name="title" type="text" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} className="input" placeholder="Title (e.g. Quiz 1)" required style={{ width: '100%', boxSizing: 'border-box', fontSize: '11px', padding: '4px 6px' }} />
               <div style={{ display: 'flex', gap: '4px' }}>
-                <input type="date" value={newTask.date} onChange={(e) => setNewTask({ ...newTask, date: e.target.value })} className="input" required style={{ flex: 1, fontSize: '11px', padding: '4px 6px', minWidth: 0, boxSizing: 'border-box' }} />
-                <input type="time" value={newTask.time} onChange={(e) => setNewTask({ ...newTask, time: e.target.value })} className="input" style={{ flex: 1, fontSize: '11px', padding: '4px 6px', minWidth: 0, boxSizing: 'border-box' }} />
+                <input id="week-task-date" name="date" type="date" value={newTask.date} onChange={(e) => setNewTask({ ...newTask, date: e.target.value })} className="input" required style={{ flex: 1, fontSize: '11px', padding: '4px 6px', minWidth: 0, boxSizing: 'border-box' }} />
+                <input id="week-task-time" name="time" type="time" value={newTask.time} onChange={(e) => setNewTask({ ...newTask, time: e.target.value })} className="input" style={{ flex: 1, fontSize: '11px', padding: '4px 6px', minWidth: 0, boxSizing: 'border-box' }} />
               </div>
               <div style={{ display: 'flex', gap: '4px' }}>
                 <button type="button" className="btn btn-secondary" style={{ flex: 1, fontSize: '11px', padding: '3px 8px', minHeight: '24px' }} onClick={() => setShowAddModal(false)}>Cancel</button>

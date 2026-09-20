@@ -151,7 +151,7 @@ function ApiKeySettings({ apiKeys, onSave, onClose }) {
               OMDb API Key
               <span style={{ fontWeight: 400, textTransform: 'none', marginLeft: 6, opacity: 0.6 }}>(movies &amp; series)</span>
             </label>
-            <input className="media-input" value={omdb}
+            <input id="media-omdb-key" name="omdbKey" className="media-input" value={omdb}
               onChange={(e) => setOmdb(e.target.value)}
               placeholder="Paste your OMDb API key..."
             />
@@ -166,7 +166,7 @@ function ApiKeySettings({ apiKeys, onSave, onClose }) {
               RAWG API Key
               <span style={{ fontWeight: 400, textTransform: 'none', marginLeft: 6, opacity: 0.6 }}>(games)</span>
             </label>
-            <input className="media-input" value={rawg}
+            <input id="media-rawg-key" name="rawgKey" className="media-input" value={rawg}
               onChange={(e) => setRawg(e.target.value)}
               placeholder="Paste your RAWG API key..."
             />
@@ -283,7 +283,7 @@ function MediaFormModal({ category, item, onSave, onClose, apiKeys }) {
                 </label>
                 <div className="media-search-input-wrap">
                   <Search size={14} />
-                  <input className="media-input"
+                  <input id="media-api-search" name="apiSearch" className="media-input"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder={`Search ${catInfo.label.toLowerCase()} by name...`}
@@ -324,7 +324,7 @@ function MediaFormModal({ category, item, onSave, onClose, apiKeys }) {
           <div className="media-input-row">
             <div className="media-field" style={{ flex: 2 }}>
               <label className="media-label">Title *</label>
-              <input className="media-input" value={title}
+              <input id="media-title" name="title" className="media-input" value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder={`Enter ${singularLabel(category).toLowerCase()} name...`}
                 autoFocus={!!item || !useApi}
@@ -332,7 +332,7 @@ function MediaFormModal({ category, item, onSave, onClose, apiKeys }) {
             </div>
             <div className="media-field" style={{ flex: 1 }}>
               <label className="media-label">Year</label>
-              <input className="media-input" value={year}
+              <input id="media-year" name="year" className="media-input" value={year}
                 onChange={(e) => setYear(e.target.value)}
                 placeholder="2024"
               />
@@ -342,7 +342,7 @@ function MediaFormModal({ category, item, onSave, onClose, apiKeys }) {
           <div className="media-input-row">
             <div className="media-field">
               <label className="media-label">Status</label>
-              <select className="media-select" value={status} onChange={(e) => setStatus(e.target.value)}>
+              <select id="media-status" name="status" className="media-select" value={status} onChange={(e) => setStatus(e.target.value)}>
                 {['watching', 'planning', 'completed', 'on-hold', 'dropped'].map((s) => (
                   <option key={s} value={s}>{STATUS_LABELS[s]}</option>
                 ))}
@@ -350,7 +350,7 @@ function MediaFormModal({ category, item, onSave, onClose, apiKeys }) {
             </div>
             <div className="media-field">
               <label className="media-label">Progress (%)</label>
-              <input className="media-input" type="number" min="0" max="100"
+              <input id="media-progress" name="progress" className="media-input" type="number" min="0" max="100"
                 value={progress} onChange={(e) => setProgress(Number(e.target.value))} />
             </div>
           </div>
@@ -362,7 +362,7 @@ function MediaFormModal({ category, item, onSave, onClose, apiKeys }) {
 
           <div className="media-field">
             <label className="media-label">Notes</label>
-            <textarea className="media-input" value={notes}
+            <textarea id="media-notes" name="notes" className="media-input" value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Your thoughts, episode count, playtime..."
               rows={3} />

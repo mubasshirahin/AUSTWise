@@ -196,6 +196,8 @@ export default function AustedditPage() {
             ))}
           </div>
           <input
+            id="buzz-title"
+            name="title"
             className="buzz-title-input"
             placeholder="Title"
             value={title}
@@ -203,6 +205,8 @@ export default function AustedditPage() {
             maxLength={160}
           />
           <textarea
+            id="buzz-body"
+            name="body"
             className="buzz-body-input"
             placeholder="Share your thoughts anonymously…"
             value={body}

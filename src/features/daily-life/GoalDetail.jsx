@@ -312,12 +312,12 @@ export default function GoalDetail({
         {showAddTask ? (
           <form onSubmit={handleAddTask} className="lp-form-block" style={{ marginTop: 10 }}>
             <div className="lp-form-row">
-              <input className="input" value={newTask.name} onChange={(e) => setNewTask((t) => ({ ...t, name: e.target.value }))} placeholder="Task name" autoFocus />
+              <input id="lp-new-task-name" name="taskName" className="input" value={newTask.name} onChange={(e) => setNewTask((t) => ({ ...t, name: e.target.value }))} placeholder="Task name" autoFocus />
             </div>
             <div className="lp-form-row">
-              <input className="input" value={newTask.costLabel} onChange={(e) => setNewTask((t) => ({ ...t, costLabel: e.target.value }))} placeholder="Cost (optional)" />
-              <input className="input" value={newTask.dueLabel} onChange={(e) => setNewTask((t) => ({ ...t, dueLabel: e.target.value }))} placeholder="Due label (optional)" />
-              <input type="date" className="input" value={newTask.dueDate} onChange={(e) => setNewTask((t) => ({ ...t, dueDate: e.target.value }))} />
+              <input id="lp-new-task-cost" name="costLabel" className="input" value={newTask.costLabel} onChange={(e) => setNewTask((t) => ({ ...t, costLabel: e.target.value }))} placeholder="Cost (optional)" />
+              <input id="lp-new-task-due-label" name="dueLabel" className="input" value={newTask.dueLabel} onChange={(e) => setNewTask((t) => ({ ...t, dueLabel: e.target.value }))} placeholder="Due label (optional)" />
+              <input id="lp-new-task-due-date" name="dueDate" type="date" className="input" value={newTask.dueDate} onChange={(e) => setNewTask((t) => ({ ...t, dueDate: e.target.value }))} />
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button type="submit" className="btn btn-primary btn-sm">Add task</button>
