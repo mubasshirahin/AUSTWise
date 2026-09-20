@@ -3,7 +3,7 @@ import {
   ArrowLeft, ChevronDown, ChevronUp, Plus, Trash2, Lock, Unlock,
   ChevronRight, StickyNote,
 } from 'lucide-react';
-import { LpBar, LpEmpty, LpConfirm, useConfirmState } from './LifePlannerUI';
+import { LpBar, LpEmpty, LpConfirm, LpDateInput, useConfirmState } from './LifePlannerUI';
 import {
   tasksOfGoal, stepsOfTask, depsOfGoal, unlocksWithGoal, byId, goalProgress,
   goalLocked, TYPE_META, toggleStep, addTask, addStep, deleteTask, deleteStep,
@@ -290,11 +290,9 @@ export default function GoalDetail({
                       style={{ flex: 1, minWidth: 140 }}
                       onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddStep(task.id); } }}
                     />
-                    <input
-                      type="date"
-                      className="input"
+                    <LpDateInput
                       value={stepDrafts[task.id]?.dueDate || ''}
-                      onChange={(e) => setStepDrafts((prev) => ({ ...prev, [task.id]: { ...(prev[task.id] || { text: '', note: '' }), dueDate: e.target.value } }))}
+                      onChange={(v) => setStepDrafts((prev) => ({ ...prev, [task.id]: { ...(prev[task.id] || { text: '', note: '' }), dueDate: v } }))}
                       style={{ maxWidth: 135 }}
                       aria-label="Step due date"
                     />
@@ -317,7 +315,7 @@ export default function GoalDetail({
             <div className="lp-form-row">
               <input id="lp-new-task-cost" name="costLabel" className="input" value={newTask.costLabel} onChange={(e) => setNewTask((t) => ({ ...t, costLabel: e.target.value }))} placeholder="Cost (optional)" />
               <input id="lp-new-task-due-label" name="dueLabel" className="input" value={newTask.dueLabel} onChange={(e) => setNewTask((t) => ({ ...t, dueLabel: e.target.value }))} placeholder="Due label (optional)" />
-              <input id="lp-new-task-due-date" name="dueDate" type="date" className="input" value={newTask.dueDate} onChange={(e) => setNewTask((t) => ({ ...t, dueDate: e.target.value }))} />
+              <LpDateInput id="lp-new-task-due-date" name="dueDate" value={newTask.dueDate} onChange={(v) => setNewTask((t) => ({ ...t, dueDate: v }))} />
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button type="submit" className="btn btn-primary btn-sm">Add task</button>

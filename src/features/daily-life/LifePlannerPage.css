@@ -17,6 +17,54 @@
   box-shadow: none;
 }
 
+/* ── LpDateInput — dd/mm/yy text field + calendar button (replaces native mm/dd/yyyy) ── */
+.lp-date-input {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 132px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.lp-date-input > .input {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  padding-right: 28px;
+}
+.lp-date-pick {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.lp-date-pick:hover {
+  color: var(--accent-amber);
+  background: var(--bg-tertiary);
+}
+.lp-date-native {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* ── Date input — calendar icon white in dark theme, dark in light theme ── */
 .lp-widget .input[type="date"] {
   color-scheme: dark;
@@ -920,24 +968,25 @@
 }
 .lp-tl-today-fab:hover { transform: scale(1.04); box-shadow: 0 12px 28px rgba(0,0,0,0.22); }
 
-/* ── Mindmap — strict tree left-to-right (scratch rebuild) — bigger screen + zoom ── */
-.lp-mm { padding: 2px 2px 12px; }
-.lp-mm-viewport {
-  overflow: auto;
-  border: 1px solid var(--border-primary);
-  border-radius: 16px;
-  background: var(--bg-card);
-  min-height: 560px;
-  max-height: 72vh;
-  padding: 8px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+/* ── Mindmap — infinite canvas (same style as Prerequisite Tree) ── */
+.lp-mm {
+  padding: 2px 2px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
-.lp-mm-fullscreen .lp-mm-viewport {
-  position: fixed; inset: 0; z-index: 9999;
-  border-radius: 0; border: none;
-  min-height: 100vh; max-height: 100vh;
+.lp-mm-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
   background: var(--bg-primary);
-  padding: 16px;
+  padding: var(--sp-4, 16px) var(--sp-5, 20px);
+  overflow: hidden;
+}
+.lp-mm-fullscreen .lp-mm-canvas {
+  flex: 1;
+  min-height: 0;
+  height: auto;
 }
 .lp-mm-zoom-actions {
   display: inline-flex; align-items: center; gap: 4px;
@@ -948,36 +997,66 @@
   font-size: 11px; font-weight: 700; color: var(--text-secondary);
   min-width: 38px; text-align: center;
 }
-.lp-mm-viewport.lp-mm-dragging { cursor: grabbing !important; user-select: none; }
-.lp-mm-viewport:active { cursor: grabbing; }
+.lp-mm-zoom-label.is-zooming {
+  animation: lp-mm-pct-pop 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  color: var(--accent-blue);
+}
+@keyframes lp-mm-pct-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
 .lp-mm-toolbar {
   display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
-  margin-bottom: 10px;
 }
 .lp-mm-hint {
   display: inline-flex; align-items: center; gap: 7px;
-  font-size: 12px; font-weight: 600; color: var(--text-secondary);
-  background: var(--bg-tertiary); border: 1px solid var(--border-primary);
-  border-radius: 999px; padding: 7px 14px;
+  font-size: 12px; font-weight: 600; color: var(--text-tertiary);
+  background: var(--bg-card); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md, 12px); padding: 8px 12px;
+  line-height: 1.5;
 }
-.lp-mm-hint svg { color: var(--accent-amber); }
+.lp-mm-hint svg { color: var(--accent-amber); flex-shrink: 0; }
+.lp-mm-hint strong { color: var(--text-secondary); font-weight: 600; }
 .lp-mm-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .lp-mm-legend {
   display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-  margin-bottom: 16px; padding: 8px 14px;
-  background: color-mix(in srgb, var(--bg-tertiary) 50%, transparent);
-  border: 1px solid var(--border-primary); border-radius: 12px;
+  padding: 8px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md, 12px);
 }
 .lp-mm-legend-item {
   display: inline-flex; align-items: center; gap: 6px;
   font-size: 11px; font-weight: 600; color: var(--text-secondary);
 }
-.lp-mm-legend-item i { width: 10px; height: 10px; border-radius: 50%; }
+.lp-mm-legend-item i { width: 10px; height: 10px; border-radius: 3px; }
 
-/* Canvas — root row to the right */
+/* Open infinite canvas — dotted grid, no scrollbars, transform pan/zoom */
 .lp-mm-canvas {
-  display: flex; align-items: flex-start; gap: 16px;
-  min-width: max-content; padding: 12px 6px;
+  position: relative;
+  width: 100%;
+  height: 560px;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  cursor: grab;
+  background-color: var(--bg-tertiary);
+  background-image: radial-gradient(var(--border-secondary) 1px, transparent 1px);
+  background-size: 22px 22px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md, 12px);
+  box-shadow: var(--shadow-sm);
+}
+.lp-mm-canvas.is-panning { cursor: grabbing; }
+.lp-mm-transform-layer {
+  will-change: transform;
+  transform-origin: 0 0;
+  display: inline-block;
+}
+.lp-mm-transform-layer.is-zooming {
+  transition: transform 0.08s ease-out;
 }
 .lp-mm-root-row {
   display: flex; align-items: flex-start; gap: 16px;
@@ -1081,9 +1160,13 @@
   transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
 }
 
+@media (max-width: 768px) {
+  .lp-mm-canvas { height: 400px; }
+}
 @media (max-width: 640px) {
   .lp-mm-toolbar { flex-direction: column; align-items: stretch; }
-  .lp-mm-hint { justify-content: center; }
+  .lp-mm-hint { justify-content: center; font-size: 10px; }
+  .lp-mm-canvas { height: 320px; }
 }
 
 /* ── PDF — premium ── */

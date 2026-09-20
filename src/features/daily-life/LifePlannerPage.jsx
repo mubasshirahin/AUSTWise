@@ -10,7 +10,7 @@ import {
   buildTimeline, fmtDate, todayKey, daysBetween,
   goalProgress, taskProgress, goalDisplayNumber, goalAutoDeadline, createGoal, updateGoal, deleteGoal, addTask, addStep, purgeOrphans, stripExampleContent, normalizePlanner,
 } from './lifePlannerStorage';
-import { LpSubnav, LpBar, LpStat, LpEmpty, LpModal, LpConfirm, useConfirmState } from './LifePlannerUI';
+import { LpSubnav, LpBar, LpStat, LpEmpty, LpModal, LpConfirm, LpDateInput, useConfirmState } from './LifePlannerUI';
 import GoalFormModal from './GoalFormModal';
 import GoalsView from './GoalsView';
 import TimelineView from './TimelineView';
@@ -393,7 +393,7 @@ export default function LifePlannerPage() {
             onKeyDown={(e) => { if (e.key === 'Enter') handleAddMilestoneTop(); }}
             autoFocus
           />
-          <input type="date" className="input" value={milestoneDeadline} onChange={(e) => setMilestoneDeadline(e.target.value)} title="Deadline" style={{ height: 36, maxWidth: 150 }} />
+          <LpDateInput value={milestoneDeadline} onChange={setMilestoneDeadline} title="Deadline" style={{ height: 36 }} />
           <button type="button" className="btn btn-primary btn-sm" onClick={handleAddMilestoneTop} style={{ height: 36, padding: '0 14px' }}>Add</button>
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setShowMilestoneInput(false); setMilestoneInput(''); setMilestoneDeadline(''); }} style={{ height: 36 }}>Cancel</button>
         </div>
@@ -434,7 +434,7 @@ export default function LifePlannerPage() {
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
               <div style={{ flex: '1 1 200px' }}>
                 <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>End date</label>
-                <input type="date" className="input" value={taskTopDueDate} onChange={(e) => setTaskTopDueDate(e.target.value)} required style={{ height: 36, width: '100%' }} />
+                <LpDateInput value={taskTopDueDate} onChange={setTaskTopDueDate} required style={{ height: 36, width: '100%' }} />
               </div>
             </div>
           )}
@@ -458,11 +458,11 @@ export default function LifePlannerPage() {
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
                 <div style={{ flex: '1 1 140px' }}>
                   <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}><Clock size={10} style={{ verticalAlign: '-1px' }} /> Start date</label>
-                  <input type="date" className="input" value={taskRecurringStartDate} onChange={(e)=>setTaskRecurringStartDate(e.target.value)} style={{ height: 34, width: '100%' }} required />
+                  <LpDateInput value={taskRecurringStartDate} onChange={setTaskRecurringStartDate} style={{ height: 34, width: '100%' }} required />
                 </div>
                 <div style={{ flex: '1 1 140px' }}>
                   <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>End date</label>
-                  <input type="date" className="input" value={taskRecurringEndDate} onChange={(e)=>setTaskRecurringEndDate(e.target.value)} style={{ height: 34, width: '100%' }} required />
+                  <LpDateInput value={taskRecurringEndDate} onChange={setTaskRecurringEndDate} style={{ height: 34, width: '100%' }} required />
                 </div>
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{taskRecurringWeekdays.length === 0 ? 'Ekta din o select koro' : `${taskRecurringWeekdays.length} din • ${taskRecurringWeekdays.join(', ')}`} {taskRecurringEndDate ? `• till ${fmtDate(taskRecurringEndDate)}` : '• end date daw'} — task + steps auto recurring hobe</div>
@@ -488,7 +488,7 @@ export default function LifePlannerPage() {
           {parentIsRecurring ? (
             <span className="lp-badge lp-badge-amber" style={{ gap: 4 }}><Repeat size={10} /> Auto recurring • {(parentTask.recurringWeekdays||[]).join(', ')}</span>
           ) : (
-            <input type="date" className="input" value={stepTopDueDate} onChange={(e) => setStepTopDueDate(e.target.value)} title="Deadline" style={{ height: 36, maxWidth: 150 }} />
+            <LpDateInput value={stepTopDueDate} onChange={setStepTopDueDate} title="Deadline" style={{ height: 36 }} />
           )}
           <button type="button" className="btn btn-primary btn-sm" onClick={handleAddStepTop} style={{ height: 36, padding: '0 14px' }}>Add</button>
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setShowStepTopInput(false); setStepTopInput(''); setStepTopDueDate(''); }} style={{ height: 36 }}>Cancel</button>
