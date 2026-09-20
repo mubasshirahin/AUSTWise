@@ -440,7 +440,7 @@ export default function RoutineTemplatesPanel() {
               <div className="routine-edit-grid">
                 <label>
                   Type
-                  <select className="input" value={editingClass.form.type} onChange={(e) => handleClassTypeChange(e.target.value)}>
+                  <select id="rt-class-type" name="type" className="input" value={editingClass.form.type} onChange={(e) => handleClassTypeChange(e.target.value)}>
                     <option value="Theory">Theory</option>
                     <option value="Lab">Lab</option>
                   </select>
@@ -631,15 +631,15 @@ export default function RoutineTemplatesPanel() {
               <div className="routine-edit-grid">
                 <label>
                   Course Code
-                  <input className="input" value={editingClass.form.course} onChange={(e) => updateClassForm('course', e.target.value)} placeholder="e.g., CSE1101" />
+                  <input id="rt-class-course" name="course" className="input" value={editingClass.form.course} onChange={(e) => updateClassForm('course', e.target.value)} placeholder="e.g., CSE1101" />
                 </label>
                 <label className="routine-edit-wide">
                   Course Name
-                  <input className="input" value={editingClass.form.name} onChange={(e) => updateClassForm('name', e.target.value)} placeholder="e.g., Data Structures" />
+                  <input id="rt-class-name" name="name" className="input" value={editingClass.form.name} onChange={(e) => updateClassForm('name', e.target.value)} placeholder="e.g., Data Structures" />
                 </label>
                 <label>
                   Time
-                  <input className="input" value={editingClass.form.time} onChange={(e) => updateClassForm('time', e.target.value)} placeholder="08:00 - 08:50" />
+                  <input id="rt-class-time" name="time" className="input" value={editingClass.form.time} onChange={(e) => updateClassForm('time', e.target.value)} placeholder="08:00 - 08:50" />
                 </label>
                 <label>
                   Room

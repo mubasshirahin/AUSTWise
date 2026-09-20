@@ -759,6 +759,9 @@ export default function AuthPage() {
               Email
               <div className="auth-email-wrap">
                 <input
+                  id="login-email"
+                  name="email"
+                  autoComplete="username"
                   className="input"
                   type="email"
                   value={loginForm.email}
@@ -780,6 +783,9 @@ export default function AuthPage() {
               Password
               <div className="auth-input-eye">
                 <input
+                  id="login-password"
+                  name="password"
+                  autoComplete="current-password"
                   className="input"
                   type={showLoginPw ? 'text' : 'password'}
                   value={loginForm.password}
@@ -844,6 +850,9 @@ export default function AuthPage() {
             <label className="auth-field">
               Full name
               <input
+                id="signup-name"
+                name="name"
+                autoComplete="name"
                 className="input"
                 value={signupForm.name}
                 onChange={(e) => setSignupForm((c) => ({ ...c, name: e.target.value }))}
@@ -858,6 +867,9 @@ export default function AuthPage() {
               Email
               <div className="auth-email-wrap">
                 <input
+                  id="signup-email"
+                  name="email"
+                  autoComplete="email"
                   className="input"
                   type="email"
                   value={signupForm.email}
@@ -881,6 +893,9 @@ export default function AuthPage() {
                 Password
                 <div className="auth-input-eye">
                   <input
+                    id="signup-password"
+                    name="password"
+                    autoComplete="new-password"
                     className="input"
                     type={showSignupPw ? 'text' : 'password'}
                     value={signupForm.password}
@@ -905,6 +920,9 @@ export default function AuthPage() {
                 Confirm
                 <div className="auth-input-eye">
                   <input
+                    id="signup-confirm-password"
+                    name="confirmPassword"
+                    autoComplete="new-password"
                     className="input"
                     type={showConfirmPw ? 'text' : 'password'}
                     value={signupForm.confirmPassword}
@@ -989,6 +1007,8 @@ export default function AuthPage() {
               <label className="auth-field">
                 Batch name &amp; no.
                 <input
+                  id="signup-batch-student"
+                  name="batchNo"
                   className="input"
                   value={signupForm.batchNo}
                   onChange={(e) => setSignupForm((c) => ({ ...c, batchNo: e.target.value }))}
@@ -1002,6 +1022,8 @@ export default function AuthPage() {
               <label className="auth-field">
                 Batch name &amp; no.
                 <input
+                  id="signup-batch-alumni"
+                  name="batchNo"
                   className="input"
                   value={signupForm.batchNo}
                   onChange={(e) => setSignupForm((c) => ({ ...c, batchNo: e.target.value }))}
@@ -1031,6 +1053,8 @@ export default function AuthPage() {
                 <label className="auth-field">
                   Batch name &amp; no.
                   <input
+                    id="signup-batch-faculty"
+                    name="batchNo"
                     className="input"
                     value={signupForm.batchNo}
                     onChange={(e) => setSignupForm((c) => ({ ...c, batchNo: e.target.value }))}
@@ -1045,6 +1069,8 @@ export default function AuthPage() {
                 <label className="auth-field">
                   Graduation year
                   <input
+                    id="signup-grad-year"
+                    name="graduationYear"
                     className="input"
                     value={signupForm.graduationYear}
                     onChange={(e) => setSignupForm((c) => ({ ...c, graduationYear: e.target.value }))}
@@ -1054,6 +1080,8 @@ export default function AuthPage() {
                 <label className="auth-field">
                   Company (optional)
                   <input
+                    id="signup-company"
+                    name="company"
                     className="input"
                     value={signupForm.company}
                     onChange={(e) => setSignupForm((c) => ({ ...c, company: e.target.value }))}

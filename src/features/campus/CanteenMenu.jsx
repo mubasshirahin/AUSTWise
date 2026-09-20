@@ -221,6 +221,8 @@ function FoodFeedback({ food, onChanged }) {
           <form className="canteen-feedback-form" onSubmit={submitReview}>
             <StarPicker value={rating} onChange={setRating} />
             <textarea
+              id="canteen-review-text"
+              name="review"
               className="input canteen-feedback-textarea"
               value={reviewText}
               onChange={(e) => setReviewText(e.target.value)}
@@ -251,6 +253,8 @@ function FoodFeedback({ food, onChanged }) {
         <>
           <form className="canteen-feedback-form" onSubmit={submitComplaint}>
             <textarea
+              id="canteen-complaint-text"
+              name="complaint"
               className="input canteen-feedback-textarea"
               value={complaintText}
               onChange={(e) => setComplaintText(e.target.value)}
@@ -532,6 +536,8 @@ export default function CanteenMenu() {
           <div className="canteen-add-field" style={{ flex: '1 1 160px' }}>
             <label className="canteen-add-field-label">Item Name</label>
             <input
+              id="canteen-item-name"
+              name="name"
               className="input canteen-add-field-input"
               type="text"
               placeholder="e.g. Chicken Burger"
@@ -543,6 +549,8 @@ export default function CanteenMenu() {
           <div className="canteen-add-field" style={{ flex: '0 1 120px' }}>
             <label className="canteen-add-field-label">Category</label>
             <select
+              id="canteen-item-category"
+              name="category"
               className="input canteen-add-field-input"
               value={addForm.category}
               onChange={(e) => setAddForm({ ...addForm, category: e.target.value })}
@@ -557,6 +565,8 @@ export default function CanteenMenu() {
           <div className="canteen-add-field" style={{ flex: '0 1 100px' }}>
             <label className="canteen-add-field-label">Price (৳)</label>
             <input
+              id="canteen-item-price"
+              name="price"
               className="input canteen-add-field-input"
               type="number"
               min="0"

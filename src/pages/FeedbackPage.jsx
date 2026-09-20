@@ -33,22 +33,22 @@ export default function FeedbackPage() {
         ) : (
           <form onSubmit={handleSubmit} style={{ maxWidth: 560 }}>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 500, marginBottom: 6, color: 'var(--text-primary)' }}>Name (optional)</label>
-              <input type="text" placeholder="Your name" style={{
+              <label htmlFor="feedback-name" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 500, marginBottom: 6, color: 'var(--text-primary)' }}>Name (optional)</label>
+              <input id="feedback-name" name="name" type="text" placeholder="Your name" style={{
                 width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border-primary)',
                 background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: '0.86rem', fontFamily: 'inherit',
               }} />
             </div>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 500, marginBottom: 6, color: 'var(--text-primary)' }}>Email (optional)</label>
-              <input type="email" placeholder="your@email.com" style={{
+              <label htmlFor="feedback-email" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 500, marginBottom: 6, color: 'var(--text-primary)' }}>Email (optional)</label>
+              <input id="feedback-email" name="email" type="email" placeholder="your@email.com" style={{
                 width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border-primary)',
                 background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: '0.86rem', fontFamily: 'inherit',
               }} />
             </div>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 500, marginBottom: 6, color: 'var(--text-primary)' }}>Message *</label>
-              <textarea required rows={6} placeholder="Tell us what is on your mind..." style={{
+              <label htmlFor="feedback-message" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 500, marginBottom: 6, color: 'var(--text-primary)' }}>Message *</label>
+              <textarea id="feedback-message" name="message" required rows={6} placeholder="Tell us what is on your mind..." style={{
                 width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border-primary)',
                 background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: '0.86rem', fontFamily: 'inherit', resize: 'vertical',
               }} />

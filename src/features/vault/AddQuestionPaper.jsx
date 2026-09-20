@@ -130,9 +130,11 @@ export default function AddQuestionPaper({ vaultContext, selectedTerm, onAdded }
             </div>
 
             <div className="grid-2" style={{ gap: '12px' }}>
-              <label className="qb-add-field">
+              <label className="qb-add-field" htmlFor="qb-paper-exam-type">
                 <span>Exam Type</span>
                 <select
+                  id="qb-paper-exam-type"
+                  name="examType"
                   className="input"
                   value={form.type}
                   onChange={(e) => setForm((current) => ({ ...current, type: e.target.value }))}
@@ -145,9 +147,11 @@ export default function AddQuestionPaper({ vaultContext, selectedTerm, onAdded }
                 </select>
               </label>
 
-              <label className="qb-add-field">
+              <label className="qb-add-field" htmlFor="qb-paper-no">
                 <span>No.</span>
                 <input
+                  id="qb-paper-no"
+                  name="paperNo"
                   className="input"
                   type="number"
                   min="1"
@@ -159,8 +163,10 @@ export default function AddQuestionPaper({ vaultContext, selectedTerm, onAdded }
               </label>
             </div>
 
-            <label className="qb-add-checkbox">
+            <label className="qb-add-checkbox" htmlFor="qb-paper-solved">
               <input
+                id="qb-paper-solved"
+                name="solved"
                 type="checkbox"
                 checked={form.solved}
                 onChange={(e) => setForm((current) => ({ ...current, solved: e.target.checked }))}

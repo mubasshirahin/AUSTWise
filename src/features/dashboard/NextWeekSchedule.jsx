@@ -275,6 +275,8 @@ export default function NextWeekSchedule() {
               <div>
                 <label className="input-label">Course</label>
                 <input
+                  id="deadline-course"
+                  name="course"
                   type="text"
                   value={newDeadline.course}
                   onChange={(e) => setNewDeadline({ ...newDeadline, course: e.target.value })}
@@ -285,6 +287,8 @@ export default function NextWeekSchedule() {
               <div>
                 <label className="input-label">Deadline Type *</label>
                 <select
+                  id="deadline-type"
+                  name="type"
                   value={newDeadline.type}
                   onChange={(e) => setNewDeadline({ ...newDeadline, type: e.target.value })}
                   className="input"
@@ -306,6 +310,8 @@ export default function NextWeekSchedule() {
                 <div>
                   <label className="input-label">Custom Type</label>
                   <input
+                    id="deadline-custom-type"
+                    name="customType"
                     type="text"
                     value={newDeadline.customType}
                     onChange={(e) => setNewDeadline({ ...newDeadline, customType: e.target.value })}

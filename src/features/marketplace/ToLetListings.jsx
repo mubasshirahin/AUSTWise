@@ -200,20 +200,20 @@ export default function ToLetListings() {
         <form onSubmit={handleSubmit} className="glass-card" style={{ padding: '16px', marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             Listing title
-            <input className="input" value={form.title} onChange={(e) => setForm((c) => ({ ...c, title: e.target.value }))} maxLength={MAX_TITLE_LENGTH} required />
+            <input id="tolet-title" name="title" className="input" value={form.title} onChange={(e) => setForm((c) => ({ ...c, title: e.target.value }))} maxLength={MAX_TITLE_LENGTH} required />
           </label>
           <div className="grid-3" style={{ gap: '10px' }}>
             <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               Monthly rent (৳)
-              <input className="input" type="number" min="0" value={form.rent} onChange={(e) => setForm((c) => ({ ...c, rent: e.target.value }))} required />
+              <input id="tolet-rent" name="rent" className="input" type="number" min="0" value={form.rent} onChange={(e) => setForm((c) => ({ ...c, rent: e.target.value }))} required />
             </label>
             <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               Location
-              <input className="input" value={form.location} onChange={(e) => setForm((c) => ({ ...c, location: e.target.value }))} placeholder="Tejgaon" maxLength={MAX_TITLE_LENGTH} required />
+              <input id="tolet-location" name="location" className="input" value={form.location} onChange={(e) => setForm((c) => ({ ...c, location: e.target.value }))} placeholder="Tejgaon" maxLength={MAX_TITLE_LENGTH} required />
             </label>
             <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               Type
-              <select className="input" value={form.type} onChange={(e) => setForm((c) => ({ ...c, type: e.target.value }))}>
+              <select id="tolet-type" name="type" className="input" value={form.type} onChange={(e) => setForm((c) => ({ ...c, type: e.target.value }))}>
                 {spaceTypes.map((type) => <option key={type} value={type}>{type}</option>)}
               </select>
             </label>
@@ -221,7 +221,7 @@ export default function ToLetListings() {
           <div className="grid-2" style={{ gap: '10px' }}>
             <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               Gender
-              <select className="input" value={form.environment} onChange={(e) => setForm((c) => ({ ...c, environment: e.target.value }))}>
+              <select id="tolet-environment" name="environment" className="input" value={form.environment} onChange={(e) => setForm((c) => ({ ...c, environment: e.target.value }))}>
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
               </select>
@@ -229,11 +229,11 @@ export default function ToLetListings() {
           </div>
           <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             Description (optional)
-            <textarea className="input" value={form.description} onChange={(e) => setForm((c) => ({ ...c, description: e.target.value }))} maxLength={MAX_SHORT_TEXT_LENGTH} placeholder="Describe the space, rules, who can stay..." rows={2} />
+            <textarea id="tolet-description" name="description" className="input" value={form.description} onChange={(e) => setForm((c) => ({ ...c, description: e.target.value }))} maxLength={MAX_SHORT_TEXT_LENGTH} placeholder="Describe the space, rules, who can stay..." rows={2} />
           </label>
           <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             Utilities (optional)
-            <textarea className="input" value={form.utilities} onChange={(e) => setForm((c) => ({ ...c, utilities: e.target.value }))} maxLength={MAX_SHORT_TEXT_LENGTH} placeholder="e.g. Electricity, Water, Gas, Internet, Maid..." rows={2} />
+            <textarea id="tolet-utilities" name="utilities" className="input" value={form.utilities} onChange={(e) => setForm((c) => ({ ...c, utilities: e.target.value }))} maxLength={MAX_SHORT_TEXT_LENGTH} placeholder="e.g. Electricity, Water, Gas, Internet, Maid..." rows={2} />
           </label>
           <div>
             <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>Amenities</span>

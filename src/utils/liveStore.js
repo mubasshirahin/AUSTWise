@@ -200,22 +200,37 @@ export function getLiveValue(scope, key, fallback = null) {
 export function useLiveValue(scope, key, fallback = null) {
   const [, force] = useState(0);
 
+  // Capture the first fallback and keep handing out that same reference.
+  // While the key is cached the fallback is unused, but when it is NOT (fresh
+  // device, server fetch in flight, or the key simply absent) the hook
+  // returns it — and returning a fresh array/object literal on every render
+  // breaks referential stability for downstream useMemo/useEffect deps,
+  // causing setState-in-effect render loops ("Maximum update depth
+  // exceeded"). Inline literals like `[]` / `[...defaults]` are therefore
+  // safe at call sites. Data changes go through setValue, not the fallback.
+  const [stableFallback] = useState(fallback);
+
   // Seed cache from localStorage during render (idempotent, no setState) so
   // the very first frame already shows the local value.
   if (scope && key) ensureFetched(scope, key);
 
   useEffect(() => {
     if (!scope || !key) return undefined;
-    const onChange = () => force((n) => n + 1);
+    // Re-render only when THIS key changes — the store emits for every key,
+    // and a cross-key emit would needlessly re-render every subscriber.
+    const compositeKey = cacheKey(scope, key);
+    const onChange = (changedKey) => {
+      if (changedKey === compositeKey) force((n) => n + 1);
+    };
     subscribers.add(onChange);
     return () => { subscribers.delete(onChange); };
   }, [scope, key]);
 
   return [
-    getLiveValue(scope, key, fallback),
+    getLiveValue(scope, key, stableFallback),
     (valueOrFn) => {
       const next = typeof valueOrFn === 'function'
-        ? valueOrFn(getLiveValue(scope, key, fallback))
+        ? valueOrFn(getLiveValue(scope, key, stableFallback))
         : valueOrFn;
       return setLiveValue(scope, key, next);
     },
@@ -223,11 +238,85 @@ export function useLiveValue(scope, key, fallback = null) {
   ];
 }
 
+// ── Realtime message bus (chat, presence, notifications, …) ─────────────
+// Every feature used to open its own WebSocket; they all multiplex over the
+// single shared connection below now. `store-change` keeps first-class
+// handling; every other message type is dispatched to type-scoped
+// subscribers here, which keeps the server protocol unchanged.
+
+const messageSubs = new Map(); // type -> Set<cb(payload)>
+const statusSubs = new Set(); // cb(connected: boolean)
+// The server sends presence snapshots only once per socket registration, but
+// feature components mount/unmount over the life of the connection. Remember
+// the latest snapshot per type so late-mounting consumers (e.g. the messages
+// page, opened after dashboard load) get current state immediately.
+const snapshotCache = new Map(); // type -> last payload
+const SNAPSHOT_TYPES = new Set(['online-users', 'presence-snapshot']);
+
+function dispatchMessage(type, payload) {
+  if (SNAPSHOT_TYPES.has(type)) snapshotCache.set(type, payload);
+  const set = messageSubs.get(type);
+  if (!set) return;
+  for (const cb of Array.from(set)) {
+    try { cb(payload); } catch { /* never let one listener break others */ }
+  }
+}
+
+function notifyStatus(connected) {
+  for (const cb of Array.from(statusSubs)) {
+    try { cb(connected); } catch { /* isolate listener errors */ }
+  }
+}
+
+/**
+ * Subscribe to a realtime message type on the shared socket. Returns an
+ * unsubscribe function. Snapshot types (online-users / presence-snapshot)
+ * replay their latest payload to new subscribers.
+ */
+export function onRealtimeMessage(type, cb) {
+  let set = messageSubs.get(type);
+  if (!set) { set = new Set(); messageSubs.set(type, set); }
+  set.add(cb);
+  if (SNAPSHOT_TYPES.has(type)) {
+    const last = snapshotCache.get(type);
+    if (last !== undefined) queueMicrotask(() => { try { cb(last); } catch { /* ignore */ } });
+  }
+  return () => {
+    set.delete(cb);
+    if (set.size === 0) messageSubs.delete(type);
+  };
+}
+
+/** Send a realtime message over the shared socket (dropped while offline). */
+export function sendRealtime(type, payload = {}) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    try { ws.send(JSON.stringify({ type, payload })); } catch { /* ignore */ }
+  }
+}
+
+/**
+ * Subscribe to shared-socket connection status. Returns an unsubscribe fn.
+ * Fires once via microtask with the CURRENT status on subscribe, so consumers
+ * that mount after the socket opened sync immediately.
+ */
+export function onRealtimeStatus(cb) {
+  statusSubs.add(cb);
+  queueMicrotask(() => {
+    if (!statusSubs.has(cb)) return; // unsubscribed before the task ran
+    cb(!stopped && !!(ws && ws.readyState === WebSocket.OPEN));
+  });
+  return () => { statusSubs.delete(cb); };
+}
+
 // ── WebSocket connection (one shared connection for the whole app) ───────────
 
 /** Open (or reuse) the real-time channel for a user. Idempotent per user id. */
 export function initLiveStore(userId) {
-  if (!userId || stopped) return;
+  if (!userId) return;
+  // Allow re-init after logout (destroyLiveStore) → login without a page
+  // reload. The shared socket is now the only realtime channel (chat
+  // included), so it must come back after a re-login.
+  stopped = false;
   if (wsUserId === userId && ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
     return;
   }
@@ -241,6 +330,7 @@ export function destroyLiveStore() {
   if (reconnectTimer) clearTimeout(reconnectTimer);
   if (pingTimer) clearInterval(pingTimer);
   if (ws) { ws.onclose = null; ws.close(); ws = null; }
+  notifyStatus(false);
   wsUserId = null;
   cache.clear();
   inFlight.clear();
@@ -266,6 +356,19 @@ function connect() {
   // Dev: same-origin /api/ws hits the local server.
   const wsUrl = (import.meta.env.VITE_WS_URL || `${protocol}//${window.location.host}/api/ws`);
 
+  // Neutralize any previous socket before replacing it. A stale socket's
+  // onclose firing later would schedule a duplicate reconnect that overwrites
+  // the fresh connection (e.g. user switched while the old socket was open).
+  if (ws) {
+    const previous = ws;
+    ws = null;
+    previous.onopen = null;
+    previous.onmessage = null;
+    previous.onclose = null;
+    previous.onerror = null;
+    try { previous.close(); } catch { /* ignore */ }
+  }
+
   try {
     ws = new WebSocket(wsUrl);
   } catch {
@@ -290,37 +393,44 @@ function connect() {
         ws.send(JSON.stringify({ type: 'ping', payload: {} }));
       }
     }, PING_INTERVAL);
+    notifyStatus(true);
   };
 
   ws.onmessage = (event) => {
+    let parsed;
     try {
-      const { type, payload } = JSON.parse(event.data);
-      if (type === 'store-change' && payload && (payload.scope === 'user' || payload.scope === 'shared') && payload.key) {
-        const k = cacheKey(payload.scope, payload.key);
-        // A key was deleted on another device: drop it everywhere locally so
-        // readers fall back to their empty/default state instead of keeping a
-        // stale copy. Also purge legacy user-scoped localStorage variants
-        // (`key-<userId>` / `key-guest`) that authStorage fallbacks read.
-        if (payload.deleted) {
-          if (isLocalWrite(k)) return;
-          cache.delete(k);
-          try { localStorage.removeItem(payload.key); } catch { /* ignore */ }
-          try { localStorage.removeItem(`${payload.key}-guest`); } catch { /* ignore */ }
-          if (wsUserId) { try { localStorage.removeItem(`${payload.key}-${wsUserId}`); } catch { /* ignore */ } }
-          emit(k, false);
-          return;
-        }
-        // A key changed. If it was our own write (echo), skip the re-fetch —
-        // the cache already has the value and subscribers were already notified
-        // with isLocal=true. Otherwise a different device changed it, so pull
-        // the fresh value so every device converges.
+      parsed = JSON.parse(event.data);
+    } catch { /* ignore malformed messages */ return; }
+    const { type, payload } = parsed || {};
+    if (!type) return;
+    // Fan out to feature subscribers first (chat, presence, marketplace, …).
+    dispatchMessage(type, payload);
+    if (type === 'store-change' && payload && (payload.scope === 'user' || payload.scope === 'shared') && payload.key) {
+      const k = cacheKey(payload.scope, payload.key);
+      // A key was deleted on another device: drop it everywhere locally so
+      // readers fall back to their empty/default state instead of keeping a
+      // stale copy. Also purge legacy user-scoped localStorage variants
+      // (`key-<userId>` / `key-guest`) that authStorage fallbacks read.
+      if (payload.deleted) {
         if (isLocalWrite(k)) return;
-        fetchKey(payload.scope, payload.key);
+        cache.delete(k);
+        try { localStorage.removeItem(payload.key); } catch { /* ignore */ }
+        try { localStorage.removeItem(`${payload.key}-guest`); } catch { /* ignore */ }
+        if (wsUserId) { try { localStorage.removeItem(`${payload.key}-${wsUserId}`); } catch { /* ignore */ } }
+        emit(k, false);
+        return;
       }
-    } catch { /* ignore malformed messages */ }
+      // A key changed. If it was our own write (echo), skip the re-fetch —
+      // the cache already has the value and subscribers were already notified
+      // with isLocal=true. Otherwise a different device changed it, so pull
+      // the fresh value so every device converges.
+      if (isLocalWrite(k)) return;
+      fetchKey(payload.scope, payload.key);
+    }
   };
 
   ws.onclose = () => {
+    notifyStatus(false);
     if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
     if (stopped) return;
     const delay = Math.min(WS_RECONNECT_DELAY * Math.pow(1.5, reconnectAttempt), WS_MAX_RECONNECT_DELAY);

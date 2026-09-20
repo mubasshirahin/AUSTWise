@@ -124,17 +124,17 @@ export default function BharaKotoPanel() {
 
       {/* Add form */}
       <form onSubmit={handleAdd} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px', marginBottom: '16px', padding: '12px', background: 'var(--bg-input)', borderRadius: '12px', border: '1px solid var(--border-primary)' }}>
-        <input className="input" placeholder="Source (e.g. Aftab Nagar Block A)" value={form.source} onChange={e=>setForm({...form, source:e.target.value})} required style={{ gridColumn: '1 / -1' }} />
-        <input className="input" placeholder="Distance km" type="number" step="0.1" value={form.distance_km} onChange={e=>setForm({...form, distance_km:e.target.value})} />
-        <input className="input" placeholder="Walking time" value={form.walking_time} onChange={e=>setForm({...form, walking_time:e.target.value})} />
-        <input className="input" placeholder="Walking cost" value={form.walking_cost} onChange={e=>setForm({...form, walking_cost:e.target.value})} />
-        <input className="input" placeholder="Rickshaw" value={form.rickshaw_cost} onChange={e=>setForm({...form, rickshaw_cost:e.target.value})} />
-        <input className="input" placeholder="Metro" value={form.metro_cost} onChange={e=>setForm({...form, metro_cost:e.target.value})} />
-        <input className="input" placeholder="Metro station" value={form.metro_station} onChange={e=>setForm({...form, metro_station:e.target.value})} />
-        <input className="input" placeholder="Local Bus" value={form.local_bus_cost} onChange={e=>setForm({...form, local_bus_cost:e.target.value})} />
-        <input className="input" placeholder="Tempo" value={form.tempo_cost} onChange={e=>setForm({...form, tempo_cost:e.target.value})} />
-        <input className="input" placeholder="Taxi" value={form.taxi_cost} onChange={e=>setForm({...form, taxi_cost:e.target.value})} />
-        <input className="input" placeholder="Rideshare" value={form.rideshare_cost} onChange={e=>setForm({...form, rideshare_cost:e.target.value})} />
+        <input id="bhara-source" name="source" className="input" placeholder="Source (e.g. Aftab Nagar Block A)" value={form.source} onChange={e=>setForm({...form, source:e.target.value})} required style={{ gridColumn: '1 / -1' }} />
+        <input id="bhara-distance" name="distance_km" className="input" placeholder="Distance km" type="number" step="0.1" value={form.distance_km} onChange={e=>setForm({...form, distance_km:e.target.value})} />
+        <input id="bhara-walk-time" name="walking_time" className="input" placeholder="Walking time" value={form.walking_time} onChange={e=>setForm({...form, walking_time:e.target.value})} />
+        <input id="bhara-walk-cost" name="walking_cost" className="input" placeholder="Walking cost" value={form.walking_cost} onChange={e=>setForm({...form, walking_cost:e.target.value})} />
+        <input id="bhara-rickshaw" name="rickshaw_cost" className="input" placeholder="Rickshaw" value={form.rickshaw_cost} onChange={e=>setForm({...form, rickshaw_cost:e.target.value})} />
+        <input id="bhara-metro" name="metro_cost" className="input" placeholder="Metro" value={form.metro_cost} onChange={e=>setForm({...form, metro_cost:e.target.value})} />
+        <input id="bhara-metro-station" name="metro_station" className="input" placeholder="Metro station" value={form.metro_station} onChange={e=>setForm({...form, metro_station:e.target.value})} />
+        <input id="bhara-bus" name="local_bus_cost" className="input" placeholder="Local Bus" value={form.local_bus_cost} onChange={e=>setForm({...form, local_bus_cost:e.target.value})} />
+        <input id="bhara-tempo" name="tempo_cost" className="input" placeholder="Tempo" value={form.tempo_cost} onChange={e=>setForm({...form, tempo_cost:e.target.value})} />
+        <input id="bhara-taxi" name="taxi_cost" className="input" placeholder="Taxi" value={form.taxi_cost} onChange={e=>setForm({...form, taxi_cost:e.target.value})} />
+        <input id="bhara-rideshare" name="rideshare_cost" className="input" placeholder="Rideshare" value={form.rideshare_cost} onChange={e=>setForm({...form, rideshare_cost:e.target.value})} />
         <button type="submit" className="btn btn-primary" style={{ gridColumn: '1 / -1' }}>Add Row</button>
       </form>
 

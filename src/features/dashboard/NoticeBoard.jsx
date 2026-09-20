@@ -334,14 +334,14 @@ export default function NoticeBoard() {
               )}
               <label className="notice-form-field">
                 <span>Title <small style={{ color:'var(--text-tertiary)', fontWeight:400 }}>({formTitle.length}/{NOTICE_TITLE_MAX})</small></span>
-                <input className="input" value={formTitle} maxLength={NOTICE_TITLE_MAX} onChange={(e) => setFormTitle(e.target.value)} placeholder="Notice title (5-80 chars)" required />
+                <input id="notice-title" name="title" className="input" value={formTitle} maxLength={NOTICE_TITLE_MAX} onChange={(e) => setFormTitle(e.target.value)} placeholder="Notice title (5-80 chars)" required />
               </label>
               <label className="notice-form-field">
                 <span>Content <small style={{ color:'var(--text-tertiary)', fontWeight:400 }}>({formContent.length}/{NOTICE_CONTENT_MAX})</small></span>
-                <textarea className="input" rows="4" value={formContent} maxLength={NOTICE_CONTENT_MAX} onChange={(e) => setFormContent(e.target.value)} placeholder="Notice details" required />
+                <textarea id="notice-content" name="content" className="input" rows="4" value={formContent} maxLength={NOTICE_CONTENT_MAX} onChange={(e) => setFormContent(e.target.value)} placeholder="Notice details" required />
               </label>
               <label className="notice-form-pin">
-                <input type="checkbox" checked={formPinned} onChange={(e) => setFormPinned(e.target.checked)} />
+                <input id="notice-pinned" name="pinned" type="checkbox" checked={formPinned} onChange={(e) => setFormPinned(e.target.checked)} />
                 <span className="notice-pin-track">
                   <span className="notice-pin-thumb" />
                 </span>

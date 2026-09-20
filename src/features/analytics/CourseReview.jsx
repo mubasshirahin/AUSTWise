@@ -232,7 +232,7 @@ export default function CourseReview() {
           {trackerCourses.length > 0 && (
             <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Pick from CGPA Calculator (optional)</span>
-              <select className="input" defaultValue="" onChange={applyTrackerCourse}>
+              <select id="review-tracker-course" name="trackerCourse" className="input" defaultValue="" onChange={applyTrackerCourse}>
                 <option value="">Select a course...</option>
                 {trackerCourses.map((course) => (
                   <option key={course.code} value={course.code}>{course.code} — {course.name}</option>
@@ -258,6 +258,8 @@ export default function CourseReview() {
             <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               Course title
               <input
+                id="review-course-title"
+                name="courseTitle"
                 className="input"
                 value={reviewForm.name}
                 onChange={(event) => setReviewForm((current) => ({ ...current, name: event.target.value }))}
@@ -289,6 +291,8 @@ export default function CourseReview() {
           <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             Comment (optional)
             <textarea
+              id="review-comment"
+              name="comment"
               className="input"
               rows={3}
               value={reviewForm.commentText}
@@ -405,6 +409,8 @@ export default function CourseReview() {
               <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '10px' }}>Student Feedbacks</h4>
               <form onSubmit={submitComment} className="flex gap-2 mb-4">
                 <input
+                  id="review-quick-comment"
+                  name="quickComment"
                   className="input"
                   value={newComment}
                   onChange={(event) => setNewComment(event.target.value)}
