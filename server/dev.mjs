@@ -494,6 +494,10 @@ function applySecurityHeaders(res) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  // CORB fix: allow cross-origin images (Google avatars) and API JSON to be read —
+  // without this, nosniff + wrong MIME triggers CORB block on vercel→render rewrite.
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(self)');
   if (process.env.ENABLE_CSP === '1') {
     res.setHeader('Content-Security-Policy', process.env.CSP_HEADER || "default-src 'self'");

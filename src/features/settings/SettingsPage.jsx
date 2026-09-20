@@ -188,6 +188,9 @@ function AccentColorSection() {
           <span className="accent-preview-chip" style={{ background: isDefault ? ACCENT_DEFAULT_HEX : hex }} />
           <input
             type="text"
+            id="accent-hex-input"
+            name="accentHex"
+            autoComplete="off"
             className={`accent-hex-input${hexValid ? '' : ' is-invalid'}`}
             value={hexDraft}
             onChange={onHexInput}
@@ -255,6 +258,8 @@ function FavoriteColorInput() {
       <span>Favorite color</span>
       <input
         type="color"
+        id="orbits-favorite-color"
+        name="favoriteColor"
         className="orbits-color-input"
         value={color}
         onChange={(e) => setFavoriteColor(e.target.value)}
@@ -274,11 +279,12 @@ export default function SettingsPage() {
   const { supported, permission, settings: notifSettings, enable: enableNotifs, disable: disableNotifs, updateSetting } = useNotifications(routine, weekDays);
 
   // Real-time: when another device edits this user's profile, refresh from server
-  useWebSocket(isAuthenticated ? user?.id : null, {
-    onProfileUpdate: useCallback(({ userId: changedId }) => {
-      if (changedId === user?.id) refreshUserFromServer();
-    }, [user?.id, refreshUserFromServer]),
-  });
+  // TEMP DISABLED — blink debug: comment out to isolate loop
+  // useWebSocket(isAuthenticated ? user?.id : null, {
+  //   onProfileUpdate: useCallback(({ userId: changedId }) => {
+  //     if (changedId === user?.id) refreshUserFromServer();
+  //   }, [user?.id, refreshUserFromServer]),
+  // });
 
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -301,12 +307,15 @@ export default function SettingsPage() {
 
   // Persist the generated AWID once so it stays stable for accounts that
   // don't have one yet (localStorage/social auth flows).
+  const awidPersistedRef = useRef(false);
   useEffect(() => {
-    if (isAuthenticated && user.id && !user.awid) {
+    if (isAuthenticated && user.id && !user.awid && !awidPersistedRef.current) {
+      awidPersistedRef.current = true;
       updateUser({ awid: displayAwid });
     }
+    if (user.awid) awidPersistedRef.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [displayAwid, isAuthenticated, user.id]);
+  }, [displayAwid, isAuthenticated, user.id, user.awid]);
 
   // Sync activeSubTab to URL search params so refresh preserves the tab
   const handleSetActiveSubTab = useCallback((tab) => {
@@ -417,50 +426,18 @@ export default function SettingsPage() {
   // Telegram Chat ID + registration status are per-account (one Chat ID ↔ one
   // awid). Load them from the server on mount so a different user logging in on
   // the same browser sees THEIR OWN Chat ID — not a leftover from localStorage.
+  // TEMP DISABLED — blink debug (entire fetch disabled)
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const response = await fetch('/api/user/settings');
-        if (cancelled || !response.ok) return;
-        const result = await response.json();
-        if (!result.success) return;
-        const chatId = (result.settings?.telegram?.chatId || '').trim();
-        registeredChatIdRef.current = chatId;
-        if (!cancelled) {
-          setTelegramChatId(chatId);
-          setIsTelegramRegistered(!!result.settings?.telegram?.registered);
-          // Keep the dashboard's Telegram sync pointing at the current user's
-          // Chat ID rather than the previous user's.
-          localStorage.setItem('telegram_chat_id', chatId);
-          localStorage.setItem('telegram_is_registered', (!!result.settings?.telegram?.registered).toString());
-        }
-      } catch {
-        /* offline — keep current values */
-      }
-    })();
-    return () => { cancelled = true; };
+    return () => {};
   }, []);
   
   // Webhook status
   const [webhookInfo, setWebhookInfo] = useState(null);
   const [webhookLoading, setWebhookLoading] = useState(false);
   
-  // Fetch webhook info on mount
+  // Fetch webhook info on mount — TEMP DISABLED blink debug
   useEffect(() => {
-    const fetchWebhookInfo = async () => {
-      setWebhookLoading(true);
-      try {
-        const response = await fetch('/api/telegram/webhook-info');
-        const result = await response.json();
-        setWebhookInfo(result);
-      } catch (err) {
-        console.error('Failed to fetch webhook info:', err);
-      } finally {
-        setWebhookLoading(false);
-      }
-    };
-    fetchWebhookInfo();
+    return () => {};
   }, []);
 
   // Persist Telegram settings to localStorage
@@ -485,18 +462,22 @@ export default function SettingsPage() {
   // Load application status & vacancy map on mount, then keep it fresh by
   // polling the server. This way an approval made on another device shows up
   // here (and the resign button appears) without a manual reload.
+  // TEMP DISABLED — blink debug: polling can cause render loop via refreshUserFromServer
   useEffect(() => {
     if (!isAuthenticated || !user?.id) return;
     let cancelled = false;
 
     const syncStatus = async () => {
       try {
-        await syncRoleApplicationsFromServer(user.id);
-        await refreshUserFromServer();
+        // await syncRoleApplicationsFromServer(user.id);
+        // await refreshUserFromServer();
       } catch { /* offline — local state stays */ }
       if (cancelled) return;
-      setApplicationStatus(getUserApplicationStatus(user.id));
-      setUserApplications(getApplicationsByUserId(user.id));
+      const nextStatus = getUserApplicationStatus(user.id);
+      const nextApps = getApplicationsByUserId(user.id);
+      // Only update state if actually changed — prevents rapid re-render loop
+      setApplicationStatus(prev => JSON.stringify(prev) === JSON.stringify(nextStatus) ? prev : nextStatus);
+      setUserApplications(prev => JSON.stringify(prev) === JSON.stringify(nextApps) ? prev : nextApps);
     };
 
     syncStatus();
@@ -818,6 +799,9 @@ export default function SettingsPage() {
           <span>Batch</span>
           <input
             type="text"
+            id="batch-input"
+            name="batchName"
+            autoComplete="off"
             className="input"
             value={quickProfile.batchName && quickProfile.batchNo
               ? (quickProfile.batchName === quickProfile.batchNo ? quickProfile.batchName : `${quickProfile.batchName} ${quickProfile.batchNo}`)
@@ -981,10 +965,10 @@ export default function SettingsPage() {
               <div className="profile-content-stack">
                 <div className="profile-editor">
                   <label className={`profile-photo-picker ${!isEditingProfile ? 'is-locked' : ''}`}>
-                    {isEditingProfile && <input type="file" accept="image/*" onChange={handleProfileImageUpload} />}
+                    {isEditingProfile && <input type="file" id="profile-avatar" name="avatar" accept="image/*" onChange={handleProfileImageUpload} />}
                     <span className="avatar xl profile-photo-preview">
                       {profileDetails.avatar ? (
-                        <img src={profileDetails.avatar} alt="Profile preview" />
+                        <img src={profileDetails.avatar} alt="Profile preview" crossOrigin="anonymous" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                       ) : (
                         getInitials(profileDetails.name)
                       )}
@@ -1026,14 +1010,17 @@ export default function SettingsPage() {
                       </label>
                     </div>
                     <label>
-                      <span>Name</span>
-                      <input
-                        type="text"
-                        value={profileDetails.name}
-                        onChange={(event) => updateProfileDetailsField('name', event.target.value)}
-                        className="input mt-1"
-                      />
-                    </label>
+                        <span>Name</span>
+                        <input
+                          type="text"
+                          id="profile-name"
+                          name="profileName"
+                          autoComplete="name"
+                          value={profileDetails.name}
+                          onChange={(event) => updateProfileDetailsField('name', event.target.value)}
+                          className="input mt-1"
+                        />
+                      </label>
                     <label>
                       <span>Blood Group</span>
                       <select
@@ -1414,6 +1401,9 @@ export default function SettingsPage() {
                     <span className="cfg-field-label">Telegram Chat ID</span>
                     <input 
                       type="text"
+                      id="telegram-chat-id"
+                      name="telegramChatId"
+                      autoComplete="off"
                       value={telegramChatId} 
                       onChange={(e) => {
                         const value = e.target.value;
@@ -1765,7 +1755,7 @@ export default function SettingsPage() {
                 <div className="orbits-hero">
                   <div className="orbits-avatar">
                     {user?.avatar && !orbitAvatarError ? (
-                      <img src={user.avatar} alt="Your orbit avatar" onError={() => setOrbitAvatarError(true)} />
+                      <img src={user.avatar} alt="Your orbit avatar" crossOrigin="anonymous" referrerPolicy="no-referrer" onError={() => setOrbitAvatarError(true)} />
                     ) : (
                       orbitInitials
                     )}
@@ -1834,6 +1824,9 @@ export default function SettingsPage() {
                     <input
                       className="input"
                       type="email"
+                      id="invite-email"
+                      name="inviteEmail"
+                      autoComplete="email"
                       value={emailInput}
                       onChange={(e) => setEmailInput(e.target.value)}
                       placeholder="alumni@example.com"
@@ -2458,6 +2451,9 @@ export default function SettingsPage() {
 
                 <input
                   type="text"
+                  id="delete-confirm"
+                  name="deleteConfirm"
+                  autoComplete="off"
                   value={deleteTypedConfirm}
                   onChange={(e) => setDeleteTypedConfirm(e.target.value)}
                   placeholder="BYEBYE AUSTWISE"
