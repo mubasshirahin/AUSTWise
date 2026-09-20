@@ -799,9 +799,9 @@ export default function WeeklyPlanner() {
                       const isBiWeekly = classesAtIdx.some((c) => c.biWeekly);
 
                       if (isBiWeekly) {
-                        const firstCls = classesAtIdx.find((c) => c.weekGroup === 'first') || classesAtIdx[0];
+                        const firstCls = classesAtIdx.find((c) => c.weekGroup === 'first');
                         const secondCls = classesAtIdx.find((c) => c.weekGroup === 'second');
-                        const baseColor = getCourseColor(firstCls.course);
+                        const baseColor = getCourseColor((firstCls || secondCls)?.course || '');
 
                         return (
                           <td
@@ -820,37 +820,70 @@ export default function WeeklyPlanner() {
                                 gap: 0,
                               }}
                             >
-                              <div
-                                onClick={() => openEditModal(day, firstCls)}
-                                style={{
-                                  padding: '6px 6px',
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', marginBottom: '1px' }}>
-                                  <span style={{ color: baseColor, fontWeight: 'var(--fw-bold)', fontSize: '10px' }}>{firstCls.course}</span>
-                                  {firstCls.part && (
-                                    <span style={{
-                                      fontSize: '7px', fontWeight: 'bold',
-                                      color: firstCls.part === 'A' ? 'var(--accent-emerald)' : 'var(--accent-amber)',
-                                      background: firstCls.part === 'A' ? 'color-mix(in srgb, var(--accent-emerald) 25%, transparent)' : 'color-mix(in srgb, var(--accent-amber) 25%, transparent)',
-                                      padding: '1px 4px', borderRadius: '3px',
-                                    }}>
-                                      P{firstCls.part}
-                                    </span>
-                                  )}
-                                  <span style={{ fontSize: '7px', fontWeight: 'var(--fw-bold)', color: 'var(--accent-amber)', whiteSpace: 'nowrap' }}>Week 1</span>
+                              {firstCls ? (
+                                <div
+                                  onClick={() => openEditModal(day, firstCls)}
+                                  style={{
+                                    padding: '6px 6px',
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', marginBottom: '1px' }}>
+                                    <span style={{ color: baseColor, fontWeight: 'var(--fw-bold)', fontSize: '10px' }}>{firstCls.course}</span>
+                                    {firstCls.part && (
+                                      <span style={{
+                                        fontSize: '7px', fontWeight: 'bold',
+                                        color: firstCls.part === 'A' ? 'var(--accent-emerald)' : 'var(--accent-amber)',
+                                        background: firstCls.part === 'A' ? 'color-mix(in srgb, var(--accent-emerald) 25%, transparent)' : 'color-mix(in srgb, var(--accent-amber) 25%, transparent)',
+                                        padding: '1px 4px', borderRadius: '3px',
+                                      }}>
+                                        P{firstCls.part}
+                                      </span>
+                                    )}
+                                    <span style={{ fontSize: '7px', fontWeight: 'var(--fw-bold)', color: 'var(--accent-amber)', whiteSpace: 'nowrap' }}>Week 1</span>
+                                  </div>
+                                  <div style={{ fontWeight: 'var(--fw-medium)', color: 'var(--text-primary)', fontSize: '9px', lineHeight: '1.35', textAlign: 'center' }}>
+                                    {firstCls.name.split('(')[0].trim()}
+                                  </div>
+                                  <div className="weekly-room" style={{ color: 'var(--text-tertiary)', fontSize: '8px', lineHeight: '1.35' }}>
+                                    {firstCls.room}
+                                  </div>
+                                  <div className="weekly-teacher" style={{ color: 'var(--text-tertiary)', fontSize: '8px', lineHeight: '1.35', opacity: 0.8 }}>
+                                    {firstCls.teacher}
+                                  </div>
                                 </div>
-                                <div style={{ fontWeight: 'var(--fw-medium)', color: 'var(--text-primary)', fontSize: '9px', lineHeight: '1.35', textAlign: 'center' }}>
-                                  {firstCls.name.split('(')[0].trim()}
+                              ) : (
+                                <div
+                                  onClick={() => {
+                                    const start = slotBoundaries[idx] || '08:00';
+                                    const end = slotBoundaries[idx + colSpan] || calculateEndTime(start, colSpan);
+                                    setEditing({
+                                      mode: 'add',
+                                      day,
+                                      form: {
+                                        ...emptyForm,
+                                        type: 'Lab',
+                                        time: `${start} - ${end}`,
+                                        biWeekly: true,
+                                        weekGroup: 'first',
+                                        color: secondCls?.color || getAutoColorForCourse('', 'Lab'),
+                                      },
+                                    });
+                                  }}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    padding: '4px 6px',
+                                    cursor: 'pointer',
+                                    color: 'var(--text-tertiary)',
+                                    fontSize: '10px',
+                                  }}
+                                >
+                                  <span style={{ fontSize: '7px', fontWeight: 'var(--fw-bold)', color: 'var(--accent-amber)', whiteSpace: 'nowrap', flexShrink: 0, width: '32px' }}>Week 1</span>
+                                  <div style={{ flex: 1, textAlign: 'center' }}>+</div>
+                                  <span style={{ width: '32px', flexShrink: 0 }} />
                                 </div>
-                                <div className="weekly-room" style={{ color: 'var(--text-tertiary)', fontSize: '8px', lineHeight: '1.35' }}>
-                                  {firstCls.room}
-                                </div>
-                                <div className="weekly-teacher" style={{ color: 'var(--text-tertiary)', fontSize: '8px', lineHeight: '1.35', opacity: 0.8 }}>
-                                  {firstCls.teacher}
-                                </div>
-                              </div>
+                              )}
 
                               {secondCls ? (
                                 <div className="weekly-biweekly-divider" style={{ borderTop: '1px solid var(--border-secondary)' }}>
@@ -900,7 +933,7 @@ export default function WeeklyPlanner() {
                                         time: `${start} - ${end}`,
                                         biWeekly: true,
                                         weekGroup: 'second',
-                                        color: firstCls.color,
+                                        color: firstCls?.color || getAutoColorForCourse('', 'Lab'),
                                       },
                                     });
                                   }}
