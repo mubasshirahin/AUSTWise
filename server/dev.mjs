@@ -126,6 +126,7 @@ import {
   getSharedStoreValue, setSharedStoreValue, deleteSharedStoreValue,
   isUserStoreDeleted, isSharedStoreDeleted,
 } from './storeDB.mjs';
+import { startTelegramScheduler } from './telegramSchedulerJob.mjs';
 
 // ── SSE: member-count live stream ─────────────────────────────────────────
 const memberCountSSEClients = new Set();
@@ -462,6 +463,8 @@ const DEFAULT_USER_SETTINGS = {
     notifyClass: true,
     notifyDeadline: true,
     notifyNotices: false,
+    notifyAttendance: true,
+    notifyDigest: true,
   },
   telegram: { chatId: '', enabled: false },
   libraryTracking: false,
@@ -478,6 +481,8 @@ function normalizeUserSettings(raw) {
   notif.notifyClass = notif.notifyClass !== false;
   notif.notifyDeadline = notif.notifyDeadline !== false;
   notif.notifyNotices = notif.notifyNotices === true;
+  notif.notifyAttendance = notif.notifyAttendance !== false;
+  notif.notifyDigest = notif.notifyDigest !== false;
   const telegram = { ...DEFAULT_USER_SETTINGS.telegram, ...(s.telegram || {}) };
   telegram.chatId = typeof telegram.chatId === 'string' ? telegram.chatId.trim().slice(0, 64) : '';
   telegram.enabled = telegram.enabled === true;
@@ -4861,10 +4866,14 @@ server.listen(port, '0.0.0.0', async () => {
   drainBootLogs();
   console.log('');
 
-  // 3) Broad endpoint directory.
+  // 3) Scheduled Telegram jobs (midnight digest, pre-class alert, attendance
+  //    prompts, 9 PM reminder, auto-missed sweep, deadline alerts).
+  startTelegramScheduler();
+
+  // 4) Broad endpoint directory.
   printEndpointDirectory();
   console.log('');
 
-  // 4) Full environment checkup — every variable.
+  // 5) Full environment checkup — every variable.
   printEnvironmentCheckup();
 });

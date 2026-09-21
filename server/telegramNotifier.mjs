@@ -144,7 +144,7 @@ function formatNotification(classes, customDate) {
 }
 
 // Send message via Telegram Bot API
-async function sendTelegramMessage(botToken, chatId, message) {
+export async function sendTelegramMessage(botToken, chatId, message) {
   if (!botToken) {
     return { 
       success: false, 
@@ -203,25 +203,19 @@ async function sendTelegramMessage(botToken, chatId, message) {
   });
 }
 
-/**
- * Send notification to a specific user using the system bot
+/** * Send notification to a specific user using the system bot
  * @param {string} chatId - User's Telegram Chat ID
  * @param {Object} routine - User's routine data
- * @param {boolean} isTest - If true, simulates the next 8 AM notification
+ * @param {boolean} _isTest - Unused; kept for API compatibility
  * @returns {Object} Result of the notification attempt
  */
-export async function sendNotificationToUser(chatId, routine, isTest = false) {
+export async function sendNotificationToUser(chatId, routine, _isTest = false) {
   const botToken = TELEGRAM_BOT_TOKEN;
   let classes;
   let message;
   
-  if (isTest) {
-    // For test: show what the next 8 AM notification would show
-    classes = getNextNotificationClasses(routine);
-    const nextDate = getNextNotificationDate();
-    message = formatNotification(classes, nextDate);
-  } else {
-    // For daily notifications: always show tomorrow's classes
+  // Daily digest now always previews tomorrow's classes (sent at 12 AM).
+  {
     classes = getTomorrowsClasses(routine);
     message = formatNotification(classes);
   }
@@ -444,7 +438,7 @@ export async function registerUserForNotifications(chatId, routine, awid = null)
   const testResult = await sendTelegramMessage(
     TELEGRAM_BOT_TOKEN,
     chatId,
-    '✅ Welcome to AUSTWise Telegram Notifications!\n\nYour Chat ID has been registered successfully. You will receive daily class schedule notifications at 8 AM.'
+    '✅ Welcome to AUSTWise Telegram Notifications!\n\nYour Chat ID has been registered successfully. You will receive a class digest at 12 AM, pre-class alerts, and attendance prompts.'
   );
   
   if (!testResult.success) {
@@ -546,7 +540,7 @@ function formatSingleClassMessage(cls, index, total, today, date) {
  * @param {Array} keyboard - Inline keyboard layout
  * @returns {Promise<Object>} Result of the send operation
  */
-async function sendTelegramMessageWithKeyboard(botToken, chatId, message, keyboard) {
+export async function sendTelegramMessageWithKeyboard(botToken, chatId, message, keyboard) {
   if (!botToken) {
     return { 
       success: false, 

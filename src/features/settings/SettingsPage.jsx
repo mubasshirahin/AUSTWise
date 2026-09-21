@@ -1377,8 +1377,8 @@ export default function SettingsPage() {
 
               <section className="cfg-section">
                 <div className="cfg-section-head">
-                  <h3 className="cfg-section-title">Telegram Daily Notification</h3>
-                  <p className="cfg-section-desc">Receive daily class schedule notifications via Telegram at 8 AM.</p>
+                  <h3 className="cfg-section-title">Telegram Notifications</h3>
+                  <p className="cfg-section-desc">Class briefing at 12 AM, first-class alert 30 min before, attendance prompts at class end, and a 9 PM confirmation reminder.</p>
                 </div>
 
                 <div className="cfg-row">
@@ -1386,7 +1386,7 @@ export default function SettingsPage() {
                     <span className={`cfg-row-icon ${telegramEnabled ? 'is-emerald' : ''}`}><Send size={18} /></span>
                     <div className="cfg-row-text">
                       <h4 className="cfg-row-title">Enable Telegram notifications</h4>
-                      <p className="cfg-row-desc">Get tomorrow's class schedule every morning at 8 AM</p>
+                      <p className="cfg-row-desc">Tomorrow's class digest at 12 AM + smart reminders all day</p>
                     </div>
                   </div>
                   <div
@@ -1394,6 +1394,52 @@ export default function SettingsPage() {
                     onClick={() => setTelegramEnabled(!telegramEnabled)}
                   />
                 </div>
+
+                {telegramEnabled && (
+                  <>
+                    <div className="cfg-row animate-fadeIn">
+                      <div className="cfg-row-main">
+                        <span className={`cfg-row-icon ${notifSettings.notifyDigest !== false ? 'is-blue' : ''}`}><Moon size={18} /></span>
+                        <div className="cfg-row-text">
+                          <h4 className="cfg-row-title">12 AM class digest</h4>
+                          <p className="cfg-row-desc">Next day's full class list at midnight — set your alarm from it</p>
+                        </div>
+                      </div>
+                      <div
+                        className={`toggle-switch ${notifSettings.notifyDigest !== false ? 'active' : ''}`}
+                        onClick={() => updateSetting('notifyDigest', !(notifSettings.notifyDigest !== false))}
+                      />
+                    </div>
+
+                    <div className="cfg-row animate-fadeIn">
+                      <div className="cfg-row-main">
+                        <span className={`cfg-row-icon ${notifSettings.notifyClass !== false ? 'is-blue' : ''}`}><Clock size={18} /></span>
+                        <div className="cfg-row-text">
+                          <h4 className="cfg-row-title">Pre-class alert</h4>
+                          <p className="cfg-row-desc">One reminder 30 minutes before your first class</p>
+                        </div>
+                      </div>
+                      <div
+                        className={`toggle-switch ${notifSettings.notifyClass !== false ? 'active' : ''}`}
+                        onClick={() => updateSetting('notifyClass', !notifSettings.notifyClass)}
+                      />
+                    </div>
+
+                    <div className="cfg-row animate-fadeIn">
+                      <div className="cfg-row-main">
+                        <span className={`cfg-row-icon ${notifSettings.notifyAttendance !== false ? 'is-emerald' : ''}`}><CheckCircle2 size={18} /></span>
+                        <div className="cfg-row-text">
+                          <h4 className="cfg-row-title">Attendance prompts</h4>
+                          <p className="cfg-row-desc">Yes/No prompt after each class ends + 9 PM reminder; unanswered classes are auto-marked missed at midnight</p>
+                        </div>
+                      </div>
+                      <div
+                        className={`toggle-switch ${notifSettings.notifyAttendance !== false ? 'active' : ''}`}
+                        onClick={() => updateSetting('notifyAttendance', !(notifSettings.notifyAttendance !== false))}
+                      />
+                    </div>
+                  </>
+                )}
 
               {telegramEnabled && (
                 <div className="animate-fadeIn cfg-stack cfg-stack--tight">
@@ -1457,7 +1503,7 @@ export default function SettingsPage() {
                             });
                             const result = await response.json();
                             if (result.success) {
-                              setTelegramMsg('✅ Registered successfully! You will receive daily notifications at 8 AM.');
+                              setTelegramMsg('✅ Registered! Your class digest arrives at 12 AM, plus pre-class alerts and attendance prompts.');
                               registeredChatIdRef.current = telegramChatId.trim();
                               setIsTelegramRegistered(true);
                             } else {
@@ -1528,7 +1574,7 @@ export default function SettingsPage() {
                           });
                           const result = await response.json();
                           if (result.success) {
-                            setTelegramMsg('✅ Test notification sent! You will receive the next 8 AM notification preview.');
+                            setTelegramMsg("✅ Test digest sent! This is what arrives at 12 AM with tomorrow's classes.");
                           } else {
                             setTelegramMsg('❌ Failed: ' + (result.error || 'Unknown error'));
                           }
@@ -1566,7 +1612,7 @@ export default function SettingsPage() {
                           });
                           const result = await response.json();
                           if (result.success) {
-                            setTelegramMsg('✅ Test attendance message sent! You will receive the 9 PM attendance confirmation message with Yes/No buttons.');
+                            setTelegramMsg('✅ Test attendance message sent! You will receive prompts after each class and a 9 PM reminder with Yes/No buttons.');
                           } else {
                             setTelegramMsg('❌ Failed: ' + (result.error || 'Unknown error'));
                           }
@@ -1672,7 +1718,9 @@ export default function SettingsPage() {
                       <li>Get your Chat ID from <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-blue)' }}>@userinfobot</a> on Telegram</li>
                       <li>Enter your Chat ID above and click "Register for Notifications"</li>
                       <li>You'll receive a welcome message from our bot</li>
-                      <li>Daily notifications will be sent at 8 AM</li>
+                      <li>Class digest every night at 12 AM (tomorrow's classes) + alert 30 min before your first class</li>
+                      <li>Attendance prompt after each class ends, 9 PM reminder, auto-missed at midnight</li>
+                      <li>Urgent deadline alerts (high priority) and a 12-hour-before reminder</li>
                       <li style={{ marginTop: '4px', color: 'var(--accent-amber)' }}><strong>Important:</strong> For attendance buttons to work, the webhook must be configured with a public HTTPS URL (use ngrok for local testing)</li>
                     </ol>
                   </div>
