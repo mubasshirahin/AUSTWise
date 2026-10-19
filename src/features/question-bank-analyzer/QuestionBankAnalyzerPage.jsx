@@ -584,7 +584,7 @@ export default function QuestionBankAnalyzerPage() {
         <div className="schedule-actions">
           <button
             type="button"
-            className="btn btn-ghost btn-sm"
+            className="qba-clear-btn"
             onClick={handleClear}
             title="Clear saved fields, pasted Markdown and files"
           >

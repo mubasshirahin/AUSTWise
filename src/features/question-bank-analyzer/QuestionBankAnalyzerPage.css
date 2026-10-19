@@ -1464,6 +1464,55 @@
   border-color: var(--accent-cyan);
 }
 
+/* ── masthead actions ────────────────────────────────────────────────────── */
+
+/* The masthead Clear. A quiet "instrument reset": a hairline ghost by default,
+   it rotates its icon back a quarter turn and warms toward the rose accent on
+   hover, so the destructive intent reads before the click lands. */
+.qba-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 7px 14px;
+  background: transparent;
+  border: var(--qba-hair);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: var(--qba-micro);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    color var(--qba-ease),
+    border-color var(--qba-ease),
+    background var(--qba-ease);
+}
+
+.qba-clear-btn > svg {
+  transition: transform 0.45s var(--qba-ease);
+}
+
+.qba-clear-btn:hover {
+  border-color: var(--accent-rose);
+  color: var(--accent-rose);
+  background: var(--accent-rose-glow);
+}
+
+.qba-clear-btn:hover > svg {
+  transform: rotate(-90deg);
+}
+
+.qba-clear-btn:active {
+  transform: translateY(1px);
+}
+
+.qba-clear-btn:focus-visible {
+  outline: 2px solid var(--accent-rose);
+  outline-offset: 2px;
+}
+
 /* ── responsive ────────────────────────────────────────────────────────────── */
 
 @media (max-width: 760px) {
@@ -1547,6 +1596,8 @@
   .qba-dropzone::after,
   .qba-dropzone > svg,
   .qba-icon-btn,
+  .qba-clear-btn,
+  .qba-clear-btn > svg,
   .qba-chevron,
   .qba-file-item,
   .qba-table tbody tr,
@@ -1559,6 +1610,11 @@
   .qba-step:hover,
   .qba-stat:hover,
   .qba-icon-btn:hover:not(:disabled) {
+    transform: none;
+  }
+
+  .qba-clear-btn:active,
+  .qba-clear-btn:hover > svg {
     transform: none;
   }
 
