@@ -1,0 +1,1242 @@
+{
+  "STU-MVCBTWA9OI3F": {
+    "aust-cover-form-v1": {
+      "coverType": "Assignment",
+      "courseCode": "",
+      "courseName": "",
+      "title": "",
+      "refNo": "",
+      "groupNo": "",
+      "members": [
+        {
+          "name": "Mubasshir mehedi",
+          "id": "20230204026"
+        }
+      ],
+      "teachers": [
+        {
+          "name": "",
+          "designation": ""
+        }
+      ],
+      "watermarkSize": 500,
+      "watermarkOpacity": 0.04,
+      "watermarkX": 0,
+      "watermarkY": 0,
+      "footerLogoSize": 80,
+      "footerLogoX": -18,
+      "footerLogoY": 0
+    },
+    "aust-user-routine": {
+      "Sunday": [
+        {
+          "course": "CSE3117",
+          "name": "Microprocessors and Microcontrollers",
+          "type": "Theory",
+          "time": "13:00 - 13:50",
+          "room": "7A07",
+          "teacher": "Shamim",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "4598a0ce-9866-4832-9b36-a1d8b133105f"
+        },
+        {
+          "course": "CSE3109",
+          "name": "Digital System Design",
+          "type": "Theory",
+          "time": "13:50 - 14:40",
+          "room": "7A06",
+          "teacher": "Broti",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "9a5cc075-16fa-45a9-9d0f-ea32b3dc089a",
+          "startIdx": 7,
+          "colSpan": 1
+        },
+        {
+          "course": "HUM3115",
+          "name": "Accounting",
+          "type": "Theory",
+          "time": "10:30 - 11:20",
+          "room": "7C06",
+          "teacher": "Maisha",
+          "color": "#e67e22",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": "B",
+          "id": "11bf2c56-2a4a-465d-9a10-7abbaa07f96c",
+          "startIdx": 3,
+          "colSpan": 1
+        },
+        {
+          "course": "CSE3100",
+          "name": "Software Development-IV",
+          "type": "Lab",
+          "time": "08:00 - 10:30",
+          "room": "7B01",
+          "teacher": "Reasad",
+          "color": "#2980b9",
+          "biWeekly": true,
+          "weekGroup": "second",
+          "part": null,
+          "id": "ba45e2a1-ab41-4464-a984-812d8f72ff85"
+        }
+      ],
+      "Monday": [
+        {
+          "course": "CSE3101",
+          "name": "Mathematical Analysis for Computer Science",
+          "type": "Theory",
+          "time": "10:30 - 11:20",
+          "room": "7A07",
+          "teacher": "RAB",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "761c9926-18b6-403e-95f4-6322530782e7"
+        },
+        {
+          "course": "CSE3117",
+          "name": "Microprocessors and Microcontrollers",
+          "type": "Theory",
+          "time": "11:20 - 12:10",
+          "room": "7A07",
+          "teacher": "Shamim",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "46586cce-8089-42e6-b8ff-08dfacc71e69"
+        },
+        {
+          "course": "CSE3103",
+          "name": "Database",
+          "type": "Theory",
+          "time": "12:10 - 13:00",
+          "room": "7A07",
+          "teacher": "Ashek",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "ec36f82b-e99d-4a8d-ba96-5f8ee31e2482"
+        }
+      ],
+      "Tuesday": [
+        {
+          "course": "CSE3103",
+          "name": "Database",
+          "type": "Theory",
+          "time": "09:40 - 10:30",
+          "room": "7C07",
+          "teacher": "Ashek",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "81f1fb01-ac5d-4f32-bfdd-fd1e0f2848f3"
+        },
+        {
+          "course": "CSE3103",
+          "name": "Database",
+          "type": "Theory",
+          "time": "10:30 - 11:20",
+          "room": "7C07",
+          "teacher": "Ashek",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "503d6281-5890-40a7-b397-f774ffc5fd6f"
+        },
+        {
+          "course": "CSE3117",
+          "name": "Microprocessors and Microcontrollers",
+          "type": "Theory",
+          "time": "12:10 - 13:00",
+          "room": "7A07",
+          "teacher": "Shamim",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "2f520e23-5491-4bf1-8cf7-551e9be7cdbf"
+        }
+      ],
+      "Wednesday": [
+        {
+          "course": "CSE3109",
+          "name": "Digital System Design",
+          "type": "Theory",
+          "time": "12:10 - 13:00",
+          "room": "7A07",
+          "teacher": "Broti",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "7c8a2d12-5bdb-490c-85ad-5a1aec214fb3"
+        },
+        {
+          "course": "HUM3131",
+          "name": "Environment & Sustainable Computing",
+          "type": "Theory",
+          "time": "13:00 - 13:50",
+          "room": "7A07",
+          "teacher": "Afsana",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": "A",
+          "id": "6c2789fa-18dc-4544-ab08-c7217abadca9"
+        },
+        {
+          "course": "CSE3101",
+          "name": "Mathematical Analysis for Computer Science",
+          "type": "Theory",
+          "time": "14:40 - 15:30",
+          "room": "7A07",
+          "teacher": "RAB",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "c993244d-5f6e-4920-a538-8ad3b603c84f"
+        },
+        {
+          "course": "CSE3104",
+          "name": "Database Lab",
+          "type": "Lab",
+          "time": "15:30 - 18:00",
+          "room": "7B01",
+          "teacher": "Ashek,Moinul",
+          "color": "#2980b9",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "2ae02c3e-a212-427b-a2e9-dd7cd1bb0204"
+        },
+        {
+          "course": "HUM3115",
+          "name": "Economics",
+          "type": "Theory",
+          "time": "13:50 - 14:40",
+          "room": "7A07",
+          "teacher": "Lamia",
+          "color": "#e67e22",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": "A",
+          "id": "c9742610-5935-4fe7-b4ba-1640fc1da763",
+          "startIdx": 7,
+          "colSpan": 1
+        }
+      ],
+      "Thursday": [
+        {
+          "course": "CSE3118",
+          "name": "Microprocessors and Microcontrollers Lab",
+          "type": "Lab",
+          "time": "08:00 - 10:30",
+          "room": "7B07",
+          "teacher": "Mostafa,Zahid",
+          "color": "#2980b9",
+          "biWeekly": true,
+          "weekGroup": "first",
+          "part": null,
+          "id": "d50a2839-b573-47e3-b3e4-042ec64f5c3c",
+          "startIdx": 0,
+          "colSpan": 3
+        },
+        {
+          "course": "CSE3110",
+          "name": "Digital System Design Lab",
+          "type": "Lab",
+          "time": "08:00 - 10:30",
+          "room": "9A05",
+          "teacher": "Broti,Nabila",
+          "color": "#2980b9",
+          "biWeekly": true,
+          "weekGroup": "second",
+          "part": null,
+          "id": "e4106a70-2203-4aba-aab1-ad01dff781dc"
+        },
+        {
+          "course": "CSE3109",
+          "name": "Digital System Design",
+          "type": "Theory",
+          "time": "11:20 - 12:10",
+          "room": "7A07",
+          "teacher": "Broti",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "0e4a0e45-3e62-411c-9d75-d35bc22cb9a4"
+        },
+        {
+          "course": "HUM3131",
+          "name": "Environments & Sustainable Computing",
+          "type": "Theory",
+          "time": "12:10 - 13:00",
+          "room": "7A07",
+          "teacher": "TBA",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "a9c7e9fc-6379-4a63-8102-13bbe19b7171"
+        },
+        {
+          "course": "HUM3115",
+          "name": "Economics",
+          "type": "Theory",
+          "time": "13:00 - 13:50",
+          "room": "7A07",
+          "teacher": "Lamia",
+          "color": "#e67e22",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": "A",
+          "id": "989fda72-73ab-4765-af8b-fa0672bd0ed6"
+        },
+        {
+          "course": "CSE3101",
+          "name": "Mathematical Analysis for Computer Science",
+          "type": "Theory",
+          "time": "13:50 - 14:40",
+          "room": "7A07",
+          "teacher": "RAB",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "dbd24f50-8844-40d2-af34-c91b5bf446ce"
+        }
+      ]
+    },
+    "aust-user-weekdays": [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday"
+    ],
+    "aust-week-tasks": [
+      {
+        "id": "a772437c-1a8c-4f14-9804-6073313bf934",
+        "courseCode": "CSE3100",
+        "courseName": "Software Development-IV",
+        "title": "QUIZ 1",
+        "syllabus": "",
+        "date": "2026-10-31",
+        "time": "06:37",
+        "batchGroup": "A2",
+        "crGroup": "Section A",
+        "createdAt": "2026-10-17T12:38:00.218Z"
+      },
+      {
+        "id": "2cd32f78-ebd4-40ab-b6a6-8085b8b2b20b",
+        "courseCode": "CSE3100",
+        "courseName": "Software Development-IV",
+        "title": "VXV",
+        "syllabus": "",
+        "date": "2026-10-17",
+        "time": "06:43",
+        "batchGroup": "A2",
+        "crGroup": "Section A",
+        "createdAt": "2026-10-17T12:42:14.524Z"
+      }
+    ],
+    "aust-study-streak": {
+      "count": 2,
+      "lastActive": "Sun Oct 18 2026"
+    },
+    "aust-notebook-index": [],
+    "aust-user-tracker-courses_5": [],
+    "aust-user-tracker-lab-config_5": {}
+  },
+  "ADM-MSOP6VG6BVL4": {
+    "aust-user-routine": {
+      "Sunday": [
+        {
+          "course": "CSE1101",
+          "name": "Elementary Structured Programming",
+          "type": "Theory",
+          "time": "13:00 - 13:50",
+          "room": "7A03",
+          "teacher": "TBA",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": 1787178076728
+        }
+      ],
+      "Monday": [],
+      "Tuesday": [],
+      "Wednesday": [],
+      "Thursday": []
+    }
+  },
+  "STU-MT0NFCWXOQBJ": {
+    "aust-cover-form-v1": {
+      "coverType": "Assignment",
+      "courseCode": "",
+      "courseName": "",
+      "title": "",
+      "refNo": "",
+      "groupNo": "",
+      "members": [
+        {
+          "name": "Mubasshir mehedi",
+          "id": "20230204026"
+        }
+      ],
+      "teachers": [
+        {
+          "name": "",
+          "designation": ""
+        }
+      ],
+      "watermarkSize": 500,
+      "watermarkOpacity": 0.04,
+      "watermarkX": 0,
+      "watermarkY": 0,
+      "footerLogoSize": 80,
+      "footerLogoX": -18,
+      "footerLogoY": 0
+    },
+    "aust-user-routine": {
+      "Sunday": [
+        {
+          "course": "CSE3117",
+          "name": "Microprocessors and Microcontrollers",
+          "type": "Theory",
+          "time": "13:00 - 13:50",
+          "room": "7A07",
+          "teacher": "Shamim",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "4598a0ce-9866-4832-9b36-a1d8b133105f"
+        },
+        {
+          "course": "CSE3109",
+          "name": "Digital System Design",
+          "type": "Theory",
+          "time": "13:50 - 14:40",
+          "room": "7A06",
+          "teacher": "Broti",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "9a5cc075-16fa-45a9-9d0f-ea32b3dc089a",
+          "startIdx": 7,
+          "colSpan": 1
+        },
+        {
+          "course": "HUM3115",
+          "name": "Accounting",
+          "type": "Theory",
+          "time": "10:30 - 11:20",
+          "room": "7C06",
+          "teacher": "Maisha",
+          "color": "#e67e22",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": "B",
+          "id": "11bf2c56-2a4a-465d-9a10-7abbaa07f96c",
+          "startIdx": 3,
+          "colSpan": 1
+        },
+        {
+          "course": "CSE3100",
+          "name": "Software Development-IV",
+          "type": "Lab",
+          "time": "08:00 - 10:30",
+          "room": "7B01",
+          "teacher": "Reasad",
+          "color": "#2980b9",
+          "biWeekly": true,
+          "weekGroup": "second",
+          "part": null,
+          "id": "ba45e2a1-ab41-4464-a984-812d8f72ff85"
+        }
+      ],
+      "Monday": [
+        {
+          "course": "CSE3101",
+          "name": "Mathematical Analysis for Computer Science",
+          "type": "Theory",
+          "time": "10:30 - 11:20",
+          "room": "7A07",
+          "teacher": "RAB",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "761c9926-18b6-403e-95f4-6322530782e7"
+        },
+        {
+          "course": "CSE3117",
+          "name": "Microprocessors and Microcontrollers",
+          "type": "Theory",
+          "time": "11:20 - 12:10",
+          "room": "7A07",
+          "teacher": "Shamim",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "46586cce-8089-42e6-b8ff-08dfacc71e69"
+        },
+        {
+          "course": "CSE3103",
+          "name": "Database",
+          "type": "Theory",
+          "time": "12:10 - 13:00",
+          "room": "7A07",
+          "teacher": "Ashek",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "ec36f82b-e99d-4a8d-ba96-5f8ee31e2482"
+        }
+      ],
+      "Tuesday": [
+        {
+          "course": "CSE3103",
+          "name": "Database",
+          "type": "Theory",
+          "time": "09:40 - 10:30",
+          "room": "7C07",
+          "teacher": "Ashek",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "81f1fb01-ac5d-4f32-bfdd-fd1e0f2848f3"
+        },
+        {
+          "course": "CSE3103",
+          "name": "Database",
+          "type": "Theory",
+          "time": "10:30 - 11:20",
+          "room": "7C07",
+          "teacher": "Ashek",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "503d6281-5890-40a7-b397-f774ffc5fd6f"
+        },
+        {
+          "course": "CSE3117",
+          "name": "Microprocessors and Microcontrollers",
+          "type": "Theory",
+          "time": "12:10 - 13:00",
+          "room": "7A07",
+          "teacher": "Shamim",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "2f520e23-5491-4bf1-8cf7-551e9be7cdbf"
+        }
+      ],
+      "Wednesday": [
+        {
+          "course": "CSE3109",
+          "name": "Digital System Design",
+          "type": "Theory",
+          "time": "12:10 - 13:00",
+          "room": "7A07",
+          "teacher": "Broti",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "7c8a2d12-5bdb-490c-85ad-5a1aec214fb3"
+        },
+        {
+          "course": "HUM3131",
+          "name": "Environment & Sustainable Computing",
+          "type": "Theory",
+          "time": "13:00 - 13:50",
+          "room": "7A07",
+          "teacher": "Afsana",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": "A",
+          "id": "6c2789fa-18dc-4544-ab08-c7217abadca9"
+        },
+        {
+          "course": "CSE3101",
+          "name": "Mathematical Analysis for Computer Science",
+          "type": "Theory",
+          "time": "14:40 - 15:30",
+          "room": "7A07",
+          "teacher": "RAB",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "c993244d-5f6e-4920-a538-8ad3b603c84f"
+        },
+        {
+          "course": "CSE3104",
+          "name": "Database Lab",
+          "type": "Lab",
+          "time": "15:30 - 18:00",
+          "room": "7B01",
+          "teacher": "Ashek,Moinul",
+          "color": "#2980b9",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "2ae02c3e-a212-427b-a2e9-dd7cd1bb0204"
+        },
+        {
+          "course": "HUM3115",
+          "name": "Economics",
+          "type": "Theory",
+          "time": "13:50 - 14:40",
+          "room": "7A07",
+          "teacher": "Lamia",
+          "color": "#e67e22",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": "A",
+          "id": "c9742610-5935-4fe7-b4ba-1640fc1da763",
+          "startIdx": 7,
+          "colSpan": 1
+        }
+      ],
+      "Thursday": [
+        {
+          "course": "CSE3118",
+          "name": "Microprocessors and Microcontrollers Lab",
+          "type": "Lab",
+          "time": "08:00 - 10:30",
+          "room": "7B07",
+          "teacher": "Mostafa,Zahid",
+          "color": "#2980b9",
+          "biWeekly": true,
+          "weekGroup": "first",
+          "part": null,
+          "id": "d50a2839-b573-47e3-b3e4-042ec64f5c3c",
+          "startIdx": 0,
+          "colSpan": 3
+        },
+        {
+          "course": "CSE3110",
+          "name": "Digital System Design Lab",
+          "type": "Lab",
+          "time": "08:00 - 10:30",
+          "room": "9A05",
+          "teacher": "Broti,Nabila",
+          "color": "#2980b9",
+          "biWeekly": true,
+          "weekGroup": "second",
+          "part": null,
+          "id": "e4106a70-2203-4aba-aab1-ad01dff781dc"
+        },
+        {
+          "course": "CSE3109",
+          "name": "Digital System Design",
+          "type": "Theory",
+          "time": "11:20 - 12:10",
+          "room": "7A07",
+          "teacher": "Broti",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "0e4a0e45-3e62-411c-9d75-d35bc22cb9a4"
+        },
+        {
+          "course": "HUM3131",
+          "name": "Environments & Sustainable Computing",
+          "type": "Theory",
+          "time": "12:10 - 13:00",
+          "room": "7A07",
+          "teacher": "TBA",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "a9c7e9fc-6379-4a63-8102-13bbe19b7171"
+        },
+        {
+          "course": "HUM3115",
+          "name": "Economics",
+          "type": "Theory",
+          "time": "13:00 - 13:50",
+          "room": "7A07",
+          "teacher": "Lamia",
+          "color": "#e67e22",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": "A",
+          "id": "989fda72-73ab-4765-af8b-fa0672bd0ed6"
+        },
+        {
+          "course": "CSE3101",
+          "name": "Mathematical Analysis for Computer Science",
+          "type": "Theory",
+          "time": "13:50 - 14:40",
+          "room": "7A07",
+          "teacher": "RAB",
+          "color": "#3498db",
+          "biWeekly": false,
+          "weekGroup": "first",
+          "part": null,
+          "id": "dbd24f50-8844-40d2-af34-c91b5bf446ce"
+        }
+      ]
+    },
+    "aust-user-semester-results": [
+      {
+        "semester": 1,
+        "year": "",
+        "sgpa": 3.69,
+        "cgpa": 3.69,
+        "courses": [
+          {
+            "code": "CHEM1115",
+            "name": "Chemistry",
+            "credit": 3,
+            "grade": "A-",
+            "point": 3.5
+          },
+          {
+            "code": "CSE1101",
+            "name": "Elementary Structured Programming",
+            "credit": 3,
+            "grade": "A+",
+            "point": 4
+          },
+          {
+            "code": "CSE1102",
+            "name": "Elementary Structured Programming Lab",
+            "credit": 1.5,
+            "grade": "A+",
+            "point": 4
+          },
+          {
+            "code": "CSE1108",
+            "name": "Introduction to Computer Systems",
+            "credit": 1.5,
+            "grade": "A+",
+            "point": 4
+          },
+          {
+            "code": "HUM1107",
+            "name": "Critical Thinking and Communication",
+            "credit": 3,
+            "grade": "A",
+            "point": 3.75
+          },
+          {
+            "code": "HUM1108",
+            "name": "English Language Sessional",
+            "credit": 1.5,
+            "grade": "B",
+            "point": 3
+          },
+          {
+            "code": "MATH1115",
+            "name": "Mathematics-I",
+            "credit": 3,
+            "grade": "A",
+            "point": 3.75
+          },
+          {
+            "code": "PHY1115",
+            "name": "Physics",
+            "credit": 3,
+            "grade": "A-",
+            "point": 3.5
+          },
+          {
+            "code": "PHY1116",
+            "name": "Physics Lab",
+            "credit": 0.75,
+            "grade": "A-",
+            "point": 3.5
+          }
+        ]
+      },
+      {
+        "semester": 2,
+        "year": "",
+        "sgpa": 3.46,
+        "cgpa": 3.57,
+        "courses": [
+          {
+            "code": "CSE1200",
+            "name": "Software Development-I",
+            "credit": 1.5,
+            "grade": "A",
+            "point": 3.75
+          },
+          {
+            "code": "CSE1203",
+            "name": "Discrete Mathematics",
+            "credit": 3,
+            "grade": "A+",
+            "point": 4
+          },
+          {
+            "code": "CSE1205",
+            "name": "Object Oriented Programming",
+            "credit": 3,
+            "grade": "B",
+            "point": 3
+          },
+          {
+            "code": "CSE1206",
+            "name": "Object Oriented Programming Lab",
+            "credit": 1.5,
+            "grade": "A-",
+            "point": 3.5
+          },
+          {
+            "code": "EEE1241",
+            "name": "Basic Electrical Engineering",
+            "credit": 3,
+            "grade": "B+",
+            "point": 3.25
+          },
+          {
+            "code": "EEE1242",
+            "name": "Basic Electrical Engineering Lab",
+            "credit": 1.5,
+            "grade": "A-",
+            "point": 3.5
+          },
+          {
+            "code": "MATH1219",
+            "name": "Mathematics-II",
+            "credit": 3,
+            "grade": "A-",
+            "point": 3.5
+          },
+          {
+            "code": "ME1211",
+            "name": "Basic Mechanical Engineering",
+            "credit": 3,
+            "grade": "B+",
+            "point": 3.25
+          },
+          {
+            "code": "ME1214",
+            "name": "Engineering Drawing",
+            "credit": 0.75,
+            "grade": "A+",
+            "point": 4
+          }
+        ]
+      },
+      {
+        "semester": 3,
+        "year": "",
+        "sgpa": 3.6,
+        "cgpa": 3.58,
+        "courses": [
+          {
+            "code": "CSE2100",
+            "name": "Software Development-II",
+            "credit": 0.75,
+            "grade": "B",
+            "point": 3
+          },
+          {
+            "code": "CSE2103",
+            "name": "Data Structures",
+            "credit": 3,
+            "grade": "A+",
+            "point": 4
+          },
+          {
+            "code": "CSE2104",
+            "name": "Data Structures Lab",
+            "credit": 1.5,
+            "grade": "A+",
+            "point": 4
+          },
+          {
+            "code": "CSE2105",
+            "name": "Digital Logic Design",
+            "credit": 3,
+            "grade": "A",
+            "point": 3.75
+          },
+          {
+            "code": "CSE2106",
+            "name": "Digital Logic Design Lab",
+            "credit": 1.5,
+            "grade": "B",
+            "point": 3
+          },
+          {
+            "code": "EEE2141",
+            "name": "Electronic Devices and Circuits",
+            "credit": 3,
+            "grade": "A-",
+            "point": 3.5
+          },
+          {
+            "code": "EEE2142",
+            "name": "Electronic Devices and Circuits Lab",
+            "credit": 1.5,
+            "grade": "B",
+            "point": 3
+          },
+          {
+            "code": "HUM2109",
+            "name": "Society, Ethics and Technology",
+            "credit": 2,
+            "grade": "A-",
+            "point": 3.5
+          },
+          {
+            "code": "MATH2101",
+            "name": "Mathematics-III",
+            "credit": 3,
+            "grade": "A",
+            "point": 3.75
+          }
+        ]
+      },
+      {
+        "semester": 4,
+        "year": "",
+        "sgpa": null,
+        "cgpa": 3.58,
+        "courses": [
+          {
+            "code": "CSE2200",
+            "name": "Software Development-III",
+            "credit": 0.75,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE2201",
+            "name": "Numerical Methods",
+            "credit": 3,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE2202",
+            "name": "Numerical Methods Lab",
+            "credit": 0.75,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE2207",
+            "name": "Algorithms",
+            "credit": 3,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE2208",
+            "name": "Algorithms Lab",
+            "credit": 1.5,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE2211",
+            "name": "Data Communication",
+            "credit": 3,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE2213",
+            "name": "Computer Architecture",
+            "credit": 3,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE2214",
+            "name": "Assembly Language Programming",
+            "credit": 1.5,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "MATH2203",
+            "name": "Mathematics-IV",
+            "credit": 3,
+            "grade": "-",
+            "point": null
+          }
+        ]
+      },
+      {
+        "semester": 5,
+        "year": "",
+        "sgpa": null,
+        "cgpa": 3.58,
+        "courses": [
+          {
+            "code": "CSE3100",
+            "name": "Software Development-IV",
+            "credit": 0.75,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE3101",
+            "name": "Mathematical Analysis for Computer Science",
+            "credit": 3,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE3103",
+            "name": "Database",
+            "credit": 3,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE3104",
+            "name": "Database Lab",
+            "credit": 1.5,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE3109",
+            "name": "Digital System Design",
+            "credit": 3,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE3110",
+            "name": "Digital System Design Lab",
+            "credit": 0.75,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE3117",
+            "name": "Microprocessors and Microcontrollers",
+            "credit": 3,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE3118",
+            "name": "Microprocessors and Microcontrollers Lab",
+            "credit": 0.75,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "HUM3115",
+            "name": "Economics and Accounting",
+            "credit": 3,
+            "grade": "-",
+            "point": null
+          }
+        ]
+      },
+      {
+        "semester": 6,
+        "year": "",
+        "sgpa": null,
+        "cgpa": 3.58,
+        "courses": [
+          {
+            "code": "CSE3200",
+            "name": "Software Development-V",
+            "credit": 0.75,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE3201",
+            "name": "Introduction to Computer Networks",
+            "credit": 3,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE3202",
+            "name": "Introduction to Computer Networks Lab",
+            "credit": 0.75,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE3207",
+            "name": "Introduction to Artificial Intelligence",
+            "credit": 3,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE3208",
+            "name": "Introduction to Artificial Intelligence Lab",
+            "credit": 0.75,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE3213",
+            "name": "Operating System",
+            "credit": 3,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE3214",
+            "name": "Operating System Lab",
+            "credit": 0.75,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE3223",
+            "name": "Information System Design and Software Engineering",
+            "credit": 3,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE3224",
+            "name": "Information System Design and Software Engineering Lab",
+            "credit": 0.75,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "HUM3207",
+            "name": "Industrial Law and Safety Management",
+            "credit": 3,
+            "grade": "-",
+            "point": null
+          }
+        ]
+      },
+      {
+        "semester": 7,
+        "year": "",
+        "sgpa": null,
+        "cgpa": 3.58,
+        "courses": [
+          {
+            "code": "CSE4100",
+            "name": "Project and Thesis-I",
+            "credit": 3,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE4113",
+            "name": "Pattern Recognition and Machine Learning",
+            "credit": 3,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE4114",
+            "name": "Pattern Recognition and Machine Learning Lab",
+            "credit": 0.75,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE4129",
+            "name": "Formal Languages and Compilers",
+            "credit": 3,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE4130",
+            "name": "Formal Languages and Compilers Lab",
+            "credit": 0.75,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "IPE4111",
+            "name": "Industrial Management",
+            "credit": 3,
+            "grade": "-",
+            "point": null
+          }
+        ]
+      },
+      {
+        "semester": 8,
+        "year": "",
+        "sgpa": null,
+        "cgpa": 3.58,
+        "courses": [
+          {
+            "code": "CSE4203",
+            "name": "Computer Graphics",
+            "credit": 3,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE4204",
+            "name": "Computer Graphics Lab",
+            "credit": 0.75,
+            "grade": "-",
+            "point": null
+          },
+          {
+            "code": "CSE4250",
+            "name": "Project and Thesis-II",
+            "credit": 3,
+            "grade": "-",
+            "point": null
+          }
+        ]
+      }
+    ],
+    "aust-exam-tracker": {
+      "CSE3117": {
+        "quiz1": {
+          "date": "2026-10-17",
+          "syllabus": "dfgsdgds"
+        }
+      },
+      "_meta": {
+        "updatedBy": "Mubasshir mehedi",
+        "role": "student",
+        "updatedAt": "2026-10-17T16:29:38.297Z"
+      }
+    },
+    "aust-study-streak": {
+      "count": 2,
+      "lastActive": "Sun Oct 18 2026"
+    },
+    "aust-attendance-overall-average": 5,
+    "aust-notebook-index": []
+  }
+}
