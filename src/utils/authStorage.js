@@ -1,6 +1,7 @@
 // TODO: Swap localStorage for API calls — see MIGRATION.md Phase 3
 //   GET  /api/grades  → getSemesterResults()
 //   POST /api/grades  → saveSemesterResult()
+// Keys are now role-namespaced for proper directory separation.
 // Keep userStoragePrefixes helpers until phased out.
 import { addNotification, makeNotifId, showNativeNotification } from './inAppNotifications';
 
@@ -9,20 +10,29 @@ const sessionKey = 'aust-auth-session-v1';
 const profileKey = 'aust-user-profile';
 const applicationsKey = 'aust-role-applications-v1';
 
-// User-specific storage key prefixes
+// Role-namespaced storage key prefixes for proper directory separation
 const userStoragePrefixes = {
-  semesterResults: 'aust-user-semester-results',
-  routineAttendanceEnabled: 'aust-user-routine-attendance-enabled',
-  routineAttendanceData: 'aust-user-routine-attendance-data',
-  routineAttendanceSessions: 'aust-user-routine-attendance-sessions',
-  userRoutine: 'aust-user-routine',
-  userWeekDays: 'aust-user-weekdays',
-  // Semester Tracker
-  semesterTrackerCourses: 'aust-user-tracker-courses',
-  semesterTrackerMarks:   'aust-user-tracker-marks',
-  semesterTrackerLabCourses: 'aust-user-tracker-lab-courses',
-  semesterTrackerLabConfig:  'aust-user-tracker-lab-config',
-  semesterTrackerLabMarks:   'aust-user-tracker-lab-marks',
+  // Admin/CR/SR directories
+  admin: 'aust-admin',
+  cr: 'aust-cr',
+  sr: 'aust-sr',
+  // Student directory
+  student: 'aust-student',
+  // Faculty directory
+  faculty: 'aust-faculty',
+  // Alumni directory
+  alumni: 'aust-alumni',
+  // Guest directory
+  guest: 'aust-guest',
+  // Shared resources
+  routines: 'aust-routines',
+  attendance: 'aust-attendance',
+  // Semester Tracker directory
+  trackerCourses: 'aust-user-tracker-courses',
+  trackerMarks:   'aust-user-tracker-marks',
+  trackerLabCourses: 'aust-user-tracker-lab-courses',
+  trackerLabConfig:  'aust-user-tracker-lab-config',
+  trackerLabMarks:   'aust-user-tracker-lab-marks',
 };
 
 // Get current session user ID for user-specific storage
