@@ -7,10 +7,11 @@ import CourseAutocomplete from '../../components/CourseAutocomplete';
 import RoomAutocomplete from '../../components/RoomAutocomplete';
 import TeacherAutocomplete from '../../components/TeacherAutocomplete';
 import { getAutoColorForCourse } from '../../utils/autoColorPalette';
-import { loadTemplates, mergeTemplatesToRoutine } from '../../utils/routineTemplates';
 import logoLight from '../../assets/vector1-1.svg';
 import logoDark from '../../assets/vector1-1.svg';
 import { useAuth } from '../../context/AuthContext';
+
+const isGeneratedRoutineFixture = (routine) => String(routine?.id || '').startsWith('dev-rt-');
 
 export default function WeeklyPlanner() {
   const { user } = useAuth();
@@ -99,8 +100,8 @@ export default function WeeklyPlanner() {
   // lab groups × 8 sems × 8 depts = 512. The badge shows this only as a
   // fallback; the server /api/routines/shared/stats returns the live total.
   const CR_TOTAL_SLOTS = 512;
-  const CR_DEPTS = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'];
   const isCR = !!(user && (user.role === 'cr' || (typeof user.hasRole === 'function' && user.hasRole('cr'))));
+  const isFaculty = !!(user && (user.role === 'faculty' || (typeof user.hasRole === 'function' && user.hasRole('faculty'))));
   const [sharedRoutines, setSharedRoutines] = useState([]);
   const [sharedStats, setSharedStats] = useState({ shared: 0, total: CR_TOTAL_SLOTS });
   const [sharedLoading, setSharedLoading] = useState(false);
@@ -143,7 +144,7 @@ export default function WeeklyPlanner() {
         try {
           const listRes = await fetch('/api/routines/shared', { credentials: 'same-origin' });
           const listData = await listRes.json();
-          if (!cancelled && listData.routines) setSharedRoutines(listData.routines);
+          if (!cancelled && listData.routines) setSharedRoutines(listData.routines.filter((routine) => !isGeneratedRoutineFixture(routine)));
         } catch { /* keep empty list */ }
       }
     })();
@@ -151,7 +152,6 @@ export default function WeeklyPlanner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [availableTemplates, setAvailableTemplates] = useState([]);
 
   useEffect(() => {
     if (showLoadModal) {
@@ -349,8 +349,9 @@ export default function WeeklyPlanner() {
         sharedApi('/api/routines/shared'),
         sharedApi('/api/routines/shared/stats'),
       ]);
-      setSharedRoutines(sharedRes.routines || []);
-      setSharedStats(statsRes.stats || { shared: 0, total: CR_TOTAL_SLOTS });
+      const publishedRoutines = (sharedRes.routines || []).filter((routine) => !isGeneratedRoutineFixture(routine));
+      setSharedRoutines(publishedRoutines);
+      setSharedStats({ ...(statsRes.stats || { total: CR_TOTAL_SLOTS }), shared: publishedRoutines.length });
     } catch (e) {
       console.warn('Failed to load shared routines:', e.message);
       setSharedRoutines([]);
@@ -359,11 +360,11 @@ export default function WeeklyPlanner() {
   };
 
   const openLoadModal = async () => {
+    if (isFaculty) return;
     setSelectedTemplate(null);
     setLoadSearch('');
     setLoadDept('all');
     setLoadSem('all');
-    setAvailableTemplates(loadTemplates());
     setShowLoadModal(true);
     setSharedLoading(true);
     await refreshSharedRoutines();
@@ -419,30 +420,8 @@ export default function WeeklyPlanner() {
     }
   };
 
-  // Load every semester template for a department in one go — merged into the
-  // weekly schedule. No more semester-by-semester loading. The modal stays open
-  // so the user SEES the single combined card with its Loaded ✓ badge.
-  const loadTemplatesAtOnce = (templates) => {
-    const merged = mergeTemplatesToRoutine(templates);
-    if (!merged) return;
-    replaceRoutine(merged.routine, merged.weekDays);
-    setSelectedTemplate(null);
-  };
-
-  // Selecting a department auto-loads all of its semester templates at once.
   const handleLoadDeptChange = (value) => {
     setLoadDept(value);
-    if (value !== 'all') {
-      const deptTemplates = availableTemplates.filter(t => t.department === value);
-      // Only auto-load when the department actually has template classes —
-      // avoids wiping the user's routine with blank days.
-      const hasClasses = deptTemplates.some(t =>
-        Object.values(t.routine || {}).some(day => Array.isArray(day) && day.length > 0)
-      );
-      if (hasClasses) {
-        loadTemplatesAtOnce(deptTemplates);
-      }
-    }
   };
 
   // Filter shared routines for the load overlay
@@ -456,15 +435,7 @@ export default function WeeklyPlanner() {
   });
   const sharedSems = [...new Set(sharedRoutines.map(r => r.yearSemester).filter(Boolean))].sort();
 
-  // Admin templates grouped by department — one combined card per dept,
-  // so a department never shows as separate per-semester entries.
-  const deptGroups = [...new Set(availableTemplates.map(t => t.department).filter(Boolean))].sort();
-  const visibleGroups = loadDept === 'all' ? deptGroups : deptGroups.filter(d => d === loadDept);
-
-  // Dropdown options come from the actual templates (plus the CR depts used for
-  // shared routines) — never a hardcoded list, so admin-created departments
-  // always match what the user can pick.
-  const deptOptions = [...new Set([...CR_DEPTS, ...deptGroups])].sort();
+  const deptOptions = [...new Set(sharedRoutines.map(r => r.department).filter(Boolean))].sort();
 
   const downloadSchedulePDF = async () => {
     const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
@@ -668,19 +639,19 @@ export default function WeeklyPlanner() {
             <div>
               <span className="schedule-overline">Dashboard</span>
               <p className="schedule-title">Routine Grid</p>
-              <span className="schedule-subtitle">Tap a class to edit</span>
+              <span className="schedule-subtitle">{isFaculty ? 'Add your classes by clicking an empty time slot' : 'Tap a class to edit'}</span>
             </div>
           </div>
 
           <div className="schedule-actions">
-            <button
+            {!isFaculty && <button
               className="btn btn-sm load-routine-btn"
               onClick={openLoadModal}
-              title="Load a routine shared by a CR or an admin template"
+              title="Load a routine shared by a CR"
             >
               <Download size={14} />
               <span>Load Routine</span>
-            </button>
+            </button>}
             {isCR && (
              <button
                className={`btn btn-sm cr-publish-btn${myShared ? ' is-shared' : ''}`}
@@ -691,7 +662,7 @@ export default function WeeklyPlanner() {
                  : 'Publish your routine — it automatically appears in Load Routine and Free Rooms for everyone.'}
              >
                {shareBusy ? <Loader2 size={14} className="spin" /> : myShared ? <Check size={14} /> : <Share2 size={14} />}
-               <span>{myShared ? 'Routine Live ✓' : 'Share Routine'}</span>
+               <span>{myShared ? 'Shared ✓' : 'Share Routine'}</span>
              </button>
            )}
            {shareMsg && (
@@ -1072,7 +1043,7 @@ export default function WeeklyPlanner() {
         )}
 
       {/* Load Routine Modal */}
-      {showLoadModal && createPortal(
+      {!isFaculty && showLoadModal && createPortal(
         <div className="modal-overlay" onClick={() => setShowLoadModal(false)}>
           <div className="modal glass-card-static" onClick={(e) => e.stopPropagation()} style={{ width: 'min(620px, 94vw)', height: 'auto', maxHeight: 'calc(100vh - clamp(64px, 14vh, 144px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', maxWidth: 'none', margin: 'auto', animation: 'none' }}>
             <div className="flex justify-between items-center" style={{ padding: '0 0 12px', borderBottom: '1px solid var(--border-primary)', flexShrink: 0 }}>
@@ -1178,61 +1149,6 @@ export default function WeeklyPlanner() {
                     );
                   })}
 
-                  {visibleGroups.length > 0 && (
-                    <div style={{ marginTop: '6px' }}>
-                      <div style={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', margin: '0 0 8px' }}>
-                        Admin templates — full department schedules
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {visibleGroups.map(dept => {
-                          const groupTemplates = availableTemplates.filter(t => t.department === dept);
-                          const merged = mergeTemplatesToRoutine(groupTemplates);
-                          const totalClasses = merged
-                            ? Object.values(merged.routine).reduce((sum, day) => sum + (Array.isArray(day) ? day.length : 0), 0)
-                            : 0;
-                          const semCount = groupTemplates.length;
-                          return (
-                            <div
-                              key={dept}
-                              onClick={() => handleLoadDeptChange(dept)}
-                              title={`Load the whole ${dept} schedule (${semCount} semester template${semCount !== 1 ? 's' : ''} combined)`}
-                              style={{
-                                padding: '12px',
-                                background: loadDept === dept ? 'var(--accent-blue-glow)' : 'var(--bg-input)',
-                                border: `1px solid ${loadDept === dept ? 'var(--accent-blue)' : 'var(--border-primary)'}`,
-                                borderRadius: 'var(--radius-md)',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
-                              }}
-                            >
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    {dept} — Full Schedule
-                                    <span className="badge badge-emerald" style={{ fontSize: '8px', padding: '1px 4px' }}>All semesters</span>
-                                  </h4>
-                                  <div className="flex items-center gap-2 mt-1" style={{ flexWrap: 'wrap' }}>
-                                    <span className="badge badge-blue" style={{ fontSize: '9px', padding: '1px 4px' }}>{dept}</span>
-                                    <span className="badge badge-purple" style={{ fontSize: '9px', padding: '1px 4px' }}>{semCount} semester{semCount !== 1 ? 's' : ''} combined</span>
-                                    <span className="badge badge-blue" style={{ fontSize: '9px', padding: '1px 4px' }}>{totalClasses} classes</span>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  {loadDept === dept && (totalClasses > 0 ? (
-                                    <span className="badge badge-emerald" style={{ fontSize: '10px', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                      <Check size={12} /> Loaded ✓
-                                    </span>
-                                  ) : (
-                                    <span className="badge badge-purple" style={{ fontSize: '10px', padding: '4px 10px' }}>No classes yet</span>
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
             </div>

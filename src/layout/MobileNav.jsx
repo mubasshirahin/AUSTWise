@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, BarChart3, BookOpen, MapPin, Users, ShoppingBag,
   MessageSquare, Settings, Crown, NotebookPen, Coffee, Zap, Moon, Home,
-  MoreHorizontal, X,
+  MoreHorizontal, X, FileSearch,
 } from 'lucide-react';
+import { prefetchRoute } from '../utils/routePrefetch';
 import './MobileNav.css';
 
 // Primary items shown in the fixed bottom bar (most-used campus tools)
@@ -24,6 +25,7 @@ const moreSections = [
       { path: '/daily-life', label: 'Daily Life', icon: Home },
       { path: '/campus', label: 'InsideAUST', icon: MapPin },
       { path: '/notebook', label: 'Notebook', icon: NotebookPen },
+      { path: '/question-bank-analyzer', label: 'Question Bank', icon: FileSearch },
       { path: '/productivity', label: 'Productivity', icon: Zap },
     ],
   },
@@ -44,9 +46,49 @@ const moreSections = [
   },
 ];
 
+function PrimaryMobileLink({ item, onClick }) {
+  return (
+    <NavLink
+      to={item.path}
+      className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}
+      onClick={onClick}
+      end={item.path === '/'}
+      onMouseEnter={() => prefetchRoute(item.path)}
+      onFocus={() => prefetchRoute(item.path)}
+    >
+      <item.icon size={20} />
+      <span>{item.label}</span>
+    </NavLink>
+  );
+}
+
+function MoreMobileLink({ item, isActive, onClick }) {
+  return (
+    <NavLink
+      to={item.path}
+      className={`mobile-more-item ${isActive ? 'active' : ''}`}
+      onClick={onClick}
+      end={item.path === '/'}
+      onMouseEnter={() => prefetchRoute(item.path)}
+      onFocus={() => prefetchRoute(item.path)}
+    >
+      <div className="mobile-more-icon"><item.icon size={20} /></div>
+      <span>{item.label}</span>
+    </NavLink>
+  );
+}
+
 export default function MobileNav() {
   const [moreOpen, setMoreOpen] = useState(false);
   const location = useLocation();
+
+  // Touch devices have no hover, so the sheet's links only exist once it opens.
+  // Warm every one of their chunks the moment it opens, so a tap lands on an
+  // already-cached chunk instead of paying a full round-trip.
+  useEffect(() => {
+    if (!moreOpen) return;
+    moreSections.forEach((sec) => sec.items.forEach((item) => prefetchRoute(item.path)));
+  }, [moreOpen]);
 
   // Check if any "more" item is currently active → highlight the More button
   const isMoreActive = moreSections.some((sec) =>
@@ -61,15 +103,7 @@ export default function MobileNav() {
     <>
       <nav className="mobile-nav hide-desktop">
         {primaryItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}
-            end={item.path === '/'}
-          >
-            <item.icon size={20} />
-            <span>{item.label}</span>
-          </NavLink>
+          <PrimaryMobileLink key={item.path} item={item} onClick={() => setMoreOpen(false)} />
         ))}
         <button
           type="button"
@@ -107,18 +141,12 @@ export default function MobileNav() {
                         ? location.pathname === '/'
                         : location.pathname.startsWith(item.path);
                     return (
-                      <NavLink
+                      <MoreMobileLink
                         key={item.path}
-                        to={item.path}
-                        className={`mobile-more-item ${isActive ? 'active' : ''}`}
+                        item={item}
+                        isActive={isActive}
                         onClick={() => setMoreOpen(false)}
-                        end={item.path === '/'}
-                      >
-                        <div className="mobile-more-icon">
-                          <item.icon size={20} />
-                        </div>
-                        <span>{item.label}</span>
-                      </NavLink>
+                      />
                     );
                   })}
                 </div>

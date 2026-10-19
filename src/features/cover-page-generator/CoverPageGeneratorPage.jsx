@@ -2,13 +2,13 @@ import { useState, useRef, useCallback, useEffect, forwardRef } from 'react';
 import {
   NotebookPen, FileText, Image,
   Check, FileDown, Sparkles, User, X, UserPlus, MoreVertical, RotateCcw,
-  Shield, ShieldCheck, ShieldX, Eye, EyeOff, Users
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
 import austwiseLogo from '../../assets/austwise-4.svg';
 import austLogo from '../../assets/aust-logo.jpg';
-import RoleAccessControlCard from '../admin/RoleAccessControlCard';
+import { useRoleAccess } from '../../hooks/useRoleAccess';
+import { getAccessRole } from '../../utils/accessRole';
 import './CoverPageGeneratorPage.css';
 
 function formatDate(date) {
@@ -63,33 +63,14 @@ function useCoverScale(frameRef) {
 
 export default function CoverPageGeneratorPage() {
   const { user } = useAuth();
-  const STORAGE_KEY = 'aust-role-access-v2:cover';
-  const DEFAULT_STATS_ALLOWED = ['admin', 'moderator'];
-  const [statsAllowed, setStatsAllowed] = useState(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const p = JSON.parse(raw);
-        if (Array.isArray(p.statsAllowed)) return p.statsAllowed;
-      }
-    } catch {}
-    return DEFAULT_STATS_ALLOWED;
-  });
-  useEffect(() => {
-    const onUpdate = (e) => { if (e.detail?.key === STORAGE_KEY && e.detail?.statsAllowed) setStatsAllowed(e.detail.statsAllowed); };
-    const onStorage = (e) => {
-      if (e.key === STORAGE_KEY && e.newValue) {
-        try { const p = JSON.parse(e.newValue); if (Array.isArray(p.statsAllowed)) setStatsAllowed(p.statsAllowed); } catch {}
-      }
-    };
-    window.addEventListener('role-access-updated', onUpdate);
-    window.addEventListener('storage', onStorage);
-    return () => {
-      window.removeEventListener('role-access-updated', onUpdate);
-      window.removeEventListener('storage', onStorage);
-    };
-  }, []);
-  const isAdmin = statsAllowed.includes(user?.role);
+  // Same live config as the admin card and the page gate (keyed by route path).
+  const { config, loading: accessLoading } = useRoleAccess('/cover-page-generator');
+  const statsAllowed = config.statsAllowed || ['admin', 'moderator'];
+  const featureHidden = config.featureHidden || [];
+  const accessRole = getAccessRole(user);
+  const isStaff = user?.role === 'admin' || user?.role === 'moderator';
+  const denied = !accessLoading && !isStaff && featureHidden.includes(accessRole);
+  const isAdmin = statsAllowed.includes(accessRole);
   const previewRef = useRef(null);
   const cloneRef = useRef(null);
   const frameRef = useRef(null);
@@ -418,6 +399,10 @@ export default function CoverPageGeneratorPage() {
     setMenuOpen(false);
   };
 
+  if (denied) {
+    return null;
+  }
+
   return (
     <div className="glass-card-static schedule-widget cpgen-widget animate-fadeInUp">
 
@@ -565,7 +550,6 @@ export default function CoverPageGeneratorPage() {
           </button>
         </div>
       )}
-      {isAdmin && <RoleAccessControlCard pageKey="cover" />}
 
       {!isAdmin && (
         <div className="cpgen-layout">

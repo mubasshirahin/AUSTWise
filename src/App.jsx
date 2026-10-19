@@ -9,9 +9,12 @@ import TopNavbar from './layout/TopNavbar';
 import SearchModal from './layout/SearchModal';
 import MobileNav from './layout/MobileNav';
 import ErrorBoundary from './components/ErrorBoundary';
-import ActiveMembersSidebar from './features/active-members/ActiveMembersSidebar';
 import RoleAccessControlCard from './features/admin/RoleAccessControlCard';
+import { ADMIN_PAGE_CONFIG } from './features/admin/SidebarPageAccessPanel';
 import { useRoleAccess } from './hooks/useRoleAccess';
+import { usePageAvailability } from './features/admin/PageAvailabilityPanel';
+import { prefetchRoutesIdle } from './utils/routePrefetch';
+import { getAccessRole } from './utils/accessRole';
 import { StalkProvider } from './features/stalk-road/StalkContext';
 const StalkRoadOverlay = lazy(() => import('./features/stalk-road/StalkRoadOverlay'));
 const AuthPage = lazy(() => import('./features/auth/AuthPage'));
@@ -29,6 +32,7 @@ const PricingPage = lazy(() => import('./pages/PricingPage'));
 const AboutUsPage = lazy(() => import('./pages/AboutUsPage'));
 const NotificationRunner = lazy(() => import('./components/NotificationRunner'));
 const FloatingBackground = lazy(() => import('./components/FloatingBackground'));
+const ActiveMembersSidebar = lazy(() => import('./features/active-members/ActiveMembersSidebar'));
 
 const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage'));
 const RoutineTemplatesPage = lazy(() => import('./features/dashboard/RoutineTemplatesPage'));
@@ -48,6 +52,7 @@ const StudyRoomPage = lazy(() => import('./features/study-room/StudyRoomPage'));
 const ZenStudyRoom = lazy(() => import('./features/study-room/ZenStudyRoom'));
 const CPHubPage = lazy(() => import('./features/cp-hub/CPHubPage'));
 const MoneyTrackerPage = lazy(() => import('./features/money-tracker/MoneyTrackerPage'));
+const QuestionBankAnalyzerPage = lazy(() => import('./features/question-bank-analyzer/QuestionBankAnalyzerPage'));
 
 const CoverPageGeneratorPage = lazy(() => import('./features/cover-page-generator/CoverPageGeneratorPage'));
 const ChillZonePage = lazy(() => import('./features/chill-zone/ChillZonePage'));
@@ -61,6 +66,10 @@ const ProductivityPage = lazy(() => import('./features/productivity/Productivity
 const DailyLifePage = lazy(() => import('./features/daily-life/DailyLifePage'));
 const PaymentSuccessPage = lazy(() => import('./pages/PaymentSuccessPage'));
 const PaymentCancelPage = lazy(() => import('./pages/PaymentCancelPage'));
+const RoleMatrixPreview = lazy(() => import('./features/admin/RoleMatrixPreview'));
+const AccessRequestsPanel = lazy(() => import('./features/admin/AccessRequestsPanel'));
+const AcceptInvitePage = lazy(() => import('./features/auth/AcceptInvitePage'));
+const ResetPasswordPage = lazy(() => import('./features/auth/ResetPasswordPage'));
 
 import './App.css';
 
@@ -71,11 +80,15 @@ function AdminRoute() {
 
 // Protected Admin Route - client check + server verification
 function ProtectedAdminRoute({ children }) {
-  const { hasRole } = useAuth();
+  const { hasRole, isRoleMocked } = useAuth();
   const [serverVerified, setServerVerified] = useState(null); // null=loading, true=ok, false=blocked
   const isAdmin = hasRole?.('admin') || hasRole?.('moderator');
 
   useEffect(() => {
+    if (import.meta.env.DEV && isRoleMocked) {
+      setServerVerified(true);
+      return;
+    }
     if (!isAdmin) {
       setServerVerified(false);
       return;
@@ -87,7 +100,7 @@ function ProtectedAdminRoute({ children }) {
         else setServerVerified(false);
       })
       .catch(() => setServerVerified(false));
-  }, [isAdmin]);
+  }, [isAdmin, isRoleMocked]);
 
   if (!isAdmin) {
     return <Navigate to="/" replace />;
@@ -104,7 +117,7 @@ function ProtectedAdminRoute({ children }) {
 
 // Main App Content Component (authenticated routes)
 function AppContent() {
-  const { hasRole } = useAuth();
+  const { hasRole, user } = useAuth();
   const isAdmin = hasRole ? hasRole('admin') || hasRole('moderator') : false;
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -132,41 +145,50 @@ function AppContent() {
     window.scrollTo(0, 0);
   }, [location.pathname]);
 
+  // Warm the route chunks while the browser is idle so the first click on a nav
+  // item doesn't wait for a network round-trip. prefetchRoutesIdle staggers them
+  // (one per idle slice) so this never competes with first paint.
+  useEffect(() => {
+    prefetchRoutesIdle([
+      '/analytics', '/campus', '/vault', '/notebook', '/community',
+      '/messages', '/marketplace', '/settings', '/productivity',
+      '/daily-life', '/chill-zone', '/shadow', '/cheatsheets',
+      '/workspace', '/study-room', '/cp-hub', '/money-tracker',
+      '/question-bank-analyzer',
+      '/cover-page-generator', '/roast-cv', '/certificate',
+      '/auto-alarm', '/austeddit', '/pro', '/routine-templates', '/zen',
+      ...(isAdmin ? ['/admin'] : []),
+    ]);
+  }, [isAdmin]);
+
   function PageGuard({ children }) {
-    const { user } = useAuth();
+    const { user, hasRole } = useAuth();
+    const availability = usePageAvailability(location.pathname);
+    // Call the access hook unconditionally so the hook order never changes
+    // between routes (self-gated pages / staff included). It reads the SAME
+    // key as the page's own gate and the admin card.
+    const { config, loading } = useRoleAccess(location.pathname);
+    const isStaff = hasRole?.('admin') || hasRole?.('moderator');
+    if (!isStaff && availability.loading) return <div className="page-loading"><div className="page-loading-spinner" /><span>Loading page…</span></div>;
+    if (!isStaff && !availability.enabled) return <div className="glass-card-static" style={{ margin: '32px auto', maxWidth: '560px', padding: '32px', textAlign: 'center' }}><div style={{ fontSize: '32px', marginBottom: '12px' }}>🚧</div><h2 style={{ margin: '0 0 8px' }}>Coming soon</h2><p style={{ margin: 0, color: 'var(--text-secondary)' }}>This page is being prepared and will be available soon.</p></div>;
     // Skip guard for pages that gate their own content internally — their hero
     // box + glider tab bar must stay visible at all times (like the dashboard),
     // with only the content box below the tabs hidden for feature-hidden roles.
     const skipPaths = ['/', '/cover-page-generator', '/daily-life', '/analytics', '/campus', '/community', '/marketplace', '/vault', '/notebook', '/settings', '/messages', '/productivity', '/chill-zone', '/shadow'];
     const isSkipped = skipPaths.includes(location.pathname) || location.pathname.startsWith('/admin');
     if (isSkipped) return children;
-    // Admin/moderator always see page shell (hero + GliderTabs). Pages hide
-    // feature boxes via useAdminMode. Default featureHidden includes these
-    // roles, so without this bypass they only get Access Denied.
-    const isStaff = user?.role === 'admin' || user?.role === 'moderator';
+    // Admin/moderator always see the page shell (hero + GliderTabs). Pages hide
+    // their own feature boxes via the role-access config.
     if (isStaff) return children;
-    const pageKey = location.pathname;
-    const { config, loading } = useRoleAccess(pageKey);
     if (loading) return children;
-    const hidden = config.featureHidden.includes(user?.role);
-    if (hidden) {
-      return (
-        <div className="glass-card-static" style={{ padding: '24px', textAlign: 'center', border: '1px solid var(--accent-rose)', margin: '24px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--accent-rose-glow)', color: 'var(--accent-rose)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-            <span style={{ fontSize: '18px' }}>🚫</span>
-          </div>
-          <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--accent-rose)' }}>Access Denied for this page</h3>
-          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '6px' }}>Your role <code>{user?.role}</code> is currently in “Feature Hidden” for <code>{pageKey}</code> by admin. Move your pill to “Can Use” to regain access.</p>
-          <div style={{ marginTop: '16px', textAlign: 'left' }}><RoleAccessControlCard pageKey={pageKey} /></div>
-        </div>
-      );
-    }
+    const hidden = (config.featureHidden || []).includes(getAccessRole(user));
+    if (hidden) return null;
     return children;
   }
 
   return (
     <StalkProvider>
-      <RoutineProvider>
+      <RoutineProvider key={user?.id || 'guest'}>
         <Suspense fallback={null}>
           <NotificationRunner />
           <FloatingBackground />
@@ -204,21 +226,32 @@ function AppContent() {
                   <Route path="/community" element={<CommunityPage />} />
                   <Route path="/marketplace" element={<MarketplacePage />} />
                   <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/accept-invite" element={<AcceptInvitePage />} />
                   <Route path="/messages" element={<MessagesPage />} />
                   <Route path="/admin" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
                   <Route path="/admin/overview" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
                   <Route path="/admin/canteen" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
                   <Route path="/admin/library" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
                   <Route path="/admin/users" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
+                  <Route path="/admin/academic" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
+                  <Route path="/admin/availability" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
+                  <Route path="/admin/templates" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
+                  <Route path="/admin/auditorium" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
+                  <Route path="/admin/cheatsheets" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
+                  <Route path="/admin/campus-map" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
+                  <Route path="/reset-password" element={<ResetPasswordPage />} />
                   <Route path="/admin/applications" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
                   <Route path="/admin/cr-sr-directory" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
-                  <Route path="/admin/auditorium" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
                   <Route path="/admin/bhara-koto" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
                   <Route path="/admin/attendance" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
+                  <Route path="/admin/features" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
+                  <Route path="/admin/access-requests" element={<ProtectedAdminRoute><AccessRequestsPanel /></ProtectedAdminRoute>} />
+                  <Route path="/admin/role-preview" element={import.meta.env.DEV ? <RoleMatrixPreview /> : <ProtectedAdminRoute><RoleMatrixPreview /></ProtectedAdminRoute>} />
                   <Route path="/workspace" element={<WorkspacePage />} />
                   <Route path="/study-room" element={<StudyRoomPage />} />
                   <Route path="/cp-hub" element={<CPHubPage />} />
                   <Route path="/money-tracker" element={<MoneyTrackerPage />} />
+                  <Route path="/question-bank-analyzer" element={<QuestionBankAnalyzerPage />} />
 
                   <Route path="/aust-bhara" element={<Navigate to="/campus" replace />} />
                   <Route path="/cover-page-generator" element={<CoverPageGeneratorPage />} />
@@ -239,21 +272,23 @@ function AppContent() {
                 </Suspense>
                 </PageGuard>
               </ErrorBoundary>
-              {isAdmin && location.pathname !== '/cover-page-generator' && location.pathname !== '/daily-life' && location.pathname !== '/' && location.pathname !== '/analytics' && location.pathname !== '/campus' && !location.pathname.startsWith('/admin') && (
+              {isAdmin && location.pathname !== '/' && location.pathname !== '/daily-life' && location.pathname !== '/analytics' && !ADMIN_PAGE_CONFIG[location.pathname] && !location.pathname.startsWith('/admin') && (
                 <div style={{ padding: '0 24px 24px' }}>
-                  {/* pageKey = pathname only (no ?tab=) so it configures the
-                      same key the page's internal content gate reads. */}
+                  {/* One card per page, keyed by the route path — the same key
+                      the page's internal content gate reads. */}
                   <RoleAccessControlCard pageKey={location.pathname} />
                 </div>
               )}
             </div>
           </div>
-          <ActiveMembersSidebar
-            open={membersOpen}
-            isDesktop={isDesktop}
-            onClose={() => setMembersOpen(false)}
-            onToggle={() => setMembersOpen((o) => !o)}
-          />
+          <Suspense fallback={null}>
+            <ActiveMembersSidebar
+              open={membersOpen}
+              isDesktop={isDesktop}
+              onClose={() => setMembersOpen(false)}
+              onToggle={() => setMembersOpen((o) => !o)}
+            />
+          </Suspense>
           <MobileNav />
         </div>
         <Suspense fallback={null}>
@@ -281,6 +316,7 @@ function AppShell() {
     '/marketplace': 'Marketplace',
     '/settings': 'Settings',
     '/messages': 'ConnectBox',
+    '/admin/role-preview': 'Live Role Access Preview',
     '/admin': 'Admin Panel',
     '/terminal': 'Terminal',
     '/shadow': 'Shadow',
@@ -289,6 +325,7 @@ function AppShell() {
     '/study-room': 'Study Time',
     '/cp-hub': 'Code Pulse',
     '/money-tracker': 'TakaGeloKoi',
+    '/question-bank-analyzer': 'Question Bank Analyzer',
 
     '/cover-page-generator': 'Cover Page Generator',
     '/chill-zone': 'DownTime',
@@ -345,6 +382,9 @@ function AppShell() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/cinematic" element={<CinematicLandingPage />} />
           <Route path="/login" element={<AuthPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/admin/*" element={<Navigate to="/login" replace />} />
+          <Route path="/accept-invite" element={<AcceptInvitePage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/cookie-policy" element={<CookiePolicyPage />} />
@@ -355,6 +395,7 @@ function AppShell() {
           <Route path="/features" element={<FeaturesPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/about" element={<AboutUsPage />} />
+          {import.meta.env.DEV && <Route path="/admin/role-preview" element={<RoleMatrixPreview />} />}
           <Route path="/payment/success" element={<PaymentSuccessPage />} />
           <Route path="/payment/cancel" element={<PaymentCancelPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />

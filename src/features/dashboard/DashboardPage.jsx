@@ -11,8 +11,11 @@ import NotificationBanner from './NotificationBanner';
 import RoutineAttendanceTracker from './RoutineAttendanceTracker';
 import RoutineSharingStatus from './RoutineSharingStatus';
 import SemesterTaskTracker from './SemesterTaskTracker';
+import AlumniTransferPrompt from './AlumniTransferPrompt';
 import GliderTabs from '../../components/GliderTabs';
 import MastheadAccessControl from '../../components/MastheadAccessControl';
+import FeatureAccessGate from '../admin/FeatureAccessGate';
+import { DashboardParentAccessPanel, DashboardChildAccessPanel } from '../admin/DashboardAccessPanel';
 import { leaderboardData } from '../../data/mockData';
 import {
   Gauge, Percent, BookOpen, CalendarDays, Zap, AlertTriangle, Calendar,
@@ -21,6 +24,8 @@ import {
 import { getUserStorageItemWithGuestFallback, getCurrentUserId } from '../../utils/authStorage';
 import useTabUrlState from '../../hooks/useTabUrlState';
 import useAdminMode from '../../hooks/useAdminMode';
+import { useRoleAccess } from '../../hooks/useRoleAccess';
+import { getAccessRole } from '../../utils/accessRole';
 import { useAuth } from '../../context/AuthContext';
 import { useLiveValue } from '../../utils/liveStore';
 import './DashboardPage.css';
@@ -589,6 +594,17 @@ function QuickStats() {
 export default function DashboardPage() {
   const { user } = useAuth();
   const { isAdmin } = useAdminMode();
+  const accessRole = getAccessRole(user);
+  const { config: parentAccess, loading: parentAccessLoading } = useRoleAccess('/');
+  const { config: glanceAccess, loading: glanceLoading } = useRoleAccess('feature:dashboard:at-a-glance');
+  const { config: dailyFlowAccess, loading: dailyFlowLoading } = useRoleAccess('feature:dashboard:daily-flow');
+  const { config: noticesAccess, loading: noticesLoading } = useRoleAccess('feature:dashboard:notices');
+  const { config: deadlinesAccess, loading: deadlinesLoading } = useRoleAccess('feature:dashboard:deadlines');
+  const { config: notificationsAccess, loading: notificationsLoading } = useRoleAccess('feature:dashboard:notifications');
+  const { config: routineAccess, loading: routineLoading } = useRoleAccess('feature:dashboard:weekly-planner');
+  const { config: semesterAccess, loading: semesterLoading } = useRoleAccess('feature:dashboard:semester-view');
+  const { config: zeroHourAccess, loading: zeroHourLoading } = useRoleAccess('feature:dashboard:zero-hour');
+  const { config: attendanceAccess, loading: attendanceLoading } = useRoleAccess('feature:dashboard:attendance');
   const [searchParams] = useSearchParams();
   const [focusMode, setFocusMode] = useState(() => {
     const urlTab = searchParams.get('tab');
@@ -599,6 +615,25 @@ export default function DashboardPage() {
     } catch {}
     return 'stats';
   });
+  const isFeatureAvailable = (config, loading) => isAdmin || loading || (
+    config.enabled !== false && !(config.featureHidden || []).includes(accessRole)
+  );
+  const parentAvailable = isAdmin || parentAccessLoading || (
+    parentAccess.enabled !== false && !(parentAccess.featureHidden || []).includes(accessRole)
+  );
+  const statsAvailable = [
+    [glanceAccess, glanceLoading], [dailyFlowAccess, dailyFlowLoading],
+    [noticesAccess, noticesLoading], [deadlinesAccess, deadlinesLoading],
+    [notificationsAccess, notificationsLoading],
+  ].some(([config, loading]) => isFeatureAvailable(config, loading));
+  const availableFocusModes = parentAvailable ? focusModes.filter((tab) => {
+    if (tab.id === 'stats') return statsAvailable;
+    if (tab.id === 'routine') return isFeatureAvailable(routineAccess, routineLoading);
+    if (tab.id === 'calendar') return isFeatureAvailable(semesterAccess, semesterLoading);
+    if (tab.id === 'exams') return isFeatureAvailable(zeroHourAccess, zeroHourLoading);
+    if (tab.id === 'attendance') return isFeatureAvailable(attendanceAccess, attendanceLoading);
+    return true;
+  }) : [];
   const firstName = user?.name?.split(' ')[0] || 'Student';
 
   const handleFocusChange = useTabUrlState({
@@ -610,23 +645,29 @@ export default function DashboardPage() {
     },
   });
 
+  useEffect(() => {
+    if (!availableFocusModes.length || availableFocusModes.some((tab) => tab.id === focusMode)) return;
+    handleFocusChange(availableFocusModes[0].id);
+  }, [availableFocusModes, focusMode, handleFocusChange]);
+
   // Keep the focus tab in sync with the URL (?tab=…) so in-app navigation
   // (e.g. Quick Stats card clicks) switches views without a full reload.
   // When the tab param is removed, restore the last saved preference so the
   // back button returns to a consistent view.
   useEffect(() => {
     const urlTab = searchParams.get('tab');
-    if (urlTab && FOCUS_SECTIONS[urlTab]) {
+    if (urlTab && FOCUS_SECTIONS[urlTab] && availableFocusModes.some((tab) => tab.id === urlTab)) {
       setFocusMode(urlTab);
     } else if (!urlTab) {
       try {
         const stored = localStorage.getItem('aust-dashboard-focus');
-        setFocusMode(stored && FOCUS_SECTIONS[stored] ? stored : 'stats');
+        const storedIsAvailable = availableFocusModes.some((tab) => tab.id === stored);
+        setFocusMode(storedIsAvailable ? stored : (availableFocusModes[0]?.id || 'stats'));
       } catch {
-        setFocusMode('stats');
+        setFocusMode(availableFocusModes[0]?.id || 'stats');
       }
     }
-  }, [searchParams]);
+  }, [searchParams, availableFocusModes]);
 
   const profileIncomplete = user && (!user.department || !user.yearSemester || !user.section || !user.labSection);
 
@@ -637,8 +678,16 @@ export default function DashboardPage() {
 
   return (
     <div className={`dashboard-page dashboard-focus-${focusMode} animate-fadeIn`}>
+      <AlumniTransferPrompt />
 
-      <header className="dash-hero" data-period={greeting.period}>
+      {user?.role === 'admin' && (
+        <header style={{ marginBottom: '18px' }}>
+          <h1 style={{ margin: 0, fontSize: '24px', lineHeight: 1.2, fontWeight: 750, color: 'var(--text-primary)' }}>Dashboard</h1>
+          <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>Manage dashboard access and feature visibility.</p>
+        </header>
+      )}
+
+      {user?.role !== 'admin' && <header className="dash-hero" data-period={greeting.period}>
         <div className="dash-hero-content">
           <div className="dash-hero-eyebrow">
             <span className="dash-hero-period-icon">
@@ -664,57 +713,60 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-      </header>
+      </header>}
 
-      {profileIncomplete && (
+      {profileIncomplete && user?.role !== 'admin' && (
         <div className="dash-profile-warning animate-fadeIn">
           <AlertTriangle size={16} />
           <span>Your profile is incomplete. <a href="/settings">Complete it here</a> to unlock all features.</span>
         </div>
       )}
 
+      {user?.role === 'admin' && <DashboardParentAccessPanel />}
+
       <div className="glass-card-static das-tabs-card">
         <GliderTabs
-          tabs={focusModes}
+          tabs={availableFocusModes}
           activeTab={focusMode}
           onChange={handleFocusChange}
           variant="dashboard"
         />
       </div>
 
+      {user?.role === 'admin' ? <DashboardChildAccessPanel focusMode={focusMode} /> : <>
       {isVisible('stats') && (
-        <MastheadAccessControl pageKey="dashboard:stats">
+        <MastheadAccessControl>
           <section className="dash-section-group">
             <div className="dash-section">
-              <QuickStats />
+              <FeatureAccessGate featureKey="feature:dashboard:at-a-glance"><QuickStats /></FeatureAccessGate>
             </div>
           </section>
         </MastheadAccessControl>
       )}
 
       {isVisible('notif') && (
-        <MastheadAccessControl pageKey="dashboard:stats">
+        <MastheadAccessControl>
           <div className="dash-section">
-            <NotificationBanner />
+              <FeatureAccessGate featureKey="feature:dashboard:notifications"><NotificationBanner /></FeatureAccessGate>
           </div>
         </MastheadAccessControl>
       )}
 
       {isVisible('routine') && (
-        <MastheadAccessControl pageKey="dashboard:routine">
+        <MastheadAccessControl>
           <section className="dash-section-group">
             <div className="dash-section">
-              <WeeklyPlanner />
+              <FeatureAccessGate featureKey="feature:dashboard:weekly-planner"><WeeklyPlanner /></FeatureAccessGate>
             </div>
           </section>
         </MastheadAccessControl>
       )}
 
       {isVisible('calendar') && (
-        <MastheadAccessControl pageKey="dashboard:calendar">
+        <MastheadAccessControl>
           <section className="dash-section-group">
             <div className="dash-section">
-              <WeekSchedule />
+              <FeatureAccessGate featureKey="feature:dashboard:semester-view"><WeekSchedule /></FeatureAccessGate>
             </div>
           </section>
         </MastheadAccessControl>
@@ -722,38 +774,38 @@ export default function DashboardPage() {
 
       <div className="dashboard-grid">
         {isVisible('exams') && (
-          <MastheadAccessControl pageKey="dashboard:exams">
+          <MastheadAccessControl>
             <section className="dash-section-group" style={{ gridColumn: '1 / -1' }}>
               <div className="dash-section">
-                <ExamTracker />
+              <FeatureAccessGate featureKey="feature:dashboard:zero-hour"><ExamTracker /></FeatureAccessGate>
               </div>
             </section>
           </MastheadAccessControl>
         )}
         <div className="dashboard-main-col">
           {isVisible('routine_day') && (
-            <MastheadAccessControl pageKey="dashboard:routine">
+            <MastheadAccessControl>
               <section className="dash-section-group">
                 <div className="dash-section">
-                  <RoutineCard />
+                  <FeatureAccessGate featureKey="feature:dashboard:daily-flow"><RoutineCard /></FeatureAccessGate>
                 </div>
               </section>
             </MastheadAccessControl>
           )}
           {isVisible('attendance') && (
-            <MastheadAccessControl pageKey="dashboard:attendance">
+            <MastheadAccessControl>
               <section className="dash-section-group">
                 <div className="dash-section">
-                  <RoutineAttendanceTracker />
+                  <FeatureAccessGate featureKey="feature:dashboard:attendance"><RoutineAttendanceTracker /></FeatureAccessGate>
                 </div>
               </section>
             </MastheadAccessControl>
           )}
           {isVisible('notices') && (
-            <MastheadAccessControl pageKey="dashboard:stats">
+            <MastheadAccessControl>
               <section className="dash-section-group">
                 <div className="dash-section">
-                  <NoticeBoard />
+                  <FeatureAccessGate featureKey="feature:dashboard:notices"><NoticeBoard /></FeatureAccessGate>
                 </div>
               </section>
             </MastheadAccessControl>
@@ -762,16 +814,17 @@ export default function DashboardPage() {
 
         <div className="dashboard-side-col">
           {isVisible('deadlines') && (
-            <MastheadAccessControl pageKey="dashboard:stats">
+            <MastheadAccessControl>
               <section className="dash-section-group">
                 <div className="dash-section">
-                  <DeadlineTicker />
+                  <FeatureAccessGate featureKey="feature:dashboard:deadlines"><DeadlineTicker /></FeatureAccessGate>
                 </div>
               </section>
             </MastheadAccessControl>
           )}
         </div>
       </div>
+      </>}
     </div>
   );
 }

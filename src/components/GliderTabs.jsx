@@ -1,4 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { useRoleAccessMap } from '../hooks/useRoleAccess';
+import { getAccessRole } from '../utils/accessRole';
 import './GliderTabs.css';
 
 export default function GliderTabs({
@@ -10,6 +13,22 @@ export default function GliderTabs({
 }) {
   const trackRef = useRef(null);
   const activeRef = useRef(null);
+  const { user } = useAuth();
+  const accessMap = useRoleAccessMap();
+  const accessRole = getAccessRole(user);
+  const isStaff = user?.role === 'admin' || user?.role === 'moderator';
+  const visibleTabs = useMemo(() => tabs.filter((tab) => {
+    if (!tab.accessKey || isStaff) return true;
+    const config = accessMap?.[tab.accessKey];
+    if (!config) return true; // Keep visible until its access config is loaded.
+    return config.enabled !== false && !(config.featureHidden || []).includes(accessRole);
+  }), [tabs, accessMap, accessRole, isStaff]);
+
+  useEffect(() => {
+    if (visibleTabs.length && !visibleTabs.some((tab) => tab.id === activeTab)) {
+      onChange(visibleTabs[0].id);
+    }
+  }, [visibleTabs, activeTab, onChange]);
 
   useEffect(() => {
     const track = trackRef.current;
@@ -20,13 +39,13 @@ export default function GliderTabs({
     const activeRect = active.getBoundingClientRect();
     track.style.setProperty('--glider-x', `${activeRect.left - trackRect.left}px`);
     track.style.setProperty('--glider-w', `${activeRect.width}px`);
-  }, [activeTab, tabs, compact]);
+  }, [activeTab, visibleTabs, compact]);
 
   return (
     <div className={`glider-tabs-wrap glider-tabs-${variant} ${compact ? 'glider-tabs-compact' : ''}`}>
       <div className="glider-tabs-track" ref={trackRef} role="tablist">
         <div className="glider-tabs-glider" aria-hidden="true" />
-        {tabs.map((tab) => {
+        {visibleTabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
 

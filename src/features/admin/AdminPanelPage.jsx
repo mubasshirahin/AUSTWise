@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Shield, ShieldCheck, ShieldX, Coffee, Activity, Users, Trash2, Plus, AlertCircle, Eye, EyeOff, Edit3, Search, X, Save, Check, CheckCircle2, XCircle, ClipboardList, CalendarDays, Mic, CalendarClock, Ban, Banknote, FileText, Percent } from 'lucide-react';
+import { Shield, ShieldCheck, ShieldX, Coffee, Activity, Users, Trash2, Plus, AlertCircle, Eye, EyeOff, Edit3, Search, X, Save, Check, CheckCircle2, XCircle, ClipboardList, CalendarDays, Mic, CalendarClock, Ban, Banknote, FileText, Percent, PanelsTopLeft } from 'lucide-react';
 import { getAuditoriumEvent, setAuditoriumEvent, defaultAuditoriumEvent } from '../../data/mockData';
 import { loadSharedSync, loadSharedAsync, saveShared } from '../../utils/storageService';
 import { getRoleLabel, getRoleBadgeClass, getAllAccounts, reviewRoleApplication, resetAllLocalData, getCurrentUserId } from '../../utils/authStorage';
@@ -10,34 +10,111 @@ import RoutineTemplatesPanel from './RoutineTemplatesPanel';
 import BharaKotoPanel from './BharaKotoPanel';
 import RoleAccessControlCard from './RoleAccessControlCard';
 import AdminAttendancePanel from './AdminAttendancePanel';
+import AcademicManagementPanel from './AcademicManagementPanel';
+import PageAvailabilityPanel from './PageAvailabilityPanel';
+import FeatureAccessPanel from './FeatureAccessPanel';
 import { useAuth } from '../../context/AuthContext';
-import { useRoleAccess } from '../../hooks/useRoleAccess';
+import { PROVIDER_MAP } from '../../utils/socialOAuth.jsx';
 import './AdminPanelPage.css';
 
-function AdminTabGuard({ pageKey, children }) {
-  const { user } = useAuth();
-  const { config, loading } = useRoleAccess(pageKey);
-  if (loading) return <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '12px' }}>Checking access…</div>;
-  const hidden = config.featureHidden.includes(user?.role);
-  if (hidden) {
-    return (
-      <div className="glass-card-static" style={{ padding: '24px', textAlign: 'center', border: '1px solid var(--accent-rose)' }}>
-        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--accent-rose-glow)', color: 'var(--accent-rose)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-          <Shield size={20} />
-        </div>
-        <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--accent-rose)' }}>YOU DONT HAVE ACCESS</h3>
-        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '6px' }}>Your role <code>{user?.role}</code> is in “Feature Hidden” for <code>{pageKey}</code>. Admin can move your pill to “Can Use” to regain access.</p>
-        <div style={{ marginTop: '16px', textAlign: 'left' }}><RoleAccessControlCard pageKey={pageKey} /></div>
-      </div>
-    );
+const applicationRoleNames = {
+  cr: 'Class Representative (CR)',
+  sr: 'Student Representative (SR)',
+  vp: 'Vice President (VP)',
+  gs: 'General Secretary (GS)',
+};
+const applicationRoleName = (role) => applicationRoleNames[role] || String(role || 'role').toUpperCase();
+const isDemoAccount = (account) =>
+  /^DEV-/i.test(String(account?.id || '')) ||
+  /^ALU-DEMO-/i.test(String(account?.id || '')) ||
+  /^QA(?:\s|$)/i.test(String(account?.name || '').trim()) ||
+  /^qa-[\w-]*@/i.test(String(account?.email || '').trim());
+const normalizeAdminAccounts = (list) => {
+  const seen = new Set();
+  return (Array.isArray(list) ? list : []).filter((account) => {
+    if (!account || isDemoAccount(account)) return false;
+    const key = String(account.id || account.email || '').trim().toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+const studentChildRoles = ['cr', 'sr', 'readd', 'gs', 'vp', 'bus_coordinator', 'clubs_representative'];
+const exclusiveStudentRoles = ['readd', 'cr', 'sr', 'vp', 'gs'];
+const facultyDepartments = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'];
+const facultyDepartmentRole = (department) => `faculty_${String(department || '').trim().toLowerCase()}`;
+const accountRoleSet = (account) => new Set([account?.role, ...(Array.isArray(account?.roles) ? account.roles : [])].filter(Boolean));
+const accountHasRole = (account, role) => {
+  const roles = accountRoleSet(account);
+  if (role === 'student') return account?.role === 'student' || studentChildRoles.includes(account?.role);
+  if (role === 'alumni') return ['alumni', 'alumni_with_carry'].includes(account?.role);
+  if (role === 'alumni_only') return account?.role === 'alumni';
+  if (role === 'regular') return accountHasRole(account, 'student') && !exclusiveStudentRoles.some(child => roles.has(child));
+  if (role.startsWith('faculty_')) return roles.has(role) || (account?.role === 'faculty' && facultyDepartmentRole(account?.department) === role);
+  if (['faculty', 'guest', 'admin', 'moderator', 'help_desk', 'banned'].includes(role)) return account?.role === role;
+  return roles.has(role);
+};
+const parseProfileObject = (value, fallback) => {
+  if (value && typeof value === 'object') return value;
+  if (typeof value === 'string') {
+    try { return JSON.parse(value); } catch { return fallback; }
   }
-  return children;
-}
-
+  return fallback;
+};
+const hasProfileValue = (value) => typeof value === 'boolean' || (value !== null && value !== undefined && String(value).trim() !== '');
+const getAccountAvatar = (account) => {
+  const linkedAccounts = parseProfileObject(account?.linkedAccounts, []);
+  const linkedAvatar = Array.isArray(linkedAccounts) ? linkedAccounts.find(item => item?.avatar)?.avatar : '';
+  return account?.avatar || account?.picture || account?.photoURL || account?.photoUrl || account?.profilePicture || account?.image || linkedAvatar || '';
+};
+const getDirectoryProfile = (account) => {
+  const linkedAccounts = parseProfileObject(account.linkedAccounts, []);
+  const linkedSocial = parseProfileObject(account.linkedSocial, {});
+  const studentId = String(account.email || '').match(/^\D*(\d+)@aust\.edu$/i)?.[1] || account.studentId || '';
+  const batch = account.batchName || account.batch || (account.batchNo ? `Batch ${account.batchNo}` : '');
+  const details = [
+    ['Full Name', account.name], ['AUSTWise ID', account.awid], ['Student ID', studentId],
+    ['Primary Email', account.email], ['Personal Email', account.personalEmail], ['Profile Photo', getAccountAvatar(account) ? 'Added' : ''],
+    ['Blood Group', account.bloodGroup], ['Department', account.department], ['Batch', batch],
+    ['Original Batch', account.originalBatch], ['Current Academic Batch', account.currentAcademicBatch],
+    ['Year / Semester', account.yearSemester || account.currentSemester], ['Current Semester', account.currentSemester || account.semester],
+    ['Maximum Semester', account.maxSemester], ['Section', account.section], ['Lab Group', account.labSection],
+    ['Academic Status', account.academicStatus], ['Account Status', account.accountStatus || account.status],
+    ['Designation', account.designation], ['Company', account.company], ['Graduation Year', account.graduationYear],
+    ['CGPA', Number(account.cgpa) > 0 ? account.cgpa : ''], ['Credits Completed', account.creditsCompleted], ['Total Credits', account.totalCredits],
+    ['WhatsApp / Phone', account.whatsapp], ['Facebook', account.facebook], ['LinkedIn', account.linkedin],
+    ['Discord', account.discord], ['Open for Talk', typeof account.openForTalk === 'boolean' ? (account.openForTalk ? 'Yes' : 'No') : ''],
+    ['Primary Role', getRoleLabel(account.role || '')],
+    ['Additional Roles', (Array.isArray(account.roles) ? account.roles : []).filter(role => role !== account.role).map(getRoleLabel).join(', ')],
+    ['Account Created', account.createdAt ? new Date(account.createdAt).toLocaleDateString() : ''],
+  ];
+  const providers = Object.entries(PROVIDER_MAP).map(([key, config]) => {
+    const linked = Array.isArray(linkedAccounts) ? linkedAccounts.find(item => item?.provider === key) : null;
+    return [`${config.name} Account`, linked ? (linked.displayName || linked.username || linked.email || linked.id || 'Connected') : ''];
+  });
+  const connectedItems = [
+    ['Google / Gmail', linkedSocial.gmail || ''],
+    ...providers,
+    ...((Array.isArray(linkedAccounts) ? linkedAccounts : [])
+      .filter(item => item?.provider && !PROVIDER_MAP[item.provider])
+      .map(item => [`${item.providerName || item.provider} Account`, item.displayName || item.username || item.email || 'Connected'])),
+  ];
+  const sections = [
+    { title: 'Identity', fields: details.slice(0, 7) },
+    { title: 'Academic & University', fields: details.slice(7, 18) },
+    { title: 'Personal & Contact', fields: details.slice(18, 29) },
+    { title: 'Account & Access', fields: details.slice(29) },
+    { title: 'Linked Accounts', fields: connectedItems },
+  ];
+  const allProfileFields = [...details, ...connectedItems];
+  const completed = allProfileFields.filter(([, value]) => hasProfileValue(value)).length;
+  return { sections, completed, total: allProfileFields.length, percent: allProfileFields.length ? Math.round((completed / allProfileFields.length) * 100) : 0 };
+};
 
 export default function AdminPanelPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user: currentUser } = useAuth();
   
   // Determine active tab from URL path
   const getTabFromPath = () => {
@@ -45,6 +122,8 @@ export default function AdminPanelPage() {
     if (path === '/admin/canteen') return 'canteen';
     if (path === '/admin/library') return 'library';
     if (path === '/admin/users') return 'accounts';
+    if (path === '/admin/academic') return 'academic';
+    if (path === '/admin/availability') return 'availability';
     if (path === '/admin/applications') return 'applications';
     if (path === '/admin/cr-sr-directory') return 'representatives';
     if (path === '/admin/templates') return 'templates';
@@ -53,6 +132,7 @@ export default function AdminPanelPage() {
     if (path === '/admin/campus-map') return 'campus-map';
     if (path === '/admin/bhara-koto') return 'bhara-koto';
     if (path === '/admin/attendance') return 'attendance';
+    if (path === '/admin/features') return 'features';
     return 'overview';
   };
   
@@ -66,6 +146,8 @@ export default function AdminPanelPage() {
       'canteen': '/admin/canteen',
       'library': '/admin/library',
       'accounts': '/admin/users',
+      'academic': '/admin/academic',
+      'availability': '/admin/availability',
       'applications': '/admin/applications',
       'representatives': '/admin/cr-sr-directory',
       'templates': '/admin/templates',
@@ -73,7 +155,8 @@ export default function AdminPanelPage() {
       'cheatsheets': '/admin/cheatsheets',
       'campus-map': '/admin/campus-map',
       'bhara-koto': '/admin/bhara-koto',
-      'attendance': '/admin/attendance'
+      'attendance': '/admin/attendance',
+      'features': '/admin/features'
     };
     navigate(paths[tab] || '/admin');
   };
@@ -98,9 +181,13 @@ export default function AdminPanelPage() {
   useEffect(() => { loadSharedAsync('aust-library-data', defaultLibrary).then(setLibraryInfo); }, []);
 
   // User Accounts State — lazy-initialized from localStorage
-  const [accounts, setAccounts] = useState(() => getAllAccounts());
+  const [accounts, setAccounts] = useState(() => normalizeAdminAccounts(getAllAccounts()));
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
+  const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [accountStatusFilter, setAccountStatusFilter] = useState('all');
+  const [accountSort, setAccountSort] = useState('name-asc');
+  const [accountGrouping, setAccountGrouping] = useState('none');
   const [selectedUser, setSelectedUser] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
   const [editFormData, setEditFormData] = useState({});
@@ -127,7 +214,20 @@ export default function AdminPanelPage() {
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (data && Array.isArray(data.users)) {
-          setAccounts(data.users);
+          const localAccounts = getAllAccounts();
+          const hydratedUsers = data.users.map(serverUser => {
+            const cached = localAccounts.find(account => account.id === serverUser.id || String(account.email || '').toLowerCase() === String(serverUser.email || '').toLowerCase());
+            const serverLinked = parseProfileObject(serverUser.linkedAccounts, []);
+            const cachedLinked = parseProfileObject(cached?.linkedAccounts, []);
+            return {
+              ...cached,
+              ...serverUser,
+              avatar: getAccountAvatar(serverUser) || getAccountAvatar(cached) || null,
+              linkedAccounts: Array.isArray(serverLinked) && serverLinked.length ? serverLinked : cachedLinked,
+              linkedSocial: { ...parseProfileObject(cached?.linkedSocial, {}), ...parseProfileObject(serverUser.linkedSocial, {}) },
+            };
+          });
+          setAccounts(normalizeAdminAccounts(hydratedUsers));
         }
       })
       .catch(() => { /* offline — keep the localStorage accounts list */ });
@@ -153,7 +253,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
     return () => { cancelled = true; };
   }, []);
 
-  // Filtered accounts — derived during render from search + role filter.
+  // Directory search, filters, and sorting are derived from the server list.
   const filteredAccounts = useMemo(() => {
     let result = [...accounts];
     
@@ -162,17 +262,57 @@ if (!res.ok || !Array.isArray(data.applications)) return;
       result = result.filter(acc => 
         acc.name?.toLowerCase().includes(query) ||
         acc.email?.toLowerCase().includes(query) ||
-        acc.id?.toLowerCase().includes(query) ||
-        acc.department?.toLowerCase().includes(query)
+        acc.awid?.toLowerCase().includes(query) ||
+        String(acc.email || '').match(/^\D*(\d+)@aust\.edu$/i)?.[1]?.toLowerCase().includes(query) ||
+        acc.department?.toLowerCase().includes(query) ||
+        acc.batch?.toLowerCase().includes(query) ||
+        acc.batchNo?.toLowerCase().includes(query) ||
+        acc.bloodGroup?.toLowerCase().includes(query) ||
+        accountRoleSet(acc).has(query)
       );
     }
     
     if (roleFilter !== 'all') {
-      result = result.filter(acc => acc.role === roleFilter);
+      result = result.filter(acc => accountHasRole(acc, roleFilter));
     }
+
+    if (departmentFilter !== 'all') {
+      result = result.filter(acc => String(acc.department || '').toUpperCase() === departmentFilter);
+    }
+
+    if (accountStatusFilter !== 'all') {
+      result = result.filter(acc => String(acc.accountStatus || acc.status || 'ACTIVE').toUpperCase() === accountStatusFilter);
+    }
+
+    const compareText = (a, b) => String(a || '').localeCompare(String(b || ''), undefined, { numeric: true, sensitivity: 'base' });
+    result.sort((a, b) => {
+      if (accountSort === 'name-desc') return compareText(b.name, a.name);
+      if (accountSort === 'email-asc') return compareText(a.email, b.email);
+      if (accountSort === 'department-asc') return compareText(a.department, b.department) || compareText(a.name, b.name);
+      if (accountSort === 'batch-asc') return compareText(a.batchNo || a.batch, b.batchNo || b.batch) || compareText(a.name, b.name);
+      if (accountSort === 'newest') return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      return compareText(a.name, b.name);
+    });
     
     return result;
-  }, [searchQuery, roleFilter, accounts]);
+  }, [searchQuery, roleFilter, departmentFilter, accountStatusFilter, accountSort, accounts]);
+
+  const groupedAccounts = useMemo(() => {
+    if (accountGrouping === 'none') return [{ key: '', users: filteredAccounts }];
+    const groups = new Map();
+    filteredAccounts.forEach(account => {
+      const key = accountGrouping === 'department'
+        ? (account.department || 'Department not set')
+        : accountGrouping === 'batch'
+          ? (account.batch || account.batchNo || 'Batch not set')
+          : accountGrouping === 'status'
+            ? (account.accountStatus || account.status || 'ACTIVE').replaceAll('_', ' ')
+            : getRoleLabel(account.role || 'guest');
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(account);
+    });
+    return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true })).map(([key, users]) => ({ key, users }));
+  }, [filteredAccounts, accountGrouping]);
 
   // Update Canteen
   const handleUpdateCanteen = (field, value) => {
@@ -273,16 +413,37 @@ if (!res.ok || !Array.isArray(data.applications)) return;
       setEditFormData({
         name: account.name || '',
         email: account.email || '',
-        role: account.role || 'student',
+        role: studentChildRoles.includes(account.role) ? 'student' : account.role || 'student',
+        studentRoles: [...accountRoleSet(account)].filter(role => studentChildRoles.includes(role)),
+        facultyDepartment: facultyDepartments.find(department => accountRoleSet(account).has(facultyDepartmentRole(department))) || account.department || '',
         department: account.department || '',
         batch: account.batch || '',
         batchNo: account.batchNo || '',
+        batchName: account.batchName || '',
         designation: account.designation || '',
         company: account.company || '',
         graduationYear: account.graduationYear || '',
         section: account.section || '',
+        labSection: account.labSection || '',
+        yearSemester: account.yearSemester || '',
         semester: account.semester || 1,
         cgpa: account.cgpa || 0,
+        bloodGroup: account.bloodGroup || '',
+        avatar: account.avatar || '',
+        personalEmail: account.personalEmail || '',
+        facebook: account.facebook || '',
+        whatsapp: account.whatsapp || '',
+        linkedin: account.linkedin || '',
+        discord: account.discord || '',
+        openForTalk: Boolean(account.openForTalk),
+        creditsCompleted: account.creditsCompleted || 0,
+        totalCredits: account.totalCredits || 160,
+        originalBatch: account.originalBatch || '',
+        currentAcademicBatch: account.currentAcademicBatch || '',
+        currentSemester: account.currentSemester || '',
+        maxSemester: account.maxSemester || '',
+        academicStatus: account.academicStatus || 'ACTIVE',
+        accountStatus: account.accountStatus || account.status || 'ACTIVE',
       });
     }
   };
@@ -295,12 +456,35 @@ if (!res.ok || !Array.isArray(data.applications)) return;
       return;
     }
 
+    let role = editFormData.role;
+    let roles = [role];
+    let department = editFormData.department;
+    if (role === 'student') {
+      const selected = new Set(editFormData.studentRoles || []);
+      const exclusive = exclusiveStudentRoles.filter(studentRole => selected.has(studentRole));
+      if (exclusive.length > 1) {
+        alert('A student can have only one primary student role: Regular, Re-add, CR, SR, VP or GS.');
+        return;
+      }
+      role = exclusive[0] || 'student';
+      roles = [...new Set(['student', ...selected])];
+    } else if (role === 'alumni_with_carry') {
+      roles = ['alumni', 'alumni_with_carry'];
+    } else if (role === 'faculty') {
+      department = String(editFormData.facultyDepartment || editFormData.department || '').trim().toUpperCase();
+      if (!facultyDepartments.includes(department)) {
+        alert('Choose one faculty department: CSE, EEE, CE, ME, IPE, TE, ARCH or BBA.');
+        return;
+      }
+      roles = ['faculty', facultyDepartmentRole(department)];
+    }
+
     try {
       const res = await fetch('/api/admin/users/update', {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, ...editFormData }),
+        body: JSON.stringify({ userId, ...editFormData, department, role, roles }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) {
@@ -324,16 +508,8 @@ if (!res.ok || !Array.isArray(data.applications)) return;
     setEditFormData({});
   };
 
-  // Get role stats — all 15 AUTH_ROLES
-  const getRoleStats = () => {
-    const stats = { student: 0, faculty: 0, alumni: 0, admin: 0, cr: 0, sr: 0, vp: 0, gs: 0, bus_coordinator: 0, moderator: 0, senior: 0, guest: 0, clubs_representative: 0, help_desk: 0, banned: 0 };
-    accounts.forEach(acc => {
-      if (stats[acc.role] !== undefined) {
-        stats[acc.role]++;
-      }
-    });
-    return stats;
-  };
+  const getRoleCount = (role) => accounts.filter(account => accountHasRole(account, role)).length;
+  const getRegularStudentCount = () => getRoleCount('regular');
 
   const [resetConfirm, setResetConfirm] = useState('');
   const [resetNotification, setResetNotification] = useState(null);
@@ -396,28 +572,54 @@ if (!res.ok || !Array.isArray(data.applications)) return;
     setTimeout(() => window.location.reload(), 3000);
   };
 
-
-  // Helper stats
-  const stats = {
-    totalUsers: accounts.length,
-    canteenIsOpen: canteenInfo.status === 'open',
-    libraryOccupancy: libraryInfo.totalSeats > 0 ? Math.round((libraryInfo.occupied / libraryInfo.totalSeats) * 100) : 0
-  };
+  const selectedUserProfile = selectedUser ? getDirectoryProfile(selectedUser) : null;
 
   return (
     <div className="admin-panel-container stagger-children animate-fadeIn">
       {/* Header */}
-      <div className="admin-header flex justify-between items-center mb-6">
-        <div className="flex items-center gap-3">
-          <div className="icon" style={{ backgroundColor: 'var(--accent-rose-glow)', color: 'var(--accent-rose)', padding: '8px', borderRadius: '12px' }}>
-            <Shield size={24} />
+      <header className="admin-control-header">
+        <div className="admin-control-brand"><span className="admin-control-mark"><Shield size={19} /></span><div><p className="admin-control-eyebrow">AUSTWISE · CONTROL CENTER</p><h1>Admin workspace</h1></div></div>
+        <div className="admin-control-header-actions"><span className="admin-session-pill"><span /> Admin session</span>{activeTab === 'overview' ? <span className="admin-home-hint">Choose a control to get started</span> : <button type="button" className="admin-quiet-action" onClick={() => navigateToTab('overview')}><PanelsTopLeft size={16} /> Control menu</button>}</div>
+      </header>
+
+      {activeTab === 'overview' && <nav className="admin-control-nav" aria-label="Admin control categories">
+        <section className="admin-nav-card">
+          <header className="admin-nav-card-heading"><span>01</span><div><strong>Accounts &amp; approvals</strong><small>People, roles and access requests</small></div></header>
+          <div className="admin-nav-items">
+            <button className={activeTab === 'accounts' ? 'is-active' : ''} onClick={() => navigateToTab('accounts')}><span>People</span><small>Search accounts and update roles</small></button>
+            <button onClick={() => navigate('/admin/access-requests')}><span>Invitations</span><small>Review faculty and alumni requests</small></button>
           </div>
-          <div>
-            <h1 style={{ fontSize: 'var(--fs-xl)', fontWeight: 'var(--fw-bold)', margin: 0 }}>Admin Panel</h1>
-            <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>Manage announcements, live metrics, and campus assets</p>
+        </section>
+        <section className="admin-nav-card">
+          <header className="admin-nav-card-heading"><span>02</span><div><strong>Academic</strong><small>Semester movement and student roles</small></div></header>
+          <div className="admin-nav-items">
+            <button className={activeTab === 'academic' ? 'is-active' : ''} onClick={() => navigateToTab('academic')}><span>Semester transition</span><small>Advance students and manage approvals</small></button>
+            <button className={activeTab === 'applications' ? 'is-active' : ''} onClick={() => navigateToTab('applications')}><span>Role applications</span><small>Review CR and SR applications</small></button>
+            <button className={activeTab === 'representatives' ? 'is-active' : ''} onClick={() => navigateToTab('representatives')}><span>CR / SR directory</span><small>Manage assigned representatives</small></button>
           </div>
-        </div>
-      </div>
+        </section>
+        <section className="admin-nav-card">
+          <header className="admin-nav-card-heading"><span>03</span><div><strong>Campus operations</strong><small>Daily services and campus facilities</small></div></header>
+          <div className="admin-nav-items">
+            <button className={activeTab === 'canteen' ? 'is-active' : ''} onClick={() => navigateToTab('canteen')}><span>Canteen</span><small>Portal, menu, hours and crowd level</small></button>
+            <button className={activeTab === 'library' ? 'is-active' : ''} onClick={() => navigateToTab('library')}><span>Library</span><small>Seat capacity and occupancy</small></button>
+            <button className={activeTab === 'attendance' ? 'is-active' : ''} onClick={() => navigateToTab('attendance')}><span>Attendance</span><small>Review Telegram attendance records</small></button>
+            <button className={activeTab === 'bhara-koto' ? 'is-active' : ''} onClick={() => navigateToTab('bhara-koto')}><span>Campus services</span><small>Manage Bhara Koto listings</small></button>
+            <button className={activeTab === 'auditorium' ? 'is-active' : ''} onClick={() => navigateToTab('auditorium')}><span>Auditorium</span><small>Manage campus event details</small></button>
+            <button className={activeTab === 'campus-map' ? 'is-active' : ''} onClick={() => navigateToTab('campus-map')}><span>Campus map</span><small>Update campus map information</small></button>
+          </div>
+        </section>
+        <section className="admin-nav-card">
+          <header className="admin-nav-card-heading"><span>04</span><div><strong>Platform &amp; content</strong><small>Access, availability and shared resources</small></div></header>
+          <div className="admin-nav-items">
+            <button className={activeTab === 'features' ? 'is-active' : ''} onClick={() => navigateToTab('features')}><span>Access rules</span><small>Set feature access by user role</small></button>
+            <button className={activeTab === 'availability' ? 'is-active' : ''} onClick={() => navigateToTab('availability')}><span>Page availability</span><small>Enable or pause app pages</small></button>
+            <button className={activeTab === 'templates' ? 'is-active' : ''} onClick={() => navigateToTab('templates')}><span>Routine templates</span><small>Manage shared class schedules</small></button>
+            <button className={activeTab === 'cheatsheets' ? 'is-active' : ''} onClick={() => navigateToTab('cheatsheets')}><span>Cheatsheets</span><small>Manage shared study resources</small></button>
+            <button onClick={() => navigate('/admin/role-preview')}><span>Role preview</span><small>Preview the app as each user role</small></button>
+          </div>
+        </section>
+      </nav>}
 
       {/* In-app notification banner */}
       {resetNotification && (
@@ -490,174 +692,16 @@ if (!res.ok || !Array.isArray(data.applications)) return;
       )}
 
       {/* Overview Cards */}
-      <div className="grid-4 mb-6">
-        <div className="glass-card stat-card" onClick={() => navigateToTab('accounts')} style={{ cursor: 'pointer' }}>
-          <div className="flex justify-between items-center">
-            <span className="stat-label">System Accounts</span>
-            <Users size={18} style={{ color: 'var(--accent-blue)' }} />
-          </div>
-          <span className="stat-value">{stats.totalUsers}</span>
-          <span className="stat-change positive">Registered users</span>
-        </div>
-
-        <div className="glass-card stat-card" onClick={() => navigateToTab('canteen')} style={{ cursor: 'pointer' }}>
-          <div className="flex justify-between items-center">
-            <span className="stat-label">Canteen Status</span>
-            <Coffee size={18} style={{ color: 'var(--accent-emerald)' }} />
-          </div>
-          <span className="stat-value" style={{ color: stats.canteenIsOpen ? 'var(--accent-emerald)' : 'var(--accent-rose)', fontSize: '20px', marginTop: '10px' }}>
-            {stats.canteenIsOpen ? 'OPEN' : 'CLOSED'}
-          </span>
-          <span className="stat-change" style={{ color: 'var(--text-tertiary)' }}>
-            {canteenInfo.crowdLevel}% crowd index
-          </span>
-        </div>
-
-        <div className="glass-card stat-card" onClick={() => navigateToTab('library')} style={{ cursor: 'pointer' }}>
-          <div className="flex justify-between items-center">
-            <span className="stat-label">Library Occupancy</span>
-            <Activity size={18} style={{ color: 'var(--accent-purple)' }} />
-          </div>
-          <span className="stat-value">{stats.libraryOccupancy}%</span>
-          <span className="stat-change" style={{ color: 'var(--text-tertiary)' }}>
-            {libraryInfo.occupied} / {libraryInfo.totalSeats} seats
-          </span>
-        </div>
-
-        <div className="glass-card stat-card" onClick={() => navigateToTab('bhara-koto')} style={{ cursor: 'pointer' }}>
-          <div className="flex justify-between items-center">
-            <span className="stat-label">Bhara Koto</span>
-            <Banknote size={18} style={{ color: 'var(--accent-amber)' }} />
-          </div>
-          <span className="stat-value" style={{ fontSize: '14px', marginTop: '10px' }}>Manage</span>
-          <span className="stat-change" style={{ color: 'var(--text-tertiary)' }}>
-            Admin table — Daily Life
-          </span>
-        </div>
-
-        <div className="glass-card stat-card" onClick={() => navigateToTab('attendance')} style={{ cursor: 'pointer' }}>
-          <div className="flex justify-between items-center">
-            <span className="stat-label">Attendance</span>
-            <Percent size={18} style={{ color: 'var(--accent-cyan)' }} />
-          </div>
-          <span className="stat-value" style={{ fontSize: '14px', marginTop: '10px' }}>Monitor</span>
-          <span className="stat-change" style={{ color: 'var(--text-tertiary)' }}>
-            Telegram synced
-          </span>
-        </div>
-      </div>
-
+      {activeTab === 'academic' && <AcademicManagementPanel />}
+      {activeTab === 'availability' && <PageAvailabilityPanel />}
+      {activeTab === 'features' && <FeatureAccessPanel />}
       {/* Role Access Control — visible on every admin subpage, anchored under quick stats */}
-      <RoleAccessControlCard pageKey={`admin:${activeTab}`} />
+      {activeTab === 'features' && <RoleAccessControlCard pageKey={location.pathname} />}
 
 
       {/* Tab Panels */}
       <div className="tab-panels animate-fadeIn">
-        <AdminTabGuard pageKey={`admin:${activeTab}`} >
         {/* OVERVIEW PANEL */}
-        {activeTab === 'overview' && (
-          <div className="grid-2">
-            {/* Quick Campus Controls */}
-            <div className="glass-card-static">
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--fs-md)', fontWeight: 'bold', marginBottom: '16px' }}>
-                <Coffee size={16} style={{ color: 'var(--accent-amber)' }} /> Quick Canteen Control
-              </h3>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div>
-                  <label className="input-label" style={{ display: 'block', marginBottom: '6px' }}>Canteen Portal Status</label>
-                  <div className="flex gap-2">
-                    <button 
-                      className={`btn btn-sm flex-1 ${canteenInfo.status === 'open' ? 'btn-primary' : 'btn-secondary'}`}
-                      onClick={() => handleUpdateCanteen('status', 'open')}
-                    >
-                      Set Open
-                    </button>
-                    <button 
-                      className={`btn btn-sm flex-1 ${canteenInfo.status === 'closed' ? 'btn-rose' : 'btn-secondary'}`}
-                      onClick={() => handleUpdateCanteen('status', 'closed')}
-                    >
-                      Set Closed
-                    </button>
-                  </div>
-                </div>
-
-                {canteenInfo.status === 'open' && (
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="input-label">Live Crowd Level ({canteenInfo.crowdLevel}%)</label>
-                      <span className="badge badge-blue" style={{ fontSize: '9px' }}>
-                        {canteenInfo.crowdLevel >= 75 ? 'Busy' : canteenInfo.crowdLevel >= 40 ? 'Moderate' : 'Quiet'}
-                      </span>
-                    </div>
-                    <input 
-                      type="range" 
-                      min="0" 
-                      max="100" 
-                      value={canteenInfo.crowdLevel} 
-                      onChange={(e) => handleUpdateCanteen('crowdLevel', Number(e.target.value))}
-                      style={{ width: '100%', cursor: 'pointer' }}
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Quick Library Controls */}
-            <div className="glass-card-static">
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--fs-md)', fontWeight: 'bold', marginBottom: '16px' }}>
-                <Activity size={16} style={{ color: 'var(--accent-purple)' }} /> Quick Library Control
-              </h3>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div>
-                  <label className="input-label" style={{ display: 'block', marginBottom: '4px' }}>Total Seats Occupied</label>
-                  <div className="flex items-center gap-3">
-                    <input 
-                      type="number" 
-                      min="0" 
-                      max={libraryInfo.totalSeats}
-                      value={libraryInfo.occupied} 
-                      onChange={(e) => handleUpdateLibraryOccupied(e.target.value)}
-                      className="input"
-                    />
-                    <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}> / {libraryInfo.totalSeats} seats</span>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
-            {/* Factory Reset */}
-            <div className="glass-card-static" style={{ border: '1px solid var(--accent-rose)' }}>
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--fs-md)', fontWeight: 'bold', marginBottom: '16px', color: 'var(--accent-rose)' }}>
-                <Trash2 size={16} /> Factory Reset
-              </h3>
-              <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-                Permanently delete ALL data including users, messages, marketplace listings, notices, canteen data, and library records. Only the default admin account will be restored.
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <input
-                  type="text"
-                  placeholder='Type DELETE_ALL_DATA to confirm'
-                  value={resetConfirm}
-                  onChange={(e) => setResetConfirm(e.target.value)}
-                  className="input"
-                  style={{ fontSize: 'var(--fs-xs)' }}
-                />
-                <button
-                  className="btn btn-rose"
-                  onClick={handleFactoryReset}
-                  disabled={resetConfirm !== 'DELETE_ALL_DATA'}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                >
-                  <Trash2 size={16} /> Reset Everything
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* CANTEEN PANEL */}
         {activeTab === 'canteen' && (
           <div className="grid-2" style={{ gridTemplateColumns: '0.9fr 1.1fr', alignItems: 'start' }}>
@@ -934,7 +978,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
         {/* User Profile Modal */}
         {selectedUser && createPortal(
           <div className="modal-overlay" onClick={() => setSelectedUser(null)}>
-            <div className="modal-content glass-card-static" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px', position: 'relative' }}>
+            <div className="modal-content glass-card-static admin-directory-profile-modal" onClick={(e) => e.stopPropagation()}>
               <button 
                 className="btn btn-icon" 
                 onClick={() => setSelectedUser(null)}
@@ -943,77 +987,40 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                 <X size={20} />
               </button>
               
-              <div className="flex flex-col items-center mb-6">
-                <div className="avatar" style={{ width: 80, height: 80, fontSize: '24px', marginBottom: '16px' }}>
-                  {selectedUser.name?.charAt(0)?.toUpperCase() || 'U'}
+              <div className="admin-profile-hero">
+                <div className="avatar" style={{ position: 'relative', overflow: 'hidden', width: 64, height: 64, fontSize: '20px', flexShrink: 0 }}>
+                  {getAccountAvatar(selectedUser) && <img src={getAccountAvatar(selectedUser)} alt={`${selectedUser.name || 'User'} profile`} referrerPolicy="no-referrer" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.currentTarget.style.display = 'none'; if (e.currentTarget.nextElementSibling) e.currentTarget.nextElementSibling.style.display = 'grid'; }} />}
+                  <span style={{ display: getAccountAvatar(selectedUser) ? 'none' : 'grid', width: '100%', height: '100%', placeItems: 'center' }}>{selectedUser.name?.charAt(0)?.toUpperCase() || 'U'}</span>
                 </div>
-                <h2 style={{ fontSize: 'var(--fs-lg)', fontWeight: 'bold', margin: 0 }}>{selectedUser.name}</h2>
-                <span className={`badge ${getRoleBadgeClass(selectedUser.role)}`} style={{ marginTop: '8px', padding: '4px 12px' }}>
-                  {getRoleLabel(selectedUser.role)}
-                </span>
+                <div className="admin-profile-hero-copy">
+                  <h2>{selectedUser.name || 'Unnamed user'}</h2>
+                  <p>{selectedUser.awid || selectedUser.email || 'AUSTWise account'}</p>
+                  <div className="admin-profile-role-list">
+                    {[...new Set([selectedUser.role, ...(Array.isArray(selectedUser.roles) ? selectedUser.roles : [])].filter(Boolean))].map(role => <span key={role} className={`badge ${getRoleBadgeClass(role)}`}>{getRoleLabel(role)}</span>)}
+                  </div>
+                </div>
               </div>
 
-              <div className="user-profile-details" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div className="profile-field">
-                  <label className="input-label">User ID</label>
-                  <p style={{ margin: 0, fontWeight: 'bold' }}>{selectedUser.id}</p>
-                </div>
-                <div className="profile-field">
-                  <label className="input-label">Email</label>
-                  <p style={{ margin: 0, color: 'var(--text-secondary)' }}>{selectedUser.email}</p>
-                </div>
-                <div className="profile-field">
-                  <label className="input-label">Department</label>
-                  <p style={{ margin: 0, color: 'var(--text-secondary)' }}>{selectedUser.department || 'Not specified'}</p>
-                </div>
-                {(selectedUser.batch || selectedUser.batchNo) && (
-                  <div className="profile-field">
-                    <label className="input-label">Batch</label>
-                    <p style={{ margin: 0, color: 'var(--text-secondary)' }}>{selectedUser.batch || `Batch ${selectedUser.batchNo}`}</p>
-                  </div>
-                )}
-                {selectedUser.designation && (
-                  <div className="profile-field">
-                    <label className="input-label">Designation</label>
-                    <p style={{ margin: 0, color: 'var(--text-secondary)' }}>{selectedUser.designation}</p>
-                  </div>
-                )}
-                {selectedUser.company && (
-                  <div className="profile-field">
-                    <label className="input-label">Company</label>
-                    <p style={{ margin: 0, color: 'var(--text-secondary)' }}>{selectedUser.company}</p>
-                  </div>
-                )}
-                {selectedUser.graduationYear && (
-                  <div className="profile-field">
-                    <label className="input-label">Graduation Year</label>
-                    <p style={{ margin: 0, color: 'var(--text-secondary)' }}>{selectedUser.graduationYear}</p>
-                  </div>
-                )}
-                {selectedUser.section && (
-                  <div className="profile-field">
-                    <label className="input-label">Section</label>
-                    <p style={{ margin: 0, color: 'var(--text-secondary)' }}>{selectedUser.section}</p>
-                  </div>
-                )}
-                {selectedUser.semester && (
-                  <div className="profile-field">
-                    <label className="input-label">Semester</label>
-                    <p style={{ margin: 0, color: 'var(--text-secondary)' }}>{selectedUser.semester}</p>
-                  </div>
-                )}
-                {selectedUser.cgpa !== undefined && selectedUser.cgpa > 0 && (
-                  <div className="profile-field">
-                    <label className="input-label">CGPA</label>
-                    <p style={{ margin: 0, color: 'var(--text-secondary)' }}>{selectedUser.cgpa}</p>
-                  </div>
-                )}
-                {selectedUser.createdAt && (
-                  <div className="profile-field">
-                    <label className="input-label">Account Created</label>
-                    <p style={{ margin: 0, color: 'var(--text-tertiary)', fontSize: 'var(--fs-xs)' }}>{new Date(selectedUser.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                  </div>
-                )}
+              <section className="admin-profile-completion" aria-label={`Profile ${selectedUserProfile.percent}% complete`}>
+                <div><span>Profile completion</span><strong>{selectedUserProfile.percent}%</strong></div>
+                <div className="admin-profile-progress-track"><span style={{ width: `${selectedUserProfile.percent}%` }} /></div>
+                <small>{selectedUserProfile.completed} of {selectedUserProfile.total} profile items added</small>
+              </section>
+
+              <div className="admin-profile-sections">
+                {selectedUserProfile.sections.map(section => (
+                  <section className="admin-profile-section" key={section.title}>
+                    <h3>{section.title}</h3>
+                    <div className="admin-profile-fields">
+                      {section.fields.map(([label, value]) => (
+                        <div className={`admin-profile-field${hasProfileValue(value) ? '' : ' is-empty'}`} key={label}>
+                          <span>{label}</span>
+                          <strong title={hasProfileValue(value) && typeof value === 'string' ? value : undefined}>{hasProfileValue(value) ? String(value) : 'Not added'}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                ))}
               </div>
 
               <div className="flex gap-2 mt-6">
@@ -1075,15 +1082,67 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                       className="input"
                       disabled={editingUser && accounts.find(a => a.id === editingUser)?.role === 'admin'}
                     >
-                      <option value="student">Student</option>
-                      <option value="cr">Class Representative (CR)</option>
-                      <option value="sr">Student Representative (SR)</option>
-                      <option value="vp">Vice President (VP)</option>
-                      <option value="gs">General Secretary (GS)</option>
-                      <option value="faculty">Faculty</option>
-                      <option value="alumni">Alumni</option>
                       {!(editingUser && accounts.find(a => a.id === editingUser)?.role === 'admin') && <option value="admin">Admin</option>}
+                      <option value="moderator">Moderator</option>
+                      <option value="help_desk">Help Desk</option>
+                      <option value="guest">Guest</option>
+                      <option value="banned">Banned</option>
+                      <option value="student">Student</option>
+                      <option value="alumni">Alumni</option>
+                      <option value="alumni_with_carry">Alumni with Carry</option>
+                      <option value="faculty">Faculty</option>
                     </select>
+                    {editFormData.role === 'student' && (
+                      <div className="admin-student-role-editor">
+                        <span>Primary student role <small>Choose one: Regular, Re-add, CR, SR, VP or GS. Add-ons can be combined separately.</small></span>
+                        <div className="admin-student-primary-roles">
+                          {[
+                            ['regular', 'Regular'], ['readd', 'Re-add'], ['cr', 'CR'], ['sr', 'SR'], ['vp', 'VP'], ['gs', 'GS'],
+                          ].map(([studentRole, label]) => {
+                            const selectedPrimary = (editFormData.studentRoles || []).find(role => exclusiveStudentRoles.includes(role)) || 'regular';
+                            return (
+                            <label key={studentRole}>
+                              <input type="radio" name="admin-student-primary-role" checked={selectedPrimary === studentRole} onChange={() => setEditFormData(current => {
+                                const selected = new Set(current.studentRoles || []);
+                                exclusiveStudentRoles.forEach(exclusiveRole => selected.delete(exclusiveRole));
+                                if (studentRole !== 'regular') selected.add(studentRole);
+                                return { ...current, studentRoles: [...selected] };
+                              })} />
+                              {label}
+                            </label>
+                          );})}
+                        </div>
+                        <span>Optional student roles <small>Bus Coordinator and Clubs Representative may be combined with any primary student role.</small></span>
+                        <div className="admin-student-addon-roles">
+                          {[
+                            ['bus_coordinator', 'Bus Coordinator'], ['clubs_representative', 'Clubs Representative'],
+                          ].map(([studentRole, label]) => (
+                            <label key={studentRole}>
+                              <input type="checkbox" checked={(editFormData.studentRoles || []).includes(studentRole)} onChange={(event) => setEditFormData(current => {
+                                const selected = new Set(current.studentRoles || []);
+                                if (event.target.checked) selected.add(studentRole);
+                                else selected.delete(studentRole);
+                                return { ...current, studentRoles: [...selected] };
+                              })} />
+                              {label}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {editFormData.role === 'faculty' && (
+                      <div className="admin-student-role-editor">
+                        <span>Faculty department <small>Choose exactly one department-specific faculty role.</small></span>
+                        <div className="admin-student-primary-roles">
+                          {facultyDepartments.map(department => (
+                            <label key={department}>
+                              <input type="radio" name="admin-faculty-department" value={department} checked={String(editFormData.facultyDepartment || editFormData.department).toUpperCase() === department} onChange={() => setEditFormData(current => ({ ...current, facultyDepartment: department, department }))} />
+                              Faculty of {department}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="input-label">Department *</label>
@@ -1097,7 +1156,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                   </div>
                 </div>
 
-                {(editFormData.role === 'student' || editFormData.role === 'cr' || editFormData.role === 'sr' || editFormData.role === 'vp' || editFormData.role === 'gs' || editFormData.role === 'alumni') && (
+                {(editFormData.role === 'student' || editFormData.role === 'cr' || editFormData.role === 'sr' || editFormData.role === 'vp' || editFormData.role === 'gs' || editFormData.role === 'alumni' || editFormData.role === 'alumni_with_carry') && (
                   <div className="grid-2" style={{ gap: '12px' }}>
                     <div>
                       <label className="input-label">Batch Number</label>
@@ -1114,7 +1173,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                       <input 
                         type="text" 
                         value={editFormData.batch}
-                        onChange={(e) => setEditFormData({ ...editFormData, batch: e.target.value })}
+                        onChange={(e) => setEditFormData({ ...editFormData, batch: e.target.value, batchName: e.target.value })}
                         className="input"
                         placeholder="e.g., Batch 45"
                       />
@@ -1198,6 +1257,36 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                   />
                 </div>
 
+                <div className="admin-edit-profile-section">
+                  <strong>Personal & Contact</strong>
+                  <div className="grid-2" style={{ gap: '12px' }}>
+                    <label className="admin-edit-field"><span>Blood Group</span><select className="input" value={editFormData.bloodGroup} onChange={e => setEditFormData({ ...editFormData, bloodGroup: e.target.value })}><option value="">Not specified</option>{['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(group => <option key={group}>{group}</option>)}</select></label>
+                    <label className="admin-edit-field"><span>Personal Email</span><input className="input" type="email" value={editFormData.personalEmail} onChange={e => setEditFormData({ ...editFormData, personalEmail: e.target.value })} /></label>
+                    <label className="admin-edit-field"><span>WhatsApp / Phone</span><input className="input" value={editFormData.whatsapp} onChange={e => setEditFormData({ ...editFormData, whatsapp: e.target.value })} /></label>
+                    <label className="admin-edit-field"><span>Profile Photo URL</span><input className="input" value={editFormData.avatar} onChange={e => setEditFormData({ ...editFormData, avatar: e.target.value })} /></label>
+                    <label className="admin-edit-field"><span>Facebook</span><input className="input" value={editFormData.facebook} onChange={e => setEditFormData({ ...editFormData, facebook: e.target.value })} /></label>
+                    <label className="admin-edit-field"><span>LinkedIn</span><input className="input" value={editFormData.linkedin} onChange={e => setEditFormData({ ...editFormData, linkedin: e.target.value })} /></label>
+                    <label className="admin-edit-field"><span>Discord</span><input className="input" value={editFormData.discord} onChange={e => setEditFormData({ ...editFormData, discord: e.target.value })} /></label>
+                  </div>
+                </div>
+
+                <div className="admin-edit-profile-section">
+                  <strong>Academic Record</strong>
+                  <div className="grid-2" style={{ gap: '12px' }}>
+                    <label className="admin-edit-field"><span>Year / Semester</span><input className="input" value={editFormData.yearSemester} onChange={e => setEditFormData({ ...editFormData, yearSemester: e.target.value })} placeholder="e.g. Year 3 - Semester 1" /></label>
+                    <label className="admin-edit-field"><span>Lab Section</span><input className="input" value={editFormData.labSection} onChange={e => setEditFormData({ ...editFormData, labSection: e.target.value })} /></label>
+                    <label className="admin-edit-field"><span>Original Batch</span><input className="input" value={editFormData.originalBatch} onChange={e => setEditFormData({ ...editFormData, originalBatch: e.target.value })} /></label>
+                    <label className="admin-edit-field"><span>Current Academic Batch</span><input className="input" value={editFormData.currentAcademicBatch} onChange={e => setEditFormData({ ...editFormData, currentAcademicBatch: e.target.value })} /></label>
+                    <label className="admin-edit-field"><span>Current Semester</span><input className="input" value={editFormData.currentSemester} onChange={e => setEditFormData({ ...editFormData, currentSemester: e.target.value })} placeholder="e.g. 3.1" /></label>
+                    <label className="admin-edit-field"><span>Maximum Semester</span><input className="input" value={editFormData.maxSemester} onChange={e => setEditFormData({ ...editFormData, maxSemester: e.target.value })} placeholder="e.g. 4.2" /></label>
+                    <label className="admin-edit-field"><span>Academic Status</span><input className="input" value={editFormData.academicStatus} onChange={e => setEditFormData({ ...editFormData, academicStatus: e.target.value })} /></label>
+                    <label className="admin-edit-field"><span>Account Status</span><select className="input" value={editFormData.accountStatus} onChange={e => setEditFormData({ ...editFormData, accountStatus: e.target.value })}>{['ACTIVE', 'PENDING_APPROVAL', 'ON_HOLD', 'DROPPED', 'GRADUATED'].map(status => <option key={status} value={status}>{status.replaceAll('_', ' ')}</option>)}</select></label>
+                    <label className="admin-edit-field"><span>Credits Completed</span><input className="input" type="number" min="0" value={editFormData.creditsCompleted} onChange={e => setEditFormData({ ...editFormData, creditsCompleted: Number(e.target.value) })} /></label>
+                    <label className="admin-edit-field"><span>Total Credits</span><input className="input" type="number" min="0" value={editFormData.totalCredits} onChange={e => setEditFormData({ ...editFormData, totalCredits: Number(e.target.value) })} /></label>
+                  </div>
+                  <label className="admin-edit-checkbox"><input type="checkbox" checked={editFormData.openForTalk} onChange={e => setEditFormData({ ...editFormData, openForTalk: e.target.checked })} /> Open for talk</label>
+                </div>
+
                 <div className="flex gap-2 mt-4">
                   <button type="submit" className="btn btn-primary flex-1" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                     <Save size={16} /> Save Changes
@@ -1214,18 +1303,62 @@ if (!res.ok || !Array.isArray(data.applications)) return;
         {/* ACCOUNTS PANEL */}
         {activeTab === 'accounts' && (
           <div>
-            {/* Stats Cards */}
-            <div className="grid-6 mb-4" style={{ gap: '12px' }}>
-              {Object.entries(getRoleStats()).map(([role, count]) => (
-                <div key={role} className="glass-card stat-card" style={{ cursor: roleFilter === role ? 'default' : 'pointer', border: roleFilter === role ? '2px solid var(--accent-blue)' : 'none' }} onClick={() => setRoleFilter(roleFilter === role ? 'all' : role)}>
-                  <div className="flex justify-between items-center">
-                    <span className="stat-label" style={{ fontSize: '10px' }}>{getRoleLabel(role).split(' ')[0]}</span>
-                  </div>
-                  <span className="stat-value" style={{ fontSize: '24px' }}>{count}</span>
-                </div>
+            {/* Account roles are shown as primary groups with their secondary memberships. */}
+            <div className="admin-role-hierarchy mb-4">
+              {[
+                ['admin', 'Admin'], ['moderator', 'Moderator'], ['help_desk', 'Help Desk'],
+                ['guest', 'Guest'], ['banned', 'Banned'],
+              ].map(([role, label]) => (
+                <button key={role} className={`admin-role-family admin-role-single ${roleFilter === role ? 'is-filtered' : ''}`} onClick={() => setRoleFilter(roleFilter === role ? 'all' : role)}>
+                  <span><strong>{label}</strong><small>Primary role</small></span><b>{getRoleCount(role)}</b>
+                </button>
               ))}
-            </div>
 
+              <section className={`admin-role-family admin-role-family-student ${roleFilter === 'student' ? 'is-filtered' : ''}`}>
+                <button className="admin-role-family-head" onClick={() => setRoleFilter(roleFilter === 'student' ? 'all' : 'student')}>
+                  <span><strong>Student</strong><small>Primary group</small></span><b>{getRoleCount('student')}</b>
+                </button>
+                <div className="admin-role-children">
+                  {[
+                    ['regular', 'Regular'], ['readd', 'Re-add'], ['cr', 'CR'], ['sr', 'SR'],
+                    ['vp', 'VP'], ['gs', 'GS'], ['bus_coordinator', 'Bus Coordinator'],
+                    ['clubs_representative', 'Clubs Representative'],
+                  ].map(([role, label]) => (
+                    <button key={role} className={roleFilter === role ? 'is-filtered' : ''} onClick={() => setRoleFilter(roleFilter === role ? 'all' : role)}>
+                      <span>{label}</span><b>{role === 'regular' ? getRegularStudentCount() : getRoleCount(role)}</b>
+                    </button>
+                  ))}
+                </div>
+                <p>Choose one primary role: Regular, Re-add, CR, SR, VP or GS. Bus and Clubs are optional add-ons.</p>
+              </section>
+
+              <section className={`admin-role-family ${roleFilter === 'alumni' ? 'is-filtered' : ''}`}>
+                <button className="admin-role-family-head" onClick={() => setRoleFilter(roleFilter === 'alumni' ? 'all' : 'alumni')}>
+                  <span><strong>Alumni</strong><small>Primary group</small></span><b>{getRoleCount('alumni')}</b>
+                </button>
+                <div className="admin-role-children">
+                  {[['alumni_only', 'Alumni'], ['alumni_with_carry', 'Alumni with Carry']].map(([role, label]) => (
+                    <button key={role} className={roleFilter === role ? 'is-filtered' : ''} onClick={() => setRoleFilter(roleFilter === role ? 'all' : role)}><span>{label}</span><b>{getRoleCount(role)}</b></button>
+                  ))}
+                </div>
+              </section>
+
+              <section className={`admin-role-family admin-role-faculty ${roleFilter === 'faculty' ? 'is-filtered' : ''}`}>
+                <button className="admin-role-family-head" onClick={() => setRoleFilter(roleFilter === 'faculty' ? 'all' : 'faculty')}>
+                  <span><strong>Faculty</strong><small>Primary group</small></span><b>{getRoleCount('faculty')}</b>
+                </button>
+                <div className="admin-role-children">
+                  {facultyDepartments.map(department => {
+                    const role = facultyDepartmentRole(department);
+                    return (
+                      <button key={role} className={roleFilter === role ? 'is-filtered' : ''} onClick={() => setRoleFilter(roleFilter === role ? 'all' : role)}>
+                        <span>Faculty of {department}</span><b>{getRoleCount(role)}</b>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            </div>
             {/* Filters */}
             <div className="glass-card-static mb-4">
               <div className="flex gap-3 items-center flex-wrap">
@@ -1234,7 +1367,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                     <Search size={16} style={{ color: 'var(--text-tertiary)' }} />
                     <input 
                       type="text" 
-                      placeholder="Search by name, email, ID, department..."
+                      placeholder="Search by name, email, AUSTWise ID, Student ID, department..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       style={{ flex: 1, border: 'none', background: 'transparent', padding: '8px 0', outline: 'none', fontSize: 'var(--fs-sm)' }}
@@ -1254,14 +1387,45 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                     style={{ padding: '8px 12px', width: '100%' }}
                   >
                     <option value="all">All Roles</option>
-                    <option value="student">Student</option>
-                    <option value="cr">Class Representative (CR)</option>
-                    <option value="sr">Student Representative (SR)</option>
-                    <option value="vp">Vice President (VP)</option>
-                    <option value="gs">General Secretary (GS)</option>
-                    <option value="faculty">Faculty</option>
-                    <option value="alumni">Alumni</option>
-                    <option value="admin">Admin</option>
+                    <optgroup label="Student">
+                      <option value="student">All students</option><option value="regular">Regular</option>
+                      <option value="readd">Re-add</option><option value="cr">CR</option><option value="sr">SR</option>
+                      <option value="vp">VP</option><option value="gs">GS</option><option value="bus_coordinator">Bus Coordinator</option>
+                      <option value="clubs_representative">Clubs Representative</option>
+                    </optgroup>
+                    <optgroup label="Alumni"><option value="alumni">All alumni</option><option value="alumni_only">Alumni</option><option value="alumni_with_carry">Alumni with Carry</option></optgroup>
+                    <optgroup label="Faculty">
+                      <option value="faculty">All Faculty</option>
+                      {facultyDepartments.map(department => <option key={department} value={facultyDepartmentRole(department)}>Faculty of {department}</option>)}
+                    </optgroup>
+                    <option value="guest">Guest</option><option value="admin">Admin</option>
+                    <option value="moderator">Moderator</option><option value="help_desk">Help Desk</option><option value="banned">Banned</option>
+                  </select>
+                </div>
+                <div style={{ minWidth: '135px' }}>
+                  <select aria-label="Filter by department" value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)} className="input admin-directory-select">
+                    <option value="all">All Departments</option>
+                    {facultyDepartments.map(department => <option key={department} value={department}>{department}</option>)}
+                  </select>
+                </div>
+                <div style={{ minWidth: '135px' }}>
+                  <select aria-label="Filter by account status" value={accountStatusFilter} onChange={e => setAccountStatusFilter(e.target.value)} className="input admin-directory-select">
+                    <option value="all">All Statuses</option>
+                    {['ACTIVE', 'PENDING_APPROVAL', 'ON_HOLD', 'DROPPED', 'GRADUATED'].map(status => <option key={status} value={status}>{status.replaceAll('_', ' ')}</option>)}
+                  </select>
+                </div>
+                <div style={{ minWidth: '135px' }}>
+                  <select aria-label="Sort users" value={accountSort} onChange={e => setAccountSort(e.target.value)} className="input admin-directory-select">
+                    <option value="name-asc">Name: A to Z</option><option value="name-desc">Name: Z to A</option>
+                    <option value="email-asc">Email</option><option value="department-asc">Department</option>
+                    <option value="batch-asc">Batch</option><option value="newest">Newest accounts</option>
+                  </select>
+                </div>
+                <div style={{ minWidth: '135px' }}>
+                  <select aria-label="Group users by category" value={accountGrouping} onChange={e => setAccountGrouping(e.target.value)} className="input admin-directory-select">
+                    <option value="none">No Grouping</option><option value="role">Group by Role</option>
+                    <option value="department">Group by Department</option><option value="batch">Group by Batch</option>
+                    <option value="status">Group by Status</option>
                   </select>
                 </div>
                 <div className="badge badge-blue" style={{ padding: '8px 12px', fontSize: '12px' }}>
@@ -1271,64 +1435,91 @@ if (!res.ok || !Array.isArray(data.applications)) return;
             </div>
 
             {/* Users Table */}
-            <div className="glass-card-static">
-              <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', marginBottom: '16px' }}>User Directory</h3>
-              
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--fs-sm)' }}>
+            <div className="glass-card-static admin-directory-card">
+              <div className="admin-directory-heading">
+                <div><h3>User Directory</h3><p>Browse and manage university accounts</p></div>
+                <span>{filteredAccounts.length} shown</span>
+              </div>
+
+              <div className="admin-directory-scroll">
+                <table className="admin-user-table">
                   <thead>
-                    <tr style={{ borderBottom: '1px solid var(--border-primary)', textAlign: 'left' }}>
-                      <th style={{ padding: '10px', color: 'var(--text-tertiary)' }}>User ID</th>
-                      <th style={{ padding: '10px', color: 'var(--text-tertiary)' }}>Name</th>
-                      <th style={{ padding: '10px', color: 'var(--text-tertiary)' }}>Email</th>
-                      <th style={{ padding: '10px', color: 'var(--text-tertiary)' }}>Role</th>
-                      <th style={{ padding: '10px', color: 'var(--text-tertiary)' }}>Department</th>
-                      <th style={{ padding: '10px', color: 'var(--text-tertiary)' }}>Batch</th>
-                      <th style={{ padding: '10px', color: 'var(--text-tertiary)', textAlign: 'center' }}>Actions</th>
+                    <tr>
+                      <th>AUSTWise ID</th>
+                      <th>Student ID</th>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Role</th>
+                      <th>Department</th>
+                      <th>Batch</th>
+                      <th className="admin-user-actions-head">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredAccounts.length === 0 ? (
                       <tr>
-                        <td colSpan="7" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                        <td colSpan="8" className="admin-user-empty">
                           No users found matching your criteria.
                         </td>
                       </tr>
                     ) : (
-                      filteredAccounts.map(acc => (
-                        <tr key={acc.id} style={{ borderBottom: '1px solid var(--border-secondary)' }}>
-                          <td style={{ padding: '12px 10px', fontWeight: 'bold', fontSize: 'var(--fs-xs)' }}>{acc.id}</td>
-                          <td style={{ padding: '12px 10px' }}>
-                            <div className="flex items-center gap-2">
-                              <div className="avatar" style={{ width: 28, height: 28, fontSize: '10px', flexShrink: 0 }}>
-                                {acc.name?.charAt(0)?.toUpperCase() || 'U'}
+                      groupedAccounts.flatMap(({ key, users }) => [
+                        ...(key ? [<tr key={`group-${key}`} className="admin-user-group-row"><th colSpan="8">{key}<span>{users.length} users</span></th></tr>] : []),
+                        ...users.map(acc => (
+                        <tr key={acc.id} className="admin-user-row">
+                          <td className="admin-user-id">{acc.awid || '—'}</td>
+                          <td className="admin-user-id">{String(acc.email || '').match(/^\D*(\d+)@aust\.edu$/i)?.[1] || acc.studentId || '—'}</td>
+                          <td className="admin-user-name-cell">
+                            <div className="admin-user-name">
+                              <div className="avatar" style={{ position: 'relative', overflow: 'hidden', width: 28, height: 28, fontSize: '10px', flexShrink: 0 }}>
+                                {getAccountAvatar(acc) && <img
+                                  src={getAccountAvatar(acc)}
+                                  alt={`${acc.name || 'User'} profile`}
+                                  referrerPolicy="no-referrer"
+                                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                                  onError={event => { event.currentTarget.style.display = 'none'; if (event.currentTarget.nextElementSibling) event.currentTarget.nextElementSibling.style.display = 'grid'; }}
+                                />}
+                                <span style={{ display: getAccountAvatar(acc) ? 'none' : 'grid', width: '100%', height: '100%', placeItems: 'center' }}>
+                                  {acc.name?.charAt(0)?.toUpperCase() || 'U'}
+                                </span>
                               </div>
-                              <span>{acc.name}</span>
+                              <span><strong>{acc.name}</strong><small>{acc.accountStatus || acc.status || 'ACTIVE'}</small></span>
                             </div>
                           </td>
-                          <td style={{ padding: '12px 10px', color: 'var(--text-secondary)', fontSize: 'var(--fs-xs)' }}>{acc.email}</td>
-                          <td style={{ padding: '12px 10px' }}>
-                            <span className={`badge ${getRoleBadgeClass(acc.role)}`} style={{ fontSize: '7px', padding: '2px 6px' }}>
-                              {getRoleLabel(acc.role)}
-                            </span>
+                          <td className="admin-user-email">{acc.email}</td>
+                          <td className="admin-user-roles">
+                            <div className="admin-user-role-list">
+                            {accountHasRole(acc, 'student') ? <>
+                              <span className={`badge ${getRoleBadgeClass('student')}`}>Student</span>
+                              {studentChildRoles.filter(role => accountRoleSet(acc).has(role)).map(role => (
+                                <span key={role} className={`badge ${getRoleBadgeClass(role)}`}>{getRoleLabel(role)}</span>
+                              ))}
+                            </> : acc.role === 'faculty' ? <>
+                              <span className={`badge ${getRoleBadgeClass('faculty')}`}>Faculty</span>
+                              <span className={`badge ${getRoleBadgeClass(facultyDepartmentRole(acc.department))}`}>{getRoleLabel(facultyDepartmentRole(acc.department))}</span>
+                            </> : <span className={`badge ${getRoleBadgeClass(acc.role)}`}>{getRoleLabel(acc.role)}</span>}
+                            </div>
                           </td>
-                          <td style={{ padding: '12px 10px', color: 'var(--text-secondary)', fontSize: 'var(--fs-xs)' }}>
+                          <td className="admin-user-meta-cell">
                             {acc.department || '-'}
                           </td>
-                          <td style={{ padding: '12px 10px', color: 'var(--text-secondary)', fontSize: 'var(--fs-xs)' }}>
+                          <td className="admin-user-meta-cell">
                             {acc.batch || acc.batchNo || '-'}
                           </td>
-                          <td style={{ padding: '12px 10px', textAlign: 'center' }}>
-                            <div className="flex justify-center gap-1">
+                          <td className="admin-user-actions-cell">
+                            <div>
                               <button 
                                 className="btn btn-secondary btn-icon"
+                                disabled={accountHasRole(acc, 'admin')}
                                 onClick={() => handleViewUser(acc.id)}
                                 title="View Profile"
                                 style={{ 
                                   border: 'none',
                                   background: 'transparent',
                                   cursor: 'pointer',
-                                  color: 'var(--accent-blue)',
+                                  color: accountHasRole(acc, 'admin') ? 'var(--text-tertiary)' : 'var(--accent-blue)',
+                                  opacity: accountHasRole(acc, 'admin') ? 0.4 : 1,
+                                  cursor: accountHasRole(acc, 'admin') ? 'not-allowed' : 'pointer',
                                   padding: '4px',
                                   width: '28px',
                                   height: '28px'
@@ -1338,13 +1529,16 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                               </button>
                               <button 
                                 className="btn btn-secondary btn-icon"
+                                disabled={accountHasRole(acc, 'admin')}
                                 onClick={() => handleStartEditUser(acc.id)}
                                 title="Edit User"
                                 style={{ 
                                   border: 'none',
                                   background: 'transparent',
                                   cursor: 'pointer',
-                                  color: 'var(--accent-amber)',
+                                  color: accountHasRole(acc, 'admin') ? 'var(--text-tertiary)' : 'var(--accent-amber)',
+                                  opacity: accountHasRole(acc, 'admin') ? 0.4 : 1,
+                                  cursor: accountHasRole(acc, 'admin') ? 'not-allowed' : 'pointer',
                                   padding: '4px',
                                   width: '28px',
                                   height: '28px'
@@ -1354,15 +1548,15 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                               </button>
                               <button 
                                 className="btn btn-secondary btn-icon"
-                                disabled={acc.role === 'admin'}
+                                disabled={accountHasRole(acc, 'admin')}
                                 onClick={() => handleDeleteAccount(acc.id)}
                                 title="Delete User"
                                 style={{ 
-                                  color: acc.role === 'admin' ? 'var(--text-tertiary)' : 'var(--accent-rose)', 
-                                  opacity: acc.role === 'admin' ? 0.4 : 1,
+                                  color: accountHasRole(acc, 'admin') ? 'var(--text-tertiary)' : 'var(--accent-rose)',
+                                  opacity: accountHasRole(acc, 'admin') ? 0.4 : 1,
                                   border: 'none',
                                   background: 'transparent',
-                                  cursor: acc.role === 'admin' ? 'not-allowed' : 'pointer',
+                                  cursor: accountHasRole(acc, 'admin') ? 'not-allowed' : 'pointer',
                                   padding: '4px',
                                   width: '28px',
                                   height: '28px'
@@ -1374,6 +1568,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                           </td>
                         </tr>
                       ))
+                      ])
                     )}
                   </tbody>
                 </table>
@@ -1392,7 +1587,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
           <div>
             <div className="glass-card-static mb-4">
               <div className="flex gap-3 items-center flex-wrap">
-                <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', margin: 0 }}>CR/SR Applications</h3>
+                <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', margin: 0 }}>Role Applications</h3>
                 <div style={{ flex: 1 }} />
                 <div className="flex gap-2">
                   <button 
@@ -1443,8 +1638,8 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                               <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', margin: 0 }}>{app.userName}</h4>
                               <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: 0 }}>{app.userEmail}</p>
                               <div className="flex items-center gap-2 mt-1">
-                                <span className={`badge ${app.appliedRole === 'cr' ? 'badge-amber' : 'badge-emerald'}`} style={{ fontSize: '9px', padding: '1px 4px' }}>
-                                  {app.appliedRole === 'cr' ? 'CR' : 'SR'}
+                                <span className={`badge ${['cr', 'vp'].includes(app.appliedRole) ? 'badge-amber' : 'badge-emerald'}`} style={{ fontSize: '9px', padding: '1px 4px' }}>
+                                  {applicationRoleName(app.appliedRole)}
                                 </span>
                                 <span className="badge badge-blue" style={{ fontSize: '9px', padding: '1px 4px' }}>
                                   {app.userDepartment}
@@ -1491,14 +1686,14 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                 <span className="badge badge-amber" style={{ fontSize: '12px', padding: '4px 10px' }}>CR</span> Class Representatives
               </h4>
               {(() => {
-                const crAccounts = accounts.filter(acc => acc.role === 'cr');
+                const crAccounts = accounts.filter(acc => accountHasRole(acc, 'cr'));
                 if (crAccounts.length === 0) {
                   return <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', padding: '20px', textAlign: 'center' }}>No Class Representatives found.</p>;
                 }
                 // Group by department, then by batch
                 const groupedByDept = {};
                 crAccounts.forEach(acc => {
-                  const dept = acc.department || 'Undeclared';
+                  const dept = acc.department || 'Department not set';
                   const batch = acc.batch || acc.batchNo || 'N/A';
                   if (!groupedByDept[dept]) groupedByDept[dept] = {};
                   if (!groupedByDept[dept][batch]) groupedByDept[dept][batch] = [];
@@ -1541,14 +1736,14 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                 <span className="badge badge-emerald" style={{ fontSize: '12px', padding: '4px 10px' }}>SR</span> Student Representatives
               </h4>
               {(() => {
-                const srAccounts = accounts.filter(acc => acc.role === 'sr');
+                const srAccounts = accounts.filter(acc => accountHasRole(acc, 'sr'));
                 if (srAccounts.length === 0) {
                   return <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', padding: '20px', textAlign: 'center' }}>No Student Representatives found.</p>;
                 }
                 // Group by department, then by batch
                 const groupedByDept = {};
                 srAccounts.forEach(acc => {
-                  const dept = acc.department || 'Undeclared';
+                  const dept = acc.department || 'Department not set';
                   const batch = acc.batch || acc.batchNo || 'N/A';
                   if (!groupedByDept[dept]) groupedByDept[dept] = {};
                   if (!groupedByDept[dept][batch]) groupedByDept[dept][batch] = [];
@@ -1615,8 +1810,8 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                   <h3>{selectedApplication.userName}</h3>
                   <p>{selectedApplication.userEmail}</p>
                 </div>
-                <span className={`badge ${selectedApplication.appliedRole === 'cr' ? 'badge-amber' : 'badge-emerald'}`}>
-                  {selectedApplication.appliedRole === 'cr' ? 'CR' : 'SR'} Application
+                <span className={`badge ${['cr', 'vp'].includes(selectedApplication.appliedRole) ? 'badge-amber' : 'badge-emerald'}`}>
+                  {applicationRoleName(selectedApplication.appliedRole)} Application
                 </span>
               </div>
 
@@ -1625,6 +1820,10 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                 <div className="app-review-cell">
                   <span>Department</span>
                   <strong>{selectedApplication.userDepartment || '—'}</strong>
+                </div>
+                <div className="app-review-cell">
+                  <span>Semester</span>
+                  <strong>{selectedApplication.userSemester || '—'}</strong>
                 </div>
                 <div className="app-review-cell">
                   <span>Batch</span>
@@ -1641,18 +1840,20 @@ if (!res.ok || !Array.isArray(data.applications)) return;
               </div>
 
               {/* Target role */}
-              {(selectedApplication.targetLabSection || selectedApplication.targetSection) && (
+              {(selectedApplication.targetLabSection || selectedApplication.targetSection || ['vp', 'gs'].includes(selectedApplication.appliedRole)) && (
                 <div className={`app-review-target ${selectedApplication.appliedRole === 'sr' ? 'is-sr' : ''}`}>
                   <div>
                     <span>Applying for</span>
                     <strong>
-                      {selectedApplication.appliedRole === 'cr' ? 'Class Representative (CR)' : 'Student Representative (SR)'}
+                      {applicationRoleName(selectedApplication.appliedRole)}
                     </strong>
                   </div>
                   <span className="app-review-target-slot">
                     {selectedApplication.appliedRole === 'cr'
                       ? `Lab ${selectedApplication.targetLabSection}`
-                      : `Section ${selectedApplication.targetSection}`}
+                      : selectedApplication.appliedRole === 'sr'
+                        ? `Section ${selectedApplication.targetSection}`
+                        : `Department of ${selectedApplication.userDepartment}`}
                   </span>
                 </div>
               )}
@@ -1672,10 +1873,11 @@ if (!res.ok || !Array.isArray(data.applications)) return;
               {/* Actions */}
               {selectedApplication.status === 'pending' && (
                 <div className="app-review-actions">
+                  {(!['vp', 'gs'].includes(selectedApplication.appliedRole) || currentUser?.role === 'admin') && (
                   <button
                     className="btn btn-primary"
                     onClick={async () => {
-                      if (window.confirm(`Approve ${selectedApplication.userName}'s application for ${selectedApplication.appliedRole === 'cr' ? 'CR' : 'SR'}?`)) {
+                      if (window.confirm(`Approve ${selectedApplication.userName}'s application for ${applicationRoleName(selectedApplication.appliedRole)}?`)) {
                         const reviewerId = getCurrentUserId() || 'ADM-MSOP6VG6BVL4';
                         try {
                           const reviewed = await reviewRoleApplication(selectedApplication.id, 'approved', reviewerId);
@@ -1704,7 +1906,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                           }
                           // Confirmation mail → lands in the applicant's ConnectBox inbox.
                           sendMessage(reviewerId, selectedApplication.userId,
-                            `🎉 Congratulations ${selectedApplication.userName}! Your application for ${selectedApplication.appliedRole === 'cr' ? 'Class Representative (CR)' : 'Student Representative (SR)'} has been APPROVED by the admin. You can now use all ${selectedApplication.appliedRole === 'cr' ? 'CR' : 'SR'} powers (notices, schedules, exam tracker).`
+                            `🎉 Congratulations ${selectedApplication.userName}! Your application for ${applicationRoleName(selectedApplication.appliedRole)} has been APPROVED by the admin.`
                           );
                           setApplications(updatedApplications);
                           localStorage.setItem('aust-role-applications-v1', JSON.stringify(updatedApplications));
@@ -1717,6 +1919,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                   >
                     <CheckCircle2 size={16} /> Approve & Assign Role
                   </button>
+                  )}
                   <button
                     className="btn btn-secondary"
                     onClick={async () => {
@@ -1726,7 +1929,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                           const reviewed = await reviewRoleApplication(selectedApplication.id, 'rejected', reviewerId);
                           // Notification mail → lands in the applicant's ConnectBox inbox.
                           sendMessage(reviewerId, selectedApplication.userId,
-                            `Your application for ${selectedApplication.appliedRole === 'cr' ? 'Class Representative (CR)' : 'Student Representative (SR)'} was REJECTED by the admin. You can re-apply when a slot opens up.`
+                            `Your application for ${applicationRoleName(selectedApplication.appliedRole)} was REJECTED by the admin.`
                           );
                           const updatedApplications = applications.map(app =>
                             app.id === selectedApplication.id
@@ -1767,7 +1970,6 @@ if (!res.ok || !Array.isArray(data.applications)) return;
 
         {/* CAMPUS MAP ADMIN PANEL */}
         {activeTab === 'campus-map' && <AdminCampusMapPanel />}
-        </AdminTabGuard>
       </div>
     </div>
   );

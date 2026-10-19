@@ -85,12 +85,11 @@ export const modules = [
     icon: Map,
     title: 'InsideAUST',
     tagline: 'Navigate AUST like a pro',
-    description: 'Floor maps, faculty status, library pulse, canteen and bus tracking — the campus, decoded in real time.',
+    description: 'Floor maps, library pulse, canteen and bus tracking — the campus, decoded in real time.',
     color: C.cyan,
     glow: C.cyanGlow,
     features: [
       { title: 'Floor Map', comingSoon: true },
-      { title: 'Faculty Status' },
       { title: 'Library Pulse', comingSoon: true },
       { title: 'Canteen Menu' },
       { title: 'Bus Tracker', comingSoon: true },
@@ -311,7 +310,6 @@ export const tickerFeatures = [
   { icon: GitBranch, title: 'Prerequisites', tagline: 'Plan your roadmap safely', description: 'Course prerequisite trees that stop you planning into a corner.', color: C.emerald, glow: C.emeraldGlow, benefits: ['Prereq dependency map', 'Safe semester planning', 'Blocked-course alerts'] },
   // InsideAUST · cyan
   { icon: MapPin, title: 'Floor Map', tagline: 'Never hunt for a room again', description: 'Interactive floor plans for every building and corridor.', color: C.cyan, glow: C.cyanGlow, benefits: ['Room-level floor plans', 'Quick location search', 'Building-wise maps'] },
-  { icon: UserCheck, title: 'Faculty Status', tagline: 'Is your teacher in?', description: 'See which faculty are in their offices right now.', color: C.cyan, glow: C.cyanGlow, benefits: ['Live office status', 'Office hours display', 'No wasted trips'] },
   { icon: Library, title: 'Library Pulse', tagline: 'Seats, in real time', description: 'Live occupancy across every study zone in the library.', color: C.cyan, glow: C.cyanGlow, benefits: ['Live seat counts', 'Zone-wise occupancy', 'Best-time alerts'] },
   { icon: Coffee, title: 'Canteen Menu', tagline: 'Skip the lunch rush', description: "Today's menu and crowd levels before you head down.", color: C.cyan, glow: C.cyanGlow, benefits: ['Daily menu preview', 'Crowd index', 'Peak-hour alerts'] },
   { icon: Bus, title: 'Bus Tracker', tagline: 'Know when the bus arrives', description: 'Live transport ETAs so you never wait in the heat.', color: C.cyan, glow: C.cyanGlow, benefits: ['Live bus ETAs', 'Route details', 'Stop reminders'] },
