@@ -1,0 +1,410 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   Question Bank Analyzer — print report
+   The report is deliberately light-on-paper in every theme: it is a document,
+   not app chrome. Priority colours are fixed semantic tokens (VIP red, HIGH
+   orange, MEDIUM yellow, LOW green) and every badge also prints its label.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.qba-report {
+  --qba-ink: #111827;
+  --qba-muted: #4b5563;
+  --qba-line: #cbd5e1;
+  --qba-head: #f1f5f9;
+  width: 100%;
+  background: #ffffff;
+  color: var(--qba-ink);
+  font-family: 'Inter', 'Noto Sans Bengali', 'Hind Siliguri', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 10pt;
+  line-height: 1.45;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.qba-report * {
+  box-sizing: border-box;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Screen-media styles (used by html2canvas capture for Quick Download)
+   These mirror the print styles so the capture looks correct.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.qba-report .qba-report-header {
+  border-bottom: 3px solid #111827;
+  padding-bottom: 12px;
+  margin-bottom: 18px;
+}
+
+.qba-report .qba-report-kicker {
+  font-size: 8pt;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--qba-muted);
+}
+
+.qba-report .qba-report-course {
+  margin: 5px 0 8px;
+  font-size: 20pt;
+  line-height: 1.2;
+  font-weight: 800;
+  color: #000000;
+}
+
+.qba-report .qba-report-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 22px;
+  font-size: 9pt;
+  color: var(--qba-muted);
+}
+
+.qba-report .qba-report-section {
+  margin: 0 0 18px;
+}
+
+.qba-report .qba-report-heading {
+  margin: 0 0 7px;
+  padding: 0 0 4px;
+  border-bottom: 1.5px solid #111827;
+  font-size: 13pt;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: #000000;
+}
+
+.qba-report .qba-report-note {
+  margin: 0 0 8px;
+  font-size: 8.5pt;
+  color: var(--qba-muted);
+}
+
+/* ── quick summary ───────────────────────────────────────────────────────── */
+
+.qba-report .qba-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.qba-report .qba-summary-card {
+  border: 1px solid var(--qba-line);
+  border-radius: 4px;
+  padding: 7px 8px;
+  text-align: center;
+}
+
+.qba-report .qba-summary-value {
+  display: block;
+  font-size: 15pt;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #000000;
+}
+
+.qba-report .qba-summary-label {
+  display: block;
+  margin-top: 2px;
+  font-size: 7pt;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--qba-muted);
+}
+
+/* ── tables ──────────────────────────────────────────────────────────────── */
+
+.qba-report .qba-report-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 10px;
+  table-layout: auto;
+}
+
+.qba-report .qba-report-table thead {
+  display: table-header-group;
+}
+
+.qba-report .qba-report-table th,
+.qba-report .qba-report-table td {
+  border: 1px solid var(--qba-line);
+  padding: 4px 6px;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.qba-report .qba-report-table th {
+  background: var(--qba-head);
+  font-size: 8pt;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #000000;
+}
+
+.qba-report .qba-report-table td {
+  font-size: 9pt;
+}
+
+.qba-report .qba-report-table .qba-report-question {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.qba-report .qba-report-question-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.qba-report .qba-report-variant {
+  padding-left: 6px;
+  border-left: 2px solid var(--qba-line);
+}
+
+.qba-report .qba-report-variant-label {
+  display: block;
+  margin-bottom: 1px;
+  color: var(--qba-muted);
+  font-size: 7.5pt;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.qba-report .qba-report-variant-text {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.qba-report .qba-report-table tbody tr:nth-child(even) td {
+  background: #fbfdff;
+}
+
+/* Remove break-inside: avoid from table rows for screen capture (allows natural flow) */
+/* Topic blocks and headings should still avoid breaks */
+.qba-report .qba-report-topic,
+.qba-report .qba-report-topic-head,
+.qba-report .qba-report-plan li {
+  break-inside: avoid;
+}
+
+.qba-report .qba-report-table .qba-num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.qba-report .qba-report-table .qba-sno {
+  width: 24px;
+  text-align: center;
+}
+
+/* Row tints — priority is also printed as text inside the badge. */
+.qba-report .qba-report-table tbody tr.qba-row-vip td { background: rgba(185, 28, 28, 0.12); }
+.qba-report .qba-report-table tbody tr.qba-row-high td { background: rgba(194, 65, 12, 0.12); }
+.qba-report .qba-report-table tbody tr.qba-row-medium td { background: rgba(250, 204, 21, 0.17); }
+.qba-report .qba-report-table tbody tr.qba-row-low td { background: rgba(21, 128, 61, 0.12); }
+
+.qba-report .qba-report-table tr.qba-row-vip td:first-child { box-shadow: inset 4px 0 0 #b91c1c; }
+.qba-report .qba-report-table tr.qba-row-high td:first-child { box-shadow: inset 4px 0 0 #c2410c; }
+.qba-report .qba-report-table tr.qba-row-medium td:first-child { box-shadow: inset 4px 0 0 #eab308; }
+.qba-report .qba-report-table tr.qba-row-low td:first-child { box-shadow: inset 4px 0 0 #15803d; }
+
+/* ── priority badge ──────────────────────────────────────────────────────── */
+
+.qba-report .qba-prio {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 7.5pt;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.qba-report .qba-prio-vip { background: #b91c1c; color: #ffffff; }
+.qba-report .qba-prio-high { background: #c2410c; color: #ffffff; }
+.qba-report .qba-prio-medium { background: #facc15; color: #1a1a1a; }
+.qba-report .qba-prio-low { background: #15803d; color: #ffffff; }
+
+/* ── topic blocks ────────────────────────────────────────────────────────── */
+
+.qba-report .qba-report-topic {
+  margin-bottom: 13px;
+}
+
+.qba-report .qba-report-topic-head {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin: 0 0 5px;
+  padding: 3px 0 3px 8px;
+  border-left: 4px solid #111827;
+}
+
+.qba-report .qba-report-topic-head h3 {
+  margin: 0;
+  font-size: 11pt;
+  font-weight: 800;
+  color: #000000;
+}
+
+.qba-report .qba-report-topic-meta {
+  font-size: 8pt;
+  color: var(--qba-muted);
+}
+
+.qba-report .qba-report-plan {
+  margin: 0;
+  padding-left: 20px;
+  list-style: decimal;
+}
+
+.qba-report .qba-report-plan li {
+  margin-bottom: 4px;
+  font-size: 9.5pt;
+}
+
+.qba-report .qba-report-footer {
+  margin-top: 18px;
+  padding-top: 6px;
+  border-top: 1px solid var(--qba-line);
+  font-size: 8pt;
+  color: var(--qba-muted);
+  text-align: center;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Print-specific overrides
+   ───────────────────────────────────────────────────────────────────────────── */
+
+@page {
+  size: A4;
+  margin: 15mm;
+
+  /* Chromium does not render page-margin boxes yet; engines that do (Prince,
+     WeasyPrint, some Safari/print pipelines) get real page numbers. */
+  @bottom-center {
+    content: 'Page ' counter(page) ' of ' counter(pages);
+    font-family: 'Inter', 'Noto Sans Bengali', system-ui, sans-serif;
+    font-size: 8pt;
+    color: #555555;
+  }
+}
+
+@media print {
+  html,
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Keep row tints and priority badges when the browser's "background
+     graphics" option is off. */
+  .qba-print-root,
+  .qba-print-root * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide the application shell completely during the analyzer's print run.
+     The `qba-printing` class is added by the page just before window.print(),
+     so a plain Ctrl+P elsewhere in the app still prints the app normally. */
+  html.qba-printing body > #root {
+    display: none !important;
+  }
+
+  html.qba-printing body > .qba-print-root {
+    display: block !important;
+  }
+
+  .qba-print-root.qba-report {
+    width: auto;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+    border: 0;
+    font-size: 9.5pt;
+  }
+
+  .qba-print-root .qba-report-course {
+    font-size: 17pt;
+  }
+
+  .qba-print-root .qba-report-table th,
+  .qba-print-root .qba-report-table td {
+    padding: 3px 5px;
+  }
+
+  /* Allow tables to break naturally across pages */
+  .qba-print-root .qba-report-section {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  /* Ensure table headers repeat on each page */
+  .qba-print-root .qba-report-table thead {
+    display: table-header-group;
+  }
+
+  /* Allow table rows to break across pages - this is key to reducing page count */
+  .qba-print-root .qba-report-table tbody tr {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  /* Keep topic headings with their tables */
+  .qba-print-root .qba-report-topic-head {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /* Keep topic blocks together when possible, but allow breaking if too large */
+  .qba-print-root .qba-report-topic {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .qba-print-root .qba-summary-grid {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+
+  /* Reduce margins for print to fit more content per page */
+  .qba-print-root .qba-report-header {
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+  }
+
+  .qba-print-root .qba-report-heading {
+    margin-bottom: 5px;
+    padding-bottom: 2px;
+  }
+
+  .qba-print-root .qba-report-section {
+    margin-bottom: 12px;
+  }
+
+  .qba-print-root .qba-report-topic {
+    margin-bottom: 8px;
+  }
+
+  .qba-print-root .qba-report-table {
+    margin-bottom: 8px;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Only relevant to the hidden capture sheet on small screens. */
+  .qba-summary-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

@@ -1,0 +1,324 @@
+/* ── SavedAnalysesPanel ───────────────────────────────────────────────────── */
+
+/* ── empty state ─────────────────────────────────────────────────────────── */
+.qba-saved-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 56px 24px;
+  text-align: center;
+}
+
+/* ── loading state ────────────────────────────────────────────────────────── */
+.qba-saved-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 48px 24px;
+  font-size: 0.88rem;
+  color: var(--text-secondary, #8a8a9a);
+}
+
+.qba-saved-empty-icon {
+  color: var(--accent, #6c63ff);
+  opacity: 0.4;
+}
+
+.qba-saved-empty h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary, #e0e0f0);
+}
+
+.qba-saved-empty p {
+  margin: 0;
+  max-width: 380px;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--text-secondary, #8a8a9a);
+}
+
+/* ── panel wrapper ────────────────────────────────────────────────────────── */
+.qba-saved-panel {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 12px;
+}
+
+.qba-saved-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px 0;
+}
+
+.qba-saved-panel-title-group {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary, #e0e0f0);
+}
+
+.qba-saved-panel-title-group svg {
+  color: var(--accent, #6c63ff);
+  flex-shrink: 0;
+}
+
+.qba-saved-clear-btn {
+  color: var(--text-secondary, #8a8a9a);
+  font-size: 0.78rem;
+}
+
+.qba-saved-clear-btn:hover {
+  color: var(--color-danger, #e05c5c);
+}
+
+.qba-saved-panel-info {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 20px 10px;
+  font-size: 0.78rem;
+  color: var(--text-secondary, #8a8a9a);
+}
+
+.qba-saved-panel-info svg {
+  flex-shrink: 0;
+  opacity: 0.65;
+}
+
+/* ── list ─────────────────────────────────────────────────────────────────── */
+.qba-saved-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 20px 8px;
+}
+
+/* ── card ─────────────────────────────────────────────────────────────────── */
+.qba-saved-card {
+  border-radius: var(--radius-lg, 14px);
+  border: 1px solid var(--border-subtle, rgba(255,255,255,0.07));
+  background: var(--surface-raised, rgba(255,255,255,0.03));
+  overflow: hidden;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.qba-saved-card:hover,
+.qba-saved-card.qba-saved-card-open {
+  border-color: var(--accent, #6c63ff);
+  box-shadow: 0 2px 18px rgba(108, 99, 255, 0.13);
+}
+
+/* header button (the clickable toggle row) */
+.qba-saved-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  transition: background 0.15s;
+}
+
+.qba-saved-card-header:hover {
+  background: rgba(108, 99, 255, 0.04);
+}
+
+/* left info block */
+.qba-saved-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  flex: 1;
+}
+
+.qba-saved-card-course {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.qba-saved-card-code {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--accent-muted, rgba(108, 99, 255, 0.15));
+  color: var(--accent, #6c63ff);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.qba-saved-card-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text-primary, #e0e0f0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qba-saved-muted {
+  color: var(--text-secondary, #8a8a9a);
+}
+
+/* meta row */
+.qba-saved-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.76rem;
+  color: var(--text-secondary, #8a8a9a);
+}
+
+.qba-saved-card-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.qba-saved-card-meta-sep {
+  opacity: 0.4;
+}
+
+/* right side: buttons + chevron */
+.qba-saved-card-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* hide button labels on narrow screens */
+@media (max-width: 540px) {
+  .qba-saved-btn-label {
+    display: none;
+  }
+}
+
+/* delete button */
+.qba-saved-card-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary, #8a8a9a);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.qba-saved-card-delete:hover {
+  color: var(--color-danger, #e05c5c);
+  background: rgba(224, 92, 92, 0.1);
+  border-color: rgba(224, 92, 92, 0.25);
+}
+
+/* chevron */
+.qba-saved-chevron {
+  display: flex;
+  align-items: center;
+  color: var(--text-secondary, #8a8a9a);
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+
+.qba-saved-card-open .qba-saved-chevron {
+  color: var(--accent, #6c63ff);
+}
+
+/* ── expanded body ────────────────────────────────────────────────────────── */
+.qba-saved-card-body {
+  padding: 0 16px 16px;
+}
+
+.qba-saved-divider {
+  height: 1px;
+  background: var(--border-subtle, rgba(255,255,255,0.07));
+  margin-bottom: 16px;
+}
+
+/* download bar at bottom of expanded card */
+.qba-saved-card-dl-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle, rgba(255,255,255,0.07));
+  margin-top: 12px;
+}
+
+/* ── save button in main QBA actions bar ─────────────────────────────────── */
+.qba-save-btn {
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.qba-save-btn-saved {
+  color: var(--color-success, #4caf7d) !important;
+  border-color: var(--color-success, #4caf7d) !important;
+  background: var(--accent-emerald-glow) !important;
+}
+
+.qba-save-btn-saved:hover:not(:disabled) {
+  color: var(--color-success, #4caf7d) !important;
+  border-color: var(--color-success, #4caf7d) !important;
+  background: var(--accent-emerald-glow) !important;
+}
+
+.qba-save-btn-done {
+  color: var(--color-success, #4caf7d) !important;
+  border-color: var(--color-success, #4caf7d) !important;
+}
+
+/* ── spinner ──────────────────────────────────────────────────────────────── */
+@keyframes qba-spin {
+  to { transform: rotate(360deg); }
+}
+
+.qba-spin {
+  animation: qba-spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+/* ── responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .qba-saved-panel-head,
+  .qba-saved-panel-info {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .qba-saved-list {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .qba-saved-card-header {
+    padding: 12px;
+  }
+
+  .qba-saved-card-body {
+    padding: 0 12px 12px;
+  }
+}

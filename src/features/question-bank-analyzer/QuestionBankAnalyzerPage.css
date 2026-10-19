@@ -1,0 +1,1572 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   Question Bank Analyzer — app UI
+   ────────────────────────────────────────────────────────────────────────────
+   Direction: "editorial instrument panel".
+     · minimal  — hairline rules instead of heavy borders, one accent (cyan),
+                  surface ladder does the structural work
+     · premium  — layered theme shadows, tabular numerals, disciplined type
+                  scale, weighted motion (no bounce), hairline gradient caps
+     · creative — sealed step numerals, corner-bracketed dropzone, animated
+                  priority edge on table rows, generative-ish stat accents
+
+   Every colour comes from the active theme token set. The only fixed colours
+   are the four semantic priority badges (allowed by the feature spec) so they
+   stay readable on both dark and light themes.
+
+   Accessibility contract applied here:
+     · no informative text below 12px  (local --qba-micro / --qba-label scale)
+     · small text uses --text-secondary, never --text-tertiary
+       (--text-tertiary fails WCAG AA on every dark surface — 3.13–3.81:1)
+     · every interactive element exposes :focus-visible
+     · all motion collapses under prefers-reduced-motion
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.qba-widget {
+  /* Component-local scale. Keeps the page on a strict 12px floor without
+     reaching into the global token set used by every other feature. */
+  --qba-micro: 0.75rem;   /* 12px — kickers, counters, metadata */
+  --qba-label: 0.8125rem; /* 13px — field labels, column heads */
+
+  --qba-hair: 1px solid var(--border-secondary);
+  --qba-cap-hair: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--accent-cyan) 22%,
+    var(--accent-cyan) 78%,
+    transparent 100%
+  );
+  --qba-ease: var(--transition-base);
+
+  max-width: 1180px;
+  margin: 0 auto;
+  padding-bottom: var(--sp-8);
+  min-width: 0;
+  overflow: visible;
+  font-family: var(--font-primary), 'Noto Sans Bengali', 'Hind Siliguri', sans-serif;
+  color: var(--text-primary);
+}
+
+.qba-widget .schedule-dotted-divider {
+  height: 1px;
+  border: 0;
+  margin: var(--sp-4) 0 var(--sp-5);
+  background: linear-gradient(
+    90deg,
+    var(--border-primary) 0%,
+    var(--border-primary) 55%,
+    transparent 100%
+  );
+}
+
+/* ── masthead ───────────────────────────────────────────────────────────────
+   A thin accent cap sits above the wordmark. It is the page's one loud
+   gesture; everything below stays quiet. */
+
+.qba-masthead {
+  grid-template-columns: 1fr auto;
+  position: relative;
+  padding-top: var(--sp-4);
+}
+
+.qba-masthead::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: var(--qba-cap-hair);
+  opacity: 0.55;
+}
+
+.qba-masthead .schedule-icon-tile {
+  background: var(--bg-tertiary);
+  color: var(--accent-cyan);
+  box-shadow:
+    inset 0 0 0 1px var(--border-primary),
+    0 0 0 4px var(--accent-cyan-glow);
+}
+
+.qba-masthead .schedule-subtitle {
+  max-width: min(62vw, 560px);
+  color: var(--text-secondary);
+}
+
+/* ── steps ──────────────────────────────────────────────────────────────────
+   Three cards on one vertical rhythm. Each carries a hairline cap that reads
+   as a measurement tick rather than a decoration. */
+
+.qba-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.qba-step {
+  position: relative;
+  padding: var(--sp-5) var(--sp-5) var(--sp-6);
+  transition:
+    border-color var(--qba-ease),
+    box-shadow var(--qba-ease),
+    transform var(--qba-ease);
+}
+
+.qba-step::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: var(--qba-cap-hair);
+  opacity: 0.28;
+  transition: opacity var(--qba-ease);
+  pointer-events: none;
+}
+
+.qba-step:hover::before,
+.qba-step:focus-within::before {
+  opacity: 0.85;
+}
+
+.qba-step:hover {
+  border-color: var(--border-secondary);
+  transform: translateY(-1px);
+}
+
+.qba-step:focus-within {
+  border-color: var(--border-focus);
+}
+
+.qba-step-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+
+/* Sealed numeral: a ring with an inner surface, so it reads as a stamped
+   index rather than a plain circle. */
+.qba-step-num {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-primary);
+  background: var(--bg-tertiary);
+  color: var(--accent-cyan);
+  font-size: var(--qba-micro);
+  font-weight: var(--fw-black);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  box-shadow: inset 0 0 0 3px var(--bg-card);
+  transition: border-color var(--qba-ease), box-shadow var(--qba-ease);
+}
+
+.qba-step:hover .qba-step-num,
+.qba-step:focus-within .qba-step-num {
+  border-color: var(--accent-cyan);
+  box-shadow:
+    inset 0 0 0 3px var(--bg-card),
+    0 0 0 3px var(--accent-cyan-glow);
+}
+
+.qba-step-title-block {
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.qba-step-title {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+.qba-step-hint {
+  margin: 4px 0 0;
+  font-size: var(--qba-micro);
+  color: var(--text-secondary);
+  line-height: 1.55;
+  max-width: 68ch;
+}
+
+/* ── fields ────────────────────────────────────────────────────────────────── */
+
+.qba-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+
+.qba-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  margin-bottom: var(--sp-4);
+}
+
+.qba-field > label,
+.qba-label-row > label {
+  font-size: var(--qba-label);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.03em;
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+
+.qba-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.qba-label-hint {
+  font-size: var(--qba-micro);
+  color: var(--text-secondary);
+}
+
+.qba-hint {
+  margin: 0;
+  font-size: var(--qba-micro);
+  line-height: 1.6;
+  color: var(--text-secondary);
+  max-width: 78ch;
+}
+
+.qba-muted {
+  color: var(--text-secondary);
+  font-size: var(--qba-micro);
+}
+
+/* Mono blocks read as instrument read-outs: recessed surface, tight radius,
+   generous line-height so 11.5px stays legible. */
+.qba-prompt,
+.qba-textarea {
+  font-family: 'JetBrains Mono', 'Noto Sans Bengali', 'Share Tech Mono',
+    ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.65;
+  resize: vertical;
+  white-space: pre-wrap;
+  color: var(--text-primary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+  transition:
+    border-color var(--qba-ease),
+    box-shadow var(--qba-ease),
+    background var(--qba-ease);
+}
+
+.qba-prompt:focus,
+.qba-textarea:focus {
+  outline: none;
+  border-color: var(--accent-cyan);
+  background: var(--bg-card);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.04),
+    0 0 0 3px var(--accent-cyan-glow);
+}
+
+.qba-prompt {
+  min-height: 270px;
+}
+
+.qba-textarea {
+  min-height: 190px;
+}
+
+.qba-prompt-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  margin-top: var(--sp-3);
+}
+
+.qba-copy-status {
+  font-size: var(--qba-micro);
+  font-weight: var(--fw-semibold);
+  color: var(--accent-emerald);
+  min-height: 16px;
+}
+
+/* ── step 2 ────────────────────────────────────────────────────────────────── */
+
+.qba-instructions {
+  margin: 0 0 var(--sp-4);
+  padding-left: 1.4rem;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  line-height: 1.7;
+}
+
+.qba-instructions li {
+  margin-bottom: var(--sp-2);
+  padding-left: 2px;
+}
+
+.qba-instructions li::marker {
+  color: var(--accent-cyan);
+  font-weight: var(--fw-bold);
+}
+
+.qba-instructions strong {
+  color: var(--text-primary);
+  font-weight: var(--fw-semibold);
+}
+
+.qba-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--border-secondary);
+  border-left: 2px solid var(--accent-cyan);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.qba-callout svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--accent-cyan);
+}
+
+.qba-callout p {
+  margin: 0;
+  font-size: var(--qba-micro);
+  line-height: 1.65;
+  color: var(--text-secondary);
+}
+
+/* ── file drop ───────────────────────────────────────────────────────────────
+   Corner brackets appear on hover — a targeting reticle, not a box. */
+
+.qba-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.qba-dropzone {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  width: 100%;
+  min-height: 140px;
+  padding: var(--sp-5) var(--sp-4);
+  border: 1px dashed var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-family: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color var(--qba-ease),
+    background var(--qba-ease),
+    color var(--qba-ease),
+    box-shadow var(--qba-ease);
+}
+
+.qba-dropzone::before,
+.qba-dropzone::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid transparent;
+  transition: border-color var(--qba-ease), transform var(--qba-ease);
+  pointer-events: none;
+}
+
+.qba-dropzone::before {
+  top: 8px;
+  left: 8px;
+  border-right: 0;
+  border-bottom: 0;
+  border-top-left-radius: var(--radius-sm);
+}
+
+.qba-dropzone::after {
+  right: 8px;
+  bottom: 8px;
+  border-left: 0;
+  border-top: 0;
+  border-bottom-right-radius: var(--radius-sm);
+}
+
+.qba-dropzone:hover,
+.qba-dropzone:focus-visible {
+  border-color: var(--accent-cyan);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.qba-dropzone:hover::before,
+.qba-dropzone:hover::after,
+.qba-dropzone:focus-visible::before,
+.qba-dropzone:focus-visible::after {
+  border-color: var(--accent-cyan);
+}
+
+.qba-dropzone:hover::before,
+.qba-dropzone:focus-visible::before {
+  transform: translate(-2px, -2px);
+}
+
+.qba-dropzone:hover::after,
+.qba-dropzone:focus-visible::after {
+  transform: translate(2px, 2px);
+}
+
+.qba-dropzone:focus-visible {
+  box-shadow: 0 0 0 3px var(--accent-cyan-glow);
+}
+
+.qba-dropzone-active {
+  border-style: solid;
+  border-color: var(--accent-cyan);
+  background: var(--accent-cyan-glow);
+  color: var(--text-primary);
+}
+
+.qba-dropzone-active::before,
+.qba-dropzone-active::after {
+  border-color: var(--accent-cyan);
+}
+
+.qba-dropzone > svg {
+  color: var(--accent-cyan);
+  transition: transform var(--qba-ease);
+}
+
+.qba-dropzone:hover > svg {
+  transform: translateY(-2px);
+}
+
+.qba-dropzone-title {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.qba-dropzone-sub {
+  max-width: 460px;
+  font-size: var(--qba-micro);
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+/* ── file list ─────────────────────────────────────────────────────────────── */
+
+.qba-file-list {
+  list-style: none;
+  margin: var(--sp-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.qba-file-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 8px var(--sp-3);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  min-width: 0;
+  transition: border-color var(--qba-ease), background var(--qba-ease);
+}
+
+.qba-file-item:hover {
+  border-color: var(--border-secondary);
+  background: var(--bg-card-hover);
+}
+
+.qba-file-index {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background: var(--accent-cyan-glow);
+  color: var(--accent-cyan);
+  font-size: 0.75rem;
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.qba-file-icon {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.qba-file-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text-primary);
+}
+
+.qba-file-size {
+  flex-shrink: 0;
+  font-size: var(--qba-micro);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.qba-file-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.qba-icon-btn {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    background var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.qba-icon-btn:hover:not(:disabled) {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  background: var(--accent-cyan-glow);
+  transform: translateY(-1px);
+}
+
+.qba-icon-btn:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+.qba-icon-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.qba-icon-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.qba-icon-btn-danger:hover:not(:disabled) {
+  border-color: var(--accent-rose);
+  color: var(--accent-rose);
+  background: var(--accent-rose-glow);
+}
+
+.qba-icon-btn-danger:focus-visible {
+  outline-color: var(--accent-rose);
+  border-color: var(--accent-rose);
+  color: var(--accent-rose);
+}
+
+/* ── actions ───────────────────────────────────────────────────────────────── */
+
+.qba-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  margin: var(--sp-4) 0 var(--sp-2);
+  padding-top: var(--sp-4);
+  border-top: var(--qba-hair);
+}
+
+/* ── notices ───────────────────────────────────────────────────────────────── */
+
+.qba-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  margin-bottom: var(--sp-4);
+  border: 1px solid var(--border-secondary);
+  border-left: 2px solid var(--accent-cyan);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+}
+
+.qba-notice svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--accent-cyan);
+}
+
+.qba-messages {
+  padding: var(--sp-3) var(--sp-4);
+  margin-bottom: var(--sp-3);
+  border: 1px solid var(--border-primary);
+  border-left-width: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+}
+
+.qba-messages-error {
+  border-left-color: var(--accent-rose);
+  background: var(--accent-rose-glow);
+}
+
+.qba-messages-warning {
+  border-left-color: var(--accent-orange);
+  background: var(--accent-orange-glow);
+}
+
+.qba-messages-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+}
+
+.qba-messages-error .qba-messages-title svg {
+  color: var(--accent-rose);
+}
+
+.qba-messages-warning .qba-messages-title svg {
+  color: var(--accent-orange);
+}
+
+.qba-messages ul {
+  margin: var(--sp-2) 0 0;
+  padding-left: 1.3rem;
+  color: var(--text-secondary);
+  font-size: var(--qba-micro);
+  line-height: 1.65;
+}
+
+.qba-messages li + li {
+  margin-top: 4px;
+}
+
+/* ── preview shell ─────────────────────────────────────────────────────────── */
+
+.qba-preview {
+  margin-top: var(--sp-5);
+  padding: var(--sp-5);
+  scroll-margin-top: 90px;
+}
+
+.qba-preview-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  padding-bottom: var(--sp-3);
+  margin-bottom: var(--sp-4);
+  border-bottom: var(--qba-hair);
+}
+
+.qba-preview-bar h2 {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.qba-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--accent-emerald);
+  border-radius: var(--radius-full);
+  background: var(--accent-emerald-glow);
+  color: var(--accent-emerald);
+  font-size: var(--qba-micro);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.03em;
+  line-height: 1.5;
+}
+
+.qba-pill::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: var(--radius-full);
+  background: currentColor;
+}
+
+.qba-pill-muted {
+  border-color: var(--border-primary);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.qba-preview-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-4);
+}
+
+.qba-preview-kicker {
+  display: block;
+  font-size: var(--qba-micro);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.qba-preview-title {
+  margin: 4px 0 5px;
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-black);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.qba-preview-meta {
+  margin: 0;
+  font-size: var(--qba-micro);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.qba-preview-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-full);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: var(--qba-micro);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+}
+
+/* ── summary stats ───────────────────────────────────────────────────────────
+   The numeral is the hero. A hairline accent sits on the top edge and widens
+   on hover; everything else stays muted so the numbers carry the page. */
+
+.qba-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(124px, 1fr));
+  gap: var(--sp-3);
+  margin: var(--sp-4) 0 var(--sp-6);
+}
+
+.qba-stat {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--sp-3) var(--sp-3) var(--sp-4);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+  min-width: 0;
+  overflow: hidden;
+  transition:
+    border-color var(--qba-ease),
+    background var(--qba-ease),
+    transform var(--qba-ease);
+}
+
+.qba-stat::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 28%;
+  height: 2px;
+  background: var(--accent-cyan);
+  opacity: 0.55;
+  transition: width var(--transition-slow), opacity var(--qba-ease);
+}
+
+.qba-stat:hover {
+  border-color: var(--border-focus);
+  background: var(--bg-card);
+  transform: translateY(-1px);
+}
+
+.qba-stat:hover::before {
+  width: 100%;
+  opacity: 1;
+}
+
+.qba-stat-value {
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-black);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.qba-stat-label {
+  font-size: var(--qba-micro);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  line-height: 1.35;
+}
+
+.qba-preview-section {
+  margin-top: var(--sp-6);
+}
+
+.qba-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-3);
+  padding-bottom: var(--sp-2);
+  border-bottom: var(--qba-hair);
+}
+
+.qba-section-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.qba-section-note {
+  font-size: var(--qba-micro);
+  color: var(--text-secondary);
+}
+
+/* ── tables ────────────────────────────────────────────────────────────────── */
+
+.qba-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+}
+
+.qba-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+}
+
+.qba-table th,
+.qba-table td {
+  padding: 9px var(--sp-3);
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border-secondary);
+  overflow-wrap: anywhere;
+}
+
+.qba-table th {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: var(--qba-micro);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border-bottom-color: var(--border-primary);
+}
+
+.qba-table tbody tr {
+  transition: box-shadow var(--transition-fast), background var(--transition-fast);
+}
+
+.qba-table tbody tr:hover td {
+  background: var(--bg-tertiary);
+}
+
+.qba-table tbody tr:hover td:first-child {
+  box-shadow: inset 2px 0 0 var(--accent-cyan);
+}
+
+.qba-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.qba-matrix-vip td { background: var(--accent-rose-glow); }
+.qba-matrix-high td { background: var(--accent-orange-glow); }
+.qba-matrix-medium td { background: var(--accent-amber-glow); }
+.qba-matrix-low td { background: var(--accent-emerald-glow); }
+
+.qba-matrix-vip td:first-child { box-shadow: inset 2px 0 0 var(--accent-rose); }
+.qba-matrix-high td:first-child { box-shadow: inset 2px 0 0 var(--accent-orange); }
+.qba-matrix-medium td:first-child { box-shadow: inset 2px 0 0 var(--accent-amber); }
+.qba-matrix-low td:first-child { box-shadow: inset 2px 0 0 var(--accent-emerald); }
+
+.qba-table .qba-num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.qba-table .qba-sno {
+  width: 38px;
+  text-align: center;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── priority badges (fixed semantic colours, label always visible) ──────────
+   Hues are locked by the feature spec; only the geometry and type are tuned
+   here so the badges sit on the new 12px floor. */
+
+.qba-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 9px;
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+  font-size: 0.6875rem;
+  font-weight: var(--fw-black);
+  letter-spacing: 0.05em;
+  line-height: 1.55;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.qba-badge-sm {
+  padding: 1px 7px;
+  font-size: 0.625rem;
+}
+
+.qba-badge-vip {
+  background: #b91c1c;
+  border-color: #b91c1c;
+  color: #ffffff;
+}
+
+.qba-badge-high {
+  background: #c2410c;
+  border-color: #c2410c;
+  color: #ffffff;
+}
+
+.qba-badge-medium {
+  background: #facc15;
+  border-color: #facc15;
+  color: #1a1a1a;
+}
+
+.qba-badge-low {
+  background: #15803d;
+  border-color: #15803d;
+  color: #ffffff;
+}
+
+/* ── accordion ─────────────────────────────────────────────────────────────── */
+
+.qba-accordion {
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--bg-card);
+}
+
+.qba-acc-item + .qba-acc-item {
+  border-top: 1px solid var(--border-secondary);
+}
+
+.qba-acc-trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-3) var(--sp-4);
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.qba-acc-trigger:hover {
+  background: var(--bg-tertiary);
+  box-shadow: inset 2px 0 0 var(--accent-cyan);
+}
+
+.qba-acc-trigger:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: -2px;
+}
+
+.qba-acc-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.qba-acc-name {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.qba-acc-meta {
+  font-size: var(--qba-micro);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.qba-chevron {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  transition: transform var(--transition-base), color var(--transition-fast);
+}
+
+.qba-acc-trigger:hover .qba-chevron,
+.qba-acc-trigger:focus-visible .qba-chevron {
+  color: var(--accent-cyan);
+}
+
+.qba-chevron-open {
+  transform: rotate(180deg);
+  color: var(--accent-cyan);
+}
+
+.qba-acc-panel {
+  padding: 0 var(--sp-4) var(--sp-4);
+}
+
+.qba-acc-panel[hidden] {
+  display: none;
+}
+
+/* ── semester details ──────────────────────────────────────────────────────── */
+
+.qba-sem {
+  margin-bottom: var(--sp-2);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  overflow: hidden;
+}
+
+.qba-sem > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  list-style: none;
+  transition: background var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.qba-sem > summary::-webkit-details-marker {
+  display: none;
+}
+
+.qba-sem > summary:hover {
+  background: var(--bg-card-hover);
+  box-shadow: inset 2px 0 0 var(--accent-cyan);
+}
+
+.qba-sem > summary:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: -2px;
+}
+
+.qba-sem[open] > summary {
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.qba-sem-count {
+  font-size: var(--qba-micro);
+  font-weight: var(--fw-regular);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.qba-sem .qba-table-wrap {
+  border: 0;
+  border-radius: 0;
+}
+
+/* ── study plan ────────────────────────────────────────────────────────────── */
+
+.qba-plan {
+  margin: 0;
+  padding-left: 1.4rem;
+  list-style: decimal;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  line-height: 1.7;
+}
+
+.qba-plan li {
+  margin-bottom: var(--sp-2);
+  padding-left: 2px;
+}
+
+.qba-plan li::marker {
+  color: var(--accent-cyan);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── help ──────────────────────────────────────────────────────────────────── */
+
+.qba-help {
+  margin-top: var(--sp-5);
+  padding: var(--sp-5);
+}
+
+.qba-help-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--sp-3);
+}
+
+.qba-help details {
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  transition: border-color var(--qba-ease), background var(--qba-ease);
+}
+
+.qba-help details:hover {
+  border-color: var(--border-focus);
+}
+
+.qba-help details[open] {
+  background: var(--bg-card);
+  border-color: var(--border-focus);
+}
+
+.qba-help summary {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+  cursor: pointer;
+  line-height: 1.45;
+}
+
+.qba-help summary:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+.qba-help p {
+  margin: var(--sp-2) 0 0;
+  font-size: var(--qba-micro);
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.qba-help code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+  font-size: 0.9em;
+  border: 1px solid var(--border-primary);
+}
+
+/* ── empty state ───────────────────────────────────────────────────────────── */
+
+.qba-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: var(--sp-8) var(--sp-4);
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.qba-empty svg {
+  color: var(--accent-cyan);
+  margin-bottom: var(--sp-1);
+  opacity: 0.85;
+}
+
+.qba-empty h3 {
+  margin: 0;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.qba-empty p {
+  margin: 0;
+  max-width: 480px;
+  font-size: var(--fs-sm);
+  line-height: 1.65;
+  color: var(--text-secondary);
+}
+
+/* ── offscreen image-PDF sheet ─────────────────────────────────────────────── */
+
+.qba-capture-host {
+  position: absolute;
+  top: 0;
+  left: 0;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: -1;
+  background: #ffffff;
+  /* Let content determine width; html2canvas will capture full scrollWidth */
+}
+
+/* ── misc ──────────────────────────────────────────────────────────────────── */
+
+.qba-spin {
+  animation: qba-spin 0.8s linear infinite;
+}
+
+@keyframes qba-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   Theme personality
+   ────────────────────────────────────────────────────────────────────────────
+   The base layer above is deliberately neutral: it reads correctly under
+   dark / light / midnight with no overrides. The themes below have a strong
+   editorial voice, so each gets a short, targeted treatment on the four
+   signature surfaces only (cards, numerals, dropzone, table rules).
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* Newsprint — ink on paper. Square everything, thick rule under the masthead,
+   no lifts (paper does not float). */
+[data-theme="newsprint"] .qba-widget {
+  --qba-hair: 1px solid var(--border-primary);
+}
+
+[data-theme="newsprint"] .qba-masthead::before {
+  height: 3px;
+  opacity: 1;
+  background: var(--text-primary);
+}
+
+[data-theme="newsprint"] .qba-step,
+[data-theme="newsprint"] .qba-stat,
+[data-theme="newsprint"] .qba-dropzone,
+[data-theme="newsprint"] .qba-table-wrap,
+[data-theme="newsprint"] .qba-accordion,
+[data-theme="newsprint"] .qba-sem,
+[data-theme="newsprint"] .qba-help details,
+[data-theme="newsprint"] .qba-notice,
+[data-theme="newsprint"] .qba-callout {
+  border-radius: 0;
+}
+
+[data-theme="newsprint"] .qba-step:hover,
+[data-theme="newsprint"] .qba-stat:hover {
+  transform: none;
+}
+
+[data-theme="newsprint"] .qba-step::before {
+  height: 2px;
+  opacity: 1;
+  background: var(--text-primary);
+}
+
+[data-theme="newsprint"] .qba-stat::before {
+  height: 3px;
+  width: 100%;
+  opacity: 1;
+  background: var(--text-primary);
+}
+
+[data-theme="newsprint"] .qba-step-title,
+[data-theme="newsprint"] .qba-preview-title,
+[data-theme="newsprint"] .qba-preview-bar h2,
+[data-theme="newsprint"] .qba-section-head h3 {
+  font-family: Georgia, 'Times New Roman', serif;
+  letter-spacing: -0.005em;
+}
+
+/* Cyberpunk — HUD schematic. Neon edges, chamfered corners, scan-reveal caps. */
+[data-theme="cyberpunk"] .qba-step,
+[data-theme="cyberpunk"] .qba-stat {
+  border-color: var(--accent-cyan);
+  box-shadow: inset 0 0 0 1px var(--accent-cyan-glow);
+}
+
+[data-theme="cyberpunk"] .qba-step::before,
+[data-theme="cyberpunk"] .qba-stat::before {
+  opacity: 1;
+  box-shadow: 0 0 10px var(--accent-cyan);
+}
+
+[data-theme="cyberpunk"] .qba-step-num {
+  border-color: var(--accent-cyan);
+  background: var(--bg-primary);
+  box-shadow:
+    inset 0 0 0 3px var(--bg-card),
+    0 0 12px var(--accent-cyan-glow);
+}
+
+[data-theme="cyberpunk"] .qba-dropzone {
+  border-style: solid;
+  border-color: var(--accent-cyan-glow);
+}
+
+[data-theme="cyberpunk"] .qba-table th {
+  color: var(--accent-cyan);
+  text-shadow: 0 0 8px var(--accent-cyan-glow);
+}
+
+/* Sketchbook — hand-drawn. Irregular radii, marker underline, gentle tilt. */
+[data-theme="sketchbook"] .qba-step {
+  border-radius: 18px 6px 16px 8px / 8px 16px 6px 18px;
+}
+
+[data-theme="sketchbook"] .qba-stat {
+  border-radius: 6px 14px 8px 12px / 12px 8px 14px 6px;
+}
+
+[data-theme="sketchbook"] .qba-dropzone {
+  border-radius: 14px 8px 18px 6px / 6px 18px 8px 14px;
+}
+
+[data-theme="sketchbook"] .qba-step-num {
+  border-radius: 60% 45% 55% 48% / 48% 55% 45% 60%;
+}
+
+[data-theme="sketchbook"] .qba-step-title,
+[data-theme="sketchbook"] .qba-preview-title {
+  text-decoration: underline;
+  text-decoration-style: wavy;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 5px;
+  text-decoration-color: var(--accent-cyan);
+}
+
+/* Minimalist monochrome — sharpen everything, single black accent, no glow. */
+[data-theme="minimalist-monochrome"] .qba-step,
+[data-theme="minimalist-monochrome"] .qba-stat,
+[data-theme="minimalist-monochrome"] .qba-dropzone,
+[data-theme="minimalist-monochrome"] .qba-table-wrap,
+[data-theme="minimalist-monochrome"] .qba-accordion,
+[data-theme="minimalist-monochrome"] .qba-sem,
+[data-theme="minimalist-monochrome"] .qba-help details,
+[data-theme="minimalist-monochrome"] .qba-notice,
+[data-theme="minimalist-monochrome"] .qba-callout {
+  border-radius: 0;
+}
+
+[data-theme="minimalist-monochrome"] .qba-step::before,
+[data-theme="minimalist-monochrome"] .qba-stat::before {
+  background: var(--text-primary);
+  opacity: 1;
+}
+
+[data-theme="minimalist-monochrome"] .qba-step-num {
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  border-color: var(--text-primary);
+}
+
+[data-theme="minimalist-monochrome"] .qba-step:hover,
+[data-theme="minimalist-monochrome"] .qba-stat:hover {
+  transform: none;
+}
+
+[data-theme="minimalist-monochrome"] .qba-dropzone::before,
+[data-theme="minimalist-monochrome"] .qba-dropzone::after {
+  display: none;
+}
+
+/* Midnight — deeper surface separation, softer caps than dark. */
+[data-theme="midnight"] .qba-step::before,
+[data-theme="midnight"] .qba-stat::before {
+  opacity: 0.35;
+}
+
+[data-theme="midnight"] .qba-step:hover,
+[data-theme="midnight"] .qba-stat:hover {
+  border-color: var(--accent-cyan);
+}
+
+/* ── responsive ────────────────────────────────────────────────────────────── */
+
+@media (max-width: 760px) {
+  .qba-masthead {
+    grid-template-columns: 1fr;
+  }
+
+  .qba-masthead .schedule-actions {
+    justify-content: flex-start;
+  }
+
+  .qba-masthead .schedule-subtitle {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .qba-step,
+  .qba-preview,
+  .qba-help {
+    padding: var(--sp-4);
+  }
+
+  .qba-grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .qba-summary-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .qba-actions .btn {
+    flex: 1 1 100%;
+  }
+
+  .qba-file-item {
+    flex-wrap: wrap;
+  }
+
+  .qba-file-name {
+    flex-basis: calc(100% - 96px);
+  }
+
+  .qba-file-actions {
+    margin-left: auto;
+  }
+
+  .qba-preview-stamp {
+    white-space: normal;
+  }
+
+  .qba-step:hover,
+  .qba-stat:hover {
+    transform: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .qba-summary-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .qba-step-title {
+    font-size: var(--fs-md);
+  }
+}
+
+/* ── motion ────────────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .qba-spin {
+    animation-duration: 1.6s;
+  }
+
+  .qba-step,
+  .qba-step::before,
+  .qba-step-num,
+  .qba-stat,
+  .qba-stat::before,
+  .qba-dropzone,
+  .qba-dropzone::before,
+  .qba-dropzone::after,
+  .qba-dropzone > svg,
+  .qba-icon-btn,
+  .qba-chevron,
+  .qba-file-item,
+  .qba-table tbody tr,
+  .qba-acc-trigger,
+  .qba-sem > summary,
+  .qba-help details {
+    transition: none;
+  }
+
+  .qba-step:hover,
+  .qba-stat:hover,
+  .qba-icon-btn:hover:not(:disabled) {
+    transform: none;
+  }
+
+  .qba-dropzone:hover::before,
+  .qba-dropzone:hover::after,
+  .qba-dropzone:focus-visible::before,
+  .qba-dropzone:focus-visible::after,
+  .qba-dropzone:hover > svg {
+    transform: none;
+  }
+}
