@@ -10,6 +10,13 @@ import './FloatingBackground.css';
  *
  * All layers respect prefers-reduced-motion and read the current theme's
  * accent colours in real time.
+ *
+ * Performance notes:
+ *  - The accent colour is cached and only re-read when the theme actually
+ *    changes (MutationObserver on <html>), NOT every animation frame. Reading
+ *    getComputedStyle 60x/s forces a style recalculation every frame and made
+ *    the whole app feel laggy on click.
+ *  - The RAF loop is throttled to ~30fps and paused while the tab is hidden.
  */
 export default function FloatingBackground() {
   const canvasRef = useRef(null);
@@ -23,14 +30,18 @@ export default function FloatingBackground() {
 
     let w, h, dpr;
     const particles = [];
-    const PARTICLE_COUNT = 40;
+    const PARTICLE_COUNT = window.innerWidth < 900 ? 12 : 20;
     const MOUSE_RADIUS = 180;
+    const FRAME_MS = 1000 / 30; // ~30fps — plenty for a subtle dot field
     const mouse = { x: -9999, y: -9999 };
+
+    // Cached accent (rgb triplet). Re-read only when the theme changes.
+    let accentRgb = [245, 158, 11];
 
     const resize = () => {
       w = canvas.clientWidth;
       h = canvas.clientHeight;
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      dpr = Math.min(window.devicePixelRatio || 1, 1.5);
       canvas.width = w * dpr;
       canvas.height = h * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -50,23 +61,36 @@ export default function FloatingBackground() {
       }
     };
 
-    const readAccent = () =>
-      getComputedStyle(document.documentElement)
-        .getPropertyValue('--accent-blue')
-        .trim() || '#f59e0b';
-
     const hexToRgb = (hex) => {
       const m = hex.replace('#', '');
       const n = m.length === 3 ? m.split('').map((c) => c + c).join('') : m;
       const int = parseInt(n, 16);
+      if (!Number.isFinite(int)) return null;
       return [(int >> 16) & 255, (int >> 8) & 255, int & 255];
     };
 
-    let raf, t = 0;
-    const draw = () => {
+    // Read the accent once per theme change (not per frame).
+    const readAccent = () => {
+      const hex = getComputedStyle(document.documentElement)
+        .getPropertyValue('--accent-blue')
+        .trim();
+      const rgb = hex && hex.startsWith('#') ? hexToRgb(hex) : null;
+      if (rgb) accentRgb = rgb;
+    };
+
+    // Theme / accent overrides touch <html>'s attributes or inline style vars.
+    const observer = new MutationObserver(readAccent);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'style', 'class'] });
+
+    let raf;
+    let last = 0;
+    let t = 0;
+    const draw = (now) => {
+      raf = requestAnimationFrame(draw);
+      if (now - last < FRAME_MS) return; // throttle to ~30fps
+      last = now;
       t++;
-      const accent = readAccent();
-      const [r, g, b] = hexToRgb(accent.startsWith('#') ? accent : '#f59e0b');
+      const [r, g, b] = accentRgb;
       ctx.clearRect(0, 0, w, h);
 
       for (let i = 0; i < particles.length; i++) {
@@ -97,29 +121,17 @@ export default function FloatingBackground() {
         if (p.y > h + 10) p.y = -10;
 
         // Draw particle
-        const pulse = 0.7 + 0.3 * Math.sin(t * 0.015 + p.phase);
+        const pulse = 0.7 + 0.3 * Math.sin(t * 0.03 + p.phase);
         const alpha = 0.12 + 0.08 * pulse;
 
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r * pulse, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
         ctx.fill();
-
-        // Subtle glow on mouse proximity
-        if (dist < MOUSE_RADIUS * 0.5) {
-          const glow = 1 - dist / (MOUSE_RADIUS * 0.5);
-          ctx.shadowBlur = 6 * glow;
-          ctx.shadowColor = `rgba(${r}, ${g}, ${b}, ${glow * 0.15})`;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.r * pulse * 0.5, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.shadowBlur = 0;
-        }
       }
-
-      raf = requestAnimationFrame(draw);
     };
 
+    readAccent();
     resize();
     initParticles();
     raf = requestAnimationFrame(draw);
@@ -133,16 +145,30 @@ export default function FloatingBackground() {
       mouse.x = -9999;
       mouse.y = -9999;
     };
+    const onResize = () => { resize(); initParticles(); };
+
+    // Pause the loop while the tab is hidden — no point burning frames offscreen.
+    const onVisibility = () => {
+      if (document.hidden) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+      } else if (!raf) {
+        raf = requestAnimationFrame(draw);
+      }
+    };
 
     window.addEventListener('mousemove', onMove, { passive: true });
     window.addEventListener('mouseleave', onLeave);
-    window.addEventListener('resize', () => { resize(); initParticles(); });
+    window.addEventListener('resize', onResize);
+    document.addEventListener('visibilitychange', onVisibility);
 
     return () => {
       cancelAnimationFrame(raf);
+      observer.disconnect();
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseleave', onLeave);
-      window.removeEventListener('resize', resize);
+      window.removeEventListener('resize', onResize);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }, []);
 

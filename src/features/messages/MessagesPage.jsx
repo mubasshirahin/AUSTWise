@@ -28,6 +28,8 @@ import { getAccountById, getRoleLabel } from '../../utils/authStorage';
 import { sanitizeUserInput, MAX_TEXT_LENGTH } from '../../utils/sanitize';
 import useAdminMode from '../../hooks/useAdminMode';
 import MastheadAccessControl from '../../components/MastheadAccessControl';
+import FeatureAccessGate from '../admin/FeatureAccessGate';
+import SidebarPageAccessPanel, { SidebarPageAccessHeader } from '../admin/SidebarPageAccessPanel';
 import '../campus/SemesterViewWidget.css';
 import './MessagesPage.css';
 
@@ -1074,7 +1076,7 @@ export default function MessagesPage() {
     <div className="messages-page animate-fadeIn">
 
       {/* ── 1. Hero box (own card) ── */}
-      <header className="ms-hero">
+      {isAdmin ? <SidebarPageAccessHeader pageKey="/messages" /> : <header className="ms-hero">
         <div className="ms-hero-content">
           <div className="ms-hero-eyebrow">
             <span className="ms-hero-period-icon"><Mail size={16} /></span>
@@ -1089,14 +1091,15 @@ export default function MessagesPage() {
               : `${conversations.length} chats · ${onlineChatCount} online`}
           </p>
         </div>
-      </header>
+      </header>}
 
       {/* ── 2. Glider tabs bar (own card) — inbox filters as tabs ── */}
+      {isAdmin && <SidebarPageAccessPanel pageKey="/messages" part="parent" />}
       <div className="glass-card-static ms-tabs-card">
         <GliderTabs
           tabs={[
-            { id: 'all', label: 'All Chats', icon: MessageSquare, color: 'amber', desc: 'Every conversation' },
-            { id: 'unread', label: 'Unread', icon: Mail, color: 'amber', desc: 'New messages' },
+            { id: 'all', label: 'All Chats', icon: MessageSquare, color: 'amber', desc: 'Every conversation', accessKey: 'feature:messages:main' },
+            { id: 'unread', label: 'Unread', icon: Mail, color: 'amber', desc: 'New messages', accessKey: 'feature:messages:main' },
           ]}
           activeTab={filterMode === 'unread' ? 'unread' : 'all'}
           onChange={(t) => setFilterMode(t === 'unread' ? 'unread' : 'all')}
@@ -1105,8 +1108,8 @@ export default function MessagesPage() {
       </div>
 
       {/* ── 3. Main box — masthead header + chat layout (one card, gated by featureHidden) ── */}
-      <MastheadAccessControl pageKey="/messages">
-        <div className="ms-content-card">
+      {isAdmin ? <SidebarPageAccessPanel pageKey="/messages" featureKey="feature:messages:main" part="child" /> : <MastheadAccessControl pageKey="/messages">
+        <FeatureAccessGate featureKey="feature:messages:main"><div className="ms-content-card">
           {/* Masthead header */}
           <div className="schedule-masthead ms-masthead">
             {/* Left: title block */}
@@ -1276,8 +1279,8 @@ export default function MessagesPage() {
             )}
           </section>
         </div>
-        </div>
-      </MastheadAccessControl>
+        </div></FeatureAccessGate>
+      </MastheadAccessControl>}
     </div>
   );
 }

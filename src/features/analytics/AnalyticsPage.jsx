@@ -8,6 +8,8 @@ import CoursePoll from './CoursePoll';
 import PrerequisiteTree from './PrerequisiteTree';
 import GliderTabs from '../../components/GliderTabs';
 import MastheadAccessControl from '../../components/MastheadAccessControl';
+import FeatureAccessGate from '../admin/FeatureAccessGate';
+import SidebarPageAccessPanel from '../admin/SidebarPageAccessPanel';
 import useTabUrlState from '../../hooks/useTabUrlState';
 import useAdminMode from '../../hooks/useAdminMode';
 import './AnalyticsPage.css';
@@ -16,15 +18,15 @@ import './analytics-tokens.css';
 const TAB_KEY = 'analyticsActiveTab';
 
 const gradeLabTabs = [
-  { id: 'cgpagraph', label: 'CGPA Calculator', icon: TrendingUp, color: 'amber', desc: 'Grade trends' },
-  { id: 'semestertracker', label: 'Semester Wise', icon: Layers, color: 'amber', desc: 'Per-semester' },
-  { id: 'heatmap', label: 'Dept Heatmap', icon: Grid3x3, color: 'amber', desc: 'Avg CGPA' },
-  { id: 'bestworst', label: 'Best & Worst', icon: Trophy, color: 'amber', desc: 'Course poll' },
-  { id: 'prereqs', label: 'Prerequisites', icon: GitBranch, color: 'amber', desc: 'Course flow map' },
+  { id: 'cgpagraph', label: 'CGPA Calculator', icon: TrendingUp, color: 'amber', desc: 'Grade trends', accessKey: 'feature:analytics:cgpagraph' },
+  { id: 'semestertracker', label: 'Semester Wise', icon: Layers, color: 'amber', desc: 'Per-semester', accessKey: 'feature:analytics:semestertracker' },
+  { id: 'heatmap', label: 'Dept Heatmap', icon: Grid3x3, color: 'amber', desc: 'Avg CGPA', accessKey: 'feature:analytics:heatmap' },
+  { id: 'bestworst', label: 'Best & Worst', icon: Trophy, color: 'amber', desc: 'Course poll', accessKey: 'feature:analytics:bestworst' },
+  { id: 'prereqs', label: 'Prerequisites', icon: GitBranch, color: 'amber', desc: 'Course flow map', accessKey: 'feature:analytics:prereqs' },
 ];
 
 export default function AnalyticsPage() {
-  const { isAdmin: _isAdmin } = useAdminMode();
+  const { isAdmin } = useAdminMode();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => {
     return searchParams.get('tab') || localStorage.getItem(TAB_KEY) || 'cgpagraph';
@@ -55,8 +57,12 @@ export default function AnalyticsPage() {
   return (
     <div className="analytics-page animate-fadeIn">
 
-      {/* ── 1. Hero box (own card) ── */}
-      <header className="gl-hero">
+      {isAdmin ? (
+        <header style={{ marginBottom: '18px' }}>
+          <h1 style={{ margin: 0, fontSize: '24px', lineHeight: 1.2, fontWeight: 750, color: 'var(--text-primary)' }}>GradeLab</h1>
+          <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>Manage GradeLab access and feature visibility.</p>
+        </header>
+      ) : <header className="gl-hero">
         <div className="gl-hero-content">
           <div className="gl-hero-eyebrow">
             <span className="gl-hero-period-icon">
@@ -71,9 +77,10 @@ export default function AnalyticsPage() {
           </h1>
           <p className="gl-hero-subtitle">{heroSubtitle}</p>
         </div>
-      </header>
+      </header>}
 
       {/* ── 2. Glider tabs bar (always visible) ── */}
+      {isAdmin && <SidebarPageAccessPanel pageKey="/analytics" part="parent" />}
       <div className="glass-card-static gl-tabs-card">
         <GliderTabs
           tabs={gradeLabTabs}
@@ -83,14 +90,15 @@ export default function AnalyticsPage() {
         />
       </div>
 
-      {/* ── 3. Main content box (gated per-tab by featureHidden) ── */}
-      <MastheadAccessControl pageKey={`analytics:${activeTab}`}>
+      {isAdmin ? <SidebarPageAccessPanel pageKey="/analytics" featureKey={`feature:analytics:${activeTab}`} part="child" /> : <MastheadAccessControl>
         <div className="gl-content-card" key={activeTab}>
           <div className="analytics-content-area">
-            {renderActiveTab()}
+            <FeatureAccessGate featureKey={`feature:analytics:${activeTab}`}>
+              {renderActiveTab()}
+            </FeatureAccessGate>
           </div>
         </div>
-      </MastheadAccessControl>
+      </MastheadAccessControl>}
     </div>
   );
 }

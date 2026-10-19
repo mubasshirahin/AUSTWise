@@ -21,6 +21,7 @@
 
 /* ─── Token Remap ─────────────────────────────────────────────────────────── */
 [data-theme="swiss"] {
+  color-scheme: light;
   /* Font — Inter at its most purposeful; no display font swap needed */
   --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 

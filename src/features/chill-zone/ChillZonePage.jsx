@@ -3,6 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import { Coffee, LayoutGrid, MessageCircleQuestion, Brain, Gamepad2, Film } from 'lucide-react';
 import GliderTabs from '../../components/GliderTabs';
 import MastheadAccessControl from '../../components/MastheadAccessControl';
+import FeatureAccessGate from '../admin/FeatureAccessGate';
+import SidebarPageAccessPanel, { SidebarPageAccessHeader } from '../admin/SidebarPageAccessPanel';
 import useTabUrlState from '../../hooks/useTabUrlState';
 import useAdminMode from '../../hooks/useAdminMode';
 import OrganizingArea from './tabs/OrganizingArea';
@@ -15,17 +17,17 @@ import '../../components/PageHero.css';
 
 // All tabs share the single brand accent (gold) — no per-category color rotation.
 const TABS = [
-  { id: 'organizing',  label: 'Organizing Area',  icon: LayoutGrid,             color: 'amber', desc: 'Plan & organize'  },
-  { id: 'media',       label: 'Media Tracker',    icon: Film,                   color: 'amber', desc: 'Movies & more'    },
-  { id: 'rumour',      label: 'Rumour or Real',   icon: MessageCircleQuestion,  color: 'amber', desc: 'Fact or fiction'  },
-  { id: 'trivia',      label: 'Trivia',           icon: Brain,                  color: 'amber', desc: 'Test your brain'  },
-  { id: 'gaming',      label: 'Gaming Zone',      icon: Gamepad2,               color: 'amber', desc: 'Mini games'       },
+  { id: 'organizing',  label: 'Organizing Area',  icon: LayoutGrid,             color: 'amber', desc: 'Plan & organize', accessKey: 'feature:chill-zone:organizing'  },
+  { id: 'media',       label: 'Media Tracker',    icon: Film,                   color: 'amber', desc: 'Movies & more', accessKey: 'feature:chill-zone:media'    },
+  { id: 'rumour',      label: 'Rumour or Real',   icon: MessageCircleQuestion,  color: 'amber', desc: 'Fact or fiction', accessKey: 'feature:chill-zone:rumour'  },
+  { id: 'trivia',      label: 'Trivia',           icon: Brain,                  color: 'amber', desc: 'Test your brain', accessKey: 'feature:chill-zone:trivia'  },
+  { id: 'gaming',      label: 'Gaming Zone',      icon: Gamepad2,               color: 'amber', desc: 'Mini games', accessKey: 'feature:chill-zone:gaming'       },
 ];
 
 const STORAGE_KEY = 'chill-zone-active-tab';
 
 export default function ChillZonePage() {
-  const { isAdmin: _isAdmin } = useAdminMode();
+  const { isAdmin } = useAdminMode();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(
     () => searchParams.get('tab') || localStorage.getItem(STORAGE_KEY) || 'organizing'
@@ -52,7 +54,7 @@ export default function ChillZonePage() {
     <div className="chill-page animate-fadeIn">
 
       {/* ── 1. Hero box (own card) ── */}
-      <header className="cz-hero">
+      {isAdmin ? <SidebarPageAccessHeader pageKey="/chill-zone" /> : <header className="cz-hero">
         <div className="cz-hero-content">
           <div className="cz-hero-eyebrow">
             <span className="cz-hero-period-icon">
@@ -69,9 +71,10 @@ export default function ChillZonePage() {
             Organize, debate rumours, test trivia, and game with fellow AUSTians.
           </p>
         </div>
-      </header>
+      </header>}
 
       {/* ── 2. Glider tabs bar (own card) ── */}
+      {isAdmin && <SidebarPageAccessPanel pageKey="/chill-zone" part="parent" />}
       <div className="glass-card-static cz-tabs-card">
         <GliderTabs
           tabs={TABS}
@@ -83,13 +86,15 @@ export default function ChillZonePage() {
       </div>
 
       {/* ── 3. Main content box (own card, gated by per-tab featureHidden) ── */}
-      <MastheadAccessControl pageKey={`chill-zone:${activeTab}`}>
+      {isAdmin ? <SidebarPageAccessPanel pageKey="/chill-zone" featureKey={`feature:chill-zone:${activeTab}`} part="child" /> : <MastheadAccessControl>
         <div className="cz-content-card" key={activeTab}>
           <div className="chill-tab-content">
-            {renderTab()}
+            <FeatureAccessGate featureKey={`feature:chill-zone:${activeTab}`}>
+              {renderTab()}
+            </FeatureAccessGate>
           </div>
         </div>
-      </MastheadAccessControl>
+      </MastheadAccessControl>}
     </div>
   );
 }

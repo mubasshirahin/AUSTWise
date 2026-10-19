@@ -4,6 +4,8 @@ import Notebook from './Notebook';
 import GliderTabs from '../../components/GliderTabs';
 import NotebookLibrary from './NotebookLibrary';
 import MastheadAccessControl from '../../components/MastheadAccessControl';
+import FeatureAccessGate from '../admin/FeatureAccessGate';
+import SidebarPageAccessPanel, { SidebarPageAccessHeader } from '../admin/SidebarPageAccessPanel';
 import { liveLoad, liveSave } from '../../utils/liveStorage';
 import { useLiveRefresh } from '../../utils/liveStore';
 import useAdminMode from '../../hooks/useAdminMode';
@@ -61,7 +63,7 @@ function migrateLegacyNotes() {
 }
 
 export default function NotebookPage() {
-  const { isAdmin: _isAdmin } = useAdminMode();
+  const { isAdmin } = useAdminMode();
   const [items, setItems] = useState(() => {
     // Lazily load the item index on first render (server-synced via liveStore).
     let list = loadIndex();
@@ -197,7 +199,7 @@ export default function NotebookPage() {
     <div className="vault-page notebook-page animate-fadeIn">
 
       {/* ── 1. Hero box (own card) ── */}
-      <header className="nb-hero">
+      {isAdmin ? <SidebarPageAccessHeader pageKey="/notebook" /> : <header className="nb-hero">
         <div className="nb-hero-content">
           <div className="nb-hero-eyebrow">
             <span className="nb-hero-period-icon">
@@ -214,14 +216,15 @@ export default function NotebookPage() {
             {openNote ? openNote.title : 'Organize folders, notes and study material — everything lives in your browser.'}
           </p>
         </div>
-      </header>
+      </header>}
 
       {/* ── 2. Glider tabs bar (own card) — single-section page, kept for the
           shared hero + tabs layout every page follows ── */}
+      {isAdmin && <SidebarPageAccessPanel pageKey="/notebook" part="parent" />}
       <div className="glass-card-static nb-tabs-card">
         <GliderTabs
           tabs={[
-            { id: 'notes', label: 'My Notes', icon: NotebookPen, color: 'amber', desc: 'Folders & notes' },
+            { id: 'notes', label: 'My Notes', icon: NotebookPen, color: 'amber', desc: 'Folders & notes', accessKey: 'feature:notebook:main' },
           ]}
           activeTab="notes"
           onChange={() => {}}
@@ -230,8 +233,8 @@ export default function NotebookPage() {
       </div>
 
       {/* ── 3. Main content box (own card, gated by featureHidden) ── */}
-      <MastheadAccessControl pageKey="/notebook">
-        <div className="nb-content-card">
+      {isAdmin ? <SidebarPageAccessPanel pageKey="/notebook" featureKey="feature:notebook:main" part="child" /> : <MastheadAccessControl pageKey="/notebook">
+        <FeatureAccessGate featureKey="feature:notebook:main"><div className="nb-content-card">
           {openNote ? (
             <Notebook
               vaultContext={DEFAULT_CONTEXT}
@@ -257,8 +260,8 @@ export default function NotebookPage() {
               onDelete={handleDelete}
             />
           )}
-        </div>
-      </MastheadAccessControl>
+        </div></FeatureAccessGate>
+      </MastheadAccessControl>}
     </div>
   );
 }

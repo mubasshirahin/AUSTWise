@@ -164,7 +164,7 @@
 .btn-premium:active { transform: translateY(0); box-shadow: none; }
 .btn-premium-solid {
   background: var(--accent-blue);
-  color: #000;
+  color: var(--text-inverse);
   border-color: transparent;
   font-weight: var(--fw-bold);
 }
