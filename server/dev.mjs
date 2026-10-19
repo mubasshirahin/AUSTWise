@@ -743,7 +743,8 @@ server.on('request', async (req, res) => {
     if (!isApiRequest || globalRateLimiter(req, res)) {
       await handleApiRequest(req, res);
     }
-  } catch {
+  } catch (err) {
+    console.error('[request-error]', req.method, req.url, err?.stack || err);
     if (!res.headersSent) {
       sendJson(res, 500, { error: 'Internal server error.' });
     } else {
