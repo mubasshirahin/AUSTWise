@@ -5,6 +5,8 @@ import {
 } from 'lucide-react';
 import GliderTabs from '../../components/GliderTabs';
 import MastheadAccessControl from '../../components/MastheadAccessControl';
+import FeatureAccessGate from '../admin/FeatureAccessGate';
+import SidebarPageAccessPanel, { SidebarPageAccessHeader } from '../admin/SidebarPageAccessPanel';
 import useTabUrlState from '../../hooks/useTabUrlState';
 import useAdminMode from '../../hooks/useAdminMode';
 import AlumniDirectory from './AlumniDirectory';
@@ -20,15 +22,15 @@ const COMMUNITY_TAB_KEY = 'aust-community-active-tab';
 // Unified theme: every tab uses the single brand accent (amber) so the tab bar
 // stays monochrome instead of rotating purple/green/blue per category.
 const communityTabs = [
-  { id: 'alumni', label: 'Alumni Directory', icon: GraduationCap, color: 'amber', desc: 'Connect with alumni' },
-  { id: 'clubs', label: 'Clubs Hub', icon: Building2, color: 'amber', desc: 'Join student clubs' },
-  { id: 'students', label: 'Student Directory', icon: Users, color: 'amber', desc: 'Find classmates' },
-  { id: 'faculty', label: 'Faculty Directory', icon: School, color: 'amber', desc: 'Meet your teachers' },
-  { id: 'mentorRequests', label: 'Mentor Requests', icon: UserPlus, color: 'amber', desc: 'Connect study buddies' },
+  { id: 'alumni', label: 'Alumni Directory', icon: GraduationCap, color: 'amber', desc: 'Connect with alumni', accessKey: 'feature:community:alumni' },
+  { id: 'clubs', label: 'Clubs Hub', icon: Building2, color: 'amber', desc: 'Join student clubs', accessKey: 'feature:community:clubs' },
+  { id: 'students', label: 'Student Directory', icon: Users, color: 'amber', desc: 'Find classmates', accessKey: 'feature:community:students' },
+  { id: 'faculty', label: 'Faculty Directory', icon: School, color: 'amber', desc: 'Meet your teachers', accessKey: 'feature:community:faculty' },
+  { id: 'mentorRequests', label: 'Mentor Requests', icon: UserPlus, color: 'amber', desc: 'Connect study buddies', accessKey: 'feature:community:mentorRequests' },
 ];
 
 export default function CommunityPage() {
-  const { isAdmin: _isAdmin } = useAdminMode();
+  const { isAdmin } = useAdminMode();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => {
     return searchParams.get('tab') || localStorage.getItem(COMMUNITY_TAB_KEY) || 'alumni';
@@ -56,7 +58,7 @@ export default function CommunityPage() {
     <div className="community-page animate-fadeIn">
 
       {/* ── 1. Hero box (own card) ── */}
-      <header className="cm-hero">
+      {isAdmin ? <SidebarPageAccessHeader pageKey="/community" /> : <header className="cm-hero">
         <div className="cm-hero-content">
           <div className="cm-hero-eyebrow">
             <span className="cm-hero-period-icon">
@@ -73,9 +75,10 @@ export default function CommunityPage() {
             {activeMeta.desc} · connect with alumni, faculty, clubs, classmates and mentors.
           </p>
         </div>
-      </header>
+      </header>}
 
       {/* ── 2. Glider tabs bar (own card) ── */}
+      {isAdmin && <SidebarPageAccessPanel pageKey="/community" part="parent" />}
       <div className="glass-card-static cm-tabs-card">
         <div className="cm-tabs-row">
           <GliderTabs
@@ -88,13 +91,15 @@ export default function CommunityPage() {
       </div>
 
       {/* ── 3. Main content box (own card, gated by per-tab featureHidden) ── */}
-      <MastheadAccessControl pageKey={`community:${activeTab}`}>
+      {isAdmin ? <SidebarPageAccessPanel pageKey="/community" featureKey={`feature:community:${activeTab}`} part="child" /> : <MastheadAccessControl>
         <div className="cm-content-card" key={activeTab}>
           <div className="community-content-area">
-            {renderActiveTab()}
+            <FeatureAccessGate featureKey={`feature:community:${activeTab}`}>
+              {renderActiveTab()}
+            </FeatureAccessGate>
           </div>
         </div>
-      </MastheadAccessControl>
+      </MastheadAccessControl>}
     </div>
   );
 }

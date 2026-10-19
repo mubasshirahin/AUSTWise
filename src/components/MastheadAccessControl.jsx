@@ -1,14 +1,19 @@
+import { useLocation } from 'react-router-dom';
 import { useRoleAccess } from '../hooks/useRoleAccess';
 import useAdminMode from '../hooks/useAdminMode';
 import { useAuth } from '../context/AuthContext';
-import AccessDeniedContent from './AccessDeniedContent';
-import RoleAccessControlCard from '../features/admin/RoleAccessControlCard';
+import { getAccessRole } from '../utils/accessRole';
 
-
+/**
+ * Gates a page's content box by the viewer's role, using the SAME key as the
+ * admin RoleAccessControlCard (the page's route path by default). The card is
+ * rendered once per page by App.jsx, not here — this component only gates.
+ */
 export default function MastheadAccessControl({ pageKey, children }) {
+  const location = useLocation();
   const { isAdmin } = useAdminMode();
   const { user } = useAuth();
-  const { config, loading } = useRoleAccess(pageKey);
+  const { config, loading } = useRoleAccess(pageKey || location.pathname);
 
   if (loading) {
     return (
@@ -18,20 +23,12 @@ export default function MastheadAccessControl({ pageKey, children }) {
     );
   }
 
-  const hidden = config.featureHidden.includes(user?.role);
+  const accessRole = getAccessRole(user);
+  const hidden = (config.featureHidden || []).includes(accessRole);
 
   if (hidden && !isAdmin) {
-    return <AccessDeniedContent role={user?.role} />;
+    return null;
   }
 
-  return (
-    <>
-      {children}
-      {isAdmin && (
-        <div style={{ marginTop: '16px', textAlign: 'left' }}>
-          <RoleAccessControlCard pageKey={pageKey} />
-        </div>
-      )}
-    </>
-  );
+  return children;
 }

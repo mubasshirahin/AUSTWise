@@ -16,7 +16,9 @@ const MEMBERS_POLL_MS = 30000;
 // Timestamp for the synthetic self row — captured once at module load so
 // rendering stays pure (the value is only cosmetic presence metadata).
 const SELF_ROW_SEEN_AT = Date.now();
-const GROUPS_KEY = 'aust-members-groups-v1';
+// Persisted set of EXPANDED group keys (presence = open). Groups default to
+// collapsed — see MemberGroup below for why.
+const GROUPS_KEY = 'aust-members-expanded-v1';
 
 // Canonical AUST department list — every department shows in the member list,
 // even ones with no members yet, so the full structure is always visible.
@@ -180,7 +182,7 @@ function getRoleDisplay(role) {
   if (role === 'admin') return 'Admin';
   if (role === 'moderator') return 'Moderator';
   if (role === 'faculty') return 'Faculty';
-  if (role === 'alumni') return 'Alumni';
+  if (role === 'alumni' || role === 'alumni_with_carry') return 'Alumni';
   return 'Student';
 }
 
@@ -245,9 +247,14 @@ function MemberRow({ member, onClick, isOffline, isAdmin, devSwitch, switching }
 }
 
 /* ─── Collapsible group section ─── */
-function MemberGroup({ title, icon, count, children, defaultOpen, forceOpen, collapsed, onToggle, className }) {
-  // `collapsed` is true when the user has collapsed this group
-  const isOpen = forceOpen || (collapsed !== undefined ? !collapsed : defaultOpen !== false);
+function MemberGroup({ title, icon, count, children, defaultOpen, forceOpen, expanded, onToggle, className }) {
+  // `expanded` is true when the user has opened this group. Groups default to
+  // CLOSED: the tree nests dept → semester → section → lab and the directory
+  // holds the entire student body, so default-open rendered ~35k DOM nodes on
+  // every page load (and re-rendered them on each presence event) — the single
+  // biggest reason the app felt sluggish. Only the three top-level role
+  // sections opt in via `defaultOpen`.
+  const isOpen = forceOpen || (expanded !== undefined ? expanded : defaultOpen === true);
   return (
     <div className={`am-group${isOpen ? ' open' : ''}${className ? ` ${className}` : ''}`}>
       <button type="button" className="am-group-head" onClick={onToggle}>
@@ -394,8 +401,8 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [authRequired, setAuthRequired] = useState(false);
-  const [collapsedGroups, setCollapsedGroups] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(GROUPS_KEY) || '{}'); }
+  const [expandedGroups, setExpandedGroups] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(GROUPS_KEY) || '{}') || {}; }
     catch { return {}; }
   });
   const [popover, setPopover] = useState(null); // { member, rect }
@@ -421,8 +428,12 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
   }, []);
   const showDevTools = import.meta.env.DEV || devEnabled === true;
 
-  // Initial load + polling fallback (WS updates presence live on top)
+  // Initial load + polling fallback (WS updates presence live on top).
+  // Only runs while the panel is actually open: this endpoint returns the whole
+  // member directory, and the 30s poll re-rendered the entire (huge) tree even
+  // when the panel was parked off-screen — wasted work on every page.
   useEffect(() => {
+    if (!open) return undefined;
     let cancelled = false;
     (async () => {
       const res = await fetch('/api/presence/members', { credentials: 'same-origin' }).catch(() => null);
@@ -460,7 +471,7 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
       cancelled = true;
       clearInterval(t);
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, open]);
 
   // Live presence updates over WebSocket (only when signed in — guests rely
   // on the 30s polling so they don't register as "online" themselves)
@@ -489,13 +500,13 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
     };
   }, []);
 
-  // Persist collapsed-group state
+  // Persist expanded-group state
   useEffect(() => {
-    localStorage.setItem(GROUPS_KEY, JSON.stringify(collapsedGroups));
-  }, [collapsedGroups]);
+    try { localStorage.setItem(GROUPS_KEY, JSON.stringify(expandedGroups)); } catch { /* ignore */ }
+  }, [expandedGroups]);
 
   const toggleGroup = useCallback((key) => {
-    setCollapsedGroups((prev) => {
+    setExpandedGroups((prev) => {
       const next = { ...prev };
       if (next[key]) delete next[key];
       else next[key] = true;
@@ -549,7 +560,7 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
       if (m.role === 'admin') return; // admins pinned in their own section
       if (isStudentRole(m.role)) byRole.students.push(m);
       else if (m.role === 'faculty' || m.role === 'moderator') byRole.faculty.push(m);
-      else if (m.role === 'alumni') byRole.alumni.push(m);
+      else if (m.role === 'alumni' || m.role === 'alumni_with_carry') byRole.alumni.push(m);
       else byRole.students.push(m); // unknown roles fall back to Students
     });
     return {
@@ -581,7 +592,7 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
       });
       const data = await res.json().catch(() => ({}));
       if (!data.success) throw new Error(data.error || 'Switch failed');
-      loginDirect(data.user);
+      await loginDirect(data.user);
       setDevMode(false);
       setPopover(null);
       setError('');
@@ -653,9 +664,11 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
           )}
         </div>
 
-        {/* Body */}
+        {/* Body — the member tree is only built while the panel is open. When
+            closed the panel is parked off-screen, so rendering the whole
+            directory here was pure waste on every page. */}
         <div className="am-list">
-          {loading && members.length === 0 ? (
+          {!open ? null : loading && members.length === 0 ? (
             <div className="am-empty">
               <Loader2 size={20} className="spin" />
               <span>Loading members…</span>
@@ -710,7 +723,8 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
                 title="Students"
                 icon={<GraduationCap size={13} />}
                 count={roleSections.students.reduce((n, g) => n + g.count, 0)}
-                collapsed={collapsedGroups['role-students']}
+                defaultOpen
+                expanded={expandedGroups['role-students']}
                 onToggle={() => toggleGroup('role-students')}
                 className="am-role-group"
               >
@@ -718,14 +732,14 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
                   <div className="am-group-empty">No members yet</div>
                 ) : roleSections.students.map((g) => {
                   const key = g.key;
-                  const collapsed = collapsedGroups[key];
+                  const expanded = expandedGroups[key];
                   return (
                     <MemberGroup
                       key={key}
                       title={g.title}
                       icon={g.icon}
                       count={g.count}
-                      collapsed={collapsed}
+                      expanded={expanded}
                       onToggle={() => toggleGroup(key)}
                     >
                       {g.count === 0 ? (
@@ -738,7 +752,7 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
                             key={semKey}
                             title={s.sem === 'Other' ? 'Other' : `Semester ${s.sem}`}
                             count={semTotal}
-                            collapsed={collapsedGroups[semKey]}
+                            expanded={expandedGroups[semKey]}
                             onToggle={() => toggleGroup(semKey)}
                             className="am-sem-group"
                           >
@@ -749,7 +763,7 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
                                   key={secKey}
                                   title={sec.key === 'Other' ? 'Other' : `Sec ${sec.key}`}
                                   count={sec.count}
-                                  collapsed={collapsedGroups[secKey]}
+                                  expanded={expandedGroups[secKey]}
                                   onToggle={() => toggleGroup(secKey)}
                                   className="am-sec-group"
                                 >
@@ -764,7 +778,7 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
                                             key={labKey}
                                             title={lab.key === 'Other' ? 'Other' : `Lab ${lab.key}`}
                                             count={lab.members.length}
-                                            collapsed={collapsedGroups[labKey]}
+                                            expanded={expandedGroups[labKey]}
                                             onToggle={() => toggleGroup(labKey)}
                                             className="am-leaf-group"
                                           >
@@ -817,7 +831,8 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
                 title="Faculty"
                 icon={<School size={13} />}
                 count={roleSections.faculty.reduce((n, g) => n + g.count, 0)}
-                collapsed={collapsedGroups['role-faculty']}
+                defaultOpen
+                expanded={expandedGroups['role-faculty']}
                 onToggle={() => toggleGroup('role-faculty')}
                 className="am-role-group"
               >
@@ -830,7 +845,7 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
                       key={deptKey}
                       title={d.dept}
                       count={d.count}
-                      collapsed={collapsedGroups[deptKey]}
+                      expanded={expandedGroups[deptKey]}
                       onToggle={() => toggleGroup(deptKey)}
                     >
                       {d.designations.map((desig) => {
@@ -840,7 +855,7 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
                             key={desigKey}
                             title={desig.key}
                             count={desig.members.length}
-                            collapsed={collapsedGroups[desigKey]}
+                            expanded={expandedGroups[desigKey]}
                             onToggle={() => toggleGroup(desigKey)}
                             className="am-sec-group"
                           >
@@ -870,7 +885,8 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
                 title="Alumni"
                 icon={<Briefcase size={13} />}
                 count={roleSections.alumni.reduce((n, g) => n + g.count, 0)}
-                collapsed={collapsedGroups['role-alumni']}
+                defaultOpen
+                expanded={expandedGroups['role-alumni']}
                 onToggle={() => toggleGroup('role-alumni')}
                 className="am-role-group"
               >
@@ -883,7 +899,7 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
                       key={deptKey}
                       title={d.dept}
                       count={d.count}
-                      collapsed={collapsedGroups[deptKey]}
+                      expanded={expandedGroups[deptKey]}
                       onToggle={() => toggleGroup(deptKey)}
                     >
                       {d.batches.map((batch) => {
@@ -893,7 +909,7 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
                             key={batchKey}
                             title={batch.key}
                             count={batch.members.length}
-                            collapsed={collapsedGroups[batchKey]}
+                            expanded={expandedGroups[batchKey]}
                             onToggle={() => toggleGroup(batchKey)}
                             className="am-sec-group"
                           >

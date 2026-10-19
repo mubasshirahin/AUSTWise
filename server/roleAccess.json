@@ -1,64 +1,115 @@
 {
-  "cover": {
-    "featureHidden": [
-      "admin",
-      "moderator"
-    ],
-    "statsAllowed": [
-      "admin",
-      "moderator"
-    ]
-  },
   "default": {
-    "featureHidden": [
-      "admin",
-      "moderator"
-    ],
+    "featureHidden": [],
     "statsAllowed": [
       "admin",
       "moderator"
     ]
   },
-  "/analytics": {
-    "featureHidden": [
-      "moderator",
-      "admin",
-      "cr"
-    ],
+  "/": {
+    "enabled": true,
+    "featureHidden": [],
     "statsAllowed": [
       "admin",
       "moderator"
     ]
   },
-  "dashboard:stats": {
+  "feature:dashboard:at-a-glance": {
     "featureHidden": [
-      "moderator",
-      "admin"
+      "faculty"
     ],
     "statsAllowed": [
       "admin",
       "moderator"
-    ]
+    ],
+    "enabled": true
   },
-  "/campus": {
+  "feature:dashboard:notices": {
     "featureHidden": [
-      "admin",
-      "moderator",
-      "help_desk"
+      "faculty"
     ],
     "statsAllowed": [
       "admin",
       "moderator"
-    ]
+    ],
+    "enabled": true
   },
-  "dashboard:routine": {
+  "feature:dashboard:deadlines": {
     "featureHidden": [
-      "moderator",
-      "admin"
+      "faculty"
     ],
     "statsAllowed": [
       "admin",
       "moderator"
-    ]
+    ],
+    "enabled": true
+  },
+  "feature:dashboard:semester-view": {
+    "featureHidden": [
+      "faculty"
+    ],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:dashboard:zero-hour": {
+    "featureHidden": [
+      "faculty"
+    ],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:dashboard:attendance": {
+    "featureHidden": [
+      "faculty"
+    ],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:daily-life:cover-page": {
+    "featureHidden": [
+      "faculty"
+    ],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:daily-life:mess-meal": {
+    "featureHidden": [
+      "faculty"
+    ],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:analytics:semestertracker": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:analytics:bestworst": {
+    "featureHidden": [
+      "faculty"
+    ],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
   }
 }

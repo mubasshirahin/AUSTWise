@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CalendarDays, Clock, MapPin, User, ChevronLeft, ChevronRight, Plus, AlertTriangle } from 'lucide-react';
 import { useRoutine } from '../../context/RoutineContext';
+import { useAuth } from '../../context/AuthContext';
 import { normalizeAccentColor } from '../../utils/colorPalette';
 
 // Parse time string like "08:00 - 08:50" or "08:00 AM - 08:50 AM" to minutes from midnight
@@ -70,6 +71,7 @@ function parseEndTimeToMinutes(timeStr) {
 }
 
 export default function RoutineCard() {
+  const { user } = useAuth();
   const { routine, weekDays, isLoading } = useRoutine();
   const navigate = useNavigate();
   const [selectedDay, setSelectedDay] = useState(weekDays[0] || 'Saturday');
@@ -242,7 +244,9 @@ export default function RoutineCard() {
             <button className="btn btn-sm" onClick={() => navigate('/?tab=routine')} style={{ display:'inline-flex', alignItems:'center', gap:'6px' }}>
               <Plus size={14} /> Add in Weekly Planner
             </button>
-            <span style={{ fontSize:'11px', color:'var(--text-tertiary)' }}>Or load a shared routine via <b>Load Routine</b> in Weekly Planner</span>
+            {user?.role !== 'faculty' && !(typeof user?.hasRole === 'function' && user.hasRole('faculty')) && (
+              <span style={{ fontSize:'11px', color:'var(--text-tertiary)' }}>Or load a shared routine via <b>Load Routine</b> in Weekly Planner</span>
+            )}
           </div>
         ) : (
           classesForDay.map((cls, idx) => {

@@ -1,10 +1,13 @@
 import { useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { CalendarDays, Download, Building2, Check } from 'lucide-react';
 import { loadTemplates, mergeTemplatesToRoutine } from '../../utils/routineTemplates';
 import { useRoutine } from '../../context/RoutineContext';
+import { useAuth } from '../../context/AuthContext';
 import './DashboardPage.css';
 
 export default function RoutineTemplatesPage() {
+  const { user } = useAuth();
   const { replaceRoutine } = useRoutine();
   const [templates] = useState(() => loadTemplates());
   const [selectedDept, setSelectedDept] = useState('all');
@@ -55,6 +58,10 @@ export default function RoutineTemplatesPage() {
   const mergedTotalClasses = mergedDept
     ? Object.values(mergedDept.routine).reduce((sum, day) => sum + (Array.isArray(day) ? day.length : 0), 0)
     : 0;
+
+  if (user?.role === 'faculty' || (typeof user?.hasRole === 'function' && user.hasRole('faculty'))) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   return (
     <div className="dashboard-page animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
