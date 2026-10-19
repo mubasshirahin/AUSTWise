@@ -547,7 +547,7 @@ export default function RoutineAttendanceTracker() {
 
       {!sharedSemStart && (
         <div className="att-telegram-syncing">
-          Semester start date not set — the list starts from today. Your CR can set it in Semester View.
+Semester start date not set — the list starts from today. An admin can set it in Semester View.
         </div>
       )}
 

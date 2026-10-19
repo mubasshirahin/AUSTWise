@@ -3,6 +3,7 @@ import 'dotenv/config';
 import http from 'node:http';
 import { execFile } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
+import crypto from 'node:crypto';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -49,10 +50,10 @@ import {
 import { initializeDatabase, resetDatabase, query, sql, testConnection } from './db.mjs';
 import { handleOAuthRequest } from './socialOAuth.mjs';
 import { handleCleanerRequest } from './googleCleaner.mjs';
-import { handleAuthRoute, readTokenCookie, handleDevSwitchUser, handleDevSeedUsers, handleDevUsers } from './auth.mjs';
+import { handleAuthRoute, readTokenCookie, handleDevSwitchUser, handleDevSeedUsers, handleDevUsers, issueAuthCookie } from './auth.mjs';
 import { requireRole, requireAuth } from './middleware.mjs';
 import { rateLimit, extractRoutineRateLimiter } from './rateLimiter.mjs';
-import { getUserById, getUserByEmail, getAllUsersSafe, updateUserProfile, deleteUserById, countUsers, ADMIN_ASSIGNABLE_ROLES } from './userStore.mjs';
+import { getUserById, getUserByEmail, getAllUsersSafe, updateUserProfile, setUserPasswordHash, deleteUserById, countUsers, createUser, hashPassword, ADMIN_ASSIGNABLE_ROLES, FACULTY_DEPARTMENTS, facultyDepartmentRole } from './userStore.mjs';
 import {
   listMarketplace,
   addMarketplaceListing,
@@ -113,6 +114,15 @@ import {
   updateRoleApplication,
 } from './roleAppDB.mjs';
 import {
+  listAccessRequests,
+  addAccessRequest,
+  reviewAccessRequest,
+  addInvitation,
+  listInvitations,
+  findInvitationByHash,
+  updateInvitation,
+} from './accessFlowDB.mjs';
+import {
   saveCredential,
   updateCredential,
   listCredentials,
@@ -127,6 +137,8 @@ import {
   isUserStoreDeleted, isSharedStoreDeleted,
 } from './storeDB.mjs';
 import { startTelegramScheduler } from './telegramSchedulerJob.mjs';
+import { sendInvitationEmail } from './inviteEmail.mjs';
+import { previewSemesterMove, moveToNextSemester, saveAcademicResult, advanceAllStudents } from './academicEngine.mjs';
 
 // ── SSE: member-count live stream ─────────────────────────────────────────
 const memberCountSSEClients = new Set();
@@ -260,7 +272,12 @@ const useViteMiddleware = process.argv.includes('--vite');
 // endpoints (/api/dev/*, /__dev/users) and any NODE_ENV-gated behaviour are
 // hard-disabled even if the deployer forgets to set the variable.
 const isDevMode = useViteMiddleware || process.env.NODE_ENV === 'development';
-if (!isDevMode) process.env.NODE_ENV = 'production';
+// The local Vite server must use development cookie flags even when the
+// parent shell exports NODE_ENV=production. Secure cookies cannot be set on
+// the app's plain HTTP localhost origin, which otherwise leaves the UI
+// appearing signed in while every authenticated API call returns 401.
+if (useViteMiddleware) process.env.NODE_ENV = 'development';
+else if (!isDevMode) process.env.NODE_ENV = 'production';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.resolve(__dirname, '..', 'dist');
@@ -497,7 +514,9 @@ function normalizeUserSettings(raw) {
  *  break the inline-styles + external-embed heavy SPA by default. */
 function applySecurityHeaders(res) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
+  // The dev-only role matrix embeds this app's own pages in same-origin
+  // iframes. Keep production protected from framing by default.
+  res.setHeader('X-Frame-Options', isDevMode ? 'SAMEORIGIN' : 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   // CORB fix: allow cross-origin images (Google avatars) and API JSON to be read —
   // without this, nosniff + wrong MIME triggers CORB block on vercel→render rewrite.
@@ -515,6 +534,14 @@ function applySecurityHeaders(res) {
 function sendJson(res, status, payload) {
   res.writeHead(status, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(payload));
+}
+
+function getPublicBaseUrl(req) {
+  if (process.env.PUBLIC_BASE_URL) return process.env.PUBLIC_BASE_URL.replace(/\/+$/, '');
+  const host = req.headers.host || 'localhost:5174';
+  const local = /^(localhost|127\.0\.0\.1)(:\d+)?$/i.test(host);
+  const protocol = local ? 'http' : 'https';
+  return `${protocol}://${host}`;
 }
 
 async function sendStaticFile(req, res) {
@@ -705,8 +732,15 @@ server.on('request', async (req, res) => {
       if (req.url === '/__dev/users' && req.method === 'GET') return handleDevUsers(req, res);
     }
 
-    // Global flood guard — non-static requests count against this window.
-    if (globalRateLimiter(req, res)) {
+    // Global flood guard — scoped to the API only. It must never count Vite's
+    // own module requests (`/src/*`, `/@vite/*`, `/@fs/*`, `/node_modules/*`)
+    // or static assets: a single app load issues hundreds of them, so the
+    // 600/min budget was exhausted mid-session and the dev server started
+    // answering 429 — pages then stalled or failed to mount entirely
+    // (net::ERR_ABORTED on the module graph). Static requests always pass
+    // straight through to handleApiRequest (which serves them / the SPA).
+    const isApiRequest = req.url.startsWith('/api/');
+    if (!isApiRequest || globalRateLimiter(req, res)) {
       await handleApiRequest(req, res);
     }
   } catch {
@@ -1063,6 +1097,78 @@ async function handleApiRequest(req, res) {
     return;
   }
 
+  // Academic management: preview and apply a semester move, plus record marks.
+  if (req.url.startsWith('/api/admin/academic/preview') && req.method === 'GET') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const semester = new URL(req.url, 'http://localhost').searchParams.get('semester') || '';
+      if (!/^\d+\.\d+$/.test(semester)) return sendJson(res, 400, { success: false, error: 'A semester such as 3.1 is required.' });
+      return sendJson(res, 200, { success: true, ...(await previewSemesterMove(semester)) });
+    } catch (error) { return sendJson(res, 500, { success: false, error: error.message || 'Could not evaluate semester.' }); }
+  }
+  if (req.url === '/api/admin/academic/accounts' && req.method === 'GET') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    const users = await getAllUsersSafe();
+    return sendJson(res, 200, { success: true, users: users.filter(user => user.status === 'PENDING_APPROVAL') });
+  }
+  if (req.url === '/api/admin/academic/accounts/review' && req.method === 'POST') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const { userId, approved } = await readJsonBody(req);
+      if (approved !== true) return sendJson(res, 400, { success: false, error: 'Only approval is supported from this action.' });
+      const target = await getUserById(String(userId || ''));
+      if (!target || target.status !== 'PENDING_APPROVAL') return sendJson(res, 404, { success: false, error: 'Pending account not found.' });
+      const user = await updateUserProfile(target.id, { status: 'ACTIVE', emailAccessApproved: target.role === 'faculty' ? true : target.emailAccessApproved }, { allowRole: true });
+      return sendJson(res, 200, { success: true, user });
+    } catch (error) { return sendJson(res, 400, { success: false, error: error.message || 'Could not approve account.' }); }
+  }
+  if (req.url === '/api/admin/academic/results' && req.method === 'POST') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try { return sendJson(res, 200, { success: true, result: await saveAcademicResult(await readJsonBody(req)) }); }
+    catch (error) { return sendJson(res, 400, { success: false, error: error.message || 'Could not save result.' }); }
+  }
+  if (req.url === '/api/admin/academic/move' && req.method === 'POST') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const body = await readJsonBody(req);
+      if (body.confirm !== true || !/^\d+\.\d+$/.test(String(body.semester || ''))) return sendJson(res, 400, { success: false, error: 'Confirm the operation and provide a valid semester.' });
+      return sendJson(res, 200, { success: true, ...(await moveToNextSemester(String(body.semester), { holdPending: true })) });
+    } catch (error) { return sendJson(res, 500, { success: false, error: error.message || 'Could not move students.' }); }
+  }
+  if (req.url === '/api/admin/academic/advance-all' && req.method === 'POST') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try { return sendJson(res, 200, { success: true, ...(await advanceAllStudents()) }); }
+    catch (error) { return sendJson(res, 500, { success: false, error: error.message || 'Could not advance students.' }); }
+  }
+  if (req.url === '/api/auth/personal-email' && req.method === 'PUT') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
+    try {
+      const { personalEmail } = await readJsonBody(req);
+      const email = String(personalEmail || '').trim().toLowerCase();
+      if (!/^[^\s@]+@gmail\.com$/.test(email)) return sendJson(res, 400, { success: false, error: 'Enter a valid personal Gmail address.' });
+      const updated = await updateUserProfile(auth.id, { personalEmail: email });
+      return sendJson(res, 200, { success: true, user: updated });
+    } catch (error) { return sendJson(res, 400, { success: false, error: error.message || 'Could not save personal email.' }); }
+  }
+  if (req.url === '/api/auth/password-reset' && req.method === 'POST') {
+    try {
+      const { token, password } = await readJsonBody(req);
+      if (typeof password !== 'string' || password.length < 8) return sendJson(res, 400, { success: false, error: 'Password must be at least 8 characters.' });
+      const tokenHash = crypto.createHash('sha256').update(String(token || '')).digest('hex');
+      const target = (await getAllUsersSafe()).find(user => user.resetTokenHash && user.resetTokenHash === tokenHash && new Date(user.resetTokenExpiresAt) > new Date());
+      if (!target) return sendJson(res, 400, { success: false, error: 'This password reset link is invalid or expired.' });
+      await updateUserProfile(target.id, { password, resetTokenHash: '', resetTokenExpiresAt: '' });
+      return sendJson(res, 200, { success: true, message: 'Password updated. You can now sign in with your alumni email.' });
+    } catch (error) { return sendJson(res, 400, { success: false, error: error.message || 'Could not reset password.' }); }
+  }
+
   // Get all registered users (admin endpoint)
   if (req.url === '/api/telegram/users' && req.method === 'GET') {
     const auth = requireRole('admin', 'moderator')(req, res);
@@ -1110,7 +1216,55 @@ async function handleApiRequest(req, res) {
         sendJson(res, 400, { success: false, error: 'Invalid role.' });
         return;
       }
-      const updated = await updateUserProfile(userId, { role }, { allowRole: true });
+      const current = await getUserById(userId);
+      if (!current) {
+        sendJson(res, 404, { success: false, error: 'User not found.' });
+        return;
+      }
+      const leadershipRoles = ['cr', 'sr', 'vp', 'gs', 'readd'];
+      const currentRoles = new Set([...(Array.isArray(current.roles) ? current.roles : []), current.role]);
+      const conflict = leadershipRoles.find((existingRole) => currentRoles.has(existingRole) && existingRole !== role);
+      if (leadershipRoles.includes(role) && conflict) {
+        sendJson(res, 409, { success: false, error: `User already holds ${conflict.toUpperCase()}. Resign before assigning another student leadership role.` });
+        return;
+      }
+      const facultyRoleDepartments = new Map(FACULTY_DEPARTMENTS.map((department) => [facultyDepartmentRole(department), department]));
+      const studentSubroles = ['cr', 'sr', 'vp', 'gs', 'readd', 'bus_coordinator', 'clubs_representative'];
+      const studentAddons = ['bus_coordinator', 'clubs_representative'];
+      const isCurrentStudent = currentRoles.has('student') || ['cr', 'sr', 'vp', 'gs', 'readd'].some((studentRole) => currentRoles.has(studentRole));
+      if (studentAddons.includes(role) && !isCurrentStudent) {
+        sendJson(res, 409, { success: false, error: 'Bus Coordinator and Clubs Representative roles are available to students only.' });
+        return;
+      }
+      let primaryRole = role;
+      let roles = [role];
+      let facultyDepartment = '';
+      if (studentSubroles.includes(role)) {
+        const preservedAddons = ['bus_coordinator', 'clubs_representative'].filter((addon) => currentRoles.has(addon));
+        if (['bus_coordinator', 'clubs_representative'].includes(role)) {
+          const currentLeadershipRole = leadershipRoles.find((existingRole) => currentRoles.has(existingRole));
+          primaryRole = currentLeadershipRole || 'student';
+          roles = [...new Set(['student', ...(currentLeadershipRole ? [currentLeadershipRole] : []), ...preservedAddons, role])];
+        } else {
+          roles = [...new Set(['student', ...preservedAddons, role])];
+        }
+      } else if (role === 'student') {
+        primaryRole = 'student';
+        roles = [...new Set(['student', ...studentAddons.filter((addon) => currentRoles.has(addon))])];
+      } else if (role === 'alumni_with_carry') {
+        roles = ['alumni', 'alumni_with_carry'];
+      } else if (role === 'faculty' || facultyRoleDepartments.has(role)) {
+        facultyDepartment = facultyRoleDepartments.has(role)
+          ? facultyRoleDepartments.get(role)
+          : FACULTY_DEPARTMENTS.find((item) => item.toLowerCase() === String(current.department || '').trim().toLowerCase());
+        if (!facultyDepartment) {
+          sendJson(res, 400, { success: false, error: 'A faculty role must have exactly one valid department.' });
+          return;
+        }
+        primaryRole = 'faculty';
+        roles = ['faculty', facultyDepartmentRole(facultyDepartment)];
+      }
+      const updated = await updateUserProfile(userId, { role: primaryRole, roles: [...new Set(roles)], ...(facultyDepartment ? { department: facultyDepartment } : {}) }, { allowRole: true });
       if (!updated) {
         sendJson(res, 404, { success: false, error: 'User not found.' });
         return;
@@ -1159,10 +1313,52 @@ async function handleApiRequest(req, res) {
       // Whitelist the fields an admin may edit.
       const allowed = ['name', 'email', 'role', 'department', 'batch', 'batchNo', 'batchName',
         'designation', 'company', 'graduationYear', 'yearSemester', 'section', 'labSection',
-        'semester', 'cgpa', 'avatar', 'bloodGroup', 'facebook', 'whatsapp'];
+        'semester', 'cgpa', 'avatar', 'bloodGroup', 'facebook', 'whatsapp', 'linkedin', 'discord',
+        'personalEmail', 'openForTalk', 'creditsCompleted', 'totalCredits', 'originalBatch',
+        'currentAcademicBatch', 'currentSemester', 'maxSemester', 'academicStatus', 'accountStatus', 'roles'];
       const patch = {};
       for (const key of allowed) {
         if (key in body) patch[key] = body[key];
+      }
+      if (body.role) {
+        const studentRoles = ['student', 'cr', 'sr', 'readd', 'gs', 'vp', 'bus_coordinator', 'clubs_representative'];
+        const studentAddons = ['bus_coordinator', 'clubs_representative'];
+        const exclusiveStudentRoles = ['readd', 'cr', 'sr', 'vp', 'gs'];
+        if (studentRoles.includes(body.role)) {
+          const currentRoles = new Set([...(Array.isArray(existing.roles) ? existing.roles : []), existing.role]);
+          const isCurrentStudent = currentRoles.has('student') || ['cr', 'sr', 'readd', 'gs', 'vp'].some((studentRole) => currentRoles.has(studentRole));
+          if (studentAddons.includes(body.role) && !isCurrentStudent) {
+            sendJson(res, 409, { success: false, error: 'Bus Coordinator and Clubs Representative roles are available to students only.' });
+            return;
+          }
+          const selectedStudentRoles = new Set((Array.isArray(body.roles) ? body.roles : []).filter((role) => studentRoles.includes(role) && role !== 'student'));
+          if (body.role !== 'student') selectedStudentRoles.add(body.role);
+          const exclusive = [...selectedStudentRoles].filter((role) => exclusiveStudentRoles.includes(role));
+          if (exclusive.length > 1) {
+            sendJson(res, 400, { success: false, error: 'A student can hold only one primary student role at a time.' });
+            return;
+          }
+          patch.role = exclusive[0] || 'student';
+          patch.roles = [...new Set(['student', ...selectedStudentRoles])];
+        } else if (body.role === 'faculty' || String(body.role).startsWith('faculty_')) {
+          const facultyRoleDepartments = new Map(FACULTY_DEPARTMENTS.map((department) => [facultyDepartmentRole(department), department]));
+          const selectedFacultyRoles = [...new Set((Array.isArray(body.roles) ? body.roles : []).filter((role) => facultyRoleDepartments.has(role)))];
+          if (String(body.role).startsWith('faculty_') && facultyRoleDepartments.has(body.role) && !selectedFacultyRoles.includes(body.role)) selectedFacultyRoles.push(body.role);
+          const facultyDepartment = selectedFacultyRoles.length === 1
+            ? facultyRoleDepartments.get(selectedFacultyRoles[0])
+            : FACULTY_DEPARTMENTS.find((department) => department.toLowerCase() === String(body.department || '').trim().toLowerCase());
+          if (selectedFacultyRoles.length > 1 || !facultyDepartment) {
+            sendJson(res, 400, { success: false, error: 'A faculty account must have exactly one valid department role.' });
+            return;
+          }
+          patch.role = 'faculty';
+          patch.department = facultyDepartment;
+          patch.roles = ['faculty', facultyDepartmentRole(facultyDepartment)];
+        } else if (body.role === 'alumni_with_carry') {
+          patch.roles = ['alumni', 'alumni_with_carry'];
+        } else {
+          patch.roles = [body.role];
+        }
       }
       if (patch.email && patch.email !== existing.email) {
         const clash = await getUserByEmail(patch.email);
@@ -1530,9 +1726,74 @@ async function handleApiRequest(req, res) {
     await writeFile(p, JSON.stringify(data, null, 2));
   }
   function getRoleAccessForKey(all, key) {
-    if (key && all[key]) return all[key];
-    if (all['default']) return all['default'];
-    return { featureHidden: ['admin','moderator'], statsAllowed: ['admin','moderator'] };
+    const base = (all && all['default']) || {};
+    const cfg = (key && all[key]) || {};
+    const featureDefaults = key?.startsWith('feature:') ? { featureHidden: [], statsAllowed: ['admin', 'moderator'] } : base;
+    const enabled = typeof cfg.enabled === 'boolean'
+      ? cfg.enabled
+      : (typeof featureDefaults.enabled === 'boolean' ? featureDefaults.enabled : true);
+    return {
+      featureHidden: Array.isArray(cfg.featureHidden)
+        ? cfg.featureHidden
+        : (Array.isArray(featureDefaults.featureHidden) ? featureDefaults.featureHidden : []),
+      statsAllowed: Array.isArray(cfg.statsAllowed)
+        ? cfg.statsAllowed
+        : (Array.isArray(featureDefaults.statsAllowed) ? featureDefaults.statsAllowed : ['admin', 'moderator']),
+      enabled,
+    };
+  }
+  // Public availability is separate from per-role access: admins can prepare
+  // a feature privately, then publish it for everyone with one switch.
+  if (req.url.startsWith('/api/page-availability') && req.method === 'GET') {
+    try {
+      const url = new URL(req.url, `http://${req.headers.host}`);
+      const all = await readRoleAccess();
+      const key = url.searchParams.get('key');
+      if (key) {
+        sendJson(res, 200, { success: true, key, enabled: all[key]?.enabled !== false });
+      } else {
+        const enabledPages = Object.fromEntries(Object.entries(all).map(([pageKey, cfg]) => [pageKey, cfg?.enabled !== false]));
+        sendJson(res, 200, { success: true, enabledPages });
+      }
+    } catch (e) {
+      sendJson(res, 500, { success: false, error: e.message || 'Failed to load page settings' });
+    }
+    return;
+  }
+  if (req.url === '/api/admin/page-availability' && req.method === 'POST') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const body = await readJsonBody(req);
+      const pageKey = String(body.pageKey || '').trim();
+      if (!pageKey || typeof body.enabled !== 'boolean') {
+        sendJson(res, 400, { success: false, error: 'pageKey and enabled are required' });
+        return;
+      }
+      const all = await readRoleAccess();
+      all[pageKey] = { ...(all[pageKey] || {}), enabled: body.enabled };
+      await writeRoleAccess(all);
+      try { broadcastToAll({ type: 'page-availability', payload: { pageKey, enabled: body.enabled } }); } catch {}
+      sendJson(res, 200, { success: true, pageKey, enabled: body.enabled });
+    } catch (e) {
+      sendJson(res, 500, { success: false, error: e.message || 'Failed to save page setting' });
+    }
+    return;
+  }
+  // GET /api/role-access/map — public, returns EVERY page config in one shot so
+  // the sidebar can decide which links a role may see without N requests.
+  if (req.url === '/api/role-access/map' && req.method === 'GET') {
+    try {
+      const all = await readRoleAccess();
+      const configs = {};
+      for (const pageKey of Object.keys(all)) {
+        configs[pageKey] = getRoleAccessForKey(all, pageKey);
+      }
+      sendJson(res, 200, { success: true, configs });
+    } catch (e) {
+      sendJson(res, 500, { success: false, error: e.message || 'Failed to load role access map' });
+    }
+    return;
   }
   // GET /api/role-access?key=xxx — public, returns per-page config (fallback to default)
   if (req.url.startsWith('/api/role-access') && req.method === 'GET') {
@@ -1541,14 +1802,6 @@ async function handleApiRequest(req, res) {
       const key = url.searchParams.get('key') || url.searchParams.get('pageKey') || 'default';
       const all = await readRoleAccess();
       const cfg = getRoleAccessForKey(all, key);
-      // also try pathname-based fallback for cover
-      if (!all[key] && key.includes('/')) {
-        const alt = key.split('?')[0].split('/').pop() || key;
-        if (all[alt]) {
-          sendJson(res, 200, { success: true, key: alt, ...all[alt] });
-          return;
-        }
-      }
       sendJson(res, 200, { success: true, key, ...cfg });
     } catch (e) {
       sendJson(res, 500, { success: false, error: e.message || 'Failed to load role access' });
@@ -1567,10 +1820,12 @@ async function handleApiRequest(req, res) {
       if (!pageKey) { sendJson(res, 400, { success: false, error: 'pageKey required' }); return; }
       if (!featureHidden || !statsAllowed) { sendJson(res, 400, { success: false, error: 'featureHidden and statsAllowed arrays required' }); return; }
       const all = await readRoleAccess();
-      all[pageKey] = { featureHidden, statsAllowed };
+      // Merge so we do not clobber the page "enabled" flag managed by the
+      // Page publishing panel (they share roleAccess.json).
+      all[pageKey] = { ...(all[pageKey] || {}), featureHidden, statsAllowed, enabled: typeof body.enabled === 'boolean' ? body.enabled : all[pageKey]?.enabled !== false };
       await writeRoleAccess(all);
-      try { broadcastToAll({ type: 'role-access', payload: { pageKey, featureHidden, statsAllowed } }); } catch {}
-      sendJson(res, 200, { success: true, pageKey, featureHidden, statsAllowed });
+      try { broadcastToAll({ type: 'role-access', payload: { pageKey, featureHidden, statsAllowed, enabled: all[pageKey].enabled } }); } catch {}
+      sendJson(res, 200, { success: true, pageKey, featureHidden, statsAllowed, enabled: all[pageKey].enabled });
     } catch (e) {
       sendJson(res, 500, { success: false, error: e.message || 'Failed to save role access' });
     }
@@ -1606,7 +1861,7 @@ async function handleApiRequest(req, res) {
         postedByRole: auth.role,
         scope,
       });
-      broadcastToAll({ type: 'notice-new', payload: { title: payload.title, content: payload.content, postedByName: safeName, postedByRole: auth.role, scope } });
+      broadcastToAll({ type: 'notice-new', payload: { title: payload.title, content: payload.content, postedById: auth.id, postedByName: safeName, postedByRole: auth.role, scope } });
       sendJson(res, 200, result);
     } catch (error) {
       sendJson(res, 500, {
@@ -2148,10 +2403,341 @@ async function handleApiRequest(req, res) {
 
   // ========== Invitation Endpoints ==========
 
+  // Public access request: used by non-AUST Faculty and all Alumni applicants.
+  if (req.url === '/api/access-requests' && req.method === 'POST') {
+    try {
+      const body = await readJsonBody(req);
+      const role = String(body.role || '').trim().toLowerCase();
+      const email = String(body.email || '').trim().toLowerCase();
+      const austEmail = /^[^@\s]+@(?:[a-z0-9-]+\.)*aust\.edu$/i.test(email);
+      if (!['faculty', 'alumni'].includes(role)) {
+        sendJson(res, 400, { success: false, error: 'Only Faculty and Alumni may use the access request form.' });
+        return;
+      }
+      if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        sendJson(res, 400, { success: false, error: 'Enter a valid contact email address.' });
+        return;
+      }
+      const password = String(body.password || '');
+      if (password.length < 8 || password.length > 256) {
+        sendJson(res, 400, { success: false, error: 'Password must be between 8 and 256 characters.' });
+        return;
+      }
+      if (role === 'faculty' && austEmail) {
+        sendJson(res, 400, { success: false, error: 'Faculty with an @aust.edu email can sign up directly.' });
+        return;
+      }
+      if (role === 'alumni' && austEmail) {
+        sendJson(res, 400, { success: false, error: 'Alumni must use a personal contact email. AUST email access is not used for Alumni accounts.' });
+        return;
+      }
+      const previousEmail = String(body.previousEmail || '').trim().toLowerCase();
+      if (previousEmail && (role !== 'alumni' || !/^[^@\s]+@(?:[a-z0-9-]+\.)*aust\.edu$/i.test(previousEmail))) {
+        sendJson(res, 400, { success: false, error: 'The previous AUST email is only used to migrate an Alumni account.' });
+        return;
+      }
+      if (!String(body.name || '').trim() || !String(body.department || '').trim()) {
+        sendJson(res, 400, { success: false, error: 'Name and department are required.' });
+        return;
+      }
+      if (role === 'faculty' && !String(body.designation || '').trim()) {
+        sendJson(res, 400, { success: false, error: 'Faculty designation is required.' });
+        return;
+      }
+      let normalizedBatch = null;
+      if (role === 'alumni') {
+        const batchMatch = String(body.batch || `${body.batchName || ''} ${body.batchNo || ''}`).trim().match(/^([A-Za-z]+)\s+(\d+)$/);
+        if (!batchMatch) {
+          sendJson(res, 400, { success: false, error: 'Enter the batch as one word followed by its number, for example: Batch 45.' });
+          return;
+        }
+        if ((body.batchName && String(body.batchName).trim().toLowerCase() !== batchMatch[1].toLowerCase()) || (body.batchNo && String(body.batchNo).trim() !== batchMatch[2])) {
+          sendJson(res, 400, { success: false, error: 'Batch name and batch number must match the format you entered.' });
+          return;
+        }
+        normalizedBatch = { batch: `${batchMatch[1]} ${batchMatch[2]}`, batchName: batchMatch[1], batchNo: batchMatch[2] };
+      }
+      const passwordHash = await hashPassword(password);
+      const result = await addAccessRequest({ ...body, ...(normalizedBatch || {}), passwordHash });
+      if (result.duplicate) {
+        sendJson(res, 200, { success: true, duplicate: true, message: 'Your request is already waiting for admin review.' });
+        return;
+      }
+      sendJson(res, 201, { success: true, requestId: result.request.id, message: 'Your request was sent to the admin for review.' });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Could not submit the access request.' });
+    }
+    return;
+  }
+
+  if (req.url === '/api/admin/access-requests' && req.method === 'GET') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    const requests = await listAccessRequests();
+    sendJson(res, 200, { success: true, requests: requests.map(({ passwordHash, ...request }) => request) });
+    return;
+  }
+
+  if (req.url === '/api/admin/access-requests/review' && req.method === 'POST') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const body = await readJsonBody(req);
+      if (!body.requestId || !['approved', 'rejected'].includes(body.status)) {
+        sendJson(res, 400, { success: false, error: 'requestId and approved/rejected status are required.' });
+        return;
+      }
+      const requests = await listAccessRequests();
+      const request = requests.find((item) => item.id === body.requestId && item.status === 'pending');
+      if (!request) {
+        sendJson(res, 404, { success: false, error: 'Pending access request not found.' });
+        return;
+      }
+
+      let inviteLink = '';
+      let grantedAccount = null;
+      if (body.status === 'approved') {
+        const existingUser = await getUserByEmail(request.email)
+          || (request.role === 'alumni' && request.previousEmail ? await getUserByEmail(request.previousEmail) : null);
+        if (existingUser) {
+          if (['admin', 'moderator'].includes(existingUser.role)) {
+            sendJson(res, 409, { success: false, error: 'Admin and Moderator accounts cannot be reassigned through an access request.' });
+            return;
+          }
+          grantedAccount = await updateUserProfile(existingUser.id, {
+            email: request.email,
+            role: request.role,
+            emailAccessApproved: request.role === 'faculty' && !/@(?:[a-z0-9-]+\.)*aust\.edu$/i.test(request.email),
+            department: request.department,
+            designation: request.designation,
+            batch: request.batch,
+            batchNo: String(request.batch || '').trim().match(/^([A-Za-z]+)\s+(\d+)$/)?.[2] || '',
+            batchName: String(request.batch || '').trim().match(/^([A-Za-z]+)\s+(\d+)$/)?.[1] || '',
+            graduationYear: request.graduationYear,
+            company: request.company,
+          }, { allowRole: true });
+          if (request.passwordHash) {
+            grantedAccount = await setUserPasswordHash(existingUser.id, request.passwordHash);
+          }
+        } else {
+          if (request.passwordHash) {
+            grantedAccount = await createUser({
+              name: request.name,
+              email: request.email,
+              role: request.role,
+              department: request.department,
+              designation: request.designation,
+              batch: request.batch,
+              batchNo: request.batch,
+              batchName: request.batch,
+              graduationYear: request.graduationYear,
+              company: request.company,
+            }, { invitationAuthorized: true, passwordHash: request.passwordHash });
+          } else {
+          const token = crypto.randomBytes(32).toString('hex');
+          const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+          const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+          const invitation = {
+            id: `INV-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
+            email: request.email,
+            role: request.role,
+            tokenHash,
+            status: 'pending',
+            invitedBy: auth.id,
+            createdAt: new Date().toISOString(),
+            expiresAt,
+            profile: {
+              department: request.department,
+              designation: request.designation,
+              batch: request.batch,
+              batchNo: request.batch,
+              batchName: request.batch,
+              graduationYear: request.graduationYear,
+              company: request.company,
+            },
+          };
+          const added = await addInvitation(invitation);
+          if (added.duplicate) {
+            sendJson(res, 409, { success: false, error: 'An active invitation already exists for this email.' });
+            return;
+          }
+          const baseUrl = getPublicBaseUrl(req);
+          inviteLink = `${baseUrl}/accept-invite?token=${encodeURIComponent(token)}`;
+          }
+        }
+      }
+      const updated = await reviewAccessRequest(request.id, body.status, auth.id, null);
+      sendJson(res, 200, { success: true, request: updated, inviteLink, grantedAccount: grantedAccount ? { id: grantedAccount.id, email: grantedAccount.email, role: grantedAccount.role } : null });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Could not review the access request.' });
+    }
+    return;
+  }
+
+  // Create an invitation. The token itself is shown only in the generated link;
+  // the JSON store keeps only its hash.
+  if (req.url === '/api/invites' && req.method === 'POST') {
+    const auth = requireRole('admin')(req, res);
+    if (!auth) return;
+    try {
+      const { email: rawEmail, role, profile = {} } = await readJsonBody(req);
+      const email = String(rawEmail || '').trim().toLowerCase();
+      if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        sendJson(res, 400, { success: false, error: 'Enter a valid email address.' });
+        return;
+      }
+      if (!['faculty', 'alumni'].includes(role)) {
+        sendJson(res, 400, { success: false, error: 'Invitations are available for Faculty and Alumni.' });
+        return;
+      }
+      if (role === 'alumni' && /@(?:[a-z0-9-]+\.)*aust\.edu$/i.test(email)) {
+        sendJson(res, 400, { success: false, error: 'Use the Alumni member’s personal contact email, not an AUST email.' });
+        return;
+      }
+      if (await getUserByEmail(email)) {
+        sendJson(res, 409, { success: false, error: 'An account already uses this email. Update its role from Manage Accounts or submit an access request for admin review.' });
+        return;
+      }
+      const token = crypto.randomBytes(32).toString('hex');
+      const invitation = {
+        id: `INV-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
+        email,
+        role,
+        tokenHash: crypto.createHash('sha256').update(token).digest('hex'),
+        status: 'pending',
+        invitedBy: auth.id,
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        profile: {
+          department: String(profile.department || '').trim(),
+          designation: String(profile.designation || '').trim(),
+          batch: String(profile.batch || '').trim(),
+          batchNo: String(profile.batchNo || profile.batch || '').trim(),
+          batchName: String(profile.batchName || profile.batch || '').trim(),
+          graduationYear: String(profile.graduationYear || '').trim(),
+          company: String(profile.company || '').trim(),
+        },
+      };
+      const result = await addInvitation(invitation);
+      const invitationRecord = result.duplicate ? result.invitation : invitation;
+      let trackedInvitation = invitationRecord;
+      if (result.duplicate) {
+        trackedInvitation = await updateInvitation(invitationRecord.id, {
+          ...invitation,
+          id: invitationRecord.id,
+          emailStatus: null,
+          emailSubmittedAt: null,
+          emailMessageId: null,
+          emailErrorCode: null,
+        });
+      }
+      const baseUrl = getPublicBaseUrl(req);
+      const inviteLink = `${baseUrl}/accept-invite?token=${encodeURIComponent(token)}`;
+      try {
+        const mailResult = await sendInvitationEmail({ to: email, role, inviteLink, expiresAt: invitation.expiresAt });
+        trackedInvitation = await updateInvitation(invitationRecord.id, {
+          emailStatus: 'accepted_by_gmail',
+          emailSubmittedAt: new Date().toISOString(),
+          emailMessageId: mailResult.messageId,
+          emailErrorCode: null,
+        });
+        console.info('[Invitations] Gmail accepted invite email:', { invitationId: invitationRecord.id, messageId: mailResult.messageId });
+      } catch (mailError) {
+        await updateInvitation(invitationRecord.id, {
+          emailStatus: 'failed',
+          emailSubmittedAt: null,
+          emailErrorCode: mailError.code || 'UNKNOWN',
+        });
+        console.error('[Invitations] Could not send invite email:', { code: mailError.code || 'UNKNOWN', responseCode: mailError.responseCode || null });
+        const smtpCode = mailError.code || 'SMTP_ERROR';
+        sendJson(res, 503, {
+          success: false,
+          error: mailError.message.includes('GMAIL_USER')
+            ? 'Gmail sending is not configured. Set GMAIL_USER and GMAIL_APP_PASSWORD in the server .env, then try again.'
+            : `Gmail did not accept the invitation email (${smtpCode}${mailError.responseCode ? ` / ${mailError.responseCode}` : ''}). Check the server log and Gmail account settings, then try again.`,
+        });
+        return;
+      }
+      const { tokenHash: _tokenHash, ...safeInvitation } = trackedInvitation;
+      sendJson(res, 201, { success: true, emailSent: true, resent: result.duplicate, inviteLink, invitation: safeInvitation });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to create invitation.' });
+    }
+    return;
+  }
+
+  if (req.url.startsWith('/api/invites') && req.method === 'GET') {
+    const auth = requireRole('admin')(req, res);
+    if (!auth) return;
+    const invitations = await listInvitations();
+    sendJson(res, 200, {
+      success: true,
+      invitations: invitations.map(({ tokenHash, profile, ...invite }) => ({
+        ...invite,
+        Id: invite.id,
+        Email: invite.email,
+        Role: invite.role,
+        Status: invite.status,
+        CreatedAt: invite.createdAt,
+        EmailStatus: invite.emailStatus || 'unknown',
+        EmailSubmittedAt: invite.emailSubmittedAt || null,
+        ExpiresAt: invite.expiresAt,
+        AcceptedAt: invite.acceptedAt || null,
+      })),
+      pagination: { page: 1, limit: 50, total: invitations.length, totalPages: 1 },
+    });
+    return;
+  }
+
+  if (req.url.startsWith('/api/invite/validate') && req.method === 'GET') {
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const token = url.searchParams.get('token') || '';
+    if (!token) { sendJson(res, 400, { success: false, error: 'Token is required.' }); return; }
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const invite = await findInvitationByHash(tokenHash);
+    if (!invite || invite.status !== 'pending' || new Date(invite.expiresAt) < new Date()) {
+      sendJson(res, 410, { success: false, error: 'This invitation is invalid, expired, or already used.' });
+      return;
+    }
+    sendJson(res, 200, { success: true, email: invite.email, role: invite.role, profile: invite.profile || {} });
+    return;
+  }
+
+  if (req.url === '/api/invite/accept' && req.method === 'POST') {
+    try {
+      const { token, name, password, profile = {} } = await readJsonBody(req);
+      if (!token || !name || String(password || '').length < 8) {
+        sendJson(res, 400, { success: false, error: 'Invitation token, name, and an 8-character password are required.' });
+        return;
+      }
+      const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+      const invite = await findInvitationByHash(tokenHash);
+      if (!invite || invite.status !== 'pending' || new Date(invite.expiresAt) < new Date()) {
+        sendJson(res, 410, { success: false, error: 'This invitation is invalid, expired, or already used.' });
+        return;
+      }
+      const allowedProfile = {};
+      for (const field of ['department', 'designation', 'batch', 'batchNo', 'batchName', 'graduationYear', 'company']) {
+        if (typeof profile[field] === 'string' && profile[field].trim()) allowedProfile[field] = profile[field].trim();
+      }
+      const user = await createUser({ ...invite.profile, ...allowedProfile, email: invite.email, name, password, role: invite.role }, { invitationAuthorized: true });
+      await updateInvitation(invite.id, { status: 'accepted', acceptedAt: new Date().toISOString() });
+      issueAuthCookie(res, user);
+      sendJson(res, 201, {
+        success: true,
+        user: { id: user.id, email: user.email, role: user.role },
+        message: 'Account created and signed in.',
+      });
+    } catch (error) {
+      sendJson(res, 400, { success: false, error: error.message || 'Could not accept the invitation.' });
+    }
+    return;
+  }
+
   // Create a new invitation (admin only)
   if (req.url === '/api/invites' && req.method === 'POST') {
     if (!requireFeature('db', res, 'Database connection')) return;
-    const auth = requireRole('admin', 'moderator')(req, res);
+    const auth = requireRole('admin')(req, res);
     if (!auth) return;
     try {
       const { email, role, invitedBy } = await readJsonBody(req);
@@ -2235,7 +2821,7 @@ async function handleApiRequest(req, res) {
   // List invitations with pagination (admin only)
   if (req.url.startsWith('/api/invites') && req.method === 'GET') {
     if (!requireFeature('db', res, 'Database connection')) return;
-    const auth = requireRole('admin', 'moderator')(req, res);
+    const auth = requireRole('admin')(req, res);
     if (!auth) return;
     try {
       const url = new URL(req.url, `http://${req.headers.host}`);
@@ -3026,6 +3612,71 @@ async function handleApiRequest(req, res) {
     const key = decodeURIComponent(req.url.slice('/api/store/shared/'.length));
     try {
       const body = await readJsonBody(req);
+      if (key.startsWith('aust-semester-tasks:')) {
+        if (auth.role !== 'cr') {
+          sendJson(res, 403, { success: false, error: 'Only CRs can publish semester tasks.' });
+          return;
+        }
+        const dbUser = await getUserById(auth.id);
+        const group = key.slice(key.lastIndexOf(':') + 1).toUpperCase();
+        const expectedPrefix = dbUser?.department && dbUser?.semester
+          ? `aust-semester-tasks:${String(dbUser.department).trim().toUpperCase()}:${dbUser.semester}:`
+          : '';
+        if (!dbUser || !expectedPrefix || !key.startsWith(expectedPrefix)
+          || !['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2'].includes(group)
+          || String(dbUser.labSection || '').trim().toUpperCase() !== group) {
+          sendJson(res, 403, { success: false, error: 'CRs can publish tasks only to their own department, semester, and lab group.' });
+          return;
+        }
+        if (!Array.isArray(body.value)) {
+          sendJson(res, 400, { success: false, error: 'Semester tasks must be an array.' });
+          return;
+        }
+        const existing = await getSharedStoreValue(key, []);
+        const existingById = new Map((Array.isArray(existing) ? existing : []).map((task) => [String(task.id), task]));
+        const submittedIds = new Set();
+        const ownTasks = body.value.slice(-500).flatMap((task) => {
+          if (!task || typeof task !== 'object') return [];
+          const title = String(task.title || '').trim().slice(0, 160);
+          const date = String(task.date || '');
+          if (!title || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return [];
+          const prior = existingById.get(String(task.id));
+          if (prior && prior.createdBy !== auth.id) {
+            submittedIds.add(String(prior.id));
+            return [prior];
+          }
+          const id = String(task.id || crypto.randomUUID()).slice(0, 100);
+          submittedIds.add(id);
+          return [{
+            id,
+            title,
+            courseCode: String(task.courseCode || '').slice(0, 40),
+            courseName: String(task.courseName || '').slice(0, 120),
+            syllabus: String(task.syllabus || '').slice(0, 4000),
+            date,
+            time: /^\d{2}:\d{2}$/.test(String(task.time || '')) ? String(task.time) : '',
+            batchGroup: group,
+            crGroup: group,
+            department: dbUser.department,
+            yearSemester: dbUser.yearSemester || '',
+            createdBy: prior?.createdBy || auth.id,
+            createdByName: prior?.createdByName || dbUser.name || '',
+            createdAt: prior?.createdAt || new Date().toISOString(),
+            isSharedSemesterTask: true,
+          }];
+        });
+        const preservedOtherAuthors = (Array.isArray(existing) ? existing : [])
+          .filter((task) => task?.createdBy !== auth.id && !submittedIds.has(String(task.id)));
+        const value = [...preservedOtherAuthors, ...ownTasks];
+        await setSharedStoreValue(key, value, auth.id);
+        broadcastToAll({ type: 'store-change', payload: { scope: 'shared', key } });
+        sendJson(res, 200, { success: true, key, value });
+        return;
+      }
+      if (key === 'semester-start-date' && auth.role !== 'admin') {
+        sendJson(res, 403, { success: false, error: 'Only admins can change the semester start date.' });
+        return;
+      }
       // Only admins may overwrite the global notice board (prevents student takeover).
       if (key === 'aust-notices' && !['admin', 'moderator'].includes(auth.role)) {
         sendJson(res, 403, { success: false, error: 'Only admin or moderator can update notices.' });
@@ -3086,16 +3737,16 @@ async function handleApiRequest(req, res) {
           // On DB miss, fall through to store raw (offline fallback will validate client-side)
         }
       }
-      // The semester start date is a single admin/CR-controlled value: everyone
-      // reads the same date and students must not be able to override it.
-      if (key === 'semester-start-date' && !['admin', 'moderator', 'cr'].includes(auth.role)) {
-        sendJson(res, 403, { success: false, error: 'Only admin or CR can change the semester start date.' });
+      // The semester start date is a single admin-controlled value: everyone
+      // reads the same date, but only admins may update it.
+      if (key === 'semester-start-date' && auth.role !== 'admin') {
+        sendJson(res, 403, { success: false, error: 'Only admins can change the semester start date.' });
         return;
       }
       // The shared exam schedule (Zero Hour) is CR/SR-controlled per section:
       // every section member reads the same key, but only editors may write it.
-      if (key.startsWith('aust-exam-schedule:') && !['admin', 'moderator', 'cr', 'sr'].includes(auth.role)) {
-        sendJson(res, 403, { success: false, error: 'Only CR/SR or admin can update the shared exam schedule.' });
+      if (key.startsWith('aust-exam-schedule:') && auth.role !== 'cr') {
+        sendJson(res, 403, { success: false, error: 'Only a CR can update the shared Zero Hour schedule.' });
         return;
       }
       // Validate Zero Hour slot key matches poster's profile (prevent cross-section write) + rate limit
@@ -3112,8 +3763,8 @@ async function handleApiRequest(req, res) {
           if (!dbUser) { sendJson(res, 404, { success: false, error: 'User not found.' }); return; }
           const expected = `${dbUser.department || ''}|${dbUser.yearSemester || ''}|${dbUser.section || ''}|${dbUser.labSection || ''}`;
           const actualSlot = key.slice('aust-exam-schedule:'.length);
-          // Admin/moderator can write any slot (for diagnostics), CR/SR must match own
-          if (!['admin','moderator'].includes(auth.role) && actualSlot !== expected) {
+          // CRs can update only their own section and lab slot.
+          if (actualSlot !== expected) {
             // Allow if actualSlot is prefix of expected or vice versa due to empty lab? Strict
             if (actualSlot !== expected) { sendJson(res, 403, { success: false, error: 'Slot key must match your profile (department|yearSemester|section|labSection).' }); return; }
           }
@@ -3137,13 +3788,29 @@ async function handleApiRequest(req, res) {
     const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
     if (!auth) return;
     const key = decodeURIComponent(req.url.slice('/api/store/shared/'.length));
+    if (key.startsWith('aust-semester-tasks:')) {
+      const dbUser = auth.role === 'cr' ? await getUserById(auth.id) : null;
+      const group = key.slice(key.lastIndexOf(':') + 1).toUpperCase();
+      const expectedPrefix = dbUser?.department && dbUser?.semester
+        ? `aust-semester-tasks:${String(dbUser.department).trim().toUpperCase()}:${dbUser.semester}:`
+        : '';
+      if (auth.role !== 'cr' || !expectedPrefix || !key.startsWith(expectedPrefix)
+        || String(dbUser.labSection || '').trim().toUpperCase() !== group) {
+        sendJson(res, 403, { success: false, error: 'CRs can remove tasks only from their own lab group.' });
+        return;
+      }
+    }
+    if (key === 'semester-start-date' && auth.role !== 'admin') {
+      sendJson(res, 403, { success: false, error: 'Only admins can change the semester start date.' });
+      return;
+    }
     if ((key === 'aust-notices' || key === 'aust-cr-sr-notices') && !['admin', 'moderator'].includes(auth.role) && !(key === 'aust-cr-sr-notices' && ['cr','sr'].includes(auth.role))) {
       // Re-use the PUT logic: aust-notices admin-only, aust-cr-sr-notices cr/sr/admin.
       if (key === 'aust-notices') { sendJson(res, 403, { success: false, error: 'Only admin or moderator can delete notices.' }); return; }
       if (key === 'aust-cr-sr-notices' && !['cr','sr','admin','moderator'].includes(auth.role)) { sendJson(res, 403, { success: false, error: 'Only CR/SR or admin can delete CR/SR notices.' }); return; }
     }
-    if (key.startsWith('aust-exam-schedule:') && !['admin', 'moderator', 'cr', 'sr'].includes(auth.role)) {
-      sendJson(res, 403, { success: false, error: 'Only CR/SR or admin can modify the shared exam schedule.' });
+    if (key.startsWith('aust-exam-schedule:') && auth.role !== 'cr') {
+      sendJson(res, 403, { success: false, error: 'Only a CR can modify the shared Zero Hour schedule.' });
       return;
     }
     try {
@@ -3175,6 +3842,8 @@ async function handleApiRequest(req, res) {
         migrated += 1;
       }
       for (const [key, value] of Object.entries(sharedEntries)) {
+        if (key.startsWith('aust-semester-tasks:')) continue;
+        if (key === 'semester-start-date' && auth.role !== 'admin') continue;
         if (await isSharedStoreDeleted(key)) continue;
         const existing = await getSharedStoreValue(key, null);
         if (existing !== null) continue;
@@ -3233,14 +3902,46 @@ async function handleApiRequest(req, res) {
     return;
   }
 
+  // Return only the CR's public name for the signed-in user's exact lab slot.
+  if (req.url === '/api/zero-hour/cr' && req.method === 'GET') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
+    try {
+      const user = await getUserById(auth.id);
+      if (!user) { sendJson(res, 404, { success: false, error: 'User not found.' }); return; }
+      const required = [user.department, user.yearSemester, user.section, user.labSection];
+      if (required.some((value) => !value)) { sendJson(res, 200, { success: true, cr: null }); return; }
+      const users = await getAllUsersSafe();
+      const cr = users.find((candidate) => {
+        const roles = [candidate.role, ...(Array.isArray(candidate.roles) ? candidate.roles : [])]
+          .map((role) => String(role || '').toLowerCase());
+        return roles.includes('cr')
+          && candidate.department === user.department
+          && candidate.yearSemester === user.yearSemester
+          && candidate.section === user.section
+          && candidate.labSection === user.labSection;
+      });
+      sendJson(res, 200, { success: true, cr: cr ? { name: cr.name || '' } : null });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to load lab CR.' });
+    }
+    return;
+  }
+
   // CR publishes (or updates) their own routine — one per CR slot, replaces old.
   if (req.url === '/api/routines/shared' && req.method === 'POST') {
-    const auth = requireRole('cr')(req, res);
+    const auth = requireAuth(req, res);
     if (!auth) return;
     try {
       const user = await getUserById(auth.id);
       if (!user) {
         sendJson(res, 404, { success: false, error: 'User not found.' });
+        return;
+      }
+      const userRoles = [user.role, ...(Array.isArray(user.roles) ? user.roles : [])]
+        .map((role) => String(role || '').toLowerCase());
+      if (!userRoles.includes('cr')) {
+        sendJson(res, 403, { success: false, error: 'Forbidden: CR role required.' });
         return;
       }
       if (!user.department || !user.yearSemester || !user.section || !user.labSection) {
@@ -3274,12 +3975,18 @@ async function handleApiRequest(req, res) {
 
   // CR removes their shared routine from the load list.
   if (req.url === '/api/routines/shared' && req.method === 'DELETE') {
-    const auth = requireRole('cr')(req, res);
+    const auth = requireAuth(req, res);
     if (!auth) return;
     try {
       const user = await getUserById(auth.id);
       if (!user) {
         sendJson(res, 404, { success: false, error: 'User not found.' });
+        return;
+      }
+      const userRoles = [user.role, ...(Array.isArray(user.roles) ? user.roles : [])]
+        .map((role) => String(role || '').toLowerCase());
+      if (!userRoles.includes('cr')) {
+        sendJson(res, 403, { success: false, error: 'Forbidden: CR role required.' });
         return;
       }
       const removed = await deleteSharedRoutineBySlot({
@@ -4045,7 +4752,7 @@ async function handleApiRequest(req, res) {
   }
 
   // ═══════════════════════════════════════════════════════════════════
-  // Role Applications (CR/SR)
+  // Role Applications (CR/SR and Department Executive roles)
 
   // POST /api/role-applications — submit a new CR/SR application.
   // Persisted server-side so the admin sees it from any device, and only the
@@ -4065,8 +4772,8 @@ async function handleApiRequest(req, res) {
 
       const body = await readJsonBody(req);
       const appliedRole = body.appliedRole;
-      if (appliedRole !== 'cr' && appliedRole !== 'sr') {
-        sendJson(res, 400, { success: false, error: 'Invalid role. Choose cr or sr.' });
+      if (!['cr', 'sr', 'vp', 'gs'].includes(appliedRole)) {
+        sendJson(res, 400, { success: false, error: 'Invalid role. Choose cr, sr, vp or gs.' });
         return;
       }
 
@@ -4076,9 +4783,37 @@ async function handleApiRequest(req, res) {
         sendJson(res, 409, { success: false, error: 'You already have a pending application.' });
         return;
       }
-      if (user.role === appliedRole) {
+      const currentRoles = new Set([...(Array.isArray(user.roles) ? user.roles : []), user.role]);
+      if (currentRoles.has(appliedRole)) {
         sendJson(res, 409, { success: false, error: 'You already have this role.' });
         return;
+      }
+      const studentMembershipRoles = ['cr', 'sr', 'gs', 'vp', 'readd', 'bus_coordinator', 'clubs_representative'];
+      if (!currentRoles.has('student') && !studentMembershipRoles.some((role) => currentRoles.has(role))) {
+        sendJson(res, 403, { success: false, error: 'Only current students can apply for student roles.' });
+        return;
+      }
+      const exclusiveLeadershipRoles = ['cr', 'sr', 'gs', 'vp', 'readd'];
+      const heldLeadershipRole = exclusiveLeadershipRoles.find((role) => currentRoles.has(role) && role !== appliedRole);
+      if (heldLeadershipRole) {
+        sendJson(res, 409, { success: false, error: `You already hold ${heldLeadershipRole.toUpperCase()}. Resign before applying for another student leadership role.` });
+        return;
+      }
+
+      const semester = Number(user.semester || 1);
+      if (['vp', 'gs'].includes(appliedRole)) {
+        if (!currentRoles.has('student')) {
+          sendJson(res, 403, { success: false, error: 'Only current students can apply for VP or GS.' });
+          return;
+        }
+        const isArchitecture = String(user.department || '').trim().toUpperCase() === 'ARCH';
+        const minimumSemester = appliedRole === 'vp'
+          ? (isArchitecture ? 10 : 8)
+          : (isArchitecture ? 9 : 7);
+        if (!user.department || semester < minimumSemester) {
+          sendJson(res, 403, { success: false, error: `${appliedRole.toUpperCase()} applicants must be in semester ${minimumSemester} or later.` });
+          return;
+        }
       }
 
       const targetSection = appliedRole === 'sr' ? String(body.targetSection || '').trim() : null;
@@ -4094,8 +4829,15 @@ async function handleApiRequest(req, res) {
 
       // Server-side slot vacancy check (authoritative — mirrors the client check).
       const allUsers = await getAllUsersSafe();
+      if (appliedRole === 'vp' || appliedRole === 'gs') {
+        const occupant = allUsers.find(u => new Set([...(Array.isArray(u.roles) ? u.roles : []), u.role]).has(appliedRole) && u.department === user.department);
+        if (occupant) {
+          sendJson(res, 409, { success: false, error: `${user.department} already has a ${appliedRole.toUpperCase()} (${occupant.name}).` });
+          return;
+        }
+      }
       const occupant = allUsers.find(u =>
-        u.role === appliedRole &&
+        ['cr', 'sr'].includes(appliedRole) && new Set([...(Array.isArray(u.roles) ? u.roles : []), u.role]).has(appliedRole) &&
         u.department === user.department &&
         Number(u.semester) === Number(user.semester) &&
         (appliedRole === 'sr' ? u.section === targetSection : u.labSection === targetLabSection)
@@ -4125,7 +4867,7 @@ async function handleApiRequest(req, res) {
         appliedRole,
         targetLabSection,
         targetSection,
-        statement: String(body.statement || ''),
+        statement: String(body.statement || '').trim().slice(0, 1000),
         status: 'pending',
         createdAt: new Date().toISOString(),
         reviewedAt: null,
@@ -4139,8 +4881,8 @@ async function handleApiRequest(req, res) {
         type: 'role-application',
         payload: {
           id: application.id,
-          title: `New ${appliedRole === 'cr' ? 'CR' : 'SR'} application`,
-          body: `${user.name} applied for ${appliedRole === 'cr' ? 'Class Representative' : 'Student Representative'} (${user.department} · Sem ${user.semester || 1}).`,
+          title: `New ${appliedRole.toUpperCase()} application`,
+          body: `${user.name} applied for ${{ cr: 'Class Representative', sr: 'Student Representative', vp: 'Vice President', gs: 'General Secretary' }[appliedRole]} (${user.department} · Sem ${user.semester || 1}).`,
           path: '/admin/applications',
           timestamp: Date.now(),
         },
@@ -4199,6 +4941,62 @@ async function handleApiRequest(req, res) {
         sendJson(res, 400, { success: false, error: 'applicationId and status (approved|rejected) are required.' });
         return;
       }
+      const existingApp = (await listRoleApplications()).find((item) => item.id === applicationId);
+      if (!existingApp || existingApp.status !== 'pending') {
+        sendJson(res, 404, { success: false, error: 'Pending application not found.' });
+        return;
+      }
+      if (status === 'approved' && ['vp', 'gs'].includes(existingApp.appliedRole) && auth.role !== 'admin') {
+        sendJson(res, 403, { success: false, error: 'Only an admin can approve VP or GS applications.' });
+        return;
+      }
+      if (status === 'approved' && ['vp', 'gs'].includes(existingApp.appliedRole)) {
+        const applicant = await getUserById(existingApp.userId);
+        const isArchitecture = String(applicant?.department || '').trim().toUpperCase() === 'ARCH';
+        const minimumSemester = existingApp.appliedRole === 'vp'
+          ? (isArchitecture ? 10 : 8)
+          : (isArchitecture ? 9 : 7);
+        const allUsers = await getAllUsersSafe();
+        if (!applicant || !['student', 'cr', 'sr'].includes(applicant.role) || Number(applicant.semester || 1) < minimumSemester) {
+          sendJson(res, 409, { success: false, error: 'Applicant is no longer eligible for this executive role.' });
+          return;
+        }
+        const occupant = allUsers.find((item) => item.role === existingApp.appliedRole && item.department === applicant.department && item.id !== applicant.id);
+        if (occupant) {
+          sendJson(res, 409, { success: false, error: `${applicant.department} already has a ${existingApp.appliedRole.toUpperCase()} (${occupant.name}).` });
+          return;
+        }
+      }
+      if (status === 'approved') {
+        const applicant = await getUserById(existingApp.userId);
+        const allUsers = await getAllUsersSafe();
+        if (!applicant) {
+          sendJson(res, 404, { success: false, error: 'Applicant account no longer exists.' });
+          return;
+        }
+        const applicantRoles = new Set([...(Array.isArray(applicant.roles) ? applicant.roles : []), applicant.role]);
+        const studentMembershipRoles = ['cr', 'sr', 'gs', 'vp', 'readd', 'bus_coordinator', 'clubs_representative'];
+        if (!applicantRoles.has('student') && !studentMembershipRoles.some((role) => applicantRoles.has(role))) {
+          sendJson(res, 409, { success: false, error: 'Only current students can hold student roles.' });
+          return;
+        }
+        const exclusiveLeadershipRoles = ['cr', 'sr', 'gs', 'vp', 'readd'];
+        const conflictingRole = exclusiveLeadershipRoles.find((role) => applicantRoles.has(role) && role !== existingApp.appliedRole);
+        if (conflictingRole) {
+          sendJson(res, 409, { success: false, error: `Applicant already holds ${conflictingRole.toUpperCase()}. They must resign before this role can be approved.` });
+          return;
+        }
+        if (['cr', 'sr'].includes(existingApp.appliedRole)) {
+          const slotConflict = allUsers.find((user) => user.id !== applicant.id &&
+            new Set([...(Array.isArray(user.roles) ? user.roles : []), user.role]).has(existingApp.appliedRole) &&
+            user.department === applicant.department && Number(user.semester || 1) === Number(applicant.semester || 1) &&
+            (existingApp.appliedRole === 'sr' ? user.section === existingApp.targetSection : user.labSection === existingApp.targetLabSection));
+          if (slotConflict) {
+            sendJson(res, 409, { success: false, error: 'This CR/SR position has already been assigned to another student.' });
+            return;
+          }
+        }
+      }
       const app = await updateRoleApplication(applicationId, {
         status,
         reviewedAt: new Date().toISOString(),
@@ -4209,7 +5007,15 @@ async function handleApiRequest(req, res) {
         return;
       }
       if (status === 'approved') {
-        await updateUserProfile(app.userId, { role: app.appliedRole }, { allowRole: true });
+        const applicant = await getUserById(app.userId);
+        if (applicant) {
+          const leadershipRoles = ['cr', 'sr', 'vp', 'gs', 'readd'];
+          const currentRoles = new Set([...(Array.isArray(applicant.roles) ? applicant.roles : []), applicant.role]);
+          const roles = leadershipRoles.includes(app.appliedRole)
+            ? [...new Set(['student', ...['bus_coordinator', 'clubs_representative'].filter((role) => currentRoles.has(role)), app.appliedRole])]
+            : [app.appliedRole];
+          await updateUserProfile(app.userId, { role: app.appliedRole, roles }, { allowRole: true });
+        }
         broadcastToAll({ type: 'profile-update', payload: { userId: app.userId, fields: ['role'] } });
       }
       // Notify the applicant with the decision.
@@ -4218,10 +5024,14 @@ async function handleApiRequest(req, res) {
         type: 'role-review',
         payload: {
           id: app.id,
+          applicationId: app.id,
+          appliedRole: app.appliedRole,
+          status,
+          reviewedAt: app.reviewedAt,
           title: approved ? 'Application approved' : 'Application rejected',
           body: approved
-            ? `Congratulations ${app.userName}! You are now the ${app.appliedRole === 'cr' ? 'Class Representative (CR)' : 'Student Representative (SR)'}.`
-            : `Your ${app.appliedRole === 'cr' ? 'CR' : 'SR'} application was rejected by the admin. You can re-apply for a vacant slot.`,
+            ? `Congratulations ${app.userName}! Your role is now ${({ cr: 'Class Representative (CR)', sr: 'Student Representative (SR)', vp: 'Vice President (VP)', gs: 'General Secretary (GS)' })[app.appliedRole] || app.appliedRole}.`
+            : `Your ${({ cr: 'CR', sr: 'SR', vp: 'VP', gs: 'GS' })[app.appliedRole] || app.appliedRole} application was rejected by the admin. You can re-apply when eligible.`,
           path: '/settings',
           timestamp: Date.now(),
         },
@@ -4254,7 +5064,10 @@ async function handleApiRequest(req, res) {
         return;
       }
       const resignedRole = user.role;
-      await updateUserProfile(auth.id, { role: 'student' }, { allowRole: true });
+      const roles = [...new Set([...(Array.isArray(user.roles) ? user.roles : []), user.role])]
+        .filter((role) => role !== resignedRole);
+      roles.push('student');
+      await updateUserProfile(auth.id, { role: 'student', roles: [...new Set(roles)] }, { allowRole: true });
       broadcastToAll({ type: 'profile-update', payload: { userId: auth.id, fields: ['role'] } });
       const all = await listRoleApplications();
       for (const app of all) {
@@ -4508,10 +5321,13 @@ async function handleApiRequest(req, res) {
     // Dev routing: Vite owns source files (/src), its client internals (/@...,
     // /node_modules/vite/dist/client/env.mjs) and optimized deps, plus the SPA
     // fallback. Everything else is served from dist/ as a static asset.
+    // `/samples/*.md` is imported with Vite's ?raw loader by the Question Bank
+    // Analyzer; let Vite transform it in dev instead of the static handler.
     if (
       req.url === '/' ||
       req.url.startsWith('/@') ||
       req.url.startsWith('/src') ||
+      req.url.startsWith('/samples') ||
       req.url.startsWith('/node_modules/')
     ) {
       vite.middlewares(req, res);
@@ -4605,7 +5421,7 @@ const ENDPOINT_GROUPS = [
     ['POST', '/api/attendance/telegram-sync', 'Sync Telegram attendance to a student'],
   ]},
   { title: '🏫 Auth & Accounts', items: [
-    ['POST', '/api/auth/signup', 'Create an account (student only)'],
+    ['POST', '/api/auth/signup', 'Create a student or faculty account'],
     ['POST', '/api/auth/login', 'Email + password login'],
     ['POST', '/api/auth/logout', 'Logout (clears auth cookie)'],
     ['POST', '/api/auth/google', 'Verify Google OAuth JWT'],

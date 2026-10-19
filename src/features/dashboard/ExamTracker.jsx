@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useRoutine } from '../../context/RoutineContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLiveValue } from '../../utils/liveStore';
@@ -7,9 +8,8 @@ import { BookOpen, PenLine, X, Check, Users, User } from 'lucide-react';
 import ExamFlowTracker from './ExamFlowTracker';
 import './ExamTracker.css';
 
-const STORAGE_KEY = 'aust-exam-tracker';
 const SHARED_PREFIX = 'aust-exam-schedule:';
-const EDITOR_ROLES = ['admin', 'moderator', 'cr', 'sr'];
+const PERSONAL_STORAGE_KEY = 'aust-exam-tracker';
 
 /* One shared schedule per section slot — the same key the server and
    RoutineSharingStatus use to group a CR with their students. */
@@ -54,17 +54,29 @@ export default function ExamTracker() {
   const slotKey = examSlotKeyOf(user);
   const sharedKey = slotKey ? `${SHARED_PREFIX}${slotKey}` : null;
   const [exams, setExams] = useLiveValue('shared', sharedKey, {});
-  const [legacyExams, setLegacyExams] = useLiveValue('user', STORAGE_KEY, {});
+  const [personalExams, setPersonalExams] = useLiveValue('user', PERSONAL_STORAGE_KEY, {});
   const [detailModal, setDetailModal] = useState(null); // { slotKey, slotLabel, date, syllabus, courseCode, courseName, courseSource, isEditing, editDate, editSyllabus }
 
   const isAdminView = user?.role === 'admin' || user?.role === 'moderator';
-  const canEditShared = EDITOR_ROLES.includes(user?.role);
+  const hasCrRole = user?.hasRole ? user.hasRole('cr') : user?.role === 'cr';
+  const canEditShared = isZeroHourReady(user) && hasCrRole;
 
   const profileIncomplete = !isZeroHourReady(user);
 
   // ── CR shared routine (for the 25 students under this labSection) ──
   const [sharedRoutine, setSharedRoutine] = useState(null);
   const [sharedRoutineMeta, setSharedRoutineMeta] = useState(null); // {crName, updatedAt}
+  const [labCrName, setLabCrName] = useState('');
+
+  useEffect(() => {
+    if (!slotKey) { setLabCrName(''); return; }
+    let cancelled = false;
+    fetch('/api/zero-hour/cr', { credentials: 'same-origin' })
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => { if (!cancelled) setLabCrName(data?.cr?.name || ''); })
+      .catch(() => { if (!cancelled) setLabCrName(''); });
+    return () => { cancelled = true; };
+  }, [slotKey]);
 
   useEffect(() => {
     if (!slotKey) { setSharedRoutine(null); setSharedRoutineMeta(null); return; }
@@ -94,16 +106,9 @@ export default function ExamTracker() {
     return () => { cancelled = true; };
   }, [slotKey]);
 
-  /* Everyone reads the shared section schedule. Until an editor saves the
-     first shared copy, fall back to this account's legacy personal data so
-     nothing that existed before sharing appears lost. */
-  const sharedExamData = useMemo(() => {
-    const hasShared = exams && typeof exams === 'object' && Object.keys(exams).some((k) => k !== '_meta' && exams[k] && typeof exams[k] === 'object' && Object.keys(exams[k]).length > 0);
-    if (hasShared) return exams;
-    // If shared is empty but has stale _meta only, treat as empty and clear legacy fallback after first save
-    const legacyHas = legacyExams && typeof legacyExams === 'object' && Object.keys(legacyExams).some(k => k !== '_meta' && legacyExams[k] && typeof legacyExams[k] === 'object');
-    return legacyHas ? legacyExams : {};
-  }, [exams, legacyExams]);
+  // Keep CR-published exam data separate from each user's own manually added
+  // course data. A CR course always resolves to the shared schedule below.
+  const sharedExamData = exams && typeof exams === 'object' ? exams : {};
 
   // Merged Theory courses: personal + CR shared routine
   // Duplicate courseCode => only CR wins, personal is discarded (per requirement)
@@ -121,7 +126,7 @@ export default function ExamTracker() {
               name: cls.name || cls.course,
               color: cls.color || 'var(--accent-blue)',
               source,
-              crName: source === 'cr' ? (sharedRoutineMeta?.crName || '') : '',
+              crName: labCrName || sharedRoutineMeta?.crName || '',
             });
           } else if (source === 'cr' && existing.source === 'personal') {
             // Duplicate: CR authoritative — discard personal, keep only CR
@@ -130,7 +135,7 @@ export default function ExamTracker() {
               name: cls.name || existing.name,
               color: cls.color || existing.color,
               source: 'cr',
-              crName: sharedRoutineMeta?.crName || '',
+              crName: labCrName || sharedRoutineMeta?.crName || '',
             });
           }
           // else: duplicate already cr or personal duplicate — keep first, ignore
@@ -140,7 +145,7 @@ export default function ExamTracker() {
     addFrom(routine, 'personal');
     if (sharedRoutine) addFrom(sharedRoutine, 'cr');
     return [...map.values()];
-  }, [routine, sharedRoutine, sharedRoutineMeta]);
+  }, [routine, sharedRoutine, sharedRoutineMeta, labCrName]);
 
   // Keep theoryCourses alias for stats that previously used it (now merged)
   const theoryCourses = mergedCourses;
@@ -152,23 +157,24 @@ export default function ExamTracker() {
     return `${ord} Year, ${m[2]} Sem`;
   };
 
-  // Per-course exam data resolver: personal -> legacyExams, cr -> sharedExamData
+  // Every course shown in Zero Hour uses the shared CR schedule.
   const getExamDataForCourse = (course) => {
-    if (course.source === 'personal') {
-      return legacyExams?.[course.code] || {};
-    }
-    return sharedExamData?.[course.code] || {};
+    return course.source === 'personal'
+      ? (personalExams?.[course.code] || {})
+      : (sharedExamData?.[course.code] || {});
   };
 
   const totalScheduled = useMemo(() => {
     return theoryCourses.reduce((sum, course) => {
-      const raw = course.source === 'personal' ? legacyExams?.[course.code] || {} : sharedExamData?.[course.code] || {};
+      const raw = course.source === 'personal'
+        ? (personalExams?.[course.code] || {})
+        : (sharedExamData?.[course.code] || {});
       return sum + Object.keys(raw).filter((k) => {
         const v = raw[k];
         return v?.date && getSlotState(v.date).cls !== 'passed';
       }).length;
     }, 0);
-  }, [theoryCourses, sharedExamData, legacyExams]);
+  }, [theoryCourses, sharedExamData, personalExams]);
 
   const openDetails = (slotKey, slotLabel, date, syllabus, courseCode, courseName, courseSource) => {
     setDetailModal({ slotKey, slotLabel, date, syllabus, courseCode, courseName, courseSource, isEditing: false, editDate: date || '', editSyllabus: syllabus || '' });
@@ -176,41 +182,32 @@ export default function ExamTracker() {
 
   const canEditCourse = (course) => {
     if (!course) return false;
-    if (course.source === 'personal') return true; // own routine course -> user can edit (private)
-    // cr course -> only CR/SR/admin
+    // Zero Hour is a shared, read-only schedule for students. Only a CR with
+    // a complete section/lab profile can publish updates.
+    if (course.source === 'personal') return true;
     return canEditShared;
   };
 
   const handleSaveSingleSlot = () => {
-    if (!detailModal) return;
+    if (!detailModal || !canEditCourse({ source: detailModal.courseSource })) return;
     const { courseCode, slotKey: sKey, editDate, editSyllabus, courseSource } = detailModal;
     const safeSyllabus = (editSyllabus || '').slice(0, 2000);
     const payload = { date: editDate || '', syllabus: safeSyllabus };
 
     if (courseSource === 'personal') {
-      // Private per-user store
-      const updated = { ...legacyExams };
-      if (!updated[courseCode]) updated[courseCode] = {};
-      updated[courseCode][sKey] = payload;
-      updated._meta = {
-        updatedBy: user?.name || user?.awid || 'You',
-        role: user?.role || '',
-        updatedAt: new Date().toISOString(),
-      };
-      setLegacyExams(updated);
-    } else {
-      // Shared slot store (CR-controlled)
-      if (!slotKey) return;
-      // Preserve existing _meta handling: sharedExamData may be fallback to legacy, so start from exams when possible
-      const base = exams && typeof exams === 'object' && Object.keys(exams).length ? exams : sharedExamData;
-      const next = { ...base };
+      const next = { ...personalExams };
       if (!next[courseCode]) next[courseCode] = {};
       next[courseCode][sKey] = payload;
-      next._meta = {
-        updatedBy: user?.name || user?.awid || 'Unknown',
-        role: user?.role || '',
-        updatedAt: new Date().toISOString(),
-      };
+      next._meta = { updatedBy: user?.name || user?.awid || 'You', role: user?.role || '', updatedAt: new Date().toISOString() };
+      setPersonalExams(next);
+    } else {
+      // The shared store/API remains CR-only; regular students cannot publish
+      // their personal edits into the lab group's schedule.
+      if (!canEditShared || !slotKey) return;
+      const next = { ...sharedExamData };
+      if (!next[courseCode]) next[courseCode] = {};
+      next[courseCode][sKey] = payload;
+      next._meta = { updatedBy: user?.name || user?.awid || 'Unknown', role: user?.role || '', updatedAt: new Date().toISOString() };
       setExams(next);
     }
     setDetailModal(null);
@@ -222,7 +219,6 @@ export default function ExamTracker() {
     const slots = EXAM_SLOTS.map((slot) => ({ ...slot, data: courseExams[slot.key] }));
     const scheduled = slots.filter((s) => s.data?.date);
     const hasToday = slots.some((s) => s.data?.date && getSlotState(s.data.date).cls === 'today');
-    const isPersonal = course.source === 'personal';
     const editable = canEditCourse(course);
 
     return (
@@ -246,9 +242,9 @@ export default function ExamTracker() {
         </div>
         <div className="exam-cell-name">{course.name}</div>
         <div style={{ display: 'flex', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
-          <span className={`exam-source-badge ${isPersonal ? 'personal' : 'cr'}`} title={isPersonal ? 'From your routine — you can edit' : `From CR ${course.crName || ''} — only CR can edit`}>
-            {isPersonal ? <User size={10} /> : <Users size={10} />}
-            {isPersonal ? 'You' : (course.crName ? `CR · ${course.crName.split(' ')[0]}` : 'From CR')}
+          <span className={`exam-source-badge ${course.source === 'personal' ? 'personal' : 'cr'}`} title={course.source === 'personal' ? 'Added to your own routine' : `Shared by your lab group CR${course.crName ? `, ${course.crName}` : ''}`}>
+            {course.source === 'personal' ? <User size={10} /> : <Users size={10} />}
+            {course.source === 'personal' ? 'You' : (course.crName || labCrName ? `CR · ${course.crName || labCrName}` : 'No CR')}
           </span>
           {!editable && course.source === 'cr' && (
             <span style={{ fontSize: '9px', color: 'var(--text-tertiary)', alignSelf: 'center' }}>read-only</span>
@@ -329,7 +325,7 @@ export default function ExamTracker() {
       {profileIncomplete && (
         <div style={{ margin: '0 0 12px', padding: '10px 12px', borderRadius: 'var(--radius-md)', background: 'var(--accent-amber-glow)', border: '1px solid var(--accent-amber)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--fs-xs)', color: 'var(--text-primary)' }}>
           <BookOpen size={14} style={{ color: 'var(--accent-amber)', flexShrink: 0 }} />
-          <span><strong>Lab Group missing</strong> — add Section + Lab Group in <a href="/settings" style={{ color: 'var(--accent-blue)', textDecoration: 'underline' }}>Settings</a> to enable CR sync. Your personal courses are still shown below.</span>
+          <span><strong>Lab Group missing</strong> — add Section + Lab Group in <Link to="/settings" style={{ color: 'var(--accent-blue)', textDecoration: 'underline' }}>Settings</Link> to enable CR sync. Your personal courses are still shown below.</span>
         </div>
       )}
 
@@ -364,7 +360,7 @@ export default function ExamTracker() {
                 <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: '2px 0 0' }}>{detailModal.courseName}</p>
                 <span className={`exam-source-badge ${detailModal.courseSource === 'personal' ? 'personal' : 'cr'}`} style={{ marginTop: '6px', display: 'inline-flex' }}>
                   {detailModal.courseSource === 'personal' ? <User size={10} /> : <Users size={10} />}
-                  {detailModal.courseSource === 'personal' ? 'Your course' : 'From CR'}
+                  {detailModal.courseSource === 'personal' ? 'You' : (labCrName ? `CR · ${labCrName}` : 'No CR')}
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

@@ -74,10 +74,13 @@ function fromUserRow(row) {
 
 // ── Data access ──────────────────────────────────────────────────────────────
 
-/** Every role the system understands (self-registration is always 'student'). */
-export const VALID_ROLES = ['student', 'faculty', 'alumni', 'admin', 'cr', 'sr', 'senior', 'moderator', 'vp', 'gs', 'bus_coordinator', 'guest', 'clubs_representative', 'help_desk', 'banned'];
+/** Every role the system understands. */
+export const FACULTY_DEPARTMENTS = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'];
+export const facultyDepartmentRole = (department) => `faculty_${String(department || '').trim().toLowerCase()}`;
+const facultyDepartmentRoles = FACULTY_DEPARTMENTS.map(facultyDepartmentRole);
+export const VALID_ROLES = ['student', 'faculty', 'alumni', 'alumni_with_carry', 'admin', 'cr', 'sr', 'senior', 'moderator', 'vp', 'gs', 'readd', 'bus_coordinator', 'guest', 'clubs_representative', 'help_desk', 'banned', ...facultyDepartmentRoles];
 /** Roles an admin may assign to another user via the admin panel / approvals. */
-export const ADMIN_ASSIGNABLE_ROLES = ['student', 'cr', 'sr', 'vp', 'gs', 'faculty', 'alumni', 'senior', 'moderator', 'bus_coordinator', 'guest', 'clubs_representative', 'help_desk', 'banned'];
+export const ADMIN_ASSIGNABLE_ROLES = ['student', 'cr', 'sr', 'vp', 'gs', 'readd', 'faculty', ...facultyDepartmentRoles, 'alumni', 'alumni_with_carry', 'moderator', 'bus_coordinator', 'guest', 'clubs_representative', 'help_desk', 'banned'];
 const DEV_PASSWORD = 'Dev@123456';
 
 const DEPARTMENTS = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'];
@@ -161,6 +164,75 @@ async function writeUsers(users) {
   await writeFile(DB_PATH, JSON.stringify(users, null, 2));
 }
 
+/** Read the JSON fallback file as an array (never throws). */
+async function readJsonUsers() {
+  try {
+    if (!existsSync(DB_PATH)) return [];
+    const list = JSON.parse(await readFile(DB_PATH, 'utf-8'));
+    return Array.isArray(list) ? list : [];
+  } catch { return []; }
+}
+
+/**
+ * Read ONE raw user (password included) by id, preferring SQL. Unlike
+ * readUsers() this never pulls the whole table, and unlike getUserById() it
+ * keeps the password hash so callers can merge without losing it.
+ */
+async function readRawUser(id) {
+  if (await isDbAvailable()) {
+    await ensureAuthTables();
+    try {
+      const rows = await query('SELECT data FROM "AuthUsers" WHERE id = @id',
+        [{ name: 'id', type: sql.NVarChar(50), value: id }]);
+      if (rows && rows[0]) return fromUserRow(rows[0]);
+      // Not in SQL yet — fall through to the JSON mirror below.
+    } catch (err) {
+      console.warn('⚠️  userStore: SQL single read failed, using JSON fallback:', err.message);
+    }
+  }
+  const users = await readJsonUsers();
+  return users.find((u) => u && u.id === id) || null;
+}
+
+/**
+ * Persist ONE user with a single SQL upsert plus a one-row JSON mirror.
+ *
+ * writeUsers() rewrites the ENTIRE table row by row, so on a remote database
+ * with thousands of accounts a single profile save becomes a multi-minute
+ * stall — the request never finishes and the edit is dropped. Every
+ * single-user path must go through this instead.
+ */
+async function persistUser(user) {
+  let wroteSql = false;
+  if (await isDbAvailable()) {
+    await ensureAuthTables();
+    try {
+      await upsertUserRow(toUserRow(user));
+      wroteSql = true;
+    } catch (err) {
+      console.warn('⚠️  userStore: SQL write failed, writing JSON only:', err.message);
+    }
+  }
+  // Keep the JSON fallback coherent. When SQL is the source of truth, only
+  // touch a file that already exists so we never fabricate a partial mirror.
+  if (wroteSql && !existsSync(DB_PATH)) return;
+  const list = await readJsonUsers();
+  const idx = list.findIndex((u) => u && u.id === user.id);
+  if (idx === -1) list.push(user); else list[idx] = user;
+  await writeFile(DB_PATH, JSON.stringify(list, null, 2));
+}
+
+/** Remove ONE user (SQL row + JSON mirror entry) without rewriting the table. */
+async function removePersistedUser(id) {
+  await deleteUserRow(id);
+  if (!existsSync(DB_PATH)) return;
+  const list = await readJsonUsers();
+  const filtered = list.filter((u) => u && u.id !== id);
+  if (filtered.length !== list.length) {
+    await writeFile(DB_PATH, JSON.stringify(filtered, null, 2));
+  }
+}
+
 /**
  * Normalize a year-semester value ("3.1" or "Year 3 - Semester 1") to the
  * canonical server format "Year 3 - Semester 1". Returns '' for junk.
@@ -183,15 +255,18 @@ function toYearSemester(value) {
  * AWID is the app's internal identifier and is deliberately separate from
  * the university student ID (which is derived from the email address).
  */
-function generateAwid(users, department) {
-  const dept = String(department || 'GEN').toUpperCase().replace(/[^A-Z0-9]/g, '') || 'GEN';
-  const existing = users.filter((u) => u.awid && u.awid.includes(`-${dept}-AW`));
+function generateAwid(users, role, department) {
+  const prefixes = { student: 'STU', faculty: 'FAC', alumni: 'ALU', alumni_with_carry: 'ALU', admin: 'ADM', moderator: 'MOD', guest: 'GST', help_desk: 'HLP', banned: 'BAN' };
+  const prefix = prefixes[String(role || '').toLowerCase()] || 'USR';
+  const dept = String(department || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!dept || dept === 'UNDECLARED') throw new Error('Choose your department before your AUSTWise ID is created.');
+  const existing = users.filter((u) => u.awid && u.awid.startsWith(`${prefix}-${dept}-AW`));
   const maxNum = existing.reduce((max, u) => {
     const match = String(u.awid).match(/AW(\d+)$/);
     return match ? Math.max(max, parseInt(match[1], 10)) : max;
   }, 0);
   const nextNum = String(maxNum + 1).padStart(6, '0');
-  return `STU-${dept}-AW${nextNum}`;
+  return `${prefix}-${dept}-AW${nextNum}`;
 }
 
 /**
@@ -202,8 +277,22 @@ export async function ensureAllAwids() {
   const users = await readUsers();
   let changed = false;
   for (const user of users) {
-    if (!user.awid) {
-      user.awid = generateAwid(users, user.department);
+    const department = String(user.department || '').toUpperCase();
+    const hasValidDepartment = FACULTY_DEPARTMENTS.includes(department);
+    if (department === 'UNDECLARED') {
+      user.department = '';
+      user.awid = '';
+      user.signupIncomplete = true;
+      changed = true;
+      continue;
+    }
+    const prefix = ({ student: 'STU', faculty: 'FAC', alumni: 'ALU', alumni_with_carry: 'ALU', admin: 'ADM', moderator: 'MOD', guest: 'GST', help_desk: 'HLP', banned: 'BAN' })[String(user.role || '').toLowerCase()] || 'USR';
+    const expectedPrefix = `${prefix}-${hasValidDepartment ? department : 'GEN'}-AW`;
+    if (hasValidDepartment && !String(user.awid || '').startsWith(expectedPrefix)) {
+      user.awid = generateAwid(users.filter((candidate) => candidate.id !== user.id), user.role, department);
+      changed = true;
+    } else if (!user.awid && !['student', 'faculty', 'alumni', 'alumni_with_carry'].includes(user.role)) {
+      user.awid = generateAwid(users, user.role, 'GEN');
       changed = true;
     }
   }
@@ -227,7 +316,7 @@ export async function seedDefaultAdmin() {
   );
   const admin = {
     id: 'ADM-MSOP6VG6BVL4',
-    awid: 'STU-ADM-AW000001',
+    awid: 'ADM-GEN-AW000001',
     name: 'Admin',
     email: 'austwise59@gmail.com',
     password: hash,
@@ -262,8 +351,7 @@ export async function seedDefaultAdmin() {
     discord: '',
     createdAt: new Date().toISOString(),
   };
-  users.push(admin);
-  await writeUsers(users);
+  await persistUser(admin);
   console.log('✅ Default admin account seeded (austwise59@gmail.com)');
   return admin;
 }
@@ -655,6 +743,42 @@ export async function getDevUsers() {
   return users.filter((u) => u.id && String(u.id).startsWith('DEV-')).map(({ _password, ...safe }) => safe);
 }
 
+/** Permanently remove dev-seeded accounts from PostgreSQL and the JSON mirror. */
+export async function removeDevSeededUsers() {
+  let deletedCount = 0;
+  const isSeededDemoUser = (user) =>
+    /^DEV-|^ALU-DEMO-/i.test(String(user?.id || '')) ||
+    /^QA(?:\s|$)/i.test(String(user?.name || '').trim()) ||
+    /^qa-[\w-]*@/i.test(String(user?.email || '').trim());
+
+  if (await isDbAvailable()) {
+    await ensureAuthTables();
+    const dbUsers = await readUsers();
+    const extraDemoIds = dbUsers
+      .filter((user) => isSeededDemoUser(user) && !/^DEV-|^ALU-DEMO-/i.test(String(user.id || '')))
+      .map((user) => user.id);
+    const deletedRows = await query(`DELETE FROM "AuthUsers" WHERE id LIKE 'DEV-%' OR id LIKE 'ALU-DEMO-%' RETURNING id`);
+    deletedCount = deletedRows.length;
+    for (const id of extraDemoIds) {
+      const rows = await query('DELETE FROM "AuthUsers" WHERE id = @id RETURNING id', [
+        { name: 'id', type: sql.NVarChar(50), value: id },
+      ]);
+      deletedCount += rows.length;
+    }
+  }
+
+  if (existsSync(DB_PATH)) {
+    const users = await readJsonUsers();
+    const keptUsers = users.filter((user) => !isSeededDemoUser(user));
+    deletedCount = Math.max(deletedCount, users.length - keptUsers.length);
+    if (keptUsers.length !== users.length) {
+      await writeFile(DB_PATH, JSON.stringify(keptUsers, null, 2));
+    }
+  }
+
+  return deletedCount;
+}
+
 /** Hash password with bcrypt */
 export function hashPassword(plain) {
   return bcrypt.hash(plain, BCRYPT_ROUNDS);
@@ -673,43 +797,67 @@ function isValidAustEmail(email) {
 }
 
 /** Create a new user (self-registration) */
-export async function createUser(payload) {
+export async function createUser(payload, { invitationAuthorized = false, passwordHash = '' } = {}) {
   const name = String(payload.name || '').trim();
   const email = String(payload.email || '').trim().toLowerCase();
   const password = String(payload.password || '');
-  // The server is the sole role authority. Self-registration may only create
-  // student accounts — faculty/alumni/admin/moderator roles come from admin
-  // action or invitations. Any client-supplied role is ignored.
+  // The server is the sole role authority. Students require AUST addresses;
+  // personal-email Faculty and Alumni accounts require admin approval.
   const requestedRole = String(payload.role || 'student').toLowerCase().trim();
-  if (requestedRole !== 'student') {
-    throw new Error('Self-registration is limited to student accounts. Faculty and alumni roles are granted by an admin or invitation.');
+  const allowedRoles = invitationAuthorized
+    ? ['faculty', 'alumni']
+    : ['student', 'faculty', 'alumni'];
+  if (!allowedRoles.includes(requestedRole)) {
+    throw new Error(invitationAuthorized
+      ? 'This invitation is not valid for that account role.'
+      : 'Choose Student, Faculty, or Alumni. Personal-email Faculty and Alumni accounts require admin approval.');
   }
-  const role = 'student';
+  const role = requestedRole;
   const department = String(payload.department || '').trim();
+  let batchName = String(payload.batchName || '').trim();
+  let batchNo = String(payload.batchNo || '').trim();
+  if (['student', 'alumni'].includes(role)) {
+    const batchInput = String(payload.batch || `${batchName} ${batchNo}`).trim();
+    const match = batchInput.match(/^([A-Za-z]+)\s+(\d+)$/);
+    if (!match) throw new Error('Enter the batch as one word followed by its number, for example: Batch 45.');
+    if ((batchName && batchName.toLowerCase() !== match[1].toLowerCase()) || (batchNo && batchNo !== match[2])) {
+      throw new Error('Batch name and batch number must match the format you entered.');
+    }
+    batchName = match[1];
+    batchNo = match[2];
+  }
 
   if (!name) throw new Error('Full name is required.');
   if (!email || !email.includes('@')) throw new Error('Enter a valid email address.');
-  if (!isValidAustEmail(email)) {
-    throw new Error('Only AUST university email addresses (@aust.edu) are allowed for registration.');
+  if (role === 'student' && !isValidAustEmail(email)) {
+    throw new Error('Student accounts require an @aust.edu email address.');
   }
-  if (password.length < 8) throw new Error('Password must be at least 8 characters.');
-  if (!department) throw new Error('Department is required.');
+  if (['faculty', 'alumni'].includes(role) && !isValidAustEmail(email) && !email.endsWith('@gmail.com')) {
+    throw new Error('Use your @aust.edu address or a personal Gmail address.');
+  }
+  if (!passwordHash && password.length < 8) throw new Error('Password must be at least 8 characters.');
+  if (passwordHash && !/^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(passwordHash)) throw new Error('Invalid stored password hash.');
+  if (['student', 'faculty', 'alumni'].includes(role) && !FACULTY_DEPARTMENTS.includes(department.toUpperCase())) {
+    throw new Error('Choose a valid department before creating your account.');
+  }
 
   const users = await readUsers();
   if (users.find(u => u.email === email)) {
     throw new Error('An account with this email already exists.');
   }
 
-  if (!String(payload.batchNo || payload.batch || '').trim()) {
-    throw new Error('Batch is required for student accounts.');
+  if (['student', 'alumni'].includes(role) && !String(payload.batchNo || payload.batch || '').trim()) {
+    throw new Error('Batch is required for student and alumni accounts.');
+  }
+  if (role === 'faculty' && !String(payload.designation || '').trim()) {
+    throw new Error('Designation is required for faculty accounts.');
   }
 
-  const hash = await hashPassword(password);
-  const batchNo = String(payload.batchNo || '').trim();
+  const hash = passwordHash || await hashPassword(password);
   const rnd = Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 6).toUpperCase();
   const prefix = { student: 'STU', faculty: 'FAC', alumni: 'ALU', admin: 'ADM', cr: 'CR', sr: 'SR', senior: 'SNR', moderator: 'MOD', bus_coordinator: 'BUS', guest: 'GST', clubs_representative: 'CLB', help_desk: 'HLP', banned: 'BAN' }[role] || 'USR';
   const id = `${prefix}-${rnd}`;
-  const awid = generateAwid(users, department);
+  const awid = generateAwid(users, role, department || 'GEN');
 
   // Canonical year-semester + its semester number (e.g. "Year 3 - Semester 1" → 5).
   const yearSemester = toYearSemester(payload.yearSemester) || 'Year 1 - Semester 1';
@@ -723,10 +871,18 @@ export async function createUser(payload) {
     name,
     password: hash,
     role,
+    roles: role === 'faculty' ? ['faculty', facultyDepartmentRole(department)] : [role],
+    status: (role === 'faculty' && !isValidAustEmail(email) && !invitationAuthorized) || (role === 'alumni' && !isValidAustEmail(email) && !invitationAuthorized) ? 'PENDING_APPROVAL' : 'ACTIVE',
+    personalEmail: String(payload.personalEmail || '').trim().toLowerCase(),
+    originalBatch: String(payload.originalBatch || batchNo || '').trim(),
+    currentAcademicBatch: String(payload.currentAcademicBatch || batchNo || '').trim(),
+    currentSemester: String(payload.currentSemester || yearSemester.match(/Year\s*(\d+)\s*-\s*Semester\s*(\d+)/i)?.slice(1).join('.') || '1.1'),
+    maxSemester: String(payload.maxSemester || (department === 'ARCH' ? '5.2' : '4.2')),
+    emailAccessApproved: Boolean(invitationAuthorized && role === 'faculty' && !isValidAustEmail(email)),
     department,
-    batch: String(payload.batch || batchNo || '').trim(),
+    batch: ['student', 'alumni'].includes(role) ? `${batchName} ${batchNo}` : String(payload.batch || batchNo || '').trim(),
     batchNo,
-    batchName: String(payload.batchName || batchNo).trim(),
+    batchName: batchName || String(payload.batchName || batchNo).trim(),
     designation: String(payload.designation || '').trim(),
     company: String(payload.company || '').trim(),
     graduationYear: String(payload.graduationYear || '').trim(),
@@ -754,8 +910,7 @@ export async function createUser(payload) {
     createdAt: new Date().toISOString(),
   };
 
-  users.push(user);
-  await writeUsers(users);
+  await persistUser(user);
   return user;
 }
 
@@ -765,10 +920,14 @@ export async function validateLogin(email, password) {
   const users = await readUsers();
   const user = users.find(u => u.email === normalized);
   if (!user) throw new Error('Invalid email or password.');
-  // Only @aust.edu accounts may sign in — admins (e.g. the site owner) are the
-  // single exception, so a non-AUST admin gmail keeps working.
-  if (user.role !== 'admin' && !isValidAustEmail(normalized)) {
-    throw new Error('Only AUST university email addresses (@aust.edu) are allowed to sign in.');
+  if (user.status === 'PENDING_APPROVAL') throw new Error('Your account is pending admin approval.');
+  // Students must use AUST addresses. Approved Faculty and Alumni may sign in
+  // with the personal address used for their approved account.
+  if (user.role === 'student' && !isValidAustEmail(normalized)) {
+    throw new Error('Student accounts must use their @aust.edu email address.');
+  }
+  if (user.role === 'faculty' && !isValidAustEmail(normalized) && !user.emailAccessApproved) {
+    throw new Error('Faculty accounts without an @aust.edu email need admin approval or an invitation.');
   }
   const valid = await comparePassword(password, user.password);
   if (!valid) throw new Error('Invalid email or password.');
@@ -798,8 +957,8 @@ export async function getUserByEmail(email) {
 /**
  * Find-or-create a user from a verified Google profile.
  * Google accounts never use a real password, so a random one is hashed in.
- * New accounts start as 'student' with an 'Undeclared' department until the
- * client completes role/department/batch details in signup step 2.
+ * New accounts remain incomplete until role/department/batch details are
+ * provided in signup step 2; no AWID is assigned before that information.
  */
 export async function findOrCreateGoogleUser(profile) {
   const email = String(profile.email || '').trim().toLowerCase();
@@ -828,16 +987,16 @@ export async function findOrCreateGoogleUser(profile) {
   const passwordHash = await hashPassword(randomUUID());
   const rnd = Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 6).toUpperCase();
   const id = `STU-${rnd}`;
-  const awid = generateAwid(users, 'Undeclared');
 
   const user = {
     id,
-    awid,
+    awid: '',
     email,
     name,
     password: passwordHash,
     role: 'student',
-    department: 'Undeclared',
+    department: '',
+    signupIncomplete: true,
     batch: '',
     batchNo: '',
     batchName: '',
@@ -865,8 +1024,7 @@ export async function findOrCreateGoogleUser(profile) {
     createdAt: new Date().toISOString(),
   };
 
-  users.push(user);
-  await writeUsers(users);
+  await persistUser(user);
   const { password: _, ...safe } = user;
   return { user: safe, created: true };
 }
@@ -889,33 +1047,72 @@ export async function countUsers() {
   return users.length;
 }
 
+// Profile rows are stored as one JSON object. Serialize partial updates per
+// user so two near-simultaneous saves cannot write stale snapshots over fields
+// such as labSection.
+const userProfileUpdateQueues = new Map();
+
 /** Update a user profile. Role changes require opts.allowRole (admin-only paths). */
-export async function updateUserProfile(id, patch, opts = {}) {
-  const users = await readUsers();
-  const idx = users.findIndex(u => u.id === id);
-  if (idx === -1) return null;
-  const next = { ...patch };
-  if (next.role !== undefined && !opts.allowRole) {
-    // Defense-in-depth: only admin-role paths may change a user's role.
-    delete next.role;
+export function updateUserProfile(id, patch, opts = {}) {
+  const previous = userProfileUpdateQueues.get(id) || Promise.resolve();
+  const update = previous.catch(() => {}).then(async () => {
+    const current = await readRawUser(id);
+    if (!current) return null;
+    const next = { ...patch };
+    if (next.role !== undefined && !opts.allowRole) {
+      // Defense-in-depth: only admin-role paths may change a user's role.
+      delete next.role;
+    }
+    const academicSlotChanged = ['department', 'yearSemester', 'section']
+      .some((field) => field in next && String(next[field] || '') !== String(current[field] || ''));
+    if (academicSlotChanged && !('labSection' in next)) {
+      // A lab group belongs to a specific academic slot. Changing that slot
+      // clears the old group so the user can choose the correct one again.
+      next.labSection = '';
+    } else if (next.labSection === '' && current.labSection && !academicSlotChanged) {
+      // Ignore accidental blank profile payloads. An assigned group remains
+      // attached to the account until a different group is explicitly saved.
+      delete next.labSection;
+    }
+    const merged = { ...current, ...next };
+    if (opts.regenerateAwid) {
+      const users = await readUsers();
+      merged.awid = generateAwid(users.filter((user) => user.id !== current.id), merged.role, merged.department);
+      merged.roles = [...new Set([merged.role, ...(merged.role === 'faculty' ? [facultyDepartmentRole(merged.department)] : [])])];
+      merged.signupIncomplete = false;
+    }
+    // Don't allow password overwrite via this method
+    if (next.password) {
+      merged.password = await hashPassword(next.password);
+    }
+    await persistUser(merged);
+    const { password: _, ...safe } = merged;
+    return safe;
+  });
+  userProfileUpdateQueues.set(id, update);
+  return update.finally(() => {
+    if (userProfileUpdateQueues.get(id) === update) userProfileUpdateQueues.delete(id);
+  });
+}
+
+/** Set a password hash produced by this server for an approved access request. */
+export async function setUserPasswordHash(id, passwordHash) {
+  if (!/^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(String(passwordHash || ''))) {
+    throw new Error('Invalid stored password hash.');
   }
-  users[idx] = { ...users[idx], ...next };
-  // Don't allow password overwrite via this method
-  if (next.password) {
-    users[idx].password = await hashPassword(next.password);
-  }
-  await writeUsers(users);
-  const { password: _, ...safe } = users[idx];
+  const current = await readRawUser(id);
+  if (!current) return null;
+  const merged = { ...current, password: passwordHash };
+  await persistUser(merged);
+  const { password: _, ...safe } = merged;
   return safe;
 }
 
 /** Delete a user */
 export async function deleteUserById(id) {
-  const users = await readUsers();
-  const filtered = users.filter(u => u.id !== id);
-  if (filtered.length === users.length) return false;
-  await writeUsers(filtered);
-  await deleteUserRow(id);
+  const current = await readRawUser(id);
+  if (!current) return false;
+  await removePersistedUser(id);
   return true;
 }
 

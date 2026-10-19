@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Search, BookOpen, GraduationCap, Library, Users, ShoppingBag, Settings,
   LayoutDashboard, X, Home, NotebookPen, MessageSquare, Zap, Coffee, Moon, Crown, CornerDownLeft,
+  FileSearch,
 } from 'lucide-react';
 import './SearchModal.css';
 
@@ -29,6 +30,7 @@ const searchItems = [
     ],
   },
   { label: 'Notebook', path: '/notebook', icon: NotebookPen, keywords: 'notebook notes canvas whiteboard editor writing' },
+  { label: 'Question Bank Analyzer', path: '/question-bank-analyzer', icon: FileSearch, keywords: 'question bank analyzer past papers exam questions vips priority study plan ai markdown pdf course' },
   { label: 'ConnectBox', path: '/messages', icon: MessageSquare, keywords: 'messages chat inbox dm' },
   {
     label: 'Productivity', path: '/productivity', icon: Zap, keywords: 'productivity focus timer flows',
@@ -80,7 +82,6 @@ const searchItems = [
     label: 'InsideAUST', path: '/campus', icon: BookOpen, keywords: 'campus map canteen library seat insideaust',
     subs: [
       { id: 'map', label: 'Floor Map', keywords: 'floor map building layout' },
-      { id: 'faculty', label: 'Faculty Status', keywords: 'faculty status office hours' },
       { id: 'library', label: 'Library Pulse', keywords: 'library pulse occupancy seat' },
       { id: 'canteen', label: 'Canteen Menu', keywords: 'canteen menu food today' },
       { id: 'bus', label: 'Bus Tracker', keywords: 'bus tracker shuttle routes' },

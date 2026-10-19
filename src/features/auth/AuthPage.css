@@ -6,13 +6,26 @@
 /* ─── Background ─── */
 .auth-page {
   min-height: 100vh;
+  min-height: 100dvh; /* phones: size to the *visible* viewport, not the address-bar-hidden one */
   display: flex;
   align-items: center;
+  /* `safe` keeps the vertical centering when the card fits, but falls back to
+     top-alignment when the signup form is taller than the viewport — so the
+     lower Password fields (and the top of the card) can always be scrolled
+     into view instead of being clipped with no way to reach them. */
+  align-items: safe center;
   justify-content: center;
   padding: 32px 24px;
   background: var(--bg-primary);
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+@media (max-height: 820px) {
+  .auth-page {
+    align-items: flex-start;
+  }
 }
 
 .auth-page-bg {

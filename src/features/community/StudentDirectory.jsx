@@ -65,12 +65,36 @@ export default function StudentDirectory() {
   const { user } = useAuth();
   const [activeDept, setActiveDept] = useState('all');
   const [expandedSems, setExpandedSems] = useState({});
+  const [directoryAccounts, setDirectoryAccounts] = useState(() => getAllAccounts());
+
+  // Role approvals happen server-side. Refresh the sanitized public directory
+  // list so VP/GS appointments appear for other users without relying on each
+  // browser's stale local account cache.
+  useEffect(() => {
+    let cancelled = false;
+    const syncDirectory = async () => {
+      try {
+        const res = await fetch('/api/presence/members');
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !Array.isArray(data.members) || cancelled) return;
+        const localById = new Map(getAllAccounts().map((account) => [account.id, account]));
+        setDirectoryAccounts(data.members.map((member) => ({
+          ...(localById.get(member.id) || {}),
+          ...member,
+          email: localById.get(member.id)?.email || '',
+        })));
+      } catch { /* Keep the local directory when offline. */ }
+    };
+    syncDirectory();
+    const timer = setInterval(syncDirectory, 15000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, []);
 
   // Get all accounts and group them by dept → sem.
   // Every semester slot (1 → total for the dept) is always created so the full
   // academic structure renders — whether or not students are registered yet.
   const { grouped, deptStats, deptExecs } = useMemo(() => {
-    const allAccounts = getAllAccounts();
+    const allAccounts = directoryAccounts;
     const students = allAccounts.filter(a => ['student', 'cr', 'sr', 'vp', 'gs'].includes(a.role));
 
     const grouped = {};
@@ -136,7 +160,7 @@ export default function StudentDirectory() {
     }
 
     return { grouped, deptStats, deptExecs };
-  }, []);
+  }, [directoryAccounts]);
 
   // Every department is listed — the directory renders the full semester
   // structure even for departments that have no students yet.

@@ -7,6 +7,8 @@ import VaultBatchSelector from './VaultBatchSelector';
 import MaterialFolders from './MaterialFolders';
 import GliderTabs from '../../components/GliderTabs';
 import MastheadAccessControl from '../../components/MastheadAccessControl';
+import FeatureAccessGate from '../admin/FeatureAccessGate';
+import SidebarPageAccessPanel, { SidebarPageAccessHeader } from '../admin/SidebarPageAccessPanel';
 import useTabUrlState from '../../hooks/useTabUrlState';
 import useAdminMode from '../../hooks/useAdminMode';
 import { loadVaultSelection, saveVaultSelection } from './vaultSelectionStorage';
@@ -22,7 +24,7 @@ function getSelectionStep(department, yearSem, batch) {
 }
 
 export default function VaultPage() {
-  const { isAdmin: _isAdmin } = useAdminMode();
+  const { isAdmin } = useAdminMode();
   const [initialSelection] = useState(loadVaultSelection);
   const [department, setDepartment] = useState(initialSelection.department);
   const [yearSem, setYearSem] = useState(initialSelection.yearSem);
@@ -103,8 +105,8 @@ export default function VaultPage() {
   };
 
   const vaultTabs = [
-    { id: 'batch-drive', label: 'Batch Drive', icon: HardDrive, desc: 'Study materials & drive', color: 'amber' },
-    { id: 'carbon-vault', label: 'Carbon Vault', icon: Cpu, desc: 'Coming soon', color: 'emerald' },
+    { id: 'batch-drive', label: 'Batch Drive', icon: HardDrive, desc: 'Study materials & drive', color: 'amber', accessKey: 'feature:vault:batch-drive' },
+    { id: 'carbon-vault', label: 'Carbon Vault', icon: Cpu, desc: 'Coming soon', color: 'emerald', accessKey: 'feature:vault:carbon-vault' },
   ];
 
 
@@ -196,7 +198,7 @@ export default function VaultPage() {
     <div className="vault-page animate-fadeIn">
 
       {/* ── 1. Hero box (own card) ── */}
-      <header className="vl-hero">
+      {isAdmin ? <SidebarPageAccessHeader pageKey="/vault" /> : <header className="vl-hero">
         <div className="vl-hero-content">
           <div className="vl-hero-eyebrow">
             <span className="vl-hero-period-icon">
@@ -217,9 +219,10 @@ export default function VaultPage() {
                 : 'Pick the semester. Unlock lecture notes, papers & more.')}
           </p>
         </div>
-      </header>
+      </header>}
 
       {/* ── 2. Glider tabs bar (own card) ── */}
+      {isAdmin && <SidebarPageAccessPanel pageKey="/vault" part="parent" />}
       <div className="glass-card-static vl-tabs-card">
         <GliderTabs
           tabs={vaultTabs}
@@ -231,13 +234,15 @@ export default function VaultPage() {
       </div>
 
       {/* ── 3. Main content box (own card, gated by per-tab featureHidden) ── */}
-      <MastheadAccessControl pageKey={`vault:${vaultTab}`}>
+      {isAdmin ? <SidebarPageAccessPanel pageKey="/vault" featureKey={`feature:vault:${vaultTab}`} part="child" /> : <MastheadAccessControl>
         <div className="vl-content-card" key={vaultTab}>
           <div className="vault-content-area">
-            {renderVaultContent()}
+            <FeatureAccessGate featureKey={`feature:vault:${vaultTab}`}>
+              {renderVaultContent()}
+            </FeatureAccessGate>
           </div>
         </div>
-      </MastheadAccessControl>
+      </MastheadAccessControl>}
     </div>
   );
 }

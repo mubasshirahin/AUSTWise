@@ -7,6 +7,8 @@ import ToLetListings from './ToLetListings';
 import LostAndFound from './LostAndFound';
 import GliderTabs from '../../components/GliderTabs';
 import MastheadAccessControl from '../../components/MastheadAccessControl';
+import FeatureAccessGate from '../admin/FeatureAccessGate';
+import SidebarPageAccessPanel, { SidebarPageAccessHeader } from '../admin/SidebarPageAccessPanel';
 import useTabUrlState from '../../hooks/useTabUrlState';
 import useAdminMode from '../../hooks/useAdminMode';
 import MarketplaceMasthead from './MarketplaceMasthead';
@@ -16,14 +18,14 @@ import '../../components/PageHero.css';
 const MARKETPLACE_TAB_KEY = 'aust-marketplace-active-tab';
 
 const marketplaceTabs = [
-  { id: 'exchange', label: 'AW Market', icon: ShoppingBag, color: 'amber', desc: 'Trade books & equipment' },
-  { id: 'tolet', label: 'ToLet Mama', icon: Home, color: 'amber', desc: 'Bachelor sharing hosts' },
-  { id: 'lost', label: 'Lost & Found', icon: Search, color: 'amber', desc: 'Locate lost products' },
+  { id: 'exchange', label: 'AW Market', icon: ShoppingBag, color: 'amber', desc: 'Trade books & equipment', accessKey: 'feature:marketplace:exchange' },
+  { id: 'tolet', label: 'ToLet Mama', icon: Home, color: 'amber', desc: 'Bachelor sharing hosts', accessKey: 'feature:marketplace:tolet' },
+  { id: 'lost', label: 'Lost & Found', icon: Search, color: 'amber', desc: 'Locate lost products', accessKey: 'feature:marketplace:lost' },
 ];
 
 export default function MarketplacePage() {
   const { theme } = useTheme();
-  const { isAdmin: _isAdmin } = useAdminMode();
+  const { isAdmin } = useAdminMode();
   const isNewsprint = theme === 'newsprint';
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => {
@@ -46,20 +48,22 @@ export default function MarketplacePage() {
   };
 
   return (
-    <div className={`marketplace-page animate-fadeIn${isNewsprint ? ' marketplace-newsprint' : ''}`}>
-      {isNewsprint ? (
+    <div className={`marketplace-page animate-fadeIn${isNewsprint && !isAdmin ? ' marketplace-newsprint' : ''}`}>
+      {isNewsprint && !isAdmin ? (
         <>
           <MarketplaceMasthead />
-          <MastheadAccessControl pageKey={`marketplace:${activeTab}`}>
+          <MastheadAccessControl>
             <div className="marketplace-content-area">
-              {renderActiveTab()}
+              <FeatureAccessGate featureKey={`feature:marketplace:${activeTab}`}>
+                {renderActiveTab()}
+              </FeatureAccessGate>
             </div>
           </MastheadAccessControl>
         </>
       ) : (
         <>
           {/* ── 1. Hero box (own card) ── */}
-          <header className="mp-hero">
+          {isAdmin ? <SidebarPageAccessHeader pageKey="/marketplace" /> : <header className="mp-hero">
             <div className="mp-hero-content">
               <div className="mp-hero-eyebrow">
                 <span className="mp-hero-period-icon">
@@ -76,9 +80,10 @@ export default function MarketplacePage() {
                 Trade equipment &amp; books, find bachelor sharing hosts, locate lost products, and connect study buddies.
               </p>
             </div>
-          </header>
+          </header>}
 
           {/* ── 2. Glider tabs bar (own card) ── */}
+          {isAdmin && <SidebarPageAccessPanel pageKey="/marketplace" part="parent" />}
           <div className="glass-card-static mp-tabs-card">
             <GliderTabs
               tabs={marketplaceTabs}
@@ -90,13 +95,15 @@ export default function MarketplacePage() {
           </div>
 
           {/* ── 3. Main content box (own card, gated by per-tab featureHidden) ── */}
-          <MastheadAccessControl pageKey={`marketplace:${activeTab}`}>
+          {isAdmin ? <SidebarPageAccessPanel pageKey="/marketplace" featureKey={`feature:marketplace:${activeTab}`} part="child" /> : <MastheadAccessControl>
             <div className="mp-content-card" key={activeTab}>
               <div className="marketplace-content-area">
-                {renderActiveTab()}
+                <FeatureAccessGate featureKey={`feature:marketplace:${activeTab}`}>
+                  {renderActiveTab()}
+                </FeatureAccessGate>
               </div>
             </div>
-          </MastheadAccessControl>
+          </MastheadAccessControl>}
         </>
       )}
     </div>

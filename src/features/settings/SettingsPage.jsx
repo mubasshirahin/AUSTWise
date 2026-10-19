@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import QRCode from 'qrcode';
 import { useTheme, getThemeAccent } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useRoutine } from '../../context/RoutineContext';
@@ -10,6 +11,8 @@ import GliderTabs from '../../components/GliderTabs';
 import { useNotifications } from '../../hooks/useNotifications';
 import useAdminMode from '../../hooks/useAdminMode';
 import MastheadAccessControl from '../../components/MastheadAccessControl';
+import FeatureAccessGate from '../admin/FeatureAccessGate';
+import SidebarPageAccessPanel, { SidebarPageAccessHeader } from '../admin/SidebarPageAccessPanel';
 import useWebSocket from '../../hooks/useWebSocket';
 import { OrbitsProvider, useOrbits } from '../orbits/OrbitsContext';
 import OrbitsConfigurationPanel from '../orbits/OrbitsConfigurationPanel';
@@ -39,6 +42,28 @@ const getYearSemesters = (department) => {
   return options;
 };
 const sections = ['A', 'B', 'C', 'D'];
+
+function InviteLinkQr({ value }) {
+  const [qrImage, setQrImage] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    QRCode.toDataURL(value, { width: 220, margin: 2, errorCorrectionLevel: 'M' })
+      .then((dataUrl) => { if (active) setQrImage(dataUrl); })
+      .catch(() => { if (active) setQrImage(''); });
+    return () => { active = false; };
+  }, [value]);
+
+  return (
+    <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+      {qrImage && <img src={qrImage} alt="QR code for this invitation link" width="176" height="176" style={{ background: '#fff', padding: '8px', borderRadius: '10px' }} />}
+      <span style={{ color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)', maxWidth: '260px' }}>
+        Scan this QR code to open the invitation link.
+      </span>
+    </div>
+  );
+}
+
 const quickProfileFields = ['department', 'yearSemester', 'section', 'labSection'];
 
 const getLabSectionOptions = (section) => {
@@ -274,7 +299,7 @@ function FavoriteColorInput() {
 export default function SettingsPage() {
   const { isAdmin } = useAdminMode();
   const { theme, setTheme } = useTheme();
-  const { user, isAuthenticated, updateUser, logout, refreshUserFromServer } = useAuth();
+  const { user, isAuthenticated, updateUser, saveUserProfile, logout, refreshUserFromServer } = useAuth();
   const { routine, weekDays } = useRoutine();
   const { supported, permission, settings: notifSettings, enable: enableNotifs, disable: disableNotifs, updateSetting } = useNotifications(routine, weekDays);
 
@@ -301,7 +326,7 @@ export default function SettingsPage() {
   // from the student ID. Fall back to a freshly generated AWID instead of
   // ever reusing the student ID (which is what made both look identical).
   const displayAwid = useMemo(
-    () => user.awid || createAwid(user.department),
+      () => user.awid || (user.department ? createAwid(user.department, user.role) : ''),
     [user.awid, user.department]
   );
 
@@ -324,25 +349,29 @@ export default function SettingsPage() {
   }, [setSearchParams]);
 
   const settingsTabs = [
-    { id: 'profile', label: 'Identity', icon: User, desc: 'Identity & academic info', color: 'blue' },
-    { id: 'orbits', label: 'My Orbits', icon: Orbit, desc: 'Your stalk journey', color: 'cyan' },
-    { id: 'theme', label: 'UI', icon: Settings, desc: 'Themes & appearance', color: 'purple' },
-    { id: 'notifications', label: 'Configure', icon: Bell, desc: 'Alerts & reminders', color: 'amber' },
-    { id: 'about', label: 'Credits', icon: Info, desc: 'Developer credits & info', color: 'emerald' },
+    { id: 'profile', label: 'Identity', icon: User, desc: 'Identity & academic info', accessKey: 'feature:settings:profile', color: 'blue' },
+    { id: 'orbits', label: 'My Orbits', icon: Orbit, desc: 'Your stalk journey', accessKey: 'feature:settings:orbits', color: 'cyan' },
+    { id: 'theme', label: 'UI', icon: Settings, desc: 'Themes & appearance', accessKey: 'feature:settings:theme', color: 'purple' },
+    { id: 'notifications', label: 'Configure', icon: Bell, desc: 'Alerts & reminders', accessKey: 'feature:settings:notifications', color: 'amber' },
+    { id: 'about', label: 'Credits', icon: Info, desc: 'Developer credits & info', accessKey: 'feature:settings:about', color: 'emerald' },
     ...(isAuthenticated && user?.role === 'admin' ? [{ id: 'invite', label: 'Invite Member', icon: Send, desc: 'Send invites', color: 'cyan' }] : []),
   ];
 
-  const [roleApplicationForm, setRoleApplicationForm] = useState({ appliedRole: 'cr' });
+  const [roleApplicationForm, setRoleApplicationForm] = useState({ appliedRole: 'cr', statement: '' });
   const [applicationStatus, setApplicationStatus] = useState(null);
   const [, setUserApplications] = useState([]);
   const [applicationMessage, setApplicationMessage] = useState('');
   const [submittingApplication, setSubmittingApplication] = useState(false);
+  const [executiveApplications, setExecutiveApplications] = useState([]);
+  const [submittingExecutiveRole, setSubmittingExecutiveRole] = useState('');
   const [saveMessage, setSaveMessage] = useState('');
+  const [isProfileSaving, setIsProfileSaving] = useState(false);
   const [emailInput, setEmailInput] = useState('');
   const [inviteRole, setInviteRole] = useState('alumni');
   const [inviteSending, setInviteSending] = useState(false);
   const [inviteMsg, setInviteMsg] = useState('');
   const [inviteMsgType, setInviteMsgType] = useState('');
+  const [inviteLink, setInviteLink] = useState('');
   const [invitations, setInvitations] = useState([]);
   const [invitePage, setInvitePage] = useState(1);
   const [inviteTotalPages, setInviteTotalPages] = useState(1);
@@ -350,6 +379,46 @@ export default function SettingsPage() {
   const [notifMsg, setNotifMsg] = useState('');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [vacancyMap, setVacancyMap] = useState(null);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) return;
+    let cancelled = false;
+    const syncExecutiveApplications = async () => {
+      try {
+        const res = await fetch('/api/role-applications/mine', { credentials: 'same-origin' });
+        const data = await res.json().catch(() => ({}));
+        if (!cancelled && res.ok && Array.isArray(data.applications)) {
+          setExecutiveApplications(data.applications.filter((app) => ['vp', 'gs'].includes(app.appliedRole)));
+        }
+      } catch { /* offline: use local submission state */ }
+    };
+    syncExecutiveApplications();
+    const timer = setInterval(syncExecutiveApplications, 15000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [isAuthenticated, user?.id]);
+
+  const handleExecutiveRoleApplication = async (appliedRole) => {
+    setSubmittingExecutiveRole(appliedRole);
+    setApplicationMessage('');
+    try {
+      const application = await submitRoleApplication({
+        userId: user.id,
+        userName: user.name,
+        userEmail: user.email,
+        department: user.department,
+        semester: user.semester,
+        batch: user.batch || user.batchNo,
+        appliedRole,
+        statement: '',
+      });
+      setExecutiveApplications((current) => [...current.filter((item) => item.id !== application.id), application]);
+      setApplicationMessage(`${appliedRole.toUpperCase()} application submitted. Admin will review it.`);
+    } catch (error) {
+      setApplicationMessage(error.message || 'Failed to submit application.');
+    } finally {
+      setSubmittingExecutiveRole('');
+    }
+  };
   const [resignConfirm, setResignConfirm] = useState(false);
   const [resigning, setResigning] = useState(false);
   const [withdrawConfirm, setWithdrawConfirm] = useState(false);
@@ -365,6 +434,56 @@ export default function SettingsPage() {
   }));
   const [privacySaving, setPrivacySaving] = useState(false);
   const [privacyMsg, setPrivacyMsg] = useState('');
+  const [semesterDropSaving, setSemesterDropSaving] = useState(false);
+  const [semesterDropMessage, setSemesterDropMessage] = useState('');
+  const [alumniCarrySaving, setAlumniCarrySaving] = useState(false);
+  const [alumniCarryMessage, setAlumniCarryMessage] = useState('');
+
+  const setSemesterDropped = async (dropped) => {
+    setSemesterDropSaving(true);
+    setSemesterDropMessage('');
+    try {
+      const response = await fetch('/api/auth/semester-drop', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dropped }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || 'Could not update your status.');
+      await refreshUserFromServer();
+      setSemesterDropMessage(dropped
+        ? 'Your account is now marked as Re-add.'
+        : 'Your account is back to Student status.');
+    } catch (error) {
+      setSemesterDropMessage(error.message || 'Could not update your status.');
+    } finally {
+      setSemesterDropSaving(false);
+    }
+  };
+
+  const setAlumniCarryStatus = async (hasCarry) => {
+    setAlumniCarrySaving(true);
+    setAlumniCarryMessage('');
+    try {
+      const response = await fetch('/api/auth/alumni-carry', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hasCarry }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || 'Could not update your Alumni status.');
+      await refreshUserFromServer();
+      setAlumniCarryMessage(hasCarry
+        ? 'Your account is now marked as Alumni With Carry.'
+        : 'Your account is now marked as Alumni.');
+    } catch (error) {
+      setAlumniCarryMessage(error.message || 'Could not update your Alumni status.');
+    } finally {
+      setAlumniCarrySaving(false);
+    }
+  };
 
   const savePrivacySetting = async (key, value) => {
     const next = { ...privacySettings, [key]: value };
@@ -532,25 +651,29 @@ export default function SettingsPage() {
   }, [activeSubTab, invitePage, fetchInvites]);
 
   // Send invitation
-  const sendInvite = async () => {
-    if (!emailInput.trim()) {
+  const sendInvite = async (emailOverride = '', roleOverride = '') => {
+    const targetEmail = String(emailOverride || emailInput).trim();
+    const targetRole = roleOverride || inviteRole;
+    if (!targetEmail) {
       setInviteMsg('Please enter an email address.');
       setInviteMsgType('error');
       return;
     }
     setInviteSending(true);
     setInviteMsg('');
+    setInviteLink('');
     try {
       const res = await fetch('/api/invites', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: emailInput.trim(), role: inviteRole, invitedBy: user?.name || 'Admin' }),
+        body: JSON.stringify({ email: targetEmail, role: targetRole, invitedBy: user?.name || 'Admin' }),
       });
       const data = await res.json();
       if (data.success) {
-        setInviteMsg(`Invitation sent to ${emailInput.trim()}`);
+        setInviteMsg(`${data.resent || emailOverride ? 'Invitation email resent' : 'Gmail accepted the invitation email'} for ${targetEmail}. Final inbox delivery is controlled by the recipient’s mail provider.`);
+        setInviteLink(data.inviteLink || '');
         setInviteMsgType('success');
-        setEmailInput('');
+        if (!emailOverride) setEmailInput('');
         fetchInvites(1);
         setInvitePage(1);
       } else {
@@ -593,6 +716,34 @@ export default function SettingsPage() {
     labSection: user.labSection || '',
   });
 
+  // Keep the read-only profile and the next edit draft tied to the server
+  // account. Do not touch an in-progress draft while the user is editing.
+  useEffect(() => {
+    if (isEditingProfile) return;
+    const email = user.email || '';
+    const emailId = email.includes('@aust.edu')
+      ? (email.split('@')[0] || '').replace(/^[a-z.]+/i, '')
+      : '';
+    const batchNo = getBatchNoFromUser(user);
+    setProfileDetails({
+      id: emailId || user.id || '',
+      name: user.name || '',
+      email,
+      avatar: user.avatar || '',
+      bloodGroup: user.bloodGroup || '',
+    });
+    setQuickProfile({
+      department: user.department || '',
+      batchName: user.batchName || batchNo || '',
+      batchNo,
+      batchCustomName: '',
+      yearSemester: user.yearSemester || getYearSemesterFromSemester(user.semester),
+      section: user.section || '',
+      labSection: user.labSection || '',
+    });
+    setYearSemTouched(false);
+  }, [isEditingProfile, user.id, user.email, user.name, user.avatar, user.bloodGroup, user.department, user.batchName, user.yearSemester, user.section, user.labSection, user.semester]);
+
   const resetProfileDrafts = () => {
     const nextBatchNo = getBatchNoFromUser(user);
     const email = user.email || '';
@@ -627,6 +778,7 @@ export default function SettingsPage() {
   };
 
   const updateQuickProfileField = (field, value) => {
+    if (field !== 'batch' && quickProfile[field] === value) return;
     if (field === 'yearSemester') setYearSemTouched(true);
     if (field === 'department') setYearSemTouched(false);
     setQuickProfile((currentProfile) => {
@@ -654,7 +806,8 @@ export default function SettingsPage() {
   const quickProfileReady = Boolean(
     quickProfile.department &&
     quickProfile.yearSemester &&
-    quickProfile.section
+    quickProfile.section &&
+    quickProfile.labSection
   );
 
   const profileDetailsReady = Boolean(profileDetails.id.trim() && profileDetails.name.trim() && profileDetails.email.trim());
@@ -706,10 +859,10 @@ export default function SettingsPage() {
         appliedRole: roleApplicationForm.appliedRole,
         targetLabSection: roleApplicationForm.targetLabSection,
         targetSection: roleApplicationForm.targetSection,
-        statement: '',
+        statement: roleApplicationForm.statement,
       });
       setApplicationMessage('Application submitted successfully! Admin will review it soon.');
-      setRoleApplicationForm({ appliedRole: 'cr', targetLabSection: '', targetSection: '' });
+      setRoleApplicationForm({ appliedRole: 'cr', targetLabSection: '', targetSection: '', statement: '' });
       setShowApplyForm(false);
       
       // Refresh status & vacancy
@@ -738,7 +891,7 @@ export default function SettingsPage() {
     reader.readAsDataURL(file);
   };
 
-  const saveAllChanges = () => {
+  const saveAllChanges = async () => {
     if (!allChangesReady) return;
 
     if (!isAuthenticated) {
@@ -756,26 +909,30 @@ export default function SettingsPage() {
       return 1;
     })();
 
-    updateUser({
-      id: profileDetails.id.trim(),
-      name: nextName,
-      email: profileDetails.email.trim(),
-      avatar: profileDetails.avatar,
-      bloodGroup: profileDetails.bloodGroup,
-
-      initials: getInitials(nextName),
-      department: quickProfile.department,
-      batch: finalBatchName,
-      batchName: finalBatchName,
-      batchNo: quickProfile.batchNo,
-      yearSemester: quickProfile.yearSemester,
-      semester: semesterNum,
-      section: quickProfile.section,
-      labSection: quickProfile.labSection,
-    });
-    setSaveMessage('Saved');
-    setIsEditingProfile(false);
-    window.setTimeout(() => setSaveMessage(''), 1800);
+    setIsProfileSaving(true);
+    setSaveMessage('');
+    try {
+      await saveUserProfile({
+        name: nextName,
+        avatar: profileDetails.avatar,
+        bloodGroup: profileDetails.bloodGroup,
+        department: quickProfile.department,
+        batch: finalBatchName,
+        batchName: finalBatchName,
+        batchNo: quickProfile.batchNo,
+        yearSemester: quickProfile.yearSemester,
+        semester: semesterNum,
+        section: quickProfile.section,
+        labSection: quickProfile.labSection,
+      });
+      setSaveMessage('Saved');
+      setIsEditingProfile(false);
+      window.setTimeout(() => setSaveMessage(''), 2200);
+    } catch (error) {
+      setSaveMessage(error.message || 'Could not save profile. Please try again.');
+    } finally {
+      setIsProfileSaving(false);
+    }
   };
 
   const visibleBatchName = quickProfile.batchName && quickProfile.batchNo
@@ -876,7 +1033,7 @@ export default function SettingsPage() {
     <div className="settings-page animate-fadeIn">
 
       {/* ── 1. Hero box (own card) ── */}
-      <header className="st-hero">
+      {isAdmin && activeSubTab !== 'invite' ? <SidebarPageAccessHeader pageKey="/settings" /> : <header className="st-hero">
         <div className="st-hero-content">
           <div className="st-hero-eyebrow">
             <span className="st-hero-period-icon">
@@ -901,9 +1058,10 @@ export default function SettingsPage() {
             </div>
           )}
         </div>
-      </header>
+      </header>}
 
       {/* ── 2. Tabs bar (own card) ── */}
+      {isAdmin && activeSubTab !== 'invite' && <SidebarPageAccessPanel pageKey="/settings" part="parent" />}
       <div className="glass-card-static st-tabs-card">
         <GliderTabs
           tabs={settingsTabs}
@@ -915,7 +1073,7 @@ export default function SettingsPage() {
       </div>
 
       {/* ── 3. Main content box (own card) ── */}
-      <MastheadAccessControl pageKey="/settings">
+      {isAdmin && activeSubTab !== 'invite' ? <SidebarPageAccessPanel pageKey="/settings" featureKey={`feature:settings:${activeSubTab}`} part="child" /> : <MastheadAccessControl pageKey="/settings">
         <div className="st-content-card" key={activeSubTab}>
         {activeSubTab === 'about' && (
           <div className="st-mac-chrome" aria-hidden="true">
@@ -924,6 +1082,7 @@ export default function SettingsPage() {
             <span className="st-mac-dot st-mac-dot--green" />
           </div>
         )}
+        <FeatureAccessGate featureKey={`feature:settings:${activeSubTab}`}>
         <div className="settings-panel">
           {activeSubTab === 'profile' && (
             <div className="animate-fadeIn">
@@ -950,8 +1109,8 @@ export default function SettingsPage() {
                     <span className="profile-completion-text">{profilePercent}%</span>
                   </div>
                   {saveMessage && (
-                    <span className="save-status">
-                      <CheckCircle size={14} /> {saveMessage}
+                    <span className="save-status" style={{ color: saveMessage === 'Saved' ? 'var(--accent-emerald)' : 'var(--accent-rose)' }}>
+                      {saveMessage === 'Saved' ? <CheckCircle size={14} /> : <AlertTriangle size={14} />} {saveMessage}
                     </span>
                   )}
                   <button className="btn btn-secondary btn-sm" onClick={toggleProfileEditing}>
@@ -961,6 +1120,62 @@ export default function SettingsPage() {
               </div>
 
               <div className="schedule-dotted-divider" />
+
+              {isAuthenticated && user?.role === 'student' && (
+                <section className="cfg-section" style={{ margin: '0 0 18px' }}>
+                  <div className="cfg-section-head">
+                    <h3 className="cfg-section-title">Semester Status</h3>
+                    <p className="cfg-section-desc">If you drop your semester, your account will be marked as Re-add so access can be managed for that status.</p>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap', padding: '14px', border: '1px solid var(--border-primary)', borderRadius: '12px', background: 'var(--bg-input)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span className="cfg-row-icon is-blue"><GraduationCap size={18} /></span>
+                      <div>
+                        <strong style={{ display: 'block', color: 'var(--text-primary)' }}>Current status: {user.roles?.includes('readd') ? 'Re-add' : 'Regular Student'}</strong>
+                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>This updates your account role immediately.</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className={user.roles?.includes('readd') ? 'btn btn-secondary' : 'btn btn-primary'}
+                      onClick={() => setSemesterDropped(!user.roles?.includes('readd'))}
+                      disabled={semesterDropSaving}
+                      aria-label={user.roles?.includes('readd') ? 'Cancel semester drop and return to regular student status' : 'Mark semester dropped and add Re-add status'}
+                    >
+                      {semesterDropSaving ? 'Saving…' : user.roles?.includes('readd') ? 'Cancel Semester Drop' : 'I Dropped This Semester'}
+                    </button>
+                  </div>
+                  {semesterDropMessage && <p role="status" style={{ marginTop: '8px', fontSize: '12px', color: semesterDropMessage.startsWith('Could not') ? 'var(--accent-rose)' : 'var(--accent-emerald)' }}>{semesterDropMessage}</p>}
+                </section>
+              )}
+
+              {isAuthenticated && (user?.role === 'alumni' || user?.role === 'alumni_with_carry') && (
+                <section className="cfg-section" style={{ margin: '0 0 18px' }}>
+                  <div className="cfg-section-head">
+                    <h3 className="cfg-section-title">Alumni Status</h3>
+                    <p className="cfg-section-desc">Tell us whether you still have courses to complete. This switches your access role between Alumni and Alumni With Carry.</p>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap', padding: '14px', border: '1px solid var(--border-primary)', borderRadius: '12px', background: 'var(--bg-input)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span className="cfg-row-icon is-blue"><GraduationCap size={18} /></span>
+                      <div>
+                        <strong style={{ display: 'block', color: 'var(--text-primary)' }}>Current status: {user.role === 'alumni_with_carry' ? 'Alumni With Carry' : 'Alumni'}</strong>
+                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>You can update this whenever your carry-course status changes.</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className={user.role === 'alumni_with_carry' ? 'btn btn-secondary' : 'btn btn-primary'}
+                      onClick={() => setAlumniCarryStatus(user.role !== 'alumni_with_carry')}
+                      disabled={alumniCarrySaving}
+                      aria-label={user.role === 'alumni_with_carry' ? 'Change status to Alumni without carry courses' : 'Mark as Alumni with carry courses'}
+                    >
+                      {alumniCarrySaving ? 'Saving…' : user.role === 'alumni_with_carry' ? 'No Carry Courses' : 'I Have Carry Courses'}
+                    </button>
+                  </div>
+                  {alumniCarryMessage && <p role="status" style={{ marginTop: '8px', fontSize: '12px', color: alumniCarryMessage.startsWith('Could not') ? 'var(--accent-rose)' : 'var(--accent-emerald)' }}>{alumniCarryMessage}</p>}
+                </section>
+              )}
 
               <div className="profile-content-stack">
                 <div className="profile-editor">
@@ -1083,7 +1298,7 @@ export default function SettingsPage() {
                   <div className="settings-quick-change">
                     <div className="quick-change-header">
                       <h4>Academic Details</h4>
-                      <p>Choose the fields you want to change, then save once below.</p>
+                      <p>Choose the fields you want to change. Your lab group stays saved until you choose another one.</p>
                     </div>
 
                     <div className="quick-change-stack">
@@ -1096,8 +1311,8 @@ export default function SettingsPage() {
 
                 {isEditingProfile && (
                   <div className="profile-bottom-actions">
-                    <button className="btn btn-primary" onClick={saveAllChanges} disabled={!allChangesReady}>
-                      <Save size={16} /> Save Changes
+                    <button className="btn btn-primary" onClick={saveAllChanges} disabled={!allChangesReady || isProfileSaving}>
+                      <Save size={16} /> {isProfileSaving ? 'Saving…' : 'Save Changes'}
                     </button>
                   </div>
                 )}
@@ -1854,21 +2069,10 @@ export default function SettingsPage() {
               <div className="schedule-dotted-divider" />
 
               {/* Invite Form */}
-              <div style={{ background: 'var(--bg-input)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-lg)', padding: '20px', marginBottom: '24px' }}>
+              <div className="invite-member-panel" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-lg)', padding: '20px', marginBottom: '24px' }}>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                  <div style={{ flex: '0 0 140px' }}>
-                    <label style={{ fontSize: 'var(--fs-xs)', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>Role</label>
-                    <select
-                      value={inviteRole}
-                      onChange={(e) => setInviteRole(e.target.value)}
-                      style={{ width: '100%', padding: '8px 10px', background: 'var(--bg-card)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', fontSize: 'var(--fs-sm)' }}
-                    >
-                      <option value="alumni">Alumni</option>
-                      <option value="faculty">Faculty</option>
-                    </select>
-                  </div>
                   <div style={{ flex: 1, minWidth: '200px' }}>
-                    <label style={{ fontSize: 'var(--fs-xs)', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>Email</label>
+                    <label style={{ color: 'var(--text-primary)', fontSize: 'var(--fs-xs)', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>Email</label>
                     <input
                       className="input"
                       type="email"
@@ -1877,10 +2081,21 @@ export default function SettingsPage() {
                       autoComplete="email"
                       value={emailInput}
                       onChange={(e) => setEmailInput(e.target.value)}
-                      placeholder="alumni@example.com"
+                      placeholder="member@example.com"
                       onKeyDown={(e) => { if (e.key === 'Enter') sendInvite(); }}
                       style={{ width: '100%' }}
                     />
+                  </div>
+                  <div style={{ flex: '0 0 140px' }}>
+                    <label style={{ color: 'var(--text-primary)', fontSize: 'var(--fs-xs)', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>Invite as</label>
+                    <select
+                      value={inviteRole}
+                      onChange={(e) => setInviteRole(e.target.value)}
+                      style={{ width: '100%', padding: '8px 10px', background: 'var(--bg-card)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', fontSize: 'var(--fs-sm)' }}
+                    >
+                      <option value="faculty">Faculty</option>
+                      <option value="alumni">Alumni</option>
+                    </select>
                   </div>
                   <button
                     className="btn btn-primary"
@@ -1888,7 +2103,7 @@ export default function SettingsPage() {
                     disabled={inviteSending}
                     style={{ height: '38px', whiteSpace: 'nowrap' }}
                   >
-                    {inviteSending ? 'Sending...' : 'Send Invite'}
+                    {inviteSending ? 'Creating link...' : 'Create invite link'}
                   </button>
                 </div>
 
@@ -1905,10 +2120,19 @@ export default function SettingsPage() {
                     {inviteMsg}
                   </div>
                 )}
+                {inviteLink && (
+                  <div>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginTop: '10px' }}>
+                      <input className="input" readOnly value={inviteLink} aria-label="Invitation link" style={{ flex: '1 1 280px', fontSize: '11px' }} />
+                      <button type="button" className="btn btn-secondary btn-sm" onClick={() => navigator.clipboard?.writeText(inviteLink)}>Copy invitation link</button>
+                    </div>
+                    <InviteLinkQr value={inviteLink} />
+                  </div>
+                )}
               </div>
 
               {/* Invitation History */}
-              <div>
+              <div className="invite-member-history">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', margin: 0 }}>Invitation History</h4>
                 </div>
@@ -1925,9 +2149,11 @@ export default function SettingsPage() {
                           <tr style={{ borderBottom: '1px solid var(--border-primary)' }}>
                             <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 'bold' }}>Email</th>
                             <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 'bold' }}>Role</th>
-                            <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 'bold' }}>Status</th>
-                            <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 'bold' }}>Sent</th>
+                            <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 'bold' }}>Invite status</th>
+                            <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 'bold' }}>Email status</th>
+                            <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 'bold' }}>Created</th>
                             <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 'bold' }}>Accepted</th>
+                            <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 'bold' }}>Action</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1940,11 +2166,30 @@ export default function SettingsPage() {
                                   {inv.Status === 'accepted' ? 'Accepted' : inv.Status === 'expired' ? 'Expired' : 'Pending'}
                                 </span>
                               </td>
+                              <td style={{ padding: '8px 10px' }} title={inv.EmailStatus === 'accepted_by_gmail' ? 'Gmail accepted this message for delivery. This does not confirm inbox delivery.' : inv.EmailStatus === 'failed' ? `Email submission failed (${inv.EmailErrorCode || 'unknown'}). Submit the same address again to retry.` : 'Email submission status is unavailable for this invitation.'}>
+                                <span className={`badge ${inv.EmailStatus === 'accepted_by_gmail' ? 'badge-emerald' : inv.EmailStatus === 'failed' ? 'badge-rose' : 'badge-blue'}`} style={{ fontSize: '9px' }}>
+                                  {inv.EmailStatus === 'accepted_by_gmail' ? 'Accepted by Gmail' : inv.EmailStatus === 'failed' ? 'Failed' : 'Not tracked'}
+                                </span>
+                                {inv.EmailSubmittedAt && <div style={{ marginTop: '4px', color: 'var(--text-tertiary)', fontSize: '10px' }}>{new Date(inv.EmailSubmittedAt).toLocaleString()}</div>}
+                              </td>
                               <td style={{ padding: '8px 10px', color: 'var(--text-tertiary)', fontSize: '11px' }}>
                                 {new Date(inv.CreatedAt).toLocaleDateString()}
                               </td>
                               <td style={{ padding: '8px 10px', color: 'var(--text-tertiary)', fontSize: '11px' }}>
                                 {inv.AcceptedAt ? new Date(inv.AcceptedAt).toLocaleDateString() : '—'}
+                              </td>
+                              <td style={{ padding: '8px 10px' }}>
+                                {inv.Status === 'pending' && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-secondary btn-sm"
+                                    disabled={inviteSending}
+                                    onClick={() => sendInvite(inv.Email, inv.Role)}
+                                    style={{ minHeight: '40px', whiteSpace: 'nowrap' }}
+                                  >
+                                    {inviteSending ? 'Sending…' : 'Resend email'}
+                                  </button>
+                                )}
                               </td>
                             </tr>
                           ))}
@@ -1980,11 +2225,12 @@ export default function SettingsPage() {
             </div>
           )}
         </div>
+        </FeatureAccessGate>
       </div>
-      </MastheadAccessControl>
+      </MastheadAccessControl>}
 
       {/* ── 4. CR / SR Leadership (own card, below the content box) ── */}
-{activeSubTab === 'profile' && isAuthenticated && !isEditingProfile && (
+{activeSubTab === 'profile' && isAuthenticated && !isEditingProfile && !['vp', 'gs'].includes(user?.role) && (
             <div className="st-cr-sr-cta" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-5)', boxShadow: 'var(--shadow-lift)' }}>
               <div className="animate-fadeIn">
               {/* One-line status bar */}
@@ -2008,7 +2254,7 @@ export default function SettingsPage() {
                       {crSrStatus?.hasActiveRole
                         ? `${user?.department} • ${crSrStatus.activeRole === 'cr' ? `Lab ${user?.labSection}` : `Section ${user?.section}`}`
                         : crSrStatus?.hasPending
-                          ? `Applied for ${crSrStatus.pendingApplication.appliedRole === 'cr' ? 'CR' : 'SR'} · ${formatAppDate(crSrStatus.pendingApplication.createdAt)} · Awaiting review`
+                          ? `Applied for ${{ cr: 'CR', sr: 'SR', vp: 'VP', gs: 'GS' }[crSrStatus.pendingApplication.appliedRole] || 'position'} · ${formatAppDate(crSrStatus.pendingApplication.createdAt)} · Awaiting review`
                           : allChangesReady
                             ? 'CR/SR positions are open for your batch'
                             : 'Complete your academic details to apply'}
@@ -2209,6 +2455,26 @@ export default function SettingsPage() {
                   )}
 
                   <div className="mb-4">
+                    <label htmlFor="cr-sr-application-statement" style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>
+                      Statement <span style={{ color: 'var(--text-tertiary)', fontWeight: 'normal' }}>(Optional)</span>
+                    </label>
+                    <textarea
+                      id="cr-sr-application-statement"
+                      className="input"
+                      rows={4}
+                      maxLength={1000}
+                      value={roleApplicationForm.statement || ''}
+                      onChange={(event) => setRoleApplicationForm({ ...roleApplicationForm, statement: event.target.value })}
+                      placeholder="Share why you'd like to take this role or anything the admin should consider."
+                      aria-describedby="cr-sr-application-statement-hint"
+                      style={{ width: '100%', resize: 'vertical', minHeight: '96px' }}
+                    />
+                    <span id="cr-sr-application-statement-hint" style={{ display: 'block', marginTop: '5px', color: 'var(--text-tertiary)', fontSize: '11px' }}>
+                      This will be visible to the admin reviewing your application. {roleApplicationForm.statement?.length || 0}/1000
+                    </span>
+                  </div>
+
+                  <div className="mb-4">
                     <label style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>Your Information</label>
                     <div className="p-4" style={{ background: 'var(--bg-input)', borderRadius: 'var(--radius-md)', fontSize: 'var(--fs-xs)' }}>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -2376,7 +2642,7 @@ export default function SettingsPage() {
                       <div>
                         <h4 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', margin: 0 }}>Withdraw Application?</h4>
                         <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
-                          Applied for {crSrStatus?.pendingApplication?.appliedRole === 'cr' ? 'CR' : 'SR'}
+                          Applied for {{ cr: 'CR', sr: 'SR', vp: 'VP', gs: 'GS' }[crSrStatus?.pendingApplication?.appliedRole] || 'position'}
                         </p>
                       </div>
                     </div>
@@ -2436,7 +2702,52 @@ export default function SettingsPage() {
             </div>
           )}
 
-      {/* ── 5. Delete Account (own card, below the CR/SR card) ── */}
+      {/* Department Executive applications */}
+      {activeSubTab === 'profile' && isAuthenticated && !isEditingProfile && (
+        <section className="glass-card-static" style={{ marginBottom: 'var(--sp-5)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-5)' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
+            <span style={{ width: 36, height: 36, display: 'grid', placeItems: 'center', borderRadius: 12, color: 'var(--accent-amber)', background: 'var(--accent-amber-glow)' }}><GraduationCap size={18} /></span>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 'var(--fs-sm)', fontWeight: 700 }}>Department Executive Roles</h3>
+              <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: 'var(--fs-xs)' }}>Other departments: GS from semester 7 and VP from semester 8. ARCH: GS from semester 9 and VP from semester 10. Admin approval is required.</p>
+            </div>
+          </div>
+          {['vp', 'gs'].includes(user?.role) ? (
+            <p style={{ margin: 0, color: 'var(--accent-emerald)', fontSize: 'var(--fs-xs)', fontWeight: 600 }}>You are listed in the Student Directory as {user.role.toUpperCase()}.</p>
+          ) : (() => {
+            const semester = Number(user?.semester || 0);
+            const department = String(user?.department || '').trim().toUpperCase();
+            const isArchitecture = department === 'ARCH';
+            const vpMinimumSemester = isArchitecture ? 10 : 8;
+            const gsMinimumSemester = isArchitecture ? 9 : 7;
+            const isCurrentStudent = ['student', 'cr', 'sr'].includes(user?.role);
+            const pending = executiveApplications.find((app) => app.status === 'pending') || (applicationStatus?.pendingApplication?.status === 'pending' ? applicationStatus.pendingApplication : null);
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                {pending ? (
+                  <span style={{ color: 'var(--accent-amber)', fontSize: 'var(--fs-xs)' }}>Your {pending.appliedRole?.toUpperCase()} application is awaiting admin review.</span>
+                ) : (
+                  <>
+                    {isCurrentStudent && department && semester >= vpMinimumSemester && (
+                      <button type="button" className="btn btn-secondary btn-sm" onClick={() => handleExecutiveRoleApplication('vp')} disabled={submittingExecutiveRole !== '' || Boolean(applicationStatus?.hasPending)}>
+                        <Send size={14} /> {submittingExecutiveRole === 'vp' ? 'Submitting…' : 'Apply for VP'}
+                      </button>
+                    )}
+                    {isCurrentStudent && department && semester >= gsMinimumSemester && (
+                      <button type="button" className="btn btn-secondary btn-sm" onClick={() => handleExecutiveRoleApplication('gs')} disabled={submittingExecutiveRole !== '' || Boolean(applicationStatus?.hasPending)}>
+                        <Send size={14} /> {submittingExecutiveRole === 'gs' ? 'Submitting…' : 'Apply for GS'}
+                      </button>
+                    )}
+                    {(!isCurrentStudent || !department || semester < Math.min(gsMinimumSemester, vpMinimumSemester)) && <span style={{ color: 'var(--text-tertiary)', fontSize: '11px' }}>{!department ? 'Complete your department and semester in your profile to check eligibility.' : `Applications are available from semester ${gsMinimumSemester} for GS and ${vpMinimumSemester} for VP.`}</span>}
+                    {applicationStatus?.hasPending && <span style={{ color: 'var(--text-tertiary)', fontSize: '11px' }}>You already have a role application awaiting review.</span>}
+                  </>
+                )}
+              </div>
+            );
+          })()}
+        </section>
+      )}
+
       {activeSubTab === 'profile' && isAuthenticated && !isEditingProfile && (
         <div className="st-delete-account" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-5)', boxShadow: 'var(--shadow-lift)' }}>
           <div className="animate-fadeIn">

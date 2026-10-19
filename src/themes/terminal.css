@@ -10,7 +10,8 @@
    a [data-theme="terminal"] TOKEN block plus a scoped PERSONALITY layer.
    ════════════════════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+/* Font (JetBrains Mono) loads from the single consolidated Google Fonts
+   <link> in index.html — see the note there. */
 
 /* ─── Token remap ─────────────────────────────────────────────────────────────
    Redefines the shared custom-property contract. Every feature reads from these,

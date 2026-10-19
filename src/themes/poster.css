@@ -14,7 +14,8 @@
    DOM changes required.
    ════════════════════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800;900&display=swap');
+/* Font (Inter Tight) loads from the single consolidated Google Fonts
+   <link> in index.html — see the note there. */
 
 /* ─── Token remap ─────────────────────────────────────────────────────────────
    Translates the Bold Typography spec onto the shared custom-property contract.

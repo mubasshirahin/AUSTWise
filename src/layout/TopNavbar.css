@@ -316,7 +316,7 @@
   border: 1px solid var(--border-primary);
   background: var(--bg-input);
   cursor: pointer;
-  transition: all var(--transition-base);
+  transition: background-color var(--transition-base), border-color var(--transition-base), color var(--transition-base), opacity var(--transition-base), box-shadow var(--transition-base), transform var(--transition-base), filter var(--transition-base);
 }
 
 .topbar-profile-btn:hover,
@@ -1111,7 +1111,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, filter 0.2s ease;
 }
 
 .nav-pom-mode:hover {
@@ -1146,7 +1146,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, filter 0.2s ease;
 }
 
 .nav-pom-ctrl:hover {

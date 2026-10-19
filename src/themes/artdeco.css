@@ -15,8 +15,8 @@
    can be authored without contending for index.css.
    ════════════════════════════════════════════════════════════════════════════ */
 
-/* ─── Fonts (loaded when this file is imported) ─── */
-@import url('https://fonts.googleapis.com/css2?family=Marcellus&family=Josefin+Sans:wght@300;400;500;600;700&display=swap');
+/* ─── Fonts — Marcellus + Josefin Sans load from the single consolidated
+   Google Fonts <link> in index.html (see the note there). ─── */
 
 /* ════════════════════════════════════════════════════════════════════════════
    TOKEN REMAP  —  Custom properties that reskin the entire app

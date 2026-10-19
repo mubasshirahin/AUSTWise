@@ -13,77 +13,12 @@
 import { readJson, writeJson } from './jsonDB.mjs';
 import { readUsers } from './userStore.mjs';
 
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
-const TIME_SLOTS = ['08:00 - 08:50', '09:00 - 09:50', '10:00 - 10:50', '11:00 - 11:50', '12:00 - 12:50', '14:00 - 14:50', '15:00 - 15:50'];
-const ROOMS = ['2A03', '2A04', '2A05', '2A06', '2A07', '3A01', '3A02', '4B01', '5A01', '6B02'];
-const TEACHERS = [
-  'Prof. A. Rahman', 'Dr. S. Karim', 'Mr. M. Hasan', 'Ms. F. Jahan',
-  'Dr. T. Chowdhury', 'Prof. K. Islam', 'Mr. R. Hossain', 'Dr. N. Akter',
-  'Mr. J. Ahmed', 'Dr. L. Sultana',
-];
-const FOUNDATION = ['MATH', 'PHY', 'ENG', 'HUM', 'EEE'];
-
-/** Deterministic PRNG (same seed → same data on every run). */
-function seeded(seedStr) {
-  let x = seedStr.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 2147483647 || 1;
-  return () => {
-    x = (x * 16807) % 2147483647;
-    return (x - 1) / 2147483646;
-  };
-}
-
-function courseCodes(dept, sem) {
-  const codes = [];
-  for (let i = 1; i <= 6; i += 1) codes.push(`${dept}${sem}${String(i).padStart(2, '0')}`);
-  for (let i = 0; i < FOUNDATION.length; i += 1) codes.push(`${FOUNDATION[i]}${sem}${String(i + 1).padStart(2, '0')}`);
-  return codes;
-}
-
-function buildRoutine(dept, sem, section, lab) {
-  const rand = seeded(`routine-${dept}-${sem}-${section}-${lab}`);
-  const codes = courseCodes(dept, Number(sem));
-  const routine = {};
-  DAYS.forEach((day, dayIdx) => {
-    const classCount = 2 + (dayIdx % 2); // 2-3 classes a day
-    const classes = [];
-    for (let c = 0; c < classCount; c += 1) {
-      classes.push({
-        id: `dev-${dept}-${sem}-${section}${lab}-${day}-${c}`,
-        time: TIME_SLOTS[(dayIdx * 2 + c) % TIME_SLOTS.length],
-        course: codes[(dayIdx + c) % codes.length],
-        teacher: TEACHERS[Math.floor(rand() * TEACHERS.length)],
-        room: ROOMS[Math.floor(rand() * ROOMS.length)],
-        type: c % 3 === 0 ? 'Lab' : 'Theory',
-      });
-    }
-    routine[day] = classes;
-  });
-  return routine;
-}
-
-/** One shared routine per CR slot (dept × yearSemester × section × lab). */
+/** Remove old generated routine fixtures and don't create fake shared routines. */
 export async function seedDevSharedRoutines() {
-  const users = await readUsers();
-  const crs = users.filter((u) => u.id && String(u.id).startsWith('DEV-') && u.role === 'cr');
-  const now = new Date().toISOString();
-  const routines = crs.map((cr) => ({
-    id: `dev-rt-${cr.id}`,
-    crId: cr.id,
-    crName: cr.name,
-    department: cr.department,
-    yearSemester: cr.yearSemester,
-    section: cr.section,
-    labSection: cr.labSection,
-    routine: JSON.stringify(buildRoutine(cr.department, cr.semester, cr.section, cr.labSection)),
-    weekDays: JSON.stringify(DAYS),
-    createdAt: now,
-    updatedAt: now,
-  }));
-
   const existing = await readJson('shared_routines.json');
-  const kept = existing.filter((r) => !(r.crId && String(r.crId).startsWith('DEV-')));
-  await writeJson('shared_routines.json', [...kept, ...routines]);
-  return routines.length;
+  const kept = existing.filter((r) => !String(r.id || '').startsWith('dev-rt-'));
+  if (kept.length !== existing.length) await writeJson('shared_routines.json', kept);
+  return 0;
 }
 
 const MESSAGE_SCRIPTS = [

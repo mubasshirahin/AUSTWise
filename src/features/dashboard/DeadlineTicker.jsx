@@ -10,7 +10,22 @@ export default function DeadlineTicker() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const userBatchGroup = useMemo(() => getUserBatchGroup(user), [user]);
-  const canAddTask = user?.role === 'admin' || user?.role === 'cr' || user?.role === 'sr';
+  const canAddTask = user?.role === 'admin' || user?.role === 'cr';
+  const sharedTaskPrefix = user?.department && user?.semester
+    ? `aust-semester-tasks:${String(user.department).trim().toUpperCase()}:${user.semester}`
+    : '';
+  const [sharedA1] = useLiveValue('shared', sharedTaskPrefix ? `${sharedTaskPrefix}:A1` : null, []);
+  const [sharedA2] = useLiveValue('shared', sharedTaskPrefix ? `${sharedTaskPrefix}:A2` : null, []);
+  const [sharedB1] = useLiveValue('shared', sharedTaskPrefix ? `${sharedTaskPrefix}:B1` : null, []);
+  const [sharedB2] = useLiveValue('shared', sharedTaskPrefix ? `${sharedTaskPrefix}:B2` : null, []);
+  const [sharedC1] = useLiveValue('shared', sharedTaskPrefix ? `${sharedTaskPrefix}:C1` : null, []);
+  const [sharedC2] = useLiveValue('shared', sharedTaskPrefix ? `${sharedTaskPrefix}:C2` : null, []);
+  const [sharedD1] = useLiveValue('shared', sharedTaskPrefix ? `${sharedTaskPrefix}:D1` : null, []);
+  const [sharedD2] = useLiveValue('shared', sharedTaskPrefix ? `${sharedTaskPrefix}:D2` : null, []);
+  const sharedSemesterTasks = useMemo(() => [
+    ...sharedA1, ...sharedA2, ...sharedB1, ...sharedB2,
+    ...sharedC1, ...sharedC2, ...sharedD1, ...sharedD2,
+  ], [sharedA1, sharedA2, sharedB1, sharedB2, sharedC1, sharedC2, sharedD1, sharedD2]);
 
   // Deadlines & calendar tasks are live-synced across devices
   const [timers] = useLiveValue('user', 'aust-deadlines', [...deadlines]);
@@ -20,7 +35,7 @@ export default function DeadlineTicker() {
   // Strict: task without valid batchGroup never leaks to all.
   const combinedDeadlines = useMemo(() => {
     // Convert calendar tasks to deadline format (only for user's batch — no !batchGroup leak)
-    const taskDeadlines = calendarTasks
+    const taskDeadlines = [...calendarTasks, ...sharedSemesterTasks]
       .filter(task => task.batchGroup && task.batchGroup === userBatchGroup)
       .map(task => {
         // TZ-safe: parse YYYY-MM-DD as local midnight, not UTC
@@ -57,7 +72,7 @@ export default function DeadlineTicker() {
     }));
 
     return [...manualDeadlines, ...taskDeadlines];
-  }, [timers, calendarTasks, userBatchGroup]);
+  }, [timers, calendarTasks, sharedSemesterTasks, userBatchGroup]);
 
   // State for live countdown display
   const [displayDeadlines, setDisplayDeadlines] = useState([]);

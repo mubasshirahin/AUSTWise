@@ -97,7 +97,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--transition-base);
+  transition: background-color var(--transition-base), border-color var(--transition-base), color var(--transition-base), opacity var(--transition-base), box-shadow var(--transition-base), transform var(--transition-base), filter var(--transition-base);
   flex-shrink: 0;
 }
 
@@ -142,7 +142,7 @@
   justify-content: center;
   color: var(--text-tertiary);
   flex-shrink: 0;
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), opacity var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast), filter var(--transition-fast);
 }
 
 .search-result-item:hover,

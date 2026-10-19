@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { getYearSemOptions } from '../../utils/semester';
 import { getPasswordGrade } from '../../utils/passwordStrength';
-import { getAllAccounts, signupWithGoogle, updateAccountProfile, createAwid } from '../../utils/authStorage';
+import { getAllAccounts } from '../../utils/authStorage';
 import ParticleField from './ParticleField';
 import logoLight from '../../assets/vector1-1.svg';
 import logoDark from '../../assets/vector1-1.svg';
@@ -46,14 +46,10 @@ const themeOptions = [...darkThemeOptions, ...lightThemeOptions];
 
 const parseBatchInput = (input) => {
   const raw = String(input || '').trim();
-  const match = raw.match(/^(.*?)\s*(\d{1,2})$/);
-  if (match) {
-    const name = match[1].trim();
-    const num = match[2];
-    return { batchName: name || num, batchNo: num };
-  }
-  return { batchName: raw, batchNo: raw };
+  const match = raw.match(/^([A-Za-z]+)\s+(\d+)$/);
+  return match ? { batchName: match[1], batchNo: match[2] } : null;
 };
+const batchFormatHint = 'Use one word for the batch name, then a space and the batch number (for example: Batch 45).';
 
 const defaultSignup = {
   name: '',
@@ -67,6 +63,7 @@ const defaultSignup = {
   designation: '',
   company: '',
   graduationYear: '',
+  previousEmail: '',
 };
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
@@ -152,6 +149,7 @@ export default function AuthPage() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [socialErr, setSocialErr] = useState('');
+  const [accessRequestSent, setAccessRequestSent] = useState(false);
   const [pendingGoogleAccount, setPendingGoogleAccount] = useState(null);
   const pendingCredentialRef = useRef(null);
 
@@ -162,10 +160,13 @@ export default function AuthPage() {
 
   const activeTheme = themeOptions.find((t) => t.id === theme) || themeOptions[0];
   const ThemeIcon = activeTheme.icon;
+  const isAustEmail = (email) => /@(?:[a-z0-9-]+\.)*aust\.edu$/i.test(String(email || '').trim());
+  const isAccessRequest = false;
 
   const switchMode = (nextMode) => {
     setMode(nextMode);
     setError('');
+    setAccessRequestSent(false);
     setSocialErr('');
     setPendingGoogleAccount(null);
     pendingCredentialRef.current = null;
@@ -182,6 +183,10 @@ export default function AuthPage() {
     // Let the browser surface native inline validation for the step-1 fields
     // (required / email format / minLength) before advancing.
     if (signupFormRef.current && !signupFormRef.current.reportValidity()) {
+      return;
+    }
+    if (signupForm.role === 'student' && !isAustEmail(signupForm.email)) {
+      setError('Student accounts must use an @aust.edu email address.');
       return;
     }
     // Password match isn't expressible in HTML constraints — check it here.
@@ -258,8 +263,8 @@ export default function AuthPage() {
 
     // Preferred path: server-side find-or-create. The account persists in
     // users.json (appears in member counts / directories) and gets an auth
-    // cookie so the session survives reloads. Falls back to the legacy
-    // client-only localStorage flow if the server is unavailable.
+    // cookie so the session survives reloads. Never create a client-only
+    // signed-in session because protected APIs require the server cookie.
     try {
       const res = await fetch('/api/auth/google', {
         method: 'POST',
@@ -276,9 +281,9 @@ export default function AuthPage() {
         linkedSocial: { ...(data.user.linkedSocial || {}), gmail: payload.email },
       };
 
-      if (data.existing) {
+      if (data.existing && !serverUser.signupIncomplete) {
         // Already registered — straight to the dashboard.
-        loginDirect(serverUser);
+        await loginDirect(serverUser);
         syncGoogleAccountToLocal(serverUser);
         return;
       }
@@ -297,50 +302,13 @@ export default function AuthPage() {
       setError('');
       setSocialErr('');
       return;
-    } catch {
+    } catch (authError) {
       pendingCredentialRef.current = null;
-      setSocialErr('');
+      setSocialErr(authError.message || 'Could not verify your sign-in with the server. Please try again.');
+      return;
     }
 
     // ── Fallback: client-side only (server down) ──
-    const accounts = getAllAccounts().filter((a) => a.id !== 'guest');
-    const existing = accounts.find((a) => a.email === payload.email);
-    if (existing) {
-      try {
-        const enrichedAccount = {
-          ...existing,
-          avatar: pictureUrl || existing.avatar,
-          linkedSocial: { ...(existing.linkedSocial || {}), gmail: payload.email },
-        };
-        loginDirect(enrichedAccount);
-        updateAccountProfile(existing.id, {
-          avatar: pictureUrl || existing.avatar,
-          linkedSocial: { ...(existing.linkedSocial || {}), gmail: payload.email },
-        });
-      } catch { setSocialErr('Failed to log in'); }
-    } else {
-      try {
-        const newAccount = signupWithGoogle({
-          name: payload.name,
-          email: payload.email,
-          picture: pictureUrl,
-        });
-        setPendingGoogleAccount(newAccount);
-        setSignupForm((prev) => ({
-          ...prev,
-          name: payload.name || '',
-          email: payload.email || '',
-          password: '',
-          confirmPassword: '',
-        }));
-        setMode('signup');
-        setSignupStep(2);
-        setError('');
-        setSocialErr('');
-      } catch (e) {
-        setSocialErr(e.message || 'Failed to create account with Google.');
-      }
-    }
   }, [loginDirect, syncGoogleAccountToLocal]);
 
   const googleBtnRef = useRef(null);
@@ -417,12 +385,18 @@ export default function AuthPage() {
   const handleSignup = async (event) => {
     event.preventDefault();
     setError('');
+    setAccessRequestSent(false);
+    const signupBatch = ['student', 'alumni'].includes(signupForm.role) ? parseBatchInput(signupForm.batchNo) : null;
+    if (['student', 'alumni'].includes(signupForm.role) && !signupBatch) {
+      setError(batchFormatHint);
+      return;
+    }
 
     // Google signup: no password needed, just update the account with remaining fields
     if (pendingGoogleAccount) {
       // Only @aust.edu emails are allowed — no role exceptions.
       const googleEmail = (pendingGoogleAccount.email || '').toLowerCase().trim();
-      if (!googleEmail.endsWith('@aust.edu')) {
+      if (!isAustEmail(googleEmail)) {
         setError('Only @aust.edu email addresses are allowed with Google login.');
         return;
       }
@@ -431,7 +405,7 @@ export default function AuthPage() {
       try {
         const [yr, term] = (signupForm.yearSemester || '1.1').split('.').map(Number);
         const semesterNum = (yr - 1) * 2 + term;
-        const { batchName, batchNo } = parseBatchInput(signupForm.batchNo);
+        const { batchName, batchNo } = signupBatch;
         const profile = {
           role: signupForm.role,
           department: signupForm.department,
@@ -460,22 +434,53 @@ export default function AuthPage() {
             avatar: pendingGoogleAccount.avatar || data.user.avatar,
             linkedSocial: { ...(data.user.linkedSocial || {}), gmail: googleEmail },
           };
-          loginDirect(updatedUser);
+          await loginDirect(updatedUser);
           syncGoogleAccountToLocal(updatedUser);
           setPendingGoogleAccount(null);
           pendingCredentialRef.current = null;
           navigate(redirectPath, { replace: true });
         } else {
-          // Fallback: client-only completion (server was down at step 1).
-          const newAwid = createAwid(signupForm.department);
-          updateAccountProfile(pendingGoogleAccount.id, { awid: newAwid, ...profile });
-          const updatedAccount = { ...pendingGoogleAccount, awid: newAwid, ...profile };
-          loginDirect(updatedAccount);
-          setPendingGoogleAccount(null);
-          navigate(redirectPath, { replace: true });
+          throw new Error('Google sign-in session expired. Start Google sign-in again to finish creating your account.');
         }
       } catch (e) {
         setError(e.message || 'Signup failed.');
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    if (signupForm.role === 'student' && !isAustEmail(signupForm.email)) {
+      setError('Student accounts must use an @aust.edu email address.');
+      return;
+    }
+
+    if (isAccessRequest) {
+      setSubmitting(true);
+      try {
+        const response = await fetch('/api/access-requests', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: signupForm.name,
+            email: signupForm.email,
+            password: signupForm.password,
+            role: signupForm.role,
+            department: signupForm.department,
+            designation: signupForm.designation,
+            batch: signupBatch ? `${signupBatch.batchName} ${signupBatch.batchNo}` : '',
+            batchName: signupBatch?.batchName || '',
+            batchNo: signupBatch?.batchNo || '',
+            graduationYear: signupForm.graduationYear,
+            company: signupForm.company,
+            previousEmail: signupForm.previousEmail,
+          }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) throw new Error(data.error || 'Could not send your access request.');
+        setAccessRequestSent(true);
+        setSubmitting(false);
+      } catch (requestError) {
+        setError(requestError.message || 'Could not send your access request.');
         setSubmitting(false);
       }
       return;
@@ -492,9 +497,9 @@ export default function AuthPage() {
       // Map yearSemester (e.g. "3.1") to semester number (e.g. 5)
       const [yr, term] = (signupForm.yearSemester || '1.1').split('.').map(Number);
       const semesterNum = (yr - 1) * 2 + term;
-      const { batchName, batchNo } = parseBatchInput(signupForm.batchNo);
+      const { batchName, batchNo } = signupBatch;
 
-      await signup({
+      const signupResult = await signup({
         name: signupForm.name,
         email: signupForm.email,
         password: signupForm.password,
@@ -509,6 +514,11 @@ export default function AuthPage() {
         company: signupForm.company,
         graduationYear: signupForm.graduationYear,
       });
+      if (signupResult?.pendingApproval) {
+        setAccessRequestSent(true);
+        setSubmitting(false);
+        return;
+      }
 
       // ─── "Drop the mic" success ───
       // Reward the long form: fold the card up like an exam paper into an
@@ -750,6 +760,7 @@ export default function AuthPage() {
         </div>
 
         {error && <div className="auth-message error">{error}</div>}
+        {accessRequestSent && <div className="auth-message success">Request submitted. After admin approval, sign in with this email and password.</div>}
         {socialErr && <div className="auth-message error">{socialErr}</div>}
 
         <div className="auth-form-container">
@@ -833,20 +844,6 @@ export default function AuthPage() {
 
             {signupStep === 1 && (
             <div className="auth-step-panel">
-            <div className="auth-role-grid">
-              {roleOptions.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  className={`auth-role-card ${signupForm.role === option.id ? 'active' : ''}`}
-                  onClick={() => setSignupForm((c) => ({ ...c, role: option.id }))}
-                >
-                  <option.icon size={18} />
-                  <span>{option.label}</span>
-                </button>
-              ))}
-            </div>
-
             <label className="auth-field">
               Full name
               <input
@@ -877,7 +874,7 @@ export default function AuthPage() {
                   onFocus={() => setFocusKind('text')}
                   onBlur={() => setFocusKind(null)}
                   onKeyDown={onEmailKeyDown(completeSignupEmail, suggestSignup)}
-                  placeholder="you@aust.edu"
+                  placeholder={['faculty', 'alumni'].includes(signupForm.role) ? 'name@aust.edu or personal email' : 'you@aust.edu'}
                   required
                 />
                 {suggestSignup && (
@@ -888,7 +885,7 @@ export default function AuthPage() {
               </div>
             </label>
 
-            <div className="grid-2" style={{ gap: '10px' }}>
+            <div style={{ display: 'grid', gap: '10px' }}>
               <label className="auth-field">
                 Password
                 <div className="auth-input-eye">
@@ -902,7 +899,7 @@ export default function AuthPage() {
                     onChange={(e) => setSignupForm((c) => ({ ...c, password: e.target.value }))}
                     onFocus={() => setFocusKind('password')}
                     onBlur={() => setFocusKind(null)}
-                    minLength={6}
+                    minLength={8}
                     required
                   />
                   <button
@@ -917,7 +914,7 @@ export default function AuthPage() {
                 </div>
               </label>
               <label className="auth-field">
-                Confirm
+                Confirm Password
                 <div className="auth-input-eye">
                   <input
                     id="signup-confirm-password"
@@ -929,7 +926,7 @@ export default function AuthPage() {
                     onChange={(e) => setSignupForm((c) => ({ ...c, confirmPassword: e.target.value }))}
                     onFocus={() => setFocusKind('confirm')}
                     onBlur={() => setFocusKind(null)}
-                    minLength={6}
+                    minLength={8}
                     required
                   />
                   <button
@@ -959,6 +956,20 @@ export default function AuthPage() {
                 </div>
               </div>
             )}
+
+            <div className="auth-role-grid">
+              {roleOptions.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={`auth-role-card ${signupForm.role === option.id ? 'active' : ''}`}
+                  onClick={() => setSignupForm((c) => ({ ...c, role: option.id }))}
+                >
+                  <option.icon size={18} />
+                  <span>{option.label}</span>
+                </button>
+              ))}
+            </div>
 
             <button type="button" className="btn btn-primary auth-submit" onClick={handleContinue}>
               Continue →
@@ -1012,7 +1023,9 @@ export default function AuthPage() {
                   className="input"
                   value={signupForm.batchNo}
                   onChange={(e) => setSignupForm((c) => ({ ...c, batchNo: e.target.value }))}
-                  placeholder="e.g. Quanta 52"
+                  placeholder="e.g. Batch 45"
+                  pattern="[A-Za-z]+\\s+[0-9]+"
+                  title={batchFormatHint}
                   required
                 />
               </label>
@@ -1027,7 +1040,9 @@ export default function AuthPage() {
                   className="input"
                   value={signupForm.batchNo}
                   onChange={(e) => setSignupForm((c) => ({ ...c, batchNo: e.target.value }))}
-                  placeholder="e.g. Origin 42"
+                  placeholder="e.g. Batch 45"
+                  pattern="[A-Za-z]+\\s+[0-9]+"
+                  title={batchFormatHint}
                   required
                 />
               </label>
@@ -1067,6 +1082,18 @@ export default function AuthPage() {
             {isAlumni && (
               <>
                 <label className="auth-field">
+                  Previous AUST email (optional, for account migration)
+                  <input
+                    id="signup-previous-email"
+                    name="previousEmail"
+                    className="input"
+                    type="email"
+                    value={signupForm.previousEmail}
+                    onChange={(e) => setSignupForm((c) => ({ ...c, previousEmail: e.target.value }))}
+                    placeholder="your-old-id@aust.edu"
+                  />
+                </label>
+                <label className="auth-field">
                   Graduation year
                   <input
                     id="signup-grad-year"
@@ -1091,6 +1118,12 @@ export default function AuthPage() {
               </>
             )}
 
+            {['faculty', 'alumni'].includes(signupForm.role) && !isAustEmail(signupForm.email) && (
+              <div className="auth-message success" style={{ marginTop: 0 }}>
+                Your account will be created and held for admin approval before you can sign in.
+              </div>
+            )}
+
             <div className="auth-step-nav">
               <button
                 type="button"
@@ -1100,7 +1133,7 @@ export default function AuthPage() {
                 ← Back
               </button>
               <button type="submit" className="btn btn-primary auth-submit" disabled={submitting}>
-                {submitting ? 'Creating account...' : `Sign up as ${roleOptions.find((r) => r.id === signupForm.role)?.label}`}
+                {submitting ? (isAccessRequest ? 'Sending request...' : 'Creating account...') : isAccessRequest ? 'Request access' : `Sign up as ${roleOptions.find((r) => r.id === signupForm.role)?.label}`}
               </button>
             </div>
             </div>

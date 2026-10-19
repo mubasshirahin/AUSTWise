@@ -10,7 +10,8 @@
    a [data-theme="bitcoindefi"] TOKEN block plus a scoped PERSONALITY layer.
    ════════════════════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+/* Fonts (Space Grotesk / Inter / JetBrains Mono) load from the single
+   consolidated Google Fonts <link> in index.html — see the note there. */
 
 /* ─── Token remap ─────────────────────────────────────────────────────────────
    Redefines the shared custom-property contract. Every feature in the app reads

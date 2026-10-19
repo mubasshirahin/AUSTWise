@@ -9,6 +9,8 @@ import BuzzPage from '../austeddit/AustedditPage';
 import RoastCVPage from '../roast-cv/RoastCVPage';
 import GliderTabs from '../../components/GliderTabs';
 import MastheadAccessControl from '../../components/MastheadAccessControl';
+import FeatureAccessGate from '../admin/FeatureAccessGate';
+import SidebarPageAccessPanel, { SidebarPageAccessHeader } from '../admin/SidebarPageAccessPanel';
 import useTabUrlState from '../../hooks/useTabUrlState';
 import useAdminMode from '../../hooks/useAdminMode';
 import { useLiveValue } from '../../utils/liveStore';
@@ -48,7 +50,7 @@ function ShadowMasthead({ icon: Icon, title, subtitle, actions }) {
 }
 
 export default function ShadowPage() {
-  const { isAdmin: _isAdmin } = useAdminMode();
+  const { isAdmin } = useAdminMode();
   const [rawReviews] = useLiveValue('shared', 'aust-course-reviews-v2', []);
   const reviews = Array.isArray(rawReviews) ? rawReviews : [];
   const totalReviews = reviews.length;
@@ -294,7 +296,7 @@ export default function ShadowPage() {
     <div className="shadow-page animate-fadeIn">
 
       {/* ── 1. Hero box (own card) ── */}
-      <header className="sh-hero">
+      {isAdmin ? <SidebarPageAccessHeader pageKey="/shadow" /> : <header className="sh-hero">
         <div className="sh-hero-content">
           <div className="sh-hero-eyebrow">
             <span className="sh-hero-period-icon">
@@ -311,10 +313,10 @@ export default function ShadowPage() {
             Anonymous course reviews and 10-minute anonymous chats — no login required.
           </p>
         </div>
-      </header>
+      </header>}
 
       {/* ── Stats Row ── */}
-      {totalReviews > 0 && (
+      {!isAdmin && totalReviews > 0 && (
         <div className="shadow-stats-row">
           {stats.map((stat, i) => {
             const Icon = stat.icon;
@@ -340,13 +342,14 @@ export default function ShadowPage() {
       )}
 
       {/* ── 2. Glider tabs bar (own card) ── */}
+      {isAdmin && <SidebarPageAccessPanel pageKey="/shadow" part="parent" />}
       <div className="glass-card-static sh-tabs-card">
         <GliderTabs
           tabs={[
-            { id: 'reviews', label: 'Course Reviews',   desc: 'Anonymous feedback',     color: 'amber',  icon: Star          },
-            { id: 'chat',    label: 'Shadow Chat',      desc: '10-min anonymous match', color: 'amber',  icon: MessageSquare },
-            { id: 'buzz',    label: 'Buzz',             desc: 'AUST forum',             color: 'amber',  icon: Zap           },
-            { id: 'roast-cv', label: 'Roast CV',        desc: 'CV feedback',            color: 'amber',  icon: Flame         },
+            { id: 'reviews', label: 'Course Reviews',   desc: 'Anonymous feedback', accessKey: 'feature:shadow:reviews',     color: 'amber',  icon: Star          },
+            { id: 'chat',    label: 'Shadow Chat',      desc: '10-min anonymous match', accessKey: 'feature:shadow:chat', color: 'amber',  icon: MessageSquare },
+            { id: 'buzz',    label: 'Buzz',             desc: 'AUST forum', accessKey: 'feature:shadow:buzz',             color: 'amber',  icon: Zap           },
+            { id: 'roast-cv', label: 'Roast CV',        desc: 'CV feedback', accessKey: 'feature:shadow:roast-cv',            color: 'amber',  icon: Flame         },
           ]}
           activeTab={activeTab}
           onChange={handleShadowTabChange}
@@ -356,9 +359,10 @@ export default function ShadowPage() {
       </div>
 
       {/* ── 3. Main content box (own card, gated by per-subtab featureHidden) ── */}
-      <MastheadAccessControl pageKey={`shadow:${activeTab}`}>
+      {isAdmin ? <SidebarPageAccessPanel pageKey="/shadow" featureKey={`feature:shadow:${activeTab}`} part="child" /> : <MastheadAccessControl>
         <div className="sh-content-card" key={activeTab}>
         <div className="shadow-content-area">
+          <FeatureAccessGate featureKey={`feature:shadow:${activeTab}`}>
           {activeTab === 'buzz' ? (
             <>
               <ShadowMasthead
@@ -526,9 +530,10 @@ export default function ShadowPage() {
             </section>
             </>
           )}
+          </FeatureAccessGate>
         </div>
         </div>
-      </MastheadAccessControl>
+      </MastheadAccessControl>}
     </div>
   );
 }

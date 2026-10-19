@@ -53,11 +53,11 @@ export default function WeekSchedule() {
   // Available batch groups (A1, A2, B1, B2, C1, C2, D1, D2)
   const batchGroups = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2'];
 
-  // Check if user can add tasks (admin, CR, SR only)
-  const canAddTask = user?.role === 'admin' || user?.role === 'cr' || user?.role === 'sr';
+  // Tasks can be added by admins and CRs; SRs have view-only access here.
+  const canAddTask = user?.role === 'admin' || user?.role === 'cr';
 
-  // Semester start date is admin/CR-controlled — students only view it.
-  const canManageStartDate = user?.role === 'admin' || user?.role === 'moderator' || user?.role === 'cr';
+  // Only admins may change the semester start date; everyone else can view it.
+  const canManageStartDate = user?.role === 'admin';
 
   // Local draft of the start date before the admin/CR saves it.
   const [startDraft, setStartDraft] = useState(null);
@@ -73,7 +73,7 @@ export default function WeekSchedule() {
 
   const userBatchGroup = getUserBatchGroup(user);
 
-  // Save semester start date (shared value — admin/CR only)
+  // Save semester start date (shared value — admin only)
   const saveSemesterStart = (date) => {
     if (!canManageStartDate) return;
     setSemesterStart(date);
@@ -169,6 +169,30 @@ export default function WeekSchedule() {
   // Load tasks from localStorage — now live-synced across devices
   const [tasks, setTasks] = useLiveValue('user', 'aust-week-tasks', []);
 
+  // CR-published tasks are shared by cohort and lab group. Every member of the
+  // same department/semester reads all eight groups in Semester View.
+  const sharedTaskPrefix = user?.department && user?.semester
+    ? `aust-semester-tasks:${String(user.department).trim().toUpperCase()}:${user.semester}`
+    : '';
+  const [tasksA1, setTasksA1] = useLiveValue('shared', sharedTaskPrefix ? `${sharedTaskPrefix}:A1` : null, []);
+  const [tasksA2, setTasksA2] = useLiveValue('shared', sharedTaskPrefix ? `${sharedTaskPrefix}:A2` : null, []);
+  const [tasksB1, setTasksB1] = useLiveValue('shared', sharedTaskPrefix ? `${sharedTaskPrefix}:B1` : null, []);
+  const [tasksB2, setTasksB2] = useLiveValue('shared', sharedTaskPrefix ? `${sharedTaskPrefix}:B2` : null, []);
+  const [tasksC1, setTasksC1] = useLiveValue('shared', sharedTaskPrefix ? `${sharedTaskPrefix}:C1` : null, []);
+  const [tasksC2, setTasksC2] = useLiveValue('shared', sharedTaskPrefix ? `${sharedTaskPrefix}:C2` : null, []);
+  const [tasksD1, setTasksD1] = useLiveValue('shared', sharedTaskPrefix ? `${sharedTaskPrefix}:D1` : null, []);
+  const [tasksD2, setTasksD2] = useLiveValue('shared', sharedTaskPrefix ? `${sharedTaskPrefix}:D2` : null, []);
+  const sharedTaskStores = {
+    A1: [tasksA1, setTasksA1], A2: [tasksA2, setTasksA2],
+    B1: [tasksB1, setTasksB1], B2: [tasksB2, setTasksB2],
+    C1: [tasksC1, setTasksC1], C2: [tasksC2, setTasksC2],
+    D1: [tasksD1, setTasksD1], D2: [tasksD2, setTasksD2],
+  };
+  const sharedSemesterTasks = useMemo(() => batchGroups.flatMap((group) =>
+    (sharedTaskStores[group][0] || []).map((task) => ({ ...task, batchGroup: group, isSharedSemesterTask: true }))
+  ), [tasksA1, tasksA2, tasksB1, tasksB2, tasksC1, tasksC2, tasksD1, tasksD2]);
+  const semesterTasks = useMemo(() => [...tasks, ...sharedSemesterTasks], [tasks, sharedSemesterTasks]);
+
   const saveTasks = (updatedTasks) => setTasks(updatedTasks);
 
   const formatDateKey = (date) => {
@@ -180,7 +204,7 @@ export default function WeekSchedule() {
 
   const getTasksForDate = (date) => {
     const key = formatDateKey(date);
-    let filteredTasks = tasks.filter(task => task.date === key);
+    let filteredTasks = semesterTasks.filter(task => task.date === key);
     
     if (batchFilter !== 'all') {
       filteredTasks = filteredTasks.filter(task => task.batchGroup === batchFilter);
@@ -263,8 +287,8 @@ export default function WeekSchedule() {
   };
 
   // Week stats for the current visible range — memoized via weekDates
-  const weekTaskCount = useMemo(() => weekDates.reduce((sum, d) => sum + getTasksForDate(d).length, 0), [weekDates, tasks, batchFilter]);
-  const weekDaysWithTasks = useMemo(() => weekDates.filter(d => getTasksForDate(d).length > 0).length, [weekDates, tasks, batchFilter]);
+  const weekTaskCount = useMemo(() => weekDates.reduce((sum, d) => sum + getTasksForDate(d).length, 0), [weekDates, tasks, sharedSemesterTasks, batchFilter]);
+  const weekDaysWithTasks = useMemo(() => weekDates.filter(d => getTasksForDate(d).length > 0).length, [weekDates, tasks, sharedSemesterTasks, batchFilter]);
 
   const handleAddTask = (e) => {
     e.preventDefault();
@@ -283,8 +307,19 @@ export default function WeekSchedule() {
       createdAt: new Date().toISOString()
     };
 
-    const updated = [...tasks, task];
-    saveTasks(updated);
+    if (user?.role === 'cr') {
+      const [, setGroupTasks] = sharedTaskStores[userBatchGroup] || [];
+      if (setGroupTasks) {
+        void setGroupTasks((current) => [...(Array.isArray(current) ? current : []), {
+          ...task,
+          isSharedSemesterTask: true,
+          createdBy: user.id,
+          createdByName: user.name,
+        }]);
+      }
+    } else {
+      saveTasks([...tasks, task]);
+    }
     setNewTask({ 
       courseCode: '', 
       courseName: '', 
@@ -297,8 +332,14 @@ export default function WeekSchedule() {
   };
 
   const handleDeleteTask = (taskId) => {
-    const updated = tasks.filter(task => task.id !== taskId);
-    saveTasks(updated);
+    const target = semesterTasks.find((task) => task.id === taskId);
+    if (target?.isSharedSemesterTask) {
+      if (target.createdBy !== user?.id && user?.role !== 'admin') return;
+      const [, setGroupTasks] = sharedTaskStores[target.batchGroup] || [];
+      if (setGroupTasks) void setGroupTasks((current) => current.filter((task) => task.id !== taskId));
+      return;
+    }
+    saveTasks(tasks.filter(task => task.id !== taskId));
   };
 
   const isToday = (date) => {
@@ -771,6 +812,9 @@ export default function WeekSchedule() {
           </span>
         )}
       </div>
+      <p style={{ margin: '-2px 0 10px', color: 'var(--text-tertiary)', fontSize: '11px' }}>
+        Shared CR tasks from all lab groups appear here; Deadline shows only your lab group’s tasks.
+      </p>
 
       {/* Task Details Modal */}
       {selectedTask && (
@@ -828,7 +872,9 @@ export default function WeekSchedule() {
             </div>
             
             <div className="flex gap-2" style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--border-secondary)' }}>
-              {canAddTask && (
+              {(selectedTask.isSharedSemesterTask
+                ? (selectedTask.createdBy === user?.id || user?.role === 'admin')
+                : canAddTask) && (
                 <button className="btn btn-danger btn-sm flex-1" onClick={() => { handleDeleteTask(selectedTask.id); setSelectedTask(null); }}>
                   Delete Task
                 </button>
@@ -846,6 +892,11 @@ export default function WeekSchedule() {
         <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
           <div className="modal glass-card-static" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '280px', width: '85%', padding: '6px 10px 4px', boxSizing: 'border-box' }}>
             <form onSubmit={handleAddTask} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {user?.role === 'cr' && (
+                <p style={{ margin: '2px 0 6px', color: 'var(--text-secondary)', fontSize: '11px', lineHeight: 1.45 }}>
+                  Shared with all lab groups in {user.department}, semester {user.semester}. It appears in Deadline for {userBatchGroup} only.
+                </p>
+              )}
               <div>
                 <CourseAutocomplete
                   value={newTask.courseCode}

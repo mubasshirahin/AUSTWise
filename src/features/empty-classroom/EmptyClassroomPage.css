@@ -121,6 +121,48 @@
   background: var(--bg-card);
 }
 
+.ecf-date-time-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: var(--sp-3);
+  padding: 10px 12px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+}
+
+.ecf-date-time-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+}
+
+.ecf-date-time-field svg { color: var(--accent-amber); }
+
+.ecf-date-time-field input {
+  min-width: 118px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  color-scheme: inherit;
+}
+
+.ecf-date-time-hint {
+  margin-left: auto;
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+}
+
 /* ════════════════════════════════════════════════════════════
    FILTER BAR
    ════════════════════════════════════════════════════════════ */
@@ -546,6 +588,10 @@
   .ecf-grid { grid-template-columns: 1fr; }
   .ecf-filterbar { flex-direction: column; align-items: stretch; }
   .ecf-status-tabs { width: 100%; }
+  .ecf-date-time-controls { align-items: stretch; }
+  .ecf-date-time-field { flex: 1; min-width: 0; }
+  .ecf-date-time-field input { min-width: 0; width: 100%; }
+  .ecf-date-time-hint { width: 100%; margin-left: 0; }
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -748,4 +794,79 @@
 
 .ecf-led.busy {
   animation-duration: 1.8s;
+}
+
+/* Compact, theme-driven layout overrides */
+.ecf-widget { padding: 14px; padding-bottom: 14px; }
+.ecf-masthead {
+  grid-template-columns: minmax(0, 1fr) auto minmax(210px, 260px);
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-primary);
+  background: linear-gradient(135deg, var(--bg-card), var(--bg-secondary));
+}
+.ecf-masthead::after { display: none; }
+.ecf-masthead .schedule-title-block { gap: 10px; }
+.ecf-masthead .schedule-icon-tile { width: 40px; height: 40px; min-width: 40px; }
+.ecf-masthead .schedule-title { font-size: var(--fs-md); }
+.ecf-masthead .schedule-subtitle { max-width: 100%; font-size: 10px; }
+.ecf-stats { gap: 14px; }
+.ecf-stat-divider { height: 20px; margin: 0 2px; }
+.ecf-masthead .ecf-search { width: 100%; }
+.ecf-search-input { height: 36px; font-size: var(--fs-xs); }
+
+.ecf-date-time-controls {
+  gap: 8px;
+  margin-top: 9px;
+  padding: 7px 9px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-card) 72%, transparent);
+}
+.ecf-date-time-field { min-height: 32px; gap: 6px; padding: 0 8px; background: var(--bg-input); }
+.ecf-date-time-field input { font-size: var(--fs-xs); }
+.ecf-date-time-hint { font-size: 10px; }
+.ecf-widget .schedule-dotted-divider { margin: 10px 0; }
+
+.ecf-filterbar {
+  gap: 8px;
+  margin: 9px 0 12px;
+  padding: 6px 8px;
+  border-radius: var(--radius-md);
+}
+.ecf-status-tab { padding: 6px 11px; }
+.ecf-floor-select-input { height: 31px; }
+.ecf-floor-list { gap: 10px; }
+.ecf-floor { padding: 10px 12px; border-radius: var(--radius-md); box-shadow: none; }
+.ecf-floor:hover { transform: none; box-shadow: var(--shadow-sm); }
+.ecf-floor-head { padding-bottom: 7px; margin-bottom: 0; }
+.ecf-floor-toggle { width: 23px; height: 23px; }
+.ecf-floor-badge { padding: 2px 8px; }
+.ecf-blocks { gap: 8px; margin-top: 8px; }
+.ecf-block { padding: 9px; border-radius: var(--radius-sm); }
+.ecf-block-head { margin-bottom: 7px; }
+.ecf-block-badge { padding: 2px 8px; }
+.ecf-grid { grid-template-columns: repeat(auto-fill, minmax(205px, 1fr)); gap: 8px; }
+.ecf-card { min-height: 70px; gap: 6px; padding: 9px 11px; border-radius: var(--radius-sm); box-shadow: none; }
+.ecf-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.ecf-card-id { font-size: var(--fs-sm); }
+.ecf-card-type { font-size: 8px; padding: 1px 5px; }
+.ecf-led { width: 10px; height: 10px; animation: none !important; }
+.ecf-led.free { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-emerald) 18%, transparent); }
+.ecf-led.busy { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-rose) 18%, transparent); }
+.ecf-card-details { gap: 3px; font-size: 10px; }
+
+@media (max-width: 960px) {
+  .ecf-masthead { grid-template-columns: minmax(0, 1fr) auto; }
+  .ecf-masthead .ecf-tools { grid-column: 1 / -1; }
+}
+
+@media (max-width: 640px) {
+  .ecf-widget { padding: 10px; padding-bottom: 10px; }
+  .ecf-masthead { grid-template-columns: 1fr; gap: 10px; padding: 10px; }
+  .ecf-masthead .ecf-tools { grid-column: auto; }
+  .ecf-stats { justify-content: flex-start; }
+  .ecf-date-time-controls { align-items: stretch; gap: 6px; padding: 7px; }
+  .ecf-date-time-field { flex: 1 1 145px; min-width: 0; }
+  .ecf-date-time-field input { min-width: 0; width: 100%; }
+  .ecf-date-time-hint { width: 100%; margin-left: 0; }
 }

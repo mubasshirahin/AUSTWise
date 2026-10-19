@@ -2084,3 +2084,31 @@
 .orbits-stop-chip svg {
   color: var(--orbit-accent, var(--accent-blue));
 }
+.invite-member-panel,
+.invite-member-history {
+  color: var(--text-primary);
+}
+
+.invite-member-panel label,
+.invite-member-history h4,
+.invite-member-history th {
+  color: var(--text-primary);
+}
+
+.invite-member-panel select,
+.invite-member-panel select option {
+  color: var(--text-primary);
+  background: var(--bg-card);
+}
+
+.invite-member-history table {
+  color: var(--text-secondary);
+}
+
+.invite-member-history th {
+  color: var(--text-primary);
+}
+
+.invite-member-history tbody tr:hover {
+  background: var(--bg-input);
+}

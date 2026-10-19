@@ -157,7 +157,7 @@ export function resetAllLocalData() {
   }
 }
 
-export const AUTH_ROLES = ['student', 'faculty', 'alumni', 'admin', 'cr', 'sr', 'senior', 'moderator', 'vp', 'gs', 'bus_coordinator', 'guest', 'clubs_representative', 'help_desk', 'banned'];
+export const AUTH_ROLES = ['student', 'faculty', 'alumni', 'alumni_with_carry', 'admin', 'cr', 'sr', 'senior', 'moderator', 'vp', 'gs', 'readd', 'bus_coordinator', 'guest', 'clubs_representative', 'help_desk', 'banned', ...['cse', 'eee', 'ce', 'me', 'ipe', 'te', 'arch', 'bba'].map(department => `faculty_${department}`)];
 export const ALLOWED_EMAIL_DOMAINS = ['aust.edu', 'www.aust.edu'];
 
 export const guestUser = {
@@ -331,12 +331,12 @@ export function getAllAccounts() {
 // All registered alumni, as lightweight profile objects for the directory.
 export function getAlumniAccounts() {
   return loadAccounts()
-    .filter((account) => account.role === 'alumni')
+    .filter((account) => account.role === 'alumni' || account.role === 'alumni_with_carry')
     .map((account) => ({
       id: account.id,
       name: account.name,
       email: account.email,
-      department: account.department || 'Undeclared',
+      department: account.department || '',
       batchNo: String(account.batchNo || '').trim(),
       batch: account.batch || account.batchNo || 'N/A',
       company: account.company || '',
@@ -382,16 +382,18 @@ export function updateAccountProfile(userId, patch) {
   return accounts[index];
 }
 
-export function createAwid(department) {
-  const dept = (department || 'GEN').toUpperCase();
+export function createAwid(department, role = 'student') {
+  const dept = String(department || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!dept || dept === 'UNDECLARED') throw new Error('Choose your department before your AUSTWise ID is created.');
+  const prefix = ({ student: 'STU', faculty: 'FAC', alumni: 'ALU', alumni_with_carry: 'ALU', admin: 'ADM', moderator: 'MOD', guest: 'GST', help_desk: 'HLP', banned: 'BAN' })[String(role || '').toLowerCase()] || 'USR';
   const accounts = loadAccounts();
-  const existing = accounts.filter((a) => a.awid && a.awid.includes(`-${dept}-AW`));
+  const existing = accounts.filter((a) => a.awid && a.awid.startsWith(`${prefix}-${dept}-AW`));
   const maxNum = existing.reduce((max, a) => {
     const match = a.awid.match(/AW(\d+)$/);
     return match ? Math.max(max, parseInt(match[1], 10)) : max;
   }, 0);
   const nextNum = String(maxNum + 1).padStart(6, '0');
-  return `STU-${dept}-AW${nextNum}`;
+  return `${prefix}-${dept}-AW${nextNum}`;
 }
 
 function createAccountId(role) {
@@ -415,7 +417,7 @@ export function accountToUser(account) {
 
   return {
     id: account.id,
-    awid: account.awid || createAwid(account.department),
+    awid: account.awid || (account.department ? createAwid(account.department, account.role) : ''),
     name: account.name,
     email: account.email,
     role: account.role,
@@ -486,12 +488,13 @@ export function signupWithGoogle(googlePayload) {
   const generatedId = createAccountId('student');
   const account = {
     id: studentId || generatedId,
-    awid: createAwid('Undeclared'),
+    awid: '',
     name,
     email,
     password: encodePassword(randomPassword),
     role: 'student',
-    department: 'Undeclared',
+    department: '',
+    signupIncomplete: true,
     batch: '',
     batchNo: '',
     batchName: '',
@@ -519,6 +522,8 @@ export function signupAccount(payload) {
   const password = String(payload.password || '');
   const role = AUTH_ROLES.includes(payload.role) ? payload.role : 'student';
   const department = String(payload.department || '').trim();
+  let batchName = String(payload.batchName || '').trim();
+  let batchNo = String(payload.batchNo || '').trim();
 
   if (!name) throw new Error('Full name is required.');
   if (!email || !email.includes('@')) throw new Error('Enter a valid email address.');
@@ -526,28 +531,35 @@ export function signupAccount(payload) {
     throw new Error('Only AUST university email addresses (@aust.edu) are allowed for registration.');
   }
   if (password.length < 6) throw new Error('Password must be at least 6 characters.');
-  if (!department) throw new Error('Department is required.');
+  if (!['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'].includes(department.toUpperCase())) throw new Error('Choose a valid department.');
 
   if (getAccountByEmail(email)) {
     throw new Error('An account with this email already exists.');
   }
 
   if (role === 'student' || role === 'alumni') {
-    if (!String(payload.batchNo || payload.batch || '').trim()) {
-      throw new Error('Batch is required for students and alumni.');
+    const batchInput = String(payload.batch || `${batchName} ${batchNo}`).trim();
+    const batchMatch = batchInput.match(/^([A-Za-z]+)\s+(\d+)$/);
+    if (!batchMatch) {
+      throw new Error('Enter the batch as one word followed by its number, for example: Batch 45.');
     }
+    if ((batchName && batchName.toLowerCase() !== batchMatch[1].toLowerCase()) || (batchNo && batchNo !== batchMatch[2])) throw new Error('Batch name and batch number must match the format you entered.');
+    batchName = batchMatch[1];
+    batchNo = batchMatch[2];
   }
 
   if (role === 'faculty' && !String(payload.designation || '').trim()) {
     throw new Error('Designation is required for faculty accounts.');
   }
+  if (role === 'faculty' && !['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'].includes(department.toUpperCase())) {
+    throw new Error('Choose a valid faculty department.');
+  }
 
-  const batchNo = String(payload.batchNo || '').trim();
   // Extract student ID from email: "cse.12345@aust.edu" or "cse12345@aust.edu" -> "12345"
   const emailPrefix = email.split('@')[0] || '';
   const studentId = emailPrefix.replace(/^[a-z.]+/i, '');
   const generatedId = createAccountId(role);
-  const awid = createAwid(department);
+  const awid = createAwid(department, role);
   const account = {
     id: studentId || generatedId,
     awid,
@@ -555,10 +567,11 @@ export function signupAccount(payload) {
     email,
     password: encodePassword(password),
     role,
+    roles: role === 'faculty' ? ['faculty', `faculty_${department.toLowerCase()}`] : [role],
     department,
-    batch: String(payload.batch || batchNo || '').trim(),
+    batch: ['student', 'alumni'].includes(role) ? `${batchName} ${batchNo}` : String(payload.batch || batchNo || '').trim(),
     batchNo,
-    batchName: String(payload.batchName || batchNo).trim(),
+    batchName: batchName || String(payload.batchName || batchNo).trim(),
     designation: String(payload.designation || '').trim(),
     company: String(payload.company || '').trim(),
     graduationYear: String(payload.graduationYear || '').trim(),
@@ -632,9 +645,12 @@ export function restoreSessionUser() {
 }
 
 export function getRoleLabel(role) {
+  if (String(role || '').startsWith('faculty_')) return `Faculty of ${String(role).slice('faculty_'.length).toUpperCase()}`;
   if (role === 'guest') return 'Guest';
   if (role === 'faculty') return 'Faculty';
   if (role === 'alumni') return 'Alumni';
+  if (role === 'alumni_with_carry') return 'Alumni with Carry';
+  if (role === 'readd') return 'Re-add';
   if (role === 'admin') return 'Admin';
   if (role === 'moderator') return 'Moderator';
   if (role === 'cr') return 'Class Representative (CR)';
@@ -655,6 +671,8 @@ export function getRoleBadgeClass(role) {
     case 'moderator': return 'badge-rose';
     case 'faculty': return 'badge-purple';
     case 'alumni': return 'badge-cyan';
+    case 'alumni_with_carry': return 'badge-cyan';
+    case 'readd': return 'badge-amber';
     case 'cr': return 'badge-amber';
     case 'sr': return 'badge-emerald';
     case 'vp': return 'badge-amber';
@@ -672,7 +690,7 @@ export function getRoleBadgeClass(role) {
 export function getPortalSubtitle(role) {
   if (!role || role === 'guest') return 'AUST Campus Hub';
   if (role === 'faculty') return 'Faculty Portal';
-  if (role === 'alumni') return 'Alumni Portal';
+  if (role === 'alumni' || role === 'alumni_with_carry') return 'Alumni Portal';
   if (role === 'admin' || role === 'moderator') return 'Admin Panel';
   return 'Student Portal';
 }
@@ -722,6 +740,9 @@ export async function submitRoleApplication(payload) {
   } catch (err) {
     // Genuine network failure (server offline) → local fallback.
     if (err instanceof TypeError || /fetch|network|ECONNREFUSED/i.test(String(err?.message))) {
+      if (['vp', 'gs'].includes(payload.appliedRole)) {
+        throw new Error('Connect to the server to submit an executive role application.');
+      }
       return submitRoleApplicationLocal(payload);
     }
     throw err;
@@ -892,13 +913,13 @@ function notifyRoleReview(application) {
   // Notify the applicant (bell + native) with the decision, so the
   // confirmation lands in their notification area.
   const approved = application.status === 'approved';
-  const roleLabel = application.appliedRole === 'cr' ? 'Class Representative (CR)' : 'Student Representative (SR)';
+  const roleLabel = getRoleLabel(application.appliedRole);
   const notif = {
     id: makeNotifId('rolereview'),
     title: approved ? '🎉 Application approved' : 'Application rejected',
     body: approved
       ? `Congratulations ${application.userName}! You are now the ${roleLabel}.`
-      : `Your ${application.appliedRole === 'cr' ? 'CR' : 'SR'} application was rejected by the admin. You can re-apply for a vacant slot.`,
+      : `Your ${roleLabel} application was rejected by the admin. You can re-apply when eligible.`,
     type: 'info',
     icon: approved ? 'CheckCircle2' : 'XCircle',
     path: '/settings',

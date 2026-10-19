@@ -16,7 +16,8 @@
    data-theme attribute, so cascade order is irrelevant.
    ════════════════════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+/* Font (Space Grotesk) loads from the single consolidated Google Fonts
+   <link> in index.html — see the note there. */
 
 /* ─── Token remap ─────────────────────────────────────────────────────────────
    Redefines the shared custom-property contract so every feature re-skins from

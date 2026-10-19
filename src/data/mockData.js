@@ -346,12 +346,12 @@ export function getRoomStatus(roomId, day, time) {
 // (server-fetched or locally built). Canteen uses the *real* current time so
 // its open/closed state always matches the Canteen Menu page; the auditorium
 // reflects the event the admin scheduled in the Admin Panel.
-function overlayVenueStatus(floors) {
+function overlayVenueStatus(floors, day, time) {
   return floors.map((floor) => ({
     ...floor,
     rooms: floor.rooms.map((room) => {
       if (room.id === 'CANTEEN') {
-        const { status, details } = getRoomStatus('CANTEEN', currentDayOfWeek(), currentTimeString());
+        const { status, details } = getRoomStatus('CANTEEN', day, time);
         return { ...room, status, details };
       }
       if (room.id === 'MHA') {
@@ -376,7 +376,7 @@ export function computeRoomAvailability(day, time, baseFloors) {
           return { ...room, status, details: details || null };
         }),
       }));
-  const withVenues = overlayVenueStatus(source);
+  const withVenues = overlayVenueStatus(source, day, time);
   return withVenues;
 }
 
@@ -403,8 +403,6 @@ export const addRoutineEntry = (entry) => {
 };
 
 export const examSeats = [];
-
-export const facultyData = [];
 
 export const libraryData = {
   totalSeats: 350,

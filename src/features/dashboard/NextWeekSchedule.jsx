@@ -21,8 +21,8 @@ export default function NextWeekSchedule() {
     priority: 'medium'
   });
 
-  // Check if user can add tasks (admin, CR, SR only)
-  const canAddTask = user?.role === 'admin' || user?.role === 'cr' || user?.role === 'sr';
+  // Manual deadlines can be added by admins and CRs; SRs are view-only.
+  const canAddTask = user?.role === 'admin' || user?.role === 'cr';
 
   // Get CR group info
   const crGroup = (() => {

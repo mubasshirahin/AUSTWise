@@ -25,6 +25,14 @@ model User {
   name           String
   passwordHash   String
   role           String   @default("student")
+  roles          String[] @default([])
+  personalEmail  String?
+  accountStatus  String   @default("ACTIVE")
+  originalBatch  String   @default("")
+  currentAcademicBatch String @default("")
+  currentSemester String @default("1.1")
+  maxSemester    String   @default("4.2")
+  academicStatus String   @default("ACTIVE")
   department     String   @default("")
   batch          String   @default("")
   batchNo        String   @default("")
@@ -66,6 +74,20 @@ model User {
   invitationsCreated Invitation[]        @relation("InvitedBy")
   transcriptTemplates TranscriptTemplate[]
   routineTemplates    RoutineTemplate[]
+  studentDetails     StudentDetails?
+}
+
+model StudentDetails {
+  id                   String @id @default(uuid())
+  userId               String @unique
+  studentId            String @unique
+  department           String
+  originalBatch        String
+  currentAcademicBatch String
+  currentSemester      String
+  maxSemester          String
+  academicStatus       String @default("ACTIVE")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // ─── Routine ─────────────────────────────────────────────────────────────────
@@ -93,6 +115,10 @@ model SemesterResult {
   semester  String
   courses   String   @default("[]")   // JSON string: [{ code, name, credit, grade, marks }]
   cgpa      Float    @default(0)
+  theoryFailsCount Int @default(0)
+  labFailsCount Int @default(0)
+  status    String   @default("PENDING")
+  resultsSubmitted Boolean @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

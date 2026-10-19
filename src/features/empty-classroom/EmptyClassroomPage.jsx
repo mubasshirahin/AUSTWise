@@ -1,14 +1,26 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
-  DoorOpen, Search, X, Building2, Check, Hourglass,
+  DoorOpen, Search, X, Building2, Check, Hourglass, CalendarDays, Clock3,
   ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { roomCatalog,
-  computeRoomAvailability, computeDemoAvailability,
+  computeRoomAvailability,
   currentDayOfWeek, currentTimeString,
 } from '../../data/mockData';
 import '../campus/SemesterViewWidget.css';
 import './EmptyClassroomPage.css';
+
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+function localDateValue(date = new Date()) {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 10);
+}
+
+function weekdayForDate(dateValue) {
+  if (!dateValue) return currentDayOfWeek();
+  return WEEKDAYS[new Date(`${dateValue}T00:00:00`).getDay()];
+}
 
 // Group a floor's rooms by Block (A / B / C). Rooms whose id doesn't follow
 // the "<floor><BLOCK><no>" pattern (canteen, auditorium, FM lab, …) fall into
@@ -34,6 +46,8 @@ function groupRoomsByBlock(rooms) {
 }
 
 export default function EmptyClassroomPage() {
+  const [selectedDate, setSelectedDate] = useState(() => localDateValue());
+  const [selectedTime, setSelectedTime] = useState(() => currentTimeString());
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [floorFilter, setFloorFilter] = useState('all');
@@ -52,48 +66,49 @@ export default function EmptyClassroomPage() {
     });
   };
 
-  // Live availability: fetch from the server (derived from CR-published
-  // routines) on mount + whenever a routine is shared or the admin updates
-  // the auditorium. Falls back to local computed state so the page still
-  // renders if the API is unreachable.
-  const [liveFloors, setLiveFloors] = useState(() => computeDemoAvailability());
+  // Fetch availability for the selected weekday/time from CR-published
+  // routines. Local events also trigger a refresh; offline mode uses the same
+  // selected weekday/time against the locally cached routines.
+  const [liveFloors, setLiveFloors] = useState(() =>
+    computeRoomAvailability(weekdayForDate(localDateValue()), currentTimeString())
+  );
   const [, setLiveSource] = useState('local');
+  const selectedDay = weekdayForDate(selectedDate);
+  const availabilityRequestRef = useRef(0);
 
   const fetchAvailability = useCallback(async () => {
+    if (!selectedDate || !selectedTime) return;
+    const requestId = ++availabilityRequestRef.current;
     try {
-      const res = await fetch(`/api/rooms/availability?day=${currentDayOfWeek()}&time=${currentTimeString()}`);
+      const params = new URLSearchParams({ day: selectedDay, time: selectedTime });
+      const res = await fetch(`/api/rooms/availability?${params}`);
       if (!res.ok) throw new Error('api');
       const data = await res.json();
+      if (requestId !== availabilityRequestRef.current) return;
       if (data.success && Array.isArray(data.floors)) {
         // Always pass server floors through the local builder so the
         // ground-floor venue statuses (canteen open/closed + auditorium
         // event) are overlaid on top.
-        setLiveFloors(computeRoomAvailability(currentDayOfWeek(), currentTimeString(), data.floors));
+        setLiveFloors(computeRoomAvailability(selectedDay, selectedTime, data.floors));
         setLiveSource('server');
         return;
       }
       throw new Error('bad payload');
     } catch {
-      // Fallback: local routines only
-      setLiveFloors(computeDemoAvailability());
+      if (requestId !== availabilityRequestRef.current) return;
+      setLiveFloors(computeRoomAvailability(selectedDay, selectedTime));
       setLiveSource('local');
     }
-  }, []);
+  }, [selectedDate, selectedDay, selectedTime]);
 
   useEffect(() => {
     fetchAvailability();
     const handler = () => fetchAvailability();
     window.addEventListener('routine-updated', handler);
     window.addEventListener('auditorium-updated', handler);
-    // Keep the canteen open/closed state live as the real time changes — a
-    // light local recompute (no network request every minute).
-    const minuteTimer = setInterval(() => {
-      setLiveFloors((prev) => computeRoomAvailability(currentDayOfWeek(), currentTimeString(), prev));
-    }, 60 * 1000);
     return () => {
       window.removeEventListener('routine-updated', handler);
       window.removeEventListener('auditorium-updated', handler);
-      clearInterval(minuteTimer);
     };
   }, [fetchAvailability]);
 
@@ -206,7 +221,7 @@ export default function EmptyClassroomPage() {
           <div>
             <span className="schedule-overline">Inside AUST</span>
             <div className="schedule-title">Free Rooms</div>
-            <span className="schedule-subtitle">Live availability across all floors</span>
+            <span className="schedule-subtitle">Availability for {selectedDay}, {selectedDate} at {selectedTime}</span>
           </div>
         </div>
 
@@ -247,6 +262,30 @@ export default function EmptyClassroomPage() {
             )}
           </div>
         </div>
+      </div>
+
+      <div className="ecf-date-time-controls" aria-label="Choose date and time for room availability">
+        <label className="ecf-date-time-field">
+          <CalendarDays size={15} />
+          <span>Date</span>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(event) => setSelectedDate(event.target.value)}
+            aria-label="Select a date"
+          />
+        </label>
+        <label className="ecf-date-time-field">
+          <Clock3 size={15} />
+          <span>Time</span>
+          <input
+            type="time"
+            value={selectedTime}
+            onChange={(event) => setSelectedTime(event.target.value)}
+            aria-label="Select a time"
+          />
+        </label>
+        <span className="ecf-date-time-hint">Using the {selectedDay} routine</span>
       </div>
 
       <div className="schedule-dotted-divider" />

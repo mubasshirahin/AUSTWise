@@ -69,7 +69,7 @@ async function loadFacultyList() {
     email: m.email || '',
     avatar: m.avatar || null,
     initials: m.initials || getInitials(m.name),
-    department: m.department || 'Undeclared',
+    department: m.department || 'Department not set',
     designation: m.designation || '',
     linkedin: m.linkedin || '',
   }));

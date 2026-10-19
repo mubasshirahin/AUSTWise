@@ -11,7 +11,7 @@ export default function AlumniDirectory() {
   const [selectedDept, setSelectedDept] = useState('All');
   const [alumni, setAlumni] = useState(() => getAlumniAccounts());
 
-  const isAlumniViewer = user?.role === 'alumni';
+  const isAlumniViewer = user?.role === 'alumni' || user?.role === 'alumni_with_carry';
   const isGuest = user?.role === 'guest' || !user?.id;
 
   // Registered alumni (role === 'alumni'). Reloaded after the

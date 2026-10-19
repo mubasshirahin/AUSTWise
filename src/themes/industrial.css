@@ -21,6 +21,7 @@
    onto the shared --shadow-sm/md/lg/xl scale, which means every .glass-card and
    panel across the app lifts off the chassis automatically. */
 [data-theme="industrial"] {
+  color-scheme: light;
   /* Surfaces — the plastic the whole interface is moulded from */
   --bg-primary: #e0e5ec;      /* chassis (Level 0) — everything is mounted to this */
   --bg-secondary: #f0f2f5;    /* raised panel surface */
