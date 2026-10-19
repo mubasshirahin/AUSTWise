@@ -111,5 +111,381 @@
       "moderator"
     ],
     "enabled": true
+  },
+  "feature:dashboard:daily-flow": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:dashboard:weekly-planner": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:dashboard:notifications": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:daily-life:bhara-koto": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:daily-life:money-tracker": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:daily-life:life-planner": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:daily-life:digital-footprint": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:daily-life:password-manager": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:notebook:main": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:question-bank-analyzer:main": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:messages:main": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:campus:floor-map": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:campus:library-pulse": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:campus:canteen-menu": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:campus:free-rooms": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:campus:bus-tracker": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:analytics:cgpagraph": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:analytics:heatmap": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:analytics:prereqs": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:community:alumni": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:community:clubs": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:community:students": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:community:mentorRequests": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:community:faculty": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:marketplace:tolet": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:marketplace:lost": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:marketplace:exchange": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:chill-zone:organizing": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:chill-zone:media": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:chill-zone:rumour": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:chill-zone:gaming": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:chill-zone:trivia": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:productivity:study-room": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:productivity:cheatsheets": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:productivity:cp-hub": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:productivity:workspace": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:vault:batch-drive": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:vault:carbon-vault": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:settings:profile": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:settings:orbits": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:settings:theme": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:settings:about": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:settings:notifications": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:shadow:reviews": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:shadow:chat": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:shadow:buzz": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "feature:shadow:roast-cv": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
   }
 }

@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef, Fragment } from 'react';
 import { useRoutine } from '../../context/RoutineContext';
 import {
   Percent, Clock, MapPin, CheckCircle2, XCircle, Eye, PenLine,
+  ShieldCheck, TriangleAlert, ChevronDown,
 } from 'lucide-react';
 import { useLiveValue } from '../../utils/liveStore';
 import { getCalculatedAttendanceDates, getSemesterStartDate } from '../../utils/semesterDates';
@@ -26,15 +27,39 @@ function toISODate(d) {
   return `${y}-${m}-${dd}`;
 }
 
-function MiniSegBar({ attended, missed, unmarked, total }) {
-  const aPct = total > 0 ? (attended / total) * 100 : 0;
-  const mPct = total > 0 ? (missed  / total) * 100 : 0;
-  const uPct = total > 0 ? (unmarked / total) * 100 : 0;
+function startOfToday() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function panelIdFor(key) {
+  return `att-panel-${String(key).replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+}
+
+/**
+ * Segmented meter — attended / absent / unmarked with a tick marking the
+ * 75% requirement, so the target stays readable without parsing numbers.
+ */
+function SegmentedMeter({
+  attended, absent, unmarked, total, threshold = MIN_ATTENDANCE, className = '',
+}) {
+  const safeTotal = Math.max(total, attended + absent + unmarked, 1);
+  const width = (v) => `${(v / safeTotal) * 100}%`;
   return (
-    <div className="att-minibar">
-      <div className="att-minibar-seg" style={{ width: `${aPct}%`, background: 'var(--accent-emerald)' }} title="Attended" />
-      <div className="att-minibar-seg" style={{ width: `${mPct}%`, background: 'var(--accent-rose)' }}    title="Missed" />
-      <div className="att-minibar-seg" style={{ width: `${uPct}%`, background: 'var(--text-tertiary)' }}  title="Unmarked" />
+    <div className={`att-seg-meter ${className}`.trim()}>
+      <div
+        className="att-seg-track"
+        role="img"
+        aria-label={`${attended} attended, ${absent} absent, ${unmarked} unmarked of ${safeTotal} classes held`}
+      >
+        <span className="att-seg-fill is-present" style={{ width: width(attended) }} />
+        <span className="att-seg-fill is-absent" style={{ width: width(absent) }} />
+        <span className="att-seg-fill is-unmarked" style={{ width: width(unmarked) }} />
+        {threshold != null && (
+          <span className="att-seg-target" style={{ left: `${threshold}%` }} aria-hidden="true" />
+        )}
+      </div>
     </div>
   );
 }
@@ -60,6 +85,7 @@ export default function RoutineAttendanceTracker() {
   const [inView,               setInView]              = useState(false);
   const widgetRef = useRef(null);
 
+  const today = useMemo(() => startOfToday(), []);
   const isTelegramSync = isTelegramRegistered && !!telegramChatId;
 
   // Play the entrance animation only when the widget scrolls into view.
@@ -219,7 +245,6 @@ export default function RoutineAttendanceTracker() {
 
   // ---------- Per-course stats ----------
   const courseView = useMemo(() => {
-    const today = new Date(); today.setHours(0, 0, 0, 0);
     return Object.values(courseStats).map(stat => {
       let present = 0, absent = 0, held = 0;
       stat.instances.forEach(inst => {
@@ -265,6 +290,7 @@ export default function RoutineAttendanceTracker() {
       totalAttended,
       totalAbsent,
       totalHeld,
+      unmarked: Math.max(0, totalHeld - totalAttended - totalAbsent),
       warningCount,
       marked: totalAttended + totalAbsent,
     };
@@ -306,257 +332,289 @@ export default function RoutineAttendanceTracker() {
     });
   };
 
-  // ---------- Present / Absent toggle pills (disabled in view mode) ----------
-  const ToggleBtn = ({ sessionId, currentStatus, targetStatus, label, icon: Icon }) => {
-    const isActive = currentStatus === targetStatus;
-    return (
-      <button
-        className={`att-toggle-pill ${targetStatus}${isActive ? ' active' : ''}${editMode ? '' : ' is-disabled'}`}
-        onClick={(e) => {
-          e.stopPropagation();
-          if (!editMode) return;
-          setSessionStatus(sessionId, targetStatus);
-        }}
-        disabled={!editMode}
-        aria-disabled={!editMode}
-        tabIndex={!editMode ? -1 : 0}
-        title={editMode ? (isActive ? `Clear ${label}` : `Mark ${label}`) : 'Switch to Edit Mode to mark'}
-      >
-        <Icon size={11} style={{ flexShrink: 0 }} />
-        {label}
-      </button>
-    );
-  };
-
   if (Object.keys(courseStats).length === 0) {
     return (
       <div className="glass-card-static schedule-widget attendance-widget attendance-tracker-widget animate-fadeInUp">
-        <div className="schedule-masthead">
-          <div className="schedule-title-block">
-            <div className="schedule-icon-tile"><Percent size={20} /></div>
-            <div><span className="schedule-overline">Dashboard</span><p className="schedule-title">Attendance Tracker</p><span className="schedule-subtitle">Add routine to track attendance</span></div>
+        <div className="schedule-masthead att-masthead">
+          <div className="schedule-title-block att-masthead-title">
+            <div className="schedule-icon-tile"><Percent size={18} /></div>
+            <div className="att-masthead-text">
+              <span className="schedule-overline">Dashboard</span>
+              <p className="schedule-title">Attendance Tracker</p>
+              <span className="schedule-subtitle">Add a routine to start tracking</span>
+            </div>
           </div>
         </div>
-        <div className="schedule-dotted-divider" />
         <div className="att-empty">
-          <Percent size={24} style={{ opacity: 0.3 }} />
-          <p>No courses found</p>
-          <span>Add courses to your Routine Grid first</span>
-          <button className="btn btn-sm" style={{ marginTop: '8px' }} onClick={() => window.location.href='/?tab=routine'}>Go to Routine Grid</button>
+          <span className="att-empty-icon"><Percent size={22} aria-hidden="true" /></span>
+          <p className="att-empty-title">No courses found</p>
+          <span className="att-empty-desc">Add courses to your Routine Grid first</span>
+          <button className="btn btn-sm att-empty-cta" onClick={() => window.location.href='/?tab=routine'}>
+            Go to Routine Grid
+          </button>
         </div>
       </div>
     );
   }
 
-  // Shared course-cell renderer — used identically for every course cell.
-  const renderCourseCell = (stat, idx) => {
+  // ---------- Course row (accordion) ----------
+  const renderCourseRow = (stat, idx) => {
     const isExpanded = expandedCourseKey === stat.fullKey;
+    const panelId = panelIdFor(stat.fullKey);
+    const pctValue = Math.round(stat.pct);
+    const state = stat.held === 0 ? 'idle' : stat.danger ? 'danger' : 'ok';
 
     return (
-      <div
+      <li
         key={stat.fullKey}
-        className={[
-          'schedule-day-card',
-          'att-cell',
-          isExpanded ? 'today' : '',
-          stat.danger ? 'att-cell-danger' : '',
-        ].filter(Boolean).join(' ')}
-        style={{
-          animationDelay: `${0.05 + idx * 0.06}s`,
-        }}
-        onClick={() => setExpandedCourseKey(prev => prev === stat.fullKey ? null : stat.fullKey)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setExpandedCourseKey(prev => prev === stat.fullKey ? null : stat.fullKey); }}
+        className={`att-row${isExpanded ? ' is-open' : ''}${state === 'danger' ? ' is-danger' : ''}`}
+        style={{ animationDelay: `${0.04 + idx * 0.05}s` }}
       >
-        <div className="schedule-day-top">
-          <div className="schedule-day-num-wrap">
-            <div className="att-cell-code" style={{ color: 'var(--accent-blue)' }}>
+        <button
+          type="button"
+          className="att-row-head"
+          onClick={() => setExpandedCourseKey(prev => (prev === stat.fullKey ? null : stat.fullKey))}
+          aria-expanded={isExpanded}
+          aria-controls={isExpanded ? panelId : undefined}
+        >
+          <span className="att-row-ident">
+            <span className="att-row-code">
               {stat.course}
-              {stat.part && <span className="att-cell-part">Part {stat.part}</span>}
-            </div>
-          </div>
-        </div>
-
-        <div className="att-cell-pct-row">
-          <span
-            className={`att-cell-pct${stat.danger ? ' danger' : ''}`}
-            style={{ color: stat.danger ? 'var(--accent-rose)' : 'var(--accent-emerald)' }}
-          >
-            {Math.round(stat.pct)}%
+              {stat.part && <span className="att-row-part">Part {stat.part}</span>}
+            </span>
+            <span className="att-row-name">{stat.name}</span>
           </span>
-        </div>
 
-        <div className="att-cell-name">{stat.name}</div>
+          <span className="att-row-gauge" aria-hidden="true">
+            <span className="att-row-gauge-track">
+              <span
+                className={`att-row-gauge-fill is-${state}`}
+                style={{ width: `${Math.min(pctValue, 100)}%` }}
+              />
+              <span className="att-row-gauge-target" />
+            </span>
+          </span>
+
+          <span className="att-row-metric">
+            <span className={`att-row-pct is-${state}`}>{pctValue}%</span>
+            <span className="att-row-count">{stat.attended}/{stat.held}</span>
+          </span>
+
+          <ChevronDown className="att-row-caret" size={15} aria-hidden="true" />
+        </button>
 
         {isExpanded && (
-          <div className="att-cell-expanded">
-            <div className="schedule-task-list">
-              <div className="att-cell-stats">
-                <span className="att-cell-stat att-cell-stat-att">{stat.attended}</span>
-                <span className="att-cell-sep">/</span>
-                <span className="att-cell-stat att-cell-stat-mis">{stat.absent}</span>
-                <span className="att-cell-sep">/</span>
-                <span className="att-cell-stat att-cell-stat-umr">{stat.unmarked}</span>
+          <div className="att-row-panel" id={panelId}>
+            <div className="att-panel-summary">
+              <div className="att-panel-counts">
+                <span className="att-count is-present"><strong>{stat.attended}</strong> attended</span>
+                <span className="att-count is-absent"><strong>{stat.absent}</strong> absent</span>
+                <span className="att-count is-unmarked"><strong>{stat.unmarked}</strong> unmarked</span>
               </div>
-              <div className="att-cell-buffer">
-                You can miss <strong>{stat.canMiss}</strong> more class{stat.canMiss !== 1 ? 'es' : ''}
-              </div>
+              <span className={`att-panel-buffer${stat.canMiss === 0 ? ' is-warn' : ''}`}>
+                {stat.canMiss > 0
+                  ? <>Can miss <strong>{stat.canMiss}</strong> more class{stat.canMiss === 1 ? '' : 'es'}</>
+                  : <>No buffer left — attend the next class</>}
+              </span>
             </div>
 
-            <MiniSegBar attended={stat.attended} missed={stat.absent} unmarked={stat.unmarked} total={stat.totalSemesterClasses} />
+            <SegmentedMeter
+              className="is-compact"
+              attended={stat.attended}
+              absent={stat.absent}
+              unmarked={stat.unmarked}
+              total={stat.totalSemesterClasses}
+            />
 
             {stat.instances.length > 0 && (
-              <div className="att-course-instances">
-                <div className="att-instances-header">
-                  <Clock size={12} />
-                  {stat.instances.length} class sessions · {SEMESTER_WEEKS}-week semester
-                  <span className="att-instances-hint">{editMode ? 'tap Present / Absent to mark' : 'view mode — switch to Edit to mark'}</span>
+              <div className="att-sessions">
+                <div className="att-sessions-head">
+                  <Clock size={12} aria-hidden="true" />
+                  <span>{stat.instances.length} sessions</span>
+                  <span className="att-sessions-hint">
+                    {editMode ? 'Tap to mark' : 'Switch to Edit to mark'}
+                  </span>
                 </div>
-                <div className="att-instances-list">
+
+                <ul className="att-session-list">
                   {stat.instances.map((inst, instIdx) => {
                     const mark = markFor(inst);
-                    const isToday = toISODate(inst.date) === toISODate(new Date());
+                    const isToday = toISODate(inst.date) === toISODate(today);
+                    const isFuture = inst.date > today;
                     // Show a week divider when the academic week changes, and
                     // a "Mid Break / Mid-Term — no classes" marker in the gap.
                     const prev = instIdx > 0 ? stat.instances[instIdx - 1] : null;
                     const newWeek = !prev || prev.weekNum !== inst.weekNum;
                     const crossedGap = prev && inst.weekNum - prev.weekNum === 1 && inst.weekNum === 8;
+                    const dateText = inst.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    const markLabel = `${stat.course} on ${dateText}`;
                     return (
                       <Fragment key={inst.id}>
                         {newWeek && (
                           <>
                             {crossedGap && (
-                              <div className="att-week-gap">Mid Break · Mid-Term — no classes</div>
+                              <li className="att-week-gap">Mid Break · Mid-Term — no classes</li>
                             )}
-                            <div className="att-week-divider">Week {inst.weekNum}</div>
+                            <li className="att-week-divider">Week {inst.weekNum}</li>
                           </>
                         )}
-                        <div
-                          className={`att-instance-row${mark ? ` state-${mark}` : ''}${isToday ? ' is-today' : ''}`}
+                        <li
+                          className={`att-session${mark ? ` is-${mark}` : ''}${isToday ? ' is-today' : ''}${isFuture ? ' is-future' : ''}`}
                           style={{ animationDelay: `${0.02 + instIdx * 0.03}s` }}
                         >
-                        <span className="att-instance-date">
-                          {inst.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </span>
-                        <span className="att-instance-day">{inst.dayName.substring(0, 3)}</span>
-                        <span className="att-instance-label">{inst.label}</span>
-                        <span className="att-instance-time">{inst.time || '—'}</span>
-                        <span className="att-instance-room">
-                          <MapPin size={9} /> {inst.room || '—'}
-                        </span>
-                        <span className="att-instance-spacer">
-                          <ToggleBtn
-                            sessionId={inst.id}
-                            currentStatus={mark}
-                            targetStatus="present"
-                            label="Present"
-                            icon={CheckCircle2}
-                          />
-                          <ToggleBtn
-                            sessionId={inst.id}
-                            currentStatus={mark}
-                            targetStatus="absent"
-                            label="Absent"
-                            icon={XCircle}
-                          />
-                        </span>
-                      </div>
+                          <span className="att-session-date">{dateText}</span>
+                          <span className="att-session-day">{inst.dayName.substring(0, 3)}</span>
+                          <span className="att-session-time">{inst.time || '—'}</span>
+                          <span className="att-session-room">
+                            <MapPin size={10} aria-hidden="true" />
+                            {inst.room || '—'}
+                          </span>
+                          <span className="att-mark-group" role="group" aria-label={`Attendance for ${markLabel}`}>
+                            <button
+                              type="button"
+                              className={`att-mark-btn is-present${mark === 'present' ? ' is-active' : ''}`}
+                              onClick={() => setSessionStatus(inst.id, 'present')}
+                              disabled={!editMode}
+                              aria-pressed={mark === 'present'}
+                              aria-label={`Mark ${markLabel} present`}
+                              title={editMode ? (mark === 'present' ? 'Clear present' : 'Mark present') : 'Switch to Edit mode to mark'}
+                            >
+                              <CheckCircle2 size={13} aria-hidden="true" />
+                              <span className="att-mark-text">Present</span>
+                            </button>
+                            <button
+                              type="button"
+                              className={`att-mark-btn is-absent${mark === 'absent' ? ' is-active' : ''}`}
+                              onClick={() => setSessionStatus(inst.id, 'absent')}
+                              disabled={!editMode}
+                              aria-pressed={mark === 'absent'}
+                              aria-label={`Mark ${markLabel} absent`}
+                              title={editMode ? (mark === 'absent' ? 'Clear absent' : 'Mark absent') : 'Switch to Edit mode to mark'}
+                            >
+                              <XCircle size={13} aria-hidden="true" />
+                              <span className="att-mark-text">Absent</span>
+                            </button>
+                          </span>
+                        </li>
                       </Fragment>
                     );
                   })}
-                </div>
+                </ul>
               </div>
             )}
           </div>
         )}
-      </div>
+      </li>
     );
   };
 
+  const courseCount = courseView.length;
+
   return (
-    <div className={`glass-card-static schedule-widget attendance-widget attendance-tracker-widget animate-fadeInUp${inView ? ' att-drop-active' : ''}`} ref={widgetRef}>
-      <div className="schedule-masthead">
-        <div className="schedule-title-block">
+    <div
+      className={`glass-card-static schedule-widget attendance-widget attendance-tracker-widget animate-fadeInUp${inView ? ' att-drop-active' : ''}`}
+      ref={widgetRef}
+    >
+      <div className="schedule-masthead att-masthead">
+        <div className="schedule-title-block att-masthead-title">
           <div className="schedule-icon-tile">
-            <Percent size={20} />
+            <Percent size={18} aria-hidden="true" />
           </div>
-          <div>
+          <div className="att-masthead-text">
             <span className="schedule-overline">Dashboard</span>
             <p className="schedule-title">Attendance Tracker</p>
             <span className="schedule-subtitle">
-              {`${SEMESTER_WEEKS}-week semester · ${courseView.length} courses · synced to your account`}
+              {`${SEMESTER_WEEKS}-week semester · ${courseCount} course${courseCount === 1 ? '' : 's'}`}
             </span>
           </div>
         </div>
 
-        <div className="schedule-masthead-center">
-          <div className="schedule-stats">
-            <div className="schedule-stat">
-              <span
-                className="schedule-stat-value"
-                style={{ color: overallStats.average >= MIN_ATTENDANCE ? 'var(--accent-emerald)' : 'var(--accent-amber)' }}
-              >
-                {overallStats.average}%
+        <div className="schedule-actions att-masthead-actions">
+          <div className="att-mode-switch" role="group" aria-label="Attendance editing mode">
+            <button
+              type="button"
+              className={`att-mode-btn${!editMode ? ' is-active' : ''}`}
+              onClick={() => setEditMode(false)}
+              aria-pressed={!editMode}
+              aria-label="View only"
+              title="View only"
+            >
+              <Eye size={13} aria-hidden="true" />
+              <span className="att-mode-label">View</span>
+            </button>
+            <button
+              type="button"
+              className={`att-mode-btn${editMode ? ' is-active' : ''}`}
+              onClick={() => setEditMode(true)}
+              aria-pressed={editMode}
+              aria-label="Edit attendance"
+              title="Mark attendance"
+            >
+              <PenLine size={13} aria-hidden="true" />
+              <span className="att-mode-label">Edit</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Semester summary meter ─── */}
+      <section className="att-meter" aria-label="Semester attendance summary">
+        <div className="att-meter-head">
+          <div className="att-meter-headings">
+            <span className="att-overline">Semester average</span>
+            <span className="att-meter-sub">
+              {overallStats.totalAttended} of {overallStats.totalHeld} held classes attended
+            </span>
+          </div>
+          <div className="att-meter-readout">
+            <span className={`att-meter-value ${overallStats.average >= MIN_ATTENDANCE ? 'is-ok' : 'is-warn'}`}>
+              {overallStats.average}%
+            </span>
+            {overallStats.warningCount > 0 ? (
+              <span className="att-status-chip is-danger">
+                <TriangleAlert size={11} aria-hidden="true" />
+                {overallStats.warningCount} at risk
               </span>
-              <span className="schedule-stat-label">avg this sem</span>
-            </div>
-            <div className="schedule-stat">
-              <span
-                className="schedule-stat-value"
-                style={{ color: overallStats.warningCount > 0 ? 'var(--accent-rose)' : undefined }}
-              >
-                {overallStats.warningCount}
+            ) : (
+              <span className="att-status-chip is-ok">
+                <ShieldCheck size={11} aria-hidden="true" />
+                On track
               </span>
-              <span className="schedule-stat-label">at risk</span>
-            </div>
+            )}
           </div>
         </div>
 
-        <div className="schedule-actions">
-          <button
-            className={`att-mode-toggle${editMode ? ' editing' : ''}`}
-            onClick={() => setEditMode(v => !v)}
-            title={editMode ? 'Switch to view-only' : 'Enable marking attendance'}
-          >
-            {editMode ? <PenLine size={13} /> : <Eye size={13} />}
-            <span className="att-mode-label">{editMode ? 'Edit Mode' : 'View Mode'}</span>
-          </button>
+        <SegmentedMeter
+          attended={overallStats.totalAttended}
+          absent={overallStats.totalAbsent}
+          unmarked={overallStats.unmarked}
+          total={overallStats.totalHeld}
+        />
+
+        <div className="att-meter-foot">
+          <span className="att-legend"><i className="att-dot is-present" aria-hidden="true" />{overallStats.totalAttended} attended</span>
+          <span className="att-legend"><i className="att-dot is-absent" aria-hidden="true" />{overallStats.totalAbsent} absent</span>
+          <span className="att-legend"><i className="att-dot is-unmarked" aria-hidden="true" />{overallStats.unmarked} unmarked</span>
+          <span className="att-meter-target-note">{MIN_ATTENDANCE}% minimum</span>
         </div>
-      </div>
+      </section>
 
-      <div className="schedule-dotted-divider" />
-
-      <div className="att-overall-strip">
-        <div className="att-overall-bar">
-          <div className="att-overall-fill"
-            style={{
-              width: `${Math.min(overallStats.average, 100)}%`,
-              background: overallStats.average >= MIN_ATTENDANCE ? 'var(--accent-emerald)' : 'var(--accent-amber)'
-            }}
-          />
-        </div>
-        <span className="att-overall-label">
-          {overallStats.average}% · {MIN_ATTENDANCE}% minimum · {overallStats.totalAttended}/{overallStats.totalHeld} held attended
-        </span>
-      </div>
-
-      <div className="attendance-grid">
-        {courseView.map(renderCourseCell)}
-      </div>
+      {/* ─── Course list ─── */}
+      <ul className="att-course-list">
+        {courseView.map(renderCourseRow)}
+      </ul>
 
       {!sharedSemStart && (
-        <div className="att-telegram-syncing">
-Semester start date not set — the list starts from today. An admin can set it in Semester View.
-        </div>
+        <p className="att-note">
+          Semester start date not set — the list starts from today. An admin can set it in Semester View.
+        </p>
       )}
 
       {isTelegramSync && (
-        <div className="att-telegram-syncing">Telegram auto-marking connected — bot answers appear here instantly</div>
+        <p className="att-note is-sync">
+          Telegram auto-marking connected — bot answers appear here instantly
+        </p>
       )}
-
-      {/* ─── Workflow explainer ─── */}
-      {/* details removed: explainer hidden via site-wide cleanup */}
     </div>
   );
 }

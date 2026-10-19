@@ -20,6 +20,7 @@ export const MANAGED_FEATURES = [
   { key: 'feature:daily-life:life-planner', label: 'Life Planner', page: 'Daily Life' },
   { key: 'feature:daily-life:digital-footprint', label: 'Footprint', page: 'Daily Life' },
   { key: 'feature:daily-life:password-manager', label: 'Passwords', page: 'Daily Life' },
+  { key: 'feature:question-bank-analyzer:main', label: 'Question Bank Analyzer', page: 'Question Bank' },
   { key: 'feature:notebook:main', label: 'My Notes', page: 'notebook' },
   { key: 'feature:messages:main', label: 'All Chats', page: 'messages' },
   { key: 'feature:campus:floor-map', label: 'Floor Map', page: 'InsideAUST' },

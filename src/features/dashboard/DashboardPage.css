@@ -3643,7 +3643,6 @@ tr.day-row-active {
   }
 
   .schedule-day-card:hover,
-  .att-session-item:hover,
   .glass-card-static:hover {
     transform: none;
   }

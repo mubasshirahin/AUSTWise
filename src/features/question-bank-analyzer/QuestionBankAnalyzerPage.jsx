@@ -30,6 +30,7 @@ import { downloadReportImagePdf, reportBaseName } from './qbaPdf';
 import { getSavedAnalyses, saveAnalysis, deleteAnalysis } from './qbaSavedStore';
 import SavedAnalysesPanel from './SavedAnalysesPanel';
 import GliderTabs from '../../components/GliderTabs';
+import FeatureAccessGate from '../admin/FeatureAccessGate';
 import sampleMarkdown from '../../../samples/sample_analysis.md?raw';
 import './QuestionBankAnalyzerPage.css';
 
@@ -135,6 +136,16 @@ function StepHeading({ number, title, hint, icon: Icon }) {
 }
 
 export default function QuestionBankAnalyzerPage() {
+  // The whole tool is one feature box — admins toggle it from
+  // Admin → Access rules → Question Bank.
+  return (
+    <FeatureAccessGate featureKey="feature:question-bank-analyzer:main">
+      <QuestionBankAnalyzer />
+    </FeatureAccessGate>
+  );
+}
+
+function QuestionBankAnalyzer() {
   const [initial] = useState(readStored);
   const [courseCode, setCourseCode] = useState(initial.courseCode || '');
   const [courseTitle, setCourseTitle] = useState(initial.courseTitle || '');
