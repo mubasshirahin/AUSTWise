@@ -3,6 +3,7 @@
  * client-editable. The client calls /api/auth/me to get the current user.
  */
 import jwt from 'jsonwebtoken';
+import { randomUUID } from 'node:crypto';
 import {
   createUser, validateLogin, getUserById, getUserByEmail,
   findOrCreateGoogleUser, updateUserProfile,
@@ -37,7 +38,7 @@ const cookieClearFlags = () =>
 
 function signToken(user) {
   return jwt.sign(
-    { id: user.id, role: user.role, email: user.email },
+    { id: user.id, role: user.role, roles: [...new Set([...(Array.isArray(user.roles) ? user.roles : []), user.role])], email: user.email },
     JWT_SECRET,
     { expiresIn: TOKEN_EXPIRY },
   );
@@ -45,6 +46,10 @@ function signToken(user) {
 
 function setAuthCookie(res, token) {
   res.setHeader('Set-Cookie', `${COOKIE_NAME}=${token}; ${cookieFlags()}`);
+}
+
+export function issueAuthCookie(res, user) {
+  setAuthCookie(res, signToken(user));
 }
 
 function clearAuthCookie(res) {
@@ -69,6 +74,10 @@ async function handleSignup(req, res) {
   if (!loginRateLimiter(req, res, body?.email)) return;
   try {
     const user = await createUser(body);
+    if (user.status === 'PENDING_APPROVAL') {
+      const { password: _password, ...safe } = user;
+      return sendJson(res, 202, { success: true, pendingApproval: true, user: safe, message: 'Your account was created and is waiting for admin approval.' });
+    }
     const token = signToken(user);
     setAuthCookie(res, token);
     return sendJson(res, 201, { success: true, user: sanitizeUser(user) });
@@ -225,15 +234,24 @@ async function handleGoogle(req, res) {
     // Only @aust.edu emails may sign in or register — admins (site owner) are
     // the single exception, so their non-AUST gmail keeps working.
     const existingUser = await getUserByEmail(googleEmail);
-    if (existingUser?.role !== 'admin' && !isAllowedAustEmail(googleEmail)) {
-      return sendJson(res, 400, { success: false, error: 'Only AUST university email addresses (@aust.edu) are allowed for registration.' });
+    if (!existingUser && !isAllowedAustEmail(googleEmail)) {
+      return sendJson(res, 400, { success: false, error: 'Student and direct Faculty accounts require an @aust.edu email. Use an approved invitation for non-AUST Faculty or Alumni access.' });
+    }
+    if (existingUser?.role === 'student' && !isAllowedAustEmail(googleEmail)) {
+      return sendJson(res, 400, { success: false, error: 'Student accounts must use their @aust.edu email address.' });
+    }
+    if (existingUser?.role === 'alumni' && isAllowedAustEmail(googleEmail)) {
+      return sendJson(res, 400, { success: false, error: 'Alumni must use a personal email. Submit an Alumni access request to move your account from your former AUST email.' });
+    }
+    if (existingUser?.role === 'faculty' && !isAllowedAustEmail(googleEmail) && !existingUser.emailAccessApproved) {
+      return sendJson(res, 400, { success: false, error: 'Faculty accounts without an @aust.edu email need admin approval or an invitation.' });
     }
 
     const profilePatch = body.profile && typeof body.profile === 'object' ? body.profile : null;
 
     // Signup step 2 — complete the account created on the first sign-in.
-    // Only non-privileged profile fields are accepted; `role` is NEVER taken
-    // from the client (the server stays the sole role authority).
+    // Student/Faculty can be selected for a new, incomplete account. Existing
+    // accounts cannot use this endpoint to change their role.
     const GOOGLE_SIGNUP_FIELDS = [
       'name', 'avatar',
       'department', 'batch', 'batchNo', 'batchName',
@@ -247,6 +265,42 @@ async function handleGoogle(req, res) {
         if (key in profilePatch) {
           patch[key] = typeof profilePatch[key] === 'string' ? profilePatch[key].trim() : profilePatch[key];
         }
+      }
+      if ('role' in profilePatch) {
+        const requestedRole = String(profilePatch.role || '').toLowerCase().trim();
+        const canSelectSignupRole = !existingUser || (
+          existingUser.role === 'student'
+          && existingUser.signupIncomplete === true
+          && !existingUser.batchNo
+          && !existingUser.designation
+        );
+        if (!canSelectSignupRole || !['student', 'faculty'].includes(requestedRole)) {
+          return sendJson(res, 400, { success: false, error: 'Role can only be selected during new account setup.' });
+        }
+        if (requestedRole === 'faculty' && !String(profilePatch.designation || '').trim()) {
+          return sendJson(res, 400, { success: false, error: 'Designation is required for faculty accounts.' });
+        }
+        if (!['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'].includes(String(profilePatch.department || '').trim().toUpperCase())) {
+          return sendJson(res, 400, { success: false, error: 'Choose a valid department before creating your account.' });
+        }
+        if (requestedRole === 'student') {
+          const batchInput = String(profilePatch.batch || `${profilePatch.batchName || ''} ${profilePatch.batchNo || ''}`).trim();
+          const batchMatch = batchInput.match(/^([A-Za-z]+)\s+(\d+)$/);
+          if (!batchMatch) {
+            return sendJson(res, 400, { success: false, error: 'Enter the batch as one word followed by its number, for example: Batch 45.' });
+          }
+          if ((profilePatch.batchName && String(profilePatch.batchName).trim().toLowerCase() !== batchMatch[1].toLowerCase()) || (profilePatch.batchNo && String(profilePatch.batchNo).trim() !== batchMatch[2])) {
+            return sendJson(res, 400, { success: false, error: 'Batch name and batch number must match the format you entered.' });
+          }
+          patch.batchName = batchMatch[1];
+          patch.batchNo = batchMatch[2];
+          patch.batch = `${batchMatch[1]} ${batchMatch[2]}`;
+        }
+        patch.role = requestedRole;
+        patch.roles = requestedRole === 'faculty'
+          ? ['faculty', `faculty_${String(profilePatch.department).trim().toLowerCase()}`]
+          : ['student'];
+        patch.signupIncomplete = false;
       }
       if ('yearSemester' in patch) {
         const canonical = toYearSemester(patch.yearSemester);
@@ -263,12 +317,33 @@ async function handleGoogle(req, res) {
     let user;
     let created = false;
 
-    if (Object.keys(patch).length > 0) {
+    if (!existingUser && !profilePatch) {
+      // Keep the OAuth identity in the browser only until required signup
+      // fields (including department) are submitted; do not create a partial
+      // account or an AWID with a placeholder department.
+      return sendJson(res, 200, {
+        success: true,
+        existing: false,
+        pendingSignup: true,
+        user: { name: verified.name || googleEmail.split('@')[0], email: googleEmail, avatar: verified.picture || null, signupIncomplete: true },
+      });
+    } else if (!existingUser && profilePatch) {
+      if (!patch.role || !patch.department) {
+        return sendJson(res, 400, { success: false, error: 'Choose your role and department to finish signup.' });
+      }
+      user = await createUser({
+        ...patch,
+        name: verified.name || googleEmail.split('@')[0],
+        email: googleEmail,
+        password: `google-${randomUUID()}`,
+      });
+      created = true;
+    } else if (Object.keys(patch).length > 0) {
       const existing = await getUserByEmail(googleEmail);
       if (!existing) {
         return sendJson(res, 404, { success: false, error: 'User not found.' });
       }
-      user = await updateUserProfile(existing.id, patch);
+      user = await updateUserProfile(existing.id, patch, { allowRole: Boolean(patch.role), regenerateAwid: Boolean(existing.signupIncomplete && patch.role) });
     } else {
       const result = await findOrCreateGoogleUser({
         name: verified.name,
@@ -289,11 +364,15 @@ async function handleGoogle(req, res) {
 
 async function handleAdminCheck(req, res) {
   const payload = readTokenCookie(req);
-  if (!payload || (payload.role !== 'admin' && payload.role !== 'moderator')) {
+  const hasStaffRole = (account) => {
+    const roles = [...new Set([...(Array.isArray(account?.roles) ? account.roles : []), account?.role])];
+    return roles.some((role) => ['admin', 'moderator'].includes(String(role || '').toLowerCase()));
+  };
+  if (!payload || !hasStaffRole(payload)) {
     return sendJson(res, 403, { success: false, error: 'Forbidden: admin access required' });
   }
   const user = await getUserById(payload.id);
-  if (!user || (user.role !== 'admin' && user.role !== 'moderator')) {
+  if (!user || !hasStaffRole(user)) {
     return sendJson(res, 403, { success: false, error: 'Forbidden: admin access required' });
   }
   return sendJson(res, 200, { success: true });
@@ -309,6 +388,15 @@ export async function handleMe(req, res) {
     clearAuthCookie(res);
     return sendJson(res, 401, { success: false, error: 'User not found' });
   }
+  if (user.role === 'alumni' && isAllowedAustEmail(user.email)) {
+    clearAuthCookie(res);
+    return sendJson(res, 401, { success: false, error: 'Alumni must use a personal email. Submit an Alumni access request to move your account from your former AUST email.' });
+  }
+  if (user.status === 'PENDING_APPROVAL') {
+    clearAuthCookie(res);
+    return sendJson(res, 403, { success: false, error: 'Your account is pending admin approval.' });
+  }
+  setAuthCookie(res, signToken(user));
   return sendJson(res, 200, { success: true, user: sanitizeUser(user) });
 }
 
@@ -319,6 +407,7 @@ const SELF_EDITABLE_FIELDS = [
   'department', 'batch', 'batchNo', 'batchName',
   'yearSemester', 'section', 'labSection',
   'designation', 'company', 'graduationYear',
+  'personalEmail',
   'facebook', 'whatsapp', 'linkedin', 'discord',
   'openForTalk',
   'orbit', // { checkpoints, favoriteColor } — public, shown to anyone visiting the orbit
@@ -350,6 +439,11 @@ async function handleProfileUpdate(req, res) {
       patch[key] = typeof body[key] === 'string' ? body[key].trim() : body[key];
     }
   }
+  if ('personalEmail' in patch) {
+    const email = String(patch.personalEmail || '').trim().toLowerCase();
+    if (!/^[^\s@]+@gmail\.com$/.test(email)) delete patch.personalEmail;
+    else patch.personalEmail = email;
+  }
   // Orbit payload is user-controlled JSON — sanity-check its shape and size so
   // one account can't bloat the shared member directory.
   if ('orbit' in patch && patch.orbit != null) {
@@ -379,6 +473,57 @@ async function handleProfileUpdate(req, res) {
     if (!user) {
       return sendJson(res, 404, { success: false, error: 'User not found.' });
     }
+    return sendJson(res, 200, { success: true, user: sanitizeUser(user) });
+  } catch (err) {
+    return sendJson(res, 500, { success: false, error: err.message });
+  }
+}
+
+// A student may mark their own semester drop and return to student status if
+// the drop is cancelled. No other roles can be self-assigned through this API.
+async function handleSemesterDrop(req, res) {
+  const payload = readTokenCookie(req);
+  if (!payload) return sendJson(res, 401, { success: false, error: 'Not authenticated' });
+  const body = await readJsonBody(req).catch(() => ({}));
+  if (typeof body.dropped !== 'boolean') {
+    return sendJson(res, 400, { success: false, error: 'Choose whether the semester is dropped.' });
+  }
+  try {
+    const current = await getUserById(payload.id);
+    if (!current || current.role !== 'student') {
+      return sendJson(res, 403, { success: false, error: 'Only student accounts can change semester drop status.' });
+    }
+    const currentRoles = new Set([...(Array.isArray(current.roles) ? current.roles : []), current.role]);
+    const inactiveLeadershipRoles = ['cr', 'sr', 'vp', 'gs'];
+    const roles = body.dropped
+      ? [...new Set([...currentRoles].filter((role) => !inactiveLeadershipRoles.includes(role)).concat(['student', 'readd']))]
+      : [...new Set([...currentRoles].filter((role) => role !== 'readd').concat('student'))];
+    const user = await updateUserProfile(payload.id, { role: 'student', roles }, { allowRole: true });
+    if (!user) return sendJson(res, 404, { success: false, error: 'User not found.' });
+    return sendJson(res, 200, { success: true, user: sanitizeUser(user) });
+  } catch (err) {
+    return sendJson(res, 500, { success: false, error: err.message });
+  }
+}
+
+// Alumni can mark whether they still have carry courses. The carry status is
+// represented by the Alumni With Carry role so existing role-access rules
+// continue to apply consistently across the app.
+async function handleAlumniCarry(req, res) {
+  const payload = readTokenCookie(req);
+  if (!payload) return sendJson(res, 401, { success: false, error: 'Not authenticated' });
+  const body = await readJsonBody(req).catch(() => ({}));
+  if (typeof body.hasCarry !== 'boolean') {
+    return sendJson(res, 400, { success: false, error: 'Choose whether you have carry courses.' });
+  }
+  try {
+    const current = await getUserById(payload.id);
+    if (!current || !['alumni', 'alumni_with_carry'].includes(current.role)) {
+      return sendJson(res, 403, { success: false, error: 'Only Alumni accounts can change carry-course status.' });
+    }
+    const role = body.hasCarry ? 'alumni_with_carry' : 'alumni';
+    const user = await updateUserProfile(payload.id, { role }, { allowRole: true });
+    if (!user) return sendJson(res, 404, { success: false, error: 'User not found.' });
     return sendJson(res, 200, { success: true, user: sanitizeUser(user) });
   } catch (err) {
     return sendJson(res, 500, { success: false, error: err.message });
@@ -473,6 +618,14 @@ export async function handleAuthRoute(req, res) {
   }
   if (url === '/api/auth/profile' && req.method === 'PUT') {
     await handleProfileUpdate(req, res);
+    return true;
+  }
+  if (url === '/api/auth/semester-drop' && req.method === 'POST') {
+    await handleSemesterDrop(req, res);
+    return true;
+  }
+  if (url === '/api/auth/alumni-carry' && req.method === 'POST') {
+    await handleAlumniCarry(req, res);
     return true;
   }
   if (url === '/api/auth/admin' && req.method === 'GET') {

@@ -1,0 +1,74 @@
+{
+  "requests": [],
+  "invitations": [
+    {
+      "id": "INV-1792321360379-VFTZX",
+      "email": "mubasshirahinph@gmail.com",
+      "role": "faculty",
+      "tokenHash": "7cc0590a64a6000b28ecd4b16ce0a76a9a44222947dca44c9579a78beeba8aca",
+      "status": "pending",
+      "invitedBy": "ADM-MSOP6VG6BVL4",
+      "createdAt": "2026-10-18T11:10:30.970Z",
+      "expiresAt": "2026-10-25T11:10:30.970Z",
+      "profile": {
+        "department": "",
+        "designation": "",
+        "batch": "",
+        "batchNo": "",
+        "batchName": "",
+        "graduationYear": "",
+        "company": ""
+      },
+      "emailStatus": "accepted_by_gmail",
+      "emailSubmittedAt": "2026-10-18T11:10:35.696Z",
+      "emailMessageId": "<b1e4e5ad-18bb-b107-8e0e-a8ebfc06f83b@gmail.com>",
+      "emailErrorCode": null
+    },
+    {
+      "id": "INV-1792321033640-W594H",
+      "email": "mubasshirahin.cse@gmail.com",
+      "role": "faculty",
+      "tokenHash": "7ad7634fcadb668bac1ea7112f168c42e81180bd80b770743a027c3522a913f1",
+      "status": "pending",
+      "invitedBy": "ADM-MSOP6VG6BVL4",
+      "createdAt": "2026-10-18T11:10:35.710Z",
+      "expiresAt": "2026-10-25T11:10:35.710Z",
+      "profile": {
+        "department": "",
+        "designation": "",
+        "batch": "",
+        "batchNo": "",
+        "batchName": "",
+        "graduationYear": "",
+        "company": ""
+      },
+      "emailStatus": "accepted_by_gmail",
+      "emailSubmittedAt": "2026-10-18T11:10:39.017Z",
+      "emailMessageId": "<c6d98756-ae8b-1501-c279-4c917d694b4c@gmail.com>",
+      "emailErrorCode": null
+    },
+    {
+      "id": "INV-1792320174785-9CNM9",
+      "email": "mubasshirahin@gmail.com",
+      "role": "alumni",
+      "tokenHash": "32943161aa741cb9f65f2d0e2bd81563af9ed05c17beee3035709aa008973472",
+      "status": "pending",
+      "invitedBy": "ADM-MSOP6VG6BVL4",
+      "createdAt": "2026-10-18T11:10:39.030Z",
+      "expiresAt": "2026-10-25T11:10:39.030Z",
+      "profile": {
+        "department": "",
+        "designation": "",
+        "batch": "",
+        "batchNo": "",
+        "batchName": "",
+        "graduationYear": "",
+        "company": ""
+      },
+      "emailStatus": "accepted_by_gmail",
+      "emailSubmittedAt": "2026-10-18T11:10:42.193Z",
+      "emailMessageId": "<e8734f1d-8010-5a5e-a024-ce8c41fd38b6@gmail.com>",
+      "emailErrorCode": null
+    }
+  ]
+}

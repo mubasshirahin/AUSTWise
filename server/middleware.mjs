@@ -50,7 +50,8 @@ export function requireRole(...allowedRoles) {
       res.end(JSON.stringify({ success: false, error: 'Authentication required.' }));
       return null;
     }
-    if (!allowedRoles.includes(payload.role)) {
+    const userRoles = [...new Set([...(Array.isArray(payload.roles) ? payload.roles : []), payload.role])];
+    if (!allowedRoles.some((role) => userRoles.includes(role))) {
       res.writeHead(403, {
         'Content-Type': 'application/json',
       });

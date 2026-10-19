@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   clearSession,
   getInitials,
@@ -11,6 +12,14 @@ import { initLiveStore, destroyLiveStore } from '../utils/liveStore';
 
 const AuthContext = createContext();
 const userStorageKey = 'aust-user-profile';
+const MOCKABLE_ROLES = new Set(['student', 'faculty', 'alumni', 'alumni_with_carry', 'readd', 'admin', 'moderator', 'guest', 'cr', 'sr', 'senior', 'vp', 'gs', 'bus_coordinator', 'clubs_representative', 'help_desk', 'banned']);
+
+function readMockRole(search) {
+  if (!import.meta.env.DEV) return '';
+  const requested = new URLSearchParams(search).get('mockRole')?.trim().toLowerCase().replaceAll('-', '_');
+  if (requested === 'alumni_carry') return 'alumni_with_carry';
+  return MOCKABLE_ROLES.has(requested) ? requested : '';
+}
 
 /** Call server API */
 async function api(path, options = {}) {
@@ -23,6 +32,10 @@ async function api(path, options = {}) {
   if (!res.ok && !data.success) {
     const err = new Error(data.error || 'Request failed');
     err.status = res.status;
+    const isCredentialExchange = ['/api/auth/login', '/api/auth/signup', '/api/auth/google'].includes(path);
+    if (res.status === 401 && !isCredentialExchange) {
+      window.dispatchEvent(new CustomEvent('austwise:auth-expired', { detail: { message: data.error } }));
+    }
     throw err;
   }
   return data;
@@ -48,7 +61,8 @@ function normalizeYearSemester(value) {
 
 function hydrateUser(raw) {
   if (!raw) return null;
-  const roles = Array.isArray(raw.roles) ? raw.roles : [raw.role];
+  const primaryRole = String(raw.role || 'guest').toLowerCase();
+  const roles = Array.isArray(raw.roles) ? raw.roles : [primaryRole];
   const yearSemester = normalizeYearSemester(raw.yearSemester);
   // Merge metadata roles
   const metaRoles = [
@@ -61,9 +75,13 @@ function hydrateUser(raw) {
   const mergedRoles = [...new Set([...roles, ...metaRoles])];
   return {
     ...raw,
+    role: primaryRole,
     yearSemester,
     roles: mergedRoles,
-    hasRole(roleType) { return this.roles?.includes(roleType) || this.role === roleType; },
+    hasRole(roleType) {
+      const wanted = String(roleType || '').toLowerCase();
+      return this.roles?.some(role => String(role).toLowerCase() === wanted) || String(this.role).toLowerCase() === wanted;
+    },
     initials: getInitials(raw.name),
     isGuest: false,
     batchName: raw.batchName || raw.batchNo || '',
@@ -71,11 +89,29 @@ function hydrateUser(raw) {
 }
 
 export function AuthProvider({ children }) {
+  const location = useLocation();
   const [sessionUser, setSessionUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const profileWriteRevisionRef = useRef(0);
 
-  const isAuthenticated = Boolean(sessionUser);
-  const user = sessionUser ?? guestUser;
+  useEffect(() => {
+    const expireSession = () => {
+      clearSession();
+      destroyLiveStore();
+      setSessionUser(null);
+    };
+    window.addEventListener('austwise:auth-expired', expireSession);
+    return () => window.removeEventListener('austwise:auth-expired', expireSession);
+  }, []);
+
+  const mockRole = readMockRole(location.search);
+  const isRoleMocked = Boolean(mockRole);
+  const mockedPrimaryRole = mockRole === 'readd' ? 'student' : mockRole;
+  const mockedRoles = mockRole === 'readd' ? ['student', 'readd'] : [mockRole];
+  const user = isRoleMocked
+    ? hydrateUser({ ...(sessionUser || guestUser), id: sessionUser?.id || `mock-${mockRole}`, role: mockedPrimaryRole, roles: mockedRoles, isGuest: false })
+    : sessionUser ?? guestUser;
+  const isAuthenticated = Boolean(sessionUser) || isRoleMocked;
 
   // On mount: try restoring session from server
   useEffect(() => {
@@ -192,6 +228,7 @@ export function AuthProvider({ children }) {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+    if (data.pendingApproval) return { pendingApproval: true, message: data.message };
     const hydrated = hydrateUser(data.user);
     setSessionUser(hydrated);
     localStorage.setItem(userStorageKey, JSON.stringify(hydrated));
@@ -224,39 +261,26 @@ export function AuthProvider({ children }) {
     } catch { /* best effort */ }
     runMigrationOnLogin(data.user.id);
     initLiveStore(data.user.id);
-    return hydrated;
+    return { pendingApproval: false, user: hydrated };
   };
 
-  const loginDirect = (account) => {
-    // For social/OAuth flows — the account was already created/updated
-    // on the client side. Start a local session (server auth not involved
-    // for OAuth yet, but we still verify via /me).
+  const loginDirect = async (account) => {
+    // This is only for OAuth/dev-switch responses that have just set the
+    // server's HttpOnly auth cookie. Never create a client-only signed-in
+    // session: protected APIs require that cookie and otherwise return 401.
+    const data = await api('/api/auth/me');
+    if (!data?.success || !data.user || String(data.user.id) !== String(account.id)) {
+      throw new Error('Server session could not be verified. Please sign in again.');
+    }
     const hydrated = hydrateUser({
-      id: account.id,
-      email: account.email,
-      name: account.name,
-      role: account.role || 'student',
-      department: account.department || '',
-      batch: account.batch || '',
-      batchNo: account.batchNo || '',
-      batchName: account.batchName || '',
-      designation: account.designation || '',
-      company: account.company || '',
-      graduationYear: account.graduationYear || '',
-      yearSemester: account.yearSemester || '',
-      section: account.section || '',
-      labSection: account.labSection || '',
-      semester: account.semester || 1,
-      avatar: account.avatar || null,
-      linkedSocial: account.linkedSocial || {},
-      linkedAccounts: account.linkedAccounts || [],
-      cgpa: account.cgpa || 0,
-      creditsCompleted: account.creditsCompleted || 0,
-      totalCredits: account.totalCredits || 160,
+      ...account,
+      ...data.user,
+      avatar: account.avatar || data.user.avatar,
+      linkedSocial: account.linkedSocial || data.user.linkedSocial,
     });
     setSessionUser(hydrated);
     localStorage.setItem(userStorageKey, JSON.stringify(hydrated));
-    initLiveStore(account.id);
+    initLiveStore(hydrated.id);
     return hydrated;
   };
 
@@ -278,15 +302,20 @@ export function AuthProvider({ children }) {
 
   const updateUser = (nextUserData) => {
     if (!sessionUser) return false;
+    const revision = ++profileWriteRevisionRef.current;
+    // The account id is the user's identity — a profile edit (e.g. the
+    // editable "Student ID" field) must never rewrite it. The server ignores
+    // `id` on /api/auth/profile too, so drop it before applying anything.
+    const { id: _ignoredId, ...patch } = nextUserData || {};
     const updatedUser = {
       ...sessionUser,
-      ...nextUserData,
-      initials: nextUserData.name ? getInitials(nextUserData.name) : sessionUser.initials,
+      ...patch,
+      initials: patch.name ? getInitials(patch.name) : sessionUser.initials,
     };
     setSessionUser(updatedUser);
     localStorage.setItem(userStorageKey, JSON.stringify(updatedUser));
-    const accountId = nextUserData.id || sessionUser.id;
-    updateAccountProfile(accountId, nextUserData);
+    const accountId = sessionUser.id;
+    updateAccountProfile(accountId, patch);
     // Persist self-editable profile fields to the server so changes survive a
     // reload. The server whitelists fields, so unsafe keys are ignored.
     if (accountId !== 'guest') {
@@ -295,14 +324,14 @@ export function AuthProvider({ children }) {
           method: 'PUT',
           credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(nextUserData),
+          body: JSON.stringify(patch),
         })
           .then((res) => res.json())
           .then((data) => {
-            if (data?.success && data.user) {
+            if (revision === profileWriteRevisionRef.current && data?.success && data.user) {
               // Server wins for persisted fields, but keep the client's just-made
               // local-only changes (linked accounts, privacy, etc.) intact.
-              const hydrated = hydrateUser({ ...data.user, ...nextUserData });
+              const hydrated = hydrateUser({ ...data.user, ...patch });
               setSessionUser(hydrated);
               localStorage.setItem(userStorageKey, JSON.stringify(hydrated));
             }
@@ -313,7 +342,35 @@ export function AuthProvider({ children }) {
     return true;
   };
 
-  const hasRole = (roleType) => user?.hasRole ? user.hasRole(roleType) : user?.role === roleType;
+  const saveUserProfile = async (nextUserData) => {
+    if (!sessionUser || sessionUser.id === 'guest') {
+      throw new Error('Log in to save your profile.');
+    }
+    const revision = ++profileWriteRevisionRef.current;
+    const { id: _ignoredId, ...patch } = nextUserData || {};
+    const data = await api('/api/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(patch),
+    });
+    if (!data?.success || !data.user) {
+      throw new Error(data?.error || 'Profile could not be saved.');
+    }
+
+    // Use the server response as the saved account state. In particular, don't
+    // report a lab group as saved until it has come back from persistent storage.
+    const hydrated = hydrateUser({ ...sessionUser, ...data.user });
+    if (revision === profileWriteRevisionRef.current) {
+      setSessionUser(hydrated);
+      localStorage.setItem(userStorageKey, JSON.stringify(hydrated));
+    }
+    updateAccountProfile(sessionUser.id, data.user);
+    return hydrated;
+  };
+
+  const hasRole = (roleType) => {
+    if (isRoleMocked) return roleType === mockRole || (mockRole === 'readd' && roleType === 'student');
+    return user?.hasRole ? user.hasRole(roleType) : user?.role === roleType;
+  };
 
   /**
    * Re-fetch the current user from the server and sync the session + local
@@ -328,7 +385,7 @@ export function AuthProvider({ children }) {
         const hydrated = hydrateUser(data.user);
         setSessionUser(hydrated);
         localStorage.setItem(userStorageKey, JSON.stringify(hydrated));
-        updateAccountProfile(hydrated.id, { role: hydrated.role });
+        updateAccountProfile(hydrated.id, { role: hydrated.role, roles: hydrated.roles });
         return hydrated;
       }
     } catch (err) {
@@ -349,8 +406,11 @@ export function AuthProvider({ children }) {
       signup,
       logout,
       updateUser,
+      saveUserProfile,
       refreshUserFromServer,
       hasRole,
+      isRoleMocked,
+      mockRole,
     }}>
       {children}
     </AuthContext.Provider>

@@ -4,6 +4,7 @@
  */
 
 import { readJson, writeJson } from './jsonDB.mjs';
+import { randomUUID } from 'node:crypto';
 
 // ── Lazy PrismaClient initialization ─────────────────────────────────────────
 
@@ -1130,12 +1131,13 @@ export function sharedRoutineSlotKey(record) {
 }
 
 export async function listSharedRoutines() {
+  const withoutDevFixtures = (routines) => routines.filter((routine) => !String(routine.id || '').startsWith('dev-rt-'));
   if (!_prismaAvailable) {
     const list = await readJson('shared_routines.json');
-    return list.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+    return withoutDevFixtures(list).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
   }
 
-  return getPrisma().sharedRoutine.findMany({ orderBy: { updatedAt: 'desc' } });
+  return withoutDevFixtures(await getPrisma().sharedRoutine.findMany({ orderBy: { updatedAt: 'desc' } }));
 }
 
 export async function getSharedRoutineBySlot(slot) {
@@ -1174,7 +1176,9 @@ export async function upsertSharedRoutine(data) {
     const list = await readJson('shared_routines.json');
     const idx = list.findIndex(r => sharedRoutineSlotKey(r) === sharedRoutineSlotKey(record));
     if (idx !== -1) {
-      record.id = list[idx].id;
+      record.id = String(list[idx].id || '').startsWith('dev-rt-')
+        ? Math.random().toString(36).substring(2, 11)
+        : list[idx].id;
       record.createdAt = list[idx].createdAt;
       list[idx] = record;
     } else {
@@ -1197,7 +1201,13 @@ export async function upsertSharedRoutine(data) {
   if (existing) {
     return p.sharedRoutine.update({
       where: { id: existing.id },
-      data: { crId: record.crId, crName: record.crName, routine: record.routine, weekDays: record.weekDays },
+      data: {
+        ...(String(existing.id || '').startsWith('dev-rt-') ? { id: randomUUID() } : {}),
+        crId: record.crId,
+        crName: record.crName,
+        routine: record.routine,
+        weekDays: record.weekDays,
+      },
     });
   }
   return p.sharedRoutine.create({ data: record });
