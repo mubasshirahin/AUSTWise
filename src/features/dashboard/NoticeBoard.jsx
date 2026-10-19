@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import useWebSocket from '../../hooks/useWebSocket';
 import { loadSharedSync, loadSharedAsync, saveShared } from '../../utils/storageService';
 import { getLiveValue } from '../../utils/liveStore';
-import { addNotification, makeNotifId, showNativeNotification, removeNotificationById, removeNotificationsByTitle } from '../../utils/inAppNotifications';
+import { addNotification, makeNotifId, showNativeNotification, removeNotificationById, removeNotificationsByTitle, noticeScopeMatchesUser } from '../../utils/inAppNotifications';
 
 const CRSR_KEY = 'aust-cr-sr-notices';
 const NOTICE_TITLE_MAX = 80;
@@ -22,9 +22,12 @@ export default function NoticeBoard() {
   const [formContent, setFormContent] = useState('');
   const [formPinned, setFormPinned] = useState(false);
 
-  // Real-time: when another device posts a notice, show a notification
+  // Real-time notices are broadcast to all connected clients; only notify
+  // people whose profile matches the notice's department/semester/section.
   useWebSocket(user?.id || null, {
-    onNoticeNew: useCallback(({ title, content, postedByName }) => {
+    onNoticeNew: useCallback(({ title, content, postedByName, postedById, scope }) => {
+      if (postedById && postedById === user?.id) return;
+      if (!noticeScopeMatchesUser(scope, user)) return;
       const notif = {
         id: makeNotifId(),
         title: `New Notice: ${title}`,
@@ -37,7 +40,7 @@ export default function NoticeBoard() {
       };
       addNotification(notif);
       showNativeNotification(notif);
-    }, []),
+    }, [user?.id, user?.department, user?.semester, user?.section, user?.labSection]),
   });
 
   const [adminNotices, setAdminNotices] = useState(() => loadSharedSync('aust-notices', notices));
@@ -116,20 +119,7 @@ export default function NoticeBoard() {
         ? { department: user.department, semester: String(user.semester), labSection: user.labSection }
         : { department: user.department, semester: String(user.semester), section: user.section },
     };
-    const notif = {
-      id: makeNotifId('notice'),
-      title: 'New Notice',
-      body: notice.title,
-      type: 'notice',
-      icon: 'BellRing',
-      path: '/',
-      timestamp: Date.now(),
-      read: false,
-      priority: notice.pinned ? 'high' : 'medium',
-    };
-    addNotification(notif);
-    showNativeNotification(notif);
-    saveCrsr([{ ...notice, notifId: notif.id }, ...crsrNotices]);
+    saveCrsr([notice, ...crsrNotices]);
     try { localStorage.setItem(NOTICE_RATE_KEY, String(Date.now())); } catch {}
     // Send only title/content/pinned — server derives name/role from auth to prevent spoofing
     fetch('/api/telegram/send-notice', {

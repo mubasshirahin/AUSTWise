@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useRoutine } from '../context/RoutineContext';
+import { useAuth } from '../context/AuthContext';
 import {
   loadSettings,
   getPermissionStatus,
@@ -10,10 +11,11 @@ import {
 import { deadlines } from '../data/mockData';
 
 const POLL_MS = 60 * 1000;
-const SYNC_MS = 20 * 1000;
+const SYNC_MS = 60 * 1000;
 
 export default function NotificationRunner() {
   const { routine, weekDays } = useRoutine();
+  const { isAuthenticated } = useAuth();
   const intervalRef = useRef(null);
   const syncRef = useRef(null);
 
@@ -28,8 +30,11 @@ export default function NotificationRunner() {
   // seconds and on tab focus/visibility, so a change made on another device
   // (laptop vs phone) shows up here in near real time.
   const syncFromServer = useCallback(async () => {
+    // Skip background syncs while the tab is hidden — polling an invisible
+    // tab just burns the network and main thread for nothing.
+    if (document.hidden || !isAuthenticated) return;
     await hydrateSettingsFromServer();
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     runChecks();

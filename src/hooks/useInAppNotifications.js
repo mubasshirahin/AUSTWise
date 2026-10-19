@@ -10,16 +10,29 @@ import {
   seedFromRoleApplications,
   clearAllNotifications,
   showNativeNotification,
+  addNotification,
 } from '../utils/inAppNotifications';
 import { loadSharedSync } from '../utils/storageService';
 import { getAllRoleApplications } from '../utils/authStorage';
+import { onRealtimeMessage } from '../utils/liveStore';
 
 const POLL_MS = 5000;
+
+/**
+ * Cheap change-detector for the notification list. `loadNotifications()`
+ * returns a brand-new array on every call, so setting it unconditionally made
+ * the navbar re-render every 5s forever even when nothing had changed.
+ */
+function notificationsSignature(list) {
+  let sig = '';
+  for (const n of list) sig += `${n.id}:${n.read ? 1 : 0}|`;
+  return sig;
+}
 
 export function useInAppNotifications(user) {
   const [notifications, setNotifications] = useState(() => loadNotifications());
   const [unread, setUnread] = useState(() => getUnreadCount());
-  const seededRef = useRef(false);
+  const seededRef = useRef(null);
 
   const isAdmin = Boolean(
     user &&
@@ -28,10 +41,66 @@ export function useInAppNotifications(user) {
       (Array.isArray(user.roles) && user.roles.some((r) => r === 'admin' || r === 'moderator')))
   );
 
+  const addRoleReviewNotification = useCallback((application) => {
+    if (!application?.id || !['approved', 'rejected'].includes(application.status)) return;
+    const approved = application.status === 'approved';
+    const roleLabel = application.appliedRole === 'cr'
+      ? 'Class Representative (CR)'
+      : 'Student Representative (SR)';
+    addNotification({
+      id: `role-review-${application.id}-${application.status}`,
+      title: approved ? 'Application approved' : 'Application rejected',
+      body: approved
+        ? `Your application was approved. You are now the ${roleLabel}.`
+        : `Your application for ${roleLabel} was rejected. You can re-apply when a slot opens up.`,
+      type: 'info',
+      icon: approved ? 'CheckCircle2' : 'XCircle',
+      path: '/settings',
+      timestamp: application.reviewedAt ? new Date(application.reviewedAt).getTime() : Date.now(),
+      read: false,
+      priority: approved ? 'high' : 'medium',
+    });
+    const items = loadNotifications();
+    setNotifications(items);
+    setUnread(getUnreadCount());
+  }, []);
+
+  // Deliver admin decisions immediately to the applicant's notification bell.
+  useEffect(() => {
+    if (!user?.id || user?.isGuest || isAdmin) return undefined;
+    return onRealtimeMessage('role-review', (payload) => {
+      addRoleReviewNotification({
+        id: payload?.applicationId || payload?.id,
+        appliedRole: payload?.appliedRole,
+        status: payload?.status,
+        reviewedAt: payload?.reviewedAt,
+      });
+    });
+  }, [user?.id, user?.isGuest, isAdmin, addRoleReviewNotification]);
+
+  // Reconcile decisions made while the applicant was offline, using the
+  // server's application record as the durable source of truth.
+  useEffect(() => {
+    if (!user?.id || user?.isGuest || isAdmin) return undefined;
+    let cancelled = false;
+    const syncMyRoleReviews = async () => {
+      try {
+        const res = await fetch('/api/role-applications/mine', { credentials: 'same-origin' });
+        const data = await res.json().catch(() => ({}));
+        if (!cancelled && res.ok && Array.isArray(data.applications)) {
+          data.applications.forEach(addRoleReviewNotification);
+        }
+      } catch { /* offline; realtime will deliver the next decision */ }
+    };
+    syncMyRoleReviews();
+    const interval = setInterval(syncMyRoleReviews, 15000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [user?.id, user?.isGuest, isAdmin, addRoleReviewNotification]);
+
   const runSeed = useCallback(() => {
     try {
       const storedNotices = loadSharedSync('aust-notices');
-      if (storedNotices) seedFromNotices(storedNotices);
+      if (storedNotices) seedFromNotices(storedNotices, user);
     } catch { /* ignore */ }
 
     try {
@@ -67,15 +136,18 @@ export function useInAppNotifications(user) {
         seedFromRoleApplications(data.applications);
       }
     } catch { /* offline — skip */ }
-  }, [isAdmin]);
+  }, [isAdmin, user?.id, user?.department, user?.semester, user?.section, user?.labSection]);
 
-  // Seed once on mount
+  // Refresh the visible list when the active account changes. Notification
+  // storage is user-scoped, so one account must never inherit another's bell.
   useEffect(() => {
-    if (seededRef.current) return;
-    seededRef.current = true;
+    const seedKey = [user?.id || 'guest', isAdmin, user?.department, user?.semester, user?.section, user?.labSection].join('|');
+    if (seededRef.current === seedKey) return;
+    seededRef.current = seedKey;
+    setNotifications(loadNotifications());
+    setUnread(getUnreadCount());
     runSeed();
-     
-  }, [runSeed]);
+  }, [runSeed, user?.id, user?.department, user?.semester, user?.section, user?.labSection, isAdmin]);
 
   // Poll for external changes + fire native notifications for new items.
   // First load establishes a baseline so pre-existing/seeded items don't spam.
@@ -100,8 +172,9 @@ export function useInAppNotifications(user) {
           });
           baseline = new Set(items.map((n) => n.id));
         }
-        setNotifications(items);
-        setUnread(getUnreadCount());
+        setNotifications((prev) => (notificationsSignature(prev) === notificationsSignature(items) ? prev : items));
+        const nextUnread = getUnreadCount();
+        setUnread((prev) => (prev === nextUnread ? prev : nextUnread));
       } finally {
         running = false;
       }
@@ -110,7 +183,7 @@ export function useInAppNotifications(user) {
     check();
     const interval = setInterval(check, POLL_MS);
     return () => clearInterval(interval);
-  }, [seedRoleAppsFromServer]);
+  }, [seedRoleAppsFromServer, user?.id]);
 
   const handleMarkAsRead = useCallback((id) => {
     markAsRead(id);
