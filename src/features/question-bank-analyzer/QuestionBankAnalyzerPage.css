@@ -1291,12 +1291,15 @@
 .qba-capture-host {
   position: absolute;
   top: 0;
-  left: 0;
-  visibility: hidden;
+  left: -20000px;
+  /* A4 content width (180mm) at 96dpi — the sheet is laid out exactly like
+     the printed page, so both exports look the same. */
+  width: 680px;
+  /* html2canvas skips elements that are not visible, so the sheet must NOT
+     be `visibility: hidden` — it is parked off-screen instead. */
+  visibility: visible;
   pointer-events: none;
-  z-index: -1;
   background: #ffffff;
-  /* Let content determine width; html2canvas will capture full scrollWidth */
 }
 
 /* ── misc ──────────────────────────────────────────────────────────────────── */

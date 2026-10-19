@@ -136,6 +136,13 @@ export default function PrintReport({ data, className = '', innerRef }) {
           report stays readable in black and white.
         </p>
         <table className="qba-report-table qba-vip-table">
+          <colgroup>
+            <col className="qba-col-vip-topic" />
+            <col className="qba-col-vip-asked" />
+            <col className="qba-col-vip-avg" />
+            <col className="qba-col-vip-last" />
+            <col className="qba-col-vip-priority" />
+          </colgroup>
           <thead>
             <tr>
               <th scope="col">Topic</th>
@@ -173,6 +180,14 @@ export default function PrintReport({ data, className = '', innerRef }) {
               </span>
             </div>
             <table className="qba-report-table">
+              <colgroup>
+                <col className="qba-col-sno" />
+                <col className="qba-col-question" />
+                <col className="qba-col-exam" />
+                <col className="qba-col-semester" />
+                <col className="qba-col-marks" />
+                <col className="qba-col-times" />
+              </colgroup>
               <thead>
                 <tr>
                   <th scope="col" className="qba-sno">#</th>
@@ -212,6 +227,13 @@ export default function PrintReport({ data, className = '', innerRef }) {
                 <span className="qba-report-topic-meta">{rows.length} question{rows.length === 1 ? '' : 's'}</span>
               </div>
               <table className="qba-report-table">
+                <colgroup>
+                  <col className="qba-col-sem-topic" />
+                  <col className="qba-col-sem-question" />
+                  <col className="qba-col-sem-exam" />
+                  <col className="qba-col-sem-marks" />
+                  <col className="qba-col-sem-times" />
+                </colgroup>
                 <thead>
                   <tr>
                     <th scope="col">Topic</th>

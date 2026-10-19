@@ -118,8 +118,31 @@
   width: 100%;
   border-collapse: collapse;
   margin: 0 0 10px;
-  table-layout: auto;
+  /* Fixed layout: every table in the report gets the SAME column widths, so
+     the topic tables line up with each other instead of each one sizing
+     itself around its own content. */
+  table-layout: fixed;
 }
+
+/* Column widths — the sums of each row are 100%. */
+.qba-report .qba-col-sno { width: 4%; }
+.qba-report .qba-col-question { width: 45%; }
+.qba-report .qba-col-exam { width: 11%; }
+.qba-report .qba-col-semester { width: 16%; }
+.qba-report .qba-col-marks { width: 12%; }
+.qba-report .qba-col-times { width: 12%; }
+
+.qba-report .qba-col-vip-topic { width: 32%; }
+.qba-report .qba-col-vip-asked { width: 18%; }
+.qba-report .qba-col-vip-avg { width: 16%; }
+.qba-report .qba-col-vip-last { width: 18%; }
+.qba-report .qba-col-vip-priority { width: 16%; }
+
+.qba-report .qba-col-sem-topic { width: 15%; }
+.qba-report .qba-col-sem-question { width: 49%; }
+.qba-report .qba-col-sem-exam { width: 12%; }
+.qba-report .qba-col-sem-marks { width: 12%; }
+.qba-report .qba-col-sem-times { width: 12%; }
 
 .qba-report .qba-report-table thead {
   display: table-header-group;
@@ -141,6 +164,8 @@
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: #000000;
+  /* The columns are fixed now, so the labels never need to break apart. */
+  white-space: nowrap;
 }
 
 .qba-report .qba-report-table td {
@@ -405,10 +430,11 @@
     display: table-header-group;
   }
 
-  /* Allow table rows to break across pages - this is key to reducing page count */
+  /* Keep a question row whole — a row that is cut in half across two pages
+     reads like a broken table. */
   .qba-print-root .qba-report-table tbody tr {
-    break-inside: auto;
-    page-break-inside: auto;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   /* Keep topic headings with their tables */
@@ -417,10 +443,11 @@
     page-break-after: avoid;
   }
 
-  /* Keep topic blocks together when possible, but allow breaking if too large */
+  /* A topic may run over a page break — forcing it to stay whole left big
+     empty gaps at the bottom of the previous page. */
   .qba-print-root .qba-report-topic {
-    break-inside: avoid;
-    page-break-inside: avoid;
+    break-inside: auto;
+    page-break-inside: auto;
   }
 
   .qba-print-root .qba-summary-grid {
