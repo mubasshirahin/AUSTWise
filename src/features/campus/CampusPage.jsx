@@ -1,35 +1,36 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Map, MapPin, Users, Library, UtensilsCrossed, Bus, DoorOpen } from 'lucide-react';
+import { Map, MapPin, Library, UtensilsCrossed, Bus, DoorOpen } from 'lucide-react';
 import InteractiveMap from './InteractiveMap';
-import FacultyStatus from './FacultyStatus';
 import LibraryPulse from './LibraryPulse';
 import CanteenMenu from './CanteenMenu';
 import BusTracker from './BusTracker';
 import EmptyClassroomPage from '../empty-classroom/EmptyClassroomPage';
 import GliderTabs from '../../components/GliderTabs';
 import MastheadAccessControl from '../../components/MastheadAccessControl';
+import FeatureAccessGate from '../admin/FeatureAccessGate';
+import SidebarPageAccessPanel, { SidebarPageAccessHeader } from '../admin/SidebarPageAccessPanel';
 import useTabUrlState from '../../hooks/useTabUrlState';
 import useAdminMode from '../../hooks/useAdminMode';
 import './CampusPage.css';
 import './campus-tokens.css';
 
 const campusTabs = [
-  { id: 'map',       label: 'Floor Map',      icon: MapPin,          color: 'amber', desc: '' },
-  { id: 'faculty',   label: 'Faculty Status', icon: Users,           color: 'amber', desc: 'Office hours' },
-  { id: 'library',   label: 'Library Pulse',  icon: Library,         color: 'amber', desc: 'Occupancy' },
-  { id: 'canteen',   label: 'Canteen Menu',   icon: UtensilsCrossed, color: 'amber', desc: "Today's menu" },
-  { id: 'bus',       label: 'Bus Tracker',    icon: Bus,             color: 'amber', desc: 'Shuttle routes' },
-  { id: 'classroom', label: 'Free Rooms',     icon: DoorOpen,        color: 'amber', desc: 'Find available rooms' },
+  { id: 'map',       label: 'Floor Map',      icon: MapPin,          color: 'amber', desc: '', accessKey: 'feature:campus:floor-map' },
+  { id: 'library',   label: 'Library Pulse',  icon: Library,         color: 'amber', desc: 'Occupancy', accessKey: 'feature:campus:library-pulse' },
+  { id: 'canteen',   label: 'Canteen Menu',   icon: UtensilsCrossed, color: 'amber', desc: "Today's menu", accessKey: 'feature:campus:canteen-menu' },
+  { id: 'bus',       label: 'Bus Tracker',    icon: Bus,             color: 'amber', desc: 'Shuttle routes', accessKey: 'feature:campus:bus-tracker' },
+  { id: 'classroom', label: 'Free Rooms',     icon: DoorOpen,        color: 'amber', desc: 'Find available rooms', accessKey: 'feature:campus:free-rooms' },
 ];
 
 const CAMPUS_TAB_KEY = 'aust-campus-active-tab';
 
 export default function CampusPage() {
-  const { isAdmin: _isAdmin } = useAdminMode();
+  const { isAdmin } = useAdminMode();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => {
-    return searchParams.get('tab') || localStorage.getItem(CAMPUS_TAB_KEY) || 'map';
+    const requestedTab = searchParams.get('tab') || localStorage.getItem(CAMPUS_TAB_KEY) || 'map';
+    return requestedTab === 'faculty' ? 'map' : requestedTab;
   });
 
   const handleTabChange = useTabUrlState({
@@ -41,7 +42,6 @@ export default function CampusPage() {
   const renderActiveTab = () => {
     switch (activeTab) {
       case 'map': return <InteractiveMap />;
-      case 'faculty': return <FacultyStatus />;
       case 'library': return <LibraryPulse />;
       case 'canteen': return <CanteenMenu />;
       case 'bus': return <BusTracker />;
@@ -54,7 +54,7 @@ export default function CampusPage() {
     <div className="campus-page animate-fadeIn">
 
       {/* ── 1. Hero box (own card) ── */}
-      <header className="cp-hero">
+      {isAdmin ? <SidebarPageAccessHeader pageKey="/campus" /> : <header className="cp-hero">
         <div className="cp-hero-content">
           <div className="cp-hero-eyebrow">
             <span className="cp-hero-period-icon">
@@ -71,9 +71,10 @@ export default function CampusPage() {
             Navigate buildings, check live canteen &amp; library traffic.
           </p>
         </div>
-      </header>
+      </header>}
 
       {/* ── 2. Glider tabs bar (own card) ── */}
+      {isAdmin && <SidebarPageAccessPanel pageKey="/campus" part="parent" />}
       <div className="glass-card-static cp-tabs-card">
         <GliderTabs
           tabs={campusTabs}
@@ -85,13 +86,15 @@ export default function CampusPage() {
       </div>
 
       {/* ── 3. Main content box (own card, gated by per-tab featureHidden) ── */}
-      <MastheadAccessControl pageKey={`campus:${activeTab}`}>
+      {isAdmin ? <SidebarPageAccessPanel pageKey="/campus" featureKey={`feature:campus:${({ map: 'floor-map', library: 'library-pulse', canteen: 'canteen-menu', bus: 'bus-tracker', classroom: 'free-rooms' })[activeTab] || 'floor-map'}`} part="child" /> : <MastheadAccessControl>
         <div className="cp-content-card" key={activeTab}>
           <div className="campus-content-area">
-            {renderActiveTab()}
+            <FeatureAccessGate featureKey={`feature:campus:${({ map: 'floor-map', library: 'library-pulse', canteen: 'canteen-menu', bus: 'bus-tracker', classroom: 'free-rooms' })[activeTab] || 'floor-map'}`}>
+              {renderActiveTab()}
+            </FeatureAccessGate>
           </div>
         </div>
-      </MastheadAccessControl>
+      </MastheadAccessControl>}
     </div>
   );
 }
