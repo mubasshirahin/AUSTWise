@@ -80,6 +80,9 @@ export function buildPreviewAnalytics(data) {
         topicPriority,
         topicIndex,
         questionIndex,
+        // The question's own position inside its topic — the pictures of a
+        // question are keyed by it, so it must survive merging.
+        originalIndex: question.originalIndex ?? questionIndex,
       });
     });
   });
@@ -394,6 +397,10 @@ export function applyManualMerges(data, mergeGroups) {
           merged: true,
           mergedIndices: indices,
           variants,
+          // A picture on any of the versions belongs to the merged row.
+          needsFigure: variants.some((variant) => variant.needsFigure),
+          // The wordings now live in the variants, not in the row itself.
+          versions: [],
           times: variants.reduce((sum, variant) => sum + numberOr(variant.times), 0),
           timesApproximate: variants.some((variant) => variant.timesApproximate),
           marksApproximate: variants.some((variant) => variant.marksApproximate),
@@ -436,6 +443,59 @@ export function applyManualMerges(data, mergeGroups) {
       lowCount: priorityCounts.LOW,
     },
   };
+}
+
+/**
+ * Every wording of one question, in display order.
+ *
+ * A question can carry its own wordings (`versions` — the AI writes
+ * "Version 1: ... Version 2: ..." inside one row) or be merged by hand
+ * (`variants` — the rows the student grouped in the preview). Both end up
+ * here so the preview and the print report show the same thing.
+ *
+ * @returns {Array<{ label: string, text: string }>}
+ */
+export function buildQuestionVersions(question) {
+  if (!question) return [];
+
+  const variants = Array.isArray(question.variants) ? question.variants : [];
+  if (variants.length) {
+    // When a merged row already carries wordings of its own, number them
+    // "1.1", "1.2", "2.1" so no two pills carry the same label.
+    const nested = variants.some((variant) => (
+      Array.isArray(variant.versions) && variant.versions.length
+    ));
+    const list = [];
+    variants.forEach((variant, index) => {
+      const own = Array.isArray(variant.versions) ? variant.versions : [];
+      if (own.length) {
+        own.forEach((version, ownIndex) => list.push({
+          label: nested ? `Version ${index + 1}.${ownIndex + 1}` : `Version ${index + 1}`,
+          text: version.text,
+        }));
+      } else {
+        list.push({
+          label: nested ? `Version ${index + 1}.1` : `Version ${index + 1}`,
+          text: variant.question || '—',
+        });
+      }
+    });
+    return list;
+  }
+
+  return Array.isArray(question.versions) ? question.versions : [];
+}
+
+/**
+ * The report the preview panel, the print report and the save flow all read.
+ *
+ * `applyManualMerges` already returns the whole report, topics included, so
+ * this must NOT overwrite `topics` — an empty list here renders the preview as
+ * "Nothing to preview yet" even though the Markdown parsed fine.
+ */
+export function buildDisplayData(reportData, mergeGroups) {
+  if (!reportData) return { topics: [] };
+  return applyManualMerges(reportData, mergeGroups);
 }
 
 /**

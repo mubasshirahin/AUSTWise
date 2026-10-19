@@ -45,7 +45,7 @@ total_asked: 4
 | # | Question | Exam | Semester | Marks | Times |
 |---|----------|------|----------|-------|-------|
 | 1 | Explain ACID properties with a bank transfer example | Final | Spring 2023 | 10 | 2 |
-| 2 | Draw a precedence graph and test conflict serializability | Mid | Fall 2023 | 10 | 1 |
+| 2 | [image] Draw the precedence graph of this schedule and test whether it is conflict serializable. <br>(a) Show the precedence graph. <br>(b) Is the schedule conflict serializable? | Final | Fall 2023 | 10 | 1 |
 | 3 | Explain two-phase locking and its deadlock problem | Quiz | Spring 2024 | 5 | 1 |
 
 ## TOPIC: Indexing & Storage

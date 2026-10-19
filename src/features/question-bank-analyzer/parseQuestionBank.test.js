@@ -6,6 +6,8 @@ import {
   normalizePriority,
   parseCount,
   sortVipMatrix,
+  extractFigureMarker,
+  splitQuestionVersions,
 } from './parseQuestionBank';
 
 const CLEAN = `---
@@ -290,8 +292,7 @@ describe('parseQuestionBank — priorities', () => {
   });
 });
 
-describe('parseQuestionBank — approximate counts', () => {
-  it('reads "~3" as 3 and flags it as approximate', () => {
+describe('parseQuestionBank — approximate counts', () => {  it('reads "~3" as 3 and flags it as approximate', () => {
     expect(parseCount('~3')).toEqual({ value: 3, approximate: true });
     expect(parseCount('≈ 4')).toEqual({ value: 4, approximate: true });
     expect(parseCount('3x')).toEqual({ value: 3, approximate: false });
@@ -397,5 +398,146 @@ describe('parseQuestionBank — bad input never throws', () => {
   it('returns an error when parts are missing entirely', () => {
     const { errors } = parseQuestionBankParts([]);
     expect(errors.length).toBeGreaterThan(0);
+  });
+});
+
+describe('extractFigureMarker', () => {
+  it('finds the [image] token and says where the picture was', () => {
+    expect(extractFigureMarker('[image] Draw the graph')).toEqual({
+      text: 'Draw the graph',
+      needsFigure: true,
+      figurePosition: 'start',
+    });
+    expect(extractFigureMarker('Draw the graph [image]')).toEqual({
+      text: 'Draw the graph',
+      needsFigure: true,
+      figurePosition: 'end',
+    });
+  });
+
+  it('accepts the variants an AI might write', () => {
+    for (const marker of ['[image]', '[Image]', '[ image ]', '[[image]]', '[diagram]', '[figure]', '[picture]']) {
+      const result = extractFigureMarker(`${marker} Question text`);
+      expect(result.needsFigure).toBe(true);
+      expect(result.text).toBe('Question text');
+    }
+  });
+
+  it('also catches a Markdown image', () => {
+    const result = extractFigureMarker('Look at this ![graph](https://example.com/a.png) please');
+    expect(result.needsFigure).toBe(true);
+    expect(result.text).not.toContain('example.com');
+  });
+
+  it('leaves a question without a picture alone', () => {
+    const result = extractFigureMarker('Define candidate key and primary key');
+    expect(result).toEqual({
+      text: 'Define candidate key and primary key',
+      needsFigure: false,
+      figurePosition: 'end',
+    });
+  });
+});
+
+describe('splitQuestionVersions', () => {
+  it('splits the AI wordings of one question apart', () => {
+    const versions = splitQuestionVersions(
+      'Version 1: Find every candidate key.\nVersion 2: List all candidate keys and prove minimality.',
+    );
+
+    expect(versions).toEqual([
+      { label: 'Version 1', text: 'Find every candidate key.' },
+      { label: 'Version 2', text: 'List all candidate keys and prove minimality.' },
+    ]);
+  });
+
+  it('leaves a plain question alone', () => {
+    expect(splitQuestionVersions('Define candidate key and primary key')).toEqual([]);
+  });
+
+  it('ignores a question that only mentions a version', () => {
+    expect(splitQuestionVersions('Which version 2: is correct?')).toEqual([]);
+  });
+
+  it('needs at least two wordings', () => {
+    expect(splitQuestionVersions('Version 1: only one')).toEqual([]);
+  });
+});
+
+describe('parseQuestionBank — picture markers', () => {
+  const WITH_FIGURE = `---
+course: CSE 3101
+title: Database Management Systems
+---
+
+## TOPIC: Transactions
+priority: HIGH
+total_asked: 2
+
+| # | Question | Exam | Semester | Marks | Times |
+|---|----------|------|----------|-------|-------|
+| 1 | Explain ACID properties | Final | Spring 2023 | 10 | 1 |
+| 2 | [image] Draw the precedence graph of this schedule | Mid | Fall 2023 | 10 | 1 |
+
+## VIP_MATRIX
+
+| Topic | Times Asked | Avg Marks | Last Asked | Priority |
+|-------|-------------|-----------|------------|----------|
+| Transactions | 2 | 10 | Fall 2023 | HIGH |`;
+
+  it('flags the question that needs a picture and cleans its text', () => {
+    const { data, notes } = parseQuestionBank(WITH_FIGURE);
+    const [plain, withFigure] = data.topics[0].questions;
+
+    expect(plain.needsFigure).toBe(false);
+    expect(withFigure.needsFigure).toBe(true);
+    expect(withFigure.figurePosition).toBe('start');
+    expect(withFigure.question).toBe('Draw the precedence graph of this schedule');
+    expect(notes.some((message) => /had a picture in the source/i.test(message))).toBe(true);
+  });
+
+  it('keeps the marker out of the printed question text', () => {
+    const { data } = parseQuestionBank(WITH_FIGURE);
+    expect(data.topics[0].questions[1].question).not.toMatch(/\[image\]/i);
+  });
+});
+
+describe('parseQuestionBank — question versions', () => {
+  const WITH_VERSIONS = `---
+course: CSE 3101
+title: Database Management Systems
+---
+
+## TOPIC: Normalization
+priority: HIGH
+total_asked: 2
+
+| # | Question | Exam | Semester | Marks | Times |
+|---|----------|------|----------|-------|-------|
+| 1 | Version 1: Consider R(A, B, C, D) with AB → C. Find every candidate key.<br>Version 2: For R(A, B, C, D) with AB → C, list the candidate keys and prove minimality. | Final | Spring 2023 | 15 | 2 |
+| 2 | Explain BCNF with an example where 3NF fails | Mid | Fall 2023 | 10 | 1 |
+
+## VIP_MATRIX
+
+| Topic | Times Asked | Avg Marks | Last Asked | Priority |
+|-------|-------------|-----------|------------|----------|
+| Normalization | 3 | 12.5 | Fall 2023 | HIGH |`;
+
+  it('keeps every wording of a merged question', () => {
+    const { data } = parseQuestionBank(WITH_VERSIONS);
+    const [merged] = data.topics[0].questions;
+
+    expect(merged.versions).toHaveLength(2);
+    expect(merged.versions[0]).toEqual({
+      label: 'Version 1',
+      text: 'Consider R(A, B, C, D) with AB → C. Find every candidate key.',
+    });
+    expect(merged.versions[1].label).toBe('Version 2');
+    expect(merged.versions[1].text).toContain('prove minimality');
+  });
+
+  it('gives a plain question no versions', () => {
+    const { data } = parseQuestionBank(WITH_VERSIONS);
+    expect(data.topics[0].questions[1].versions).toEqual([]);
   });
 });

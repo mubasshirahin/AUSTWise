@@ -23,7 +23,9 @@ import {
 } from 'lucide-react';
 import { buildPrompt } from './qbaPrompt';
 import { parseQuestionBankParts } from './parseQuestionBank';
-import { applyManualMerges } from './previewAnalytics';
+import { applyManualMerges, buildDisplayData } from './previewAnalytics';
+import { attachImagesToReport } from './qbaImageStore';
+import useQbaImages from './useQbaImages';
 import PreviewPanel from './PreviewPanel';
 import PrintReport, { PrintPortal } from './PrintReport';
 import { downloadReportImagePdf, reportBaseName } from './qbaPdf';
@@ -104,12 +106,18 @@ function waitForPaint() {
 function MessageList({ kind, items }) {
   if (!items || !items.length) return null;
   const isError = kind === 'error';
-  const Icon = isError ? AlertCircle : AlertTriangle;
+  const isInfo = kind === 'info';
+  const Icon = isError ? AlertCircle : isInfo ? Info : AlertTriangle;
+  const title = isError
+    ? 'This report could not be built'
+    : isInfo
+      ? 'Pictures to add'
+      : 'Warnings — some things were fixed automatically';
   return (
     <div className={`qba-messages qba-messages-${kind}`} role={isError ? 'alert' : 'status'}>
       <div className="qba-messages-title">
         <Icon size={16} aria-hidden="true" />
-        {isError ? 'This report could not be built' : 'Warnings — some things were fixed automatically'}
+        {title}
       </div>
       <ul>
         {items.map((message, index) => (
@@ -166,6 +174,11 @@ function QuestionBankAnalyzer() {
   const [savedCount, setSavedCount] = useState(0);
   const [savedEntryId, setSavedEntryId] = useState(null);
 
+  // Pictures the student attaches to individual questions. They live in the
+  // browser (IndexedDB) and are mirrored to the server on "Save Preview".
+  const pictures = useQbaImages(courseCode);
+  const { byQuestion: questionPictures } = pictures;
+
   // Load saved count once on mount
   useEffect(() => {
     getSavedAnalyses().then((list) => setSavedCount(list.length)).catch(() => {});
@@ -181,9 +194,18 @@ function QuestionBankAnalyzer() {
     return safeReportData(result.data, courseCode, courseTitle);
   }, [result, courseCode, courseTitle]);
 
+  // `buildDisplayData` returns the whole report (topics included) — the preview
+  // and the print report read `topics` from it.
   const displayData = useMemo(
-    () => reportData ? { ...applyManualMerges(reportData, mergeGroups), topics: [] } : { topics: [] },
+    () => buildDisplayData(reportData, mergeGroups),
     [reportData, mergeGroups],
+  );
+
+  // The same report with the attached pictures folded in — the print report
+  // and the image-PDF exporter read the pictures from here.
+  const printableData = useMemo(
+    () => attachImagesToReport(displayData, pictures.courseKey, questionPictures),
+    [displayData, pictures.courseKey, questionPictures],
   );
 
   // Check if current preview matches a saved analysis
@@ -310,7 +332,7 @@ function QuestionBankAnalyzer() {
     } catch {
       /* ignore */
     }
-    showNotice('Cleared. Saved course fields and pasted Markdown were removed.');
+    showNotice('Cleared. Saved course fields and pasted Markdown were removed. Pictures attached to this course were kept.');
   };
 
   const handleSave = async () => {
@@ -339,8 +361,20 @@ function QuestionBankAnalyzer() {
     }
     setSavedEntryId(entry.id);
     getSavedAnalyses().then((list) => setSavedCount(list.length)).catch(() => {});
-    showNotice('Analysis saved! Switch to the "Saved" tab to see it.');
+    // Mirror the attached pictures so they come back on another device.
+    const picturesSynced = await pictures.syncToServer();
+    showNotice(
+      picturesSynced
+        ? 'Analysis saved! Switch to the "Saved" tab to see it.'
+        : 'Analysis saved. The pictures could not be uploaded, so they stay on this device.',
+    );
   };
+
+  const handleAttachPicture = useCallback(async (imageKey, files) => {
+    const { added, error } = await pictures.attach(imageKey, files);
+    if (error) showNotice(error);
+    else if (added) showNotice(`${added} picture${added === 1 ? '' : 's'} added to the question.`);
+  }, [pictures, showNotice]);
 
   const addFiles = useCallback(async (fileList) => {
     const incoming = Array.from(fileList || []);
@@ -442,9 +476,13 @@ function QuestionBankAnalyzer() {
       return;
     }
 
-    const data = applyManualMerges(
-      safeReportData(parsed.data, courseCode, courseTitle),
-      mergeGroups,
+    const data = attachImagesToReport(
+      applyManualMerges(
+        safeReportData(parsed.data, courseCode, courseTitle),
+        mergeGroups,
+      ),
+      pictures.courseKey,
+      questionPictures,
     );
     const previousTitle = document.title;
     document.title = `${reportBaseName(data.course)}_question_bank_analysis`;
@@ -497,9 +535,13 @@ function QuestionBankAnalyzer() {
       await waitForPaint();
       const node = reportRef.current;
       if (!node) throw new Error('The report is still rendering. Please try again.');
-      const data = applyManualMerges(
-        safeReportData(parsed.data, courseCode, courseTitle),
-        mergeGroups,
+      const data = attachImagesToReport(
+        applyManualMerges(
+          safeReportData(parsed.data, courseCode, courseTitle),
+          mergeGroups,
+        ),
+        pictures.courseKey,
+        questionPictures,
       );
       await downloadReportImagePdf(node, data.course);
       showNotice('Quick PDF downloaded.');
@@ -578,6 +620,7 @@ function QuestionBankAnalyzer() {
   const hasData = Boolean(displayData && displayData.topics.length);
   const warnings = result?.warnings || [];
   const errors = result?.errors || [];
+  const notes = result?.notes || [];
 
   return (
     <div className="qba-widget glass-card-static animate-fadeInUp">
@@ -907,6 +950,7 @@ function QuestionBankAnalyzer() {
         {previewReady && result ? (
           <>
             <MessageList kind="error" items={errors} />
+            <MessageList kind="info" items={notes} />
             <MessageList kind="warning" items={warnings} />
             <PreviewPanel
               key={previewVersion}
@@ -917,6 +961,10 @@ function QuestionBankAnalyzer() {
               onRevealTopics={revealTopics}
               onMergeQuestions={mergeTopicQuestions}
               onUnmergeQuestions={unmergeTopicQuestions}
+              courseKey={pictures.courseKey}
+              images={questionPictures}
+              onAttachImage={handleAttachPicture}
+              onRemoveImage={pictures.remove}
             />
           </>
         ) : (
@@ -975,6 +1023,15 @@ function QuestionBankAnalyzer() {
               table with every column for a cleaner result.
             </p>
           </details>
+          <details>
+            <summary>A question had a picture in the exam</summary>
+            <p>
+              The AI writes <code>[image]</code> where the picture was, and the question gets a{' '}
+              <strong>Picture needed</strong> badge. Click <strong>Add picture</strong> under that question — or drag a
+              PNG/JPG straight onto it — and the picture is stored in this browser and printed with the question. Press{' '}
+              <strong>Save Preview</strong> to copy your pictures to your account so they follow you to another device.
+            </p>
+          </details>
         </div>
       </section>
       </>
@@ -983,7 +1040,7 @@ function QuestionBankAnalyzer() {
       {/* Offscreen copy of the report, used only by the image-PDF exporter. */}
       {displayData && !printMount ? (
         <div className="qba-capture-host" aria-hidden="true">
-          <PrintReport data={displayData} innerRef={reportRef} />
+          <PrintReport data={printableData} innerRef={reportRef} />
         </div>
       ) : null}
 

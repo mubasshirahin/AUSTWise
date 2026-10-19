@@ -48,6 +48,14 @@ STEP 2: Read all files carefully. Then:
   number.
 - Give each topic a priority: VIP, HIGH, MEDIUM, or LOW, based on
   frequency, marks, and recency.
+- PICTURES: if a question needs a diagram, figure, circuit, graph, table
+  image or any picture that cannot be copied as plain text, write the
+  literal token [image] in the Question cell — exactly where the picture
+  was (at the START of the cell if the picture was above the question
+  text, at the END if it was below). Use one [image] per missing picture.
+  Do NOT describe the picture, do NOT invent one, and do NOT write the
+  picture's content as text. The student will attach the real picture
+  later.
 - If a file is scanned or unreadable, tell me which one instead of
   guessing its content.
 
@@ -60,6 +68,8 @@ OUTPUT RULES (STRICT):
 - Use plain text inside the Question cell. Do not use Markdown bold/italic.
   If the question itself contains a "|" character, escape it as \\|.
 - Priority must be exactly one of: VIP, HIGH, MEDIUM, LOW.
+- The picture token must be exactly [image] in square brackets, lowercase,
+  with nothing else inside the brackets and no other words next to it.
 - If output gets cut off, I will say "continue". Resume exactly from
   the last row and do not repeat anything.
 
@@ -81,6 +91,11 @@ total_asked: <number>
 
 (Group similar versions in one row. Use <br> for sub-parts and for each
 version. Repeat the TOPIC block for every topic.)
+
+(When the original question had a picture, put the token [image] in the
+Question cell — at the start of the cell if the picture was above the
+question text, at the end if it was below. Example row:
+| 4 | [image] Draw the equivalent circuit for this network. | Final | Spring 2023 | 15 | 2 |)
 
 ## VIP_MATRIX
 

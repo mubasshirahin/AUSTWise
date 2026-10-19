@@ -4,12 +4,13 @@
  * Pure JS: no React, no DOM, no network. AI output is imperfect, so every
  * stage is deliberately forgiving and never throws. The public contract is:
  *
- *   parseQuestionBank(rawText) -> { data, warnings, errors }
- *   parseQuestionBankParts(texts) -> { data, warnings, errors }
- *   mergeAnalyses(results) -> { data, warnings, errors }
+ *   parseQuestionBank(rawText) -> { data, warnings, errors, notes }
+ *   parseQuestionBankParts(texts) -> { data, warnings, errors, notes }
+ *   mergeAnalyses(results) -> { data, warnings, errors, notes }
  *
  * `errors` are fatal (nothing usable was found). `warnings` are non-fatal
- * repairs the UI should show in plain language.
+ * repairs the UI should show in plain language. `notes` are neutral remarks —
+ * right now: "these questions had a picture in the source, attach one".
  */
 
 export const PRIORITIES = ['VIP', 'HIGH', 'MEDIUM', 'LOW'];
@@ -50,6 +51,83 @@ function cleanQuestion(value) {
 
 function normKey(value) {
   return cleanInline(value).toLowerCase().replace(/[^a-z0-9#]+/g, '');
+}
+
+// ── question versions ────────────────────────────────────────────────────────
+
+/**
+ * The AI merges similar questions into ONE row and labels the parts
+ * "Version 1: ...", "Version 2: ...". Split them apart so the preview can
+ * show every version on its own instead of one blob of text.
+ *
+ * @returns {Array<{ label: string, text: string }>} empty when the cell is
+ *   a plain question (or only mentions a version in passing).
+ */
+export function splitQuestionVersions(value) {
+  const source = String(value || '').trim();
+  if (!source) return [];
+
+  const labels = [...source.matchAll(/^version\s*(\d+)\s*:\s*/gim)];
+  // The AI always starts the cell with "Version 1:" — anything else is a
+  // question that merely mentions a version.
+  if (labels.length < 2 || labels[0].index !== 0) return [];
+
+  const versions = [];
+  labels.forEach((match, index) => {
+    const start = match.index + match[0].length;
+    const end = index + 1 < labels.length ? labels[index + 1].index : source.length;
+    const text = source.slice(start, end).trim();
+    if (text) versions.push({ label: `Version ${match[1]}`, text });
+  });
+  return versions.length >= 2 ? versions : [];
+}
+
+// ── picture markers ───────────────────────────────────────────────────────────
+
+/**
+ * A picture the AI could not copy as text is written as a literal `[image]`
+ * token (the master prompt asks for exactly that). A Markdown image
+ * `![alt](url)` counts too — some models write one anyway.
+ */
+const FIGURE_MARKER_SOURCE = '!\\[[^\\]]*\\]\\([^)]*\\)'
+  + '|\\[\\[\\s*(?:image|diagram|figure|picture)s?\\s*\\]\\]'
+  + '|\\[\\s*(?:image|diagram|figure|picture)s?\\s*\\]';
+
+/**
+ * Find the picture marker inside a question cell.
+ *
+ * @returns {{ text: string, needsFigure: boolean, figurePosition: 'start'|'end' }}
+ *   `text` is the question without the marker, `needsFigure` says a picture
+ *   should be attached to this question and `figurePosition` says whether the
+ *   picture came before or after the question text in the source.
+ */
+export function extractFigureMarker(value) {
+  const text = String(value ?? '');
+  if (!text) return { text: '', needsFigure: false, figurePosition: 'end' };
+
+  const pattern = new RegExp(FIGURE_MARKER_SOURCE, 'gi');
+  let first = null;
+  let match = pattern.exec(text);
+  while (match) {
+    if (!first) first = match;
+    if (match[0].length === 0) {
+      pattern.lastIndex += 1;
+    } else {
+      pattern.lastIndex = match.index + match[0].length;
+    }
+    match = pattern.exec(text);
+  }
+  if (!first) return { text, needsFigure: false, figurePosition: 'end' };
+
+  const figurePosition = text.slice(0, first.index).trim() ? 'end' : 'start';
+  const cleaned = text
+    .replace(new RegExp(FIGURE_MARKER_SOURCE, 'gi'), '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/[ \t]*\n[ \t]*/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  return { text: cleaned, needsFigure: true, figurePosition };
 }
 
 function normName(value) {
@@ -362,7 +440,7 @@ function cellAt(row, index) {
 
 // ── topic block ──────────────────────────────────────────────────────────────
 
-function parseTopicBlock(block, warn) {
+function parseTopicBlock(block, warn, note) {
   const name = cleanInline(block.name) || 'Untitled topic';
   let declaredPriority = '';
   let declaredTotal = '';
@@ -407,9 +485,16 @@ function parseTopicBlock(block, warn) {
   let shortRows = 0;
   rows.forEach((row, rowIndex) => {
     if (header && row.length < header.length) shortRows += 1;
-    const question = cleanQuestion(cellAt(row, indices.question));
-    if (!question || question === '-' || /^[-–—]+$/.test(question)) return;
+    const rawQuestion = cleanQuestion(cellAt(row, indices.question));
+    if (!rawQuestion || rawQuestion === '-' || /^[-–—]+$/.test(rawQuestion)) return;
     if (looksLikeTopicHeader(row)) return;
+
+    // A literal `[image]` marker means the source question had a picture the
+    // AI could not copy. Keep the text clean and flag the question instead.
+    const figure = extractFigureMarker(rawQuestion);
+    const question = figure.text || '—';
+    // "Version 1: ... Version 2: ..." — one question, several wordings.
+    const versions = splitQuestionVersions(question);
 
     const numberToken = cellAt(row, indices.number);
     const numberValue = parseInt(numberToken, 10);
@@ -440,11 +525,18 @@ function parseTopicBlock(block, warn) {
       marksApproximate,
       times,
       timesApproximate,
+      needsFigure: figure.needsFigure,
+      figurePosition: figure.figurePosition,
+      versions,
     });
   });
 
   if (shortRows) {
     warn(`Topic "${name}": ${shortRows} row(s) had fewer columns than the header — missing values were filled with "-" and Times was counted once.`);
+  }
+  const figureQuestions = questions.filter((question) => question.needsFigure).length;
+  if (figureQuestions && typeof note === 'function') {
+    note(`Topic "${name}": ${figureQuestions} question${figureQuestions === 1 ? '' : 's'} had a picture in the source — attach one under each question in the preview to practise them.`);
   }
   if (!rows.length) {
     warn(`Topic "${name}" was found, but it has no question table.`);
@@ -608,15 +700,18 @@ function collectSemesters(frontMatterSemesters, topics) {
 export function parseQuestionBank(rawText) {
   const warnings = [];
   const errors = [];
+  const notes = [];
   const warningSet = new Set();
   const errorSet = new Set();
+  const noteSet = new Set();
   const warn = (message) => pushUnique(warnings, warningSet, message);
   const fail = (message) => pushUnique(errors, errorSet, message);
+  const note = (message) => pushUnique(notes, noteSet, message);
 
   try {
     if (typeof rawText !== 'string' || !rawText.trim()) {
       fail('No Markdown was provided. Paste the AI output or upload the .md file first.');
-      return { data: emptyData(), warnings, errors };
+      return { data: emptyData(), warnings, errors, notes };
     }
 
     let text = rawText.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
@@ -644,7 +739,7 @@ export function parseQuestionBank(rawText) {
 
     for (const block of blocks) {
       if (block.type !== 'topic') continue;
-      const topic = parseTopicBlock(block, warn);
+      const topic = parseTopicBlock(block, warn, note);
       const key = normName(topic.name);
       const existing = topicMap.get(key);
       if (existing) {
@@ -662,7 +757,7 @@ export function parseQuestionBank(rawText) {
 
     if (!topics.length) {
       fail('This does not look like a Question Bank Analysis file. The AI output should contain "## TOPIC: ..." sections, or at least a "## VIP_MATRIX" table.');
-      return { data: emptyData(), warnings, errors };
+      return { data: emptyData(), warnings, errors, notes };
     }
 
     const totalQuestions = topics.reduce((sum, topic) => sum + topic.questions.length, 0);
@@ -733,7 +828,7 @@ export function parseQuestionBank(rawText) {
       warn(`${data.summary.approximateCount} count(s) were marked approximate (for example "~3"). They were read as whole numbers — double-check those rows.`);
     }
 
-    return { data, warnings, errors };
+    return { data, warnings, errors, notes };
   } catch {
     return {
       data: emptyData(),
@@ -741,6 +836,7 @@ export function parseQuestionBank(rawText) {
       errors: [
         'The file could not be parsed. Check that it is the Markdown text returned by the AI, not a PDF or a screenshot.',
       ],
+      notes,
     };
   }
 }
@@ -793,15 +889,18 @@ function mergeTopic(target, incoming) {
 export function mergeAnalyses(parsedList) {
   const warnings = [];
   const errors = [];
+  const notes = [];
   const warningSet = new Set();
   const errorSet = new Set();
+  const noteSet = new Set();
   const warn = (message) => pushUnique(warnings, warningSet, message);
   const fail = (message) => pushUnique(errors, errorSet, message);
+  const note = (message) => pushUnique(notes, noteSet, message);
 
   const list = Array.isArray(parsedList) ? parsedList.filter(Boolean) : [];
   if (!list.length) {
     fail('No parts were provided.');
-    return { data: emptyData(), warnings, errors };
+    return { data: emptyData(), warnings, errors, notes };
   }
 
   const good = list.filter((part) => part.data && Array.isArray(part.data.topics) && part.data.topics.length);
@@ -810,7 +909,7 @@ export function mergeAnalyses(parsedList) {
       (part.errors || []).forEach((message) => fail(`Part ${index + 1}: ${message}`));
     });
     if (!errors.length) fail('None of the parts contained a readable TOPIC section.');
-    return { data: emptyData(), warnings, errors };
+    return { data: emptyData(), warnings, errors, notes };
   }
 
   list.forEach((part, index) => {
@@ -820,6 +919,7 @@ export function mergeAnalyses(parsedList) {
       return;
     }
     (part.warnings || []).forEach((message) => warn(`Part ${index + 1}: ${message}`));
+    (part.notes || []).forEach((message) => note(`Part ${index + 1}: ${message}`));
   });
 
   let course = '';
@@ -897,7 +997,7 @@ export function mergeAnalyses(parsedList) {
     warn(`${data.summary.approximateCount} count(s) were marked approximate and were read as whole numbers.`);
   }
 
-  return { data, warnings, errors };
+  return { data, warnings, errors, notes };
 }
 
 export function parseQuestionBankParts(texts) {

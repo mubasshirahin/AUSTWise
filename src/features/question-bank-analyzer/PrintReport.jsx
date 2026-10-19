@@ -1,4 +1,5 @@
 import { createPortal } from 'react-dom';
+import { buildQuestionVersions } from './previewAnalytics';
 import './PrintReport.css';
 
 function PriorityBadge({ priority }) {
@@ -17,16 +18,44 @@ function display(value, fallback = '-') {
 
 function ReportQuestion({ question }) {
   const variants = Array.isArray(question?.variants) ? question.variants : [];
-  if (!variants.length) return question?.question || '';
+  const versions = buildQuestionVersions(question);
+  const images = Array.isArray(question?.images) ? question.images : [];
+
+  const versionBlocks = versions.length ? (
+    <div className="qba-report-versions">
+      {versions.map((version, index) => (
+        <div className="qba-report-version" key={`${version.label}-${index}`}>
+          <span className="qba-report-version-label">{version.label}</span>
+          <span className="qba-report-version-text">{version.text}</span>
+        </div>
+      ))}
+    </div>
+  ) : null;
+
+  const figures = images.length ? (
+    <div className="qba-report-figures">
+      {images.map((image, index) => (
+        <figure className="qba-report-figure" key={image.name || index}>
+          <img src={image.url} alt={image.name || `Figure ${index + 1}`} />
+          <figcaption>Figure {index + 1}{image.name ? ` — ${image.name}` : ''}</figcaption>
+        </figure>
+      ))}
+    </div>
+  ) : null;
+
+  if (!variants.length) {
+    return (
+      <>
+        {versionBlocks || <span className="qba-report-question-text">{question?.question || ''}</span>}
+        {figures}
+      </>
+    );
+  }
 
   return (
     <div className="qba-report-question-stack">
-      {variants.map((variant, index) => (
-        <div className="qba-report-variant" key={`${variant.number}-${index}`}>
-          <span className="qba-report-variant-label">Version {index + 1}</span>
-          <span className="qba-report-variant-text">{variant.question}</span>
-        </div>
-      ))}
+      {versionBlocks}
+      {figures}
     </div>
   );
 }
@@ -58,6 +87,13 @@ export default function PrintReport({ data, className = '', innerRef }) {
 
   const topicGroups = groupBySemester(data.topics || []);
   const summary = data.summary || {};
+  const pictureCount = (data.topics || []).reduce(
+    (sum, topic) => sum + (topic.questions || []).reduce(
+      (inner, question) => inner + (Array.isArray(question.images) ? question.images.length : 0),
+      0,
+    ),
+    0,
+  );
 
   return (
     <div className={`qba-report ${className}`.trim()} ref={innerRef}>
@@ -69,6 +105,7 @@ export default function PrintReport({ data, className = '', innerRef }) {
         <div className="qba-report-meta">
           <span><strong>Semesters:</strong> {semesters}</span>
           <span><strong>Generated:</strong> {generated}</span>
+          {pictureCount ? <span><strong>Pictures:</strong> {pictureCount}</span> : null}
         </div>
       </header>
 

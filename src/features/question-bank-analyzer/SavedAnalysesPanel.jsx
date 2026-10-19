@@ -7,7 +7,7 @@
  */
 /* eslint-disable react-hooks/set-state-in-effect -- intentional state updates in effects for data fetching and UI initialization */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bookmark,
   BookOpenCheck,
@@ -23,6 +23,8 @@ import {
 import PreviewPanel from './PreviewPanel';
 import PrintReport, { PrintPortal } from './PrintReport';
 import { downloadReportImagePdf, reportBaseName } from './qbaPdf';
+import { attachImagesToReport } from './qbaImageStore';
+import useQbaImages from './useQbaImages';
 import {
   clearAllAnalyses,
   deleteAnalysis,
@@ -52,6 +54,14 @@ function SavedCard({ entry, onDelete }) {
   const reportRef = useRef(null);
   const cardRef   = useRef(null);
 
+  // The pictures attached to this course — the same ones the Analyzer tab
+  // shows, so a saved analysis keeps its figures.
+  const pictures = useQbaImages(courseCode);
+  const printableData = useMemo(
+    () => attachImagesToReport(displayData, pictures.courseKey, pictures.byQuestion),
+    [displayData, pictures.courseKey, pictures.byQuestion],
+  );
+
   const topicCount    = displayData?.summary?.topicCount    ?? displayData?.topics?.length ?? 0;
   const questionCount = displayData?.summary?.totalQuestions ?? 0;
   const label         = courseCode || courseTitle || 'Unnamed course';
@@ -80,7 +90,7 @@ function SavedCard({ entry, onDelete }) {
     if (!displayData?.topics?.length) return;
     const prevTitle = document.title;
     document.title  = `${reportBaseName(courseCode)}_question_bank_analysis`;
-    setPrintData(displayData);
+    setPrintData(printableData);
     setPrintMount(true);
     setBusy('print');
     document.documentElement.classList.add('qba-printing');
@@ -237,6 +247,10 @@ function SavedCard({ entry, onDelete }) {
             }}
             onMergeQuestions={() => {}}
             onUnmergeQuestions={() => {}}
+            courseKey={pictures.courseKey}
+            images={pictures.byQuestion}
+            onAttachImage={pictures.attach}
+            onRemoveImage={pictures.remove}
           />
           {/* bottom download bar */}
           <div className="qba-saved-card-dl-bar">
@@ -255,7 +269,7 @@ function SavedCard({ entry, onDelete }) {
       {/* offscreen capture for image PDF */}
       {!printMount ? (
         <div className="qba-capture-host" aria-hidden="true">
-          <PrintReport data={displayData} innerRef={reportRef} />
+          <PrintReport data={printableData} innerRef={reportRef} />
         </div>
       ) : null}
       {printMount && printData ? <PrintPortal data={printData} /> : null}

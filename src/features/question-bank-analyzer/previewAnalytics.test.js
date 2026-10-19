@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { applyManualMerges, buildPreviewAnalytics, filterPreviewData } from './previewAnalytics';
+import {
+  applyManualMerges,
+  buildDisplayData,
+  buildPreviewAnalytics,
+  buildQuestionVersions,
+  filterPreviewData,
+} from './previewAnalytics';
 
 function topic(name, priority, questions, timesAsked = questions.reduce((sum, q) => sum + q.times, 0)) {
   return {
@@ -139,5 +145,106 @@ describe('applyManualMerges', () => {
     expect(applyManualMerges(data, {})).toBe(data);
     expect(applyManualMerges(data, { Normalization: [[0]] })).toBe(data);
     expect(applyManualMerges(data, { Removed: [[0, 1]] })).toBe(data);
+  });
+});
+
+describe('buildQuestionVersions', () => {
+  it('returns the wordings the AI wrote inside one question', () => {
+    const question = {
+      question: 'Version 1: a\nVersion 2: b',
+      versions: [
+        { label: 'Version 1', text: 'a' },
+        { label: 'Version 2', text: 'b' },
+      ],
+    };
+
+    expect(buildQuestionVersions(question)).toHaveLength(2);
+    expect(buildQuestionVersions(question)[1].text).toBe('b');
+  });
+
+  it('returns the rows the student merged by hand', () => {
+    const question = {
+      variants: [
+        { question: 'first wording' },
+        { question: 'second wording' },
+      ],
+    };
+
+    expect(buildQuestionVersions(question)).toEqual([
+      { label: 'Version 1', text: 'first wording' },
+      { label: 'Version 2', text: 'second wording' },
+    ]);
+  });
+
+  it('keeps the wordings of a merged row when it is merged again', () => {
+    const question = {
+      variants: [
+        { question: 'x', versions: [{ label: 'Version 1', text: 'x1' }] },
+        { question: 'y' },
+      ],
+    };
+
+    expect(buildQuestionVersions(question)).toEqual([
+      { label: 'Version 1.1', text: 'x1' },
+      { label: 'Version 2.1', text: 'y' },
+    ]);
+  });
+
+  it('returns nothing for a plain question', () => {
+    expect(buildQuestionVersions({ question: 'plain' })).toEqual([]);
+    expect(buildQuestionVersions(null)).toEqual([]);
+  });
+});
+
+describe('buildDisplayData', () => {
+  it('keeps the parsed topics so the preview has something to render', () => {
+    const display = buildDisplayData(data, {});
+
+    expect(display.topics).toHaveLength(3);
+    expect(display.topics.map((item) => item.name)).toEqual(['Normalization', 'SQL', 'Indexing']);
+    expect(buildPreviewAnalytics(display).topics).toHaveLength(3);
+  });
+
+  it('still applies the manual merges', () => {
+    const display = buildDisplayData(data, { Normalization: [[0, 1]] });
+
+    expect(display.topics[0].questions).toHaveLength(1);
+    expect(display.topics[0].questions[0].merged).toBe(true);
+    expect(display.summary.totalQuestions).toBe(3);
+  });
+
+  it('keeps the picture marker of a question', () => {
+    const withFigure = {
+      ...data,
+      topics: [{
+        ...data.topics[0],
+        questions: [{ ...data.topics[0].questions[0], needsFigure: true, figurePosition: 'start' }],
+      }],
+    };
+
+    const display = buildDisplayData(withFigure, {});
+
+    expect(display.topics[0].questions[0].needsFigure).toBe(true);
+    expect(display.topics[0].questions[0].figurePosition).toBe('start');
+  });
+
+  it('keeps the picture marker when versions are merged', () => {
+    const withFigure = {
+      ...data,
+      topics: [{
+        ...data.topics[0],
+        questions: data.topics[0].questions.map((question, index) => (
+          index === 1 ? { ...question, needsFigure: true } : question
+        )),
+      }],
+    };
+
+    const display = buildDisplayData(withFigure, { Normalization: [[0, 1]] });
+
+    expect(display.topics[0].questions[0].needsFigure).toBe(true);
+  });
+
+  it('falls back to an empty topic list when there is no report yet', () => {
+    expect(buildDisplayData(null, {})).toEqual({ topics: [] });
   });
 });

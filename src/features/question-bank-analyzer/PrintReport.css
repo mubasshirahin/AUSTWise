@@ -158,12 +158,26 @@
   gap: 5px;
 }
 
-.qba-report .qba-report-variant {
-  padding-left: 6px;
-  border-left: 2px solid var(--qba-line);
+.qba-report .qba-report-question-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
-.qba-report .qba-report-variant-label {
+/* The wordings of one question, each in its own block ----------------------- */
+.qba-report .qba-report-versions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.qba-report .qba-report-version {
+  padding: 4px 6px;
+  border-left: 2px solid var(--qba-line);
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.qba-report .qba-report-version-label {
   display: block;
   margin-bottom: 1px;
   color: var(--qba-muted);
@@ -173,10 +187,45 @@
   text-transform: uppercase;
 }
 
-.qba-report .qba-report-variant-text {
+.qba-report .qba-report-version-text {
   display: block;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+/* Pictures the student attached to a question ------------------------------- */
+.qba-report .qba-report-figures {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.qba-report .qba-report-figure {
+  margin: 0;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.qba-report .qba-report-figure img {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  max-height: 240px;
+  object-fit: contain;
+  object-position: left center;
+  border: 1px solid var(--qba-line);
+  border-radius: 4px;
+  background: #fff;
+}
+
+.qba-report .qba-report-figure figcaption {
+  margin-top: 2px;
+  color: var(--qba-muted);
+  font-size: 7.5pt;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .qba-report .qba-report-table tbody tr:nth-child(even) td {

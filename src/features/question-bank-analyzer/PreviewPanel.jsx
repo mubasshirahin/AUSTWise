@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Award,
   BarChart3,
@@ -10,9 +11,11 @@ import {
   Crown,
   FileSearch,
   Filter,
+  Image as ImageIcon,
   Info,
   Layers,
   ListChecks,
+  Maximize2,
   Merge,
   Repeat2,
   RotateCcw,
@@ -25,9 +28,11 @@ import {
 import {
   buildPreviewAnalytics,
   buildPreviewInsights,
+  buildQuestionVersions,
   filterPreviewData,
   PRIORITIES,
 } from './previewAnalytics';
+import { questionImageKey } from './qbaImageStore';
 import './PreviewPanel.css';
 
 const INSIGHT_ICONS = {
@@ -354,6 +359,83 @@ function QuestionMeta({ question, topic, showTopic = false }) {
   );
 }
 
+/**
+ * Every wording of one question, each in its own pill. The AI merges similar
+ * questions into a single row ("Version 1: ... Version 2: ..."), and the
+ * student can merge rows by hand — both end up here.
+ */
+function VersionPills({ versions }) {
+  if (!versions.length) return null;
+  return (
+    <ol className="qba-dash-q-versions">
+      {versions.map((version, index) => (
+        <li className="qba-dash-q-version" key={`${version.label}-${index}`}>
+          <span className="qba-dash-q-version-pill">
+            <Layers size={11} aria-hidden="true" />
+            {version.label}
+          </span>
+          <p className="qba-dash-q-text">{version.text || '—'}</p>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/**
+ * The pictures of one question: what the student attached, plus the marker
+ * that says this question had a picture in the source.
+ */
+function QuestionPictures({ question, images, onOpen, onPick, onRemove, canEdit }) {
+  const list = Array.isArray(images) ? images : [];
+  const needsFigure = Boolean(question?.needsFigure);
+  if (!needsFigure && !list.length && !canEdit) return null;
+
+  return (
+    <div className="qba-dash-q-pics">
+      {needsFigure ? (
+        <span className="qba-dash-chip qba-dash-chip-figure">
+          <ImageIcon size={12} aria-hidden="true" />
+          Picture needed
+        </span>
+      ) : null}
+
+      {list.map((image) => (
+        <span className="qba-dash-q-pic" key={image.id}>
+          <button
+            type="button"
+            className="qba-dash-q-pic-open"
+            onClick={() => onOpen?.(image)}
+            title={`Open ${image.name}`}
+          >
+            <img src={image.url} alt={image.name} loading="lazy" />
+            <span className="qba-dash-q-pic-zoom" aria-hidden="true">
+              <Maximize2 size={12} />
+            </span>
+          </button>
+          {canEdit ? (
+            <button
+              type="button"
+              className="qba-dash-q-pic-remove"
+              onClick={() => onRemove?.(image.id)}
+              aria-label={`Remove picture ${image.name}`}
+              title="Remove picture"
+            >
+              <X size={11} aria-hidden="true" />
+            </button>
+          ) : null}
+        </span>
+      ))}
+
+      {canEdit ? (
+        <button type="button" className="qba-dash-q-pic-add" onClick={onPick}>
+          <ImageIcon size={13} aria-hidden="true" />
+          {list.length ? 'Add another' : 'Add picture'}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 function QuestionCard({
   question,
   topic,
@@ -364,13 +446,37 @@ function QuestionCard({
   selected = false,
   onSelect,
   onUnmerge,
+  images = [],
+  canEditPictures = false,
+  onOpenPicture,
+  onPickPicture,
+  onRemovePicture,
+  onDropPictures,
 }) {
   const value = priorityValue(priority);
   const variants = Array.isArray(question.variants) ? question.variants : [];
+  const [dropActive, setDropActive] = useState(false);
+
+  // The wordings of this question: the AI's own "Version 1 / Version 2"
+  // labels, or the rows the student merged by hand.
+  const versions = buildQuestionVersions(question);
+
+  const handleDrop = (event) => {
+    if (!canEditPictures) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setDropActive(false);
+    const files = event.dataTransfer?.files;
+    if (files && files.length) onDropPictures?.(files);
+  };
 
   return (
+    <Fragment>
     <li
-      className={`qba-dash-question qba-dash-q-prio-${value.toLowerCase()}${selected ? ' qba-dash-q-selected' : ''}${selectable ? ' qba-dash-q-selectable' : ''}`}
+      className={`qba-dash-question qba-dash-q-prio-${value.toLowerCase()}${selected ? ' qba-dash-q-selected' : ''}${selectable ? ' qba-dash-q-selectable' : ''}${dropActive ? ' qba-dash-q-drop' : ''}`}
+      onDragOver={canEditPictures ? (event) => { event.preventDefault(); setDropActive(true); } : undefined}
+      onDragLeave={canEditPictures ? () => setDropActive(false) : undefined}
+      onDrop={canEditPictures ? handleDrop : undefined}
     >
       {selectable ? (
         <label className="qba-dash-q-check">
@@ -394,41 +500,74 @@ function QuestionCard({
         {showTopic && topic ? <span className="qba-dash-q-topic">{topic}</span> : null}
 
         {variants.length ? (
-          <>
-            <div className="qba-dash-q-merged-head">
-              <span className="qba-dash-q-merged-pill">
-                <Layers size={12} aria-hidden="true" />
-                {variants.length} similar versions
-              </span>
-              {onUnmerge ? (
-                <button
-                  type="button"
-                  className="qba-dash-q-unmerge"
-                  onClick={onUnmerge}
-                >
-                  <Unlink2 size={12} aria-hidden="true" />
-                  Unmerge
-                </button>
-              ) : null}
-            </div>
-            <div className="qba-dash-variants">
-              {variants.map((variant, index) => (
-                <div className="qba-dash-variant" key={`${variant.number}-${index}`}>
-                  <span className="qba-dash-variant-label">Version {index + 1}</span>
-                  <p className="qba-dash-q-text">{variant.question || '—'}</p>
-                  <QuestionMeta question={variant} />
-                </div>
-              ))}
-            </div>
-          </>
-        ) : (
-          <>
-            <p className="qba-dash-q-text">{question.question || '—'}</p>
-            <QuestionMeta question={question} topic={topic} showTopic={showTopic} />
-          </>
-        )}
+          // Merged by hand: the row only carries the group header, the
+          // wordings sit in their own pills below it.
+          <div className="qba-dash-q-merged-head">
+            <span className="qba-dash-q-merged-pill">
+              <Layers size={12} aria-hidden="true" />
+              {variants.length} similar versions
+            </span>
+            {onUnmerge ? (
+              <button
+                type="button"
+                className="qba-dash-q-unmerge"
+                onClick={onUnmerge}
+              >
+                <Unlink2 size={12} aria-hidden="true" />
+                Unmerge
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
+        {!versions.length && question.figurePosition === 'start' ? (
+          <QuestionPictures
+            question={question}
+            images={images}
+            onOpen={onOpenPicture}
+            onPick={onPickPicture}
+            onRemove={onRemovePicture}
+            canEdit={canEditPictures}
+          />
+        ) : null}
+
+        {!versions.length ? (
+          <p className="qba-dash-q-text">{question.question || '—'}</p>
+        ) : null}
+
+        <QuestionMeta question={question} topic={topic} showTopic={showTopic} />
+
+        {!versions.length && question.figurePosition !== 'start' ? (
+          <QuestionPictures
+            question={question}
+            images={images}
+            onOpen={onOpenPicture}
+            onPick={onPickPicture}
+            onRemove={onRemovePicture}
+            canEdit={canEditPictures}
+          />
+        ) : null}
+
+        {versions.length ? (
+          <QuestionPictures
+            question={question}
+            images={images}
+            onOpen={onOpenPicture}
+            onPick={onPickPicture}
+            onRemove={onRemovePicture}
+            canEdit={canEditPictures}
+          />
+        ) : null}
       </div>
     </li>
+
+    {/* The wordings of this question — separate pills, not part of the row. */}
+    {versions.length ? (
+      <li className="qba-dash-q-version-list">
+        <VersionPills versions={versions} />
+      </li>
+    ) : null}
+    </Fragment>
   );
 }
 
@@ -496,6 +635,13 @@ function TopicAccordion({
   onToggleMergeQuestion,
   onMergeSelected,
   onUnmerge,
+  courseKey = '',
+  images = {},
+  canEditPictures = false,
+  onOpenPicture,
+  onPickPicture,
+  onRemovePicture,
+  onDropPictures,
 }) {
   return (
     <div className="qba-dash-accordion">
@@ -603,6 +749,7 @@ function TopicAccordion({
                   <ol className="qba-dash-questions">
                     {topic.questions.map((question, questionIndex) => {
                       const originalIndex = question.originalIndex ?? questionIndex;
+                      const imageKey = questionImageKey(courseKey, topic.name, originalIndex);
                       return (
                         <QuestionCard
                           key={question.merged ? `merged-${topic.name}-${originalIndex}` : `${topic.name}-${originalIndex}`}
@@ -615,6 +762,12 @@ function TopicAccordion({
                           onUnmerge={question.merged
                             ? () => onUnmerge(topic.name, question.mergedIndices)
                             : undefined}
+                          images={images[imageKey] || []}
+                          canEditPictures={canEditPictures}
+                          onOpenPicture={onOpenPicture}
+                          onPickPicture={() => onPickPicture?.(imageKey)}
+                          onRemovePicture={onRemovePicture}
+                          onDropPictures={(files) => onDropPictures?.(imageKey, files)}
                         />
                       );
                     })}
@@ -631,7 +784,16 @@ function TopicAccordion({
   );
 }
 
-function SemesterView({ groups }) {
+function SemesterView({
+  groups,
+  courseKey = '',
+  images = {},
+  canEditPictures = false,
+  onOpenPicture,
+  onPickPicture,
+  onRemovePicture,
+  onDropPictures,
+}) {
   if (!groups.length) {
     return <p className="qba-dash-muted">No semester information was found.</p>;
   }
@@ -668,15 +830,25 @@ function SemesterView({ groups }) {
           </summary>
           <div className="qba-dash-sem-body">
             <ol className="qba-dash-questions">
-              {group.questions.map((question, index) => (
-                <QuestionCard
-                  key={`${group.name}-${index}`}
-                  question={question}
-                  topic={question.topic}
-                  priority={question.topicPriority}
-                  showTopic
-                />
-              ))}
+              {group.questions.map((question, index) => {
+                const originalIndex = question.originalIndex ?? question.questionIndex ?? index;
+                const imageKey = questionImageKey(courseKey, question.topic, originalIndex);
+                return (
+                  <QuestionCard
+                    key={`${group.name}-${index}`}
+                    question={question}
+                    topic={question.topic}
+                    priority={question.topicPriority}
+                    showTopic
+                    images={images[imageKey] || []}
+                    canEditPictures={canEditPictures}
+                    onOpenPicture={onOpenPicture}
+                    onPickPicture={() => onPickPicture?.(imageKey)}
+                    onRemovePicture={onRemovePicture}
+                    onDropPictures={(files) => onDropPictures?.(imageKey, files)}
+                  />
+                );
+              })}
             </ol>
           </div>
         </details>
@@ -741,10 +913,38 @@ export default function PreviewPanel({
   onRevealTopics,
   onMergeQuestions,
   onUnmergeQuestions,
+  courseKey = '',
+  images = {},
+  onAttachImage,
+  onRemoveImage,
 }) {
   const [selectedTopics, setSelectedTopics] = useState(() => new Set());
   const [mergeTopic, setMergeTopic] = useState('');
   const [mergeSelection, setMergeSelection] = useState(() => new Set());
+  const [lightbox, setLightbox] = useState(null);
+  const pictureInputRef = useRef(null);
+  const pendingKeyRef = useRef('');
+  const canEditPictures = typeof onAttachImage === 'function';
+
+  const pickPicture = (imageKey) => {
+    pendingKeyRef.current = imageKey;
+    pictureInputRef.current?.click();
+  };
+
+  // Escape closes the picture lightbox.
+  useEffect(() => {
+    if (!lightbox) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setLightbox(null);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [lightbox]);
+
+  const handlePictureFiles = async (imageKey, files) => {
+    if (!imageKey || !files || !files.length) return;
+    await onAttachImage?.(imageKey, files);
+  };
   const topics = useMemo(() => (Array.isArray(data?.topics) ? data.topics : []), [data]);
   const selectedNames = useMemo(() => (
     topics.filter((topic) => selectedTopics.has(topic.name)).map((topic) => topic.name)
@@ -1094,6 +1294,13 @@ export default function PreviewPanel({
           onToggleMergeQuestion={handleToggleMergeQuestion}
           onMergeSelected={handleMergeSelected}
           onUnmerge={handleUnmerge}
+          courseKey={courseKey}
+          images={images}
+          canEditPictures={canEditPictures}
+          onOpenPicture={setLightbox}
+          onPickPicture={pickPicture}
+          onRemovePicture={onRemoveImage}
+          onDropPictures={handlePictureFiles}
         />
       </section>
 
@@ -1112,7 +1319,16 @@ export default function PreviewPanel({
             {semesterGroups.length} {semesterGroups.length === 1 ? 'semester' : 'semesters'}
           </span>
         </div>
-        <SemesterView groups={semesterGroups} />
+        <SemesterView
+          groups={semesterGroups}
+          courseKey={courseKey}
+          images={images}
+          canEditPictures={canEditPictures}
+          onOpenPicture={setLightbox}
+          onPickPicture={pickPicture}
+          onRemovePicture={onRemoveImage}
+          onDropPictures={handlePictureFiles}
+        />
       </section>
 
       <section className="qba-dash-panel" aria-labelledby="qba-dash-plan-title">
@@ -1130,6 +1346,47 @@ export default function PreviewPanel({
         </div>
         <StudyPlan items={studyPlan} topics={analytics.topics} />
       </section>
+
+      {/* One shared file picker for every question on this panel. */}
+      <input
+        ref={pictureInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        multiple
+        className="qba-dash-pic-input"
+        onChange={(event) => {
+          // Copy the files out first — resetting `value` empties the live
+          // FileList, so the array has to be taken before the reset.
+          const files = Array.from(event.target.files || []);
+          const imageKey = pendingKeyRef.current;
+          event.target.value = '';
+          if (imageKey && files.length) handlePictureFiles(imageKey, files);
+        }}
+      />
+
+      {lightbox && typeof document !== 'undefined' ? createPortal(
+        <div
+          className="qba-lightbox"
+          role="dialog"
+          aria-modal="true"
+          aria-label={lightbox.name}
+          onClick={() => setLightbox(null)}
+        >
+          <img src={lightbox.url} alt={lightbox.name} />
+          <div className="qba-lightbox-bar">
+            <span className="qba-lightbox-name">{lightbox.name}</span>
+            <button
+              type="button"
+              className="qba-lightbox-close"
+              onClick={() => setLightbox(null)}
+              aria-label="Close picture"
+            >
+              <X size={16} aria-hidden="true" />
+            </button>
+          </div>
+        </div>,
+        document.body,
+      ) : null}
     </div>
   );
 }

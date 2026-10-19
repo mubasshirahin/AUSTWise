@@ -663,6 +663,11 @@
   background: var(--accent-orange-glow);
 }
 
+.qba-messages-info {
+  border-left-color: var(--accent-amber);
+  background: var(--accent-amber-glow);
+}
+
 .qba-messages-title {
   display: flex;
   align-items: center;
@@ -678,6 +683,10 @@
 
 .qba-messages-warning .qba-messages-title svg {
   color: var(--accent-orange);
+}
+
+.qba-messages-info .qba-messages-title svg {
+  color: var(--accent-amber);
 }
 
 .qba-messages ul {
