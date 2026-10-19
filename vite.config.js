@@ -49,6 +49,21 @@ export default defineConfig({
       },
     }),
   ],
+  // Pre-bundle the heavy lazy-loaded dependencies up front. Without this,
+  // Vite discovers them one-by-one as the user clicks each route, triggering a
+  // dependency re-optimization + full page reload mid-session — which is why
+  // navigating between pages felt sluggish in dev.
+  optimizeDeps: {
+    include: [
+      'react', 'react-dom', 'react-router-dom',
+      'three', '@react-three/fiber', '@react-three/drei',
+      'd3', 'chart.js', 'react-chartjs-2',
+      'leaflet', 'leaflet.heat',
+      'pdfjs-dist', 'jspdf', 'html2canvas-pro',
+      'mermaid', 'markmap-lib', 'markmap-view',
+      'gsap', 'framer-motion', 'lucide-react',
+    ],
+  },
   build: {
     chunkSizeWarningLimit: 700,
     rollupOptions: {
