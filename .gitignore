@@ -81,6 +81,17 @@ dev/resp_*.png
 server/userStoreDeleted.json
 server/sharedStoreDeleted.json
 
+# Runtime cross-device stores (user profile PII, marketplace/submission posts) —
+# seeded/filled at runtime, never commit
+server/userStore.json
+server/sharedStore.json
+server/academicResults.json
+
+# Throwaway QBA dev harnesses (root-level, sibling of qa-*.mjs)
+/qba-*.mjs
+/qba-pdf-test.html
+/qba-pdf-test.jsx
+
 # Playwright / test artifacts
 test-results/
 
