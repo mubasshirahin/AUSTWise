@@ -12,11 +12,13 @@ import {
   checkDeadlineReminders,
 } from '../utils/notificationService';
 import { deadlines } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
 
 const POLL_INTERVAL_MS = 60 * 1000;
 const SYNC_INTERVAL_MS = 20 * 1000;
 
 export function useNotifications(routine, weekDays) {
+  const { isAuthenticated } = useAuth();
   const [permission, setPermission] = useState(() => getPermissionStatus());
   const [settings, setSettings] = useState(() => loadSettings());
   const intervalRef = useRef(null);
@@ -27,9 +29,10 @@ export function useNotifications(routine, weekDays) {
   // Pull the account's server-side prefs so changes made on other devices
   // (e.g. the laptop) show up here without a manual refresh.
   const syncFromServer = useCallback(async () => {
+    if (!isAuthenticated) return;
     const merged = await hydrateSettingsFromServer();
     if (merged) setSettings(merged);
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     // Defer the initial pull a tick so the first render stays with the

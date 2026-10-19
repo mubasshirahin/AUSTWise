@@ -1,6 +1,29 @@
 const NOTIFS_KEY = 'aust-inapp-notifs-v1';
 const NATIVE_SHOWN_KEY = 'aust-inapp-notifs-native-v1';
 
+function getUserScopedKey(baseKey) {
+  try {
+    const profile = JSON.parse(localStorage.getItem('aust-user-profile') || 'null');
+    const userId = profile?.id && profile.id !== 'guest' ? profile.id : 'guest';
+    return `${baseKey}:${userId}`;
+  } catch {
+    return `${baseKey}:guest`;
+  }
+}
+
+function normalizeScopeValue(value) {
+  return String(value ?? '').trim().toLowerCase();
+}
+
+export function noticeScopeMatchesUser(scope, user) {
+  if (!scope || typeof scope !== 'object') return true;
+  if (scope.department && normalizeScopeValue(scope.department) !== normalizeScopeValue(user?.department)) return false;
+  if (scope.semester && normalizeScopeValue(scope.semester) !== normalizeScopeValue(user?.semester)) return false;
+  if (scope.section && normalizeScopeValue(scope.section) !== normalizeScopeValue(user?.section)) return false;
+  if (scope.labSection && normalizeScopeValue(scope.labSection) !== normalizeScopeValue(user?.labSection)) return false;
+  return true;
+}
+
 /**
  * @typedef {Object} AppNotification
  * @property {string} id - unique id
@@ -18,7 +41,7 @@ const NATIVE_SHOWN_KEY = 'aust-inapp-notifs-native-v1';
 
 export function loadNotifications() {
   try {
-    const raw = localStorage.getItem(NOTIFS_KEY);
+    const raw = localStorage.getItem(getUserScopedKey(NOTIFS_KEY));
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -29,7 +52,7 @@ export function saveNotifications(items) {
   try {
     // Keep max 200 notifications
     const sorted = items.slice(-200);
-    localStorage.setItem(NOTIFS_KEY, JSON.stringify(sorted));
+    localStorage.setItem(getUserScopedKey(NOTIFS_KEY), JSON.stringify(sorted));
   } catch {
     // storage full – silently fail
   }
@@ -92,7 +115,7 @@ export function removeNotificationsByTitle(title) {
 
 function getNativeShownIds() {
   try {
-    return new Set(JSON.parse(localStorage.getItem(NATIVE_SHOWN_KEY) || '[]'));
+    return new Set(JSON.parse(localStorage.getItem(getUserScopedKey(NATIVE_SHOWN_KEY)) || '[]'));
   } catch {
     return new Set();
   }
@@ -100,7 +123,7 @@ function getNativeShownIds() {
 
 function saveNativeShownIds(ids) {
   try {
-    localStorage.setItem(NATIVE_SHOWN_KEY, JSON.stringify([...ids]));
+    localStorage.setItem(getUserScopedKey(NATIVE_SHOWN_KEY), JSON.stringify([...ids]));
   } catch {
     // storage full – silently fail
   }
@@ -163,12 +186,17 @@ export function makeNotifId(prefix = 'n') {
 
 // ─── Seed from data sources (call on mount) ───
 
-export function seedFromNotices(notices) {
+export function seedFromNotices(notices, user) {
   if (!notices || !notices.length) return;
-  const existing = loadNotifications();
+  const sourceIds = new Set(notices.map((notice) => `notice-${notice.id}`));
+  const visibleNotices = notices.filter((notice) => noticeScopeMatchesUser(notice.scope, user));
+  const visibleIds = new Set(visibleNotices.map((notice) => `notice-${notice.id}`));
+  const existing = loadNotifications().filter((item) =>
+    !(item.type === 'notice' && sourceIds.has(item.id) && !visibleIds.has(item.id))
+  );
   const existingIds = new Set(existing.map((n) => n.id));
 
-  notices.forEach((notice) => {
+  visibleNotices.forEach((notice) => {
     const id = `notice-${notice.id}`;
     if (existingIds.has(id)) return;
     existing.push({
