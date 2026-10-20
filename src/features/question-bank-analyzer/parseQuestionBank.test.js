@@ -8,6 +8,7 @@ import {
   sortVipMatrix,
   extractFigureMarker,
   splitQuestionVersions,
+  splitSemesterList,
 } from './parseQuestionBank';
 
 const CLEAN = `---
@@ -163,6 +164,54 @@ describe('parseQuestionBank — clean input', () => {
       'SQL',
     ]);
     expect(data.studyPlan).toHaveLength(3);
+  });
+});
+
+const MULTI_SEMESTER = `---
+course: CSE 3109
+title: Digital System Design
+semesters: [Spring 2023, Fall 2023, Spring 2024]
+total_questions_extracted: 12
+total_rows_after_merge: 2
+---
+
+## TOPIC: Combinational Logic
+priority: HIGH
+total_asked: 5
+
+| # | Question | Exam | Semester | Marks | Times |
+|---|----------|------|----------|-------|-------|
+| 1 | Version 1: Simplify F.<br>Version 2: Minimise F with a K-map. | Final | Spring 2023, Fall 2023, Spring 2024 | 15 | 4 |
+| 2 | [image] Design a 4-bit adder | Mid | Fall 2023 | 10 | 1 |
+
+## VIP_MATRIX
+
+| Topic | Times Asked | Avg Marks | Semesters Present | Last Asked | Priority |
+|-------|-------------|-----------|-------------------|------------|----------|
+| Combinational Logic | 5 | 14 | Spring 2023, Fall 2023, Spring 2024 | Spring 2024 | HIGH |
+
+## STUDY_PLAN
+
+1. Combinational Logic - asked 5 times.`;
+
+describe('parseQuestionBank — merged questions across semesters', () => {
+  const { data, warnings, errors } = parseQuestionBank(MULTI_SEMESTER);
+
+  it('keeps the whole semester list in the question row', () => {
+    expect(errors).toEqual([]);
+    expect(warnings).toEqual([]);
+    expect(data.topics[0].questions[0].semester)
+      .toBe('Spring 2023, Fall 2023, Spring 2024');
+    expect(data.topics[0].questions[0].versions).toHaveLength(2);
+    expect(data.topics[0].questions[1].needsFigure).toBe(true);
+  });
+
+  it('splits the list for coverage and "last asked"', () => {
+    expect(data.semesters).toEqual(['Spring 2023', 'Fall 2023', 'Spring 2024']);
+    expect(data.topics[0].lastAsked).toBe('Spring 2024');
+    expect(data.vipMatrix[0].lastAsked).toBe('Spring 2024');
+    expect(splitSemesterList('Spring 2023, Fall 2023')).toEqual(['Spring 2023', 'Fall 2023']);
+    expect(splitSemesterList('-')).toEqual([]);
   });
 });
 

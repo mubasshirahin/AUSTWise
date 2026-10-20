@@ -49,6 +49,7 @@ function SavedCard({ entry, onDelete }) {
   const [expanded, setExpanded]     = useState(false);
   const [openTopics, setOpenTopics] = useState(() => new Set());
   const [busy, setBusy]             = useState(''); // 'print' | 'image' | 'delete'
+  const [notice, setNotice]         = useState('');
   const [printMount, setPrintMount] = useState(false);
   const [printData, setPrintData]   = useState(null);
   const reportRef = useRef(null);
@@ -87,7 +88,11 @@ function SavedCard({ entry, onDelete }) {
 
   const handlePrint = async (e) => {
     e.stopPropagation();
-    if (!displayData?.topics?.length) return;
+    if (!displayData?.topics?.length) {
+      setNotice('Nothing to export — this saved analysis has no topics.');
+      return;
+    }
+    setNotice('');
     const prevTitle = document.title;
     document.title  = `${reportBaseName(courseCode)}_question_bank_analysis`;
     setPrintData(printableData);
@@ -116,20 +121,32 @@ function SavedCard({ entry, onDelete }) {
     window.addEventListener('afterprint', cleanup, { once: true });
     // Fallback: clean up after 30 seconds (not 120) in case afterprint doesn't fire
     timer = window.setTimeout(cleanup, 30000);
-    try { window.print(); } catch { cleanup(); }
+    try {
+      window.print();
+    } catch {
+      cleanup();
+      setNotice('Your browser blocked the print dialog. Use Quick Download instead.');
+    }
   };
 
   const handleQuickDownload = async (e) => {
     e.stopPropagation();
-    if (!displayData?.topics?.length) return;
+    if (!displayData?.topics?.length) {
+      setNotice('Nothing to export — this saved analysis has no topics.');
+      return;
+    }
+    setNotice('');
     setBusy('image');
     try {
       await waitForPaint();
       const node = reportRef.current;
-      if (!node) throw new Error('Report not ready');
+      if (!node) throw new Error('The report is still rendering. Please try again.');
       await downloadReportImagePdf(node, courseCode);
-    } catch { /* ignore */ }
-    finally { setBusy(''); }
+    } catch (error) {
+      setNotice(error?.message || 'The image PDF could not be created. Try Download PDF instead.');
+    } finally {
+      setBusy('');
+    }
   };
 
   const handleDelete = async (e) => {
@@ -144,36 +161,44 @@ function SavedCard({ entry, onDelete }) {
       className={`qba-saved-card glass-card-static${expanded ? ' qba-saved-card-open' : ''}`}
       ref={cardRef}
     >
-      {/* ── header row ── */}
-      <button
-        type="button"
-        className="qba-saved-card-header"
-        onClick={toggleExpand}
-        aria-expanded={expanded}
-      >
-        <div className="qba-saved-card-info">
-          <div className="qba-saved-card-course">
-            {courseCode  ? <span className="qba-saved-card-code">{courseCode}</span>  : null}
-            {courseTitle ? <span className="qba-saved-card-title">{courseTitle}</span> : null}
-            {!courseCode && !courseTitle
-              ? <span className="qba-saved-card-title qba-saved-muted">Unnamed course</span>
-              : null}
+      {/* ── header row ──
+           NOTE: this row must NOT be a <button>. Interactive controls cannot
+           be nested inside a <button> — Chrome retargets their clicks to the
+           outer button, which made Download PDF / Quick Download do nothing
+           but expand the card. The info block and the chevron are the two
+           real expand toggles; the download/delete buttons are siblings. */}
+      <div className="qba-saved-card-header">
+        <button
+          type="button"
+          className="qba-saved-card-toggle"
+          onClick={toggleExpand}
+          aria-expanded={expanded}
+          aria-label={`${expanded ? 'Collapse' : 'Expand'} analysis for ${label}`}
+        >
+          <div className="qba-saved-card-info">
+            <div className="qba-saved-card-course">
+              {courseCode  ? <span className="qba-saved-card-code">{courseCode}</span>  : null}
+              {courseTitle ? <span className="qba-saved-card-title">{courseTitle}</span> : null}
+              {!courseCode && !courseTitle
+                ? <span className="qba-saved-card-title qba-saved-muted">Unnamed course</span>
+                : null}
+            </div>
+            <div className="qba-saved-card-meta">
+              <span className="qba-saved-card-meta-item">
+                <BookOpenCheck size={13} aria-hidden="true" />
+                {topicCount} topic{topicCount !== 1 ? 's' : ''}
+              </span>
+              <span className="qba-saved-card-meta-sep" aria-hidden="true">·</span>
+              <span className="qba-saved-card-meta-item">
+                {questionCount} question{questionCount !== 1 ? 's' : ''}
+              </span>
+              <span className="qba-saved-card-meta-sep" aria-hidden="true">·</span>
+              <span className="qba-saved-card-meta-item qba-saved-muted" title={savedAt}>
+                {formatSavedAt(savedAt)}
+              </span>
+            </div>
           </div>
-          <div className="qba-saved-card-meta">
-            <span className="qba-saved-card-meta-item">
-              <BookOpenCheck size={13} aria-hidden="true" />
-              {topicCount} topic{topicCount !== 1 ? 's' : ''}
-            </span>
-            <span className="qba-saved-card-meta-sep" aria-hidden="true">·</span>
-            <span className="qba-saved-card-meta-item">
-              {questionCount} question{questionCount !== 1 ? 's' : ''}
-            </span>
-            <span className="qba-saved-card-meta-sep" aria-hidden="true">·</span>
-            <span className="qba-saved-card-meta-item qba-saved-muted" title={savedAt}>
-              {formatSavedAt(savedAt)}
-            </span>
-          </div>
-        </div>
+        </button>
 
         <div className="qba-saved-card-right">
           <button
@@ -216,11 +241,24 @@ function SavedCard({ entry, onDelete }) {
               ? <Loader2 size={14} className="qba-spin" aria-hidden="true" />
               : <Trash2 size={14} aria-hidden="true" />}
           </button>
-          <span className="qba-saved-chevron" aria-hidden="true">
+          <button
+            type="button"
+            className="qba-saved-chevron"
+            onClick={toggleExpand}
+            aria-label={expanded ? 'Collapse analysis' : 'Expand analysis'}
+            aria-expanded={expanded}
+          >
             {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          </span>
+          </button>
         </div>
-      </button>
+      </div>
+
+      {notice ? (
+        <div className="qba-saved-card-notice" role="status" aria-live="polite">
+          <Info size={13} aria-hidden="true" />
+          <span>{notice}</span>
+        </div>
+      ) : null}
 
       {/* ── expanded: full PreviewPanel ── */}
       {expanded ? (

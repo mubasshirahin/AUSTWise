@@ -204,6 +204,24 @@ function normalizeSemester(value) {
   return !text || text === '-' ? '-' : text;
 }
 
+/**
+ * A merged question lists every semester it appeared in, e.g.
+ * "Spring 2022, Fall 2023, Spring 2024". The cell itself stays a single
+ * string (that is what the table shows), but anything that reasons about
+ * semesters — "last asked", coverage charts, the semester-wise view — needs
+ * the individual entries.
+ *
+ * @returns {string[]} trimmed semester names in the order given.
+ */
+export function splitSemesterList(value) {
+  const text = cleanInline(value);
+  if (!text || text === '-') return [];
+  return text
+    .split(/\s*[,;]\s*/)
+    .map((part) => part.trim())
+    .filter((part) => part && part !== '-');
+}
+
 function semesterScore(value) {
   const text = String(value || '').toLowerCase();
   const year = text.match(/(?:19|20)\d{2}/);
@@ -213,7 +231,7 @@ function semesterScore(value) {
 }
 
 function latestSemester(semesters) {
-  const list = semesters.filter((semester) => semester && semester !== '-');
+  const list = (semesters || []).flatMap((semester) => splitSemesterList(semester));
   if (!list.length) return '-';
   let best = null;
   let bestScore = -Infinity;
@@ -691,7 +709,9 @@ function collectSemesters(frontMatterSemesters, topics) {
     ordered.push(clean);
   };
   (frontMatterSemesters || []).forEach(add);
-  topics.forEach((topic) => topic.questions.forEach((question) => add(question.semester)));
+  topics.forEach((topic) => topic.questions.forEach((question) => {
+    splitSemesterList(question.semester).forEach(add);
+  }));
   return ordered;
 }
 

@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom';
 import { buildQuestionVersions } from './previewAnalytics';
+import { splitSemesterList } from './parseQuestionBank';
 import './PrintReport.css';
 
 function PriorityBadge({ priority }) {
@@ -64,9 +65,13 @@ function groupBySemester(topics) {
   const map = new Map();
   for (const topic of topics) {
     for (const question of topic.questions) {
-      const semester = question.semester && question.semester !== '-' ? question.semester : 'Unknown semester';
-      if (!map.has(semester)) map.set(semester, []);
-      map.get(semester).push({ topic: topic.name, ...question });
+      // A merged row can name several semesters — show it under each one.
+      const names = splitSemesterList(question.semester);
+      if (!names.length) names.push('Unknown semester');
+      for (const semester of names) {
+        if (!map.has(semester)) map.set(semester, []);
+        map.get(semester).push({ topic: topic.name, ...question });
+      }
     }
   }
   return [...map.entries()];

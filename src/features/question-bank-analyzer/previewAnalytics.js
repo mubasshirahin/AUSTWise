@@ -7,7 +7,7 @@
  * insights. No React, no DOM, no chart library.
  */
 
-import { PRIORITIES } from './parseQuestionBank';
+import { PRIORITIES, splitSemesterList } from './parseQuestionBank';
 
 const PRIORITY_RANK = { VIP: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
 const SEASON_RANK = { spring: 1, summer: 2, fall: 3, autumn: 3, winter: 4 };
@@ -126,23 +126,26 @@ export function buildPreviewAnalytics(data) {
   // ── semester coverage ─────────────────────────────────────────────────────
   const semesterMap = new Map();
   for (const question of allQuestions) {
-    const name = question.semester && question.semester !== '-'
-      ? question.semester
-      : 'Unknown semester';
-    if (!semesterMap.has(name)) {
-      semesterMap.set(name, {
-        name,
-        total: 0,
-        asks: 0,
-        byPriority: emptyPriorityMap(),
-        topicNames: new Set(),
-      });
+    // A merged question can list several semesters ("Spring 2022, Fall 2023").
+    // Count it once under each of them.
+    const names = splitSemesterList(question.semester);
+    if (!names.length) names.push('Unknown semester');
+    for (const name of names) {
+      if (!semesterMap.has(name)) {
+        semesterMap.set(name, {
+          name,
+          total: 0,
+          asks: 0,
+          byPriority: emptyPriorityMap(),
+          topicNames: new Set(),
+        });
+      }
+      const bucket = semesterMap.get(name);
+      bucket.total += 1;
+      bucket.asks += numberOr(question.times);
+      bucket.byPriority[question.topicPriority] += 1;
+      bucket.topicNames.add(question.topic);
     }
-    const bucket = semesterMap.get(name);
-    bucket.total += 1;
-    bucket.asks += numberOr(question.times);
-    bucket.byPriority[question.topicPriority] += 1;
-    bucket.topicNames.add(question.topic);
   }
 
   const semesterStats = [...semesterMap.values()]
@@ -298,11 +301,12 @@ export function filterPreviewData(data, selectedNames) {
   const semesterNames = [];
   const seenSemesters = new Set();
   for (const question of questions) {
-    const name = question.semester && question.semester !== '-' ? String(question.semester) : '';
-    const key = normName(name);
-    if (name && !seenSemesters.has(key)) {
-      seenSemesters.add(key);
-      semesterNames.push(name);
+    for (const name of splitSemesterList(question.semester)) {
+      const key = normName(name);
+      if (!seenSemesters.has(key)) {
+        seenSemesters.add(key);
+        semesterNames.push(name);
+      }
     }
   }
 

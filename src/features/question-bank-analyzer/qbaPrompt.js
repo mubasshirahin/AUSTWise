@@ -23,90 +23,119 @@ STEP 1: List every file I uploaded and tell me what type each is
 (slide / syllabus / quiz / mid / final / other). Wait for my "OK".
 When I say "OK", go to Step 2.
 
-STEP 2: Read all files carefully. Then:
-- Extract EVERY question exactly as it appears in the source. Copy the
-  full question text WORD-FOR-WORD. Do NOT shorten, summarise, paraphrase,
-  translate, fix grammar, or remove examples. Keep the original language
-  (including Bangla) and the original wording.
-- If a question has sub-parts (a), (b), (c), keep every part in the same
-  Question cell, separated by <br>. Never split one question into separate
-  rows.
-- Group questions by TOPIC (use syllabus topic names where possible).
-- Tag each question with exam type (Quiz/Mid/Final) and semester/year.
-- MERGE SIMILAR QUESTIONS into one row. If two questions ask the same
-  underlying question with different wording, different sub-parts, or from
-  different exams, treat them as versions of one question. Put every
-  version's full text in the same Question cell, one below another, separated
-  by <br>, and label them "Version 1:", "Version 2:", etc.
-- Use a separate row only when the underlying question is genuinely different.
-  Never drop a version just to make the list shorter.
-- EXACT repeats (same wording and same sub-parts) should not become extra
-  versions. Keep one full copy and count the repeats in "Times".
-- For a merged row, use the first version's Exam and Semester, the highest
-  Marks, and the total repeats across all versions in "Times".
-- Count carefully and do not guess. If unsure, write "~" before the
-  number.
-- Give each topic a priority: VIP, HIGH, MEDIUM, or LOW, based on
-  frequency, marks, and recency.
-- PICTURES: if a question needs a diagram, figure, circuit, graph, table
-  image or any picture that cannot be copied as plain text, write the
-  literal token [image] in the Question cell — exactly where the picture
-  was (at the START of the cell if the picture was above the question
-  text, at the END if it was below). Use one [image] per missing picture.
-  Do NOT describe the picture, do NOT invent one, and do NOT write the
-  picture's content as text. The student will attach the real picture
-  later.
-- If a file is scanned or unreadable, tell me which one instead of
-  guessing its content.
+STEP 2: Read ALL files with ZERO omissions. Then follow every rule below.
 
-OUTPUT RULES (STRICT):
+═══════════════════════════════════════════
+EXTRACTION RULES — MANDATORY, NO EXCEPTIONS
+═══════════════════════════════════════════
+
+RULE 1 — ZERO SKIPPING:
+Extract EVERY SINGLE question from EVERY file. No question may be left
+out for any reason — not for length, not for similarity, not for
+repetition, not for recency. If a semester has 20 questions, all 20 must
+appear. If a semester has 1 question, that 1 must appear. The total count
+of rows in your output (before merging) must equal the total count of
+questions across all uploaded files. If you are unsure whether something
+is a question, include it.
+
+RULE 2 — EXACT WORDING:
+Copy every question WORD-FOR-WORD from the source. Do NOT shorten,
+summarise, paraphrase, translate, fix grammar, or remove examples.
+Keep the original language (including Bangla) and original wording.
+If a question has sub-parts (a), (b), (c), keep every part in the same
+Question cell, separated by <br>. Never split one question into separate rows.
+
+RULE 3 — MERGING SIMILAR QUESTIONS:
+After extracting all questions, group them by TOPIC, then merge similar
+questions within the same topic using these exact rules:
+
+  a) EXACT DUPLICATE: Same wording AND same sub-parts from different
+     exams. Keep ONE full copy. Do NOT add a Version 2. Increment
+     "Times" by 1 for each repeat. List EVERY semester it appeared in
+     the "Semester" column, separated by commas.
+     Example Semester cell: Spring 2022, Fall 2022, Spring 2023
+
+  b) SIMILAR (same underlying concept, different wording or sub-parts):
+     Merge into ONE row. Write "Version 1: <full text><br>Version 2:
+     <full text>" etc. Keep ALL version texts in full — never truncate
+     any version. List every semester across all versions in Semester
+     cell. Use the highest Marks value. Sum the Times across versions.
+
+  c) GENUINELY DIFFERENT: Separate row. Never merge questions that test
+     different concepts even if they share keywords.
+
+RULE 4 — ALL SEMESTERS MUST BE VISIBLE:
+The Semester column must list EVERY semester a question (or any of its
+versions) appeared in. Never write only the first semester. Never write
+"multiple". Write them all, comma-separated, in chronological order.
+Example: Spring 2021, Fall 2022, Spring 2023, Fall 2024
+
+RULE 5 — RECENT SEMESTERS EQUAL TREATMENT:
+Questions from Fall 2024 or any recent semester must be extracted and
+displayed with the same completeness as questions from older semesters.
+A question is never deprioritised because it is recent or because the
+semester only contributed a small number of questions.
+
+RULE 6 — IMAGES:
+If a question needs a diagram, figure, circuit, graph, table, or any
+picture that cannot be copied as plain text, write the literal token
+[image] exactly where the picture appeared — at the START of the cell
+if it was above the question text, at the END if it was below. One
+[image] per missing picture. Do NOT describe or invent the picture.
+
+RULE 7 — UNREADABLE FILES:
+If a file is scanned or unreadable, say which one and stop. Never guess
+its content.
+
+═══════════════════
+OUTPUT RULES (STRICT)
+═══════════════════
+
 - Output ONLY one Markdown code block. No text before or after.
 - Follow the format below EXACTLY. Do not rename headings, add extra
   sections, or change column order.
-- Copy question text exactly. Long Question cells are expected — never
-  truncate them.
-- Use plain text inside the Question cell. Do not use Markdown bold/italic.
-  If the question itself contains a "|" character, escape it as \\|.
+- Use plain text inside Question cells. Do not use Markdown bold/italic.
+  If the question itself contains "|", escape it as \\|.
 - Priority must be exactly one of: VIP, HIGH, MEDIUM, LOW.
-- The picture token must be exactly [image] in square brackets, lowercase,
-  with nothing else inside the brackets and no other words next to it.
-- If output gets cut off, I will say "continue". Resume exactly from
-  the last row and do not repeat anything.
+- The picture token must be exactly [image] — lowercase, square brackets,
+  nothing else inside.
+- DO NOT stop mid-output. If the response is getting long, continue in
+  the same format without repeating headers. If output gets cut off, I
+  will say "continue" — resume exactly from the last incomplete row.
+- After finishing ALL topic blocks, output the VIP_MATRIX and STUDY_PLAN.
 
-FORMAT:
+═══════
+FORMAT
+═══════
 
 ---
 course: ${courseCode}
 title: ${courseTitle}
-semesters: [Spring 2023, Fall 2023]
+semesters: [list every semester found across all files]
+total_questions_extracted: <exact count before merging>
+total_rows_after_merge: <exact count after merging>
 ---
 
 ## TOPIC: <topic name>
 priority: <VIP|HIGH|MEDIUM|LOW>
-total_asked: <number>
+total_asked: <total times this topic was examined, counting all versions and repeats>
 
 | # | Question | Exam | Semester | Marks | Times |
 |---|----------|------|----------|-------|-------|
-| 1 | Version 1: <full question, copied exactly><br>Version 2: <full similar version, copied exactly> | Final | Spring 2023 | 15 | 3 |
+| 1 | Version 1: <full question copied exactly><br>Version 2: <full similar version copied exactly> | Final | Spring 2022, Fall 2023, Spring 2024 | 15 | 4 |
 
-(Group similar versions in one row. Use <br> for sub-parts and for each
-version. Repeat the TOPIC block for every topic.)
-
-(When the original question had a picture, put the token [image] in the
-Question cell — at the start of the cell if the picture was above the
-question text, at the end if it was below. Example row:
-| 4 | [image] Draw the equivalent circuit for this network. | Final | Spring 2023 | 15 | 2 |)
+(Repeat the TOPIC block for every topic found.)
 
 ## VIP_MATRIX
 
-| Topic | Times Asked | Avg Marks | Last Asked | Priority |
-|-------|-------------|-----------|------------|----------|
-| <topic> | <n> | <n> | <semester> | <priority> |
+| Topic | Times Asked | Avg Marks | Semesters Present | Last Asked | Priority |
+|-------|-------------|-----------|-------------------|------------|----------|
+| <topic> | <n> | <n> | <all semesters> | <most recent semester> | <priority> |
 
 ## STUDY_PLAN
 
-1. <topic> - <one line reason>
-2. <topic> - <one line reason>`;
+1. <topic> — <one-line reason including how many times asked and most recent semester>
+2. <topic> — <one-line reason>`;
 }
 
 export default buildPrompt;

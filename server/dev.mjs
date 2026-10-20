@@ -5324,8 +5324,13 @@ async function handleApiRequest(req, res) {
     // fallback. Everything else is served from dist/ as a static asset.
     // `/samples/*.md` is imported with Vite's ?raw loader by the Question Bank
     // Analyzer; let Vite transform it in dev instead of the static handler.
+    // HTML navigations must go to Vite too: otherwise a deep link such as
+    // /question-bank-analyzer serves dist/index.html, i.e. the last BUILD, and
+    // edits look like they were never applied.
+    const wantsHtml = String(req.headers.accept || '').includes('text/html');
     if (
       req.url === '/' ||
+      wantsHtml ||
       req.url.startsWith('/@') ||
       req.url.startsWith('/src') ||
       req.url.startsWith('/samples') ||
