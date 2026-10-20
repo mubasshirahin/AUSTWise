@@ -20,25 +20,24 @@ const MAX_ENTRIES = 20;
 /* ── API helpers ─────────────────────────────────────────────────────────── */
 
 async function fetchEntries() {
-  try {
-    const res = await fetch(`/api/store/user/${encodeURIComponent(STORE_KEY)}`, {
-      credentials: 'same-origin',
-    });
-    if (!res.ok) return [];
-    const json = await res.json();
-    return Array.isArray(json.value) ? json.value : [];
-  } catch {
-    return [];
-  }
+  const res = await fetch(`/api/store/user/${encodeURIComponent(STORE_KEY)}`, {
+    credentials: 'same-origin',
+  });
+  if (!res.ok) throw new Error(`Saved analyses could not be loaded (HTTP ${res.status}).`);
+  const json = await res.json();
+  return Array.isArray(json.value) ? json.value : [];
 }
 
 async function persistEntries(entries) {
-  await fetch(`/api/store/user/${encodeURIComponent(STORE_KEY)}`, {
+  const res = await fetch(`/api/store/user/${encodeURIComponent(STORE_KEY)}`, {
     method: 'PUT',
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ value: entries }),
   });
+  // fetch() does not reject on HTTP errors — without this check a 401/500
+  // would be reported to the student as a successful save.
+  if (!res.ok) throw new Error(`Saved analyses could not be stored (HTTP ${res.status}).`);
 }
 
 /* ── Public API ──────────────────────────────────────────────────────────── */
@@ -95,12 +94,15 @@ export async function deleteAnalysis(id) {
 
 /**
  * Delete all saved analyses for the current user.
- * @returns {Promise<void>}
+ * @returns {Promise<boolean>} true when the server accepted the change.
  */
 export async function clearAllAnalyses() {
   try {
     await persistEntries([]);
-  } catch { /* ignore */ }
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**

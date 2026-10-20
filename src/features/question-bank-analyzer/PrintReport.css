@@ -144,6 +144,12 @@
 .qba-report .qba-col-sem-marks { width: 12%; }
 .qba-report .qba-col-sem-times { width: 12%; }
 
+/* The raw semester paper: number, question, exam, marks. */
+.qba-report .qba-col-paper-sno { width: 5%; }
+.qba-report .qba-col-paper-question { width: 57%; }
+.qba-report .qba-col-paper-exam { width: 16%; }
+.qba-report .qba-col-paper-marks { width: 22%; }
+
 .qba-report .qba-report-table thead {
   display: table-header-group;
 }
@@ -188,6 +194,38 @@
   overflow-wrap: anywhere;
 }
 
+/* Sub-questions (a), (b) of one raw paper question --------------------------- */
+.qba-report .qba-report-subparts {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.qba-report .qba-report-subpart {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  padding-left: 6px;
+  border-left: 1.5px solid var(--qba-line);
+}
+
+.qba-report .qba-report-subpart-num {
+  flex: none;
+  font-size: 8pt;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.qba-report .qba-report-subpart-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
 /* The wordings of one question, each in its own block ----------------------- */
 .qba-report .qba-report-versions {
   display: flex;
@@ -218,7 +256,21 @@
   overflow-wrap: anywhere;
 }
 
-/* Pictures the student attached to a question ------------------------------- */
+/* Pictures / files the student attached to a question ----------------------- */
+.qba-report .qba-report-attachments {
+  margin-top: 6px;
+}
+
+.qba-report .qba-report-attachment-label {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--qba-muted);
+  font-size: 7pt;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .qba-report .qba-report-figures {
   display: flex;
   flex-direction: column;
@@ -251,6 +303,32 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.qba-report .qba-report-file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+.qba-report .qba-report-file {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 2px 5px;
+  border: 1px solid var(--qba-line);
+  border-radius: 3px;
+  color: var(--qba-muted);
+  font-size: 7.5pt;
+  overflow-wrap: anywhere;
+}
+
+.qba-report .qba-report-file strong {
+  flex: none;
+  color: var(--qba-ink);
+  font-size: 7pt;
+  letter-spacing: 0.04em;
 }
 
 .qba-report .qba-report-table tbody tr:nth-child(even) td {

@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom';
-import { buildQuestionVersions } from './previewAnalytics';
-import { splitSemesterList } from './parseQuestionBank';
+import { buildQuestionVersions, compareSemestersDesc } from './previewAnalytics';
+import { splitSemesterList, splitSubQuestions } from './parseQuestionBank';
 import './PrintReport.css';
 
 function PriorityBadge({ priority }) {
@@ -17,10 +17,73 @@ function display(value, fallback = '-') {
   return value;
 }
 
-function ReportQuestion({ question }) {
+function isImageAttachment(item) {
+  if (!item) return false;
+  if (item.media === 'image') return true;
+  if (item.media === 'file') return false;
+  if (item.mime) return String(item.mime).startsWith('image/');
+  // Records from before the split have no mime/media and are always pictures.
+  return true;
+}
+
+function fileLabel(item) {
+  const name = String(item?.name || 'attachment');
+  const dot = name.lastIndexOf('.');
+  const extension = dot >= 0 ? name.slice(dot + 1).toUpperCase() : '';
+  return extension || 'File';
+}
+
+/**
+ * Question and answer attachments under one small label. Pictures are printed
+ * as figures; PDF/PPT/DOC files are printed as a named attachment because a
+ * print engine cannot render their pages.
+ */
+function FigureList({ images, label = '' }) {
+  if (!Array.isArray(images) || !images.length) return null;
+  const pictures = images.filter(isImageAttachment);
+  const files = images.filter((image) => !isImageAttachment(image));
+
+  return (
+    <div className="qba-report-attachments">
+      {label ? <span className="qba-report-attachment-label">{label}</span> : null}
+      {pictures.length ? (
+        <div className="qba-report-figures">
+          {pictures.map((image, index) => (
+            <figure className="qba-report-figure" key={`${image.name || 'figure'}-${index}`}>
+              <img src={image.url} alt={image.name || `Figure ${index + 1}`} />
+              <figcaption>
+                {label ? `${label} ` : ''}{index + 1}{image.name ? ` — ${image.name}` : ''}
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      ) : null}
+      {files.length ? (
+        <div className="qba-report-file-list">
+          {files.map((file, index) => (
+            <span className="qba-report-file" key={`${file.name || 'file'}-${index}`}>
+              <strong>{fileLabel(file)}</strong>
+              <span>{file.name || 'Attachment'}</span>
+            </span>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ReportQuestion({ question, splitSubs = false }) {
   const variants = Array.isArray(question?.variants) ? question.variants : [];
   const versions = buildQuestionVersions(question);
   const images = Array.isArray(question?.images) ? question.images : [];
+  const answerImages = Array.isArray(question?.answerImages) ? question.answerImages : [];
+  const versionImages = Array.isArray(question?.versionImages) ? question.versionImages : [];
+  const versionAnswerImages = Array.isArray(question?.versionAnswerImages)
+    ? question.versionAnswerImages
+    : [];
+  const sub = splitSubs
+    ? splitSubQuestions(question?.question || '')
+    : { stem: '', parts: [] };
 
   const versionBlocks = versions.length ? (
     <div className="qba-report-versions">
@@ -28,27 +91,43 @@ function ReportQuestion({ question }) {
         <div className="qba-report-version" key={`${version.label}-${index}`}>
           <span className="qba-report-version-label">{version.label}</span>
           <span className="qba-report-version-text">{version.text}</span>
+          <FigureList images={versionImages[index]} label="Question" />
+          <FigureList images={versionAnswerImages[index]} label="Answer" />
         </div>
       ))}
     </div>
   ) : null;
 
-  const figures = images.length ? (
-    <div className="qba-report-figures">
-      {images.map((image, index) => (
-        <figure className="qba-report-figure" key={image.name || index}>
-          <img src={image.url} alt={image.name || `Figure ${index + 1}`} />
-          <figcaption>Figure {index + 1}{image.name ? ` — ${image.name}` : ''}</figcaption>
-        </figure>
-      ))}
+  const subBlocks = sub.parts.length ? (
+    <div className="qba-report-question-stack">
+      {sub.stem ? <span className="qba-report-question-text">{sub.stem}</span> : null}
+      <ol className="qba-report-subparts">
+        {sub.parts.map((part, index) => {
+          const prefix = part.number
+            || (question?.number !== null && question?.number !== undefined
+              ? String(question.number)
+              : '');
+          return (
+            <li className="qba-report-subpart" key={`${part.label}-${index}`}>
+              <span className="qba-report-subpart-num">
+                {prefix ? `${prefix}.${part.label})` : `${part.label})`}
+              </span>
+              <span className="qba-report-subpart-text">{part.text}</span>
+            </li>
+          );
+        })}
+      </ol>
     </div>
-  ) : null;
+  ) : (
+    <span className="qba-report-question-text">{question?.question || ''}</span>
+  );
 
   if (!variants.length) {
     return (
       <>
-        {versionBlocks || <span className="qba-report-question-text">{question?.question || ''}</span>}
-        {figures}
+        {versionBlocks || subBlocks}
+        {versions.length ? null : <FigureList images={images} label="Question" />}
+        {versions.length ? null : <FigureList images={answerImages} label="Answer" />}
       </>
     );
   }
@@ -56,7 +135,8 @@ function ReportQuestion({ question }) {
   return (
     <div className="qba-report-question-stack">
       {versionBlocks}
-      {figures}
+      {versions.length ? null : <FigureList images={images} label="Question" />}
+      {versions.length ? null : <FigureList images={answerImages} label="Answer" />}
     </div>
   );
 }
@@ -74,7 +154,8 @@ function groupBySemester(topics) {
       }
     }
   }
-  return [...map.entries()];
+  return [...map.entries()]
+    .sort(([a], [b]) => compareSemestersDesc(a, b));
 }
 
 export default function PrintReport({ data, className = '', innerRef }) {
@@ -91,10 +172,36 @@ export default function PrintReport({ data, className = '', innerRef }) {
     : 'Semesters not listed';
 
   const topicGroups = groupBySemester(data.topics || []);
+  const semesterPapers = (data.semesterPapers || [])
+    .filter((paper) => paper.questions?.length)
+    // Newest paper first, same order as the preview.
+    .sort((a, b) => compareSemestersDesc(a.semester, b.semester));
   const summary = data.summary || {};
   const pictureCount = (data.topics || []).reduce(
     (sum, topic) => sum + (topic.questions || []).reduce(
-      (inner, question) => inner + (Array.isArray(question.images) ? question.images.length : 0),
+      (inner, question) => {
+        const hasVersionAttachments = (
+          (Array.isArray(question.versionImages) && question.versionImages.length)
+          || (Array.isArray(question.versionAnswerImages) && question.versionAnswerImages.length)
+        );
+        return inner
+          + (hasVersionAttachments ? 0 : (Array.isArray(question.images) ? question.images.length : 0))
+          + (hasVersionAttachments ? 0 : (Array.isArray(question.answerImages) ? question.answerImages.length : 0))
+          + (Array.isArray(question.versionImages)
+            ? question.versionImages.reduce((count, images) => count + images.length, 0)
+            : 0)
+          + (Array.isArray(question.versionAnswerImages)
+            ? question.versionAnswerImages.reduce((count, images) => count + images.length, 0)
+            : 0);
+      },
+      0,
+    ),
+    0,
+  ) + (data.semesterPapers || []).reduce(
+    (sum, paper) => sum + (paper.questions || []).reduce(
+      (inner, question) => inner
+        + (Array.isArray(question.images) ? question.images.length : 0)
+        + (Array.isArray(question.answerImages) ? question.answerImages.length : 0),
       0,
     ),
     0,
@@ -110,7 +217,7 @@ export default function PrintReport({ data, className = '', innerRef }) {
         <div className="qba-report-meta">
           <span><strong>Semesters:</strong> {semesters}</span>
           <span><strong>Generated:</strong> {generated}</span>
-          {pictureCount ? <span><strong>Pictures:</strong> {pictureCount}</span> : null}
+          {pictureCount ? <span><strong>Attachments:</strong> {pictureCount}</span> : null}
         </div>
       </header>
 
@@ -222,7 +329,44 @@ export default function PrintReport({ data, className = '', innerRef }) {
 
       <section className="qba-report-section">
         <h2 className="qba-report-heading">Semester-wise view</h2>
-        {topicGroups.length === 0 ? (
+        {semesterPapers.length ? (
+          semesterPapers.map((paper) => (
+            <div className="qba-report-topic" key={paper.semester}>
+              <div className="qba-report-topic-head">
+                <h3>{paper.semester}</h3>
+                <span className="qba-report-topic-meta">
+                  {paper.questions.length} question{paper.questions.length === 1 ? '' : 's'} · as printed
+                </span>
+              </div>
+              <table className="qba-report-table">
+                <colgroup>
+                  <col className="qba-col-paper-sno" />
+                  <col className="qba-col-paper-question" />
+                  <col className="qba-col-paper-exam" />
+                  <col className="qba-col-paper-marks" />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th scope="col" className="qba-sno">#</th>
+                    <th scope="col">Question</th>
+                    <th scope="col">Exam</th>
+                    <th scope="col" className="qba-num">Marks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paper.questions.map((question, index) => (
+                    <tr key={`${paper.semester}-${index}`}>
+                      <td className="qba-sno">{question.number ?? index + 1}</td>
+                      <td className="qba-report-question"><ReportQuestion question={question} splitSubs /></td>
+                      <td>{display(question.exam)}</td>
+                      <td className="qba-num">{display(question.marks)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))
+        ) : topicGroups.length === 0 ? (
           <p className="qba-report-note">No semester information was found in the file.</p>
         ) : (
           topicGroups.map(([semester, rows]) => (

@@ -13,8 +13,10 @@ import {
   FileText,
   FileUp,
   HelpCircle,
+  History as HistoryIcon,
   Image as ImageIcon,
   Info,
+  ListChecks,
   Loader2,
   Printer,
   RotateCcw,
@@ -25,19 +27,22 @@ import { buildPrompt } from './qbaPrompt';
 import { parseQuestionBankParts } from './parseQuestionBank';
 import { applyManualMerges, buildDisplayData } from './previewAnalytics';
 import { attachImagesToReport } from './qbaImageStore';
+import { countSolvedQuestions } from './qbaChecklist';
+import useQbaChecklist from './useQbaChecklist';
 import useQbaImages from './useQbaImages';
 import PreviewPanel from './PreviewPanel';
 import PrintReport, { PrintPortal } from './PrintReport';
 import { downloadReportImagePdf, reportBaseName } from './qbaPdf';
+import { getPreviewHistory, recordPreviewHistory } from './qbaHistoryStore';
 import { getSavedAnalyses, saveAnalysis, deleteAnalysis } from './qbaSavedStore';
 import SavedAnalysesPanel from './SavedAnalysesPanel';
+import HistoryPanel from './HistoryPanel';
 import GliderTabs from '../../components/GliderTabs';
 import FeatureAccessGate from '../admin/FeatureAccessGate';
 import sampleMarkdown from '../../../samples/sample_analysis.md?raw';
 import './QuestionBankAnalyzerPage.css';
 
 const STORAGE_KEY = 'aust-qba-v1';
-const MAX_FILES = 5;
 const MAX_FILE_BYTES = 1024 * 1024;
 const ALLOWED_EXTENSIONS = ['.md', '.markdown', '.txt'];
 
@@ -143,6 +148,68 @@ function StepHeading({ number, title, hint, icon: Icon }) {
   );
 }
 
+function StudyProgress({
+  solved,
+  total,
+  percent,
+  loading = false,
+  saving = false,
+  error = '',
+  onRetry,
+}) {
+  const pending = Math.max(0, total - solved);
+  const status = error
+    ? 'Not synced'
+    : saving
+      ? 'Saving…'
+      : loading
+        ? 'Loading…'
+        : total
+          ? 'Synced to your account'
+          : 'No preview yet';
+
+  return (
+    <div className="qba-progress" role="status" aria-live="polite">
+      <div className="qba-progress-icon" aria-hidden="true">
+        <ListChecks size={18} />
+      </div>
+      <div className="qba-progress-main">
+        <div className="qba-progress-line">
+          <strong className="qba-progress-count">
+            {solved} / {total} Solved
+          </strong>
+          <span className="qba-progress-pct">{percent}%</span>
+          <span className="qba-progress-pending">
+            {pending ? `${pending} pending` : total ? 'All done' : 'Build a preview to start tracking'}
+          </span>
+        </div>
+        <div className="qba-progress-track" aria-hidden="true">
+          <span
+            className="qba-progress-fill"
+            style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
+          />
+        </div>
+      </div>
+      <div className="qba-progress-side">
+        <span className="qba-progress-sync">
+          {saving ? <Loader2 size={12} className="qba-spin" aria-hidden="true" /> : null}
+          {status}
+        </span>
+        {error ? (
+          <button
+            type="button"
+            className="qba-progress-retry"
+            onClick={onRetry}
+            title="Retry saving your progress"
+          >
+            Retry
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export default function QuestionBankAnalyzerPage() {
   // The whole tool is one feature box — admins toggle it from
   // Admin → Access rules → Question Bank.
@@ -172,16 +239,24 @@ function QuestionBankAnalyzer() {
   const [printData, setPrintData] = useState(null);
   const [activeTab, setActiveTab] = useState('analyzer');
   const [savedCount, setSavedCount] = useState(0);
+  const [historyCount, setHistoryCount] = useState(0);
   const [savedEntryId, setSavedEntryId] = useState(null);
 
   // Pictures the student attaches to individual questions. They live in the
-  // browser (IndexedDB) and are mirrored to the server on "Save Preview".
+  // browser (IndexedDB) and are mirrored to the server on every change.
   const pictures = useQbaImages(courseCode);
   const { byQuestion: questionPictures } = pictures;
+
+  // Solved / pending marks. Stored per course in the server user store, with a
+  // small localStorage fallback so a tick is never lost offline. If the student
+  // left the course-code field empty, fall back to the course parsed from the
+  // report so the checkboxes still have a stable key.
+  const checklist = useQbaChecklist(courseCode || result?.data?.course || '');
 
   // Load saved count once on mount
   useEffect(() => {
     getSavedAnalyses().then((list) => setSavedCount(list.length)).catch(() => {});
+    getPreviewHistory().then((list) => setHistoryCount(list.length)).catch(() => {});
   }, []);
 
   // Must be declared before the checkIfSaved callback below, whose dependency
@@ -206,6 +281,11 @@ function QuestionBankAnalyzer() {
   const printableData = useMemo(
     () => attachImagesToReport(displayData, pictures.courseKey, questionPictures),
     [displayData, pictures.courseKey, questionPictures],
+  );
+
+  const progress = useMemo(
+    () => countSolvedQuestions(displayData?.topics, checklist.items),
+    [displayData, checklist.items],
   );
 
   // Check if current preview matches a saved analysis
@@ -288,9 +368,51 @@ function QuestionBankAnalyzer() {
     return parsed;
   }, [collectParts]);
 
+  /**
+   * Record the preview in the server-side History automatically. This is
+   * fire-and-forget: a history write must never block or fail the preview.
+   */
+  const rememberPreview = useCallback((parsed, sourceText, overrides = {}) => {
+    if (!parsed?.data?.topics?.length) return;
+    const code = overrides.courseCode ?? courseCode;
+    const title = overrides.courseTitle ?? courseTitle;
+    const merges = overrides.mergeGroups ?? mergeGroups;
+    const stored = applyManualMerges(
+      safeReportData(parsed.data, code, title),
+      merges,
+    );
+    recordPreviewHistory({
+      courseCode: code,
+      courseTitle: title,
+      displayData: stored,
+      sourceText,
+    })
+      .then((entry) => {
+        if (!entry) return;
+        getPreviewHistory()
+          .then((list) => setHistoryCount(list.length))
+          .catch(() => {});
+      })
+      .catch(() => {});
+  }, [courseCode, courseTitle, mergeGroups]);
+
   const handlePreview = () => {
+    // A preview restored from history can be viewed even if Step 3 is empty;
+    // pressing Preview again should not wipe it with an empty parse.
+    const sourceParts = collectParts();
+    const hasSource = sourceParts.some((part) => String(part || '').trim());
+    if (!hasSource && result?.data?.topics?.length) {
+      setPreviewReady(true);
+      showNotice('This preview came from History. Paste the Markdown again if you want to rebuild it.');
+      requestAnimationFrame(() => {
+        previewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      return;
+    }
+
     const parsed = ensureParsed();
     setPreviewVersion((version) => version + 1);
+    rememberPreview(parsed, sourceParts.join('\n\n---\n\n'));
     if (parsed.data.topics.length) {
       showNotice(`Preview ready — ${parsed.data.summary.topicCount} topics, ${parsed.data.summary.totalQuestions} question rows.`);
     }
@@ -370,10 +492,22 @@ function QuestionBankAnalyzer() {
     );
   };
 
-  const handleAttachPicture = useCallback(async (imageKey, files) => {
-    const { added, error } = await pictures.attach(imageKey, files);
+  const handleAttachPicture = useCallback(async (imageKey, fileList, kind = 'question') => {
+    const { added, error, synced } = await pictures.attach(imageKey, fileList, kind);
+    const label = kind === 'answer' ? 'answer' : 'question';
     if (error) showNotice(error);
-    else if (added) showNotice(`${added} picture${added === 1 ? '' : 's'} added to the question.`);
+    else if (added && !synced) {
+      showNotice(`${added} ${label} file${added === 1 ? '' : 's'} added on this device — the server sync failed.`);
+    } else if (added) {
+      showNotice(`${added} ${label} file${added === 1 ? '' : 's'} added.`);
+    }
+  }, [pictures, showNotice]);
+
+  const handleRemovePicture = useCallback(async (imageId) => {
+    const synced = await pictures.remove(imageId);
+    if (!synced) {
+      showNotice('Picture removed here, but the server could not be updated — it may come back on reload.');
+    }
   }, [pictures, showNotice]);
 
   const addFiles = useCallback(async (fileList) => {
@@ -384,10 +518,6 @@ function QuestionBankAnalyzer() {
     const accepted = [];
 
     for (const file of incoming) {
-      if (files.length + accepted.length >= MAX_FILES) {
-        problems.push(`You can add up to ${MAX_FILES} files.`);
-        break;
-      }
       const name = file.name || 'analysis.md';
       const dot = name.lastIndexOf('.');
       const extension = dot >= 0 ? name.slice(dot).toLowerCase() : '';
@@ -466,8 +596,45 @@ function QuestionBankAnalyzer() {
     setPreviewVersion((version) => version + 1);
     setOpenTopics(defaultOpenTopics(parsed.data));
     setSavedEntryId(null);
+    rememberPreview(parsed, sampleMarkdown, {
+      courseCode: 'CSE 3101',
+      courseTitle: 'Database Management Systems',
+      mergeGroups: {},
+    });
     showNotice('Sample loaded. Preview is ready — try Download PDF or Quick Download.');
   };
+
+  /** Put a History entry back into the Analyzer, ready to view or edit. */
+  const handleOpenHistory = (entry) => {
+    const data = entry?.displayData;
+    if (!data || !Array.isArray(data.topics) || !data.topics.length) {
+      showNotice('That history entry has no questions to show.');
+      return;
+    }
+    setCourseCode(entry.courseCode || '');
+    setCourseTitle(entry.courseTitle || '');
+    setPasted(entry.sourceText || '');
+    setFiles([]);
+    setResult({ data, warnings: [], errors: [], notes: [] });
+    setPreviewReady(true);
+    setMergeGroups({});
+    setPreviewVersion((version) => version + 1);
+    setOpenTopics(defaultOpenTopics(data));
+    setSavedEntryId(null);
+    setActiveTab('analyzer');
+    showNotice(
+      entry.sourceText
+        ? 'Preview restored from History. Press Preview to rebuild it from the Markdown.'
+        : 'Preview restored from History. Add the Markdown again if you want to rebuild it.',
+    );
+    requestAnimationFrame(() => {
+      previewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
+  const handleHistorySaved = useCallback(() => {
+    getSavedAnalyses().then((list) => setSavedCount(list.length)).catch(() => {});
+  }, []);
 
   const handlePrintPdf = async () => {
     const parsed = ensureParsed();
@@ -650,10 +817,25 @@ function QuestionBankAnalyzer() {
 
       <div className="schedule-dotted-divider" />
 
+      <StudyProgress
+        solved={progress.solved}
+        total={progress.total}
+        percent={progress.percent}
+        loading={checklist.loading}
+        saving={checklist.saving}
+        error={checklist.error}
+        onRetry={checklist.syncNow}
+      />
+
       <GliderTabs
         tabs={[
           { id: 'analyzer', label: 'Analyzer', icon: FileSearch },
           { id: 'saved', label: savedCount > 0 ? `Saved (${savedCount})` : 'Saved', icon: Bookmark },
+          {
+            id: 'history',
+            label: historyCount > 0 ? `History (${historyCount})` : 'History',
+            icon: HistoryIcon,
+          },
         ]}
         activeTab={activeTab}
         onChange={setActiveTab}
@@ -670,6 +852,14 @@ function QuestionBankAnalyzer() {
       {activeTab === 'saved' ? (
         <SavedAnalysesPanel
           onCountChange={setSavedCount}
+        />
+      ) : null}
+
+      {activeTab === 'history' ? (
+        <HistoryPanel
+          onOpen={handleOpenHistory}
+          onSaved={handleHistorySaved}
+          onCountChange={setHistoryCount}
         />
       ) : null}
 
@@ -786,7 +976,7 @@ function QuestionBankAnalyzer() {
             <div className="qba-label-row">
               <label htmlFor="qba-file-input">Markdown files</label>
               <span className="qba-muted qba-label-hint">
-                Up to {MAX_FILES} files · 1 MB each · .md or .txt
+                Any number of files · 1 MB each · .md or .txt
               </span>
             </div>
             <input
@@ -964,7 +1154,10 @@ function QuestionBankAnalyzer() {
               courseKey={pictures.courseKey}
               images={questionPictures}
               onAttachImage={handleAttachPicture}
-              onRemoveImage={pictures.remove}
+              onRemoveImage={handleRemovePicture}
+              checklistItems={checklist.items}
+              checklistEnabled={hasData && checklist.enabled}
+              onToggleChecklist={checklist.toggle}
             />
           </>
         ) : (
@@ -1027,9 +1220,10 @@ function QuestionBankAnalyzer() {
             <summary>A question had a picture in the exam</summary>
             <p>
               The AI writes <code>[image]</code> where the picture was, and the question gets a{' '}
-              <strong>Picture needed</strong> badge. Click <strong>Add picture</strong> under that question — or drag a
-              PNG/JPG straight onto it — and the picture is stored in this browser and printed with the question. Press{' '}
-              <strong>Save Preview</strong> to copy your pictures to your account so they follow you to another device.
+              <strong>Picture needed</strong> badge. Every question now has two boxes: <strong>Add Real Question
+              Picture</strong> and <strong>Add Answer Picture</strong>. Drop any number of pictures, PDFs, slides or
+              documents into either box. Pictures are stored in this browser and mirrored to your account, and they are
+              printed with the question.
             </p>
           </details>
         </div>

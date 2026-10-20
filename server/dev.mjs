@@ -245,6 +245,10 @@ async function updateMessageKeyboardFn(botToken, chatId, messageId, _clickedCall
 
 const port = Number(process.env.PORT || 5174);
 const maxBodyBytes = 15 * 1024 * 1024;
+// QBA question/answer attachments are base64-encoded in the user-store PUT,
+// so several PDFs/PPTs need more headroom than a normal JSON write. Keep the
+// larger cap scoped to the attachment keys so nothing else can send 64 MB.
+const qbaAttachmentBodyBytes = 64 * 1024 * 1024;
 
 // Global flood guard — every request counts toward one per-IP window, so a
 // scanner can't pin the server or blow its connection pool. Auth/extract keep
@@ -384,15 +388,15 @@ const contentTypes = {
   '.woff2': 'font/woff2',
 };
 
-function readJsonBody(req) {
+function readJsonBody(req, limit = maxBodyBytes) {
   return new Promise((resolve, reject) => {
     let body = '';
     let bytes = 0;
 
     req.on('data', (chunk) => {
       bytes += chunk.length;
-      if (bytes > maxBodyBytes) {
-        reject(new Error('Image payload is too large. Please upload a smaller/compressed image.'));
+      if (bytes > limit) {
+        reject(new Error('Payload is too large. Please upload a smaller/compressed file.'));
         req.destroy();
         return;
       }
@@ -3512,7 +3516,10 @@ async function handleApiRequest(req, res) {
     if (!auth) return;
     const key = decodeURIComponent(req.url.slice('/api/store/user/'.length));
     try {
-      const body = await readJsonBody(req);
+      const bodyLimit = key.startsWith('aust-qba-images-v1:')
+        ? qbaAttachmentBodyBytes
+        : maxBodyBytes;
+      const body = await readJsonBody(req, bodyLimit);
       // Throttle burst writes for deadline/task stores (5s per user)
       if ((key === 'aust-week-tasks' || key === 'aust-deadlines') && Array.isArray(body.value)) {
         const lastDeadline = noticePostLastByUser.get(auth.id + ':' + key) || 0;

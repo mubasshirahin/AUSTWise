@@ -366,3 +366,9 @@
     padding: 0 12px 12px;
   }
 }
+
+/* Solved / pending counter in a saved card's meta row. */
+.qba-saved-progress-meta {
+  color: var(--accent-emerald, #3ecf8e);
+  font-weight: 600;
+}

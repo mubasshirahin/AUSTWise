@@ -8,6 +8,7 @@ import {
   sortVipMatrix,
   extractFigureMarker,
   splitQuestionVersions,
+  splitSubQuestions,
   splitSemesterList,
 } from './parseQuestionBank';
 
@@ -513,6 +514,71 @@ describe('splitQuestionVersions', () => {
   });
 });
 
+describe('splitSubQuestions', () => {
+  it('splits a stem and its lettered parts', () => {
+    expect(
+      splitSubQuestions('Define super key.\n(a) Explain the difference from a candidate key.\n(b) Show a relation with two candidate keys.'),
+    ).toEqual({
+      stem: 'Define super key.',
+      parts: [
+        { number: '', label: 'a', text: 'Explain the difference from a candidate key.' },
+        { number: '', label: 'b', text: 'Show a relation with two candidate keys.' },
+      ],
+    });
+  });
+
+  it('keeps a main number written in front of the letter', () => {
+    expect(
+      splitSubQuestions('Define super key.\n2.a) First part\n2.b) Second part'),
+    ).toEqual({
+      stem: 'Define super key.',
+      parts: [
+        { number: '2', label: 'a', text: 'First part' },
+        { number: '2', label: 'b', text: 'Second part' },
+      ],
+    });
+  });
+
+  it('keeps roman and Bengali markers', () => {
+    expect(
+      splitSubQuestions('(i) One\n(ii) Two'),
+    ).toEqual({
+      stem: '',
+      parts: [
+        { number: '', label: 'i', text: 'One' },
+        { number: '', label: 'ii', text: 'Two' },
+      ],
+    });
+
+    expect(
+      splitSubQuestions('(ক) এক\n(খ) দুই').parts.map((part) => part.label),
+    ).toEqual(['ক', 'খ']);
+  });
+
+  it('leaves a plain question whole', () => {
+    expect(splitSubQuestions('Define candidate key and primary key')).toEqual({
+      stem: 'Define candidate key and primary key',
+      parts: [],
+    });
+  });
+
+  it('keeps wrapped lines inside the part they belong to', () => {
+    const result = splitSubQuestions('Explain keys.\n(a) First line\nsecond line\n(b) Last part');
+
+    expect(result.parts).toEqual([
+      { number: '', label: 'a', text: 'First line\nsecond line' },
+      { number: '', label: 'b', text: 'Last part' },
+    ]);
+  });
+
+  it('does not split a lone marker with no stem', () => {
+    expect(splitSubQuestions('(a) only one part')).toEqual({
+      stem: '(a) only one part',
+      parts: [],
+    });
+  });
+});
+
 describe('parseQuestionBank — picture markers', () => {
   const WITH_FIGURE = `---
 course: CSE 3101
@@ -588,5 +654,90 @@ total_asked: 2
   it('gives a plain question no versions', () => {
     const { data } = parseQuestionBank(WITH_VERSIONS);
     expect(data.topics[0].questions[1].versions).toEqual([]);
+  });
+});
+
+describe('parseQuestionBank — raw semester papers', () => {
+  const WITH_PAPERS = `---
+course: CSE 3109
+title: Digital System Design
+semesters: [Spring 2017, Fall 2017]
+---
+
+## TOPIC: Handshaking
+priority: HIGH
+total_asked: 3
+
+| # | Question | Exam | Semester | Marks | Times |
+|---|----------|------|----------|-------|-------|
+| 1 | Version 1: Explain handshaking.<br>Version 2: Describe the handshake sequence. | Final | Spring 2017, Fall 2017 | 4 | 3 |
+
+## VIP_MATRIX
+
+| Topic | Times Asked | Avg Marks | Last Asked | Priority |
+|-------|-------------|-----------|------------|----------|
+| Handshaking | 3 | 4 | Fall 2017 | HIGH |
+
+## STUDY_PLAN
+
+1. Handshaking - asked 3 times.
+
+## SEMESTER_PAPERS
+
+### Spring 2017
+| # | Question | Exam | Marks |
+|---|----------|------|-------|
+| 1 | Explain handshaking. | Final | 4 |
+| 2 | [image] Derive the simplified function for D and B0 of Figure 1. | Final | 4 |
+| 2 | Explain handshaking. | Mid | 2 |
+
+### Fall 2017
+| # | Question | Exam | Marks |
+|---|----------|------|-------|
+| 1 | Describe the handshake sequence. | Final | 4 |`;
+
+  it('keeps every raw row, in order, without merging duplicates', () => {
+    const { data } = parseQuestionBank(WITH_PAPERS);
+
+    expect(data.semesterPapers).toHaveLength(2);
+    const [spring, fall] = data.semesterPapers;
+    expect(spring.semester).toBe('Spring 2017');
+    expect(spring.questions.map((question) => question.question)).toEqual([
+      'Explain handshaking.',
+      'Derive the simplified function for D and B0 of Figure 1.',
+      'Explain handshaking.',
+    ]);
+    expect(fall.questions).toHaveLength(1);
+    expect(fall.questions[0].question).toBe('Describe the handshake sequence.');
+  });
+
+  it('keeps the picture marker and the marks of a raw question', () => {
+    const { data } = parseQuestionBank(WITH_PAPERS);
+    const picture = data.semesterPapers[0].questions[1];
+
+    expect(picture.needsFigure).toBe(true);
+    expect(picture.figurePosition).toBe('start');
+    expect(picture.question).not.toMatch(/\[image\]/i);
+    expect(picture.marks).toBe(4);
+    expect(picture.exam).toBe('Final');
+  });
+
+  it('keeps the merged topic rows separate from the raw papers', () => {
+    const { data } = parseQuestionBank(WITH_PAPERS);
+
+    expect(data.topics[0].questions).toHaveLength(1);
+    expect(data.topics[0].questions[0].versions).toHaveLength(2);
+  });
+
+  it('adds the raw papers in every part when analyses are merged', () => {
+    const first = parseQuestionBank(WITH_PAPERS);
+    const second = parseQuestionBank(WITH_PAPERS);
+    const merged = parseQuestionBankParts([WITH_PAPERS, WITH_PAPERS]);
+
+    expect(first.data.semesterPapers).toHaveLength(2);
+    expect(second.data.semesterPapers).toHaveLength(2);
+    // Exact repeats from a "continue" overlap must not double the paper.
+    expect(merged.data.semesterPapers).toHaveLength(2);
+    expect(merged.data.semesterPapers[0].questions).toHaveLength(3);
   });
 });

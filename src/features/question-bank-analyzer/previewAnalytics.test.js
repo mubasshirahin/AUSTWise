@@ -4,6 +4,8 @@ import {
   buildDisplayData,
   buildPreviewAnalytics,
   buildQuestionVersions,
+  buildSemesterGroups,
+  compareSemestersDesc,
   filterPreviewData,
 } from './previewAnalytics';
 
@@ -120,6 +122,9 @@ describe('applyManualMerges', () => {
       'Normalize R to 3NF',
       'Explain BCNF',
     ]);
+    // Each version keeps the position (and therefore the picture slot) of the
+    // row it came from.
+    expect(normalisation.questions[0].variants.map((question) => question.originalIndex)).toEqual([0, 1]);
     expect(merged.summary.totalQuestions).toBe(3);
     expect(merged.summary.totalAsked).toBe(7);
     expect(merged.summary.vipCount).toBe(1);
@@ -171,8 +176,8 @@ describe('buildQuestionVersions', () => {
     };
 
     expect(buildQuestionVersions(question)).toEqual([
-      { label: 'Version 1', text: 'first wording' },
-      { label: 'Version 2', text: 'second wording' },
+      { label: 'Version 1', text: 'first wording', sourceIndex: null, slot: '', needsFigure: false, figurePosition: 'end' },
+      { label: 'Version 2', text: 'second wording', sourceIndex: null, slot: '', needsFigure: false, figurePosition: 'end' },
     ]);
   });
 
@@ -185,9 +190,21 @@ describe('buildQuestionVersions', () => {
     };
 
     expect(buildQuestionVersions(question)).toEqual([
-      { label: 'Version 1.1', text: 'x1' },
-      { label: 'Version 2.1', text: 'y' },
+      { label: 'Version 1.1', text: 'x1', sourceIndex: null, slot: '', needsFigure: false, figurePosition: 'end' },
+      { label: 'Version 2.1', text: 'y', sourceIndex: null, slot: '', needsFigure: false, figurePosition: 'end' },
     ]);
+  });
+
+  it('points each merged version at the question it came from', () => {
+    const versions = buildQuestionVersions({
+      variants: [
+        { question: 'first', originalIndex: 4, needsFigure: true },
+        { question: 'second', originalIndex: 9 },
+      ],
+    });
+
+    expect(versions.map((version) => version.sourceIndex)).toEqual([4, 9]);
+    expect(versions.map((version) => version.needsFigure)).toEqual([true, false]);
   });
 
   it('returns nothing for a plain question', () => {
@@ -246,5 +263,67 @@ describe('buildDisplayData', () => {
 
   it('falls back to an empty topic list when there is no report yet', () => {
     expect(buildDisplayData(null, {})).toEqual({ topics: [] });
+  });
+});
+
+describe('buildSemesterGroups', () => {
+  it('files a multi-semester question under every semester it names', () => {
+    const merged = {
+      ...data,
+      topics: [topic('Combinational Logic', 'HIGH', [
+        {
+          question: 'Version 1: Simplify F.<br>Version 2: Minimise F.',
+          exam: 'Final',
+          semester: 'Spring 2023, Fall 2023',
+          marks: 15,
+          times: 4,
+        },
+      ])],
+    };
+
+    const groups = buildSemesterGroups(buildPreviewAnalytics(merged));
+    const spring = groups.find((group) => group.name === 'Spring 2023');
+    const fall = groups.find((group) => group.name === 'Fall 2023');
+
+    expect(spring.questions).toHaveLength(1);
+    expect(fall.questions).toHaveLength(1);
+    // The header count and the rendered rows must agree.
+    expect(spring.questions).toHaveLength(spring.total);
+    expect(fall.questions).toHaveLength(fall.total);
+  });
+
+  it('never lists the raw comma-separated cell as a semester', () => {
+    const merged = {
+      ...data,
+      topics: [topic('Mixed', 'LOW', [
+        { question: 'Q', exam: 'Mid', semester: 'Spring 2023, Fall 2023', marks: 5, times: 1 },
+      ])],
+    };
+
+    const groups = buildSemesterGroups(buildPreviewAnalytics(merged));
+    // Newest first: Fall 2023 before Spring 2023.
+    expect(groups.map((group) => group.name)).toEqual(['Fall 2023', 'Spring 2023']);
+  });
+});
+
+describe('compareSemestersDesc', () => {
+  it('puts the newest semester first', () => {
+    const names = ['Fall 2023', 'Spring 2024', 'Fall 2024', 'Spring 2023'];
+    expect(names.sort(compareSemestersDesc)).toEqual([
+      'Fall 2024',
+      'Spring 2024',
+      'Fall 2023',
+      'Spring 2023',
+    ]);
+  });
+
+  it('ranks fall after spring of the same year', () => {
+    expect(compareSemestersDesc('Fall 2024', 'Spring 2024')).toBeLessThan(0);
+    expect(compareSemestersDesc('Spring 2024', 'Fall 2024')).toBeGreaterThan(0);
+  });
+
+  it('keeps semesters without a year or season at the end', () => {
+    expect(compareSemestersDesc('Unknown semester', 'Spring 2023')).toBeGreaterThan(0);
+    expect(compareSemestersDesc('Spring 2023', 'Unknown semester')).toBeLessThan(0);
   });
 });

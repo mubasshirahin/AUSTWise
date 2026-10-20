@@ -10,6 +10,7 @@ import {
   ClipboardList,
   Crown,
   FileSearch,
+  FileText,
   Filter,
   Image as ImageIcon,
   Info,
@@ -23,16 +24,21 @@ import {
   Target,
   Trophy,
   Unlink2,
+  Upload,
   X,
 } from 'lucide-react';
 import {
   buildPreviewAnalytics,
   buildPreviewInsights,
   buildQuestionVersions,
+  buildSemesterGroups,
+  compareSemestersDesc,
   filterPreviewData,
   PRIORITIES,
 } from './previewAnalytics';
-import { questionImageKey } from './qbaImageStore';
+import { questionImageKey, semesterImageKey } from './qbaImageStore';
+import { isQuestionSolved, questionCheckIds } from './qbaChecklist';
+import { splitSubQuestions } from './parseQuestionBank';
 import './PreviewPanel.css';
 
 const INSIGHT_ICONS = {
@@ -364,17 +370,25 @@ function QuestionMeta({ question, topic, showTopic = false }) {
  * questions into a single row ("Version 1: ... Version 2: ..."), and the
  * student can merge rows by hand — both end up here.
  */
-function VersionPills({ versions }) {
+function VersionPills({ versions, number, renderPictures }) {
   if (!versions.length) return null;
   return (
     <ol className="qba-dash-q-versions">
       {versions.map((version, index) => (
         <li className="qba-dash-q-version" key={`${version.label}-${index}`}>
-          <span className="qba-dash-q-version-pill">
-            <Layers size={11} aria-hidden="true" />
-            {version.label}
-          </span>
+          <div className="qba-dash-q-version-head">
+            <span className="qba-dash-q-version-num" aria-hidden="true">
+              {number !== null && number !== undefined
+                ? `${number}.${index + 1}`
+                : String(index + 1).padStart(2, '0')}
+            </span>
+            <span className="qba-dash-q-version-pill">
+              <Layers size={11} aria-hidden="true" />
+              {version.label}
+            </span>
+          </div>
           <p className="qba-dash-q-text">{version.text || '—'}</p>
+          {renderPictures ? renderPictures(version, index) : null}
         </li>
       ))}
     </ol>
@@ -382,56 +396,197 @@ function VersionPills({ versions }) {
 }
 
 /**
- * The pictures of one question: what the student attached, plus the marker
- * that says this question had a picture in the source.
+ * One attached file. Pictures open in the lightbox; PDFs, slides and documents
+ * open/download in a new tab, because the browser cannot render them as <img>.
  */
-function QuestionPictures({ question, images, onOpen, onPick, onRemove, canEdit }) {
+function AttachmentChip({ attachment, canEdit, onOpen, onRemove }) {
+  const isImage = attachment.media === 'image'
+    || (!attachment.media && String(attachment.mime || '').startsWith('image/'));
+  const sizeKb = attachment.size ? Math.max(1, Math.round(attachment.size / 1024)) : 0;
+
+  if (isImage) {
+    return (
+      <span className="qba-dash-q-pic" key={attachment.id}>
+        <button
+          type="button"
+          className="qba-dash-q-pic-open"
+          onClick={() => onOpen?.(attachment)}
+          title={`Open ${attachment.name}`}
+        >
+          <img src={attachment.url} alt={attachment.name} loading="lazy" />
+          <span className="qba-dash-q-pic-zoom" aria-hidden="true">
+            <Maximize2 size={12} />
+          </span>
+        </button>
+        {canEdit ? (
+          <button
+            type="button"
+            className="qba-dash-q-pic-remove"
+            onClick={() => onRemove?.(attachment.id)}
+            aria-label={`Remove picture ${attachment.name}`}
+            title="Remove picture"
+          >
+            <X size={11} aria-hidden="true" />
+          </button>
+        ) : null}
+      </span>
+    );
+  }
+
+  return (
+    <span className="qba-dash-q-file" key={attachment.id}>
+      <a
+        className="qba-dash-q-file-open"
+        href={attachment.url}
+        download={attachment.name}
+        target="_blank"
+        rel="noreferrer"
+        title={`Open ${attachment.name}`}
+      >
+        <FileText size={14} aria-hidden="true" />
+        <span className="qba-dash-q-file-name">{attachment.name}</span>
+        {sizeKb ? <span className="qba-dash-q-file-size">{sizeKb} KB</span> : null}
+      </a>
+      {canEdit ? (
+        <button
+          type="button"
+          className="qba-dash-q-pic-remove qba-dash-q-file-remove"
+          onClick={() => onRemove?.(attachment.id)}
+          aria-label={`Remove file ${attachment.name}`}
+          title="Remove file"
+        >
+          <X size={11} aria-hidden="true" />
+        </button>
+      ) : null}
+    </span>
+  );
+}
+
+/**
+ * One drop box. There are two per question: the real exam question and the
+ * answer. Each accepts any number of files — pictures are previewed, every
+ * other file is listed as a named attachment.
+ */
+function AttachmentBox({
+  kind,
+  title,
+  hint,
+  images,
+  needsFigure = false,
+  canEdit,
+  onOpen,
+  onPick,
+  onRemove,
+  onDrop,
+}) {
+  const [dropActive, setDropActive] = useState(false);
   const list = Array.isArray(images) ? images : [];
+  const droppable = Boolean(canEdit && onDrop);
+
+  const handleDrop = (event) => {
+    if (!droppable) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setDropActive(false);
+    const files = event.dataTransfer?.files;
+    if (files && files.length) onDrop(files);
+  };
+
+  return (
+    <div
+      className={`qba-dash-attach qba-dash-attach-${kind}${dropActive ? ' is-drop' : ''}`}
+      onDragOver={droppable
+        ? (event) => { event.preventDefault(); setDropActive(true); }
+        : undefined}
+      onDragLeave={droppable ? () => setDropActive(false) : undefined}
+      onDrop={droppable ? handleDrop : undefined}
+    >
+      <div className="qba-dash-attach-head">
+        <span className="qba-dash-attach-title">
+          {kind === 'answer'
+            ? <FileText size={13} aria-hidden="true" />
+            : <ImageIcon size={13} aria-hidden="true" />}
+          {title}
+        </span>
+        {needsFigure && !list.length ? (
+          <span className="qba-dash-chip qba-dash-chip-figure">
+            Needed
+          </span>
+        ) : null}
+      </div>
+
+      {list.length ? (
+        <div className="qba-dash-attach-list">
+          {list.map((attachment) => (
+            <AttachmentChip
+              key={attachment.id}
+              attachment={attachment}
+              canEdit={canEdit}
+              onOpen={onOpen}
+              onRemove={onRemove}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="qba-dash-attach-empty">{hint}</p>
+      )}
+
+      {canEdit ? (
+        <button type="button" className="qba-dash-attach-add" onClick={onPick}>
+          <Upload size={12} aria-hidden="true" />
+          {list.length ? 'Add more files' : 'Choose files'}
+        </button>
+      ) : null}
+      <span className="qba-dash-attach-formats">Any file · PNG, JPG, PDF, PPTX…</span>
+    </div>
+  );
+}
+
+/**
+ * The two attachment boxes of one question (or one wording of it). The block
+ * is also the drop target, so every version can receive its own question and
+ * answer files.
+ */
+function QuestionAttachments({
+  question,
+  images,
+  onOpen,
+  onPick,
+  onRemove,
+  onDrop,
+  canEdit,
+}) {
+  const list = Array.isArray(images) ? images : [];
+  const questionFiles = list.filter((item) => item.kind !== 'answer');
+  const answerFiles = list.filter((item) => item.kind === 'answer');
   const needsFigure = Boolean(question?.needsFigure);
   if (!needsFigure && !list.length && !canEdit) return null;
 
   return (
-    <div className="qba-dash-q-pics">
-      {needsFigure ? (
-        <span className="qba-dash-chip qba-dash-chip-figure">
-          <ImageIcon size={12} aria-hidden="true" />
-          Picture needed
-        </span>
-      ) : null}
-
-      {list.map((image) => (
-        <span className="qba-dash-q-pic" key={image.id}>
-          <button
-            type="button"
-            className="qba-dash-q-pic-open"
-            onClick={() => onOpen?.(image)}
-            title={`Open ${image.name}`}
-          >
-            <img src={image.url} alt={image.name} loading="lazy" />
-            <span className="qba-dash-q-pic-zoom" aria-hidden="true">
-              <Maximize2 size={12} />
-            </span>
-          </button>
-          {canEdit ? (
-            <button
-              type="button"
-              className="qba-dash-q-pic-remove"
-              onClick={() => onRemove?.(image.id)}
-              aria-label={`Remove picture ${image.name}`}
-              title="Remove picture"
-            >
-              <X size={11} aria-hidden="true" />
-            </button>
-          ) : null}
-        </span>
-      ))}
-
-      {canEdit ? (
-        <button type="button" className="qba-dash-q-pic-add" onClick={onPick}>
-          <ImageIcon size={13} aria-hidden="true" />
-          {list.length ? 'Add another' : 'Add picture'}
-        </button>
-      ) : null}
+    <div className="qba-dash-attachments">
+      <AttachmentBox
+        kind="question"
+        title="Add Real Question Picture"
+        hint={needsFigure ? 'The source had a figure — attach it here.' : 'Drop the exam question, figure or PDF here.'}
+        images={questionFiles}
+        needsFigure={needsFigure}
+        canEdit={canEdit}
+        onOpen={onOpen}
+        onPick={() => onPick?.('question')}
+        onRemove={onRemove}
+        onDrop={(files) => onDrop?.('question', files)}
+      />
+      <AttachmentBox
+        kind="answer"
+        title="Add Answer Picture"
+        hint="Drop your handwritten or typed answer here."
+        images={answerFiles}
+        canEdit={canEdit}
+        onOpen={onOpen}
+        onPick={() => onPick?.('answer')}
+        onRemove={onRemove}
+        onDrop={(files) => onDrop?.('answer', files)}
+      />
     </div>
   );
 }
@@ -444,40 +599,49 @@ function QuestionCard({
   showTopic = false,
   selectable = false,
   selected = false,
+  plain = false,
+  showSubQuestions = false,
   onSelect,
   onUnmerge,
   images = [],
+  imagesByKey = null,
+  imageKey = '',
+  versionKey,
   canEditPictures = false,
   onOpenPicture,
   onPickPicture,
   onRemovePicture,
   onDropPictures,
+  checkIds = [],
+  solved = false,
+  checklistEnabled = false,
+  onToggleSolved,
 }) {
   const value = priorityValue(priority);
   const variants = Array.isArray(question.variants) ? question.variants : [];
-  const [dropActive, setDropActive] = useState(false);
+  const subQuestions = showSubQuestions
+    ? splitSubQuestions(question.question)
+    : { stem: '', parts: [] };
 
   // The wordings of this question: the AI's own "Version 1 / Version 2"
   // labels, or the rows the student merged by hand.
   const versions = buildQuestionVersions(question);
-
-  const handleDrop = (event) => {
-    if (!canEditPictures) return;
-    event.preventDefault();
-    event.stopPropagation();
-    setDropActive(false);
-    const files = event.dataTransfer?.files;
-    if (files && files.length) onDropPictures?.(files);
+  const keyOf = (version, index) => (versionKey ? versionKey(version, index) : '');
+  const picturesOf = (version, index) => {
+    const key = keyOf(version, index);
+    return key && imagesByKey ? (imagesByKey[key] || []) : [];
   };
+
+  const rowClass = [
+    'qba-dash-question',
+    plain ? '' : `qba-dash-q-prio-${value.toLowerCase()}`,
+    selected ? 'qba-dash-q-selected' : '',
+    selectable ? 'qba-dash-q-selectable' : '',
+  ].filter(Boolean).join(' ');
 
   return (
     <Fragment>
-    <li
-      className={`qba-dash-question qba-dash-q-prio-${value.toLowerCase()}${selected ? ' qba-dash-q-selected' : ''}${selectable ? ' qba-dash-q-selectable' : ''}${dropActive ? ' qba-dash-q-drop' : ''}`}
-      onDragOver={canEditPictures ? (event) => { event.preventDefault(); setDropActive(true); } : undefined}
-      onDragLeave={canEditPictures ? () => setDropActive(false) : undefined}
-      onDrop={canEditPictures ? handleDrop : undefined}
-    >
+    <li className={rowClass}>
       {selectable ? (
         <label className="qba-dash-q-check">
           <input
@@ -497,7 +661,32 @@ function QuestionCard({
       )}
 
       <div className="qba-dash-q-body">
-        {showTopic && topic ? <span className="qba-dash-q-topic">{topic}</span> : null}
+        {(showTopic && topic) || checklistEnabled ? (
+          <div className="qba-dash-q-headline">
+            {showTopic && topic
+              ? <span className="qba-dash-q-topic">{topic}</span>
+              : <span aria-hidden="true" />}
+            {checklistEnabled ? (
+              <label
+                className={`qba-dash-q-solved${solved ? ' is-solved' : ''}`}
+                title={solved ? 'Solved — click to mark pending' : 'Mark this question as solved'}
+              >
+                <input
+                  type="checkbox"
+                  checked={solved}
+                  onChange={() => onToggleSolved?.(checkIds)}
+                  aria-label={`Mark question ${number ?? ''} as ${solved ? 'pending' : 'solved'}`}
+                />
+                <span className="qba-dash-q-solved-box" aria-hidden="true">
+                  <Check size={11} />
+                </span>
+                <span className="qba-dash-q-solved-label">
+                  {solved ? 'Solved' : 'Mark solved'}
+                </span>
+              </label>
+            ) : null}
+          </div>
+        ) : null}
 
         {variants.length ? (
           // Merged by hand: the row only carries the group header, the
@@ -520,51 +709,94 @@ function QuestionCard({
           </div>
         ) : null}
 
-        {!versions.length && question.figurePosition === 'start' ? (
-          <QuestionPictures
-            question={question}
-            images={images}
-            onOpen={onOpenPicture}
-            onPick={onPickPicture}
-            onRemove={onRemovePicture}
-            canEdit={canEditPictures}
-          />
-        ) : null}
-
         {!versions.length ? (
-          <p className="qba-dash-q-text">{question.question || '—'}</p>
-        ) : null}
+          <>
+            {question.figurePosition === 'start' ? (
+              <QuestionAttachments
+                question={question}
+                images={images}
+                onOpen={onOpenPicture}
+                onPick={(kind) => onPickPicture?.(imageKey, kind)}
+                onRemove={onRemovePicture}
+                onDrop={(kind, files) => onDropPictures?.(imageKey, files, kind)}
+                canEdit={canEditPictures}
+              />
+            ) : null}
 
-        <QuestionMeta question={question} topic={topic} showTopic={showTopic} />
+            {subQuestions.parts.length ? (
+              <>
+                {subQuestions.stem ? (
+                  <p className="qba-dash-q-text">{subQuestions.stem}</p>
+                ) : null}
+                <ol className="qba-dash-subparts">
+                  {subQuestions.parts.map((part, index) => {
+                    const prefix = part.number
+                      || (number !== null && number !== undefined ? String(number) : '');
+                    return (
+                      <li className="qba-dash-subpart" key={`${part.label}-${index}`}>
+                        <span className="qba-dash-subpart-num">
+                          {prefix ? `${prefix}.${part.label})` : `${part.label})`}
+                        </span>
+                        <span className="qba-dash-subpart-text">{part.text}</span>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </>
+            ) : (
+              <p className="qba-dash-q-text">{question.question || '—'}</p>
+            )}
 
-        {!versions.length && question.figurePosition !== 'start' ? (
-          <QuestionPictures
-            question={question}
-            images={images}
-            onOpen={onOpenPicture}
-            onPick={onPickPicture}
-            onRemove={onRemovePicture}
-            canEdit={canEditPictures}
-          />
-        ) : null}
+            <QuestionMeta question={question} topic={topic} showTopic={showTopic} />
 
-        {versions.length ? (
-          <QuestionPictures
-            question={question}
-            images={images}
-            onOpen={onOpenPicture}
-            onPick={onPickPicture}
-            onRemove={onRemovePicture}
-            canEdit={canEditPictures}
-          />
-        ) : null}
+            {question.figurePosition !== 'start' ? (
+              <QuestionAttachments
+                question={question}
+                images={images}
+                onOpen={onOpenPicture}
+                onPick={(kind) => onPickPicture?.(imageKey, kind)}
+                onRemove={onRemovePicture}
+                onDrop={(kind, files) => onDropPictures?.(imageKey, files, kind)}
+                canEdit={canEditPictures}
+              />
+            ) : null}
+          </>
+        ) : (
+          <>
+            <QuestionMeta question={question} topic={topic} showTopic={showTopic} />
+
+            {/* Only when none of the version pills can carry the marker. */}
+            {question.needsFigure && !versions.some((version) => version.needsFigure) ? (
+              <div className="qba-dash-q-pics">
+                <span className="qba-dash-chip qba-dash-chip-figure">
+                  <ImageIcon size={12} aria-hidden="true" />
+                  Picture needed
+                </span>
+              </div>
+            ) : null}
+          </>
+        )}
       </div>
     </li>
 
     {/* The wordings of this question — separate pills, not part of the row. */}
     {versions.length ? (
       <li className="qba-dash-q-version-list">
-        <VersionPills versions={versions} />
+        <VersionPills
+          versions={versions}
+          number={number}
+          renderPictures={(version, index) => (
+            <QuestionAttachments
+              question={{ needsFigure: version.needsFigure }}
+              images={picturesOf(version, index)}
+              onOpen={onOpenPicture}
+              onPick={(kind) => onPickPicture?.(keyOf(version, index), kind)}
+              onRemove={onRemovePicture}
+              onDrop={(kind, files) => onDropPictures?.(keyOf(version, index), files, kind)}
+              canEdit={canEditPictures}
+            />
+          )}
+        />
       </li>
     ) : null}
     </Fragment>
@@ -642,6 +874,9 @@ function TopicAccordion({
   onPickPicture,
   onRemovePicture,
   onDropPictures,
+  checklistItems = {},
+  checklistEnabled = false,
+  onToggleChecklist,
 }) {
   return (
     <div className="qba-dash-accordion">
@@ -750,6 +985,7 @@ function TopicAccordion({
                     {topic.questions.map((question, questionIndex) => {
                       const originalIndex = question.originalIndex ?? questionIndex;
                       const imageKey = questionImageKey(courseKey, topic.name, originalIndex);
+                      const checkIds = questionCheckIds(topic.name, question);
                       return (
                         <QuestionCard
                           key={question.merged ? `merged-${topic.name}-${originalIndex}` : `${topic.name}-${originalIndex}`}
@@ -763,11 +999,24 @@ function TopicAccordion({
                             ? () => onUnmerge(topic.name, question.mergedIndices)
                             : undefined}
                           images={images[imageKey] || []}
+                          imagesByKey={images}
+                          imageKey={imageKey}
+                          versionKey={(version) => {
+                            const source = typeof version.sourceIndex === 'number'
+                              ? version.sourceIndex
+                              : originalIndex;
+                            const base = questionImageKey(courseKey, topic.name, source);
+                            return version.slot ? `${base}::${version.slot}` : base;
+                          }}
                           canEditPictures={canEditPictures}
                           onOpenPicture={onOpenPicture}
-                          onPickPicture={() => onPickPicture?.(imageKey)}
+                          onPickPicture={onPickPicture}
                           onRemovePicture={onRemovePicture}
-                          onDropPictures={(files) => onDropPictures?.(imageKey, files)}
+                          onDropPictures={onDropPictures}
+                          checklistEnabled={checklistEnabled}
+                          checkIds={checkIds}
+                          solved={isQuestionSolved(checklistItems, checkIds)}
+                          onToggleSolved={onToggleChecklist}
                         />
                       );
                     })}
@@ -786,6 +1035,7 @@ function TopicAccordion({
 
 function SemesterView({
   groups,
+  papers = [],
   courseKey = '',
   images = {},
   canEditPictures = false,
@@ -794,65 +1044,114 @@ function SemesterView({
   onRemovePicture,
   onDropPictures,
 }) {
-  if (!groups.length) {
+  const usingPapers = papers.length > 0;
+
+  if (!usingPapers && !groups.length) {
     return <p className="qba-dash-muted">No semester information was found.</p>;
   }
 
+  const renderPaper = (paper) => (
+    <details className="qba-dash-sem-card" key={paper.semester}>
+      <summary className="qba-dash-sem-summary">
+        <span className="qba-dash-sem-dot" aria-hidden="true" />
+        <span className="qba-dash-sem-main">
+          <span className="qba-dash-sem-top">
+            <span className="qba-dash-sem-title">{paper.semester}</span>
+            <span className="qba-dash-sem-count">
+              {paper.questions.length} question{paper.questions.length === 1 ? '' : 's'}
+            </span>
+          </span>
+        </span>
+        <ChevronDown size={18} className="qba-dash-sem-chevron" aria-hidden="true" />
+      </summary>
+      <div className="qba-dash-sem-body">
+        <ol className="qba-dash-questions">
+          {paper.questions.map((question, index) => {
+            const imageKey = semesterImageKey(courseKey, paper.semester, index);
+            return (
+              <QuestionCard
+                key={`${paper.semester}-${index}`}
+                question={question}
+                number={question.number ?? index + 1}
+                priority="MEDIUM"
+                plain
+                showSubQuestions
+                images={images[imageKey] || []}
+                imagesByKey={images}
+                imageKey={imageKey}
+                canEditPictures={canEditPictures}
+                onOpenPicture={onOpenPicture}
+                onPickPicture={onPickPicture}
+                onRemovePicture={onRemovePicture}
+                onDropPictures={onDropPictures}
+              />
+            );
+          })}
+        </ol>
+      </div>
+    </details>
+  );
+
+  const renderGroup = (group) => (
+    <details className="qba-dash-sem-card" key={group.name}>
+      <summary className="qba-dash-sem-summary">
+        <span className="qba-dash-sem-dot" aria-hidden="true" />
+        <span className="qba-dash-sem-main">
+          <span className="qba-dash-sem-top">
+            <span className="qba-dash-sem-title">{group.name}</span>
+            <span className="qba-dash-sem-count">
+              {group.total} question{group.total === 1 ? '' : 's'} · {group.asks} asks
+            </span>
+          </span>
+          <span className="qba-dash-sem-mini" aria-hidden="true">
+            {PRIORITIES.map((priority) => {
+              const count = group.byPriority[priority] || 0;
+              if (!count) return null;
+              return (
+                <span
+                  key={priority}
+                  className={`qba-dash-mini-seg qba-dash-bg-${priority.toLowerCase()}`}
+                  style={{ flexGrow: count }}
+                  title={`${priority}: ${count}`}
+                />
+              );
+            })}
+          </span>
+        </span>
+        <ChevronDown size={18} className="qba-dash-sem-chevron" aria-hidden="true" />
+      </summary>
+      <div className="qba-dash-sem-body">
+        <ol className="qba-dash-questions">
+          {group.questions.map((question, index) => {
+            const originalIndex = question.originalIndex ?? question.questionIndex ?? index;
+            const imageKey = questionImageKey(courseKey, question.topic, originalIndex);
+            return (
+              <QuestionCard
+                key={`${group.name}-${index}`}
+                question={question}
+                topic={question.topic}
+                priority={question.topicPriority}
+                number={index + 1}
+                showTopic
+                images={images[imageKey] || []}
+                imagesByKey={images}
+                imageKey={imageKey}
+                canEditPictures={canEditPictures}
+                onOpenPicture={onOpenPicture}
+                onPickPicture={onPickPicture}
+                onRemovePicture={onRemovePicture}
+                onDropPictures={onDropPictures}
+              />
+            );
+          })}
+        </ol>
+      </div>
+    </details>
+  );
+
   return (
     <div className="qba-dash-timeline">
-      {groups.map((group) => (
-        <details className="qba-dash-sem-card" key={group.name}>
-          <summary className="qba-dash-sem-summary">
-            <span className="qba-dash-sem-dot" aria-hidden="true" />
-            <span className="qba-dash-sem-main">
-              <span className="qba-dash-sem-top">
-                <span className="qba-dash-sem-title">{group.name}</span>
-                <span className="qba-dash-sem-count">
-                  {group.total} question{group.total === 1 ? '' : 's'} · {group.asks} asks
-                </span>
-              </span>
-              <span className="qba-dash-sem-mini" aria-hidden="true">
-                {PRIORITIES.map((priority) => {
-                  const count = group.byPriority[priority] || 0;
-                  if (!count) return null;
-                  return (
-                    <span
-                      key={priority}
-                      className={`qba-dash-mini-seg qba-dash-bg-${priority.toLowerCase()}`}
-                      style={{ flexGrow: count }}
-                      title={`${priority}: ${count}`}
-                    />
-                  );
-                })}
-              </span>
-            </span>
-            <ChevronDown size={18} className="qba-dash-sem-chevron" aria-hidden="true" />
-          </summary>
-          <div className="qba-dash-sem-body">
-            <ol className="qba-dash-questions">
-              {group.questions.map((question, index) => {
-                const originalIndex = question.originalIndex ?? question.questionIndex ?? index;
-                const imageKey = questionImageKey(courseKey, question.topic, originalIndex);
-                return (
-                  <QuestionCard
-                    key={`${group.name}-${index}`}
-                    question={question}
-                    topic={question.topic}
-                    priority={question.topicPriority}
-                    showTopic
-                    images={images[imageKey] || []}
-                    canEditPictures={canEditPictures}
-                    onOpenPicture={onOpenPicture}
-                    onPickPicture={() => onPickPicture?.(imageKey)}
-                    onRemovePicture={onRemovePicture}
-                    onDropPictures={(files) => onDropPictures?.(imageKey, files)}
-                  />
-                );
-              })}
-            </ol>
-          </div>
-        </details>
-      ))}
+      {usingPapers ? papers.map(renderPaper) : groups.map(renderGroup)}
     </div>
   );
 }
@@ -917,17 +1216,20 @@ export default function PreviewPanel({
   images = {},
   onAttachImage,
   onRemoveImage,
+  checklistItems = {},
+  onToggleChecklist,
+  checklistEnabled = false,
 }) {
   const [selectedTopics, setSelectedTopics] = useState(() => new Set());
   const [mergeTopic, setMergeTopic] = useState('');
   const [mergeSelection, setMergeSelection] = useState(() => new Set());
   const [lightbox, setLightbox] = useState(null);
   const pictureInputRef = useRef(null);
-  const pendingKeyRef = useRef('');
+  const pendingKeyRef = useRef({ imageKey: '', kind: 'question' });
   const canEditPictures = typeof onAttachImage === 'function';
 
-  const pickPicture = (imageKey) => {
-    pendingKeyRef.current = imageKey;
+  const pickPicture = (imageKey, kind = 'question') => {
+    pendingKeyRef.current = { imageKey, kind };
     pictureInputRef.current?.click();
   };
 
@@ -941,9 +1243,9 @@ export default function PreviewPanel({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [lightbox]);
 
-  const handlePictureFiles = async (imageKey, files) => {
+  const handlePictureFiles = async (imageKey, files, kind = 'question') => {
     if (!imageKey || !files || !files.length) return;
-    await onAttachImage?.(imageKey, files);
+    await onAttachImage?.(imageKey, files, kind);
   };
   const topics = useMemo(() => (Array.isArray(data?.topics) ? data.topics : []), [data]);
   const selectedNames = useMemo(() => (
@@ -955,20 +1257,14 @@ export default function PreviewPanel({
   );
   const analytics = useMemo(() => buildPreviewAnalytics(filteredData), [filteredData]);
   const insights = useMemo(() => buildPreviewInsights(analytics), [analytics]);
-  const semesterGroups = useMemo(() => {
-    const map = new Map();
-    for (const question of analytics.allQuestions) {
-      const name = question.semester && question.semester !== '-'
-        ? question.semester
-        : 'Unknown semester';
-      if (!map.has(name)) map.set(name, []);
-      map.get(name).push(question);
-    }
-    return analytics.semesterStats.map((semester) => ({
-      ...semester,
-      questions: map.get(semester.name) || [],
-    }));
-  }, [analytics]);
+  const semesterGroups = useMemo(() => buildSemesterGroups(analytics), [analytics]);
+  const semesterPapers = useMemo(
+    () => (Array.isArray(data?.semesterPapers) ? [...data.semesterPapers] : [])
+      // The newest paper comes first ("Fall 2024, Spring 2024, Fall 2023, ...").
+      .sort((a, b) => compareSemestersDesc(a.semester, b.semester)),
+    [data],
+  );
+  const semesterCount = semesterPapers.length || semesterGroups.length;
 
   const handleFilterToggle = (name) => {
     const willSelect = !selectedTopics.has(name);
@@ -1301,6 +1597,9 @@ export default function PreviewPanel({
           onPickPicture={pickPicture}
           onRemovePicture={onRemoveImage}
           onDropPictures={handlePictureFiles}
+          checklistItems={checklistItems}
+          checklistEnabled={checklistEnabled}
+          onToggleChecklist={onToggleChecklist}
         />
       </section>
 
@@ -1312,15 +1611,24 @@ export default function PreviewPanel({
               Semester-wise view
             </h3>
             <p className="qba-dash-panel-sub">
-              The same questions, grouped by semester. Open a semester to see its full question text.
+              {semesterPapers.length
+                ? 'Every paper, question by question, exactly as printed. Open a semester to see the original questions.'
+                : 'The same questions, grouped by semester. Open a semester to see its full question text.'}
             </p>
+            {!semesterPapers.length ? (
+              <p className="qba-dash-panel-sub qba-dash-panel-warn">
+                This analysis has no raw paper section, so the merged questions are grouped instead.
+                Re-run the updated master prompt to keep every paper exactly as printed.
+              </p>
+            ) : null}
           </div>
           <span className="qba-dash-panel-note">
-            {semesterGroups.length} {semesterGroups.length === 1 ? 'semester' : 'semesters'}
+            {semesterCount} {semesterCount === 1 ? 'semester' : 'semesters'}
           </span>
         </div>
         <SemesterView
           groups={semesterGroups}
+          papers={semesterPapers}
           courseKey={courseKey}
           images={images}
           canEditPictures={canEditPictures}
@@ -1347,20 +1655,23 @@ export default function PreviewPanel({
         <StudyPlan items={studyPlan} topics={analytics.topics} />
       </section>
 
-      {/* One shared file picker for every question on this panel. */}
+      {/* One shared file picker for every question/answer box on this panel.
+          No `accept` filter: pictures, PDF, PPT/PPTX, Word and any other file
+          are allowed, and the input is `multiple` so there is no file count
+          limit either. */}
       <input
         ref={pictureInputRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp"
         multiple
         className="qba-dash-pic-input"
         onChange={(event) => {
           // Copy the files out first — resetting `value` empties the live
           // FileList, so the array has to be taken before the reset.
           const files = Array.from(event.target.files || []);
-          const imageKey = pendingKeyRef.current;
+          const { imageKey, kind } = pendingKeyRef.current;
           event.target.value = '';
-          if (imageKey && files.length) handlePictureFiles(imageKey, files);
+          pendingKeyRef.current = { imageKey: '', kind: 'question' };
+          if (imageKey && files.length) handlePictureFiles(imageKey, files, kind);
         }}
       />
 

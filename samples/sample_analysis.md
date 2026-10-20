@@ -84,4 +84,36 @@ total_asked: 1
 4. Transactions & Concurrency - medium frequency; learn ACID and serializability.
 5. Bangla / বাংলা পরীক্ষা - one recent question; revise the Bangla terminology once.
 6. Indexing & Storage - low frequency; review only if time allows.
+
+## SEMESTER_PAPERS
+
+### Spring 2023
+| # | Question | Exam | Marks |
+|---|----------|------|-------|
+| 1 | Define super key, candidate key and primary key with one example of each. <br>1.a) Explain clearly how a candidate key differs from a super key. <br>1.b) Show a relation that has more than one candidate key. | Final | 10 |
+| 2 | Consider the relation R(A, B, C, D, E) with the functional dependencies AB → C, C → D and D → E. <br>2.a) Identify every partial and transitive dependency. <br>2.b) Normalize R up to 3NF and show each decomposition step. | Final | 15 |
+| 3 | Express a division query in relational algebra | Mid | 10 |
+| 4 | Explain ACID properties with a bank transfer example | Final | 10 |
+
+### Fall 2023
+| # | Question | Exam | Marks |
+|---|----------|------|-------|
+| 1 | Difference between primary key and foreign key | Quiz | 5 |
+| 2 | Consider the relation R(A, B, C, D) and the functional dependencies AB → C, C → D and D → A. <br>2.a) Find every candidate key and explain why it is minimal. <br>2.b) Check whether R is in 3NF. | Final | 10 |
+| 3 | Explain BCNF with an example where 3NF fails | Mid | 10 |
+| 4 | Write SQL queries using JOIN, GROUP BY and HAVING | Final | 10 |
+| 5 | [image] Draw the precedence graph of this schedule and test whether it is conflict serializable. <br>5.a) Show the precedence graph. <br>5.b) Is the schedule conflict serializable? | Final | 10 |
+| 6 | Compare B+ tree and hash indexing | Quiz | 5 |
+
+### Spring 2024
+| # | Question | Exam | Marks |
+|---|----------|------|-------|
+| 1 | Prove that every candidate key is a super key | Mid | 10 |
+| 2 | Identify partial and transitive dependencies in a relation | Quiz | 5 |
+| 3 | Decompose a relation into BCNF and check lossless join | Final | 15 |
+| 4 | Difference between WHERE and HAVING with examples | Quiz | 5 |
+| 5 | Write a correlated subquery to find the second highest salary | Final | 10 |
+| 6 | Explain two-phase locking and its deadlock problem | Quiz | 5 |
+| 7 | Calculate the number of disk blocks needed for a sparse index | Final | 10 |
+| 8 | ট্রানজেকশনের ACID বৈশিষ্ট্যগুলো উদাহরণসহ ব্যাখ্যা করো | Final | 10 |
 ```

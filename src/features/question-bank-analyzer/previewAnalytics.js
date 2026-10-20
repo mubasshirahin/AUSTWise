@@ -41,6 +41,21 @@ function semesterScore(value) {
   return (year ? Number(year[0]) : 0) * 10 + (season ? SEASON_RANK[season] : 0);
 }
 
+/**
+ * Newest semester first — the order the semester-wise view and the printed
+ * report use. Semesters without a year or season ("Unknown semester") go last,
+ * and two names with the same score keep a stable alphabetical order.
+ */
+export function compareSemestersDesc(a, b) {
+  const scoreA = semesterScore(a);
+  const scoreB = semesterScore(b);
+  if (scoreA === null && scoreB === null) return String(a).localeCompare(String(b));
+  if (scoreA === null) return 1;
+  if (scoreB === null) return -1;
+  if (scoreA !== scoreB) return scoreB - scoreA;
+  return String(a).localeCompare(String(b));
+}
+
 function emptyPriorityMap() {
   return Object.fromEntries(PRIORITIES.map((priority) => [priority, 0]));
 }
@@ -266,6 +281,33 @@ export function buildPreviewAnalytics(data) {
 }
 
 /**
+ * Attach the questions to every semester they were asked in.
+ *
+ * A merged row can name several semesters ("Spring 2017, Fall 2018"), and the
+ * semester counters already split that list — so the rows must be filed the
+ * same way. Otherwise the section header says "21 questions" while the list
+ * shows only the rows whose cell is exactly that one semester.
+ */
+export function buildSemesterGroups(analytics) {
+  const map = new Map();
+  for (const question of analytics?.allQuestions || []) {
+    const names = splitSemesterList(question.semester);
+    if (!names.length) names.push('Unknown semester');
+    for (const name of names) {
+      if (!map.has(name)) map.set(name, []);
+      map.get(name).push(question);
+    }
+  }
+  return (analytics?.semesterStats || [])
+    .map((semester) => ({
+      ...semester,
+      questions: map.get(semester.name) || [],
+    }))
+    // Recent semesters first, so the newest paper is the first card.
+    .sort((a, b) => compareSemestersDesc(a.name, b.name));
+}
+
+/**
  * Narrow the parsed report to the topics picked in the preview filter.
  *
  * The parser data stays untouched (the PDF exports keep the full course), but
@@ -393,7 +435,12 @@ export function applyManualMerges(data, mergeGroups) {
     questions.forEach((question, index) => {
       const indices = groupsByFirst.get(index);
       if (indices) {
-        const variants = indices.map((variantIndex) => questions[variantIndex]);
+        const variants = indices.map((variantIndex) => ({
+          ...questions[variantIndex],
+          // Keep the row the wording came from: each version keeps its own
+          // picture slot, and pictures attached before merging stay with it.
+          originalIndex: variantIndex,
+        }));
         const first = variants[0];
         mergedQuestions.push({
           ...first,
@@ -457,7 +504,7 @@ export function applyManualMerges(data, mergeGroups) {
  * (`variants` — the rows the student grouped in the preview). Both end up
  * here so the preview and the print report show the same thing.
  *
- * @returns {Array<{ label: string, text: string }>}
+ * @returns {Array<{ label: string, text: string, sourceIndex: number|null, slot: string, needsFigure: boolean, figurePosition: 'start'|'end' }>}
  */
 export function buildQuestionVersions(question) {
   if (!question) return [];
@@ -472,22 +519,42 @@ export function buildQuestionVersions(question) {
     const list = [];
     variants.forEach((variant, index) => {
       const own = Array.isArray(variant.versions) ? variant.versions : [];
+      // The picture key follows the original question, so a picture attached
+      // before merging stays with the wording it belongs to.
+      const sourceIndex = typeof variant.originalIndex === 'number' ? variant.originalIndex : null;
       if (own.length) {
         own.forEach((version, ownIndex) => list.push({
           label: nested ? `Version ${index + 1}.${ownIndex + 1}` : `Version ${index + 1}`,
           text: version.text,
+          sourceIndex,
+          slot: ownIndex === 0 ? '' : `v${index + 1}.${ownIndex + 1}`,
+          needsFigure: ownIndex === 0 && Boolean(variant.needsFigure),
+          figurePosition: variant.figurePosition || 'end',
         }));
       } else {
         list.push({
           label: nested ? `Version ${index + 1}.1` : `Version ${index + 1}`,
           text: variant.question || '—',
+          sourceIndex,
+          slot: '',
+          needsFigure: Boolean(variant.needsFigure),
+          figurePosition: variant.figurePosition || 'end',
         });
       }
     });
     return list;
   }
 
-  return Array.isArray(question.versions) ? question.versions : [];
+  const versions = Array.isArray(question.versions) ? question.versions : [];
+  return versions.map((version, index) => ({
+    ...version,
+    // The row's own key holds the first version (and any picture attached
+    // before the versions were shown); later versions get their own slot.
+    sourceIndex: null,
+    slot: index === 0 ? '' : `v${index + 1}`,
+    needsFigure: false,
+    figurePosition: 'end',
+  }));
 }
 
 /**

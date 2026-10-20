@@ -1,19 +1,26 @@
 /**
- * QBA pictures — storage for the images a student attaches to a question.
+ * QBA attachments — storage for the files a student attaches to a question.
  *
- * A picture belongs to ONE question, so it is keyed by
+ * A file belongs to ONE question (and to one box: "real question" or
+ * "answer"), so it is keyed by:
  *   `${courseKey}::${topic}::${questionIndex}`
  * (the index is the question's original position inside its topic, so it
- * survives merging and unmerging similar questions).
+ * survives merging and unmerging similar questions). The record itself stores
+ * `kind: 'question' | 'answer'` so the two boxes stay separate.
+ *
+ * Most files are pictures, but PDFs, PPT/PPTX and Word documents are stored
+ * byte-for-byte too. Pictures are resized; other files are kept as-is and are
+ * shown/printed as a named attachment.
  *
  * The bytes live in IndexedDB — never in localStorage, they are far too big
- * for that. The same records are mirrored to the per-user server store when
- * the student presses "Save Preview", so the pictures come back on another
- * device.
+ * for that. The same records are mirrored to the per-user server store as soon
+ * as they are attached or removed, so the files come back on another device.
  *
  * Everything here is client-side and offline-first: the server is a mirror,
  * never a requirement.
  */
+
+import { buildQuestionVersions } from './previewAnalytics';
 
 const DB_NAME = 'aust-qba-images';
 const DB_VERSION = 1;
@@ -23,10 +30,69 @@ const COURSE_INDEX = 'courseKey';
 /** Server store key prefix — one key per course. */
 export const SERVER_STORE_PREFIX = 'aust-qba-images-v1';
 
+/** Last time this course's picture list was known to match the server. */
+const SYNC_TIME_PREFIX = 'aust-qba-image-sync:';
+
+export function readImageSyncTime(courseKey) {
+  try {
+    return localStorage.getItem(`${SYNC_TIME_PREFIX}${courseKey}`) || '';
+  } catch {
+    return '';
+  }
+}
+
+export function markImageSyncTime(courseKey, isoString = new Date().toISOString()) {
+  try {
+    localStorage.setItem(`${SYNC_TIME_PREFIX}${courseKey}`, isoString);
+    return isoString;
+  } catch {
+    return '';
+  }
+}
+
 export const IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 export const MAX_IMAGE_EDGE = 1600;
-export const MAX_IMAGES_PER_QUESTION = 6;
+/** Non-picture files are kept as-is. This is a safety cap, not a count cap. */
+export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
+export const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.avif', '.svg'];
+
+const MIME_BY_EXTENSION = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
+  '.bmp': 'image/bmp',
+  '.avif': 'image/avif',
+  '.svg': 'image/svg+xml',
+  '.pdf': 'application/pdf',
+  '.ppt': 'application/vnd.ms-powerpoint',
+  '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  '.doc': 'application/msword',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.txt': 'text/plain',
+  '.md': 'text/markdown',
+  '.csv': 'text/csv',
+  '.zip': 'application/zip',
+};
+
+function extensionOf(name) {
+  const value = String(name || '').toLowerCase();
+  const dot = value.lastIndexOf('.');
+  return dot >= 0 ? value.slice(dot) : '';
+}
+
+/** A useful MIME type even on Windows, where file.type is often empty. */
+export function inferMimeType(name) {
+  return MIME_BY_EXTENSION[extensionOf(name)] || 'application/octet-stream';
+}
+
+export function isImageMime(mime, name = '') {
+  const type = String(mime || '').toLowerCase();
+  if (type.startsWith('image/')) return true;
+  return IMAGE_EXTENSIONS.includes(extensionOf(name));
+}
 
 /* ── IndexedDB ─────────────────────────────────────────────────────────────── */
 
@@ -90,9 +156,41 @@ export function questionImageKey(courseKey, topicName, questionIndex) {
 }
 
 /**
- * Copy the attached pictures into a report so the print report can show them
+ * The key of one picture slot in the raw semester papers. `@semester` keeps
+ * these apart from topic keys (a topic could theoretically be named "spring
+ * 2017").
+ */
+export function semesterImageKey(courseKey, semester, questionIndex) {
+  const name = String(semester || '').trim().toLowerCase();
+  return `${courseKey}::@semester::${name}::${questionIndex}`;
+}
+
+function attachmentForReport(image) {
+  const entry = { name: image.name, url: image.url };
+  if (image.mime) entry.mime = image.mime;
+  if (image.size) entry.size = image.size;
+  if (image.media) entry.media = image.media;
+  return entry;
+}
+
+function splitAttachments(list) {
+  const question = [];
+  const answer = [];
+  (Array.isArray(list) ? list : []).forEach((image) => {
+    if (!image || !image.url) return;
+    const target = image.kind === 'answer' ? answer : question;
+    target.push(attachmentForReport(image));
+  });
+  return { question, answer };
+}
+
+/**
+ * Copy the attached files into a report so the print report can show them
  * under their question. The report itself is left untouched — the caller
  * decides whether the result is for printing or for saving.
+ *
+ * Records created before the question/answer split have no `kind`; they are
+ * treated as question pictures so old data keeps working.
  */
 export function attachImagesToReport(report, courseKey, byQuestion) {
   if (!report || !Array.isArray(report.topics)) return report;
@@ -101,17 +199,88 @@ export function attachImagesToReport(report, courseKey, byQuestion) {
   const topics = report.topics.map((topic) => {
     const questions = (Array.isArray(topic.questions) ? topic.questions : []).map((question, index) => {
       const originalIndex = question.originalIndex ?? index;
-      const list = byQuestion[questionImageKey(courseKey, topic.name, originalIndex)];
-      if (!list || !list.length) return question;
+      const baseKey = questionImageKey(courseKey, topic.name, originalIndex);
+      const base = splitAttachments(byQuestion[baseKey]);
+
+      // Every wording keeps its own attachments: the first one shares the
+      // row's slot (so files added before the versions were shown still
+      // appear), later ones use the slot the preview gives them.
+      const versions = buildQuestionVersions(question);
+      const versionImages = versions.map((version) => {
+        const source = typeof version.sourceIndex === 'number' ? version.sourceIndex : originalIndex;
+        const baseSlot = questionImageKey(courseKey, topic.name, source);
+        const key = version.slot ? `${baseSlot}::${version.slot}` : baseSlot;
+        return splitAttachments(byQuestion[key]).question;
+      });
+      const versionAnswerImages = versions.map((version) => {
+        const source = typeof version.sourceIndex === 'number' ? version.sourceIndex : originalIndex;
+        const baseSlot = questionImageKey(courseKey, topic.name, source);
+        const key = version.slot ? `${baseSlot}::${version.slot}` : baseSlot;
+        return splitAttachments(byQuestion[key]).answer;
+      });
+
+      const hasVersionImages = versionImages.some((images) => images.length);
+      const hasVersionAnswers = versionAnswerImages.some((images) => images.length);
+      if (
+        !base.question.length
+        && !base.answer.length
+        && !hasVersionImages
+        && !hasVersionAnswers
+      ) {
+        return question;
+      }
+
       return {
         ...question,
-        images: list.map((image) => ({ name: image.name, url: image.url })),
+        ...(base.question.length ? { images: base.question } : {}),
+        ...(base.answer.length ? { answerImages: base.answer } : {}),
+        ...(hasVersionImages ? { versionImages } : {}),
+        ...(hasVersionAnswers ? { versionAnswerImages } : {}),
       };
     });
     return { ...topic, questions };
   });
 
-  return { ...report, topics };
+  const semesterPapers = (Array.isArray(report.semesterPapers) ? report.semesterPapers : []).map((paper) => {
+    const questions = (Array.isArray(paper.questions) ? paper.questions : []).map((question, index) => {
+      const split = splitAttachments(byQuestion[semesterImageKey(courseKey, paper.semester, index)]);
+      if (!split.question.length && !split.answer.length) return question;
+      return {
+        ...question,
+        ...(split.question.length ? { images: split.question } : {}),
+        ...(split.answer.length ? { answerImages: split.answer } : {}),
+      };
+    });
+    return { ...paper, questions };
+  });
+
+  return { ...report, topics, semesterPapers };
+}
+
+/**
+ * Merge the local picture cache with the server mirror.
+ *
+ * The server is authoritative for pictures that were synced before: if it no
+ * longer has one, it was deleted on another device and is dropped here. A
+ * picture added after the last sync (or while offline) is kept and pushed.
+ *
+ * @param {Array} local - records in IndexedDB
+ * @param {Array} remote - records from the server (which just answered)
+ * @param {string} lastSync - ISO time of the last successful sync ('' if none)
+ * @returns {{ merged: Array, unsynced: Array, dropped: Array }}
+ */
+export function mergeImageLists(local, remote, lastSync) {
+  const localList = Array.isArray(local) ? local : [];
+  const remoteList = Array.isArray(remote) ? remote : [];
+  const remoteIds = new Set(remoteList.map((record) => record.id));
+  const unsynced = localList.filter((record) => (
+    !remoteIds.has(record.id)
+    && (!lastSync || String(record.createdAt || '') > lastSync)
+  ));
+  const merged = [...remoteList, ...unsynced];
+  const keptIds = new Set(merged.map((record) => record.id));
+  const dropped = localList.filter((record) => !keptIds.has(record.id));
+  return { merged, unsynced, dropped };
 }
 
 /* ── image preparation ─────────────────────────────────────────────────────── */
@@ -150,17 +319,18 @@ function canvasToBlob(canvas, mime, quality) {
 }
 
 /**
- * Shrink and re-encode a picked file so it stays small enough for IndexedDB,
- * for the server mirror and for the print report.
+ * Shrink and re-encode a picked picture so it stays small enough for
+ * IndexedDB, for the server mirror and for the print report.
  *
  * PNG stays PNG (diagrams keep their sharp lines) unless it grows past
- * 1.2 MB, then it falls back to JPEG.
+ * 1.2 MB, then it falls back to JPEG. Every other browser-readable image
+ * (GIF, BMP, SVG, …) becomes JPEG on a white background.
  */
 export async function prepareImageFile(file) {
   if (!file) throw new Error('No file was given.');
   const type = String(file.type || '').toLowerCase();
-  if (!IMAGE_MIME_TYPES.includes(type)) {
-    throw new Error(`"${file.name}" is not a PNG, JPG or WebP picture.`);
+  if (!isImageMime(type, file.name)) {
+    throw new Error(`"${file.name}" is not a picture.`);
   }
   if (file.size > MAX_IMAGE_BYTES) {
     throw new Error(`"${file.name}" is bigger than 8 MB.`);
@@ -197,6 +367,32 @@ export async function prepareImageFile(file) {
     width,
     height,
     name: file.name || 'picture',
+    media: 'image',
+  };
+}
+
+/**
+ * Prepare anything the student drops into a question/answer box.
+ *
+ * Pictures are resized and re-encoded. PDF, PPT, PPTX, DOC, DOCX and any other
+ * file are stored byte-for-byte and rendered as a named attachment.
+ */
+export async function prepareAttachmentFile(file) {
+  if (!file) throw new Error('No file was given.');
+  if (isImageMime(file.type, file.name)) {
+    return prepareImageFile(file);
+  }
+  if (file.size > MAX_ATTACHMENT_BYTES) {
+    throw new Error(`"${file.name}" is bigger than 25 MB.`);
+  }
+  return {
+    blob: file,
+    mime: String(file.type || '').toLowerCase() || inferMimeType(file.name),
+    size: file.size,
+    width: 0,
+    height: 0,
+    name: file.name || 'attachment',
+    media: 'file',
   };
 }
 
@@ -268,11 +464,13 @@ function serverKey(courseKey) {
 /**
  * Copy every picture of a course to the per-user server store so another
  * device can fetch them. Returns true when the server accepted them.
+ *
+ * An empty list is pushed too: otherwise a picture the student deleted would
+ * stay on the server and come back on a new device.
  */
 export async function pushImagesToServer(courseKey, records) {
-  if (!records.length) return true;
   const payload = [];
-  for (const record of records) {
+  for (const record of records || []) {
     payload.push({
       id: record.id,
       questionKey: record.questionKey,
@@ -281,6 +479,9 @@ export async function pushImagesToServer(courseKey, records) {
       size: record.size,
       width: record.width,
       height: record.height,
+      kind: record.kind === 'answer' ? 'answer' : 'question',
+      media: record.media === 'file' ? 'file' : 'image',
+      createdAt: record.createdAt,
       dataUrl: await blobToDataUrl(record.blob),
     });
   }
@@ -294,16 +495,24 @@ export async function pushImagesToServer(courseKey, records) {
   return res.ok;
 }
 
-/** Fetch the mirrored pictures of a course (empty when there are none). */
+/**
+ * Fetch the mirrored pictures of a course.
+ *
+ * @returns {Promise<{ ok: boolean, records: Array }>} `ok` says whether the
+ *   server answered. `ok: false` must never be treated as "no pictures" —
+ *   that would let a failed request wipe the local copy.
+ */
 export async function pullImagesFromServer(courseKey) {
   try {
     const res = await fetch(`/api/store/user/${encodeURIComponent(serverKey(courseKey))}`, {
       credentials: 'same-origin',
     });
-    if (!res.ok) return [];
+    if (!res.ok) return { ok: false, records: [] };
     const json = await res.json();
-    const list = Array.isArray(json.value) ? json.value : [];
-    return list
+    const list = Array.isArray(json.value)
+      ? json.value
+      : (Array.isArray(json.value?.images) ? json.value.images : []);
+    const records = list
       .map((item) => {
         const blob = dataUrlToBlob(item.dataUrl);
         if (!blob) return null;
@@ -311,8 +520,14 @@ export async function pullImagesFromServer(courseKey) {
           id: item.id || newImageId(),
           courseKey,
           questionKey: item.questionKey,
-          name: item.name || 'picture',
-          mime: item.mime || blob.type || 'image/jpeg',
+          kind: item.kind === 'answer' ? 'answer' : 'question',
+          media: item.media === 'file'
+            ? 'file'
+            : item.media === 'image'
+              ? 'image'
+              : (isImageMime(item.mime || blob.type, item.name) ? 'image' : 'file'),
+          name: item.name || 'attachment',
+          mime: item.mime || blob.type || inferMimeType(item.name),
           size: item.size || blob.size,
           width: item.width || 0,
           height: item.height || 0,
@@ -321,7 +536,8 @@ export async function pullImagesFromServer(courseKey) {
         };
       })
       .filter(Boolean);
+    return { ok: true, records };
   } catch {
-    return [];
+    return { ok: false, records: [] };
   }
 }

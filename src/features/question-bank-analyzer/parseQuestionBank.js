@@ -82,6 +82,64 @@ export function splitQuestionVersions(value) {
   return versions.length >= 2 ? versions : [];
 }
 
+// ── sub-questions ────────────────────────────────────────────────────────────
+
+// "(a)", "(ii)", "(ক)", "a)", "b.", "ক)" — optionally prefixed with the main
+// question number as the master prompt asks the AI to write ("2.a)", "2.a)").
+const SUB_QUESTION_MARKER = /^\s*(?:(\d{1,3})\s*[.)]\s*)?(?:\(\s*([a-zA-Z]{1,3}|[ক-হ]{1,3})\s*\)|([a-zA-Z]|[ক-হ])\s*[.)])\s*(.*)$/;
+
+/**
+ * Raw papers often pack one numbered question into several lettered parts:
+ *
+ *   Define super key.
+ *   2.a) Explain the difference ...
+ *   2.b) Show a relation ...
+ *
+ * The semester view shows those parts separately as "1.a)", "1.b)" instead of
+ * one block of text. The stem (everything before the first marker) stays the
+ * question itself; every marker starts a part. A main number written in front
+ * of the letter ("2.a") is kept, so a gap in the source stays visible.
+ *
+ * @returns {{ stem: string, parts: Array<{ number: string, label: string, text: string }> }}
+ *   `parts` is empty when the question has no sub-parts.
+ */
+export function splitSubQuestions(value) {
+  const text = String(value ?? '').replace(/\r\n?/g, '\n').trim();
+  if (!text) return { stem: '', parts: [] };
+
+  const stemLines = [];
+  const parts = [];
+  let current = null;
+
+  text.split('\n').forEach((line) => {
+    const match = line.match(SUB_QUESTION_MARKER);
+    if (match) {
+      if (current) parts.push(current);
+      current = {
+        number: match[1] || '',
+        label: (match[2] || match[3] || '').toLowerCase(),
+        text: (match[4] || '').trim(),
+      };
+    } else if (current) {
+      // A wrapped line that belongs to the sub-question above it.
+      current.text = `${current.text}\n${line.trim()}`.trim();
+    } else {
+      stemLines.push(line);
+    }
+  });
+  if (current) parts.push(current);
+
+  const cleaned = parts
+    .map((part) => ({ ...part, text: part.text.trim() }))
+    .filter((part) => part.label && part.text);
+  const stem = stemLines.join('\n').trim();
+
+  // A lone "(a)" without a stem is not a list of sub-questions.
+  if (!cleaned.length) return { stem: text, parts: [] };
+  if (cleaned.length === 1 && !stem) return { stem: text, parts: [] };
+  return { stem, parts: cleaned };
+}
+
 // ── picture markers ───────────────────────────────────────────────────────────
 
 /**
@@ -140,6 +198,7 @@ function emptyData() {
     title: '',
     semesters: [],
     topics: [],
+    semesterPapers: [],
     vipMatrix: [],
     studyPlan: [],
     summary: {
@@ -216,10 +275,12 @@ function normalizeSemester(value) {
 export function splitSemesterList(value) {
   const text = cleanInline(value);
   if (!text || text === '-') return [];
-  return text
-    .split(/\s*[,;]\s*/)
-    .map((part) => part.trim())
-    .filter((part) => part && part !== '-');
+  return [...new Set(
+    text
+      .split(/\s*[,;]\s*/)
+      .map((part) => part.trim())
+      .filter((part) => part && part !== '-'),
+  )];
 }
 
 function semesterScore(value) {
@@ -323,6 +384,9 @@ function detectHeading(line) {
   }
   if (/^VIP[\s_-]*MATRIX\b/i.test(withoutHashes)) return { type: 'vip' };
   if (/^STUDY[\s_-]*PLAN\b/i.test(withoutHashes)) return { type: 'study' };
+  if (/^(?:SEMESTER|RAW)(?:[\s_-]*(?:WISE|QUESTION))*[\s_-]*(?:PAPERS?|WISE)\b/i.test(withoutHashes)) {
+    return { type: 'papers' };
+  }
   if (hasHash) return { type: 'other' };
   return null;
 }
@@ -412,7 +476,9 @@ function extractTable(lines, kind) {
   const parsed = tableLines.map(splitTableRow).filter((cells) => !isSeparatorRow(cells));
   if (!parsed.length) return { header: null, rows: [] };
 
-  const header = kind === 'topic' ? looksLikeTopicHeader(parsed[0]) : looksLikeVipHeader(parsed[0]);
+  const header = kind === 'vip'
+    ? looksLikeVipHeader(parsed[0])
+    : looksLikeTopicHeader(parsed[0]);
   return header
     ? { header: parsed[0], rows: parsed.slice(1) }
     : { header: null, rows: parsed };
@@ -594,6 +660,146 @@ function parseTopicBlock(block, warn, note) {
   };
 }
 
+// ── semester papers (raw) ────────────────────────────────────────────────────
+
+/**
+ * The SEMESTER_PAPERS section is the teacher's paper, unmerged: one row per
+ * question in the order it was printed. It is not a TOPIC block, and its
+ * "### Spring 2017" sub-headings would confuse the normal section splitter, so
+ * the whole region is cut out of the body before that runs.
+ */
+function extractSemesterPapersSection(body) {
+  const lines = body.split('\n');
+  const start = lines.findIndex((line) => {
+    const heading = detectHeading(line);
+    return heading && heading.type === 'papers';
+  });
+  if (start === -1) return { lines: [], body };
+
+  let end = lines.length;
+  for (let i = start + 1; i < lines.length; i += 1) {
+    const heading = detectHeading(lines[i]);
+    if (heading && heading.type !== 'other') {
+      end = i;
+      break;
+    }
+  }
+  return {
+    lines: lines.slice(start + 1, end),
+    body: [...lines.slice(0, start), ...lines.slice(end)].join('\n'),
+  };
+}
+
+/** "### Spring 2017", "Semester: Fall 2018", "**Spring 2023**" → a name. */
+function semesterHeadingName(line) {
+  const trimmed = String(line || '').trim();
+  if (!trimmed) return '';
+  const hasHash = /^#{1,6}\s*\S/.test(trimmed);
+  const withoutHashes = stripEmphasis(trimmed.replace(/^#{1,6}\s*/, '')).trim();
+  if (!withoutHashes || trimmed.includes('|')) return '';
+
+  const explicit = withoutHashes.match(/^(?:semester|sem|term)\s*[:=–-]\s*(.+)$/i);
+  if (explicit) return cleanInline(explicit[1]);
+
+  const looksLikeSemester = (text) => (
+    /(?:19|20)\d{2}/.test(text) || /(?:spring|summer|fall|autumn|winter)/i.test(text)
+  );
+
+  if (hasHash) {
+    const name = cleanInline(withoutHashes);
+    if (!name || /^(?:semester|raw)?[\s_-]*(?:papers?|wise)\b/i.test(name)) return '';
+    return looksLikeSemester(name) ? name : '';
+  }
+
+  // A bold, plain line that names a semester ("**Spring 2017**").
+  const plain = cleanInline(withoutHashes);
+  if (!looksLikeSemester(plain)) return '';
+  const isBold = /^\*\*.+\*\*$/.test(trimmed) || /^__.+__$/.test(trimmed);
+  const plainHeading = /(?:spring|summer|fall|autumn|winter)/i.test(plain)
+    && /(?:19|20)\d{2}/.test(plain)
+    && !/[.!?]\s/.test(plain);
+  if (!isBold && !plainHeading) return '';
+  return plain.replace(/^semester\s*[:=–-]?\s*/i, '');
+}
+
+function paperColumnIndices(header, rows) {
+  if (header) {
+    const keys = header.map(normKey);
+    return {
+      number: findColumn(keys, ['#', 'no', 'no.', 'num', 'number', 'serial', 'sl', 'sno', 's no']),
+      question: findColumn(keys, ['question', 'questions', 'question text', 'ques', 'q']),
+      exam: findColumn(keys, ['exam type', 'exam', 'assessment', 'type']),
+      marks: findColumn(keys, ['marks', 'mark', 'score', 'points', 'weightage', 'weight']),
+    };
+  }
+  const first = rows[0] || [];
+  const firstLooksNumeric = /^\s*#?\s*\d+[.)]?\s*$/.test(first[0] || '');
+  return firstLooksNumeric && first.length >= 4
+    ? { number: 0, question: 1, exam: 2, marks: 3 }
+    : { number: -1, question: 0, exam: 1, marks: 2 };
+}
+
+/**
+ * Parse the raw paper of every semester. Nothing is merged, deduplicated or
+ * reordered: each row is exactly one question as it was printed.
+ */
+function parseSemesterPapers(lines, warn, note) {
+  const groups = [];
+  let current = null;
+
+  for (const line of lines) {
+    const name = semesterHeadingName(line);
+    if (name) {
+      current = { semester: name, lines: [] };
+      groups.push(current);
+    } else if (current) {
+      current.lines.push(line);
+    }
+  }
+
+  const papers = [];
+  let figureCount = 0;
+
+  for (const group of groups) {
+    const { header, rows } = extractTable(group.lines, 'paper');
+    const indices = paperColumnIndices(header, rows);
+    const questions = [];
+
+    rows.forEach((row, rowIndex) => {
+      const rawQuestion = cleanQuestion(cellAt(row, indices.question));
+      if (!rawQuestion || rawQuestion === '-' || /^[-–—]+$/.test(rawQuestion)) return;
+      if (looksLikeTopicHeader(row)) return;
+
+      const figure = extractFigureMarker(rawQuestion);
+      const numberValue = parseInt(cellAt(row, indices.number), 10);
+      const marksParsed = parseCount(cellAt(row, indices.marks));
+
+      questions.push({
+        number: Number.isFinite(numberValue) && numberValue > 0 ? numberValue : rowIndex + 1,
+        question: figure.text || '—',
+        exam: normalizeExam(cellAt(row, indices.exam)),
+        marks: marksParsed.value,
+        marksApproximate: marksParsed.approximate,
+        needsFigure: figure.needsFigure,
+        figurePosition: figure.figurePosition,
+      });
+      if (figure.needsFigure) figureCount += 1;
+    });
+
+    if (!questions.length) {
+      warn(`Semester "${group.semester}" is listed in SEMESTER_PAPERS but its question table has no readable rows.`);
+      continue;
+    }
+    papers.push({ semester: group.semester, questions });
+  }
+
+  if (figureCount && typeof note === 'function') {
+    note(`${figureCount} raw question${figureCount === 1 ? '' : 's'} in the semester papers had a picture in the source.`);
+  }
+
+  return papers;
+}
+
 // ── VIP matrix ───────────────────────────────────────────────────────────────
 
 function parseVipBlock(block, warn) {
@@ -697,7 +903,7 @@ function recomputeSummary(topics, matrix) {
   };
 }
 
-function collectSemesters(frontMatterSemesters, topics) {
+function collectSemesters(frontMatterSemesters, topics, semesterPapers) {
   const ordered = [];
   const seen = new Set();
   const add = (semester) => {
@@ -709,6 +915,7 @@ function collectSemesters(frontMatterSemesters, topics) {
     ordered.push(clean);
   };
   (frontMatterSemesters || []).forEach(add);
+  (semesterPapers || []).forEach((paper) => add(paper.semester));
   topics.forEach((topic) => topic.questions.forEach((question) => {
     splitSemesterList(question.semester).forEach(add);
   }));
@@ -740,6 +947,15 @@ export function parseQuestionBank(rawText) {
     const frontMatter = extractFrontMatter(text);
     let body = frontMatter.body;
     const fields = frontMatter.fields || {};
+
+    // Cut the raw semester papers out first: their "### Spring 2017"
+    // sub-headings are not TOPIC sections and must not split anything.
+    const papersSection = extractSemesterPapersSection(body);
+    body = papersSection.body;
+    const semesterPapers = parseSemesterPapers(papersSection.lines, warn, note);
+    if (!semesterPapers.length) {
+      note('No SEMESTER_PAPERS section was found — the semester-wise view will group the merged questions. Use the updated master prompt to get the raw papers exactly as printed.');
+    }
 
     if (!frontMatter.found) {
       warn('No front matter was found — course code and title could not be read from the file. You can still type them above.');
@@ -837,8 +1053,9 @@ export function parseQuestionBank(rawText) {
     const data = {
       course: unquote(fields.course || ''),
       title: unquote(fields.title || ''),
-      semesters: collectSemesters(parseSemesters(fields.semesters || ''), topics),
+      semesters: collectSemesters(parseSemesters(fields.semesters || ''), topics, semesterPapers),
       topics,
+      semesterPapers,
       vipMatrix,
       studyPlan,
       summary: recomputeSummary(topics, vipMatrix),
@@ -947,6 +1164,8 @@ export function mergeAnalyses(parsedList) {
   const semesterList = [];
   const topicMap = new Map();
   const topics = [];
+  const paperMap = new Map();
+  const semesterPapers = [];
   let duplicateRows = 0;
   const plan = [];
   const planSeen = new Set();
@@ -982,6 +1201,34 @@ export function mergeAnalyses(parsedList) {
       }
     }
 
+    // Raw semester papers: keep every part's rows, but drop exact repeats
+    // (the "continue" overlap can repeat the last semester's table).
+    for (const paper of data.semesterPapers || []) {
+      const key = normName(paper.semester);
+      if (!key) continue;
+      let target = paperMap.get(key);
+      if (!target) {
+        target = { semester: paper.semester, questions: [] };
+        paperMap.set(key, target);
+        semesterPapers.push(target);
+      }
+      const seenRows = new Set(target.questions.map((question) => [
+        normName(question.question),
+        normName(question.exam),
+        question.marks ?? '-',
+      ].join('|')));
+      for (const question of paper.questions || []) {
+        const rowKey = [
+          normName(question.question),
+          normName(question.exam),
+          question.marks ?? '-',
+        ].join('|');
+        if (seenRows.has(rowKey)) continue;
+        seenRows.add(rowKey);
+        target.questions.push({ ...question });
+      }
+    }
+
     (data.studyPlan || []).forEach((item) => {
       const key = normName(item.text);
       if (!key || planSeen.has(key)) return;
@@ -989,13 +1236,16 @@ export function mergeAnalyses(parsedList) {
       plan.push({ step: plan.length + 1, text: item.text });
     });
   }
-
   if (duplicateRows > 0) {
     warn(`${duplicateRows} duplicate question row(s) were merged across parts (likely the "continue" overlap).`);
   }
 
   // Recompute every topic count from the merged rows.
   for (const topic of topics) recomputeTopic(topic);
+  // Raw papers keep their printed order; only the numbering is made sequential.
+  for (const paper of semesterPapers) {
+    paper.questions.forEach((question, index) => { question.number = index + 1; });
+  }
 
   const vipMatrix = sortVipMatrix(buildMatrixFromTopics(topics));
   warn('Parts were merged, so the VIP matrix was recalculated from all question rows.');
@@ -1006,8 +1256,9 @@ export function mergeAnalyses(parsedList) {
   const data = {
     course,
     title,
-    semesters: collectSemesters(semesterList, topics),
+    semesters: collectSemesters(semesterList, topics, semesterPapers),
     topics,
+    semesterPapers,
     vipMatrix,
     studyPlan,
     summary: recomputeSummary(topics, vipMatrix),

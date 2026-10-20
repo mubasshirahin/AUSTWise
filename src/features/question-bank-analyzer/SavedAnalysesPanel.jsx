@@ -15,6 +15,7 @@ import {
   ChevronUp,
   Image as ImageIcon,
   Info,
+  ListChecks,
   Loader2,
   Printer,
   RefreshCw,
@@ -24,6 +25,8 @@ import PreviewPanel from './PreviewPanel';
 import PrintReport, { PrintPortal } from './PrintReport';
 import { downloadReportImagePdf, reportBaseName } from './qbaPdf';
 import { attachImagesToReport } from './qbaImageStore';
+import { countSolvedQuestions } from './qbaChecklist';
+import useQbaChecklist from './useQbaChecklist';
 import useQbaImages from './useQbaImages';
 import {
   clearAllAnalyses,
@@ -58,9 +61,14 @@ function SavedCard({ entry, onDelete }) {
   // The pictures attached to this course — the same ones the Analyzer tab
   // shows, so a saved analysis keeps its figures.
   const pictures = useQbaImages(courseCode);
+  const checklist = useQbaChecklist(courseCode || displayData?.course || '');
   const printableData = useMemo(
     () => attachImagesToReport(displayData, pictures.courseKey, pictures.byQuestion),
     [displayData, pictures.courseKey, pictures.byQuestion],
+  );
+  const solvedProgress = useMemo(
+    () => countSolvedQuestions(displayData?.topics, checklist.items),
+    [displayData, checklist.items],
   );
 
   const topicCount    = displayData?.summary?.topicCount    ?? displayData?.topics?.length ?? 0;
@@ -193,6 +201,14 @@ function SavedCard({ entry, onDelete }) {
                 {questionCount} question{questionCount !== 1 ? 's' : ''}
               </span>
               <span className="qba-saved-card-meta-sep" aria-hidden="true">·</span>
+              <span
+                className="qba-saved-card-meta-item qba-saved-progress-meta"
+                title="Questions marked solved in this analysis"
+              >
+                <ListChecks size={13} aria-hidden="true" />
+                {solvedProgress.solved}/{solvedProgress.total} solved
+              </span>
+              <span className="qba-saved-card-meta-sep" aria-hidden="true">·</span>
               <span className="qba-saved-card-meta-item qba-saved-muted" title={savedAt}>
                 {formatSavedAt(savedAt)}
               </span>
@@ -289,6 +305,9 @@ function SavedCard({ entry, onDelete }) {
             images={pictures.byQuestion}
             onAttachImage={pictures.attach}
             onRemoveImage={pictures.remove}
+            checklistItems={checklist.items}
+            checklistEnabled={Boolean(displayData?.topics?.length) && checklist.enabled}
+            onToggleChecklist={checklist.toggle}
           />
           {/* bottom download bar */}
           <div className="qba-saved-card-dl-bar">
@@ -344,12 +363,20 @@ export default function SavedAnalysesPanel({ onCountChange }) {
   }, [entries.length, onCountChange]);
 
   const handleDelete = useCallback(async (id) => {
-    await deleteAnalysis(id);
+    const ok = await deleteAnalysis(id);
+    if (!ok) {
+      setError('Could not delete that saved analysis. Check your connection and try again.');
+      return;
+    }
     setEntries((prev) => prev.filter((e) => e.id !== id));
   }, []);
 
   const handleClearAll = useCallback(async () => {
-    await clearAllAnalyses();
+    const ok = await clearAllAnalyses();
+    if (!ok) {
+      setError('Could not clear your saved analyses. Check your connection and try again.');
+      return;
+    }
     setEntries([]);
   }, []);
 

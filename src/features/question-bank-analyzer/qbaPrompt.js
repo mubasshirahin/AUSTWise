@@ -87,6 +87,38 @@ RULE 7 — UNREADABLE FILES:
 If a file is scanned or unreadable, say which one and stop. Never guess
 its content.
 
+RULE 8 — RAW SEMESTER PAPERS (never merged):
+The TOPIC blocks are merged. The teacher's papers must ALSO be reproduced
+raw, exactly as they were printed, in the SEMESTER_PAPERS section at the
+end. For every semester:
+  - one row per main question, in the order it appears on that paper;
+  - the "#" column runs 1, 2, 3 ... with NO gaps, NO repeats and NO skipped
+    numbers — every source question gets exactly one row;
+  - NEVER merge, deduplicate, relabel or add "Version" text here — if the
+    same question appears twice, write it twice;
+  - copy the wording exactly (RULE 2) and keep the [image] token exactly
+    where the picture was (RULE 6);
+  - SUB-QUESTIONS (this is how I check for missing parts): every lettered
+    sub-part gets its OWN line inside the cell, starting with the row's
+    number, a dot and a lower-case letter:
+        | 2 | <question stem><br>2.a) <first sub-part><br>2.b) <second sub-part> | Mid | 10 |
+    The prefix must match the row's own "#" (row 2 means 2.a), 2.b)).
+    The letters run a, b, c, d ... in source order with NO gaps. A 2.b)
+    may never exist without a 2.a), and no later part may be renumbered to
+    hide a missing one. Never write the parts as one run-on line, and
+    never put two sub-parts in the same line. For the parts themselves,
+    use the wording as printed (if the paper writes (i), (ii), keep that
+    wording but the label in front is still 2.a), 2.b)). If a source part
+    is unreadable, keep its line with [unclear] so the count does not
+    shift. A question with no sub-parts stays on one line with no letter.
+  - Exam = Final / Mid / Quiz / Class Test / Other;
+  - Marks = the marks printed on the paper.
+Before closing a semester, count the source questions and sub-parts again:
+the output must contain every one, in the same order.
+The total number of rows in SEMESTER_PAPERS must equal
+total_questions_extracted (one row per main question; sub-parts stay
+inside their row).
+
 ═══════════════════
 OUTPUT RULES (STRICT)
 ═══════════════════
@@ -102,7 +134,10 @@ OUTPUT RULES (STRICT)
 - DO NOT stop mid-output. If the response is getting long, continue in
   the same format without repeating headers. If output gets cut off, I
   will say "continue" — resume exactly from the last incomplete row.
-- After finishing ALL topic blocks, output the VIP_MATRIX and STUDY_PLAN.
+  In SEMESTER_PAPERS, repeat the current "### <semester>" heading and the
+  table header before the resumed rows.
+- After finishing ALL topic blocks, output the VIP_MATRIX, then the
+  STUDY_PLAN, then the SEMESTER_PAPERS section.
 
 ═══════
 FORMAT
@@ -112,7 +147,7 @@ FORMAT
 course: ${courseCode}
 title: ${courseTitle}
 semesters: [list every semester found across all files]
-total_questions_extracted: <exact count before merging>
+total_questions_extracted: <exact count of main question rows (sub-parts stay inside their row)>
 total_rows_after_merge: <exact count after merging>
 ---
 
@@ -135,7 +170,17 @@ total_asked: <total times this topic was examined, counting all versions and rep
 ## STUDY_PLAN
 
 1. <topic> — <one-line reason including how many times asked and most recent semester>
-2. <topic> — <one-line reason>`;
+2. <topic> — <one-line reason>
+
+## SEMESTER_PAPERS
+
+### <semester name, exactly as written on the paper>
+| # | Question | Exam | Marks |
+|---|----------|------|-------|
+| 1 | <question exactly as printed — raw, never merged> | Final | 15 |
+| 2 | <question stem><br>2.a) <first sub-part exactly as printed><br>2.b) <second sub-part exactly as printed> | Mid | 10 |
+
+(Repeat one ### block for every semester, oldest semester first.)`;
 }
 
 export default buildPrompt;
