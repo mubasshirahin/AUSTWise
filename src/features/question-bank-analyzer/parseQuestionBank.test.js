@@ -7,6 +7,7 @@ import {
   parseCount,
   sortVipMatrix,
   extractFigureMarker,
+  parseMasterPool,
   splitQuestionVersions,
   splitSubQuestions,
   splitSemesterList,
@@ -739,5 +740,219 @@ total_asked: 3
     // Exact repeats from a "continue" overlap must not double the paper.
     expect(merged.data.semesterPapers).toHaveLength(2);
     expect(merged.data.semesterPapers[0].questions).toHaveLength(3);
+  });
+});
+
+describe('master question pool (QID references)', () => {
+  const QID_FILE = `---
+course: CSE 3109
+title: Digital System Design
+semesters: [Spring 2025, Fall 2024]
+---
+
+<!-- MASTER QUESTION POOL (SINGLE SOURCE OF TRUTH) -->
+<!-- [QID: 001] Explain the ALU with a block diagram. [image] -->
+<!-- Answer: The ALU performs arithmetic and logic operations. -->
+<!-- Topic: 8085 Architecture -->
+<!-- Semesters: Spring 2025, Fall 2024 -->
+<!-- [QID: 002] Design a full adder using only NAND gates. -->
+<!-- Answer: Two half adders and an OR gate. -->
+<!-- Topic: Logic Design -->
+<!-- Semesters: Fall 2024 -->
+
+## TOPIC: 8085 Architecture
+priority: VIP
+total_asked: 2
+
+| # | Question | Exam | Semester | Marks | Times |
+|---|----------|------|----------|-------|-------|
+| 1 | [QID: 001] | Final | Spring 2025, Fall 2024 | 15 | 2 |
+
+## TOPIC: Logic Design
+priority: HIGH
+total_asked: 1
+
+| # | Question | Exam | Semester | Marks | Times |
+|---|----------|------|----------|-------|-------|
+| 1 | [QID: 002] | Mid | Fall 2024 | 10 | 1 |
+
+## VIP_MATRIX
+
+| Topic | Times Asked | Avg Marks | Last Asked | Priority |
+|-------|-------------|-----------|------------|----------|
+| 8085 Architecture | 2 | 15 | Spring 2025 | VIP |
+| Logic Design | 1 | 10 | Fall 2024 | HIGH |
+
+## STUDY_PLAN
+
+1. 8085 Architecture — asked 2 times, most recent Spring 2025.
+2. Logic Design — asked once, Fall 2024.
+
+## SEMESTER_PAPERS
+
+### Spring 2025
+| # | Question | Exam | Marks |
+|---|----------|------|-------|
+| 1 | [QID: 001] | Final | 15 |
+
+### Fall 2024
+| # | Question | Exam | Marks |
+|---|----------|------|-------|
+| 1 | [QID: 002] | Mid | 10 |`;
+
+  it('reads the master pool and resolves QID references in topic rows', () => {
+    const { data, warnings } = parseQuestionBank(QID_FILE);
+
+    expect(warnings).toEqual([]);
+    expect(data.topics).toHaveLength(2);
+    expect(data.topics[0].questions[0].question)
+      .toBe('Explain the ALU with a block diagram.');
+    expect(data.topics[0].questions[0].needsFigure).toBe(true);
+    expect(data.topics[1].questions[0].question)
+      .toBe('Design a full adder using only NAND gates.');
+  });
+
+  it('resolves QID references in the raw semester papers', () => {
+    const { data } = parseQuestionBank(QID_FILE);
+
+    expect(data.semesterPapers).toHaveLength(2);
+    expect(data.semesterPapers[0].questions[0].question)
+      .toBe('Explain the ALU with a block diagram.');
+    expect(data.semesterPapers[0].questions[0].needsFigure).toBe(true);
+    expect(data.semesterPapers[1].questions[0].question)
+      .toBe('Design a full adder using only NAND gates.');
+  });
+
+  it('keeps sub-parts printed on the paper when the master entry has none', () => {
+    const file = QID_FILE.replace(
+      '| 1 | [QID: 002] | Mid | 10 |',
+      '| 1 | [QID: 002]<br>1.a) Write the truth table.<br>1.b) Draw the circuit. | Mid | 10 |',
+    );
+    const { data } = parseQuestionBank(file);
+    const { stem, parts } = splitSubQuestions(data.semesterPapers[1].questions[0].question);
+
+    expect(stem).toBe('Design a full adder using only NAND gates.');
+    expect(parts.map((part) => part.label)).toEqual(['a', 'b']);
+  });
+
+  it('reads the pool even when the entries are not wrapped in comments', () => {
+    const file = QID_FILE
+      .replace(/<!--\s*/g, '')
+      .replace(/\s*-->/g, '');
+    const pool = parseMasterPool(file);
+
+    expect(pool.get('001').question).toContain('Explain the ALU');
+    expect(pool.get('001').answer).toContain('arithmetic and logic');
+    expect(pool.get('002').topic).toBe('Logic Design');
+  });
+});
+
+describe('master prompt output — QID-only papers and verified counts', () => {
+  const POOL_FILE = `---
+course: CSE 3109
+title: Digital System Design
+semesters: [Spring 2024, Fall 2024]
+total_questions_extracted: 3
+total_rows_after_merge: 2
+---
+
+<!-- MASTER QUESTION POOL (SINGLE SOURCE OF TRUTH) -->
+<!-- [QID: 001] Explain the fetch-decode-execute cycle.<br>(a) Draw the timing diagram.<br>(b) Why is the cycle repeated? -->
+<!-- Topic: 8085 Architecture -->
+<!-- Semesters: Spring 2024, Fall 2024 -->
+<!-- [QID: 002] [image] Design a 4-bit adder. -->
+<!-- Topic: Combinational Logic -->
+<!-- Semesters: Fall 2024 -->
+
+## TOPIC: 8085 Architecture
+priority: VIP
+total_asked: 2
+
+| # | Question | Exam | Semester | Marks | Times |
+|---|----------|------|----------|-------|-------|
+| 1 | [QID: 001] | Final | Spring 2024, Fall 2024 | 15 | 2 |
+
+## TOPIC: Combinational Logic
+priority: HIGH
+total_asked: 1
+
+| # | Question | Exam | Semester | Marks | Times |
+|---|----------|------|----------|-------|-------|
+| 1 | [QID: 002] | Mid | Fall 2024 | 10 | 1 |
+
+## VIP_MATRIX
+
+| Topic | Times Asked | Avg Marks | Last Asked | Priority |
+|-------|-------------|-----------|------------|----------|
+| 8085 Architecture | 2 | 15 | Fall 2024 | VIP |
+| Combinational Logic | 1 | 10 | Fall 2024 | HIGH |
+
+## STUDY_PLAN
+
+1. 8085 Architecture — asked twice.
+2. Combinational Logic — asked once.
+
+## SEMESTER_PAPERS
+
+### Spring 2024
+| # | Question | Exam | Marks |
+|---|----------|------|-------|
+| 1 | [QID: 001] | Final | 15 |
+
+### Fall 2024
+| # | Question | Exam | Marks |
+|---|----------|------|-------|
+| 1 | [QID: 001] | Mid | 10 |
+| 2 | [QID: 002] | Final | 10 |`;
+
+  it('shows the pool sub-parts in both views, exactly once', () => {
+    const { data, warnings, errors } = parseQuestionBank(POOL_FILE);
+
+    expect(errors).toEqual([]);
+    expect(warnings).toEqual([]);
+    const topicText = data.topics[0].questions[0].question;
+    const paperText = data.semesterPapers[0].questions[0].question;
+    expect(splitSubQuestions(topicText).parts).toHaveLength(2);
+    expect(splitSubQuestions(paperText).parts).toHaveLength(2);
+    expect(topicText).toBe(paperText);
+    expect(paperText.match(/fetch-decode-execute/g)).toHaveLength(1);
+    expect(data.semesterPapers[1].questions.map((question) => question.question))
+      .toEqual([paperText, 'Design a 4-bit adder.']);
+    expect(data.semesterPapers[1].questions[1].needsFigure).toBe(true);
+  });
+
+  it('warns when the declared extracted count does not match the paper rows', () => {
+    const { warnings } = parseQuestionBank(
+      POOL_FILE.replace('total_questions_extracted: 3', 'total_questions_extracted: 2'),
+    );
+
+    expect(warnings.join('\n')).toMatch(/says 2 question\(s\) were extracted.*hold 3 row\(s\)/);
+  });
+
+  it('warns when the declared merged count does not match the topic rows', () => {
+    const { warnings } = parseQuestionBank(
+      POOL_FILE.replace('total_rows_after_merge: 2', 'total_rows_after_merge: 5'),
+    );
+
+    expect(warnings.join('\n')).toMatch(/says 5 question\(s\) remained after merging.*hold 2 row\(s\)/);
+  });
+
+  it('warns about a reference with no pool entry', () => {
+    const { warnings } = parseQuestionBank(
+      POOL_FILE.replace('| 2 | [QID: 002] | Final | 10 |', '| 2 | [QID: 009] | Final | 10 |'),
+    );
+
+    expect(warnings.join('\n')).toMatch(/QID: 009/);
+    expect(warnings.join('\n')).toMatch(/no entry in the MASTER QUESTION POOL/);
+  });
+
+  it('warns about a pool entry that no view uses', () => {
+    const { warnings } = parseQuestionBank(POOL_FILE.replace(
+      '<!-- Semesters: Fall 2024 -->',
+      '<!-- Semesters: Fall 2024 -->\n<!-- [QID: 003] A question that never reached a topic. -->',
+    ));
+
+    expect(warnings.join('\n')).toMatch(/QID: 003/);
+    expect(warnings.join('\n')).toMatch(/not used by any TOPIC or SEMESTER_PAPERS row/);
   });
 });

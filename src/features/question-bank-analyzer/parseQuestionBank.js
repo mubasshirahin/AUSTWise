@@ -192,6 +192,153 @@ function normName(value) {
   return cleanInline(value).toLowerCase();
 }
 
+// ── master question pool (single source of truth) ─────────────────────────────
+
+const QID_LINE = /^\[?\s*QID\s*:\s*([A-Za-z0-9_-]+)\s*\]?\s*(.*)$/i;
+const QID_REF = /\[\s*QID\s*:\s*([A-Za-z0-9_-]+)\s*\]/gi;
+const QID_REF_ALL = /\[\s*QID\s*:\s*([A-Za-z0-9_-]+)\s*\]/gi;
+const POOL_FIELD = /^(answer|topic|semesters?)\s*[:=]\s*(.*)$/i;
+
+/** Remove the HTML comment markers the prompt asks the AI to use. */
+function stripCommentMarkers(line) {
+  return String(line ?? '')
+    .replace(/<!--/g, '')
+    .replace(/-->/g, '')
+    .trim();
+}
+
+/**
+ * Read the MASTER QUESTION POOL. Every line that starts with a QID begins a
+ * new entry; `Answer:`, `Topic:` and `Semesters:` lines belong to it. The
+ * parser stays forgiving: plain lines and commented lines both work, and a
+ * missing pool simply leaves the QID references unresolved.
+ */
+export function parseMasterPool(body) {
+  const pool = new Map();
+  if (typeof body !== 'string' || !body) return pool;
+
+  let current = null;
+  let previousLineBlank = true;
+  for (const rawLine of body.split('\n')) {
+    if (/^\s*-{3,}\s*$/.test(rawLine)) {
+      previousLineBlank = false;
+      continue;
+    }
+
+    const line = stripCommentMarkers(rawLine);
+    if (!line) {
+      previousLineBlank = true;
+      continue;
+    }
+
+    const qidMatch = line.match(QID_LINE);
+    if (qidMatch) {
+      const id = qidMatch[1].toUpperCase();
+      current = {
+        id,
+        question: qidMatch[2].trim(),
+        answer: '',
+        topic: '',
+        semesters: '',
+      };
+      pool.set(id, current);
+      previousLineBlank = false;
+      continue;
+    }
+
+    // An entry's own "Topic:" / "Semesters:" line looks exactly like a section
+    // heading, so it must be read as a field before anything else.
+    const fieldMatch = current ? line.match(POOL_FIELD) : null;
+    if (fieldMatch) {
+      const key = fieldMatch[1].toLowerCase();
+      const value = fieldMatch[2].trim();
+      if (key === 'answer') current.answer = value;
+      else if (key === 'topic') current.topic = value;
+      else if (key === 'semester' || key === 'semesters') current.semesters = value;
+      previousLineBlank = false;
+      continue;
+    }
+
+    // The pool ends at the first real section heading. A bare "TOPIC: ..."
+    // line is only a heading when a blank line separates it from the entry.
+    const heading = detectHeading(line);
+    const hasHashHeading = /^#{1,6}\s/.test(line);
+    if (heading && heading.type !== 'other' && (hasHashHeading || previousLineBlank)) break;
+
+    if (!current) {
+      previousLineBlank = false;
+      continue;
+    }
+
+    // Ignore the instruction/example lines that ship with the prompt.
+    if (/^(define|example|master|single source|only place|repeat one block)/i.test(line)) {
+      previousLineBlank = false;
+      continue;
+    }
+    current.question = current.question
+      ? `${current.question}\n${line}`
+      : line;
+    previousLineBlank = false;
+  }
+
+  return pool;
+}
+
+/** Replace every [QID: nnn] reference with the master pool text. */
+function expandQidReferences(value, pool) {
+  if (!pool || !pool.size) return String(value ?? '');
+  return String(value ?? '').replace(QID_REF, (match, id) => {
+    const entry = pool.get(String(id).toUpperCase());
+    return entry ? entry.question : match;
+  });
+}
+
+/**
+ * Resolve a raw paper row. The stem may be a QID, and each sub-part may be a
+ * QID too. When the master entry already carries the sub-parts, it wins — the
+ * pool is the single source of truth. Otherwise the parts printed on the paper
+ * are kept in front of the resolved stem.
+ */
+function expandPaperQuestion(value, pool) {
+  if (!pool || !pool.size) return String(value ?? '');
+
+  const segments = String(value ?? '')
+    .split(/\s*(?:<br\s*\/?>|\n)\s*/i)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+  if (!segments.length) return '';
+
+  const stem = expandQidReferences(segments[0], pool)
+    .replace(/<br\s*\/?>/gi, '\n')
+    .trim();
+  const stemParts = splitSubQuestions(stem).parts;
+  if (stemParts.length) return stem;
+
+  const rest = segments.slice(1)
+    .map((segment) => expandQidReferences(segment, pool)
+      .replace(/<br\s*\/?>/gi, '\n')
+      .trim())
+    .filter(Boolean);
+
+  return [stem, ...rest].join('\n');
+}
+
+/** Where the MASTER QUESTION POOL ends: the first real section heading. */
+function masterPoolEnd(body) {
+  const lines = String(body ?? '').split('\n');
+  for (let i = 0; i < lines.length; i += 1) {
+    const heading = detectHeading(lines[i]);
+    if (heading && heading.type !== 'other') return i;
+  }
+  return lines.length;
+}
+
+/** "QID: 001, QID: 002 and 3 more" — short enough for one warning line. */
+function describeQids(ids) {
+  const shown = ids.slice(0, 4).map((id) => `QID: ${id}`).join(', ');
+  return ids.length > 4 ? `${shown} and ${ids.length - 4} more` : shown;
+}
+
 function emptyData() {
   return {
     course: '',
@@ -234,6 +381,17 @@ export function parseCount(value) {
   const number = Number(match[0]);
   if (!Number.isFinite(number)) return { value: null, approximate };
   return { value: Math.round(number), approximate };
+}
+
+/** A numeric front-matter field, looked up by any of its spellings. */
+function frontNumber(fields, names) {
+  for (const name of names) {
+    const raw = fields[normKey(name)];
+    if (raw === undefined || raw === '') continue;
+    const parsed = parseCount(raw);
+    if (parsed.value !== null && !parsed.approximate) return parsed;
+  }
+  return { value: null, approximate: false };
 }
 
 // ── priority / exam / semester normalisation ─────────────────────────────────
@@ -524,7 +682,7 @@ function cellAt(row, index) {
 
 // ── topic block ──────────────────────────────────────────────────────────────
 
-function parseTopicBlock(block, warn, note) {
+function parseTopicBlock(block, warn, note, masterPool = null) {
   const name = cleanInline(block.name) || 'Untitled topic';
   let declaredPriority = '';
   let declaredTotal = '';
@@ -569,7 +727,10 @@ function parseTopicBlock(block, warn, note) {
   let shortRows = 0;
   rows.forEach((row, rowIndex) => {
     if (header && row.length < header.length) shortRows += 1;
-    const rawQuestion = cleanQuestion(cellAt(row, indices.question));
+    let rawQuestion = cleanQuestion(cellAt(row, indices.question));
+    if (masterPool?.size) {
+      rawQuestion = cleanQuestion(expandQidReferences(rawQuestion, masterPool));
+    }
     if (!rawQuestion || rawQuestion === '-' || /^[-–—]+$/.test(rawQuestion)) return;
     if (looksLikeTopicHeader(row)) return;
 
@@ -743,7 +904,7 @@ function paperColumnIndices(header, rows) {
  * Parse the raw paper of every semester. Nothing is merged, deduplicated or
  * reordered: each row is exactly one question as it was printed.
  */
-function parseSemesterPapers(lines, warn, note) {
+function parseSemesterPapers(lines, warn, note, masterPool = null) {
   const groups = [];
   let current = null;
 
@@ -766,7 +927,10 @@ function parseSemesterPapers(lines, warn, note) {
     const questions = [];
 
     rows.forEach((row, rowIndex) => {
-      const rawQuestion = cleanQuestion(cellAt(row, indices.question));
+      const rawCell = cellAt(row, indices.question);
+      let rawQuestion = masterPool?.size
+        ? cleanQuestion(expandPaperQuestion(rawCell, masterPool))
+        : cleanQuestion(rawCell);
       if (!rawQuestion || rawQuestion === '-' || /^[-–—]+$/.test(rawQuestion)) return;
       if (looksLikeTopicHeader(row)) return;
 
@@ -948,11 +1112,35 @@ export function parseQuestionBank(rawText) {
     let body = frontMatter.body;
     const fields = frontMatter.fields || {};
 
+    // The master pool is optional: older outputs write the full text in the
+    // tables instead of a QID reference.
+    const masterPool = parseMasterPool(body);
+
+    // Every QID used below the pool must have an entry, and every entry must
+    // be used somewhere — otherwise a question silently disappears from the
+    // preview or a row shows a bare "[QID: 007]".
+    const referencedIds = new Set(
+      [...body.split('\n').slice(masterPoolEnd(body)).join('\n').matchAll(QID_REF_ALL)]
+        .map((match) => match[1].toUpperCase()),
+    );
+    if (referencedIds.size && !masterPool.size) {
+      warn('This file references [QID: ...] questions but has no MASTER QUESTION POOL, so those rows show the raw reference instead of the question. Re-run the AI with the updated master prompt and upload the whole answer.');
+    } else if (masterPool.size) {
+      const missingIds = [...referencedIds].filter((id) => !masterPool.has(id));
+      if (missingIds.length) {
+        warn(`${missingIds.length} referenced question(s) have no entry in the MASTER QUESTION POOL (${describeQids(missingIds)}) — those rows show the reference, not the question.`);
+      }
+      const unusedIds = [...masterPool.keys()].filter((id) => !referencedIds.has(id));
+      if (unusedIds.length) {
+        warn(`${unusedIds.length} question(s) in the MASTER QUESTION POOL are not used by any TOPIC or SEMESTER_PAPERS row (${describeQids(unusedIds)}) — they do not appear in the preview.`);
+      }
+    }
+
     // Cut the raw semester papers out first: their "### Spring 2017"
     // sub-headings are not TOPIC sections and must not split anything.
     const papersSection = extractSemesterPapersSection(body);
     body = papersSection.body;
-    const semesterPapers = parseSemesterPapers(papersSection.lines, warn, note);
+    const semesterPapers = parseSemesterPapers(papersSection.lines, warn, note, masterPool);
     if (!semesterPapers.length) {
       note('No SEMESTER_PAPERS section was found — the semester-wise view will group the merged questions. Use the updated master prompt to get the raw papers exactly as printed.');
     }
@@ -975,7 +1163,7 @@ export function parseQuestionBank(rawText) {
 
     for (const block of blocks) {
       if (block.type !== 'topic') continue;
-      const topic = parseTopicBlock(block, warn, note);
+      const topic = parseTopicBlock(block, warn, note, masterPool);
       const key = normName(topic.name);
       const existing = topicMap.get(key);
       if (existing) {
@@ -1048,6 +1236,20 @@ export function parseQuestionBank(rawText) {
     if (!studyPlan.length) {
       studyPlan = fallbackStudyPlan(topics);
       warn('No STUDY_PLAN section was found, so study suggestions were generated from the VIP matrix.');
+    }
+
+    // The prompt asks the AI to declare both counts so a missing question is
+    // caught instead of silently shrinking the report.
+    const topicRows = topics.reduce((sum, topic) => sum + topic.questions.length, 0);
+    const paperRows = semesterPapers.reduce((sum, paper) => sum + paper.questions.length, 0);
+    const declaredExtracted = frontNumber(fields, ['total_questions_extracted', 'total questions extracted']);
+    const declaredMerged = frontNumber(fields, ['total_rows_after_merge', 'total rows after merge']);
+    if (declaredExtracted.value !== null && semesterPapers.length && declaredExtracted.value !== paperRows) {
+      const difference = Math.abs(declaredExtracted.value - paperRows);
+      warn(`The file says ${declaredExtracted.value} question(s) were extracted, but the SEMESTER_PAPERS tables hold ${paperRows} row(s) — ${difference} may be missing or miscounted. Check each semester against your files.`);
+    }
+    if (declaredMerged.value !== null && topicRows && declaredMerged.value !== topicRows) {
+      warn(`The file says ${declaredMerged.value} question(s) remained after merging, but the topic tables hold ${topicRows} row(s). The preview shows the ${topicRows} row(s) it could read.`);
     }
 
     const data = {

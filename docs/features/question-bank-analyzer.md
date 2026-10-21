@@ -147,44 +147,38 @@ Admin er access setting chara onno page ei feature ke affect kore na.
 
 Ei ta bhujle baki sob somoshya bojha shohoj hobe.
 
-AI ke bola hoy **dui rokom** output dite:
-
-### (a) Topic block — merge kora
+AI ke bola hoy ekta **MASTER QUESTION POOL** banate — prottek question er lekha **shudhu ekbar**, ekta `[QID: nnn]` ID diye:
 
 ```
-## TOPIC: Normalization
-| # | Question | Semester |
-| 1 | Version 1: Define normalization... Version 2: Explain 1NF... | Spring 2022, Fall 2024 |
+<!-- [QID: 001] Explain the fetch-decode-execute cycle.<br>(a) Draw the timing diagram.<br>(b) Why is the cycle repeated? -->
+<!-- Topic: 8085 Architecture -->
+<!-- Semesters: Spring 2024, Fall 2024 -->
 ```
 
-Ekhane eki rokom question gulo **ek row** e merge kora hoy. Bhitore "Version 1 / Version 2" thake.
-
-### (b) SEMESTER_PAPERS — jemon chhilo temon
+Tarpor dui jaygay shudhu sei **ID ta** lekha hoy, question er lekha na:
 
 ```
-### Fall 2024
-| # | Question |
-| 1 | Define normalization... |
-| 2 | ... |
+## TOPIC: 8085 Architecture
+| # | Question | Exam | Semester | Marks | Times |
+| 1 | [QID: 001] | Final | Spring 2024, Fall 2024 | 15 | 2 |
 
-### Spring 2022
-| # | Question |
-| 1 | Explain 1NF... |
+### Spring 2024
+| # | Question | Exam | Marks |
+| 1 | [QID: 001] | Final | 15 |
 ```
 
-Ekhane **merge nei, repeat nei**. Je question paper e jei bar esheche, sei bar likha.
+Page ei ID gulo **pool theke bhore dey**. Tar mane:
 
-### Tar mane
+- Question er lekha **ek jaygay** — pool e. Onno kothao copy nei.
+- Tai pool e edit korle **semester view ar topic view dui jaygay** sathe sathe update hoy.
+- `(a)`, `(b)` sub-part gulo **pool entry er bhitor** thake, tai dui view e i alada block e dekhay.
+- `[image]` token o pool e thake — dui view e i picture box ashe.
+- **Semester list** e paper onujayi question repeat hoy, kintu sob row eki `[QID]` share kore — tai picture/tick ek jaygay add korle sob jaygay dekhay.
+- AI jodi kono paper question topic block e na dey, app take **Other questions** e rakhe — hariye jay na.
 
-- Eki question **topic list** e ekbar (merged)
-- **semester list** e paper onujayi ekbar ba ekadhik bar (repeat)
-- App ekhon duita ke **eki question** hisebe chine — position diye na, **lekha mile** diye
-- Tai **ek view e picture add korle arek view e o dekhay** (nijer account e)
-- Tai **filter** dui view e lage
-- Tai **a/b part** dui view e alada block e dekhay
-- Jodi AI kono paper question topic block e likhte bhule jay, app take **Other questions** e rakhe — hariye jay na
+**Merge sudhu hubohu eki lekha hole.** Word a ektu alada hole AI alada `[QID]` dey — karon word-for-word wording rakha dorkar. Ei karonei "Version 1 / Version 2" ar nei.
 
-**Caveat:** AI jodi eki question er wording purai alada likhe, app milate na pare. Tokhon question ta Other e thake — hariye jay na, kintu topic group e thake na.
+**App nijei check kore:** file er mathay `total_questions_extracted` ar `total_rows_after_merge` lekha thake. App sei number ar asol row miliye dekhe — na mille preview er upore **warning** dekhay. Kono `[QID]` pool e na thakle ba pool er kono question kono table e na thakle o warning ashe. Tokhon prompt ta notun kore copy kore AI ke abar chalate hobe.
 
 ---
 

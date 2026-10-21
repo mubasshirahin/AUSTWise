@@ -4,6 +4,11 @@
  * The whole feature is client-side and free: the user pastes this prompt into
  * their own AI, uploads the course files there, and brings back one Markdown
  * file. Keep the output contract in sync with parseQuestionBank.js.
+ *
+ * Single source of truth: every question is written once in the MASTER
+ * QUESTION POOL with a unique [QID: nnn], sub-parts included. The TOPIC blocks
+ * and the raw SEMESTER_PAPERS contain only that QID, so editing one pool entry
+ * — text, [image] token, topic or semesters — changes both views on the site.
  */
 
 function placeholder(value, fallback) {
@@ -34,40 +39,53 @@ Extract EVERY SINGLE question from EVERY file. No question may be left
 out for any reason — not for length, not for similarity, not for
 repetition, not for recency. If a semester has 20 questions, all 20 must
 appear. If a semester has 1 question, that 1 must appear. The total count
-of rows in your output (before merging) must equal the total count of
-questions across all uploaded files. If you are unsure whether something
-is a question, include it.
+of questions across all uploaded files must be exact. If you are unsure
+whether something is a question, include it.
 
 RULE 2 — EXACT WORDING:
 Copy every question WORD-FOR-WORD from the source. Do NOT shorten,
 summarise, paraphrase, translate, fix grammar, or remove examples.
 Keep the original language (including Bangla) and original wording.
-If a question has sub-parts (a), (b), (c), keep every part in the same
-Question cell, separated by <br>. Never split one question into separate rows.
+If a question has sub-parts (a), (b), (c), keep every part inside the same
+question entry, each part on its own line in the source order, separated by
+<br>. Never split one question into separate entries. Write the sub-part
+labels exactly as printed — (a), (b), (c) or (i), (ii), (iii) — with no main
+question number in front; my website adds the paper's own number itself.
+A question with no sub-parts stays on one line.
 
-RULE 3 — MERGING SIMILAR QUESTIONS:
-After extracting all questions, group them by TOPIC, then merge similar
-questions within the same topic using these exact rules:
+RULE 3 — MASTER QUESTION POOL (SINGLE SOURCE OF TRUTH):
+The full text of every question is written EXACTLY ONCE, in the MASTER
+QUESTION POOL at the top of the output, with a unique ID:
 
-  a) EXACT DUPLICATE: Same wording AND same sub-parts from different
-     exams. Keep ONE full copy. Do NOT add a Version 2. Increment
-     "Times" by 1 for each repeat. List EVERY semester it appeared in
-     the "Semester" column, separated by commas.
-     Example Semester cell: Spring 2022, Fall 2022, Spring 2023
+  [QID: 001] Full question text word for word<br>(a) first sub-part<br>(b) second sub-part
+  Topic: <topic name>
+  Semesters: Spring 2022, Fall 2023
 
-  b) SIMILAR (same underlying concept, different wording or sub-parts):
-     Merge into ONE row. Write "Version 1: <full text><br>Version 2:
-     <full text>" etc. Keep ALL version texts in full — never truncate
-     any version. List every semester across all versions in Semester
-     cell. Use the highest Marks value. Sum the Times across versions.
+Every other section — the TOPIC blocks AND SEMESTER_PAPERS — contains ONLY
+the [QID: nnn] reference. Never repeat the question text there, never write a
+shortened copy, never add "Version 1 / Version 2" text. Editing one pool entry
+must be enough to update both the semester-wise view and the topic-wise view
+of my website, so nothing may exist in two places.
 
-  c) GENUINELY DIFFERENT: Separate row. Never merge questions that test
-     different concepts even if they share keywords.
+Number the IDs 001, 002, 003 ... with NO gaps, NO repeats and NO unused IDs.
+Every pool entry must be referenced by at least one TOPIC row, and every QID
+used in any table must exist in the pool.
+
+Assign a clear TOPIC NAME to every question based on its core concept
+(e.g., "8085 Architecture", "8086 Interfacing", "8051 Timers",
+"Addressing Modes"). Group each question under exactly one topic block.
+
+MERGE ONLY IDENTICAL TEXT:
+Use ONE QID for a question that appears in several semesters ONLY when the
+wording is character-for-character identical, sub-parts included. If the
+wording differs in ANY way — even one word, one number or one sub-part —
+give it its own QID. Never paraphrase, never keep only the newest wording,
+never merge two questions just because they are about the same thing.
 
 RULE 4 — ALL SEMESTERS MUST BE VISIBLE:
-The Semester column must list EVERY semester a question (or any of its
-versions) appeared in. Never write only the first semester. Never write
-"multiple". Write them all, comma-separated, in chronological order.
+The Semester column must list EVERY semester a question appeared in. Never
+write only the first semester. Never write "multiple". Write them all,
+comma-separated, in chronological order.
 Example: Spring 2021, Fall 2022, Spring 2023, Fall 2024
 
 RULE 5 — RECENT SEMESTERS EQUAL TREATMENT:
@@ -79,45 +97,32 @@ semester only contributed a small number of questions.
 RULE 6 — IMAGES:
 If a question needs a diagram, figure, circuit, graph, table, or any
 picture that cannot be copied as plain text, write the literal token
-[image] exactly where the picture appeared — at the START of the cell
+[image] exactly where the picture appeared — at the START of the entry
 if it was above the question text, at the END if it was below. One
 [image] per missing picture. Do NOT describe or invent the picture.
+The token belongs in the MASTER QUESTION POOL entry, so both views show it.
 
 RULE 7 — UNREADABLE FILES:
 If a file is scanned or unreadable, say which one and stop. Never guess
 its content.
 
 RULE 8 — RAW SEMESTER PAPERS (never merged):
-The TOPIC blocks are merged. The teacher's papers must ALSO be reproduced
-raw, exactly as they were printed, in the SEMESTER_PAPERS section at the
-end. For every semester:
+The TOPIC blocks are for study. The teacher's papers must ALSO be
+reproduced raw, exactly as they were printed, in the SEMESTER_PAPERS section
+at the end. For every semester:
   - one row per main question, in the order it appears on that paper;
   - the "#" column runs 1, 2, 3 ... with NO gaps, NO repeats and NO skipped
     numbers — every source question gets exactly one row;
-  - NEVER merge, deduplicate, relabel or add "Version" text here — if the
-    same question appears twice, write it twice;
-  - copy the wording exactly (RULE 2) and keep the [image] token exactly
-    where the picture was (RULE 6);
-  - SUB-QUESTIONS (this is how I check for missing parts): every lettered
-    sub-part gets its OWN line inside the cell, starting with the row's
-    number, a dot and a lower-case letter:
-        | 2 | <question stem><br>2.a) <first sub-part><br>2.b) <second sub-part> | Mid | 10 |
-    The prefix must match the row's own "#" (row 2 means 2.a), 2.b)).
-    The letters run a, b, c, d ... in source order with NO gaps. A 2.b)
-    may never exist without a 2.a), and no later part may be renumbered to
-    hide a missing one. Never write the parts as one run-on line, and
-    never put two sub-parts in the same line. For the parts themselves,
-    use the wording as printed (if the paper writes (i), (ii), keep that
-    wording but the label in front is still 2.a), 2.b)). If a source part
-    is unreadable, keep its line with [unclear] so the count does not
-    shift. A question with no sub-parts stays on one line with no letter.
+  - NEVER merge, deduplicate, relabel or drop anything here — if the same
+    question appears twice on the paper, write it twice;
+  - the Question cell contains ONE thing only: the reference [QID: nnn] of
+    that exact question. No question text, no sub-parts, no extra words —
+    the pool already holds all of it and my website fills it in. The same
+    QID may appear in several semesters; that is correct;
   - Exam = Final / Mid / Quiz / Class Test / Other;
   - Marks = the marks printed on the paper.
-Before closing a semester, count the source questions and sub-parts again:
-the output must contain every one, in the same order.
-The total number of rows in SEMESTER_PAPERS must equal
-total_questions_extracted (one row per main question; sub-parts stay
-inside their row).
+Before closing a semester, count the source questions again: every one must
+have its own row, in the same order.
 
 ═══════════════════
 OUTPUT RULES (STRICT)
@@ -129,15 +134,20 @@ OUTPUT RULES (STRICT)
 - Use plain text inside Question cells. Do not use Markdown bold/italic.
   If the question itself contains "|", escape it as \\|.
 - Priority must be exactly one of: VIP, HIGH, MEDIUM, LOW.
+- Do NOT write answers. I add answer pictures myself in the website.
 - The picture token must be exactly [image] — lowercase, square brackets,
   nothing else inside.
+- Count the two front-matter numbers carefully — my website checks them:
+    total_questions_extracted = total rows in ALL SEMESTER_PAPERS tables
+    total_rows_after_merge    = total entries in the MASTER QUESTION POOL
+  Sub-parts never get their own row; they live inside their question.
 - DO NOT stop mid-output. If the response is getting long, continue in
   the same format without repeating headers. If output gets cut off, I
   will say "continue" — resume exactly from the last incomplete row.
   In SEMESTER_PAPERS, repeat the current "### <semester>" heading and the
   table header before the resumed rows.
-- After finishing ALL topic blocks, output the VIP_MATRIX, then the
-  STUDY_PLAN, then the SEMESTER_PAPERS section.
+- Output order: MASTER QUESTION POOL, then ALL topic blocks, then
+  VIP_MATRIX, then STUDY_PLAN, then SEMESTER_PAPERS.
 
 ═══════
 FORMAT
@@ -146,20 +156,29 @@ FORMAT
 ---
 course: ${courseCode}
 title: ${courseTitle}
-semesters: [list every semester found across all files]
-total_questions_extracted: <exact count of main question rows (sub-parts stay inside their row)>
-total_rows_after_merge: <exact count after merging>
+semesters: [every semester found across all files, chronological]
+total_questions_extracted: <total rows in all SEMESTER_PAPERS tables>
+total_rows_after_merge: <total entries in the MASTER QUESTION POOL>
 ---
+
+<!-- MASTER QUESTION POOL — SINGLE SOURCE OF TRUTH -->
+<!-- Example lines (DELETE them from your output, they are only a shape to copy): -->
+<!-- Example: [QID: 001] Full question text word for word<br>(a) first sub-part<br>(b) second sub-part -->
+<!-- Example: Topic: 8085 Architecture -->
+<!-- Example: Semesters: Spring 2022, Fall 2023 -->
+<!-- Write one real entry per unique wording, IDs 001, 002, 003 ... with no gaps. -->
+<!-- [image] goes inside the entry, where the picture appeared. -->
 
 ## TOPIC: <topic name>
 priority: <VIP|HIGH|MEDIUM|LOW>
-total_asked: <total times this topic was examined, counting all versions and repeats>
+total_asked: <sum of the Times column below>
 
 | # | Question | Exam | Semester | Marks | Times |
 |---|----------|------|----------|-------|-------|
-| 1 | Version 1: <full question copied exactly><br>Version 2: <full similar version copied exactly> | Final | Spring 2022, Fall 2023, Spring 2024 | 15 | 4 |
+| 1 | [QID: 001] | Final | Spring 2022, Fall 2023, Spring 2024 | 15 | 3 |
 
-(Repeat the TOPIC block for every topic found.)
+(Repeat the TOPIC block for every topic found. The Question cell holds only the
+QID reference; Times is how many past papers this exact question appeared in.)
 
 ## VIP_MATRIX
 
@@ -177,10 +196,12 @@ total_asked: <total times this topic was examined, counting all versions and rep
 ### <semester name, exactly as written on the paper>
 | # | Question | Exam | Marks |
 |---|----------|------|-------|
-| 1 | <question exactly as printed — raw, never merged> | Final | 15 |
-| 2 | <question stem><br>2.a) <first sub-part exactly as printed><br>2.b) <second sub-part exactly as printed> | Mid | 10 |
+| 1 | [QID: 001] | Final | 15 |
+| 2 | [QID: 002] | Mid | 10 |
 
-(Repeat one ### block for every semester, oldest semester first.)`;
+(Repeat one ### block for every semester, oldest semester first. Every row is
+one printed question with only its QID reference. Sub-parts stay inside the
+pool entry, so they are never written again here.)`;
 }
 
 export default buildPrompt;

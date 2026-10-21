@@ -33,10 +33,33 @@ describe('buildPrompt', () => {
     expect(prompt).toMatch(/### <semester name/);
   });
 
-  it('asks for numbered sub-parts with no gaps', () => {
-    expect(prompt).toContain('2.a)');
-    expect(prompt).toContain('2.b)');
-    expect(prompt).toMatch(/NO gaps/i);
-    expect(prompt).toMatch(/2\.b\)\s*\n?\s*may never exist without a 2\.a\)/i);
+  it('keeps one master pool and puts sub-parts inside it', () => {
+    expect(prompt).toContain('[QID: 001]');
+    expect(prompt).toContain('Topic:');
+    expect(prompt).toContain('Semesters:');
+    expect(prompt).toMatch(/separated by\s*<br>/i);
+    // Both other sections must reference the pool instead of repeating text.
+    expect(prompt).toMatch(/contains ONLY\s+the \[QID: nnn\] reference/i);
+    expect(prompt).toMatch(/Question cell contains ONE thing only/i);
+  });
+
+  it('merges only character-for-character identical wording', () => {
+    expect(prompt).toMatch(/ONLY when the\s+wording is character-for-character identical/i);
+    expect(prompt).toMatch(/never paraphrase/i);
+    expect(prompt).not.toMatch(/Version 1: ?\.\.\./);
+  });
+
+  it('does not ask the AI for answers', () => {
+    expect(prompt).toMatch(/do NOT write answers/i);
+    expect(prompt).not.toMatch(/^Answer:/m);
+  });
+
+  it('declares the counts the site verifies', () => {
+    expect(prompt).toContain('total_questions_extracted:');
+    expect(prompt).toContain('total_rows_after_merge:');
+  });
+
+  it('marks its example pool lines so they are never parsed as real questions', () => {
+    expect(prompt).toMatch(/<!-- Example: \[QID: 001\]/);
   });
 });
