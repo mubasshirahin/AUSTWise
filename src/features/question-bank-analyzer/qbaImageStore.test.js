@@ -11,6 +11,8 @@ import {
   readImageSyncTime,
   semesterImageKey,
 } from './qbaImageStore';
+import { partImageKey } from './qbaQuestionMatch';
+import { parseQuestionBank } from './parseQuestionBank';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -387,5 +389,173 @@ describe('attachImagesToReport — versions and raw papers', () => {
     expect(attached.semesterPapers[0].questions[1].images.map((image) => image.name)).toEqual([
       'raw.png',
     ]);
+  });
+});
+
+describe('attachImagesToReport — shared topic/semester and part pictures', () => {
+  it('uses the topic slot for a matching paper question', () => {
+    const report = {
+      topics: [
+        {
+          name: 'Normalization',
+          questions: [{ question: 'Define 1NF.', originalIndex: 0 }],
+        },
+      ],
+      semesterPapers: [
+        { semester: 'Fall 2024', questions: [{ question: 'Define 1NF.' }] },
+      ],
+    };
+    const topicKey = questionImageKey('cse-3101', 'Normalization', 0);
+    const byQuestion = {
+      [topicKey]: [{ id: 'shared', name: 'shared.png', url: 'blob:shared' }],
+    };
+
+    const attached = attachImagesToReport(report, 'cse-3101', byQuestion);
+
+    expect(attached.topics[0].questions[0].images.map((image) => image.name)).toEqual(['shared.png']);
+    expect(attached.semesterPapers[0].questions[0].images.map((image) => image.name)).toEqual(['shared.png']);
+  });
+
+  it('keeps a picture per sub-part in both views', () => {
+    const question = 'Consider the table.\n2.a) Find the keys.\n2.b) Find the dependencies.';
+    const report = {
+      topics: [
+        {
+          name: 'Normalization',
+          questions: [{ question, originalIndex: 0, number: 2 }],
+        },
+      ],
+      semesterPapers: [
+        {
+          semester: 'Fall 2024',
+          questions: [{ question, number: 2 }],
+        },
+      ],
+    };
+    const base = questionImageKey('cse-3101', 'Normalization', 0);
+    const legacy = semesterImageKey('cse-3101', 'Fall 2024', 0);
+    const byQuestion = {
+      [partImageKey(base, { label: 'a' }, 0)]: [
+        { id: 'pa', name: 'part-a.png', url: 'blob:a' },
+      ],
+      [partImageKey(base, { label: 'b' }, 1)]: [
+        { id: 'pb', name: 'part-b.png', url: 'blob:b' },
+      ],
+      // A per-part picture added while the views were still separate.
+      [partImageKey(legacy, { label: 'a' }, 0)]: [
+        { id: 'old', name: 'old-part-a.png', url: 'blob:old' },
+      ],
+    };
+
+    const attached = attachImagesToReport(report, 'cse-3101', byQuestion);
+
+    expect(attached.topics[0].questions[0].partImages[0].question.map((image) => image.name))
+      .toEqual(['part-a.png']);
+    expect(attached.topics[0].questions[0].partImages[1].question[0].name).toBe('part-b.png');
+    expect(attached.semesterPapers[0].questions[0].partImages[0].question.map((image) => image.name))
+      .toEqual(['part-a.png', 'old-part-a.png']);
+    expect(attached.semesterPapers[0].questions[0].partImages[1].question[0].name).toBe('part-b.png');
+  });
+});
+
+describe('attachImagesToReport — unmatched paper topic in print', () => {
+  it('puts a paper-only question into Other questions for the printed topic list', () => {
+    const report = {
+      topics: [
+        { name: 'Normalization', questions: [{ question: 'Define 1NF.', originalIndex: 0 }] },
+      ],
+      semesterPapers: [
+        {
+          semester: 'Fall 2024',
+          questions: [
+            { question: 'Define 1NF.' },
+            { question: 'Write a short note on database security.' },
+          ],
+        },
+      ],
+    };
+    const key = semesterImageKey('cse-3101', 'Fall 2024', 1);
+    const byQuestion = {
+      [key]: [{ id: 's', name: 'security.png', url: 'blob:security' }],
+    };
+
+    const attached = attachImagesToReport(report, 'cse-3101', byQuestion);
+    const other = attached.topics.find((topic) => topic.name === 'Other questions');
+    const printedPaper = attached.semesterPapers[0].questions[1];
+
+    expect(other.questions.map((question) => question.question))
+      .toEqual(['Write a short note on database security.']);
+    expect(other.questions[0].images.map((image) => image.name)).toEqual(['security.png']);
+    expect(printedPaper.images.map((image) => image.name)).toEqual(['security.png']);
+  });
+});
+
+describe('attachImagesToReport — unmatched paper part pictures', () => {
+  it('uses the raw semester key when the question is not in a topic', () => {
+    const report = {
+      topics: [
+        { name: 'Normalization', questions: [{ question: 'Define 1NF.', originalIndex: 0 }] },
+      ],
+      semesterPapers: [
+        {
+          semester: 'Fall 2024',
+          questions: [
+            { question: 'Define 1NF.' },
+            { question: 'Write a short note on database security.' },
+            {
+              question: 'Consider a relation R.\n2.a) Find the keys.\n2.b) Normalize it.',
+              number: 2,
+            },
+          ],
+        },
+      ],
+    };
+    const base = semesterImageKey('cse-3101', 'Fall 2024', 2);
+    const byQuestion = {
+      [`${base}::part:a-0`]: [{ id: 'pa', name: 'part-a.png', url: 'blob:a' }],
+    };
+
+    const attached = attachImagesToReport(report, 'cse-3101', byQuestion);
+    const raw = attached.semesterPapers[0].questions[2];
+
+    expect(raw.partImages).toBeTruthy();
+    expect(raw.partImages[0].question.map((image) => image.name)).toEqual(['part-a.png']);
+    expect(raw.partImages[1].question).toEqual([]);
+  });
+});
+
+describe('attachImagesToReport — exact custom paper shape', () => {
+  it('attaches part pictures parsed from a semester paper table', () => {
+    const markdown = `---
+course: CSE 9999
+title: Test Course
+semesters: [Fall 2024]
+---
+
+## TOPIC: Normalization
+priority: HIGH
+total_asked: 1
+
+| # | Question | Exam | Semester | Marks | Times |
+|---|----------|------|----------|-------|-------|
+| 1 | Define 1NF. | Final | Fall 2024 | 5 | 1 |
+
+## SEMESTER_PAPERS
+
+### Fall 2024
+| # | Question | Exam | Marks |
+|---|----------|------|-------|
+| 1 | Define 1NF. | Final | 5 |
+| 2 | Write a short note on database security. | Final | 5 |
+| 3 | Consider a relation R. <br>2.a) Find the keys. <br>2.b) Normalize it. | Final | 10 |
+`;
+    const { data } = parseQuestionBank(markdown);
+    const base = semesterImageKey('cse-9999', 'Fall 2024', 2);
+    const key = `${base}::part:a-0`;
+    const attached = attachImagesToReport(data, 'cse-9999', {
+      [key]: [{ id: 'pa', name: 'part-a.png', url: 'blob:a' }],
+    });
+    const paper = attached.semesterPapers[0];
+    expect(paper.questions[2].partImages?.[0]?.question?.[0]?.name).toBe('part-a.png');
   });
 });

@@ -206,10 +206,17 @@
 
 .qba-report .qba-report-subpart {
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  padding: 4px 6px;
+  border-left: 1.5px solid var(--qba-line);
+}
+
+.qba-report .qba-report-subpart-head {
+  display: flex;
   align-items: flex-start;
   gap: 5px;
-  padding-left: 6px;
-  border-left: 1.5px solid var(--qba-line);
 }
 
 .qba-report .qba-report-subpart-num {

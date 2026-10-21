@@ -72,7 +72,47 @@ function FigureList({ images, label = '' }) {
   );
 }
 
-function ReportQuestion({ question, splitSubs = false }) {
+/**
+ * Question text with every (a), (b), (c) part in its own block, followed by
+ * the pictures that belong to that part. The same component is used for the
+ * semester papers and the topic-wise list, so printed pages match the screen.
+ */
+function ReportQuestionText({ text, number, partImages = [] }) {
+  const { stem, parts } = splitSubQuestions(text || '');
+  if (!parts.length) {
+    return <span className="qba-report-question-text">{text || ''}</span>;
+  }
+
+  return (
+    <div className="qba-report-question-stack">
+      {stem ? <span className="qba-report-question-text">{stem}</span> : null}
+      <ol className="qba-report-subparts">
+        {parts.map((part, index) => {
+          const prefix = part.number
+            || (number !== null && number !== undefined ? String(number) : '');
+          const pictures = partImages[index]
+            && (Array.isArray(partImages[index].question) || Array.isArray(partImages[index].answer))
+            ? partImages[index]
+            : { question: [], answer: [] };
+          return (
+            <li className="qba-report-subpart" key={`${part.label}-${index}`}>
+              <div className="qba-report-subpart-head">
+                <span className="qba-report-subpart-num">
+                  {prefix ? `${prefix}.${part.label})` : `${part.label})`}
+                </span>
+                <span className="qba-report-subpart-text">{part.text}</span>
+              </div>
+              <FigureList images={pictures.question} label="Question" />
+              <FigureList images={pictures.answer} label="Answer" />
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
+
+function ReportQuestion({ question }) {
   const variants = Array.isArray(question?.variants) ? question.variants : [];
   const versions = buildQuestionVersions(question);
   const images = Array.isArray(question?.images) ? question.images : [];
@@ -81,16 +121,21 @@ function ReportQuestion({ question, splitSubs = false }) {
   const versionAnswerImages = Array.isArray(question?.versionAnswerImages)
     ? question.versionAnswerImages
     : [];
-  const sub = splitSubs
-    ? splitSubQuestions(question?.question || '')
-    : { stem: '', parts: [] };
+  const partImages = Array.isArray(question?.partImages) ? question.partImages : [];
+  const versionPartImages = Array.isArray(question?.versionPartImages)
+    ? question.versionPartImages
+    : [];
 
   const versionBlocks = versions.length ? (
     <div className="qba-report-versions">
       {versions.map((version, index) => (
         <div className="qba-report-version" key={`${version.label}-${index}`}>
           <span className="qba-report-version-label">{version.label}</span>
-          <span className="qba-report-version-text">{version.text}</span>
+          <ReportQuestionText
+            text={version.text}
+            number={question?.number}
+            partImages={versionPartImages[index] || []}
+          />
           <FigureList images={versionImages[index]} label="Question" />
           <FigureList images={versionAnswerImages[index]} label="Answer" />
         </div>
@@ -98,34 +143,18 @@ function ReportQuestion({ question, splitSubs = false }) {
     </div>
   ) : null;
 
-  const subBlocks = sub.parts.length ? (
-    <div className="qba-report-question-stack">
-      {sub.stem ? <span className="qba-report-question-text">{sub.stem}</span> : null}
-      <ol className="qba-report-subparts">
-        {sub.parts.map((part, index) => {
-          const prefix = part.number
-            || (question?.number !== null && question?.number !== undefined
-              ? String(question.number)
-              : '');
-          return (
-            <li className="qba-report-subpart" key={`${part.label}-${index}`}>
-              <span className="qba-report-subpart-num">
-                {prefix ? `${prefix}.${part.label})` : `${part.label})`}
-              </span>
-              <span className="qba-report-subpart-text">{part.text}</span>
-            </li>
-          );
-        })}
-      </ol>
-    </div>
-  ) : (
-    <span className="qba-report-question-text">{question?.question || ''}</span>
+  const body = (
+    <ReportQuestionText
+      text={question?.question}
+      number={question?.number}
+      partImages={partImages}
+    />
   );
 
   if (!variants.length) {
     return (
       <>
-        {versionBlocks || subBlocks}
+        {versionBlocks || body}
         {versions.length ? null : <FigureList images={images} label="Question" />}
         {versions.length ? null : <FigureList images={answerImages} label="Answer" />}
       </>
@@ -135,6 +164,7 @@ function ReportQuestion({ question, splitSubs = false }) {
   return (
     <div className="qba-report-question-stack">
       {versionBlocks}
+      {versions.length ? null : body}
       {versions.length ? null : <FigureList images={images} label="Question" />}
       {versions.length ? null : <FigureList images={answerImages} label="Answer" />}
     </div>
@@ -357,7 +387,7 @@ export default function PrintReport({ data, className = '', innerRef }) {
                   {paper.questions.map((question, index) => (
                     <tr key={`${paper.semester}-${index}`}>
                       <td className="qba-sno">{question.number ?? index + 1}</td>
-                      <td className="qba-report-question"><ReportQuestion question={question} splitSubs /></td>
+                      <td className="qba-report-question"><ReportQuestion question={question} /></td>
                       <td>{display(question.exam)}</td>
                       <td className="qba-num">{display(question.marks)}</td>
                     </tr>

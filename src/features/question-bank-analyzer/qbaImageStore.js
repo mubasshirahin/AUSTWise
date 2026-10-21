@@ -21,6 +21,15 @@
  */
 
 import { buildQuestionVersions } from './previewAnalytics';
+import { splitSubQuestions } from './parseQuestionBank';
+import { questionImageKey, semesterImageKey } from './qbaKeys';
+import {
+  addUnmatchedPaperQuestions,
+  buildQuestionMatchIndex,
+  partImageKey,
+} from './qbaQuestionMatch';
+
+export { questionImageKey, semesterImageKey } from './qbaKeys';
 
 const DB_NAME = 'aust-qba-images';
 const DB_VERSION = 1;
@@ -150,21 +159,6 @@ export function courseSlug(courseCode) {
 }
 
 /** The key of one picture slot: course + topic + question position. */
-export function questionImageKey(courseKey, topicName, questionIndex) {
-  const topic = String(topicName || '').trim().toLowerCase();
-  return `${courseKey}::${topic}::${questionIndex}`;
-}
-
-/**
- * The key of one picture slot in the raw semester papers. `@semester` keeps
- * these apart from topic keys (a topic could theoretically be named "spring
- * 2017").
- */
-export function semesterImageKey(courseKey, semester, questionIndex) {
-  const name = String(semester || '').trim().toLowerCase();
-  return `${courseKey}::@semester::${name}::${questionIndex}`;
-}
-
 function attachmentForReport(image) {
   const entry = { name: image.name, url: image.url };
   if (image.mime) entry.mime = image.mime;
@@ -192,40 +186,100 @@ function splitAttachments(list) {
  * Records created before the question/answer split have no `kind`; they are
  * treated as question pictures so old data keeps working.
  */
+function mergeAttachments(...lists) {
+  const seen = new Set();
+  const merged = [];
+  lists.filter(Array.isArray).forEach((list) => {
+    list.forEach((item) => {
+      const key = item?.id || `${item?.name || ''}-${item?.size || 0}-${item?.url || ''}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      merged.push(item);
+    });
+  });
+  return merged;
+}
+
+/** One `{ question, answer }` pair per (a), (b), (c) part of a question. */
+function partAttachments(byQuestion, baseKey, text) {
+  const { parts } = splitSubQuestions(text);
+  if (!parts.length) return null;
+  return parts.map((part, index) => {
+    const split = splitAttachments(byQuestion[partImageKey(baseKey, part, index)]);
+    return { question: split.question, answer: split.answer };
+  });
+}
+
+function hasPartAttachments(partImages) {
+  return Array.isArray(partImages)
+    && partImages.some((part) => part.question.length || part.answer.length);
+}
+
+/** Combine the shared topic part pictures with older semester part pictures. */
+function mergePartAttachments(primary, legacy) {
+  if (!primary && !legacy) return null;
+  const length = Math.max(primary?.length || 0, legacy?.length || 0);
+  return Array.from({ length }, (_, index) => ({
+    question: mergeAttachments(
+      primary?.[index]?.question,
+      legacy?.[index]?.question,
+    ),
+    answer: mergeAttachments(
+      primary?.[index]?.answer,
+      legacy?.[index]?.answer,
+    ),
+  }));
+}
+
 export function attachImagesToReport(report, courseKey, byQuestion) {
   if (!report || !Array.isArray(report.topics)) return report;
-  if (!byQuestion || !Object.keys(byQuestion).length) return report;
 
-  const topics = report.topics.map((topic) => {
+  // The screen keeps unmatched paper questions under "Other questions"; the
+  // print/PDF copy must show them in the topic-wise section too.
+  const complete = addUnmatchedPaperQuestions(report, courseKey);
+  if (!byQuestion || !Object.keys(byQuestion).length) return complete;
+
+  const matchIndex = buildQuestionMatchIndex(complete, courseKey);
+
+  const topics = complete.topics.map((topic) => {
     const questions = (Array.isArray(topic.questions) ? topic.questions : []).map((question, index) => {
       const originalIndex = question.originalIndex ?? index;
-      const baseKey = questionImageKey(courseKey, topic.name, originalIndex);
+      // Questions auto-added from a raw paper keep the paper's key.
+      const baseKey = question.pictureKey
+        || questionImageKey(courseKey, topic.name, originalIndex);
       const base = splitAttachments(byQuestion[baseKey]);
+      const parts = partAttachments(byQuestion, baseKey, question.question);
 
       // Every wording keeps its own attachments: the first one shares the
       // row's slot (so files added before the versions were shown still
       // appear), later ones use the slot the preview gives them.
       const versions = buildQuestionVersions(question);
-      const versionImages = versions.map((version) => {
+      const versionBaseKeys = versions.map((version) => {
         const source = typeof version.sourceIndex === 'number' ? version.sourceIndex : originalIndex;
-        const baseSlot = questionImageKey(courseKey, topic.name, source);
-        const key = version.slot ? `${baseSlot}::${version.slot}` : baseSlot;
-        return splitAttachments(byQuestion[key]).question;
+        const baseSlot = question.pictureKey
+          || questionImageKey(courseKey, topic.name, source);
+        return version.slot ? `${baseSlot}::${version.slot}` : baseSlot;
       });
-      const versionAnswerImages = versions.map((version) => {
-        const source = typeof version.sourceIndex === 'number' ? version.sourceIndex : originalIndex;
-        const baseSlot = questionImageKey(courseKey, topic.name, source);
-        const key = version.slot ? `${baseSlot}::${version.slot}` : baseSlot;
-        return splitAttachments(byQuestion[key]).answer;
-      });
+      const versionImages = versionBaseKeys.map(
+        (key) => splitAttachments(byQuestion[key]).question,
+      );
+      const versionAnswerImages = versionBaseKeys.map(
+        (key) => splitAttachments(byQuestion[key]).answer,
+      );
+      const versionParts = versions.map((version, versionIndex) => (
+        partAttachments(byQuestion, versionBaseKeys[versionIndex], version.text)
+      ));
 
       const hasVersionImages = versionImages.some((images) => images.length);
       const hasVersionAnswers = versionAnswerImages.some((images) => images.length);
+      const hasVersionParts = versionParts.some(hasPartAttachments);
       if (
         !base.question.length
         && !base.answer.length
+        && !hasPartAttachments(parts)
         && !hasVersionImages
         && !hasVersionAnswers
+        && !hasVersionParts
       ) {
         return question;
       }
@@ -234,21 +288,37 @@ export function attachImagesToReport(report, courseKey, byQuestion) {
         ...question,
         ...(base.question.length ? { images: base.question } : {}),
         ...(base.answer.length ? { answerImages: base.answer } : {}),
+        ...(hasPartAttachments(parts) ? { partImages: parts } : {}),
         ...(hasVersionImages ? { versionImages } : {}),
         ...(hasVersionAnswers ? { versionAnswerImages } : {}),
+        ...(hasVersionParts ? { versionPartImages: versionParts } : {}),
       };
     });
     return { ...topic, questions };
   });
 
-  const semesterPapers = (Array.isArray(report.semesterPapers) ? report.semesterPapers : []).map((paper) => {
+  const semesterPapers = (Array.isArray(complete.semesterPapers) ? complete.semesterPapers : []).map((paper) => {
     const questions = (Array.isArray(paper.questions) ? paper.questions : []).map((question, index) => {
-      const split = splitAttachments(byQuestion[semesterImageKey(courseKey, paper.semester, index)]);
-      if (!split.question.length && !split.answer.length) return question;
+      const legacyKey = semesterImageKey(courseKey, paper.semester, index);
+      const match = matchIndex.match(question.question);
+      const baseKey = match?.key || legacyKey;
+      const base = splitAttachments(byQuestion[baseKey]);
+      const legacy = baseKey === legacyKey
+        ? { question: [], answer: [] }
+        : splitAttachments(byQuestion[legacyKey]);
+      const pictures = mergeAttachments(base.question, legacy.question);
+      const answers = mergeAttachments(base.answer, legacy.answer);
+      const parts = partAttachments(byQuestion, baseKey, question.question);
+      const legacyParts = baseKey === legacyKey
+        ? null
+        : partAttachments(byQuestion, legacyKey, question.question);
+      const mergedParts = mergePartAttachments(parts, legacyParts);
+      if (!pictures.length && !answers.length && !hasPartAttachments(mergedParts)) return question;
       return {
         ...question,
-        ...(split.question.length ? { images: split.question } : {}),
-        ...(split.answer.length ? { answerImages: split.answer } : {}),
+        ...(pictures.length ? { images: pictures } : {}),
+        ...(answers.length ? { answerImages: answers } : {}),
+        ...(hasPartAttachments(mergedParts) ? { partImages: mergedParts } : {}),
       };
     });
     return { ...paper, questions };
