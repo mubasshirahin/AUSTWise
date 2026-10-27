@@ -506,13 +506,12 @@ function QuickStats() {
 
   // Shared stat-cell renderer — used identically for every metric cell.
   const renderStatCell = (item, idx) => {
-    const isActive = idx === 0 && hasCgpa;
     const Icon = item.icon;
     const ariaLabel = `${item.label}: ${item.value}${item.trend ? ` trend ${item.trend}` : ''}`;
     return (
       <div
         key={item.code}
-        className={`schedule-day-card quick-stat-cell${isActive ? ' today' : ''}${item.placeholder ? ' placeholder' : ''}${item.link ? ' is-link' : ''}`}
+        className={`schedule-day-card quick-stat-cell${item.placeholder ? ' placeholder' : ''}${item.link ? ' is-link' : ''}`}
         style={{
           animationDelay: `${idx * 70}ms`,
         }}
@@ -673,6 +672,23 @@ export default function DashboardPage() {
 
   const isVisible = (key) => FOCUS_SECTIONS[focusMode].includes(key);
 
+  useEffect(() => {
+    const routineWidget = document.querySelector('.routine-widget');
+    const deadlineWidget = document.querySelector('.deadline-widget');
+    if (!routineWidget || !deadlineWidget || typeof ResizeObserver === 'undefined') return undefined;
+
+    const syncDeadlineHeight = () => {
+      deadlineWidget.style.setProperty('--daily-flow-height', `${routineWidget.getBoundingClientRect().height}px`);
+    };
+    syncDeadlineHeight();
+    const observer = new ResizeObserver(syncDeadlineHeight);
+    observer.observe(routineWidget);
+    return () => {
+      observer.disconnect();
+      deadlineWidget.style.removeProperty('--daily-flow-height');
+    };
+  }, [focusMode]);
+
   const greeting = useMemo(() => getGreeting(), []);
   const greetingMeta = useMemo(() => getGreetingMeta(greeting.period), [greeting.period]);
 
@@ -801,15 +817,6 @@ export default function DashboardPage() {
               </section>
             </MastheadAccessControl>
           )}
-          {isVisible('notices') && (
-            <MastheadAccessControl>
-              <section className="dash-section-group">
-                <div className="dash-section">
-                  <FeatureAccessGate featureKey="feature:dashboard:notices"><NoticeBoard /></FeatureAccessGate>
-                </div>
-              </section>
-            </MastheadAccessControl>
-          )}
         </div>
 
         <div className="dashboard-side-col">
@@ -823,6 +830,15 @@ export default function DashboardPage() {
             </MastheadAccessControl>
           )}
         </div>
+        {isVisible('notices') && (
+          <MastheadAccessControl>
+            <section className="dash-section-group dashboard-notice-full-width" style={{ gridColumn: '1 / -1' }}>
+              <div className="dash-section">
+                <FeatureAccessGate featureKey="feature:dashboard:notices"><NoticeBoard /></FeatureAccessGate>
+              </div>
+            </section>
+          </MastheadAccessControl>
+        )}
       </div>
       </>}
     </div>

@@ -882,20 +882,35 @@
   flex: 1;
 }
 .routine-type-badge {
+  display: inline-flex;
+  align-items: center;
   flex-shrink: 0;
-  font-size: 10px;
-  font-weight: var(--fw-bold);
-  padding: 2px 8px;
+  min-height: 20px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+  padding: 3px 9px;
   border-radius: var(--radius-full);
+  border: 1px solid transparent;
+  line-height: 1;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  transition: filter 160ms ease, transform 160ms ease;
 }
-/* Pastel Lab (soft blue) / Theory (soft violet) tags */
+.routine-class-row:hover .routine-type-badge {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+}
+/* Distinct, softly outlined tags for lab and theory classes. */
 .routine-type-badge.lab {
-  background: rgba(96, 165, 250, 0.15);
-  color: #60A5FA;
+  background: rgba(56, 189, 248, 0.11);
+  border-color: rgba(56, 189, 248, 0.24);
+  color: #7dd3fc;
 }
 .routine-type-badge.theory {
-  background: rgba(167, 139, 250, 0.15);
-  color: #A78BFA;
+  background: rgba(167, 139, 250, 0.11);
+  border-color: rgba(167, 139, 250, 0.24);
+  color: #c4b5fd;
 }
 .routine-class-meta {
   display: flex;
@@ -936,6 +951,30 @@
 /* ─── Deadlines ─── */
 .deadline-widget .schedule-masthead {
   grid-template-columns: 1fr;
+}
+.deadline-widget {
+  display: flex;
+  flex-direction: column;
+  height: var(--daily-flow-height, 560px);
+  overflow: hidden;
+}
+.deadline-widget .schedule-masthead,
+.deadline-widget .schedule-dotted-divider {
+  flex: 0 0 auto;
+}
+.deadline-widget .deadline-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+  scrollbar-width: thin;
+}
+.deadline-widget .deadline-list > .schedule-empty {
+  flex: 1 0 100%;
+  justify-content: center;
+  padding: 52px 0 12px !important;
+  text-align: center;
 }
 .deadline-widget .schedule-icon-tile svg {
   animation: schedule-hourglass-spin 4s ease-in-out infinite alternate;
@@ -1039,9 +1078,18 @@
   grid-template-columns: 1fr auto;
 }
 .notice-widget .notice-list {
-  max-height: 340px;
+  max-height: 600px;
+  min-height: 220px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding-right: 4px;
+  scrollbar-width: thin;
+}
+.notice-widget .notice-list > .schedule-empty {
+  min-height: 220px;
+  justify-content: center;
+  padding: 52px 0 12px !important;
+  text-align: center;
 }
 .notice-row {
   cursor: pointer;
@@ -3646,6 +3694,7 @@ tr.day-row-active {
   .glass-card-static:hover {
     transform: none;
   }
+
 }
 
 /* ── Premium section group spacing ── */

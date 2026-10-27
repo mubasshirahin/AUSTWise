@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { CalendarDays, Clock, MapPin, User, ChevronLeft, ChevronRight, Plus, AlertTriangle } from 'lucide-react';
 import { useRoutine } from '../../context/RoutineContext';
 import { useAuth } from '../../context/AuthContext';
-import { normalizeAccentColor } from '../../utils/colorPalette';
 
 // Parse time string like "08:00 - 08:50" or "08:00 AM - 08:50 AM" to minutes from midnight
 function parseTimeToMinutes(timeStr) {
@@ -200,9 +199,6 @@ export default function RoutineCard() {
           <div>
             <span className="schedule-overline">Today's Schedule</span>
             <p className="schedule-title">Daily Flow</p>
-            <span className="schedule-subtitle">
-              {selectedDay}
-            </span>
           </div>
           <div className="schedule-stat">
             <span className="schedule-stat-value">{classesForDay.length}</span>
@@ -252,7 +248,6 @@ export default function RoutineCard() {
           classesForDay.map((cls, idx) => {
             const isNow = idx === nowIndex;
             const isNext = idx === nextIndex;
-            const accentColor = normalizeAccentColor(cls.color);
             const hasValidTime = parseTimeToMinutes(cls.time) !== null && parseEndTimeToMinutes(cls.time) !== null;
 
             return (
@@ -260,7 +255,6 @@ export default function RoutineCard() {
                 key={cls.id}
                 className="schedule-day-card routine-class-row"
                 style={{
-                  borderLeft: `2px solid ${accentColor}`,
                   animationDelay: `${idx * 60}ms`,
                 }}
               >
