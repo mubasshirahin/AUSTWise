@@ -17,8 +17,9 @@ import {
 } from './vaultUtils';
 import AddQuestionPaper from './AddQuestionPaper';
 import PaperViewerModal from './PaperViewerModal';
+import FeatureAccessGate from '../admin/FeatureAccessGate';
 
-export default function QuestionBank({ vaultContext }) {
+function QuestionBankContent({ vaultContext }) {
   const { user } = useAuth();
   const [selectedType, setSelectedType] = useState('All');
   const [selectedTermKey, setSelectedTermKey] = useState(getDefaultQuestionBankTermKey);
@@ -279,4 +280,8 @@ export default function QuestionBank({ vaultContext }) {
       )}
     </div>
   );
+}
+
+export default function QuestionBank({ vaultContext }) {
+  return <FeatureAccessGate featureKey="feature:vault:question-bank"><QuestionBankContent vaultContext={vaultContext} /></FeatureAccessGate>;
 }

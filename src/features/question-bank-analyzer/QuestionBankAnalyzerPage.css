@@ -46,6 +46,14 @@
   color: var(--text-primary);
 }
 
+/* Plain page container, like the other sidebar pages (Vault, Code Pulse, …):
+   the masthead and the section cards sit directly on the app background —
+   no mega-card wrapper around the whole page. */
+.qba-page {
+  display: flex;
+  flex-direction: column;
+}
+
 .qba-widget .schedule-dotted-divider {
   height: 1px;
   border: 0;
@@ -175,6 +183,14 @@
 .qba-progress-retry:focus-visible {
   outline: 2px solid var(--accent-amber);
   outline-offset: 2px;
+}
+
+.qba-admin-access-page {
+  display: grid;
+  gap: 14px;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 24px;
 }
 
 @media (max-width: 640px) {

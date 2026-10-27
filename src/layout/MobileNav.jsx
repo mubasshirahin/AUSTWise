@@ -81,6 +81,7 @@ function MoreMobileLink({ item, isActive, onClick }) {
 export default function MobileNav() {
   const [moreOpen, setMoreOpen] = useState(false);
   const location = useLocation();
+  const visibleSections = moreSections;
 
   // Touch devices have no hover, so the sheet's links only exist once it opens.
   // Warm every one of their chunks the moment it opens, so a tap lands on an
@@ -131,7 +132,7 @@ export default function MobileNav() {
             </button>
           </div>
           <div className="mobile-more-body">
-            {moreSections.map((section) => (
+            {visibleSections.map((section) => (
               <div key={section.title} className="mobile-more-section">
                 <div className="mobile-more-section-title">{section.title}</div>
                 <div className="mobile-more-grid">

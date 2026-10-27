@@ -245,6 +245,7 @@ function AppContent() {
                   <Route path="/admin/bhara-koto" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
                   <Route path="/admin/attendance" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
                   <Route path="/admin/features" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
+                  <Route path="/admin/question-bank" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
                   <Route path="/admin/access-requests" element={<ProtectedAdminRoute><AccessRequestsPanel /></ProtectedAdminRoute>} />
                   <Route path="/admin/role-preview" element={import.meta.env.DEV ? <RoleMatrixPreview /> : <ProtectedAdminRoute><RoleMatrixPreview /></ProtectedAdminRoute>} />
                   <Route path="/workspace" element={<WorkspacePage />} />
@@ -272,7 +273,7 @@ function AppContent() {
                 </Suspense>
                 </PageGuard>
               </ErrorBoundary>
-              {isAdmin && location.pathname !== '/' && location.pathname !== '/daily-life' && location.pathname !== '/analytics' && !ADMIN_PAGE_CONFIG[location.pathname] && !location.pathname.startsWith('/admin') && (
+              {isAdmin && location.pathname !== '/' && location.pathname !== '/daily-life' && location.pathname !== '/analytics' && location.pathname !== '/question-bank-analyzer' && !ADMIN_PAGE_CONFIG[location.pathname] && !location.pathname.startsWith('/admin') && (
                 <div style={{ padding: '0 24px 24px' }}>
                   {/* One card per page, keyed by the route path — the same key
                       the page's internal content gate reads. */}

@@ -96,7 +96,7 @@ ${pageCss}
 </style>
 </head>
 <body>
-<div class="qba-widget glass-card-static">
+<div class="qba-widget qba-page">
 
   <div class="schedule-masthead qba-masthead">
     <div class="schedule-title-block">

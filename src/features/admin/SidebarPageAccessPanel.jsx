@@ -17,6 +17,7 @@ export const ADMIN_PAGE_CONFIG = {
   '/chill-zone': { label: 'DownTime', featurePage: 'chill zone' },
   '/shadow': { label: 'Shadow', featurePage: 'shadow' },
   '/settings': { label: 'Settings', featurePage: 'settings' },
+  '/question-bank-analyzer': { label: 'Question Bank Analyzer', featurePage: 'question bank analyzer' },
 };
 
 function ChildFeature({ feature, parentEnabled }) {

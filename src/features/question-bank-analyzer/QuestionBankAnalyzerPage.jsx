@@ -39,6 +39,8 @@ import SavedAnalysesPanel from './SavedAnalysesPanel';
 import HistoryPanel from './HistoryPanel';
 import GliderTabs from '../../components/GliderTabs';
 import FeatureAccessGate from '../admin/FeatureAccessGate';
+import { useAuth } from '../../context/AuthContext';
+import SidebarPageAccessPanel, { SidebarPageAccessHeader } from '../admin/SidebarPageAccessPanel';
 import sampleMarkdown from '../../../samples/sample_analysis.md?raw';
 import './QuestionBankAnalyzerPage.css';
 
@@ -211,8 +213,18 @@ function StudyProgress({
 }
 
 export default function QuestionBankAnalyzerPage() {
-  // The whole tool is one feature box — admins toggle it from
-  // Admin → Access rules → Question Bank.
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin' || user?.roles?.includes('admin');
+
+  // The admin view is a focused access-management surface. Everyone else keeps
+  // the existing analyzer page and its feature access gate.
+  if (isAdmin) {
+    return <div className="qba-admin-access-page">
+      <SidebarPageAccessHeader pageKey="/question-bank-analyzer" />
+      <SidebarPageAccessPanel pageKey="/question-bank-analyzer" featureKey="feature:question-bank-analyzer:main" part="both" />
+    </div>;
+  }
+
   return (
     <FeatureAccessGate featureKey="feature:question-bank-analyzer:main">
       <QuestionBankAnalyzer />
@@ -790,7 +802,7 @@ function QuestionBankAnalyzer() {
   const notes = result?.notes || [];
 
   return (
-    <div className="qba-widget glass-card-static animate-fadeInUp">
+    <div className="qba-widget qba-page animate-fadeIn">
       <div className="schedule-masthead qba-masthead">
         <div className="schedule-title-block">
           <div className="schedule-icon-tile">

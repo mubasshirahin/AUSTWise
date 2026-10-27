@@ -13,6 +13,8 @@ import AdminAttendancePanel from './AdminAttendancePanel';
 import AcademicManagementPanel from './AcademicManagementPanel';
 import PageAvailabilityPanel from './PageAvailabilityPanel';
 import FeatureAccessPanel from './FeatureAccessPanel';
+import QuestionBankPanel from './QuestionBankPanel';
+import SidebarPageAccessPanel, { SidebarPageAccessHeader } from './SidebarPageAccessPanel';
 import { useAuth } from '../../context/AuthContext';
 import { PROVIDER_MAP } from '../../utils/socialOAuth.jsx';
 import './AdminPanelPage.css';
@@ -133,6 +135,7 @@ export default function AdminPanelPage() {
     if (path === '/admin/bhara-koto') return 'bhara-koto';
     if (path === '/admin/attendance') return 'attendance';
     if (path === '/admin/features') return 'features';
+    if (path === '/admin/question-bank') return 'question-bank';
     return 'overview';
   };
   
@@ -156,7 +159,8 @@ export default function AdminPanelPage() {
       'campus-map': '/admin/campus-map',
       'bhara-koto': '/admin/bhara-koto',
       'attendance': '/admin/attendance',
-      'features': '/admin/features'
+      'features': '/admin/features',
+      'question-bank': '/admin/question-bank'
     };
     navigate(paths[tab] || '/admin');
   };
@@ -616,6 +620,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
             <button className={activeTab === 'availability' ? 'is-active' : ''} onClick={() => navigateToTab('availability')}><span>Page availability</span><small>Enable or pause app pages</small></button>
             <button className={activeTab === 'templates' ? 'is-active' : ''} onClick={() => navigateToTab('templates')}><span>Routine templates</span><small>Manage shared class schedules</small></button>
             <button className={activeTab === 'cheatsheets' ? 'is-active' : ''} onClick={() => navigateToTab('cheatsheets')}><span>Cheatsheets</span><small>Manage shared study resources</small></button>
+            <button className={activeTab === 'question-bank' ? 'is-active' : ''} onClick={() => navigateToTab('question-bank')}><span>Question bank</span><small>Manage shared past papers</small></button>
             <button onClick={() => navigate('/admin/role-preview')}><span>Role preview</span><small>Preview the app as each user role</small></button>
           </div>
         </section>
@@ -1967,6 +1972,13 @@ if (!res.ok || !Array.isArray(data.applications)) return;
 
         {/* CHEATSHEETS ADMIN PANEL */}
         {activeTab === 'cheatsheets' && <AdminCheatsheetsPanel />}
+
+        {/* QUESTION BANK ADMIN PANEL */}
+        {activeTab === 'question-bank' && <div className="admin-question-bank-page">
+          <SidebarPageAccessHeader pageKey="/vault" />
+          <SidebarPageAccessPanel pageKey="/vault" featureKey="feature:vault:question-bank" part="both" />
+          <QuestionBankPanel />
+        </div>}
 
         {/* CAMPUS MAP ADMIN PANEL */}
         {activeTab === 'campus-map' && <AdminCampusMapPanel />}

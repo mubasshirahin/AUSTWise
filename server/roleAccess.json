@@ -487,5 +487,101 @@
       "moderator"
     ],
     "enabled": true
+  },
+  "/daily-life": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "/analytics": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "/campus": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "/vault": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "/notebook": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "/community": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "/messages": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "/productivity": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "/marketplace": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "/shadow": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "/chill-zone": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": true
+  },
+  "/settings": {
+    "featureHidden": [],
+    "statsAllowed": [
+      "admin",
+      "moderator"
+    ],
+    "enabled": false
   }
 }
