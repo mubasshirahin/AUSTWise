@@ -73,7 +73,9 @@ export default function RoutineCard() {
   const { user } = useAuth();
   const { routine, weekDays, isLoading } = useRoutine();
   const navigate = useNavigate();
-  const [selectedDay, setSelectedDay] = useState(weekDays[0] || 'Saturday');
+  const [selectedDay, setSelectedDay] = useState(() =>
+    new Date().toLocaleDateString('en-US', { weekday: 'long' })
+  );
   const [currentTime, setCurrentTime] = useState(new Date());
 
   // Update current time aligned to the next minute edge (no 59s drift)
@@ -92,8 +94,9 @@ export default function RoutineCard() {
   }, []);
 
   useEffect(() => {
-    if (weekDays && weekDays.length > 0 && !weekDays.includes(selectedDay)) {
-      setSelectedDay(weekDays[0]);
+    const todayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+    if (weekDays && weekDays.length > 0 && !weekDays.includes(selectedDay) && selectedDay !== todayName) {
+      setSelectedDay(todayName);
     }
   }, [weekDays, selectedDay]);
 

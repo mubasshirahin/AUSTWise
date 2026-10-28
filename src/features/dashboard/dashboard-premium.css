@@ -417,3 +417,44 @@ div[class="animate-fadeIn"]:hover {
   }
 }
 
+
+.dashboard-page .routine-widget .schedule-week-nav .schedule-nav-btn {
+  border: none;
+}
+
+/* Keep the day arrows inside the selected weekday control */
+.dashboard-page .routine-widget .schedule-week-nav {
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.dashboard-page .routine-widget .schedule-week-nav .schedule-nav-btn {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+}
+.dashboard-page .routine-widget .schedule-week-nav .schedule-nav-btn:hover {
+  background: transparent;
+  color: var(--text-primary);
+}
+.dashboard-page .routine-widget .schedule-week-nav .schedule-week-pill {
+  flex: 1 1 auto;
+  min-width: 68px;
+  min-height: 42px;
+  padding: 0 5px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+.dashboard-page .routine-widget .schedule-week-nav .schedule-week-pill-value { color: var(--text-primary); }
+@media (max-width: 560px) {
+  .dashboard-page .routine-widget .schedule-week-nav { gap: 0; padding: 0; }
+  .dashboard-page .routine-widget .schedule-week-nav .schedule-nav-btn { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+  .dashboard-page .routine-widget .schedule-week-nav .schedule-week-pill { min-width: 68px; min-height: 42px; }
+}
