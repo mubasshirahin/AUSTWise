@@ -33,6 +33,7 @@ const tierColor = (value) => {
 export default function DeptHeatmap() {
   const { user } = useAuth();
   const [selectedDepartment, setSelectedDepartment] = React.useState(user.department || 'CSE');
+  const [selectedChartSemester, setSelectedChartSemester] = React.useState(null);
   const [menuOpen, setMenuOpen] = React.useState(false);
   const menuRef = React.useRef(null);
   const userBatchNo = getBatchNoFromUser(user);
@@ -96,10 +97,28 @@ export default function DeptHeatmap() {
     [selectedDepartment, submissions],
   );
 
-  const totalBatches = heatmapView.visibleBatches.length + heatmapView.pendingBatches.length;
+  const semesterAverages = useMemo(() => semesterNumbers.map((semester, index) => {
+    const batches = heatmapView.visibleBatches.filter((batch) => batch.cells[index] !== null);
+    const average = batches.length
+      ? batches.reduce((sum, batch) => sum + batch.cells[index], 0) / batches.length
+      : null;
+    return { semester, average, batchCount: batches.length };
+  }), [heatmapView]);
 
-  const allBatches = [...heatmapView.visibleBatches, ...heatmapView.pendingBatches]
-    .sort((a, b) => Number(b.batchNo) - Number(a.batchNo));
+  const chart = { width: 960, height: 340, left: 48, right: 18, top: 50, bottom: 48 };
+  const plotWidth = chart.width - chart.left - chart.right;
+  const plotHeight = chart.height - chart.top - chart.bottom;
+  const chartX = (index) => chart.left + (semesterNumbers.length === 1 ? plotWidth / 2 : (index * plotWidth) / (semesterNumbers.length - 1));
+  const chartY = (value) => chart.top + ((4 - value) / 4) * plotHeight;
+  let chartPathActive = false;
+  const chartPath = semesterAverages.map((item, index) => {
+    if (item.average === null) { chartPathActive = false; return ''; }
+    const command = chartPathActive ? 'L' : 'M';
+    chartPathActive = true;
+    return `${command} ${chartX(index)} ${chartY(item.average)}`;
+  }).filter(Boolean).join(' ');
+
+  const totalBatches = heatmapView.visibleBatches.length + heatmapView.pendingBatches.length;
 
   return (
     <div className="glass-card-static schedule-widget st-widget heatmap-widget animate-fadeInUp">
@@ -151,6 +170,73 @@ export default function DeptHeatmap() {
 
       <div className="schedule-dotted-divider" />
 
+      {heatmapView.visibleBatches.length > 0 && (
+        <section className="hm-chart-card" aria-label={`${selectedDepartment} semester average graph`}>
+          <div className="hm-chart-heading">
+            <div>
+              <h3>{selectedDepartment} · Semester Average</h3>
+              <p>Average SGPA across batches. Click a point to see how many batches contributed.</p>
+            </div>
+            <span className="hm-chart-basis">Batch average</span>
+          </div>
+          <div className="hm-chart-scroll">
+            <svg className="hm-average-chart" viewBox={`0 0 ${chart.width} ${chart.height}`} role="img" aria-label={`${selectedDepartment} average SGPA by semester with contributing batch counts`}>
+              {[0, 1, 2, 3, 4].map((tick) => {
+                const y = chartY(tick);
+                return (
+                  <g key={tick}>
+                    <line className="hm-chart-gridline" x1={chart.left} x2={chart.width - chart.right} y1={y} y2={y} />
+                    <text className="hm-chart-y-label" x={chart.left - 10} y={y + 4} textAnchor="end">{tick.toFixed(1)}</text>
+                  </g>
+                );
+              })}
+              {chartPath && <path className="hm-chart-line" d={chartPath} />}
+              {semesterAverages.map((item, index) => {
+                const x = chartX(index);
+                const y = item.average === null ? null : chartY(item.average);
+                const isSelected = selectedChartSemester === item.semester;
+                const countLabelY = y === null ? null : Math.max(8, y - 35);
+                const countLabelX = Math.min(chart.width - chart.right - 38, Math.max(chart.left + 38, x));
+                return (
+                  <g key={item.semester}>
+                    {y !== null && (
+                      <>
+                        <line className="hm-chart-point-guide" x1={x} x2={x} y1={y} y2={chart.height - chart.bottom} />
+                        <circle
+                          className={`hm-chart-point ${isSelected ? 'is-selected' : ''}`}
+                          cx={x} cy={y} r={isSelected ? 7 : 5}
+                          role="button" tabIndex="0"
+                          aria-label={`${formatSemesterLabel(item.semester)}, ${item.average.toFixed(2)} average SGPA. Click to show contributing batch count.`}
+                          onClick={() => setSelectedChartSemester(isSelected ? null : item.semester)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              setSelectedChartSemester(isSelected ? null : item.semester);
+                            }
+                          }}
+                        >
+                          <title>{`${selectedDepartment} · ${formatSemesterLabel(item.semester)} · ${item.average.toFixed(2)} avg SGPA`}</title>
+                        </circle>
+                        {isSelected && (
+                          <g className="hm-chart-count-badge" aria-live="polite">
+                            <rect x={countLabelX - 38} y={countLabelY} width="76" height="22" rx="11" />
+                            <text x={countLabelX} y={countLabelY + 15} textAnchor="middle">
+                              {item.batchCount} {item.batchCount === 1 ? 'batch' : 'batches'}
+                            </text>
+                          </g>
+                        )}
+                        <text className="hm-chart-value-label" x={x} y={y + 19} textAnchor="middle">{item.average.toFixed(2)}</text>
+                      </>
+                    )}
+                    <text className="hm-chart-x-label" x={x} y={chart.height - 16} textAnchor="middle">{formatSemesterLabel(item.semester)}</text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        </section>
+      )}
+
       {heatmapView.visibleBatches.length === 0 ? (
         <div className="empty-state" style={{ padding: '32px 16px' }}>
           <Grid3x3 size={36} />
@@ -175,7 +261,6 @@ export default function DeptHeatmap() {
 
           {heatmapView.visibleBatches.map((batch) => {
             const batchDensity = densityColor(batch.contributorCount);
-            const ready = batch.contributorCount >= MIN_BATCH_CONTRIBUTORS;
 
             return (
               <div
@@ -185,12 +270,6 @@ export default function DeptHeatmap() {
               >
                 <div className="hm-cell hm-batch-label" style={{ borderLeftColor: batchDensity, color: batchDensity }}>
                   {batch.label}
-                  <span
-                    className={`schedule-day-count ${ready ? 'hot' : ''}`}
-                    title={`${batch.contributorCount} / ${MIN_BATCH_CONTRIBUTORS} students`}
-                  >
-                    {batch.contributorCount}
-                  </span>
                 </div>
 
                 {batch.cells.map((gpa, semesterIndex) => {
@@ -215,25 +294,6 @@ export default function DeptHeatmap() {
               </div>
             );
           })}
-        </div>
-      )}
-
-      {/* ── Batch-wise contributor counter ── */}
-      {(heatmapView.visibleBatches.length > 0 || heatmapView.pendingBatches.length > 0) && (
-        <div className="hm-summary">
-          <strong>Collected Data:</strong>
-          <div className="hm-summary-chips">
-            {allBatches.map((batch) => {
-              const ready = batch.contributorCount >= MIN_BATCH_CONTRIBUTORS;
-              return (
-                <span key={batch.batchNo} className={`hm-summary-chip ${ready ? 'ready' : ''}`}>
-                  <span>{batch.label}</span>
-                  <b>{batch.contributorCount}</b>
-                  <em>students</em>
-                </span>
-              );
-            })}
-          </div>
         </div>
       )}
 

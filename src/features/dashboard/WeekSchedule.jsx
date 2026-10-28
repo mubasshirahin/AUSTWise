@@ -7,20 +7,25 @@ import { useLiveValue } from '../../utils/liveStore';
 import { getUserBatchGroup } from '../../utils/getUserBatchGroup';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
 import { findCourseByCode } from '../../data/courses';
-import logoLight from '../../assets/vector1-1.svg';
-import logoDark from '../../assets/vector1-1.svg';
+import brandMark from '../../assets/austwise-icon-final.svg';
 
 export default function WeekSchedule() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTaskId = searchParams.get('task');
   const [viewMode, setViewMode] = useState(() => {
     const v = searchParams.get('view');
     if (v && ['daily','weekly','monthly'].includes(v)) return v;
-    try { const s = localStorage.getItem('aust-semester-view'); if (s && ['daily','weekly','monthly'].includes(s)) return s; } catch {}
     return 'weekly';
   });
+  const viewWasChangedByUserRef = useRef(false);
   useEffect(() => {
     try { localStorage.setItem('aust-semester-view', viewMode); } catch {}
+    // A mount or dashboard-tab change must never navigate using a stale
+    // search-param setter. Only a deliberate Day/Week/Month selection writes
+    // the view into the URL.
+    if (!viewWasChangedByUserRef.current) return;
+    viewWasChangedByUserRef.current = false;
     const v = searchParams.get('view');
     if (v !== viewMode) {
       const next = new URLSearchParams(searchParams);
@@ -29,9 +34,15 @@ export default function WeekSchedule() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode]);
+  const changeViewMode = (nextView) => {
+    viewWasChangedByUserRef.current = true;
+    setViewMode(nextView);
+  };
   const [semesterStart, setSemesterStart] = useLiveValue(
     'shared', 'semester-start-date', new Date().toISOString().split('T')[0]
   );
+  // Always open on today's date. The currently scrolled week is transient UI
+  // state, so a refresh returns the user to the current week.
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [showAddModal, setShowAddModal] = useState(false);
   const [, setSelectedDay] = useState(null);
@@ -124,21 +135,19 @@ export default function WeekSchedule() {
     return days;
   }, [currentDate]);
 
-  const getCurrentWeekNum = () => {
+  const getWeekNumForDate = (date) => {
     // Normalize both Fridays to midnight so diff is always exact 7-day multiples
     const toFriday = (d) => {
       const f = new Date(d);
       f.setDate(d.getDate() - ((d.getDay() - 5 + 7) % 7));
+      f.setHours(0, 0, 0, 0);
       return f;
     };
-    const startDate = new Date(semesterStart);
-    const weekFriday = new Date(weekDates[0]);
-    weekFriday.setHours(0, 0, 0, 0);
-    const semFriday = toFriday(startDate);
-    semFriday.setHours(0, 0, 0, 0);
-    const diff = weekFriday.getTime() - semFriday.getTime();
+    const diff = toFriday(date).getTime() - toFriday(new Date(semesterStart)).getTime();
     return Math.floor(diff / (7 * 24 * 60 * 60 * 1000)) + 1;
   };
+
+  const getCurrentWeekNum = () => getWeekNumForDate(currentDate);
 
   const getWeekLabel = () => {
     const raw = Math.max(1, Math.min(17, getCurrentWeekNum()));
@@ -146,25 +155,28 @@ export default function WeekSchedule() {
     if (raw === 8) return 'Mid Break';
     if (raw === 9) return 'Mid Exam';
     if (raw <= 16) return `Week ${raw - 2}`;
-    return 'PL';
+    return 'Post-Semester';
   };
 
-  const canGoNext = () => getCurrentWeekNum() < 17;
-  const canGoPrev = () => getCurrentWeekNum() > 1;
-  // Clamp currentDate inside 14-week semester window (1-17) to prevent infinite scroll
-  useEffect(() => {
-    const wn = getCurrentWeekNum();
-    if (wn < 1) {
-      const d = new Date(currentDate);
-      d.setDate(d.getDate() + (1 - wn) * 7);
-      setCurrentDate(d);
-    } else if (wn > 17) {
-      const d = new Date(currentDate);
-      d.setDate(d.getDate() - (wn - 17) * 7);
-      setCurrentDate(d);
+  const stepSchedulePeriod = (direction) => {
+    const date = new Date(currentDate);
+    if (viewMode === 'daily') date.setDate(date.getDate() + direction);
+    else if (viewMode === 'monthly') date.setMonth(date.getMonth() + direction);
+    else if ((direction < 0 && canGoPrev()) || (direction > 0 && canGoNext())) {
+      date.setDate(date.getDate() + direction * 7);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentDate, semesterStart]);
+    setCurrentDate(date);
+  };
+
+  // Forward scroll stops at the 17-week semester window, but never earlier
+  // than the real current week. During the post-semester break "now" sits past
+  // week 17, so without this the next-week arrow dies one step after it.
+  const canGoNext = () => {
+    const todayWeek = getWeekNumForDate(new Date());
+    const maxWeek = Number.isFinite(todayWeek) ? Math.max(17, todayWeek) : 17;
+    return getCurrentWeekNum() < maxWeek;
+  };
+  const canGoPrev = () => getCurrentWeekNum() > 1;
 
   // Load tasks from localStorage — now live-synced across devices
   const [tasks, setTasks] = useLiveValue('user', 'aust-week-tasks', []);
@@ -192,6 +204,12 @@ export default function WeekSchedule() {
     (sharedTaskStores[group][0] || []).map((task) => ({ ...task, batchGroup: group, isSharedSemesterTask: true }))
   ), [tasksA1, tasksA2, tasksB1, tasksB2, tasksC1, tasksC2, tasksD1, tasksD2]);
   const semesterTasks = useMemo(() => [...tasks, ...sharedSemesterTasks], [tasks, sharedSemesterTasks]);
+
+  useEffect(() => {
+    if (!requestedTaskId) return;
+    const task = semesterTasks.find((item) => String(item.id) === requestedTaskId);
+    if (task) setSelectedTask(task);
+  }, [requestedTaskId, semesterTasks]);
 
   const saveTasks = (updatedTasks) => setTasks(updatedTasks);
 
@@ -304,6 +322,9 @@ export default function WeekSchedule() {
       time: newTask.time || '',
       batchGroup: userBatchGroup,
       crGroup: crGroup || undefined,
+      createdByName: user?.role === 'cr' ? user.name : undefined,
+      crSection: user?.role === 'cr' ? user.section : undefined,
+      crLabGroup: user?.role === 'cr' ? userBatchGroup : undefined,
       createdAt: new Date().toISOString()
     };
 
@@ -314,7 +335,6 @@ export default function WeekSchedule() {
           ...task,
           isSharedSemesterTask: true,
           createdBy: user.id,
-          createdByName: user.name,
         }]);
       }
     } else {
@@ -400,9 +420,7 @@ export default function WeekSchedule() {
     const textPri = cs('--text-primary');
     const textSec = cs('--text-secondary');
     const textTer = cs('--text-tertiary');
-    const themeAttr = root.getAttribute('data-theme') || 'dark';
-    const lightSet = new Set(['light','swiss','newsprint','sketchbook','minimalist-monochrome','industrial']);
-    const logoUrl = lightSet.has(themeAttr) ? logoLight : logoDark;
+    const logoUrl = brandMark;
 
     const container = document.createElement('div');
     container.style.cssText = `
@@ -489,9 +507,7 @@ export default function WeekSchedule() {
     const textPri = cs('--text-primary');
     const textSec = cs('--text-secondary');
     const textTer = cs('--text-tertiary');
-    const themeAttr = root.getAttribute('data-theme') || 'dark';
-    const lightSet = new Set(['light','swiss','newsprint','sketchbook','minimalist-monochrome','industrial']);
-    const logoUrl = lightSet.has(themeAttr) ? logoLight : logoDark;
+    const logoUrl = brandMark;
 
     const container = document.createElement('div');
     container.style.cssText = `
@@ -560,7 +576,7 @@ export default function WeekSchedule() {
   }, [user, viewMode]);
 
   return (
-    <div className="glass-card-static schedule-widget week-schedule-widget animate-fadeInUp" style={{ minHeight: '480px' }}>
+    <div className="glass-card-static schedule-widget week-schedule-widget animate-fadeInUp" style={{ minHeight: '680px' }}>
 
       <div className="schedule-fixed-header">
       <div className="schedule-masthead">
@@ -590,6 +606,35 @@ export default function WeekSchedule() {
           </div>
         </div>
         <div className="schedule-actions">
+          <div className="schedule-week-nav" role="group" aria-label="Change schedule period">
+            <button
+              type="button"
+              className="schedule-nav-btn"
+              aria-label={viewMode === 'weekly' ? 'Previous week' : viewMode === 'monthly' ? 'Previous month' : 'Previous day'}
+              disabled={viewMode === 'weekly' && !canGoPrev()}
+              onClick={() => stepSchedulePeriod(-1)}
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <div className="schedule-week-pill">
+              <span className="schedule-week-pill-value">
+                {viewMode === 'daily'
+                  ? currentDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
+                  : viewMode === 'monthly'
+                    ? currentDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                    : getWeekLabel()}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="schedule-nav-btn"
+              aria-label={viewMode === 'weekly' ? 'Next week' : viewMode === 'monthly' ? 'Next month' : 'Next day'}
+              disabled={viewMode === 'weekly' && !canGoNext()}
+              onClick={() => stepSchedulePeriod(1)}
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
           <div className="export-dropdown" ref={exportRef}>
             <button className="schedule-nav-btn" ref={menuBtnRef} onClick={() => {
               if (!showExportMenu && menuBtnRef.current) {
@@ -604,13 +649,13 @@ export default function WeekSchedule() {
               <div ref={menuRef} className="export-menu routine-more-menu" style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 99999 }}>
                 <button
                   className={`export-menu-item${viewMode === 'daily' ? ' menu-active' : ''}`}
-                  onClick={() => { setCurrentDate(new Date()); setViewMode('daily'); setShowExportMenu(false); }}
+                  onClick={() => { setCurrentDate(new Date()); changeViewMode('daily'); setShowExportMenu(false); }}
                 >
                   <CalendarDays size={14} /> Day View {viewMode === 'daily' && <Check size={14} className="menu-check" />}
                 </button>
                 <button
                   className={`export-menu-item${viewMode === 'weekly' ? ' menu-active' : ''}`}
-                  onClick={() => { setViewMode('weekly'); setShowExportMenu(false); }}
+                  onClick={() => { changeViewMode('weekly'); setShowExportMenu(false); }}
                 >
                   <CalendarRange size={14} /> Week View {viewMode === 'weekly' && <Check size={14} className="menu-check" />}
                 </button>
@@ -620,7 +665,7 @@ export default function WeekSchedule() {
                     const d = new Date(currentDate);
                     d.setDate(15);
                     setCurrentDate(d);
-                    setViewMode('monthly');
+                    changeViewMode('monthly');
                     setShowExportMenu(false);
                   }}
                 >
@@ -637,38 +682,6 @@ export default function WeekSchedule() {
               document.body
             )}
           </div>
-        </div>
-      </div>
-
-      <div className="week-schedule-mobile-nav">
-        <div className="schedule-week-nav">
-          <button className="schedule-nav-btn" onClick={() => {
-            const d = new Date(currentDate);
-            if (viewMode === 'daily') d.setDate(d.getDate() - 1);
-            else if (viewMode === 'monthly') d.setMonth(d.getMonth() - 1);
-            else if (canGoPrev()) d.setDate(d.getDate() - 7);
-            setCurrentDate(d);
-          }}>
-            <ChevronLeft size={20} />
-          </button>
-          <div className="schedule-week-pill">
-            <span className="schedule-week-pill-value">
-              {viewMode === 'daily'
-                ? currentDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
-                : viewMode === 'monthly'
-                  ? currentDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-                  : getWeekLabel()}
-            </span>
-          </div>
-          <button className="schedule-nav-btn" onClick={() => {
-            const d = new Date(currentDate);
-            if (viewMode === 'daily') d.setDate(d.getDate() + 1);
-            else if (viewMode === 'monthly') d.setMonth(d.getMonth() + 1);
-            else if (canGoNext()) d.setDate(d.getDate() + 7);
-            setCurrentDate(d);
-          }}>
-            <ChevronRight size={20} />
-          </button>
         </div>
       </div>
 
@@ -753,7 +766,7 @@ export default function WeekSchedule() {
               <div key={day} className={`schedule-month-header${i < 2 ? ' weekend' : ''}`}>{day}</div>
             ))}
           </div>
-          <div className="schedule-month-grid" style={{ alignItems: 'start' }}>
+          <div className="schedule-month-grid">
             {monthDates.map((date, idx) => {
               if (!date) return <div key={`pad-${idx}`} />;
               return renderDayCard(date, { limit: 5 });
@@ -768,7 +781,7 @@ export default function WeekSchedule() {
                 <div key={day} className={`schedule-day-header${i < 2 ? ' weekend' : ''}`}>{day}</div>
               ))}
             </div>
-            <div className="schedule-grid" style={{ alignItems: 'start' }}>
+            <div className="schedule-grid">
               {weekDates.map(date => renderDayCard(date))}
             </div>
           </div>
@@ -789,6 +802,7 @@ export default function WeekSchedule() {
       </div>{/* end schedule-scroll-body */}
 
       {/* Batch Filter */}
+      <div className="schedule-footer">
       <div className="schedule-filter-bar">
         <span className="schedule-filter-label">Filter:</span>
         <button
@@ -812,14 +826,15 @@ export default function WeekSchedule() {
           </span>
         )}
       </div>
-      <p style={{ margin: '-2px 0 10px', color: 'var(--text-tertiary)', fontSize: '11px' }}>
+      <p className="schedule-filter-note">
         Shared CR tasks from all lab groups appear here; Deadline shows only your lab group’s tasks.
       </p>
+      </div>{/* end schedule-footer */}
 
       {/* Task Details Modal */}
       {selectedTask && (
         <div className="modal-overlay" onClick={() => setSelectedTask(null)}>
-          <div className="modal glass-card-static" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px', width: '90%', padding: 'var(--sp-5)', margin: 0 }}>
+          <div className="modal glass-card-static task-detail-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px', width: '90%', padding: 'var(--sp-5)', margin: 0 }}>
             <div className="flex justify-between items-start" style={{ marginBottom: '12px' }}>
               <div>
                 <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', margin: 0 }}>{selectedTask.title}</h3>
@@ -849,12 +864,6 @@ export default function WeekSchedule() {
                   <span style={{ fontSize: 'var(--fs-sm)' }}>{selectedTask.time}</span>
                 </div>
               )}
-              {selectedTask.batchGroup && (
-                <div className="flex items-center gap-2">
-                  <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', minWidth: '60px' }}>Batch:</span>
-                  <span className="badge badge-amber" style={{ fontWeight: 'bold' }}>{selectedTask.batchGroup}</span>
-                </div>
-              )}
               {selectedTask.syllabus && (
                 <div style={{ marginTop: '4px' }}>
                   <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Syllabus:</span>
@@ -864,10 +873,16 @@ export default function WeekSchedule() {
                 </div>
               )}
               {selectedTask.crGroup && (
-                <div className="flex items-center gap-2">
-                  <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', minWidth: '60px' }}>Posted by:</span>
-                  <span className="badge badge-emerald">{selectedTask.crGroup}</span>
-                </div>
+                <>
+                  <div className="flex items-center gap-2" style={{ flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', minWidth: '60px' }}>Posted by:</span>
+                    <span className="badge badge-emerald">{selectedTask.createdByName || selectedTask.crName || 'CR'}</span>
+                    <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
+                      {selectedTask.crSection ? `Section ${selectedTask.crSection}` : selectedTask.crGroup}
+                      {(selectedTask.crLabGroup || selectedTask.batchGroup) ? ` · Lab ${selectedTask.crLabGroup || selectedTask.batchGroup}` : ''}
+                    </span>
+                  </div>
+                </>
               )}
             </div>
             
@@ -889,8 +904,8 @@ export default function WeekSchedule() {
 
       {/* Add Task Modal */}
       {showAddModal && canAddTask && (
-        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
-          <div className="modal glass-card-static" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '280px', width: '85%', padding: '6px 10px 4px', boxSizing: 'border-box' }}>
+        <div className="modal-overlay add-task-modal-overlay" onClick={() => setShowAddModal(false)}>
+          <div className="modal glass-card-static add-task-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '280px', width: '85%', padding: '6px 10px 4px', boxSizing: 'border-box' }}>
             <form onSubmit={handleAddTask} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               {user?.role === 'cr' && (
                 <p style={{ margin: '2px 0 6px', color: 'var(--text-secondary)', fontSize: '11px', lineHeight: 1.45 }}>

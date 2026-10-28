@@ -9,6 +9,89 @@
   padding-bottom: var(--sp-10);
 }
 
+/* Admin Bhara Koto uses the same live table skin as the student view. */
+.dr-admin-page {
+  max-width: 1240px;
+  margin: 0 auto;
+}
+.dr-admin-page-head,
+.dr-admin-page-actions,
+.dr-admin-view-toggle {
+  display: flex;
+  align-items: center;
+}
+.dr-admin-page-head {
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.dr-admin-page-actions { gap: 10px; }
+.dr-admin-view-toggle {
+  padding: 3px;
+  gap: 2px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-full);
+  background: var(--bg-input);
+}
+.dr-admin-view-toggle button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  background: transparent;
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+}
+.dr-admin-view-toggle button.active {
+  color: var(--text-primary);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+}
+.dr-admin-add-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  background: var(--bg-input);
+}
+.dr-admin-add-form > :first-child { grid-column: 1 / -1; }
+.dr-admin-table-toolbar { margin-bottom: 12px; }
+.dr-admin-table-wrap { max-height: 65vh; }
+.dr-admin-cell-input {
+  min-width: 70px;
+  width: 100%;
+  min-height: 30px;
+  padding: 4px 7px;
+  font-size: var(--fs-xs);
+}
+.dr-admin-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.dr-admin-error {
+  margin-bottom: 12px;
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  color: var(--accent-rose);
+  background: var(--accent-rose-glow);
+  font-size: var(--fs-sm);
+}
+@media (max-width: 700px) {
+  .dr-admin-page-head { align-items: flex-start; flex-direction: column; }
+  .dr-admin-page-actions { width: 100%; justify-content: space-between; }
+}
+
 /* Masthead — match the standard widget masthead (st/mm/library): 3-column
    grid with the stats centered, and normal var(--sp-4) padding. The sv-widget
    base instead forces a cramped 2-column layout with only padding-top: 4px,
@@ -272,6 +355,13 @@
   transition: color 0.15s ease, background 0.15s ease;
 }
 
+.dr-table thead th:first-child {
+  left: 0;
+  z-index: 3;
+  min-width: 175px;
+  max-width: 240px;
+}
+
 .dr-th-sort {
   cursor: pointer;
   user-select: none;
@@ -316,14 +406,15 @@
 }
 
 .dr-th-fare {
-  text-align: right !important;
+  text-align: center !important;
+  white-space: nowrap;
 }
 
 .dr-th-fare span {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  justify-content: flex-end;
+  justify-content: center;
 }
 
 .dr-th-icon {
@@ -430,6 +521,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
+  cursor: pointer;
   min-width: 58px;
   padding: 4px 9px;
   border-radius: var(--radius-full);
@@ -806,6 +898,8 @@
 .bhara-details-preview { margin-top: 10px; padding: 8px 10px; background: var(--bg-tertiary); border: 1px solid var(--border-primary); border-radius: 8px; }
 .bhara-details-preview-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary); }
 .bhara-details-preview p { margin: 4px 0 0; font-size: 12px; color: var(--text-secondary); white-space: pre-wrap; }
+.bhara-details-error { margin: 8px 0 0; color: var(--accent-rose); font-size: var(--fs-xs); }
+.bhara-details-empty { color: var(--text-tertiary) !important; }
 /* Reuse bhara-details-panel styles if AustBharaPage.css not loaded */
 .dr-details-panel .bhara-details-panel,
 .bhara-details-panel.dr-details-panel {

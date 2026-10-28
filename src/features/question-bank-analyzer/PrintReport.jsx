@@ -1,4 +1,5 @@
 import { createPortal } from 'react-dom';
+import austwiseIcon from '../../assets/austwise-icon-final.svg';
 import { buildQuestionVersions, compareSemestersDesc } from './previewAnalytics';
 import { splitSemesterList, splitSubQuestions } from './parseQuestionBank';
 import './PrintReport.css';
@@ -240,7 +241,7 @@ export default function PrintReport({ data, className = '', innerRef }) {
   return (
     <div className={`qba-report ${className}`.trim()} ref={innerRef}>
       <header className="qba-report-header">
-        <div className="qba-report-kicker">AUSTWise · Question Bank Analysis</div>
+        <div className="qba-report-kicker"><img src={austwiseIcon} alt="AUSTWise" style={{ width: 22, height: 22, objectFit: 'contain', verticalAlign: 'middle', marginRight: 8 }} />AUSTWise · Question Bank Analysis</div>
         <h1 className="qba-report-course">
           {display(data.course, 'Course code')} — {display(data.title, 'Course title')}
         </h1>

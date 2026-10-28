@@ -240,7 +240,7 @@ export default function RoutineCard() {
         ) : classesForDay.length === 0 ? (
           <div className="schedule-empty" style={{ padding: '28px 0', display:'flex', flexDirection:'column', gap:'12px', alignItems:'center' }}>
             <span>No classes scheduled for {selectedDay}</span>
-            <button className="btn btn-sm" onClick={() => navigate('/?tab=routine')} style={{ display:'inline-flex', alignItems:'center', gap:'6px' }}>
+            <button className="btn btn-sm" onClick={() => navigate('/dashboard/routine')} style={{ display:'inline-flex', alignItems:'center', gap:'6px' }}>
               <Plus size={14} /> Add in Weekly Planner
             </button>
             {user?.role !== 'faculty' && !(typeof user?.hasRole === 'function' && user.hasRole('faculty')) && (

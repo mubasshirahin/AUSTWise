@@ -151,10 +151,11 @@ export default function ExamTracker() {
   const theoryCourses = mergedCourses;
 
   const fmtSem = (s) => {
-    const m = (s || '').match(/Year\s*(\d+)\s*-\s*Semester\s*(\d+)/i);
-    if (!m) return s;
-    const ord = +m[1] === 1 ? '1st' : +m[1] === 2 ? '2nd' : +m[1] === 3 ? '3rd' : `${m[1]}th`;
-    return `${ord} Year, ${m[2]} Sem`;
+    const value = String(s || '').trim();
+    const full = value.match(/Year\s*(\d+)\s*-\s*Semester\s*(\d+)/i);
+    const compact = value.match(/^(\d+)\s*[./-]\s*(\d+)$/);
+    const match = full || compact;
+    return match ? `Y${match[1]}/S${match[2]}` : value;
   };
 
   // Every course shown in Zero Hour uses the shared CR schedule.
@@ -288,13 +289,14 @@ export default function ExamTracker() {
             <span className="schedule-subtitle">
               {user?.department || 'AUST'}
               {user?.yearSemester ? ` · ${fmtSem(user.yearSemester)}` : ''}
-              {user?.section ? ` · Section ${user.section}` : ''}
+              {user?.section ? ` · Sec ${user.section}` : ''}
               {user?.labSection ? ` · Lab ${user.labSection}` : ''}
             </span>
-            <span className={`exam-access-badge ${canEditShared ? 'editor' : 'viewer'}`}>
-              {canEditShared ? <PenLine size={10} /> : <BookOpen size={10} />}
-              {canEditShared ? 'Editor · updates visible to your section' : 'View only · updated by your CR'}
-            </span>
+            {canEditShared && (
+              <span className="exam-access-badge editor">
+                <PenLine size={10} /> Editor · updates visible to your section
+              </span>
+            )}
           </div>
         </div>
         <div className="schedule-masthead-center">

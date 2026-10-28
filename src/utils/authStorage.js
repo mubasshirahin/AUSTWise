@@ -27,7 +27,11 @@ const userStoragePrefixes = {
   // Shared resources
   routines: 'aust-routines',
   attendance: 'aust-attendance',
+  // Per-account timetable state used by RoutineProvider.
+  userRoutine: 'aust-user-routine',
+  userWeekDays: 'aust-user-weekdays',
   // Semester Tracker directory
+  semesterResults: 'aust-user-semester-results',
   trackerCourses: 'aust-user-tracker-courses',
   trackerMarks:   'aust-user-tracker-marks',
   trackerLabCourses: 'aust-user-tracker-lab-courses',
@@ -138,7 +142,10 @@ export function clearUserStorage() {
     const userId = getCurrentUserId();
     if (!userId) return;
     
-    Object.values(userStoragePrefixes).forEach(prefix => {
+    Object.entries(userStoragePrefixes).forEach(([keyType, prefix]) => {
+      // Keep the user's own timetable cached across logout so they can return
+      // to the routine they loaded or edited on this device.
+      if (keyType === 'userRoutine' || keyType === 'userWeekDays') return;
       const key = `${prefix}-${userId}`;
       localStorage.removeItem(key);
     });
@@ -741,7 +748,7 @@ export async function submitRoleApplication(payload) {
     // Genuine network failure (server offline) → local fallback.
     if (err instanceof TypeError || /fetch|network|ECONNREFUSED/i.test(String(err?.message))) {
       if (['vp', 'gs'].includes(payload.appliedRole)) {
-        throw new Error('Connect to the server to submit an executive role application.');
+        throw new Error('Connect to the server to submit an executive role application.', { cause: err });
       }
       return submitRoleApplicationLocal(payload);
     }

@@ -28,8 +28,14 @@ import {
   getUserAttendanceRecords,
 } from './telegramDB.mjs';
 import { sendTelegramMessage, sendTelegramMessageWithKeyboard } from './telegramNotifier.mjs';
+import {
+  TELEGRAM_TEST_TYPES, getSortedClasses, buildDigest, buildFirstClassReminder,
+  buildAfterClassAttendance, buildEveningAttendance, buildMissedAttendance,
+  buildDeadlineMessage as buildFormattedDeadlineMessage, buildNoticeMessage, buildWelcomeMessage,
+} from './telegramMessageTemplates.mjs';
 import { getAllUsersSafe } from './userStore.mjs';
 import { getUserStoreValue } from './storeDB.mjs';
+import { getPool } from './db.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -313,6 +319,61 @@ async function getAccountByAwid(awid) {
 
 // ── Per-user tick ────────────────────────────────────────────────────────────
 
+const TEST_CLASS = {
+  course: 'CSE 101', name: 'Introduction to Computing', type: 'Theory',
+  time: '08:00 - 08:50', room: '7A-01',
+};
+
+function withPreviewClass(routine, day) {
+  const current = parseRoutine(routine);
+  return getSortedClasses(current, day).length ? current : { ...current, [day]: [TEST_CLASS] };
+}
+
+export async function sendTelegramTestMessage(chatId, type, routine = {}) {
+  if (!TELEGRAM_TEST_TYPES.some((item) => item.id === type)) {
+    return { success: false, error: 'Unknown Telegram message type.' };
+  }
+  const now = dhakaNow();
+  const todayName = DAY_NAMES[now.weekdayIndex];
+  const tomorrowName = DAY_NAMES[(now.weekdayIndex + 1) % 7];
+  let payload;
+  switch (type) {
+    case 'welcome': payload = buildWelcomeMessage(chatId, { test: true }); break;
+    case 'midnight_digest': payload = buildDigest(withPreviewClass(routine, tomorrowName), new Date(), tomorrowName, { test: true }); break;
+    case 'first_class_reminder':
+      payload = buildFirstClassReminder(getSortedClasses(withPreviewClass(routine, todayName), todayName), new Date(), { test: true });
+      break;
+    case 'after_class_attendance': {
+      const classes = getSortedClasses(withPreviewClass(routine, todayName), todayName);
+      payload = buildAfterClassAttendance(classes[0] || TEST_CLASS, 0, classes.length || 1, { test: true });
+      break;
+    }
+    case 'evening_attendance': {
+      const classes = getSortedClasses(withPreviewClass(routine, todayName), todayName);
+      payload = buildEveningAttendance(classes.length ? classes : [TEST_CLASS], {}, { test: true });
+      break;
+    }
+    case 'missed_attendance': {
+      const yesterdayName = DAY_NAMES[(now.weekdayIndex + 6) % 7];
+      payload = buildMissedAttendance(getSortedClasses(routine, yesterdayName).length || 2, new Date(), { test: true });
+      break;
+    }
+    case 'deadline_urgent':
+      payload = buildFormattedDeadlineMessage({ title: 'Design project submission', course: 'CSE 220', priority: 'High', dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() }, 'urgent', { test: true });
+      break;
+    case 'deadline_12h':
+      payload = buildFormattedDeadlineMessage({ title: 'Lab report submission', course: 'CSE 220', priority: 'Medium', dueDate: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString() }, '12h', { test: true });
+      break;
+    case 'notice':
+      payload = buildNoticeMessage({ title: 'Academic notice preview', content: 'This is a sample notice message. Official notice details will appear here.', postedByName: 'AUSTWise Admin', postedByRole: 'Admin', pinned: true }, { test: true });
+      break;
+    default: return { success: false, error: 'Unknown Telegram message type.' };
+  }
+  return payload.keyboard
+    ? sendTelegramMessageWithKeyboard(process.env.TELEGRAM_BOT_TOKEN, chatId, payload.text, payload.keyboard, 'HTML')
+    : sendTelegramMessage(process.env.TELEGRAM_BOT_TOKEN, chatId, payload.text, 'HTML');
+}
+
 async function processUser(user, now) {
   const chatId = user.chatId ?? user.ChatId;
   if (!chatId) return;
@@ -322,15 +383,18 @@ async function processUser(user, now) {
 
   // Per-channel prefs (default all ON — Telegram registration is the consent).
   let notifyClass = true;
+  let notifyDigest = true;
   let notifyAttendance = true;
   let notifyDeadline = true;
   if (awid) {
     try {
       const acct = await getAccountByAwid(String(awid));
       const n = acct?.settings?.notifications || {};
-      notifyClass = n.notifyClass !== false;
-      notifyAttendance = n.notifyAttendance !== false;
-      notifyDeadline = n.notifyDeadline !== false;
+      const telegram = n.channels?.telegram || {};
+      notifyClass = telegram.classReminders ?? (n.notifyClass !== false);
+      notifyDigest = telegram.classSchedule ?? (n.notifyDigest !== false);
+      notifyAttendance = telegram.attendance ?? (n.notifyAttendance !== false);
+      notifyDeadline = telegram.deadlines ?? (n.notifyDeadline !== false);
     } catch { /* store unavailable → keep defaults */ }
   }
 
@@ -340,10 +404,11 @@ async function processUser(user, now) {
     .sort((a, b) => (classStartMinutes(a) ?? 0) - (classStartMinutes(b) ?? 0));
 
   // ── 1) Midnight digest (12:00–12:05 AM) — tomorrow's classes ──
-  if (notifyClass && now.hour === 0 && now.minute < 5 && !hasFired(`mid-${chatId}-${todayKey}`)) {
+  if (notifyDigest && now.hour === 0 && now.minute < 5 && !hasFired(`mid-${chatId}-${todayKey}`)) {
     await markFired(`mid-${chatId}-${todayKey}`);
-    const { text } = buildMidnightDigest(routine);
-    await sendTelegramMessage(botToken, chatId, text);
+    const tomorrowName = DAY_NAMES[(now.weekdayIndex + 1) % 7];
+    const { text } = buildDigest(routine, new Date(), tomorrowName);
+    await sendTelegramMessage(botToken, chatId, text, 'HTML');
   }
 
   // ── 2) 30 min before the FIRST class of the day (single daily alert) ──
@@ -354,13 +419,8 @@ async function processUser(user, now) {
       const due = now.minutes >= firstStart - 30 && now.minutes < firstStart - 27;
       if (due && !hasFired(key)) {
         await markFired(key);
-        const cls = todayClasses[0];
-        const text =
-          `⏰ প্রথম ক্লাস ৩০ মিনিট পরে!\n\n` +
-          `📚 ${cls.course} – ${cls.name || ''}\n` +
-          `⏰ ${format12Hour(firstStart)} - ${format12Hour(classEndMinutes(cls))} | 📍 Room ${cls.room || 'TBA'}\n\n` +
-          `রেডি হও! আজ ${todayClasses.length}টি ক্লাস আছে।\n\n📖 AUSTWise`;
-        await sendTelegramMessage(botToken, chatId, text);
+        const { text } = buildFirstClassReminder(todayClasses);
+        await sendTelegramMessage(botToken, chatId, text, 'HTML');
       }
     }
   }
@@ -384,8 +444,8 @@ async function processUser(user, now) {
         }
         if (recordsCache.has(`${String(cls.course).toUpperCase()}|${todayKey}`)) continue;
       } catch { /* fall through and send */ }
-      const { text, keyboard } = buildClassEndAttendanceMessage(cls, i, todayClasses.length);
-      await sendTelegramMessageWithKeyboard(botToken, chatId, text, keyboard);
+      const { text, keyboard } = buildAfterClassAttendance(cls, i, todayClasses.length);
+      await sendTelegramMessageWithKeyboard(botToken, chatId, text, keyboard, 'HTML');
       await new Promise(r => setTimeout(r, 400));
     }
   }
@@ -405,15 +465,16 @@ async function processUser(user, now) {
         );
         todayClasses.forEach((cls, i) => { answeredMap[i] = todaySet.has(String(cls.course).toUpperCase()); });
       } catch { /* default: treat all as unanswered */ }
-      const { text, keyboard, unansweredCount } = buildNinePmReminder(todayClasses, answeredMap);
+      const { text, keyboard } = buildEveningAttendance(todayClasses, answeredMap);
+      const unansweredCount = keyboard.length;
       if (unansweredCount > 0) {
-        await sendTelegramMessageWithKeyboard(botToken, chatId, text, keyboard);
+        await sendTelegramMessageWithKeyboard(botToken, chatId, text, keyboard, 'HTML');
       }
     }
   }
 
   // ── Auto-missed sweep (12:00–12:06 AM, marks YESTERDAY's unanswered) ──
-  if (notifyAttendance && now.hour === 0 && now.minute < 6) {
+  if (now.hour === 0 && now.minute < 6) {
     const key = `sweep-${chatId}-${todayKey}`;
     if (!hasFired(key)) {
       await markFired(key);
@@ -435,11 +496,9 @@ async function processUser(user, now) {
             await saveAttendanceRecordForDate(chatId, cls.course, false, yKey);
             marked++;
           }
-          if (marked > 0) {
-            await sendTelegramMessage(
-              botToken, chatId,
-              `🌙 রাত ১২টা — গতকালের ${marked}টি ক্লাসের উত্তর পাওয়া যায়নি। Auto-Missed হিসেবে মার্ক করা হয়েছে।\n\n📖 AUSTWise`
-            );
+          if (marked > 0 && notifyAttendance) {
+            const missedMessage = buildMissedAttendance(marked, new Date());
+            await sendTelegramMessage(botToken, chatId, missedMessage.text, 'HTML');
           }
         } catch { /* best-effort sweep */ }
       }
@@ -454,14 +513,14 @@ async function processUser(user, now) {
       // Urgent entry: high-priority task crossing into the < 48h zone.
       if (dl.priority === 'high' && minsLeft <= 48 * 60 && !hasFired(`dl-u-${awid}-${dl.id}`)) {
         await markFired(`dl-u-${awid}-${dl.id}`);
-        const { text } = buildDeadlineMessage(dl, 'urgent');
-        await sendTelegramMessage(botToken, chatId, text);
+        const { text } = buildFormattedDeadlineMessage(dl, 'urgent');
+        await sendTelegramMessage(botToken, chatId, text, 'HTML');
       }
       // 12h before: high/medium priority tasks only (not everything — spam).
       if ((dl.priority === 'high' || dl.priority === 'medium') && minsLeft <= 12 * 60 && !hasFired(`dl-12-${awid}-${dl.id}`)) {
         await markFired(`dl-12-${awid}-${dl.id}`);
-        const { text } = buildDeadlineMessage(dl, '12h');
-        await sendTelegramMessage(botToken, chatId, text);
+        const { text } = buildFormattedDeadlineMessage(dl, '12h');
+        await sendTelegramMessage(botToken, chatId, text, 'HTML');
       }
     }
   }
@@ -471,12 +530,63 @@ async function processUser(user, now) {
 
 let tickTimer = null;
 let ticking = false;
+let schedulerLockClient = null;
+
+// A JSON send log only protects one filesystem. On a multi-instance host each
+// server can have its own copy and send the same reminders. Hold a PostgreSQL
+// advisory lock on a dedicated connection so only one instance runs the jobs.
+const SCHEDULER_LOCK_ID = 731904281;
+
+async function isSchedulerLeader() {
+  if (schedulerLockClient) {
+    const currentClient = schedulerLockClient;
+    try {
+      await currentClient.query('SELECT 1');
+      return true;
+    } catch {
+      if (schedulerLockClient === currentClient) schedulerLockClient = null;
+      try { currentClient.release(true); } catch { /* already released */ }
+    }
+  }
+
+  // Local development without a configured database still supports one server
+  // process. In deployed environments, fail closed if the shared DB is down.
+  const hasDatabase = Boolean(
+    process.env.DATABASE_URL || process.env.PGHOST || process.env.DB_SERVER ||
+    process.env.PGUSER || process.env.DB_USER
+  );
+  if (!hasDatabase) return true;
+
+  let client;
+  try {
+    const pool = await getPool();
+    client = await pool.connect();
+    const result = await client.query('SELECT pg_try_advisory_lock($1) AS locked', [SCHEDULER_LOCK_ID]);
+    if (!result.rows[0]?.locked) {
+      client.release();
+      return false;
+    }
+    schedulerLockClient = client;
+    client.on('error', () => {
+      if (schedulerLockClient === client) {
+        schedulerLockClient = null;
+        try { client.release(true); } catch { /* already released */ }
+      }
+    });
+    return true;
+  } catch (error) {
+    if (client) client.release();
+    console.warn('Telegram scheduler waiting for the shared database lock:', error?.message || error);
+    return false;
+  }
+}
 
 export async function runSchedulerTick() {
   if (ticking) return;
   if (!process.env.TELEGRAM_BOT_TOKEN) return;
   ticking = true;
   try {
+    if (!(await isSchedulerLeader())) return;
     firedLog = await loadLog();
     const now = dhakaNow();
     const users = await getAllUsers();

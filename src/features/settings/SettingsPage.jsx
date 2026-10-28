@@ -160,6 +160,17 @@ const lightThemes = [
 const themeOptions = [...darkThemes, ...lightThemes];
 
 const ACCENT_DEFAULT_HEX = '#F5A623';
+const TELEGRAM_MESSAGE_TESTS = [
+  ['welcome', 'Welcome message'],
+  ['midnight_digest', 'Tomorrow’s class digest'],
+  ['first_class_reminder', 'First class reminder'],
+  ['after_class_attendance', 'After-class check-in'],
+  ['evening_attendance', 'Evening attendance summary'],
+  ['missed_attendance', 'Auto-missed summary'],
+  ['deadline_urgent', 'Urgent deadline alert'],
+  ['deadline_12h', '12-hour deadline reminder'],
+  ['notice', 'Notice announcement'],
+];
 
 // Accent color — the hex field re-skins the app's accent theme instantly.
 // Defaults to the active theme's native color; the user can override per theme.
@@ -300,8 +311,107 @@ export default function SettingsPage() {
   const { isAdmin } = useAdminMode();
   const { theme, setTheme } = useTheme();
   const { user, isAuthenticated, updateUser, saveUserProfile, logout, refreshUserFromServer } = useAuth();
+  const accountRoles = new Set([user?.role, ...(Array.isArray(user?.roles) ? user.roles : [])].filter(Boolean));
+  const isAlumniMember = accountRoles.has('alumni') || accountRoles.has('alumni_with_carry');
+  const isFacultyMember = accountRoles.has('faculty') || [...accountRoles].some(role => String(role).startsWith('faculty_'));
   const { routine, weekDays } = useRoutine();
-  const { supported, permission, settings: notifSettings, enable: enableNotifs, disable: disableNotifs, updateSetting } = useNotifications(routine, weekDays);
+  const { supported, permission, settings: notifSettings, enable: enableNotifs, prepareBrowserChannel, disable: disableNotifs, updateSetting } = useNotifications(routine, weekDays);
+  const [checkingDelivery, setCheckingDelivery] = useState('');
+  const [deliveryStatus, setDeliveryStatus] = useState('');
+  const [telegramHealth, setTelegramHealth] = useState('checking');
+  const refreshTelegramHealth = useCallback(async () => {
+    if (!isAuthenticated) {
+      setTelegramHealth('unavailable');
+      return { ready: false, reason: 'not_registered' };
+    }
+    try {
+      const response = await fetch('/api/telegram/notification-health', { credentials: 'same-origin' });
+      const result = await response.json().catch(() => ({}));
+      const ready = response.ok && result.ready === true;
+      setTelegramHealth(ready ? 'ready' : 'unavailable');
+      return { ...result, ready };
+    } catch {
+      setTelegramHealth('unavailable');
+      return { ready: false, reason: 'status_unavailable' };
+    }
+  }, [isAuthenticated]);
+  useEffect(() => { refreshTelegramHealth(); }, [refreshTelegramHealth]);
+  const updateChannelPreference = (channel, category, value) => {
+    const channels = notifSettings.channels || {};
+    updateSetting('channels', { ...channels, [channel]: { ...(channels[channel] || {}), [category]: value } });
+    const legacyKey = channel === 'browser' ? ({ classReminders: 'notifyClass', deadlines: 'notifyDeadline' }[category]) : null;
+    if (legacyKey) updateSetting(legacyKey, value);
+  };
+  const handleChannelToggle = async (channel, category) => {
+    const channelReady = channel === 'telegram'
+      ? telegramHealth === 'ready'
+      : channel === 'browser'
+        ? supported && permission === 'granted'
+        : true;
+    const enabled = channelReady && Boolean(notifSettings.channels?.[channel]?.[category]);
+    if (enabled) {
+      updateChannelPreference(channel, category, false);
+      setDeliveryStatus('');
+      return;
+    }
+
+    const key = `${channel}:${category}`;
+    setCheckingDelivery(key);
+    setDeliveryStatus(channel === 'telegram' ? 'Checking Telegram connection...' : 'Checking browser permission...');
+    let activatedBrowser = false;
+    try {
+      if (channel === 'browser') {
+        const result = await prepareBrowserChannel(['classReminders', 'deadlines'].includes(category));
+        if (result !== 'granted') {
+          const message = result === 'unsupported'
+            ? 'This browser does not support notifications.'
+            : result === 'denied'
+              ? 'Browser permission is blocked. Allow notifications in this site’s browser settings first.'
+              : 'Browser notifications could not be started, so this update stays off.';
+          setDeliveryStatus(message);
+          return;
+        }
+        if (permission !== 'granted') {
+          activatedBrowser = true;
+          const browserChannels = notifSettings.channels?.browser || {};
+          const nextBrowserChannels = Object.fromEntries(Object.entries(browserChannels).map(([key, value]) => [key, typeof value === 'boolean' ? true : value]));
+          updateSetting('channels', { ...notifSettings.channels, browser: nextBrowserChannels });
+          updateSetting('enabled', true);
+          updateSetting('notifyClass', true);
+          updateSetting('notifyDeadline', true);
+        }
+      }
+
+      if (channel === 'telegram') {
+        setTelegramEnabled(true);
+        const health = await refreshTelegramHealth();
+        if (!health.ready) {
+          setDeliveryStatus(health.reason === 'bot_unavailable'
+            ? 'Telegram bot is unavailable right now. This update stays off until it is reachable.'
+            : health.reason === 'bot_not_configured'
+              ? 'Telegram bot is not configured on the website yet. This update stays off.'
+              : 'Register your Telegram Chat ID first. Setup has been opened below.');
+          return;
+        }
+      }
+
+      if (!activatedBrowser) updateChannelPreference(channel, category, true);
+      setDeliveryStatus(activatedBrowser
+        ? 'Browser permission verified. All Browser updates are on; you can turn off any you do not want.'
+        : `${channel === 'telegram' ? 'Telegram' : 'Browser'} checked and ready. ${category === 'classReminders' || category === 'deadlines' ? 'Smart reminders are enabled.' : 'Update turned on.'}`);
+    } catch {
+      setDeliveryStatus(channel === 'telegram'
+        ? 'Could not verify Telegram right now. This update stays off.'
+        : 'Could not verify browser notifications. This update stays off.');
+    } finally {
+      setCheckingDelivery('');
+    }
+  };
+  const isDeliveryChannelReady = (channel) => channel === 'telegram'
+    ? telegramHealth === 'ready'
+    : channel === 'browser'
+      ? supported && permission === 'granted'
+      : true;
 
   // Real-time: when another device edits this user's profile, refresh from server
   // TEMP DISABLED — blink debug: comment out to isolate loop
@@ -388,7 +498,7 @@ export default function SettingsPage() {
         const res = await fetch('/api/role-applications/mine', { credentials: 'same-origin' });
         const data = await res.json().catch(() => ({}));
         if (!cancelled && res.ok && Array.isArray(data.applications)) {
-          setExecutiveApplications(data.applications.filter((app) => ['vp', 'gs'].includes(app.appliedRole)));
+          setExecutiveApplications(data.applications.filter((app) => ['vp', 'gs', 'faculty'].includes(app.appliedRole)));
         }
       } catch { /* offline: use local submission state */ }
     };
@@ -409,7 +519,7 @@ export default function SettingsPage() {
         semester: user.semester,
         batch: user.batch || user.batchNo,
         appliedRole,
-        statement: '',
+        statement: appliedRole === 'faculty' ? 'AUST alumnus applying for the Faculty role.' : '',
       });
       setExecutiveApplications((current) => [...current.filter((item) => item.id !== application.id), application]);
       setApplicationMessage(`${appliedRole.toUpperCase()} application submitted. Admin will review it.`);
@@ -428,12 +538,6 @@ export default function SettingsPage() {
   const [showApplyForm, setShowApplyForm] = useState(false);
   const [yearSemTouched, setYearSemTouched] = useState(false);
 
-  // Member-list privacy toggle (show CGPA to others; attendance is always private)
-  const [privacySettings, setPrivacySettings] = useState(() => ({
-    showCgpa: user?.privacy?.showCgpa !== false,
-  }));
-  const [privacySaving, setPrivacySaving] = useState(false);
-  const [privacyMsg, setPrivacyMsg] = useState('');
   const [semesterDropSaving, setSemesterDropSaving] = useState(false);
   const [semesterDropMessage, setSemesterDropMessage] = useState('');
   const [alumniCarrySaving, setAlumniCarrySaving] = useState(false);
@@ -485,36 +589,6 @@ export default function SettingsPage() {
     }
   };
 
-  const savePrivacySetting = async (key, value) => {
-    const next = { ...privacySettings, [key]: value };
-    setPrivacySettings(next);
-    setPrivacySaving(true);
-    setPrivacyMsg('');
-    try {
-      const res = await fetch('/api/presence/privacy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(next),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setPrivacyMsg('Saved');
-        updateUser({ privacy: data.privacy });
-      } else {
-        setPrivacyMsg(data.error === 'Authentication required.'
-          ? 'Log in to change privacy settings.'
-          : (data.error || 'Failed to save.'));
-        setPrivacySettings(prev => ({ ...prev, [key]: !value }));
-      }
-    } catch {
-      setPrivacyMsg('Network error.');
-      setPrivacySettings(prev => ({ ...prev, [key]: !value }));
-    } finally {
-      setPrivacySaving(false);
-      setTimeout(() => setPrivacyMsg(''), 2500);
-    }
-  };
-  
   // Telegram notification settings
   const [telegramEnabled, setTelegramEnabled] = useState(() => {
     const saved = localStorage.getItem('telegram_notifications_enabled');
@@ -524,7 +598,11 @@ export default function SettingsPage() {
     return localStorage.getItem('telegram_chat_id') || '';
   });
   const [telegramTesting, setTelegramTesting] = useState(false);
+  const [telegramTestType, setTelegramTestType] = useState('');
   const [telegramMsg, setTelegramMsg] = useState('');
+  const [showTelegramUnregisterConfirm, setShowTelegramUnregisterConfirm] = useState(false);
+  const [telegramConnectionError, setTelegramConnectionError] = useState('');
+  const [telegramConnectionRetry, setTelegramConnectionRetry] = useState(0);
   const [isTelegramRegistered, setIsTelegramRegistered] = useState(() => {
     const saved = localStorage.getItem('telegram_is_registered');
     if (saved === 'true') return true;
@@ -545,20 +623,59 @@ export default function SettingsPage() {
   // Telegram Chat ID + registration status are per-account (one Chat ID ↔ one
   // awid). Load them from the server on mount so a different user logging in on
   // the same browser sees THEIR OWN Chat ID — not a leftover from localStorage.
-  // TEMP DISABLED — blink debug (entire fetch disabled)
   useEffect(() => {
-    return () => {};
-  }, []);
-  
-  // Webhook status
-  const [webhookInfo, setWebhookInfo] = useState(null);
-  const [webhookLoading, setWebhookLoading] = useState(false);
-  
-  // Fetch webhook info on mount — TEMP DISABLED blink debug
-  useEffect(() => {
-    return () => {};
-  }, []);
+    if (!isAuthenticated || !user?.id) {
+      setTelegramChatId('');
+      registeredChatIdRef.current = '';
+      setIsTelegramRegistered(false);
+      return;
+    }
+    let cancelled = false;
+    setIsTelegramRegistered(null);
+    setTelegramConnectionError('');
+    fetch('/api/telegram/connection', { credentials: 'same-origin' })
+      .then(async (response) => {
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.success) throw new Error(result.error || 'Could not load Telegram connection.');
+        if (cancelled) return;
+        const chatId = result.registered ? String(result.chatId || '') : '';
+        registeredChatIdRef.current = chatId;
+        setTelegramChatId(chatId);
+        setIsTelegramRegistered(Boolean(result.registered));
+        setTelegramConnectionError('');
+      })
+      .catch(() => {
+        if (cancelled) return;
+        // A temporary status-check failure does not unlink the account.
+        // Keep the status unknown so the UI does not invite a duplicate registration.
+        setTelegramConnectionError('Could not check the Telegram link. Your saved connection has not been changed.');
+      });
+    return () => { cancelled = true; };
+  }, [isAuthenticated, user?.id, telegramConnectionRetry]);
 
+  const sendTelegramMessageTest = async (type, label) => {
+    setTelegramTesting(true);
+    setTelegramTestType(type);
+    setTelegramMsg('');
+    try {
+      const response = await fetch('/api/telegram/test-message', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, routine }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) throw new Error(result.error || 'Telegram could not send this test message.');
+      setTelegramMsg(`✓ ${label} sent to your Telegram.`);
+    } catch (error) {
+      setTelegramMsg(`Failed to send ${label.toLowerCase()}: ${error.message}`);
+    } finally {
+      setTelegramTesting(false);
+      setTelegramTestType('');
+      window.setTimeout(() => setTelegramMsg(''), 6000);
+    }
+  };
+  
   // Persist Telegram settings to localStorage
   useEffect(() => {
     localStorage.setItem('telegram_notifications_enabled', telegramEnabled.toString());
@@ -1031,6 +1148,41 @@ export default function SettingsPage() {
 
   return (
     <div className="settings-page animate-fadeIn">
+      {showTelegramUnregisterConfirm && (
+        <div className="telegram-unregister-overlay" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget && !telegramTesting) setShowTelegramUnregisterConfirm(false);
+        }}>
+          <section className="telegram-unregister-dialog" role="dialog" aria-modal="true" aria-labelledby="telegram-unregister-title">
+            <span className="telegram-unregister-icon"><BellOff size={20} /></span>
+            <h2 id="telegram-unregister-title">Disconnect Telegram?</h2>
+            <p>You’ll stop receiving Telegram notifications. You can connect again any time from Settings.</p>
+            <div className="telegram-unregister-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowTelegramUnregisterConfirm(false)} disabled={telegramTesting}>Keep connected</button>
+              <button type="button" className="btn telegram-unregister-confirm" disabled={telegramTesting} onClick={async () => {
+                setTelegramTesting(true);
+                try {
+                  const response = await fetch('/api/telegram/unregister', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chatId: telegramChatId }),
+                  });
+                  const result = await response.json();
+                  if (!response.ok || !result.success) throw new Error(result.error || 'Could not disconnect Telegram.');
+                  registeredChatIdRef.current = '';
+                  setIsTelegramRegistered(false);
+                  setTelegramMsg('✅ You have been unsubscribed from notifications.');
+                  setShowTelegramUnregisterConfirm(false);
+                  window.setTimeout(() => setTelegramMsg(''), 5000);
+                } catch (error) {
+                  setTelegramMsg(`❌ Failed: ${error.message || 'Could not disconnect Telegram.'}`);
+                } finally {
+                  setTelegramTesting(false);
+                }
+              }}>{telegramTesting ? 'Disconnecting…' : 'Disconnect'}</button>
+            </div>
+          </section>
+        </div>
+      )}
 
       {/* ── 1. Hero box (own card) ── */}
       {isAdmin && activeSubTab !== 'invite' ? <SidebarPageAccessHeader pageKey="/settings" /> : <header className="st-hero">
@@ -1149,7 +1301,7 @@ export default function SettingsPage() {
                 </section>
               )}
 
-              {isAuthenticated && (user?.role === 'alumni' || user?.role === 'alumni_with_carry') && (
+              {isAuthenticated && isAlumniMember && (
                 <section className="cfg-section" style={{ margin: '0 0 18px' }}>
                   <div className="cfg-section-head">
                     <h3 className="cfg-section-title">Alumni Status</h3>
@@ -1159,21 +1311,30 @@ export default function SettingsPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <span className="cfg-row-icon is-blue"><GraduationCap size={18} /></span>
                       <div>
-                        <strong style={{ display: 'block', color: 'var(--text-primary)' }}>Current status: {user.role === 'alumni_with_carry' ? 'Alumni With Carry' : 'Alumni'}</strong>
+                        <strong style={{ display: 'block', color: 'var(--text-primary)' }}>Current status: {user.role === 'alumni_with_carry' || user.roles?.includes('alumni_with_carry') ? 'Alumni With Carry' : 'Alumni'}{isFacultyMember ? ' + Faculty' : ''}</strong>
                         <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>You can update this whenever your carry-course status changes.</span>
                       </div>
                     </div>
                     <button
                       type="button"
-                      className={user.role === 'alumni_with_carry' ? 'btn btn-secondary' : 'btn btn-primary'}
-                      onClick={() => setAlumniCarryStatus(user.role !== 'alumni_with_carry')}
+                      className={user.role === 'alumni_with_carry' || user.roles?.includes('alumni_with_carry') ? 'btn btn-secondary' : 'btn btn-primary'}
+                      onClick={() => setAlumniCarryStatus(!(user.role === 'alumni_with_carry' || user.roles?.includes('alumni_with_carry')))}
                       disabled={alumniCarrySaving}
-                      aria-label={user.role === 'alumni_with_carry' ? 'Change status to Alumni without carry courses' : 'Mark as Alumni with carry courses'}
+                      aria-label={user.role === 'alumni_with_carry' || user.roles?.includes('alumni_with_carry') ? 'Change status to Alumni without carry courses' : 'Mark as Alumni with carry courses'}
                     >
                       {alumniCarrySaving ? 'Saving…' : user.role === 'alumni_with_carry' ? 'No Carry Courses' : 'I Have Carry Courses'}
                     </button>
                   </div>
                   {alumniCarryMessage && <p role="status" style={{ marginTop: '8px', fontSize: '12px', color: alumniCarryMessage.startsWith('Could not') ? 'var(--accent-rose)' : 'var(--accent-emerald)' }}>{alumniCarryMessage}</p>}
+                  {!isFacultyMember && (() => {
+                    const facultyApplication = executiveApplications.find(app => app.appliedRole === 'faculty');
+                    return <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border-primary)' }}>
+                      <strong style={{ display: 'block', marginBottom: 6 }}>Faculty role</strong>
+                      <p style={{ margin: '0 0 10px', color: 'var(--text-secondary)', fontSize: 13 }}>AUST alumni can apply to the admin for Faculty access.</p>
+                      {facultyApplication?.status === 'pending' ? <span style={{ color: 'var(--accent-amber)', fontSize: 13 }}>Your Faculty application is awaiting admin review.</span> : <button type="button" className="btn btn-secondary btn-sm" onClick={() => handleExecutiveRoleApplication('faculty')} disabled={Boolean(submittingExecutiveRole)}><Send size={14} /> {submittingExecutiveRole === 'faculty' ? 'Submitting…' : 'Apply for Faculty Role'}</button>}
+                      {applicationMessage && submittingExecutiveRole === '' && <p role="status" style={{ margin: '8px 0 0', fontSize: 12 }}>{applicationMessage}</p>}
+                    </div>;
+                  })()}
                 </section>
               )}
 
@@ -1446,12 +1607,50 @@ export default function SettingsPage() {
                 </div>
               )}
 
+              <section className="cfg-section delivery-preferences">
+                    <div className="cfg-section-head">
+                      <h3 className="cfg-section-title">Notification delivery</h3>
+                      <p className="cfg-section-desc">Choose which updates arrive in Telegram, as browser alerts, or in the notification bell.</p>
+                    </div>
+                    <div className="delivery-matrix" role="group" aria-label="Notification delivery preferences">
+                      <div className="delivery-matrix-head"><span>Update</span><span><Send size={14} /> Telegram</span><span><BellRing size={14} /> Browser</span><span><Bell size={14} /> Bell</span></div>
+                      {[
+                        { label: 'Notice Board', key: 'notices', channels: ['telegram', 'browser', 'bell'] },
+                        { label: "Tomorrow's class schedule at 12 AM", key: 'classSchedule', channels: ['telegram'] },
+                        { label: 'Class alert (30 min before)', key: 'classReminders', channels: ['telegram', 'browser'] },
+                        { label: 'Attendance prompts', key: 'attendance', channels: ['telegram'] },
+                        { label: 'Deadline alert (12 hours before)', key: 'deadline12h', preference: 'deadlines', channels: ['telegram', 'browser'] },
+                        { label: 'Upcoming deadlines in the bell', key: 'upcomingDeadlines', preference: 'deadlines', channels: ['bell'] },
+                        { label: 'Study task reminders', key: 'tasks', channels: ['browser', 'bell'] },
+                        { label: 'New messages', key: 'messages', channels: ['browser', 'bell'] },
+                        { label: 'Role application updates', key: 'applications', channels: ['browser', 'bell'] },
+                      ].map((row) => (
+                        <div className="delivery-matrix-row" key={row.key}>
+                          <span className="delivery-matrix-label">{row.label}</span>
+                          {['telegram', 'browser', 'bell'].map((channel) => row.channels.includes(channel) ? (
+                            <button key={channel} type="button" role="switch"
+                              aria-label={`${row.label} via ${channel}`}
+                              aria-checked={isDeliveryChannelReady(channel) && Boolean(notifSettings.channels?.[channel]?.[row.preference || row.key])}
+                              disabled={checkingDelivery === `${channel}:${row.preference || row.key}` || (channel === 'telegram' && telegramHealth === 'checking')}
+                              className={`delivery-switch ${isDeliveryChannelReady(channel) && notifSettings.channels?.[channel]?.[row.preference || row.key] ? 'is-on' : ''}`}
+                              onClick={() => handleChannelToggle(channel, row.preference || row.key)}>
+                              <span />
+                            </button>
+                          ) : <span key={channel} className="delivery-unavailable" aria-label="Not available">{'\u2014'}</span>)}
+                        </div>
+                      ))}
+                    </div>
+                    {deliveryStatus && <p className="delivery-status" role="status" aria-live="polite">{deliveryStatus}</p>}
+                  </section>
+
               {supported && permission !== 'denied' && (
                 <>
+
                   <section className="cfg-section">
                     <div className="cfg-section-head">
                       <h3 className="cfg-section-title">Smart Reminders</h3>
-                      <p className="cfg-section-desc">Browser alerts for classes and deadlines.</p>
+                      <p className="cfg-section-desc">Class alerts arrive 30 minutes before class; deadline alerts arrive 12 hours before they are due.</p>
+                      <p className="delivery-channel-status">Browser alerts: <strong>{!supported ? 'Unsupported' : permission === 'granted' ? 'Ready' : permission === 'denied' ? 'Permission blocked' : 'Permission needed'}</strong></p>
                     </div>
 
                     <div className="cfg-row">
@@ -1494,7 +1693,7 @@ export default function SettingsPage() {
                     <div className="cfg-perm">
                       <ShieldCheck size={13} style={{ color: 'var(--accent-amber)' }} />
                       <p>
-                        <strong>Why this permission?</strong> Turning this on asks your browser for <strong>notification permission</strong> — used only to alert you before classes and deadlines. Nothing is shared; you can revoke it anytime from your browser's site settings.
+                        <strong>Why this permission?</strong> Turning this on asks your browser for <strong>notification permission</strong> for the browser alert categories selected above. Nothing is shared; you can revoke it anytime from your browser's site settings.
                       </p>
                     </div>
 
@@ -1507,86 +1706,6 @@ export default function SettingsPage() {
                 </>
               )}
 
-              {supported && notifSettings.enabled && permission === 'granted' && (
-                <section className="cfg-section animate-fadeIn">
-                  <div className="cfg-divider" />
-                  <div className="cfg-section-head">
-                    <h3 className="cfg-section-title">Reminder Settings</h3>
-                    <p className="cfg-section-desc">Choose how early you want to be alerted.</p>
-                  </div>
-
-                  <div className="cfg-row">
-                    <div className="cfg-row-main">
-                      <span className="cfg-row-icon is-blue"><Clock size={18} /></span>
-                      <div className="cfg-row-text">
-                        <h4 className="cfg-row-title">Class reminders</h4>
-                        <p className="cfg-row-desc">Alert before class starts</p>
-                      </div>
-                    </div>
-                    <div
-                      className={`toggle-switch ${notifSettings.notifyClass ? 'active' : ''}`}
-                      onClick={() => updateSetting('notifyClass', !notifSettings.notifyClass)}
-                    />
-                  </div>
-
-                  {notifSettings.notifyClass && (
-                    <div className="cfg-range-card animate-fadeIn">
-                      <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <span style={{ fontWeight: 'bold' }}>Alert me <strong style={{ color: 'var(--accent-blue)' }}>{notifSettings.classReminderMins} minutes</strong> before class</span>
-                        <input
-                          type="range"
-                          min={5} max={30} step={5}
-                          value={notifSettings.classReminderMins}
-                          onChange={(e) => updateSetting('classReminderMins', Number(e.target.value))}
-                          style={{ width: '100%', accentColor: 'var(--accent-blue)' }}
-                        />
-                        <div className="flex justify-between" style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>
-                          <span>5 min</span><span>10 min</span><span>15 min</span><span>20 min</span><span>25 min</span><span>30 min</span>
-                        </div>
-                      </label>
-                    </div>
-                  )}
-
-                  <div className="cfg-row">
-                    <div className="cfg-row-main">
-                      <span className="cfg-row-icon is-amber"><AlertTriangle size={18} /></span>
-                      <div className="cfg-row-text">
-                        <h4 className="cfg-row-title">Deadline reminders</h4>
-                        <p className="cfg-row-desc">Alert for upcoming assignments &amp; exams</p>
-                      </div>
-                    </div>
-                    <div
-                      className={`toggle-switch ${notifSettings.notifyDeadline ? 'active' : ''}`}
-                      onClick={() => updateSetting('notifyDeadline', !notifSettings.notifyDeadline)}
-                    />
-                  </div>
-
-                  {notifSettings.notifyDeadline && (
-                    <div className="cfg-range-card animate-fadeIn">
-                      <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <span style={{ fontWeight: 'bold' }}>Alert me <strong style={{ color: 'var(--accent-amber)' }}>{notifSettings.deadlineReminderHours} hours</strong> before deadline</span>
-                        <input
-                          type="range"
-                          min={6} max={48} step={6}
-                          value={notifSettings.deadlineReminderHours}
-                          onChange={(e) => updateSetting('deadlineReminderHours', Number(e.target.value))}
-                          style={{ width: '100%', accentColor: 'var(--accent-amber)' }}
-                        />
-                        <div className="flex justify-between" style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>
-                          <span>6h</span><span>12h</span><span>18h</span><span>24h</span><span>30h</span><span>36h</span><span>42h</span><span>48h</span>
-                        </div>
-                      </label>
-                    </div>
-                  )}
-
-                  <div className="cfg-banner cfg-banner--emerald">
-                    <ShieldCheck size={18} style={{ color: 'var(--accent-emerald)', flexShrink: 0 }} />
-                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                      Reminders are checked every minute. Notifications only fire once per event and won't repeat.
-                    </p>
-                  </div>
-                </section>
-              )}
 
               <div className="cfg-divider" />
 
@@ -1594,14 +1713,15 @@ export default function SettingsPage() {
                 <div className="cfg-section-head">
                   <h3 className="cfg-section-title">Telegram Notifications</h3>
                   <p className="cfg-section-desc">Class briefing at 12 AM, first-class alert 30 min before, attendance prompts at class end, and a 9 PM confirmation reminder.</p>
+                  <p className="delivery-channel-status">Telegram: <strong>{telegramHealth === 'checking' ? 'Checking connection...' : telegramHealth === 'ready' ? 'Ready' : 'Connect first'}</strong></p>
                 </div>
 
                 <div className="cfg-row">
                   <div className="cfg-row-main">
                     <span className={`cfg-row-icon ${telegramEnabled ? 'is-emerald' : ''}`}><Send size={18} /></span>
                     <div className="cfg-row-text">
-                      <h4 className="cfg-row-title">Enable Telegram notifications</h4>
-                      <p className="cfg-row-desc">Tomorrow's class digest at 12 AM + smart reminders all day</p>
+                      <h4 className="cfg-row-title">Telegram connection setup</h4>
+                      <p className="cfg-row-desc">Show or hide your Chat ID registration and test tools.</p>
                     </div>
                   </div>
                   <div
@@ -1611,52 +1731,6 @@ export default function SettingsPage() {
                 </div>
 
                 {telegramEnabled && (
-                  <>
-                    <div className="cfg-row animate-fadeIn">
-                      <div className="cfg-row-main">
-                        <span className={`cfg-row-icon ${notifSettings.notifyDigest !== false ? 'is-blue' : ''}`}><Moon size={18} /></span>
-                        <div className="cfg-row-text">
-                          <h4 className="cfg-row-title">12 AM class digest</h4>
-                          <p className="cfg-row-desc">Next day's full class list at midnight — set your alarm from it</p>
-                        </div>
-                      </div>
-                      <div
-                        className={`toggle-switch ${notifSettings.notifyDigest !== false ? 'active' : ''}`}
-                        onClick={() => updateSetting('notifyDigest', !(notifSettings.notifyDigest !== false))}
-                      />
-                    </div>
-
-                    <div className="cfg-row animate-fadeIn">
-                      <div className="cfg-row-main">
-                        <span className={`cfg-row-icon ${notifSettings.notifyClass !== false ? 'is-blue' : ''}`}><Clock size={18} /></span>
-                        <div className="cfg-row-text">
-                          <h4 className="cfg-row-title">Pre-class alert</h4>
-                          <p className="cfg-row-desc">One reminder 30 minutes before your first class</p>
-                        </div>
-                      </div>
-                      <div
-                        className={`toggle-switch ${notifSettings.notifyClass !== false ? 'active' : ''}`}
-                        onClick={() => updateSetting('notifyClass', !notifSettings.notifyClass)}
-                      />
-                    </div>
-
-                    <div className="cfg-row animate-fadeIn">
-                      <div className="cfg-row-main">
-                        <span className={`cfg-row-icon ${notifSettings.notifyAttendance !== false ? 'is-emerald' : ''}`}><CheckCircle2 size={18} /></span>
-                        <div className="cfg-row-text">
-                          <h4 className="cfg-row-title">Attendance prompts</h4>
-                          <p className="cfg-row-desc">Yes/No prompt after each class ends + 9 PM reminder; unanswered classes are auto-marked missed at midnight</p>
-                        </div>
-                      </div>
-                      <div
-                        className={`toggle-switch ${notifSettings.notifyAttendance !== false ? 'active' : ''}`}
-                        onClick={() => updateSetting('notifyAttendance', !(notifSettings.notifyAttendance !== false))}
-                      />
-                    </div>
-                  </>
-                )}
-
-              {telegramEnabled && (
                 <div className="animate-fadeIn cfg-stack cfg-stack--tight">
                   <div>
                     <span className="cfg-field-label">Telegram Chat ID</span>
@@ -1684,19 +1758,19 @@ export default function SettingsPage() {
                   </div>
                   
                   {/* Registration status indicator */}
-                  {isTelegramRegistered !== null && (
-                    <div className={`cfg-status-card ${isTelegramRegistered ? 'is-ok' : ''}`}>
-                      <p style={{ color: isTelegramRegistered ? 'var(--accent-emerald)' : 'var(--text-tertiary)' }}>
-                        {isTelegramRegistered 
-                          ? '✅ You are registered for daily notifications' 
-                          : '⭕ Not registered for notifications'}
-                      </p>
-                    </div>
-                  )}
+                  <div className={`cfg-status-card ${isTelegramRegistered ? 'is-ok' : ''}`}>
+                    <p style={{ color: isTelegramRegistered ? 'var(--accent-emerald)' : 'var(--text-tertiary)' }}>
+                      {isTelegramRegistered === true
+                        ? '✅ You are registered for daily notifications'
+                        : isTelegramRegistered === false
+                          ? '⭕ Not registered for notifications'
+                          : telegramConnectionError || 'Checking Telegram connection…'}
+                    </p>
+                  </div>
                   
                   <div className="cfg-actions">
                     {/* Register button */}
-                    {!isTelegramRegistered ? (
+                    {isTelegramRegistered === false ? (
                       <button 
                         className="btn btn-primary" 
                         onClick={async () => {
@@ -1721,6 +1795,12 @@ export default function SettingsPage() {
                               setTelegramMsg('✅ Registered! Your class digest arrives at 12 AM, plus pre-class alerts and attendance prompts.');
                               registeredChatIdRef.current = telegramChatId.trim();
                               setIsTelegramRegistered(true);
+                              const telegramChannels = notifSettings.channels?.telegram || {};
+                              updateSetting('channels', {
+                                ...notifSettings.channels,
+                                telegram: Object.fromEntries(Object.entries(telegramChannels).map(([key, value]) => [key, typeof value === 'boolean' ? true : value])),
+                              });
+                              await refreshTelegramHealth();
                             } else {
                               setTelegramMsg('❌ Failed: ' + (result.error || 'Unknown error'));
                             }
@@ -1734,196 +1814,48 @@ export default function SettingsPage() {
                       >
                         <BellRing size={14} /> {telegramTesting ? 'Registering...' : 'Register for Notifications'}
                       </button>
-                    ) : (
+                    ) : isTelegramRegistered === true ? (
                       <button 
                         className="btn btn-secondary" 
-                        onClick={async () => {
-                          if (!window.confirm('Are you sure you want to stop receiving Telegram notifications?')) return;
-                          
-                          setTelegramTesting(true);
-                          try {
-                            const response = await fetch('/api/telegram/unregister', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ chatId: telegramChatId })
-                            });
-                            const result = await response.json();
-                            if (result.success) {
-                              setTelegramMsg('✅ You have been unsubscribed from notifications.');
-                              registeredChatIdRef.current = '';
-                              setIsTelegramRegistered(false);
-                            } else {
-                              setTelegramMsg('❌ Failed: ' + (result.error || 'Unknown error'));
-                            }
-                          } catch (err) {
-                            setTelegramMsg('❌ Error: ' + err.message);
-                          }
-                          setTelegramTesting(false);
-                          setTimeout(() => setTelegramMsg(''), 5000);
-                        }}
+                        onClick={() => setShowTelegramUnregisterConfirm(true)}
                         disabled={telegramTesting}
                       >
                         <BellOff size={14} /> Unsubscribe
                       </button>
+                    ) : (
+                      <button
+                        className="btn btn-secondary"
+                        onClick={() => setTelegramConnectionRetry((value) => value + 1)}
+                        disabled={!telegramConnectionError}
+                      >
+                        Check connection
+                      </button>
                     )}
-                    
-                    {/* Test button for 8 AM notification */}
-                    <button 
-                      className="btn btn-ghost" 
-                      onClick={async () => {
-                        if (!telegramChatId) {
-                          setTelegramMsg('❌ Please enter your Chat ID');
-                          setTimeout(() => setTelegramMsg(''), 3000);
-                          return;
-                        }
-                        
-                        setTelegramTesting(true);
-                        try {
-                          const response = await fetch('/api/telegram/test', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ 
-                              routine,
-                              chatId: telegramChatId
-                            })
-                          });
-                          const result = await response.json();
-                          if (result.success) {
-                            setTelegramMsg("✅ Test digest sent! This is what arrives at 12 AM with tomorrow's classes.");
-                          } else {
-                            setTelegramMsg('❌ Failed: ' + (result.error || 'Unknown error'));
-                          }
-                        } catch (err) {
-                          setTelegramMsg('❌ Error: ' + err.message);
-                        }
-                        setTelegramTesting(false);
-                        setTimeout(() => setTelegramMsg(''), 5000);
-                      }}
-                      disabled={telegramTesting}
-                      title="Sends the notification that would be sent at the next 8 AM"
-                    >
-                      <Send size={14} /> Test (8 AM)
-                    </button>
-                    
-                    {/* Test button for 9 PM Attendance notification */}
-                    <button 
-                      className="btn btn-ghost" 
-                      onClick={async () => {
-                        if (!telegramChatId) {
-                          setTelegramMsg('❌ Please enter your Chat ID');
-                          setTimeout(() => setTelegramMsg(''), 3000);
-                          return;
-                        }
-                        
-                        setTelegramTesting(true);
-                        try {
-                          const response = await fetch('/api/telegram/test-attendance', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ 
-                              routine,
-                              chatId: telegramChatId
-                            })
-                          });
-                          const result = await response.json();
-                          if (result.success) {
-                            setTelegramMsg('✅ Test attendance message sent! You will receive prompts after each class and a 9 PM reminder with Yes/No buttons.');
-                          } else {
-                            setTelegramMsg('❌ Failed: ' + (result.error || 'Unknown error'));
-                          }
-                        } catch (err) {
-                          setTelegramMsg('❌ Error: ' + err.message);
-                        }
-                        setTelegramTesting(false);
-                        setTimeout(() => setTelegramMsg(''), 5000);
-                      }}
-                      disabled={telegramTesting}
-                      title="Sends the attendance confirmation message that would be sent at 9 PM"
-                    >
-                      <Send size={14} /> Test (9 PM Attendance)
-                    </button>
                   </div>
-                  
+
+                  <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', margin: '0 0 10px' }}>
+                    Send a sample of any Telegram message to your linked account. Test attendance buttons never update your records.
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '8px' }}>
+                    {TELEGRAM_MESSAGE_TESTS.map(([type, label]) => (
+                      <button
+                        key={type}
+                        type="button"
+                        className="btn btn-ghost"
+                        onClick={() => sendTelegramMessageTest(type, label)}
+                        disabled={telegramTesting || isTelegramRegistered !== true}
+                        style={{ justifyContent: 'flex-start', minHeight: '40px', textAlign: 'left' }}
+                      >
+                        <Send size={14} />
+                        {telegramTesting && telegramTestType === type ? 'Sending…' : `Test · ${label}`}
+                      </button>
+                    ))}
+                  </div>
                   {telegramMsg && (
-                    <p style={{ fontSize: 'var(--fs-xs)', color: telegramMsg.includes('✅') ? 'var(--accent-emerald)' : 'var(--accent-rose)', padding: '4px' }}>
+                    <p style={{ fontSize: 'var(--fs-xs)', color: telegramMsg.startsWith('✓') ? 'var(--accent-emerald)' : 'var(--accent-rose)', padding: '4px' }}>
                       {telegramMsg}
                     </p>
                   )}
-                  
-                  {/* Webhook Status */}
-                  <div className={`cfg-status-card ${webhookInfo?.ok ? 'is-ok' : 'is-warn'}`}>
-                    <div className="flex items-center gap-2 mb-2">
-                      {webhookLoading ? (
-                        <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>Checking webhook status...</span>
-                      ) : webhookInfo?.ok ? (
-                        <>
-                          <CheckCircle2 size={14} style={{ color: 'var(--accent-emerald)' }} />
-                          <span style={{ fontSize: '10px', color: 'var(--accent-emerald)', fontWeight: 'bold' }}>Webhook is active</span>
-                        </>
-                      ) : (
-                        <>
-                          <AlertTriangle size={14} style={{ color: 'var(--accent-amber)' }} />
-                          <span style={{ fontSize: '10px', color: 'var(--accent-amber)', fontWeight: 'bold' }}>Webhook not configured</span>
-                        </>
-                      )}
-                    </div>
-                    {webhookInfo?.ok && webhookInfo.result?.url && (
-                      <p style={{ fontSize: '9px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
-                        URL: {webhookInfo.result.url}
-                      </p>
-                    )}
-                    {!webhookInfo?.ok && (
-                      <div style={{ marginTop: '8px' }}>
-                        <p style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                          For Telegram buttons to work, the webhook must be configured with a public HTTPS URL.
-                        </p>
-                        <div className="flex gap-2">
-                          <button 
-                            className="btn btn-sm btn-primary"
-                            onClick={async () => {
-                              // Instructions for setting up ngrok
-                              setTelegramMsg('📝 Setup Instructions:\n\n1. Install ngrok: npm install -g ngrok\n2. Run: ngrok http 5174\n3. Copy the HTTPS URL from ngrok output\n4. Click "Set Webhook URL" below and paste the URL\n\nExample: https://abc123.ngrok.io/api/telegram/webhook');
-                              setTimeout(() => setTelegramMsg(''), 10000);
-                            }}
-                            style={{ fontSize: '10px' }}
-                          >
-                            Show Setup Guide
-                          </button>
-                          <button 
-                            className="btn btn-sm btn-secondary"
-                            onClick={async () => {
-                              const webhookUrl = prompt('Enter your ngrok webhook URL:\n\nExample: https://abc123.ngrok.io/api/telegram/webhook');
-                              if (webhookUrl) {
-                                try {
-                                  const response = await fetch('/api/telegram/set-webhook', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ webhookUrl })
-                                  });
-                                  const result = await response.json();
-                                  if (result.ok) {
-                                    setTelegramMsg('✅ Webhook configured successfully! Buttons should now work.');
-                                    // Refresh webhook info
-                                    const infoResponse = await fetch('/api/telegram/webhook-info');
-                                    const infoResult = await infoResponse.json();
-                                    setWebhookInfo(infoResult);
-                                  } else {
-                                    setTelegramMsg('❌ Failed: ' + (result.description || 'Unknown error'));
-                                  }
-                                } catch (err) {
-                                  setTelegramMsg('❌ Error: ' + err.message);
-                                }
-                                setTimeout(() => setTelegramMsg(''), 5000);
-                              }
-                            }}
-                            style={{ fontSize: '10px' }}
-                          >
-                            Set Webhook URL
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
                   
                   <div className="cfg-note">
                     <p style={{ color: 'var(--text-tertiary)', marginBottom: '8px' }}>
@@ -1936,7 +1868,6 @@ export default function SettingsPage() {
                       <li>Class digest every night at 12 AM (tomorrow's classes) + alert 30 min before your first class</li>
                       <li>Attendance prompt after each class ends, 9 PM reminder, auto-missed at midnight</li>
                       <li>Urgent deadline alerts (high priority) and a 12-hour-before reminder</li>
-                      <li style={{ marginTop: '4px', color: 'var(--accent-amber)' }}><strong>Important:</strong> For attendance buttons to work, the webhook must be configured with a public HTTPS URL (use ngrok for local testing)</li>
                     </ol>
                   </div>
                 </div>
@@ -1977,35 +1908,6 @@ export default function SettingsPage() {
                 </div>
               </section>
 
-              <div className="cfg-divider" />
-
-              <div className="am-settings-privacy">
-                <div className="am-settings-privacy-head">
-                  <div className="am-settings-privacy-title">
-                    <ShieldCheck size={16} />
-                    <div>
-                      <h4>Member List Privacy</h4>
-                      <p>Control what others see in the Active Members sidebar.</p>
-                    </div>
-                  </div>
-                  {privacySaving && <span className="am-settings-privacy-saving">Saving…</span>}
-                  {privacyMsg && <span className="am-settings-privacy-saved">{privacyMsg}</span>}
-                </div>
-                <div className="am-settings-privacy-row">
-                  <div>
-                    <strong>Show my CGPA</strong>
-                    <span>Display your current CGPA in your member profile popup.</span>
-                  </div>
-                  <div
-                    className={`toggle-switch ${privacySettings.showCgpa ? 'active' : ''}`}
-                    onClick={() => savePrivacySetting('showCgpa', !privacySettings.showCgpa)}
-                    role="switch"
-                    aria-checked={privacySettings.showCgpa}
-                    tabIndex={0}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); savePrivacySetting('showCgpa', !privacySettings.showCgpa); } }}
-                  />
-                </div>
-              </div>
             </div>
           )}
 

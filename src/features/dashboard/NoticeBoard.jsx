@@ -115,8 +115,10 @@ export default function NoticeBoard() {
       postedBy: user.id,
       postedByName: user.name,
       postedByRole: user.role,
+      postedBySection: user.section || '',
+      postedByLabSection: user.labSection || '',
       scope: isCr
-        ? { department: user.department, semester: String(user.semester), labSection: user.labSection }
+        ? { department: user.department, semester: String(user.semester), section: user.section, labSection: user.labSection }
         : { department: user.department, semester: String(user.semester), section: user.section },
     };
     saveCrsr([notice, ...crsrNotices]);
@@ -287,16 +289,22 @@ export default function NoticeBoard() {
 
               <div className="notice-title">{notice.title}</div>
               <div className="notice-date">{notice.date}</div>
+              {notice.postedByName && (
+                <div className="notice-author-meta">
+                  <span className="notice-author-name">{notice.postedByName}</span>
+                  {notice.postedByRole && <span>{notice.postedByRole.toUpperCase()}</span>}
+                  {(notice.postedBySection || notice.scope?.section) && (
+                    <span>Section {notice.postedBySection || notice.scope.section}</span>
+                  )}
+                  {(notice.postedByLabSection || notice.scope?.labSection) && (
+                    <span>Lab {notice.postedByLabSection || notice.scope.labSection}</span>
+                  )}
+                </div>
+              )}
 
               {isExpanded ? (
                 <div className="notice-details">
                   {notice.content}
-                  {notice.postedByName && (
-                    <div className="notice-author">
-                      {notice.postedByRole && <span>{notice.postedByRole.toUpperCase()} · </span>}
-                      {notice.scope?.labSection || notice.scope?.section || ''}
-                    </div>
-                  )}
                 </div>
               ) : (
                 <div className="notice-preview">{notice.content}</div>

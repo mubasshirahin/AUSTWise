@@ -13,8 +13,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useInAppNotifications } from '../hooks/useInAppNotifications';
 // import logoSilver from '../assets/logo-silver.png';
 // import logoRed from '../assets/logo-red.png';
-import wordmarkLight from '../assets/austwise-4.svg';
-import wordmarkDark from '../assets/austwise-5.svg';
+import brandMark from '../assets/austwise-icon-final.svg';
 import './TopNavbar.css';
 
 // ─── Helpers ───
@@ -104,8 +103,7 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
   const allThemeOptions = [...darkThemeOptions, ...lightThemeOptions];
   const activeTheme = allThemeOptions.find((t) => t.id === theme) || allThemeOptions[0];
   const ThemeIcon = activeTheme.icon;
-  const lightThemes = new Set(lightThemeOptions.map((t) => t.id));
-  const wordmarkSrc = lightThemes.has(theme) ? wordmarkLight : wordmarkDark;
+  const wordmarkSrc = brandMark;
 
 
 
@@ -157,6 +155,7 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
             title="Click 3x for Nexus Terminal"
             aria-label="AUSTWise logo"
           />
+          <span className="topbar-brand-name">AUSTWise</span>
           <div className="logo-burst" aria-hidden="true">
             <i></i><i></i><i></i><i></i>
             <i></i><i></i><i></i><i></i>

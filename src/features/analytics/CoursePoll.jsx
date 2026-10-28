@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { ThumbsUp, ThumbsDown, Trophy, Users, Send, Award, CheckCircle, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Trophy, Users, Send, Award, CheckCircle, AlertTriangle } from 'lucide-react';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
 import { useLiveRefresh } from '../../utils/liveStore';
 import {
@@ -116,17 +116,7 @@ export default function CoursePoll() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
-  const [isMobile, setIsMobile] = useState(false);
-  const [mobilePickersOpen, setMobilePickersOpen] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-
-  useEffect(() => {
-    const mql = window.matchMedia('(max-width: 640px)');
-    const handler = (e) => setIsMobile(e.matches);
-    setIsMobile(mql.matches);
-    mql.addEventListener('change', handler);
-    return () => mql.removeEventListener('change', handler);
-  }, []);
 
   // Live-sync: re-render leaderboards when another device submits a ballot.
   useLiveRefresh(['aust-course-poll-ballots-v1'], () => setRefreshTick((t) => t + 1));
@@ -211,20 +201,10 @@ export default function CoursePoll() {
         </div>
 
         <div className="schedule-actions">
-          {voted ? (
+          {voted && (
             <span className="poll-recorded">
               <CheckCircle size={15} /> Recorded
             </span>
-          ) : (
-            <button
-              type="button"
-              className="schedule-nav-btn poll-toggle"
-              onClick={() => setMobilePickersOpen((v) => !v)}
-              aria-label={mobilePickersOpen ? 'Hide course picker' : 'Pick courses'}
-              aria-expanded={mobilePickersOpen}
-            >
-              {mobilePickersOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-            </button>
           )}
         </div>
       </div>
@@ -235,7 +215,7 @@ export default function CoursePoll() {
         <form
           id="ballot-form"
           onSubmit={submit}
-          className={`poll-pickers ${isMobile ? (mobilePickersOpen ? 'mobile-open' : 'mobile-hidden') : ''}`}
+          className="poll-pickers"
         >
           <div className="grid-2" style={{ gap: 'var(--sp-4)' }}>
             <PickList

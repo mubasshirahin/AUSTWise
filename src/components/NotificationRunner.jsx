@@ -22,8 +22,8 @@ export default function NotificationRunner() {
   const runChecks = useCallback(() => {
     const settings = loadSettings();
     if (!settings.enabled || getPermissionStatus() !== 'granted') return;
-    if (settings.notifyClass) checkClassReminders(routine, weekDays, settings.classReminderMins);
-    if (settings.notifyDeadline) checkDeadlineReminders(deadlines, settings.deadlineReminderHours);
+    if (settings.notifyClass) checkClassReminders(routine, weekDays, 30);
+    if (settings.notifyDeadline) checkDeadlineReminders(deadlines, 12);
   }, [routine, weekDays]);
 
   // Cross-device sync: pull the account's server-side prefs every few

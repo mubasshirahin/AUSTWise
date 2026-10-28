@@ -1,11 +1,12 @@
 import { useAuth } from '../../context/AuthContext';
 import { useRoleAccess } from '../../hooks/useRoleAccess';
+import useAdminMode from '../../hooks/useAdminMode';
 import { getAccessRole } from '../../utils/accessRole';
 
 export default function FeatureAccessGate({ featureKey, children }) {
   const { user } = useAuth();
+  const { isAdmin } = useAdminMode();
   const { config, loading } = useRoleAccess(featureKey);
-  const isAdmin = user?.role === 'admin';
   const accessRole = getAccessRole(user);
 
   if (loading && !isAdmin) return null;

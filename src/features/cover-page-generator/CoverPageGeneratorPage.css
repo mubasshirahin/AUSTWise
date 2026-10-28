@@ -798,15 +798,18 @@
   font-weight: 400;
 }
 
-/* ─── Footer logo — bottom (choto + left e) ─── */
+/* ─── Footer logo — small, bottom-right ─── */
 .cpgen-min-footer {
   position: absolute !important;
-  bottom: 12px !important;
-  right: 48px !important;
-  left: auto !important;
-  transform: none !important;
+  bottom: 8px !important;
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+  display: flex;
+  align-items: center;
+  gap: 5px;
   z-index: 10;
-  line-height: 0;
+  line-height: 1;
 }
 
 .cpgen-min-footer-logo {
@@ -814,6 +817,15 @@
   width: auto;
   height: auto;
   object-fit: contain;
+}
+
+.cpgen-min-footer-name {
+  color: #000;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  white-space: nowrap;
 }
 
 /* ── MOBILE: Profile card — ultra minimal, choto (user request exact selector) ── */

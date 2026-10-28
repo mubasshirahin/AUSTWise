@@ -1488,88 +1488,6 @@
   border: 1px solid var(--border-primary);
 }
 
-/* ─── Member List Privacy ─── */
-.am-settings-privacy {
-  margin-top: var(--sp-5);
-  padding: var(--sp-4);
-  background: var(--bg-input);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg);
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-3);
-}
-
-.am-settings-privacy-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-3);
-}
-
-.am-settings-privacy-title {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  min-width: 0;
-}
-
-.am-settings-privacy-title svg {
-  color: var(--accent-purple);
-  flex-shrink: 0;
-}
-
-.am-settings-privacy-title h4 {
-  font-size: var(--fs-sm);
-  font-weight: bold;
-}
-
-.am-settings-privacy-title p {
-  font-size: 11px;
-  color: var(--text-secondary);
-  margin-top: 2px;
-}
-
-.am-settings-privacy-saving {
-  font-size: 10px;
-  color: var(--text-tertiary);
-  flex-shrink: 0;
-  animation: pulse 1.2s ease-in-out infinite;
-}
-
-.am-settings-privacy-saved {
-  font-size: 10px;
-  color: var(--accent-emerald);
-  flex-shrink: 0;
-}
-
-.am-settings-privacy-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-4);
-  padding-top: var(--sp-3);
-  border-top: 1px solid var(--border-secondary);
-}
-
-.am-settings-privacy-row > div:first-child {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.am-settings-privacy-row strong {
-  font-size: var(--fs-xs);
-  color: var(--text-primary);
-}
-
-.am-settings-privacy-row span {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  line-height: 1.4;
-}
-
 /* ═══════════════════════════════════════════
    CONFIGURE (Notify Me) — settings subtab
    Consistent section / row / banner language.
@@ -2111,4 +2029,135 @@
 
 .invite-member-history tbody tr:hover {
   background: var(--bg-input);
+}
+
+.delivery-matrix {
+  overflow: hidden;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+}
+.delivery-matrix-head,
+.delivery-matrix-row {
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) repeat(3, minmax(78px, 104px));
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+}
+.delivery-matrix-head {
+  color: var(--text-secondary);
+  background: var(--bg-input);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+}
+.delivery-matrix-head span:not(:first-child) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.delivery-matrix-head span:not(:first-child) small {
+  flex-basis: 100%;
+  text-align: center;
+  font-size: 9px;
+  font-weight: var(--fw-regular);
+  color: var(--text-tertiary);
+}
+.delivery-matrix-row + .delivery-matrix-row { border-top: 1px solid var(--border-primary); }
+.delivery-matrix-label { color: var(--text-primary); font-size: var(--fs-sm); }
+.delivery-matrix-row { min-height: 52px; }
+.delivery-switch {
+  justify-self: center;
+  width: 42px;
+  height: 24px;
+  padding: 3px;
+  border: 1px solid var(--border-primary);
+  border-radius: 999px;
+  background: var(--bg-input);
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+.delivery-switch span {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  transition: transform 140ms ease, background 140ms ease;
+}
+.delivery-switch.is-on { background: var(--accent-blue); border-color: var(--accent-blue); }
+.delivery-switch.is-on span { transform: translateX(18px); background: #fff; }
+.delivery-switch:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 3px; }
+.delivery-switch:disabled { opacity: 0.6; cursor: wait; }
+.delivery-unavailable { justify-self: center; color: var(--text-tertiary); }
+.delivery-status {
+  margin: 10px 14px 0;
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+.delivery-channel-status {
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+}
+.delivery-channel-status strong { color: var(--accent-blue); font-weight: var(--fw-semibold); }
+.telegram-unregister-overlay {
+  position: fixed;
+  z-index: 12000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(7 10 18 / 76%);
+  backdrop-filter: blur(8px);
+  animation: telegram-unregister-fade-in .16s ease-out;
+}
+.telegram-unregister-dialog {
+  width: min(100%, 420px);
+  padding: 26px;
+  border: 1px solid var(--border-primary);
+  border-radius: 20px;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  box-shadow: 0 28px 90px rgb(0 0 0 / 48%);
+  animation: telegram-unregister-rise .2s ease-out;
+}
+.telegram-unregister-icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent-rose) 30%, var(--border-primary));
+  border-radius: 14px;
+  color: var(--accent-rose);
+  background: color-mix(in srgb, var(--accent-rose) 12%, var(--bg-card));
+}
+.telegram-unregister-dialog h2 { margin: 18px 0 7px; font-size: 19px; }
+.telegram-unregister-dialog p { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.55; }
+.telegram-unregister-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+.telegram-unregister-confirm {
+  border: 1px solid color-mix(in srgb, var(--accent-rose) 65%, transparent);
+  color: #fff;
+  background: var(--accent-rose);
+}
+.telegram-unregister-confirm:hover:not(:disabled) { filter: brightness(1.08); }
+.telegram-unregister-confirm:disabled { opacity: .65; cursor: wait; }
+@keyframes telegram-unregister-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes telegram-unregister-rise { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@media (max-width: 560px) {
+  .delivery-matrix-head,
+  .delivery-matrix-row {
+    grid-template-columns: minmax(125px, 1fr) repeat(3, minmax(48px, 60px));
+    gap: 4px;
+    padding: 10px 8px;
+  }
+  .delivery-matrix-head { font-size: 10px; }
+  .delivery-matrix-head span:not(:first-child) { flex-direction: column; gap: 3px; }
+  .delivery-matrix-label { font-size: var(--fs-xs); line-height: 1.35; }
+  .telegram-unregister-dialog { padding: 21px; }
+  .telegram-unregister-actions { flex-direction: column-reverse; }
+  .telegram-unregister-actions .btn { width: 100%; justify-content: center; }
 }

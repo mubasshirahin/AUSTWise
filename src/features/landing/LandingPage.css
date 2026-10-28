@@ -426,6 +426,8 @@
   flex-shrink: 0;
   transition: transform var(--transition-base);
 }
+.landing-nav-left .topbar-wordmark-img { width: 36px; height: 36px; max-width: none; }
+.landing-nav-left .topbar-brand-name { color: var(--text-primary); font: 800 16px/1 'Outfit', 'Inter', sans-serif; letter-spacing: -0.035em; }
 
 .landing-logo:hover .landing-logo-img {
   transform: scale(1.05) rotate(-2deg);
@@ -3940,9 +3942,9 @@
 }
 
 .landing-footer-brand .landing-logo-img {
-  width: 100px;
-  height: 70px;
-  margin-left: 50px;
+  width: 44px;
+  height: 44px;
+  margin-left: 0;
 }
 
 .landing-footer-desc {

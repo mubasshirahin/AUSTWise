@@ -1,78 +1,21 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Hourglass, AlertTriangle, Timer, CalendarDays } from 'lucide-react';
-import { deadlines } from '../../data/mockData';
 import { useAuth } from '../../context/AuthContext';
-import { useLiveValue } from '../../utils/liveStore';
-import { getUserBatchGroup } from '../../utils/getUserBatchGroup';
+import useUpcomingDeadlines from './useUpcomingDeadlines';
 
 export default function DeadlineTicker() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const userBatchGroup = useMemo(() => getUserBatchGroup(user), [user]);
   const canAddTask = user?.role === 'admin' || user?.role === 'cr';
-  const sharedTaskPrefix = user?.department && user?.semester
-    ? `aust-semester-tasks:${String(user.department).trim().toUpperCase()}:${user.semester}`
-    : '';
-  const [sharedA1] = useLiveValue('shared', sharedTaskPrefix ? `${sharedTaskPrefix}:A1` : null, []);
-  const [sharedA2] = useLiveValue('shared', sharedTaskPrefix ? `${sharedTaskPrefix}:A2` : null, []);
-  const [sharedB1] = useLiveValue('shared', sharedTaskPrefix ? `${sharedTaskPrefix}:B1` : null, []);
-  const [sharedB2] = useLiveValue('shared', sharedTaskPrefix ? `${sharedTaskPrefix}:B2` : null, []);
-  const [sharedC1] = useLiveValue('shared', sharedTaskPrefix ? `${sharedTaskPrefix}:C1` : null, []);
-  const [sharedC2] = useLiveValue('shared', sharedTaskPrefix ? `${sharedTaskPrefix}:C2` : null, []);
-  const [sharedD1] = useLiveValue('shared', sharedTaskPrefix ? `${sharedTaskPrefix}:D1` : null, []);
-  const [sharedD2] = useLiveValue('shared', sharedTaskPrefix ? `${sharedTaskPrefix}:D2` : null, []);
-  const sharedSemesterTasks = useMemo(() => [
-    ...sharedA1, ...sharedA2, ...sharedB1, ...sharedB2,
-    ...sharedC1, ...sharedC2, ...sharedD1, ...sharedD2,
-  ], [sharedA1, sharedA2, sharedB1, sharedB2, sharedC1, sharedC2, sharedD1, sharedD2]);
 
-  // Deadlines & calendar tasks are live-synced across devices
-  const [timers] = useLiveValue('user', 'aust-deadlines', [...deadlines]);
-  const [calendarTasks] = useLiveValue('user', 'aust-week-tasks', []);
+  // Shared with the "At a glance" card so both show the same number.
+  const { manualDeadlines, taskDeadlines, upcoming } = useUpcomingDeadlines();
 
-  // Combine manual deadlines with calendar tasks for user's batch.
-  // Strict: task without valid batchGroup never leaks to all.
-  const combinedDeadlines = useMemo(() => {
-    // Convert calendar tasks to deadline format (only for user's batch — no !batchGroup leak)
-    const taskDeadlines = [...calendarTasks, ...sharedSemesterTasks]
-      .filter(task => task.batchGroup && task.batchGroup === userBatchGroup)
-      .map(task => {
-        // TZ-safe: parse YYYY-MM-DD as local midnight, not UTC
-        const taskDate = task.date ? new Date(task.date + 'T00:00:00') : new Date();
-        if (isNaN(taskDate.getTime())) return null;
-        if (task.time) {
-          const [hours, minutes] = task.time.split(':');
-          const h = parseInt(hours, 10), m = parseInt(minutes, 10);
-          if (!Number.isNaN(h) && !Number.isNaN(m)) taskDate.setHours(h, m, 0, 0);
-        } else {
-          taskDate.setHours(23, 59, 59, 999);
-        }
-        if (isNaN(taskDate.getTime())) return null;
-        return {
-          id: `task-${task.id}`,
-          title: typeof task.title === 'string' && task.title.length > 80 ? task.title.slice(0,80) : task.title,
-          course: task.courseCode || task.courseName || 'General',
-          dueDate: taskDate,
-          type: 'Quiz',
-          priority: 'medium',
-          color: 'var(--accent-cyan)',
-          fromCalendar: true,
-          batchGroup: task.batchGroup
-        };
-      }).filter(Boolean);
-
-    // Manual deadlines are per-user (user-scoped store), so no batchGroup filter needed.
-    // Shared calendar tasks above are strictly filtered; here we just normalize dates and
-    // cap title length to prevent store bloat.
-    const manualDeadlines = timers.map(dl => ({
-      ...dl,
-      title: typeof dl.title === 'string' && dl.title.length > 80 ? dl.title.slice(0,80) : dl.title,
-      dueDate: dl.dueDate instanceof Date ? dl.dueDate : new Date(dl.dueDate),
-    }));
-
-    return [...manualDeadlines, ...taskDeadlines];
-  }, [timers, calendarTasks, sharedSemesterTasks, userBatchGroup]);
+  const combinedDeadlines = useMemo(
+    () => [...manualDeadlines, ...taskDeadlines],
+    [manualDeadlines, taskDeadlines],
+  );
 
   // State for live countdown display
   const [displayDeadlines, setDisplayDeadlines] = useState([]);
@@ -137,7 +80,7 @@ export default function DeadlineTicker() {
             <span className="schedule-overline">Live Countdown</span>
             <p className="schedule-title">Deadlines</p>
             <span className="schedule-subtitle">
-              {displayDeadlines.length} upcoming · nearest first
+              {upcoming.length} upcoming · nearest first
             </span>
           </div>
         </div>
@@ -151,7 +94,7 @@ export default function DeadlineTicker() {
             <Hourglass size={16} style={{ opacity: 0.3 }} />
             <span>No upcoming deadlines</span>
             {canAddTask ? (
-              <button className="btn btn-sm" onClick={() => navigate('/?tab=calendar')} style={{ display:'inline-flex', alignItems:'center', gap:'6px' }}>
+              <button className="btn btn-sm" onClick={() => navigate('/dashboard/semester-view')} style={{ display:'inline-flex', alignItems:'center', gap:'6px' }}>
                 <CalendarDays size={14} /> Add in Semester View
               </button>
             ) : (
@@ -163,7 +106,16 @@ export default function DeadlineTicker() {
             <div
               key={dl.id}
               className={`schedule-day-card deadline-row${dl.urgent ? ' urgent' : ''}`}
-              style={{ animationDelay: `${idx * 60}ms` }}
+              style={{ animationDelay: `${idx * 60}ms`, cursor: dl.fromCalendar ? 'pointer' : undefined }}
+              role={dl.fromCalendar ? 'button' : undefined}
+              tabIndex={dl.fromCalendar ? 0 : undefined}
+              onClick={dl.fromCalendar ? () => navigate(`/dashboard/semester-view?date=${encodeURIComponent(dl.taskDate)}&task=${encodeURIComponent(dl.taskId)}`) : undefined}
+              onKeyDown={dl.fromCalendar ? (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  navigate(`/dashboard/semester-view?date=${encodeURIComponent(dl.taskDate)}&task=${encodeURIComponent(dl.taskId)}`);
+                }
+              } : undefined}
             >
               <div className="deadline-timeline" />
               <div className="deadline-row-body">

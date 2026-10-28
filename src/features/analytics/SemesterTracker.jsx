@@ -6,6 +6,7 @@ import {
 
 import { getUserStorageItemWithGuestFallback, getCurrentUserId } from '../../utils/authStorage';
 import { useAuth } from '../../context/AuthContext';
+import { getAustwiseIconPng } from '../../utils/exportBranding';
 import { formatSemesterLabel } from '../../utils/semester';
 import { getLiveValue, setLiveValue, onLiveChange, ensureFetched, useLiveValue } from '../../utils/liveStore';
 import './SemesterTracker.css';
@@ -503,9 +504,16 @@ export default function SemesterTracker() {
   const exportSemesterPdf = async () => {
     const { default: jsPDF } = await import('jspdf');
     const doc = new jsPDF('l', 'mm', 'a4');
+    const brandIcon = await getAustwiseIconPng();
     const pageW = 277;
     let y = 20;
 
+    doc.addImage(brandIcon, 'PNG', 12, 7, 9, 9);
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(80);
+    doc.text('AUSTWise', 24, 13);
+    doc.setTextColor(0);
     doc.setFontSize(16);
     doc.setFont(undefined, 'bold');
     doc.text(`Semester Tracker - ${formatSemesterLabel(selectedSemester)}`, pageW / 2, y, { align: 'center' });

@@ -14,8 +14,23 @@
 
 import https from 'node:https';
 import { getAllUsers, registerUser, updateUserRoutine, getUser, saveAttendanceRecord } from './telegramDB.mjs';
+import { buildWelcomeMessage, buildNoticeMessage, buildDigest, buildAfterClassAttendance } from './telegramMessageTemplates.mjs';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+
+export async function checkTelegramBotAvailability(chatId) {
+  if (!TELEGRAM_BOT_TOKEN) return { ready: false, reason: 'bot_not_configured' };
+  if (!chatId) return { ready: false, reason: 'not_registered' };
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getChat?chat_id=${encodeURIComponent(chatId)}`);
+    const result = await response.json();
+    return response.ok && result?.ok
+      ? { ready: true }
+      : { ready: false, reason: 'bot_unavailable' };
+  } catch {
+    return { ready: false, reason: 'bot_unavailable' };
+  }
+}
 
 // Bengali numerals for formatting
 const bengaliNumerals = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
@@ -144,7 +159,7 @@ function formatNotification(classes, customDate) {
 }
 
 // Send message via Telegram Bot API
-export async function sendTelegramMessage(botToken, chatId, message) {
+export async function sendTelegramMessage(botToken, chatId, message, parseMode = 'Markdown') {
   if (!botToken) {
     return { 
       success: false, 
@@ -162,7 +177,7 @@ export async function sendTelegramMessage(botToken, chatId, message) {
   const postData = JSON.stringify({
     chat_id: chatId,
     text: message,
-    parse_mode: 'Markdown'
+    parse_mode: parseMode
   });
   
   return new Promise((resolve, _reject) => {
@@ -214,17 +229,14 @@ export async function sendNotificationToUser(chatId, routine, _isTest = false) {
   let classes;
   let message;
   
-  // Daily digest now always previews tomorrow's classes (sent at 12 AM).
-  {
-    classes = getTomorrowsClasses(routine);
-    message = formatNotification(classes);
-  }
+  // Daily digest always previews tomorrow's classes.
+  ({ text: message } = buildDigest(routine));
   
   console.log(`Sending notification to user ${chatId}...`);
   console.log('Message:', message.substring(0, 100) + '...');
   
   try {
-    const result = await sendTelegramMessage(botToken, chatId, message);
+    const result = await sendTelegramMessage(botToken, chatId, message, 'HTML');
     if (result.success) {
       console.log(`✅ Notification sent to user ${chatId} successfully!`);
     } else {
@@ -345,38 +357,28 @@ export async function sendNoticeToAllUsers(notice) {
       results: []
     };
   }
-  // Scope-aware filtering: CR (lab 25) vs SR (section 50) — only deliver to matching cohort
-  if (notice.scope && (notice.scope.labSection || notice.scope.section)) {
-    try {
-      const { getUserById: getAustUserById } = await import('./userStore.mjs');
-      const filtered = [];
-      for (const tu of users) {
-        if (!tu.awid) continue;
-        const u = await getAustUserById(String(tu.awid));
-        if (!u) continue;
-        if (notice.scope.department && String(notice.scope.department) !== String(u.department || '')) continue;
-        if (notice.scope.semester && String(notice.scope.semester) !== String(u.semester || '')) continue;
-        if (notice.scope.labSection && String(notice.scope.labSection) !== String(u.labSection || '')) continue;
-        if (notice.scope.section && String(notice.scope.section) !== String(u.section || '')) continue;
-        filtered.push(tu);
-      }
-      users = filtered;
-      if (users.length === 0) {
-        return { success: true, totalUsers: 0, sent: 0, failed: 0, results: [], scoped: true, note: 'No Telegram users matched scope' };
-      }
-    } catch { /* fallback to broadcast all */ }
+  // Resolve profile once for both channel preference and cohort scope checks.
+  const { getUserById: getAustUserById } = await import('./userStore.mjs');
+  const eligible = [];
+  for (const tu of users) {
+    if (!tu.awid) continue;
+    let account;
+    try { account = await getAustUserById(String(tu.awid)); } catch { continue; }
+    if (!account) continue;
+    const prefs = account.settings?.notifications || {};
+    if ((prefs.channels?.telegram?.notices ?? true) !== true) continue;
+    if (notice.scope?.department && String(notice.scope.department) !== String(account.department || '')) continue;
+    if (notice.scope?.semester && String(notice.scope.semester) !== String(account.semester || '')) continue;
+    if (notice.scope?.labSection && String(notice.scope.labSection) !== String(account.labSection || '')) continue;
+    if (notice.scope?.section && String(notice.scope.section) !== String(account.section || '')) continue;
+    eligible.push(tu);
+  }
+  users = eligible;
+  if (users.length === 0) {
+    return { success: true, totalUsers: 0, sent: 0, failed: 0, results: [], scoped: !!notice.scope, note: 'No Telegram users enabled for this notice' };
   }
 
-  const title = escapeMarkdown(notice.title || 'New Notice');
-  const content = escapeMarkdown(notice.content || '');
-  const postedBy = escapeMarkdown(notice.postedByName || '');
-  const role = String(notice.postedByRole || '').toUpperCase();
-
-  let message = `📢 *New Notice*\n\n`;
-  message += `*${title}*\n\n`;
-  if (content) message += `${content}\n`;
-  message += `\n👤 Posted by ${postedBy}${role ? ` (${role})` : ''}${notice.pinned ? '\n📌 Pinned' : ''}`;
-  message += `\n\n📖 AUSTWise`;
+  const { text: message } = buildNoticeMessage(notice);
 
   console.log(`Broadcasting notice to ${users.length} Telegram users...`);
 
@@ -385,7 +387,7 @@ export async function sendNoticeToAllUsers(notice) {
   let failedCount = 0;
 
   for (const user of users) {
-    const result = await sendTelegramMessage(TELEGRAM_BOT_TOKEN, user.chatId, message);
+    const result = await sendTelegramMessage(TELEGRAM_BOT_TOKEN, user.chatId, message, 'HTML');
     results.push({ chatId: user.chatId, ...result });
     if (result.success) {
       sentCount++;
@@ -435,11 +437,7 @@ export async function registerUserForNotifications(chatId, routine, awid = null)
   }
   
   // Validate credentials by sending a test message first
-  const testResult = await sendTelegramMessage(
-    TELEGRAM_BOT_TOKEN,
-    chatId,
-    '✅ Welcome to AUSTWise Telegram Notifications!\n\nYour Chat ID has been registered successfully. You will receive a class digest at 12 AM, pre-class alerts, and attendance prompts.'
-  );
+  const testResult = await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, buildWelcomeMessage(chatId).text, 'HTML');
   
   if (!testResult.success) {
     return { 
@@ -448,7 +446,10 @@ export async function registerUserForNotifications(chatId, routine, awid = null)
     };
   }
   
-  const user = registerUser(chatId, routine, awid);
+  // Persist the Telegram account before reporting success. Callers immediately
+  // check registration status after this endpoint returns, so returning before
+  // the async DB/JSON write completes creates a false "not registered" state.
+  const user = await registerUser(chatId, routine, awid);
   
   return {
     success: true,
@@ -540,7 +541,7 @@ function formatSingleClassMessage(cls, index, total, today, date) {
  * @param {Array} keyboard - Inline keyboard layout
  * @returns {Promise<Object>} Result of the send operation
  */
-export async function sendTelegramMessageWithKeyboard(botToken, chatId, message, keyboard) {
+export async function sendTelegramMessageWithKeyboard(botToken, chatId, message, keyboard, parseMode = 'HTML') {
   if (!botToken) {
     return { 
       success: false, 
@@ -558,7 +559,7 @@ export async function sendTelegramMessageWithKeyboard(botToken, chatId, message,
   const postData = JSON.stringify({
     chat_id: chatId,
     text: message,
-    parse_mode: 'Markdown',
+    parse_mode: parseMode,
     reply_markup: keyboard ? { inline_keyboard: keyboard } : undefined
   });
   
@@ -624,24 +625,21 @@ export async function sendAttendanceMessageToUser(chatId, routine, _isTest = fal
   const date = new Date().toLocaleDateString('bn-BD', { day: 'numeric', month: 'long' });
   
   if (classes.length === 0) {
-    // No classes today
-    const message = `🌙 রাত ৯টায়:\n\n🎉 আজ কোনো ক্লাস ছিল না!\n\n📖 AUSTWise থেকে`;
-    return await sendTelegramMessage(botToken, chatId, message);
+    return await sendTelegramMessage(botToken, chatId, `<b>🌙 AUSTWise · Attendance Update${_isTest ? ' · Test' : ''}</b>\n\nThere were no classes scheduled today.`, 'HTML');
   }
-  
-  console.log(`Sending ${classes.length} attendance messages to user ${chatId}...`);
+    console.log(`Sending ${classes.length} attendance messages to user ${chatId}...`);
   
   const results = [];
   
   // Send each class as a separate message with Yes/No buttons
   for (let i = 0; i < classes.length; i++) {
     const cls = classes[i];
-    const { message, keyboard } = formatSingleClassMessage(cls, i, classes.length, today, date);
+    const { text: message, keyboard } = buildAfterClassAttendance(cls, i, classes.length, { test: _isTest });
     
     console.log(`  Sending class ${i + 1}/${classes.length}: ${cls.course}`);
     
     try {
-      const result = await sendTelegramMessageWithKeyboard(botToken, chatId, message, keyboard);
+      const result = await sendTelegramMessageWithKeyboard(botToken, chatId, message, keyboard, 'HTML');
       results.push({ course: cls.course, ...result });
       
       // Small delay between messages to avoid rate limiting
@@ -786,10 +784,10 @@ export async function handleAttendanceCallback(botToken, callbackQueryId, chatId
   }
   
   // Answer the callback query
-  const answerText = isAttended 
-    ? `✅ ${courseCode.replace(/_/g, ' ')} - Present marked!` 
-    : `❌ ${courseCode.replace(/_/g, ' ')} - Absent marked!`;
-  
+  const answerText = isAttended
+    ? `Present recorded for ${courseCode.replace(/_/g, ' ')}.`
+    : `Absent recorded for ${courseCode.replace(/_/g, ' ')}.`;
+
   await answerCallbackQuery(botToken, callbackQueryId, answerText);
   
   // Update the message to show the button was clicked (remove the clicked button)
@@ -1053,13 +1051,9 @@ export async function handleStartCommand(chatId) {
     return { success: false, error: 'Bot token not configured' };
   }
 
-  const message =
-    '🌅 AUSTWise বটে আপনাকে স্বাগতম!\n\n' +
-    `✅ আপনার চ্যাট আইডি: <code>${chatId}</code>\n\n` +
-    'দৈনিক ক্লাস ও অ্যাটেন্ডেন্স নোটিফিকেশন পেতে এই চ্যাট আইডিটি AUSTWise ওয়েবসাইটে আপনার প্রোফাইলে যুক্ত করুন।\n\n' +
-    '📖 AUSTWise থেকে';
+  const message = buildWelcomeMessage(chatId).text;
 
-  return await sendTelegramMessage(botToken, chatId, message);
+  return await sendTelegramMessage(botToken, chatId, message, 'HTML');
 }
 
 // Test function - run directly to test

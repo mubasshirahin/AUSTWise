@@ -7,7 +7,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "node server/dev.mjs --vite",
+    "dev": "node scripts/dev.mjs",
     "dev:static": "npm run build && node server/dev.mjs",
     "start": "node server/dev.mjs",
     "dev:vite": "vite",

@@ -8,6 +8,7 @@ import { semesterResults as mockSemesterResults } from '../../data/mockData';
 import { getUserStorageItemWithGuestFallback, setUserStorageItem, removeUserStorageItem, removeGuestStorageItem } from '../../utils/authStorage';
 import { transcriptTemplates, getTemplateCredits } from '../../data/transcriptTemplateData';
 import { useAuth } from '../../context/AuthContext';
+import { getAustwiseIconPng } from '../../utils/exportBranding';
 import { useLiveValue, useLiveRefresh, getLiveValue } from '../../utils/liveStore';
 
 const gradePoints = {
@@ -348,7 +349,7 @@ export default function ResultTable({ onResultsChange }) {
   };
 
   const updateCourseField = (semNum, courseIndex, field, value) => {
-    setDraftResults((currentDraft) => currentDraft.map((sem) => {
+    setDraftResults((currentDraft) => calculateSemesterStats(currentDraft.map((sem) => {
       if (sem.semester !== semNum) return sem;
 
       return {
@@ -365,37 +366,44 @@ export default function ResultTable({ onResultsChange }) {
           return updatedCourse;
         }),
       };
-    }));
+    })));
   };
 
   const addCourse = (semNum) => {
-    setDraftResults((currentDraft) => currentDraft.map((sem) => {
+    setDraftResults((currentDraft) => calculateSemesterStats(currentDraft.map((sem) => {
       if (sem.semester !== semNum) return sem;
 
       return {
         ...sem,
         courses: [...sem.courses, createBlankCourse(semNum, sem.courses.length)],
       };
-    }));
+    })));
   };
 
   const removeCourse = (semNum, courseIndex) => {
-    setDraftResults((currentDraft) => currentDraft.map((sem) => {
+    setDraftResults((currentDraft) => calculateSemesterStats(currentDraft.map((sem) => {
       if (sem.semester !== semNum || sem.courses.length === 1) return sem;
 
       return {
         ...sem,
         courses: sem.courses.filter((_, index) => index !== courseIndex),
       };
-    }));
+    })));
   };
 
   const exportTranscript = async () => {
     const { default: jsPDF } = await import('jspdf');
     const doc = new jsPDF('p', 'mm', 'a4');
+    const brandIcon = await getAustwiseIconPng();
     const pageW = 190;
     let y = 20;
 
+    doc.addImage(brandIcon, 'PNG', 12, 8, 9, 9);
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(80);
+    doc.text('AUSTWise', 24, 14);
+    doc.setTextColor(0);
     doc.setFontSize(16);
     doc.setFont(undefined, 'bold');
     doc.text('Academic Transcript', pageW / 2, y, { align: 'center' });
@@ -482,7 +490,7 @@ export default function ResultTable({ onResultsChange }) {
 
   // ─── Shared semester-cell renderer — used identically by every semester ───
   const renderSemesterCard = (sem) => {
-    const displaySemester = editingSemester === sem.semester
+    const displaySemester = editingSemester !== null
       ? draftResults.find((draftSem) => draftSem.semester === sem.semester) ?? sem
       : sem;
     const isExpanded = expandedSemester === sem.semester;
@@ -789,19 +797,15 @@ export default function ResultTable({ onResultsChange }) {
         {results.map(renderSemesterCard)}
       </div>
 
-      {/* Load Template — Department Picker Modal — compact for 8 depts, portal + blurred */}
-      {showDeptModal && createPortal(
+      {/* Load Template — Department Picker overlay stays inside the breakdown box */}
+      {showDeptModal && (
         <div
-          className="modal-overlay"
+          className="cgpa-template-overlay"
           onClick={() => { setShowDeptModal(false); setSelectedDept(null); }}
           style={{
             background: 'rgba(4, 6, 20, 0.52)',
             backdropFilter: 'blur(16px) saturate(140%)',
             WebkitBackdropFilter: 'blur(16px) saturate(140%)',
-            zIndex: 99999,
-            padding: 'var(--sp-4)',
-            alignItems: 'center',
-            justifyContent: 'center',
           }}
         >
           <div
@@ -965,8 +969,7 @@ export default function ResultTable({ onResultsChange }) {
               </div>
             )}
           </div>
-        </div>,
-        document.body
+        </div>
       )}
 
       {/* Reset All — Confirmation Modal */}

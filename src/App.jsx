@@ -33,6 +33,7 @@ const AboutUsPage = lazy(() => import('./pages/AboutUsPage'));
 const NotificationRunner = lazy(() => import('./components/NotificationRunner'));
 const FloatingBackground = lazy(() => import('./components/FloatingBackground'));
 const ActiveMembersSidebar = lazy(() => import('./features/active-members/ActiveMembersSidebar'));
+const MemberProfilePage = lazy(() => import('./features/active-members/MemberProfilePage'));
 
 const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage'));
 const RoutineTemplatesPage = lazy(() => import('./features/dashboard/RoutineTemplatesPage'));
@@ -73,9 +74,34 @@ const ResetPasswordPage = lazy(() => import('./features/auth/ResetPasswordPage')
 
 import './App.css';
 
+const CANONICAL_ACCESS_PATHS = {
+  '/gradelab': '/analytics', '/insideaust': '/campus', '/resource-vault': '/vault',
+  '/connectbox': '/messages', '/question-bank': '/question-bank-analyzer',
+  '/downtime': '/chill-zone', '/see-plans': '/pro', '/code-pulse': '/cp-hub',
+  '/takagelokoi': '/money-tracker', '/study-time': '/study-room', '/wakemeup': '/auto-alarm',
+  '/cheat-sheets': '/cheatsheets',
+};
+
+function getAccessPath(pathname) {
+  const entry = Object.entries(CANONICAL_ACCESS_PATHS).find(([canonical]) => pathname === canonical || pathname.startsWith(`${canonical}/`));
+  return entry ? entry[1] : pathname;
+}
+
 // Admin Route - admins see the student dashboard like everyone else
 function AdminRoute() {
   return <DashboardPage />;
+}
+
+function CanonicalRedirect({ to }) {
+  const location = useLocation();
+  return <Navigate to={{ pathname: to, search: location.search, hash: location.hash }} replace />;
+}
+
+function LegacyAdminRedirect() {
+  const location = useLocation();
+  const section = location.pathname.replace(/^\/admin\/?/, '') || 'overview';
+  const aliases = { users: 'accounts', 'cr-sr-directory': 'representatives' };
+  return <Navigate to={`/admin-panel/${aliases[section] || section}`} replace />;
 }
 
 // Protected Admin Route - client check + server verification
@@ -150,24 +176,25 @@ function AppContent() {
   // (one per idle slice) so this never competes with first paint.
   useEffect(() => {
     prefetchRoutesIdle([
-      '/analytics', '/campus', '/vault', '/notebook', '/community',
-      '/messages', '/marketplace', '/settings', '/productivity',
-      '/daily-life', '/chill-zone', '/shadow', '/cheatsheets',
-      '/workspace', '/study-room', '/cp-hub', '/money-tracker',
-      '/question-bank-analyzer',
+      '/dashboard/quickstats', '/dashboard/routine', '/dashboard/semester-view', '/dashboard/zero-hour', '/dashboard/attendance', '/gradelab', '/insideaust', '/resource-vault', '/notebook', '/community',
+      '/connectbox', '/marketplace', '/settings', '/productivity',
+      '/daily-life', '/downtime', '/shadow', '/cheatsheets',
+      '/workspace', '/study-time', '/code-pulse', '/takagelokoi', '/cheat-sheets',
+      '/question-bank',
       '/cover-page-generator', '/roast-cv', '/certificate',
-      '/auto-alarm', '/austeddit', '/pro', '/routine-templates', '/zen',
+      '/wakemeup', '/austeddit', '/see-plans', '/routine-templates', '/zen-study-room',
       ...(isAdmin ? ['/admin'] : []),
     ]);
   }, [isAdmin]);
 
   function PageGuard({ children }) {
     const { user, hasRole } = useAuth();
-    const availability = usePageAvailability(location.pathname);
+    const accessPath = getAccessPath(location.pathname);
+    const availability = usePageAvailability(accessPath);
     // Call the access hook unconditionally so the hook order never changes
     // between routes (self-gated pages / staff included). It reads the SAME
     // key as the page's own gate and the admin card.
-    const { config, loading } = useRoleAccess(location.pathname);
+    const { config, loading } = useRoleAccess(accessPath);
     const isStaff = hasRole?.('admin') || hasRole?.('moderator');
     if (!isStaff && availability.loading) return <div className="page-loading"><div className="page-loading-spinner" /><span>Loading page…</span></div>;
     if (!isStaff && !availability.enabled) return <div className="glass-card-static" style={{ margin: '32px auto', maxWidth: '560px', padding: '32px', textAlign: 'center' }}><div style={{ fontSize: '32px', marginBottom: '12px' }}>🚧</div><h2 style={{ margin: '0 0 8px' }}>Coming soon</h2><p style={{ margin: 0, color: 'var(--text-secondary)' }}>This page is being prepared and will be available soon.</p></div>;
@@ -175,7 +202,8 @@ function AppContent() {
     // box + glider tab bar must stay visible at all times (like the dashboard),
     // with only the content box below the tabs hidden for feature-hidden roles.
     const skipPaths = ['/', '/cover-page-generator', '/daily-life', '/analytics', '/campus', '/community', '/marketplace', '/vault', '/notebook', '/settings', '/messages', '/productivity', '/chill-zone', '/shadow'];
-    const isSkipped = skipPaths.includes(location.pathname) || location.pathname.startsWith('/admin');
+    const canonicalSkipPaths = ['/gradelab', '/insideaust', '/resource-vault', '/connectbox', '/question-bank', '/downtime', '/see-plans', '/code-pulse', '/takagelokoi', '/study-time', '/wakemeup', '/cheat-sheets'];
+    const isSkipped = skipPaths.includes(location.pathname) || canonicalSkipPaths.some((path) => location.pathname === path || location.pathname.startsWith(`${path}/`)) || location.pathname.startsWith('/dashboard/') || location.pathname.startsWith('/admin') || location.pathname.startsWith('/members/');
     if (isSkipped) return children;
     // Admin/moderator always see the page shell (hero + GliderTabs). Pages hide
     // their own feature boxes via the role-access config.
@@ -216,55 +244,76 @@ function AppContent() {
                   </div>
                 }>
                   <Routes>
-                  <Route path="/" element={<AdminRoute />} />
+                  <Route path="/" element={<Navigate to="/dashboard/quickstats" replace />} />
+                  <Route path="/dashboard" element={<Navigate to="/dashboard/quickstats" replace />} />
+                  <Route path="/dashboard/:section" element={<DashboardPage />} />
                   <Route path="/routine-templates" element={<RoutineTemplatesPage />} />
-                  <Route path="/analytics" element={<AnalyticsPage />} />
-                  <Route path="/vault" element={<VaultPage />} />
+                  <Route path="/gradelab" element={<AnalyticsPage />} />
+                  <Route path="/gradelab/:section" element={<AnalyticsPage />} />
+                  <Route path="/analytics" element={<CanonicalRedirect to="/gradelab" />} />
+                  <Route path="/resource-vault" element={<VaultPage />} />
+                  <Route path="/vault" element={<CanonicalRedirect to="/resource-vault" />} />
                   <Route path="/notebook" element={<NotebookPage />} />
-                  <Route path="/cheatsheets" element={<CheatsheetsPage />} />
-                  <Route path="/campus" element={<CampusPage />} />
+                  <Route path="/cheat-sheets" element={<CheatsheetsPage />} />
+                  <Route path="/cheatsheets" element={<CanonicalRedirect to="/cheat-sheets" />} />
+                  <Route path="/insideaust" element={<CampusPage />} />
+                  <Route path="/campus" element={<CanonicalRedirect to="/insideaust" />} />
                   <Route path="/community" element={<CommunityPage />} />
                   <Route path="/marketplace" element={<MarketplacePage />} />
                   <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/members/:memberId" element={<MemberProfilePage />} />
                   <Route path="/accept-invite" element={<AcceptInvitePage />} />
-                  <Route path="/messages" element={<MessagesPage />} />
-                  <Route path="/admin" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
-                  <Route path="/admin/overview" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
-                  <Route path="/admin/canteen" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
-                  <Route path="/admin/library" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
-                  <Route path="/admin/users" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
-                  <Route path="/admin/academic" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
-                  <Route path="/admin/availability" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
-                  <Route path="/admin/templates" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
-                  <Route path="/admin/auditorium" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
-                  <Route path="/admin/cheatsheets" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
-                  <Route path="/admin/campus-map" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
+                  <Route path="/connectbox" element={<MessagesPage />} />
+                  <Route path="/messages" element={<CanonicalRedirect to="/connectbox" />} />
+                  <Route path="/admin-panel" element={<Navigate to="/admin-panel/overview" replace />} />
+                  <Route path="/admin-panel/role-preview" element={import.meta.env.DEV ? <RoleMatrixPreview /> : <ProtectedAdminRoute><RoleMatrixPreview /></ProtectedAdminRoute>} />
+                  <Route path="/admin-panel/:section" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
+                  <Route path="/admin" element={<LegacyAdminRedirect />} />
+                  <Route path="/admin/overview" element={<LegacyAdminRedirect />} />
+                  <Route path="/admin/canteen" element={<LegacyAdminRedirect />} />
+                  <Route path="/admin/library" element={<LegacyAdminRedirect />} />
+                  <Route path="/admin/users" element={<LegacyAdminRedirect />} />
+                  <Route path="/admin/academic" element={<LegacyAdminRedirect />} />
+                  <Route path="/admin/availability" element={<LegacyAdminRedirect />} />
+                  <Route path="/admin/templates" element={<LegacyAdminRedirect />} />
+                  <Route path="/admin/auditorium" element={<LegacyAdminRedirect />} />
+                  <Route path="/admin/cheatsheets" element={<LegacyAdminRedirect />} />
+                  <Route path="/admin/campus-map" element={<LegacyAdminRedirect />} />
                   <Route path="/reset-password" element={<ResetPasswordPage />} />
-                  <Route path="/admin/applications" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
-                  <Route path="/admin/cr-sr-directory" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
-                  <Route path="/admin/bhara-koto" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
-                  <Route path="/admin/attendance" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
-                  <Route path="/admin/features" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
-                  <Route path="/admin/question-bank" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
-                  <Route path="/admin/access-requests" element={<ProtectedAdminRoute><AccessRequestsPanel /></ProtectedAdminRoute>} />
-                  <Route path="/admin/role-preview" element={import.meta.env.DEV ? <RoleMatrixPreview /> : <ProtectedAdminRoute><RoleMatrixPreview /></ProtectedAdminRoute>} />
+                  <Route path="/admin/applications" element={<LegacyAdminRedirect />} />
+                  <Route path="/admin/cr-sr-directory" element={<LegacyAdminRedirect />} />
+                  <Route path="/admin/bhara-koto" element={<LegacyAdminRedirect />} />
+                  <Route path="/admin/attendance" element={<LegacyAdminRedirect />} />
+                  <Route path="/admin/features" element={<LegacyAdminRedirect />} />
+                  <Route path="/admin/question-bank" element={<LegacyAdminRedirect />} />
+                  <Route path="/admin/access-requests" element={<Navigate to="/admin-panel/access-requests" replace />} />
+                  <Route path="/admin/role-preview" element={<Navigate to="/admin-panel/role-preview" replace />} />
+                  <Route path="/admin/*" element={<LegacyAdminRedirect />} />
+                  <Route path="/admin-panel/access-requests" element={<ProtectedAdminRoute><AccessRequestsPanel /></ProtectedAdminRoute>} />
                   <Route path="/workspace" element={<WorkspacePage />} />
-                  <Route path="/study-room" element={<StudyRoomPage />} />
-                  <Route path="/cp-hub" element={<CPHubPage />} />
-                  <Route path="/money-tracker" element={<MoneyTrackerPage />} />
-                  <Route path="/question-bank-analyzer" element={<QuestionBankAnalyzerPage />} />
+                  <Route path="/study-time" element={<StudyRoomPage />} />
+                  <Route path="/study-room" element={<CanonicalRedirect to="/study-time" />} />
+                  <Route path="/code-pulse" element={<CPHubPage />} />
+                  <Route path="/cp-hub" element={<CanonicalRedirect to="/code-pulse" />} />
+                  <Route path="/takagelokoi" element={<MoneyTrackerPage />} />
+                  <Route path="/money-tracker" element={<CanonicalRedirect to="/takagelokoi" />} />
+                  <Route path="/question-bank" element={<QuestionBankAnalyzerPage />} />
+                  <Route path="/question-bank-analyzer" element={<CanonicalRedirect to="/question-bank" />} />
 
                   <Route path="/aust-bhara" element={<Navigate to="/campus" replace />} />
                   <Route path="/cover-page-generator" element={<CoverPageGeneratorPage />} />
                   <Route path="/empty-classroom" element={<Navigate to="/campus" replace />} />
-                  <Route path="/chill-zone" element={<ChillZonePage />} />
+                  <Route path="/downtime" element={<ChillZonePage />} />
+                  <Route path="/chill-zone" element={<CanonicalRedirect to="/downtime" />} />
                   <Route path="/roast-cv" element={<RoastCVPage />} />
                   <Route path="/certificate" element={<CertificatePage />} />
-                  <Route path="/auto-alarm" element={<AutoAlarmPage />} />
+                  <Route path="/wakemeup" element={<AutoAlarmPage />} />
+                  <Route path="/auto-alarm" element={<CanonicalRedirect to="/wakemeup" />} />
                   <Route path="/austeddit" element={<AustedditPage />} />
                   <Route path="/shadow" element={<ShadowPage />} />
                   <Route path="/daily-life" element={<DailyLifePage />} />
-                  <Route path="/pro" element={<ProPage />} />
+                  <Route path="/see-plans" element={<ProPage />} />
+                  <Route path="/pro" element={<CanonicalRedirect to="/see-plans" />} />
                   <Route path="/productivity" element={<ProductivityPage />} />
                   <Route path="/payment/success" element={<PaymentSuccessPage />} />
                   <Route path="/payment/cancel" element={<PaymentCancelPage />} />
@@ -273,11 +322,11 @@ function AppContent() {
                 </Suspense>
                 </PageGuard>
               </ErrorBoundary>
-              {isAdmin && location.pathname !== '/' && location.pathname !== '/daily-life' && location.pathname !== '/analytics' && location.pathname !== '/question-bank-analyzer' && !ADMIN_PAGE_CONFIG[location.pathname] && !location.pathname.startsWith('/admin') && (
+              {isAdmin && !location.pathname.startsWith('/dashboard') && !['/', '/daily-life', '/analytics', '/question-bank-analyzer'].includes(getAccessPath(location.pathname)) && !ADMIN_PAGE_CONFIG[getAccessPath(location.pathname)] && !location.pathname.startsWith('/admin') && (
                 <div style={{ padding: '0 24px 24px' }}>
                   {/* One card per page, keyed by the route path — the same key
                       the page's internal content gate reads. */}
-                  <RoleAccessControlCard pageKey={location.pathname} />
+                  <RoleAccessControlCard pageKey={getAccessPath(location.pathname)} />
                 </div>
               )}
             </div>
@@ -307,36 +356,55 @@ function AppShell() {
 
   const pageTitles = {
     '/dashboard': 'Dashboard',
+    '/dashboard/quickstats': 'Quick Stats',
+    '/dashboard/routine': 'Routine',
+    '/dashboard/semester-view': 'Semester View',
+    '/dashboard/zero-hour': 'Zero Hour',
+    '/dashboard/attendance': 'Attendance',
     '/routine-templates': 'Routine Templates',
+    '/gradelab': 'GradeLab',
     '/analytics': 'GradeLab',
-    '/vault': 'Vault',
+    '/resource-vault': 'Resource Vault',
+    '/vault': 'Resource Vault',
     '/notebook': 'Notebook',
     '/cheatsheets': 'Cheat Sheets',
+    '/cheat-sheets': 'Cheat Sheets',
+    '/insideaust': 'InsideAUST',
     '/campus': 'InsideAUST',
     '/community': 'Community',
     '/marketplace': 'Marketplace',
     '/settings': 'Settings',
+    '/see-plans': 'See Plans',
+    '/connectbox': 'ConnectBox',
     '/messages': 'ConnectBox',
     '/admin/role-preview': 'Live Role Access Preview',
+    '/admin-panel': 'Admin Panel',
     '/admin': 'Admin Panel',
     '/terminal': 'Terminal',
     '/shadow': 'Shadow',
     '/workspace': 'Workspace',
     '/zen': 'Zen Study Room',
+    '/zen-study-room': 'Zen Study Room',
+    '/study-time': 'Study Time',
     '/study-room': 'Study Time',
+    '/code-pulse': 'Code Pulse',
     '/cp-hub': 'Code Pulse',
+    '/takagelokoi': 'TakaGeloKoi',
     '/money-tracker': 'TakaGeloKoi',
-    '/question-bank-analyzer': 'Question Bank Analyzer',
+    '/question-bank': 'Question Bank',
+    '/question-bank-analyzer': 'Question Bank',
 
     '/cover-page-generator': 'Cover Page Generator',
+    '/downtime': 'DownTime',
     '/chill-zone': 'DownTime',
     '/roast-cv': 'Roast CV',
     '/certificate': 'Certificate',
+    '/wakemeup': 'WakeMeUp',
     '/auto-alarm': 'WakeMeUp',
     '/austeddit': 'Austeddit',
     '/daily-life': 'Daily Life',
   };
-  const pageName = Object.entries(pageTitles).find(([path]) => location.pathname.startsWith(path))?.[1] || 'Dashboard';
+  const pageName = pageTitles[location.pathname] || Object.entries(pageTitles).find(([path]) => path.length > 1 && location.pathname.startsWith(`${path}/`))?.[1] || 'Dashboard';
   useEffect(() => { document.title = `AUSTWise — ${pageName}`; }, [location.pathname]);
 
   // Show loading state while checking auth
@@ -358,13 +426,14 @@ function AppShell() {
   }
 
   // Terminal / Zen routes — full screen overlays outside main layout
-  if (isAuthenticated && (location.pathname === '/terminal' || location.pathname === '/zen')) {
+  if (isAuthenticated && (location.pathname === '/terminal' || location.pathname === '/zen' || location.pathname === '/zen-study-room')) {
     return (
       <Suspense fallback={null}>
         <Routes>
           <Route path="/terminal" element={<TerminalPage />} />
-          <Route path="/zen" element={<ZenStudyRoom
-            onExit={() => { window.location.href = '/study-room'; }}
+          <Route path="/zen" element={<Navigate to="/zen-study-room" replace />} />
+          <Route path="/zen-study-room" element={<ZenStudyRoom
+            onExit={() => { window.location.href = '/study-time'; }}
           />} />
         </Routes>
       </Suspense>
@@ -385,6 +454,7 @@ function AppShell() {
           <Route path="/login" element={<AuthPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/admin/*" element={<Navigate to="/login" replace />} />
+          <Route path="/admin-panel/*" element={<Navigate to="/login" replace />} />
           <Route path="/accept-invite" element={<AcceptInvitePage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
@@ -395,7 +465,8 @@ function AppShell() {
           <Route path="/feedback" element={<FeedbackPage />} />
           <Route path="/features" element={<FeaturesPage />} />
           <Route path="/pricing" element={<PricingPage />} />
-          <Route path="/about" element={<AboutUsPage />} />
+          <Route path="/about-us" element={<AboutUsPage />} />
+          <Route path="/about" element={<CanonicalRedirect to="/about-us" />} />
           {import.meta.env.DEV && <Route path="/admin/role-preview" element={<RoleMatrixPreview />} />}
           <Route path="/payment/success" element={<PaymentSuccessPage />} />
           <Route path="/payment/cancel" element={<PaymentCancelPage />} />

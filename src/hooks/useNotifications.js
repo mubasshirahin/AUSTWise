@@ -68,10 +68,10 @@ export function useNotifications(routine, weekDays) {
     if (!current.enabled || getPermissionStatus() !== 'granted') return;
 
     if (current.notifyClass && routine) {
-      checkClassReminders(routine, weekDays || [], current.classReminderMins);
+      checkClassReminders(routine, weekDays || [], 30);
     }
     if (current.notifyDeadline) {
-      checkDeadlineReminders(deadlines, current.deadlineReminderHours);
+      checkDeadlineReminders(deadlines, 12);
     }
   }, [routine, weekDays]);
 
@@ -96,6 +96,33 @@ export function useNotifications(routine, weekDays) {
     return result;
   }, [supported]);
 
+  const prepareBrowserChannel = useCallback(async (enableReminders = false) => {
+    if (!supported) return 'unsupported';
+    const result = await requestPermission();
+    setPermission(result);
+    if (result !== 'granted') return result;
+
+    // Confirm the browser accepts a real notification before saving the toggle.
+    try {
+      const probe = new Notification('AUSTWise notification check', {
+        body: 'Browser notifications are ready.',
+        silent: true,
+        tag: 'austwise-notification-check',
+      });
+      probe.close();
+    } catch {
+      return 'unavailable';
+    }
+
+    if (enableReminders) {
+      const next = { ...loadSettings(), enabled: true };
+      saveSettings(next);
+      setSettings(next);
+      saveSettingsToServer(next);
+    }
+    return 'granted';
+  }, [supported]);
+
   const disable = useCallback(() => {
     const next = { ...loadSettings(), enabled: false };
     saveSettings(next);
@@ -110,5 +137,5 @@ export function useNotifications(routine, weekDays) {
     saveSettingsToServer(next);
   }, []);
 
-  return { supported, permission, settings, enable, disable, updateSetting };
+  return { supported, permission, settings, enable, prepareBrowserChannel, disable, updateSetting };
 }

@@ -4,7 +4,7 @@
     "destination_lat": 23.7634468,
     "destination_lon": 90.407215,
     "api": "OSRM public routing + Nominatim geocoding",
-    "generatedAt": "2026-09-07T11:53:49.171Z",
+    "generatedAt": "2026-10-28T21:49:29.462Z",
     "disclaimer": "Estimated values — verify locally before use. Distances via OSRM routing. Transport costs are estimated using standard Dhaka local fare logic as of Aug 2026 — verify against current rates before publishing."
   },
   "rows": [

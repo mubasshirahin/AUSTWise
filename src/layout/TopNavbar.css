@@ -81,20 +81,29 @@
 }
 
 .topbar-wordmark-img {
-  height: 22px;
-  width: auto;
-  max-width: 110px;
+  width: 34px;
+  height: 34px;
+  max-width: none;
   object-fit: contain;
   display: block;
   cursor: pointer;
   flex-shrink: 0;
 }
+.topbar-brand-name {
+  color: var(--text-primary);
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  white-space: nowrap;
+}
 
 @media (max-width: 768px) {
   .topbar-wordmark-img {
-    height: 18px;
-    max-width: 90px;
+    width: 30px;
+    height: 30px;
   }
+  .topbar-brand-name { font-size: 14px; }
 }
 
 .topbar-logo .logo-burst {

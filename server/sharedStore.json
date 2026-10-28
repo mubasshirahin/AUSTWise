@@ -35,5 +35,41 @@
     "partners": [],
     "mentors": [],
     "mentorRequests": []
-  }
+  },
+  "aust-semester-tasks:CSE:5:A2": [
+    {
+      "id": "96941dcb-2bca-4674-af75-ef435da150f0",
+      "title": "Quiz 1",
+      "courseCode": "CSE3100",
+      "courseName": "Software Development-IV",
+      "syllabus": "",
+      "date": "2026-10-29",
+      "time": "13:00",
+      "batchGroup": "A2",
+      "crGroup": "A2",
+      "department": "CSE",
+      "yearSemester": "Year 3 - Semester 1",
+      "createdBy": "DEV-CSE-S5-AA2-01",
+      "createdByName": "Rafi CSE AA2 01",
+      "createdAt": "2026-10-28T14:01:39.156Z",
+      "isSharedSemesterTask": true
+    }
+  ],
+  "aust-cr-sr-notices": [
+    {
+      "id": "cr-1793198073503-kb8h",
+      "pinned": false,
+      "date": "2026-10-28",
+      "title": "Class Cancel",
+      "content": "Klke CSE-3101 class hobe na",
+      "postedBy": "DEV-CSE-S5-AA2-01",
+      "postedByName": "Rafi CSE AA2 01",
+      "postedByRole": "cr",
+      "scope": {
+        "department": "CSE",
+        "semester": "5",
+        "labSection": "A2"
+      }
+    }
+  ]
 }

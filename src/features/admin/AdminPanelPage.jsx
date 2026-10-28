@@ -10,6 +10,7 @@ import RoutineTemplatesPanel from './RoutineTemplatesPanel';
 import BharaKotoPanel from './BharaKotoPanel';
 import RoleAccessControlCard from './RoleAccessControlCard';
 import AdminAttendancePanel from './AdminAttendancePanel';
+import TelegramConnectionsPanel from './TelegramConnectionsPanel';
 import AcademicManagementPanel from './AcademicManagementPanel';
 import PageAvailabilityPanel from './PageAvailabilityPanel';
 import FeatureAccessPanel from './FeatureAccessPanel';
@@ -24,6 +25,7 @@ const applicationRoleNames = {
   sr: 'Student Representative (SR)',
   vp: 'Vice President (VP)',
   gs: 'General Secretary (GS)',
+    faculty: 'Faculty',
 };
 const applicationRoleName = (role) => applicationRoleNames[role] || String(role || 'role').toUpperCase();
 const isDemoAccount = (account) =>
@@ -121,6 +123,7 @@ export default function AdminPanelPage() {
   // Determine active tab from URL path
   const getTabFromPath = () => {
     const path = location.pathname;
+    if (path.startsWith('/admin-panel/')) return path.slice('/admin-panel/'.length) || 'overview';
     if (path === '/admin/canteen') return 'canteen';
     if (path === '/admin/library') return 'library';
     if (path === '/admin/users') return 'accounts';
@@ -145,24 +148,26 @@ export default function AdminPanelPage() {
   // Navigate to a tab and update URL
   const navigateToTab = (tab) => {
     const paths = {
-      'overview': '/admin',
-      'canteen': '/admin/canteen',
-      'library': '/admin/library',
-      'accounts': '/admin/users',
-      'academic': '/admin/academic',
-      'availability': '/admin/availability',
-      'applications': '/admin/applications',
-      'representatives': '/admin/cr-sr-directory',
-      'templates': '/admin/templates',
-      'auditorium': '/admin/auditorium',
-      'cheatsheets': '/admin/cheatsheets',
-      'campus-map': '/admin/campus-map',
-      'bhara-koto': '/admin/bhara-koto',
-      'attendance': '/admin/attendance',
-      'features': '/admin/features',
-      'question-bank': '/admin/question-bank'
+      'overview': '/admin-panel/overview',
+      'canteen': '/admin-panel/canteen',
+      'library': '/admin-panel/library',
+      'accounts': '/admin-panel/accounts',
+      'academic': '/admin-panel/academic',
+      'availability': '/admin-panel/availability',
+      'applications': '/admin-panel/applications',
+      'representatives': '/admin-panel/representatives',
+      'templates': '/admin-panel/templates',
+      'auditorium': '/admin-panel/auditorium',
+      'cheatsheets': '/admin-panel/cheatsheets',
+      'campus-map': '/admin-panel/campus-map',
+      'bhara-koto': '/admin-panel/bhara-koto',
+      'attendance': '/admin-panel/attendance',
+      'telegram-connections': '/admin-panel/telegram-connections',
+      'features': '/admin-panel/features',
+      'question-bank': '/admin-panel/question-bank',
+      'access-requests': '/admin-panel/access-requests'
     };
-    navigate(paths[tab] || '/admin');
+    navigate(paths[tab] || '/admin-panel/overview');
   };
 
   // Canteen State — lazy-initialized from localStorage, synced from server
@@ -608,6 +613,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
             <button className={activeTab === 'canteen' ? 'is-active' : ''} onClick={() => navigateToTab('canteen')}><span>Canteen</span><small>Portal, menu, hours and crowd level</small></button>
             <button className={activeTab === 'library' ? 'is-active' : ''} onClick={() => navigateToTab('library')}><span>Library</span><small>Seat capacity and occupancy</small></button>
             <button className={activeTab === 'attendance' ? 'is-active' : ''} onClick={() => navigateToTab('attendance')}><span>Attendance</span><small>Review Telegram attendance records</small></button>
+            <button className={activeTab === 'telegram-connections' ? 'is-active' : ''} onClick={() => navigateToTab('telegram-connections')}><span>Telegram connections</span><small>Search linked accounts and Chat IDs</small></button>
             <button className={activeTab === 'bhara-koto' ? 'is-active' : ''} onClick={() => navigateToTab('bhara-koto')}><span>Campus services</span><small>Manage Bhara Koto listings</small></button>
             <button className={activeTab === 'auditorium' ? 'is-active' : ''} onClick={() => navigateToTab('auditorium')}><span>Auditorium</span><small>Manage campus event details</small></button>
             <button className={activeTab === 'campus-map' ? 'is-active' : ''} onClick={() => navigateToTab('campus-map')}><span>Campus map</span><small>Update campus map information</small></button>
@@ -1878,7 +1884,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
               {/* Actions */}
               {selectedApplication.status === 'pending' && (
                 <div className="app-review-actions">
-                  {(!['vp', 'gs'].includes(selectedApplication.appliedRole) || currentUser?.role === 'admin') && (
+                  {(!['vp', 'gs', 'faculty'].includes(selectedApplication.appliedRole) || currentUser?.role === 'admin') && (
                   <button
                     className="btn btn-primary"
                     onClick={async () => {
@@ -1982,6 +1988,9 @@ if (!res.ok || !Array.isArray(data.applications)) return;
 
         {/* CAMPUS MAP ADMIN PANEL */}
         {activeTab === 'campus-map' && <AdminCampusMapPanel />}
+
+        {/* TELEGRAM CONNECTIONS DIRECTORY */}
+        {activeTab === 'telegram-connections' && <TelegramConnectionsPanel />}
       </div>
     </div>
   );

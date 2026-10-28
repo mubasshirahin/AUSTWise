@@ -54,6 +54,7 @@ export function useInAppNotifications(user) {
         ? `Your application was approved. You are now the ${roleLabel}.`
         : `Your application for ${roleLabel} was rejected. You can re-apply when a slot opens up.`,
       type: 'info',
+      category: 'applications',
       icon: approved ? 'CheckCircle2' : 'XCircle',
       path: '/settings',
       timestamp: application.reviewedAt ? new Date(application.reviewedAt).getTime() : Date.now(),

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { RoutineContext, ocrImportedRoutine, ocrImportedWeekDays } from './RoutineContext';
 import { routineData as defaultRoutine, weekDays as defaultWeekDays } from '../data/mockData';
 import { getUserStorageItem, setUserStorageItem, getUserStorageKey } from '../utils/authStorage';
@@ -16,6 +16,8 @@ const WEEKDAYS_KEY = 'aust-user-weekdays';
 
 export function RoutineProvider({ children }) {
   const { user, isAuthenticated } = useAuth();
+  const activeUserIdRef = useRef(user?.id || null);
+  activeUserIdRef.current = user?.id || null;
 
   const [routine, setRoutine] = useState(() => {
     const saved = getUserStorageItem(storageKeyTypes.routine);
@@ -30,35 +32,47 @@ export function RoutineProvider({ children }) {
   });
 
   const [isLoading, setIsLoading] = useState(() => isAuthenticated);
+  const loadGenerationRef = useRef(0);
 
   const loadFromServer = useCallback(() => {
+    const generation = ++loadGenerationRef.current;
     if (!isAuthenticated) {
+      setRoutine(getUserStorageItem(storageKeyTypes.routine) || defaultRoutine);
+      setWeekDays(getUserStorageItem(storageKeyTypes.weekDays) || ocrImportedWeekDays);
       setIsLoading(false);
       return;
     }
+    // Swap to this account's own saved timetable before its server copy loads.
+    const localRoutine = getUserStorageItem(storageKeyTypes.routine);
+    const localWeekDays = getUserStorageItem(storageKeyTypes.weekDays);
+    setRoutine(localRoutine || defaultRoutine);
+    setWeekDays(localWeekDays || ocrImportedWeekDays);
     setIsLoading(true);
-    let pending = 2;
-    const done = () => { pending -= 1; if (pending <= 0) setIsLoading(false); };
-    userStore.get(ROUTINE_KEY).then((serverRoutine) => {
+    Promise.all([userStore.get(ROUTINE_KEY), userStore.get(WEEKDAYS_KEY)]).then(([serverRoutine, serverWeekDays]) => {
+      if (generation !== loadGenerationRef.current) return;
       if (serverRoutine !== null) {
         setRoutine(serverRoutine);
         setUserStorageItem(storageKeyTypes.routine, serverRoutine);
+      } else if (localRoutine !== null) {
+        userStore.set(ROUTINE_KEY, localRoutine);
       }
-      done();
-    }).catch(done);
-    userStore.get(WEEKDAYS_KEY).then((serverWeekDays) => {
       if (serverWeekDays !== null) {
         setWeekDays(serverWeekDays);
         setUserStorageItem(storageKeyTypes.weekDays, serverWeekDays);
+      } else if (localWeekDays !== null) {
+        userStore.set(WEEKDAYS_KEY, localWeekDays);
       }
-      done();
-    }).catch(done);
-  }, [isAuthenticated]);
+      setIsLoading(false);
+    }).catch(() => {
+      if (generation === loadGenerationRef.current) setIsLoading(false);
+    });
+  }, [isAuthenticated, user?.id]);
 
   // Pull the server copy once on mount/login. The websocket (see below)
   // keeps it fresh afterwards.
   useEffect(() => {
     loadFromServer();
+    return () => { loadGenerationRef.current += 1; };
   }, [loadFromServer]);
 
   // Real-time: when ANOTHER device (same user, e.g. phone) edits the routine,
@@ -66,20 +80,21 @@ export function RoutineProvider({ children }) {
   useWebSocket(isAuthenticated ? user?.id : null, {
     onStoreChange: useCallback(({ scope, key: changedKey }) => {
       if (scope !== 'user') return;
+      const targetUserId = user?.id || null;
       if (changedKey === ROUTINE_KEY) {
         userStore.get(ROUTINE_KEY).then((serverRoutine) => {
-          if (serverRoutine === null) return;
+          if (serverRoutine === null || activeUserIdRef.current !== targetUserId) return;
           setRoutine(serverRoutine);
           setUserStorageItem(storageKeyTypes.routine, serverRoutine);
         });
       } else if (changedKey === WEEKDAYS_KEY) {
         userStore.get(WEEKDAYS_KEY).then((serverWeekDays) => {
-          if (serverWeekDays === null) return;
+          if (serverWeekDays === null || activeUserIdRef.current !== targetUserId) return;
           setWeekDays(serverWeekDays);
           setUserStorageItem(storageKeyTypes.weekDays, serverWeekDays);
         });
       }
-    }, []),
+    }, [user?.id]),
   });
 
   const importOcrRoutine = () => {
@@ -97,13 +112,22 @@ export function RoutineProvider({ children }) {
     userStore.set(ROUTINE_KEY, nextRoutine);
   };
 
-  const replaceRoutine = (nextRoutine, nextWeekDays) => {
+  const replaceRoutine = async (nextRoutine, nextWeekDays) => {
+    // A routine loaded from a CR must be committed to the account store before
+    // presenting it as successfully loaded. This keeps other devices in sync.
+    if (isAuthenticated) {
+      const [routineSaved, weekDaysSaved] = await Promise.all([
+        userStore.set(ROUTINE_KEY, nextRoutine),
+        userStore.set(WEEKDAYS_KEY, nextWeekDays),
+      ]);
+      if (!routineSaved || !weekDaysSaved) {
+        throw new Error('Could not save the loaded routine to your account. Check your connection and try again.');
+      }
+    }
     setRoutine(nextRoutine);
     setWeekDays(nextWeekDays);
     setUserStorageItem(storageKeyTypes.routine, nextRoutine);
     setUserStorageItem(storageKeyTypes.weekDays, nextWeekDays);
-    userStore.set(ROUTINE_KEY, nextRoutine);
-    userStore.set(WEEKDAYS_KEY, nextWeekDays);
   };
 
   const updateRoutineClass = (originalDay, updatedClass) => {

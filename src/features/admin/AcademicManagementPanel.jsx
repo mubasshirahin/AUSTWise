@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight, CheckCircle2, GraduationCap, UserPlus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function AcademicManagementPanel({ compact = false }) {
+  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
+  const [showStartDate, setShowStartDate] = useState(false);
+  const [semesterStartDate, setSemesterStartDate] = useState('');
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
   const [pendingAccounts, setPendingAccounts] = useState([]);
@@ -15,16 +19,28 @@ export default function AcademicManagementPanel({ compact = false }) {
       .catch(() => {});
   }, []);
 
-  const advanceAll = async () => {
+  const advanceAll = async event => {
+    event?.preventDefault();
+    if (!semesterStartDate) return;
     setBusy(true); setError(''); setResult(null);
     try {
-      const response = await fetch('/api/admin/academic/advance-all', { method: 'POST', credentials: 'same-origin' });
+      const response = await fetch('/api/admin/academic/advance-all', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ semesterStartDate }) });
       const data = await response.json();
       if (!response.ok || !data.success) throw new Error(data.error || 'Could not move students to the next semester.');
       setResult(data);
+      setShowStartDate(false);
+      navigate(`/dashboard/semester-view?view=weekly&date=${encodeURIComponent(semesterStartDate)}`);
     } catch (err) { setError(err.message); }
     finally { setBusy(false); }
   };
+  const startDateDialog = showStartDate && <div role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !busy) setShowStartDate(false); }} style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(8, 12, 20, .62)', display: 'grid', placeItems: 'center', padding: 20 }}>
+    <form role="dialog" aria-modal="true" aria-labelledby="semester-start-title" onSubmit={advanceAll} style={{ width: 'min(100%, 430px)', padding: 24, borderRadius: 18, border: '1px solid var(--border-color)', background: 'var(--surface-elevated, var(--bg-secondary))', boxShadow: '0 24px 80px rgba(0,0,0,.32)' }}>
+      <h2 id="semester-start-title" style={{ marginTop: 0 }}>Set next semester start date</h2>
+      <p style={{ color: 'var(--text-secondary)' }}>Students will advance one semester and the semester view will restart at Week 1 on this date.</p>
+      <label style={{ display: 'grid', gap: 7, margin: '18px 0' }}>Semester start date<input autoFocus required type="date" value={semesterStartDate} onChange={event => setSemesterStartDate(event.target.value)} style={{ minHeight: 44, padding: '8px 10px' }} /></label>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}><button type="button" className="btn btn-secondary" disabled={busy} onClick={() => setShowStartDate(false)}>Cancel</button><button className="btn btn-primary" disabled={busy || !semesterStartDate}>{busy ? 'Moving students…' : 'Move students'}</button></div>
+    </form>
+  </div>;
   const approveAccount = async userId => {
     setError('');
     try {
@@ -47,7 +63,8 @@ export default function AcademicManagementPanel({ compact = false }) {
 
   if (compact) return <section className="admin-semester-action">
     <div><span className="admin-section-kicker">ACADEMIC OPERATIONS</span><h2>Semester transition</h2><p>Advance all active student records by one semester. Final-year students follow the alumni transfer flow.</p></div>
-    <button className="btn btn-primary" onClick={advanceAll} disabled={busy} style={{ minHeight: 46, whiteSpace: 'nowrap' }}>{busy ? 'Moving students…' : 'Move to Next Semester'} <ArrowRight size={17} /></button>
+    <button className="btn btn-primary" onClick={() => setShowStartDate(true)} disabled={busy} style={{ minHeight: 46, whiteSpace: 'nowrap' }}>Move to Next Semester <ArrowRight size={17} /></button>
+    {startDateDialog}
     {error && <p role="alert" className="admin-semester-message is-error">{error}</p>}
     {result && <div role="status" className="admin-semester-message"><CheckCircle2 size={17} /> {result.advanced} advanced{result.graduated ? ` · ${result.graduated} graduated` : ''}{result.blocked ? ` · ${result.blocked} graduation transfers need a personal Gmail` : ''}{result.skipped ? ` · ${result.skipped} skipped due to invalid semester data` : ''}{result.outcomes.some(row => row.outcome === 'GRADUATED' && !row.emailSent) ? ' · A welcome/reset email could not be sent' : ''}</div>}
   </section>;
@@ -60,10 +77,11 @@ export default function AcademicManagementPanel({ compact = false }) {
 
     <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 18, flexWrap: 'wrap' }}>
       <div><h3 style={{ margin: '0 0 6px' }}>Move to Next Semester</h3><p style={{ margin: 0, color: 'var(--text-secondary)' }}>Move every current student ahead by one semester.</p></div>
-      <button className="btn btn-primary" onClick={advanceAll} disabled={busy} style={{ minHeight: 46 }}>
-        {busy ? 'Moving students…' : 'Move to Next Semester'} <ArrowRight size={17} />
+      <button className="btn btn-primary" onClick={() => setShowStartDate(true)} disabled={busy} style={{ minHeight: 46 }}>
+        Move to Next Semester <ArrowRight size={17} />
       </button>
     </div>
+    {startDateDialog}
 
     {error && <p role="alert" style={{ color: 'var(--accent-rose)' }}>{error}</p>}
     {result && <div role="status" style={{ ...card, borderColor: 'var(--accent-emerald)' }}>

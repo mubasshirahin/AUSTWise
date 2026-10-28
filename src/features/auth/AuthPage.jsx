@@ -7,8 +7,7 @@ import { getYearSemOptions } from '../../utils/semester';
 import { getPasswordGrade } from '../../utils/passwordStrength';
 import { getAllAccounts } from '../../utils/authStorage';
 import ParticleField from './ParticleField';
-import logoLight from '../../assets/vector1-1.svg';
-import logoDark from '../../assets/vector1-1.svg';
+import brandMark from '../../assets/austwise-icon-final.svg';
 import './AuthPage.css';
 
 const EMAIL_DOMAIN = '@aust.edu';
@@ -68,6 +67,14 @@ const defaultSignup = {
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
 
+function formatMemberCount(count) {
+  if (!Number.isFinite(count) || count < 0) return '—';
+  if (count >= 1000) return `${(Math.floor(count / 100) / 10).toFixed(1)}K+`;
+  if (count >= 100) return `${Math.floor(count / 100) * 100}+`;
+  if (count >= 10) return `${Math.floor(count / 10) * 10}+`;
+  return count > 0 ? '1+' : '0+';
+}
+
 
 export default function AuthPage() {
   const { isAuthenticated, isLoading, login, loginDirect, loginGuest, signup } = useAuth();
@@ -86,65 +93,8 @@ export default function AuthPage() {
   const [showSignupPw, setShowSignupPw] = useState(false);
   const [focusKind, setFocusKind] = useState(null);
   const [sending, setSending] = useState(false);
+  const [memberCount, setMemberCount] = useState(null);
   const signupFormRef = useRef(null);
-  const [logoClicked, setLogoClicked] = useState(false);
-  // Theme-aware logo: AuST black in light, ash (#9CA3AF) in dark — wise stays #A7181B
-  const lightThemes = new Set(lightThemeOptions.map((t) => t.id));
-  const logoSrc = lightThemes.has(theme) ? logoLight : logoDark;
-
-  const toggleLogo = () => {
-    setLogoClicked(true);
-    setTimeout(() => setLogoClicked(false), 600);
-  };
-
-  // ─── Typewriter ticker ───
-  const TICKER_PHRASES = [
-    'Track your attendance.',
-    'Never miss a deadline.',
-    'Your campus. Simplified.',
-    'Routine. Grades. Vault.',
-    'Built for AUST students.',
-    'Check your routine today.',
-    'Find past papers in Vault.',
-    'Stay ahead, every semester.',
-    'Find seniors & alumni quickly.',
-    'No way to find batchmates fast.',
-  ];
-  const [tickerText, setTickerText] = useState('');
-  const [tickerPhaseIdx, setTickerPhaseIdx] = useState(0);
-  const [tickerCharIdx, setTickerCharIdx] = useState(0);
-  const [tickerDeleting, setTickerDeleting] = useState(false);
-  const tickerRef = useRef(null);
-
-  useEffect(() => {
-    const phrase = TICKER_PHRASES[tickerPhaseIdx % TICKER_PHRASES.length];
-    let delay;
-    if (!tickerDeleting) {
-      if (tickerCharIdx < phrase.length) {
-        delay = 55;
-        tickerRef.current = setTimeout(() => {
-          setTickerText(phrase.slice(0, tickerCharIdx + 1));
-          setTickerCharIdx((c) => c + 1);
-        }, delay);
-      } else {
-        // pause then delete
-        tickerRef.current = setTimeout(() => setTickerDeleting(true), 1800);
-      }
-    } else {
-      if (tickerCharIdx > 0) {
-        delay = 28;
-        tickerRef.current = setTimeout(() => {
-          setTickerText(phrase.slice(0, tickerCharIdx - 1));
-          setTickerCharIdx((c) => c - 1);
-        }, delay);
-      } else {
-        setTickerDeleting(false);
-        setTickerPhaseIdx((p) => p + 1);
-      }
-    }
-    return () => clearTimeout(tickerRef.current);
-  }, [tickerCharIdx, tickerDeleting, tickerPhaseIdx]);
-
   const yearSemOptions = useMemo(() => getYearSemOptions(signupForm.department), [signupForm.department]);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -152,6 +102,31 @@ export default function AuthPage() {
   const [accessRequestSent, setAccessRequestSent] = useState(false);
   const [pendingGoogleAccount, setPendingGoogleAccount] = useState(null);
   const pendingCredentialRef = useRef(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/stats/count', { credentials: 'same-origin' })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => {
+        if (!cancelled && data?.success) {
+          setMemberCount(data.count);
+        }
+      })
+      .catch(() => {});
+
+    const stream = new EventSource('/api/stats/count/stream');
+    stream.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (Number.isFinite(data.count)) setMemberCount(data.count);
+      } catch { /* Ignore malformed stream events. */ }
+    };
+
+    return () => {
+      cancelled = true;
+      stream.close();
+    };
+  }, []);
 
   // Redirect after all hooks so the hook order stays constant on every render
   // (an early return before these hooks would make React throw "Rendered fewer
@@ -611,58 +586,21 @@ export default function AuthPage() {
       </button>
       <div className={`auth-shell ${sending ? 'is-sending' : ''}`}>
         <div className="auth-brand-outside">
-          <div className="auth-logo-wrapper">
-            <div className="topbar-logo">
-              <div className="logo-icon-wrapper">
-                <button
-                  type="button"
-                  className={`topbar-logo-icon ${logoClicked ? 'clicked' : ''}`}
-                  onClick={toggleLogo}
-                  title="Click to switch logo"
-                  aria-label="Toggle logo color"
-                >
-                  <img
-                    src={logoSrc}
-                    alt="AUSTWise logo"
-                    className="topbar-logo-img"
-                  />
-                </button>
-                <div className="logo-burst" aria-hidden="true">
-                  <i></i><i></i><i></i><i></i>
-                  <i></i><i></i><i></i><i></i>
-                </div>
-              </div>
-              <div className="logo-text">
-                <div className="logo-wordmark">
-                  <span className="wm-ust">
-                    <span className="wc">u</span>
-                    <span className="wc">s</span>
-                    <span className="wc">t</span>
-                  </span>
-                  <span className="wm-ise">
-                    <span className="wc">i</span>
-                    <span className="wc">s</span>
-                    <span className="wc">e</span>
-                  </span>
-                </div>
-              </div>
-            </div>
+          <div className="topbar-logo auth-topbar-logo">
+            <img src={brandMark} alt="AUSTWise" className="topbar-wordmark-img" />
+            <span className="topbar-brand-name">AUSTWise</span>
           </div>
-          <p className="auth-ticker">
-            <span className="auth-ticker-text">{tickerText}</span>
-            <span className="auth-ticker-cursor" aria-hidden="true">|</span>
-          </p>
         </div>
 
-        {/* ─── Impact strip (PLACEHOLDER data — swap with real numbers) ─── */}
+        {/* Live, rounded member count with fixed product stats. */}
         <div className="auth-impact">
           <div className="auth-impact-item">
-            <strong>12K+</strong>
-            <span>Students</span>
+            <strong>{formatMemberCount(memberCount)}</strong>
+            <span>Members</span>
           </div>
           <div className="auth-impact-sep" />
           <div className="auth-impact-item">
-            <strong>200+</strong>
+            <strong>40+</strong>
             <span>Features</span>
           </div>
           <div className="auth-impact-sep" />

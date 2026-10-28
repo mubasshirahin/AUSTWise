@@ -582,6 +582,6 @@
       "admin",
       "moderator"
     ],
-    "enabled": false
+    "enabled": true
   }
 }

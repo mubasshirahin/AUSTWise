@@ -106,7 +106,7 @@ export default function ZenStudyRoom({ onExit }) {
       document.exitFullscreen().catch(() => {});
     }
     onExit?.();
-    navigate('/study-room');
+    navigate('/study-time');
   }, [onExit, navigate]);
 
   /* ─── Keyboard shortcuts ─── */
@@ -121,7 +121,7 @@ export default function ZenStudyRoom({ onExit }) {
         setTimeout(() => {
           if (!document.fullscreenElement) {
             onExit?.();
-            navigate('/study-room');
+            navigate('/study-time');
           }
         }, 100);
       }

@@ -7,6 +7,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { readUsers, updateUserProfile } from './userStore.mjs';
 import { sendAlumniTransferEmail } from './inviteEmail.mjs';
+import { setSharedStoreValue } from './storeDB.mjs';
 
 const DATA_FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), 'academicResults.json');
 async function readResults() {
@@ -31,7 +32,7 @@ export function nextSemester(value) {
 
 async function getAcademicUsers() {
   const users = await readUsers();
-  return users.filter(user => (user.roles || [user.role]).includes('student') && user.status !== 'GRADUATED');
+  return users.filter(user => new Set([...(Array.isArray(user.roles) ? user.roles : []), user.role]).has('student') && user.status !== 'GRADUATED');
 }
 
 export async function previewSemesterMove(semester) {
@@ -95,30 +96,42 @@ export async function moveToNextSemester(semester, { holdPending = true } = {}) 
 }
 
 /** One-click admin operation: advance every current student by one term. */
-export async function advanceAllStudents() {
+export async function advanceAllStudents({ semesterStartDate } = {}) {
+  const startDateMatch = String(semesterStartDate || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const parsedStartDate = startDateMatch ? new Date(`${semesterStartDate}T00:00:00`) : null;
+  const validStartDate = Boolean(parsedStartDate && !Number.isNaN(parsedStartDate.getTime()) &&
+    parsedStartDate.getFullYear() === Number(startDateMatch[1]) && parsedStartDate.getMonth() + 1 === Number(startDateMatch[2]) && parsedStartDate.getDate() === Number(startDateMatch[3]));
+  if (!validStartDate) throw new Error('Choose a valid start date for the next semester.');
   const allUsers = await readUsers();
-  const users = allUsers.filter(user => (user.roles || [user.role]).includes('student') && user.status !== 'GRADUATED');
+  const users = allUsers.filter(user => new Set([...(Array.isArray(user.roles) ? user.roles : []), user.role]).has('student') && user.status !== 'GRADUATED');
   const outcomes = [];
   for (const user of users) {
     const semester = user.currentSemester || user.yearSemester?.match(/Year\s*(\d+)\s*-\s*Semester\s*(\d+)/i)?.slice(1).join('.') || '';
     const max = String(user.maxSemester || (user.department === 'ARCH' ? '5.2' : '4.2'));
     if (!semester) { outcomes.push({ id: user.id, outcome: 'SKIPPED_INVALID_SEMESTER' }); continue; }
     if (semester === max) {
-      if (!user.personalEmail) { outcomes.push({ id: user.id, outcome: 'GRADUATION_BLOCKED_NO_PERSONAL_EMAIL' }); continue; }
-      if (allUsers.some(other => other.id !== user.id && String(other.email || '').toLowerCase() === String(user.personalEmail).toLowerCase())) {
-        outcomes.push({ id: user.id, outcome: 'GRADUATION_BLOCKED_EMAIL_IN_USE' }); continue;
-      }
-      const roles = [...new Set([...(user.roles || [user.role]).filter(role => role !== 'student'), 'alumni'])];
-      const token = crypto.randomBytes(32).toString('hex');
-      const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-      await updateUserProfile(user.id, { roles, role: roles.includes('faculty') ? 'faculty' : 'alumni', email: user.personalEmail, status: 'GRADUATED', resetTokenHash: tokenHash, resetTokenExpiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString() }, { allowRole: true });
+      const studentOnlyRoles = new Set(['student', 'cr', 'sr', 'vp', 'gs', 'readd', 'bus_coordinator', 'clubs_representative']);
+      const roles = [...new Set([...(user.roles || []), user.role].filter(role => role && !studentOnlyRoles.has(role)).concat('alumni'))];
+      const personalEmail = String(user.personalEmail || '').trim().toLowerCase();
+      const emailAvailable = /^[^\s@]+@gmail\.com$/i.test(personalEmail) &&
+        !allUsers.some(other => other.id !== user.id && String(other.email || '').toLowerCase() === personalEmail);
+      const transfer = {};
       let emailSent = false;
-      try {
+      if (emailAvailable) {
+        const token = crypto.randomBytes(32).toString('hex');
+        transfer.email = personalEmail;
+        transfer.resetTokenHash = crypto.createHash('sha256').update(token).digest('hex');
+        transfer.resetTokenExpiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
         const base = String(process.env.PUBLIC_BASE_URL || 'http://localhost:5174').replace(/\/$/, '');
-        await sendAlumniTransferEmail({ to: user.personalEmail, name: user.name, resetLink: `${base}/reset-password?token=${token}` });
-        emailSent = true;
-      } catch (error) { console.warn('[Academic] Alumni transfer email could not be sent:', error.message); }
-      outcomes.push({ id: user.id, outcome: 'GRADUATED', email: user.personalEmail, emailSent });
+        try {
+          await sendAlumniTransferEmail({ to: personalEmail, name: user.name, resetLink: `${base}/reset-password?token=${token}` });
+          emailSent = true;
+        } catch (error) {
+          console.warn('[Academic] Alumni transfer email could not be sent:', error.message);
+        }
+      }
+      await updateUserProfile(user.id, { ...transfer, roles, role: roles.includes('faculty') ? 'faculty' : 'alumni', status: 'GRADUATED' }, { allowRole: true });
+      outcomes.push({ id: user.id, outcome: 'GRADUATED', email: emailAvailable ? personalEmail : '', emailSent, emailTransferSkipped: !emailAvailable });
       continue;
     }
     const next = nextSemester(semester);
@@ -126,6 +139,7 @@ export async function advanceAllStudents() {
     await updateUserProfile(user.id, { currentSemester: next, status: 'ACTIVE', academicStatus: 'ACTIVE', yearSemester: `Year ${next.split('.')[0]} - Semester ${next.split('.')[1]}`, semester: (Number(next.split('.')[0]) - 1) * 2 + Number(next.split('.')[1]) });
     outcomes.push({ id: user.id, outcome: 'PROMOTED', nextSemester: next });
   }
+  await setSharedStoreValue('semester-start-date', semesterStartDate);
   return {
     advanced: outcomes.filter(row => row.outcome === 'PROMOTED').length,
     graduated: outcomes.filter(row => row.outcome === 'GRADUATED').length,

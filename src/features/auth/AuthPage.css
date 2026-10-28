@@ -1495,6 +1495,15 @@
            drop-shadow(0 0 12px color-mix(in srgb, var(--accent-blue) 10%, transparent));
 }
 
+/* Keep auth branding identical to the navbar wordmark. */
+.auth-brand-outside .topbar-logo.auth-topbar-logo {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+}
+
 /* ═══════════════════════════════════════════════════════
    FEATURE: Password strength — AUST grading scale
    ═══════════════════════════════════════════════════════ */

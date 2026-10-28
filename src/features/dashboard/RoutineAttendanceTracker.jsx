@@ -299,9 +299,13 @@ export default function RoutineAttendanceTracker() {
   // Publish the semester average so the dashboard's Avg. Attendance card
   // picks it up live (it reads the same liveStore key).
   useEffect(() => {
+    // Nothing held yet (empty routine, semester not started, routine still
+    // loading) means there is no meaningful average to publish. Skipping the
+    // write prevents a temporary load failure from wiping a valid stored value.
+    if (overallStats.totalHeld === 0) return;
     try { setOverallAverage(overallStats.marked > 0 ? String(overallStats.average) : null); } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [overallStats.average, overallStats.marked]);
+  }, [overallStats.average, overallStats.marked, overallStats.totalHeld]);
 
   // ── Server sync ──
   // Push the computed overall attendance % to the server so the Active
@@ -349,7 +353,7 @@ export default function RoutineAttendanceTracker() {
           <span className="att-empty-icon"><Percent size={22} aria-hidden="true" /></span>
           <p className="att-empty-title">No courses found</p>
           <span className="att-empty-desc">Add courses to your Routine Grid first</span>
-          <button className="btn btn-sm att-empty-cta" onClick={() => window.location.href='/?tab=routine'}>
+          <button className="btn btn-sm att-empty-cta" onClick={() => { window.location.href = '/dashboard/routine'; }}>
             Go to Routine Grid
           </button>
         </div>

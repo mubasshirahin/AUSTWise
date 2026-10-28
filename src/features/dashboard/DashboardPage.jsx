@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useLocation, useSearchParams, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import RoutineCard from './RoutineCard';
 import ExamTracker from './ExamTracker';
@@ -9,8 +9,6 @@ import WeeklyPlanner from './WeeklyPlanner';
 import WeekSchedule from './WeekSchedule';
 import NotificationBanner from './NotificationBanner';
 import RoutineAttendanceTracker from './RoutineAttendanceTracker';
-import RoutineSharingStatus from './RoutineSharingStatus';
-import SemesterTaskTracker from './SemesterTaskTracker';
 import AlumniTransferPrompt from './AlumniTransferPrompt';
 import GliderTabs from '../../components/GliderTabs';
 import MastheadAccessControl from '../../components/MastheadAccessControl';
@@ -22,12 +20,15 @@ import {
   Flame, X, Trophy, Medal, Award, Star, Target, Sparkles, Sun, BarChart3,
 } from 'lucide-react';
 import { getUserStorageItemWithGuestFallback, getCurrentUserId } from '../../utils/authStorage';
-import useTabUrlState from '../../hooks/useTabUrlState';
 import useAdminMode from '../../hooks/useAdminMode';
 import { useRoleAccess } from '../../hooks/useRoleAccess';
 import { getAccessRole } from '../../utils/accessRole';
 import { useAuth } from '../../context/AuthContext';
+import { useRoutine } from '../../context/RoutineContext';
 import { useLiveValue } from '../../utils/liveStore';
+import useUpcomingDeadlines from './useUpcomingDeadlines';
+import useLegacyDeadlineMigration from './legacyDeadlineMigration';
+import { computeAttendanceAverage } from './attendanceSummary';
 import './DashboardPage.css';
 import './dashboard-premium.css';
 import './dashboard-tokens.css';
@@ -60,15 +61,17 @@ function StudyStreak() {
         setStreak(1);
         setDisplayStreak(1);
         setJustUpdated(true);
-        setStreakData({ count: 1, lastActive: today });
+        setStreakData({ count: 1, maxCount: 1, lastActive: today });
         return;
       }
 
       const lastActive = streakData.lastActive;
+      const maxCount = Math.max(Number(streakData.maxCount) || 0, Number(streakData.count) || 0);
 
       if (lastActive === today) {
         setStreak(streakData.count || 0);
         setDisplayStreak(streakData.count || 0);
+        if (streakData.maxCount !== maxCount) setStreakData({ ...streakData, maxCount });
       } else {
         const lastDate = new Date(lastActive);
         const todayDate = new Date();
@@ -78,12 +81,12 @@ function StudyStreak() {
           const newCount = (streakData.count || 0) + 1;
           setStreak(newCount);
           setDisplayStreak(streakData.count || 0);
-          setStreakData({ count: newCount, lastActive: today });
+          setStreakData({ ...streakData, count: newCount, maxCount: Math.max(maxCount, newCount), lastActive: today });
           setJustUpdated(true);
         } else if (diffDays > 1) {
           setStreak(1);
           setDisplayStreak(1);
-          setStreakData({ count: 1, lastActive: today });
+          setStreakData({ ...streakData, count: 1, maxCount: Math.max(maxCount, 1), lastActive: today });
           setJustUpdated(true);
         }
       }
@@ -108,9 +111,9 @@ function StudyStreak() {
 
   const getStreakMessage = () => {
     if (streak === 0) return 'Start your streak today!';
-    if (streak === 1) return '1 Day · on fire!';
-    if (streak < 30) return `${streak} Days · on fire!`;
-    return `${streak} Days · legendary!`;
+    if (streak === 1) return 'Day · on fire!';
+    if (streak < 30) return 'Days · on fire!';
+    return 'Days · legendary!';
   };
 
   const getStreakColor = () => {
@@ -143,13 +146,12 @@ function StudyStreak() {
 
   return (
     <>
-      <div
+      <button
+        type="button"
         className={`study-streak-widget${justUpdated ? ' streak-updated' : ''}`}
         onClick={() => setShowLeaderboard(true)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => { if (e.key === 'Enter') setShowLeaderboard(true); }}
-        title="Click to see leaderboard"
+        aria-label={`Open streak leaderboard. ${streak} day${streak === 1 ? '' : 's'} current streak.`}
+        title="Open streak leaderboard"
       >
         <div className="streak-flame" style={{ color: getStreakColor() }}>
           <Flame size={22} />
@@ -158,7 +160,7 @@ function StudyStreak() {
           <span className="streak-count" style={{ color: getStreakColor() }}>{displayStreak}</span>
           <span className="streak-label">{getStreakMessage()}</span>
         </div>
-      </div>
+      </button>
 
       {showLeaderboard && createPortal(
         <div className="modal-overlay leaderboard-overlay" onClick={() => setShowLeaderboard(false)}>
@@ -374,74 +376,64 @@ function useAnimatedValue(target, duration = 900, forceDecimals = false) {
 
 function QuickStats() {
   const navigate = useNavigate();
+  const { routine, weekDays } = useRoutine();
   const [userResults, setUserResults] = useState(null);
   const [isGuest, setIsGuest] = useState(false);
-  const [liveDeadlines] = useLiveValue('user', 'aust-deadlines', []);
-  const [liveTasks] = useLiveValue('user', 'aust-week-tasks', []);
+  const { manualDeadlines, taskDeadlines } = useUpcomingDeadlines();
   const [liveAvgAttendance] = useLiveValue('user', 'aust-attendance-overall-average', null);
   const [liveSemResults] = useLiveValue('user', 'aust-user-semester-results', null);
+  const [sessionMarks] = useLiveValue('user', 'aust-user-routine-attendance-sessions', {});
+  const [sharedSemStart] = useLiveValue('shared', 'semester-start-date', null);
 
   useEffect(() => {
     const userId = getCurrentUserId();
     setIsGuest(!userId);
-    const stored = (liveSemResults && liveSemResults.length ? liveSemResults : null) || getUserStorageItemWithGuestFallback(storageKeyType);
-    setUserResults(stored);
+    const live = Array.isArray(liveSemResults) && liveSemResults.length ? liveSemResults : null;
+    const stored = live || getUserStorageItemWithGuestFallback(storageKeyType);
+    setUserResults(Array.isArray(stored) ? stored : null);
   }, [liveSemResults]);
 
   const stats = useMemo(() => {
-    const allDeadlines = Array.isArray(liveDeadlines) ? liveDeadlines : [];
-    const allTasks = Array.isArray(liveTasks) ? liveTasks : [];
     const now = Date.now();
-    const pendingDeadlines = allDeadlines.filter((d) => {
-      const due = d.dueDate ? new Date(d.dueDate).getTime() : 0;
-      return due > now;
-    }).length;
-    const pendingTasks = allTasks.filter((t) => {
-      if (!t.date) return false;
-      const taskDate = new Date(t.date);
-      if (t.time) {
-        const [h, m] = t.time.split(':');
-        taskDate.setHours(parseInt(h), parseInt(m), 0);
-      } else {
-        taskDate.setHours(23, 59, 59);
-      }
-      return taskDate.getTime() > now;
-    }).length;
-    const pending = pendingDeadlines + pendingTasks;
+    const pending = [...manualDeadlines, ...taskDeadlines]
+      .filter((item) => item.dueDate instanceof Date && item.dueDate.getTime() > now)
+      .length;
 
+    // The stored semester average wins. When it is missing (fresh device, or
+    // the Attendance tab was never opened) derive it from the routine + marks
+    // instead of showing a dash.
     let avgAttendance = null;
-    try {
-      if (liveAvgAttendance != null) {
-        avgAttendance = parseFloat(liveAvgAttendance);
-        if (isNaN(avgAttendance)) avgAttendance = null;
-      }
-    } catch {}
-
-    if (isGuest || !userResults) {
-      return {
-        currentCgpa: null,
-        avgAttendance: avgAttendance !== null ? avgAttendance : '—',
-        upcomingDeadlines: pending,
-        creditsCompleted: 0,
-        semestersCompleted: 0,
-      };
+    if (liveAvgAttendance != null) {
+      const parsed = parseFloat(liveAvgAttendance);
+      if (Number.isFinite(parsed)) avgAttendance = parsed;
+    }
+    if (avgAttendance === null) {
+      avgAttendance = computeAttendanceAverage({
+        routine,
+        weekDays,
+        semesterStart: sharedSemStart,
+        sessionMarks,
+      });
     }
 
-    const completedSems = userResults.filter((r) => r.cgpa !== null);
-    const currentCgpa = completedSems.at(-1)?.cgpa ?? null;
+    const results = Array.isArray(userResults) ? userResults : [];
+    const completedSems = results.filter((r) => r && r.cgpa !== null && r.cgpa !== undefined);
+    const currentCgpa = completedSems.length ? completedSems[completedSems.length - 1].cgpa : null;
     const creditsCompleted = completedSems.reduce((total, sem) => {
-      const courses = Array.isArray(sem.courses) ? sem.courses : [];
-      return total + courses.reduce((sum, c) => (c.point !== null ? sum + (Number(c.credit) || 0) : sum), 0);
+      const courses = Array.isArray(sem?.courses) ? sem.courses : [];
+      return total + courses.reduce((sum, c) => (
+        c && c.point !== null && c.point !== undefined ? sum + (Number(c.credit) || 0) : sum
+      ), 0);
     }, 0);
 
     return {
       currentCgpa,
-      avgAttendance: avgAttendance !== null ? avgAttendance : '—',
+      avgAttendance: avgAttendance !== null && avgAttendance !== undefined ? avgAttendance : '—',
       upcomingDeadlines: pending,
       creditsCompleted,
       semestersCompleted: completedSems.length,
     };
-  }, [userResults, isGuest, liveDeadlines, liveTasks, liveAvgAttendance]);
+  }, [userResults, manualDeadlines, taskDeadlines, liveAvgAttendance, routine, weekDays, sessionMarks, sharedSemStart]);
 
   const animatedCgpa = useAnimatedValue(stats.currentCgpa);
   const animatedCredits = useAnimatedValue(stats.creditsCompleted, 900, true);
@@ -449,6 +441,12 @@ function QuickStats() {
 
   const hasCgpa = stats.currentCgpa !== null && stats.currentCgpa !== undefined;
   const hasAttendance = stats.avgAttendance !== '—';
+
+  // Risk tiers drive both the (previously dead) `count` field and the colour
+  // cue on the card: 2 = warning, 3 = danger.
+  const cgpaTier = !hasCgpa ? 0 : (stats.currentCgpa >= 3.5 ? 0 : stats.currentCgpa >= 3.0 ? 1 : stats.currentCgpa >= 2.5 ? 2 : 3);
+  const attendanceTier = !hasAttendance ? 0 : (stats.avgAttendance >= 75 ? 0 : stats.avgAttendance >= 70 ? 1 : stats.avgAttendance >= 65 ? 2 : 3);
+  const riskFor = (tier) => (tier >= 3 ? 'danger' : tier >= 2 ? 'warning' : null);
 
   const items = [
     {
@@ -459,11 +457,11 @@ function QuickStats() {
       value: hasCgpa ? animatedCgpa : '0.00',
       placeholder: !hasCgpa,
       // Risk tier: 0 great, 1 good, 2 okay, 3 poor.
-      count: !hasCgpa ? 0 : (stats.currentCgpa >= 3.5 ? 0 : stats.currentCgpa >= 3.0 ? 1 : stats.currentCgpa >= 2.5 ? 2 : 3),
+      count: cgpaTier,
+      risk: riskFor(cgpaTier),
       trend: hasCgpa ? (stats.currentCgpa >= 3.0 ? 'up' : stats.currentCgpa >= 2.5 ? 'stable' : 'down') : null,
       // Where this metric's data is managed — clicking the card jumps there.
-      // ?tab=cgpagraph forces the CGPA Calculator tab even if another was last used.
-      link: '/analytics?tab=cgpagraph',
+      link: '/gradelab/cgpa-calculator',
     },
     {
       code: 'ATT',
@@ -473,10 +471,11 @@ function QuickStats() {
       value: hasAttendance ? `${stats.avgAttendance}%` : '—',
       placeholder: !hasAttendance,
       // Risk tier: 0 fine, 1 slipping, 2 risky, 3 critical (75% minimum).
-      count: !hasAttendance ? 0 : (stats.avgAttendance >= 75 ? 0 : stats.avgAttendance >= 70 ? 1 : stats.avgAttendance >= 65 ? 2 : 3),
+      count: attendanceTier,
+      risk: riskFor(attendanceTier),
       trend: null,
       // Attendance sessions are logged in the dashboard's Attendance Tracker.
-      link: '/?tab=attendance',
+      link: '/dashboard/attendance',
     },
     {
       code: 'DL',
@@ -488,7 +487,7 @@ function QuickStats() {
       count: stats.upcomingDeadlines,
       trend: null,
       // Deadlines/exams live in the dashboard's Semester View — jump there.
-      link: '/?tab=calendar',
+      link: '/dashboard/semester-view',
     },
     {
       code: 'CR',
@@ -500,7 +499,7 @@ function QuickStats() {
       count: hasCgpa ? stats.semestersCompleted : 0,
       trend: null,
       // Credits are derived from semester results in the CGPA Calculator.
-      link: '/analytics?tab=cgpagraph',
+      link: '/gradelab/cgpa-calculator',
     },
   ];
 
@@ -511,7 +510,7 @@ function QuickStats() {
     return (
       <div
         key={item.code}
-        className={`schedule-day-card quick-stat-cell${item.placeholder ? ' placeholder' : ''}${item.link ? ' is-link' : ''}`}
+        className={`schedule-day-card quick-stat-cell${item.placeholder ? ' placeholder' : ''}${item.link ? ' is-link' : ''}${item.risk ? ` risk-${item.risk}` : ''}`}
         style={{
           animationDelay: `${idx * 70}ms`,
         }}
@@ -573,7 +572,7 @@ function QuickStats() {
       {!hasCgpa && !isGuest && (
         <div className="quick-stats-empty-cta">
           <span className="quick-stats-empty-text">No semester data yet — add your first semester to see CGPA &amp; credits</span>
-          <button className="btn btn-sm btn-ghost quick-stats-empty-btn" onClick={() => navigate('/analytics?tab=cgpagraph')}>
+          <button className="btn btn-sm btn-ghost quick-stats-empty-btn" onClick={() => navigate('/gradelab/cgpa-calculator')}>
             Open CGPA Calculator
           </button>
         </div>
@@ -591,9 +590,14 @@ function QuickStats() {
 }
 
 export default function DashboardPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { isAdmin } = useAdminMode();
   const accessRole = getAccessRole(user);
+  // Old `aust-deadlines` entries have no editor any more; fold them into
+  // Semester View tasks once so they can be managed.
+  useLegacyDeadlineMigration();
   const { config: parentAccess, loading: parentAccessLoading } = useRoleAccess('/');
   const { config: glanceAccess, loading: glanceLoading } = useRoleAccess('feature:dashboard:at-a-glance');
   const { config: dailyFlowAccess, loading: dailyFlowLoading } = useRoleAccess('feature:dashboard:daily-flow');
@@ -605,7 +609,12 @@ export default function DashboardPage() {
   const { config: zeroHourAccess, loading: zeroHourLoading } = useRoleAccess('feature:dashboard:zero-hour');
   const { config: attendanceAccess, loading: attendanceLoading } = useRoleAccess('feature:dashboard:attendance');
   const [searchParams] = useSearchParams();
+  // Only the `tab` param may drive focus. Other params on the dashboard URL
+  // (e.g. the Semester View's `?view=`) must never re-run the focus sync.
+  const urlTab = searchParams.get('tab');
+  const routeMode = ({ quickstats: 'stats', routine: 'routine', 'semester-view': 'calendar', 'zero-hour': 'exams', attendance: 'attendance' })[location.pathname.split('/')[2]];
   const [focusMode, setFocusMode] = useState(() => {
+    if (routeMode) return routeMode;
     const urlTab = searchParams.get('tab');
     if (urlTab && FOCUS_SECTIONS[urlTab]) return urlTab;
     try {
@@ -635,14 +644,12 @@ export default function DashboardPage() {
   }) : [];
   const firstName = user?.name?.split(' ')[0] || 'Student';
 
-  const handleFocusChange = useTabUrlState({
-    storageKey: 'aust-dashboard-focus',
-    defaultValue: 'stats',
-    onChange: (mode) => {
-      setFocusMode(mode);
-      try { localStorage.setItem('aust-dashboard-focus', mode); } catch {}
-    },
-  });
+  const handleFocusChange = (mode) => {
+    const slug = ({ stats: 'quickstats', routine: 'routine', calendar: 'semester-view', exams: 'zero-hour', attendance: 'attendance' })[mode] || 'quickstats';
+    setFocusMode(mode);
+    try { localStorage.setItem('aust-dashboard-focus', mode); } catch {}
+    navigate(`/dashboard/${slug}`, { replace: true });
+  };
 
   useEffect(() => {
     if (!availableFocusModes.length || availableFocusModes.some((tab) => tab.id === focusMode)) return;
@@ -654,19 +661,13 @@ export default function DashboardPage() {
   // When the tab param is removed, restore the last saved preference so the
   // back button returns to a consistent view.
   useEffect(() => {
-    const urlTab = searchParams.get('tab');
-    if (urlTab && FOCUS_SECTIONS[urlTab] && availableFocusModes.some((tab) => tab.id === urlTab)) {
-      setFocusMode(urlTab);
-    } else if (!urlTab) {
-      try {
-        const stored = localStorage.getItem('aust-dashboard-focus');
-        const storedIsAvailable = availableFocusModes.some((tab) => tab.id === stored);
-        setFocusMode(storedIsAvailable ? stored : (availableFocusModes[0]?.id || 'stats'));
-      } catch {
-        setFocusMode(availableFocusModes[0]?.id || 'stats');
-      }
+    const pathMode = ({ quickstats: 'stats', routine: 'routine', 'semester-view': 'calendar', 'zero-hour': 'exams', attendance: 'attendance' })[location.pathname.split('/')[2]];
+    const selected = pathMode || urlTab;
+    if (selected && FOCUS_SECTIONS[selected] && availableFocusModes.some((tab) => tab.id === selected)) {
+      if (urlTab) navigate(`/dashboard/${({ stats: 'quickstats', routine: 'routine', calendar: 'semester-view', exams: 'zero-hour', attendance: 'attendance' })[selected]}`, { replace: true });
+      setFocusMode(selected);
     }
-  }, [searchParams, availableFocusModes]);
+  }, [urlTab, availableFocusModes, location.pathname]);
 
   const profileIncomplete = user && (!user.department || !user.yearSemester || !user.section || !user.labSection);
 

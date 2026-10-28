@@ -749,7 +749,22 @@
 
 /* ─── Semester Breakdown — separate card from CGPA Calculator ─── */
 .cgpa-breakdown-box {
+  position: relative;
+  isolation: isolate;
   margin-top: var(--sp-4);
+}
+
+.cgpa-template-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-4);
+  overflow: auto;
+  border-radius: inherit;
+  animation: fadeIn 0.15s ease;
 }
 
 .cgpa-breakdown-box .cgpa-transcript {
@@ -1576,6 +1591,86 @@
 }
 
 /* ── Dept Heatmap — premium heatmap look ── */
+.hm-chart-card {
+  margin: 4px 0 18px;
+  padding: 16px 18px 14px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--bg-card) 96%, transparent);
+  box-shadow: var(--shadow-sm);
+}
+.hm-chart-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+.hm-chart-heading h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 800;
+}
+.hm-chart-heading p {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.hm-chart-basis {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  background: var(--bg-input);
+  font-size: 10px;
+  font-weight: 700;
+}
+.hm-chart-scroll {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-primary) transparent;
+}
+.hm-average-chart {
+  display: block;
+  width: 100%;
+  min-width: 720px;
+  overflow: visible;
+}
+.hm-chart-gridline { stroke: var(--border-primary); stroke-width: 1; stroke-dasharray: 3 5; }
+.hm-chart-y-label,
+.hm-chart-x-label { fill: var(--text-tertiary); font-size: 11px; font-weight: 650; }
+.hm-chart-line { fill: none; stroke: var(--accent-blue); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.hm-chart-point-guide { stroke: color-mix(in srgb, var(--accent-blue) 24%, transparent); stroke-width: 1; stroke-dasharray: 3 4; }
+.hm-chart-point { fill: var(--bg-card); stroke: var(--accent-blue); stroke-width: 3; cursor: pointer; transition: r .15s ease, fill .15s ease; }
+.hm-chart-point:hover,
+.hm-chart-point:focus,
+.hm-chart-point.is-selected { fill: var(--accent-blue); outline: none; }
+.hm-chart-count-badge rect { fill: var(--accent-emerald-glow); stroke: color-mix(in srgb, var(--accent-emerald) 42%, var(--border-primary)); stroke-width: 1; }
+.hm-chart-count-badge text { fill: var(--accent-emerald); font-size: 10px; font-weight: 850; pointer-events: none; }
+.hm-chart-value-label { fill: var(--text-primary); font-size: 10px; font-weight: 750; }
+.hm-chart-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 4px;
+}
+.hm-chart-summary span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  background: var(--bg-input);
+  font-size: 11px;
+  font-weight: 750;
+}
+.hm-chart-summary b { color: var(--text-tertiary); font-size: 9px; text-transform: uppercase; letter-spacing: .04em; }
+.hm-chart-summary .is-empty { color: var(--text-tertiary); }
 .hm-table {
   display: flex;
   flex-direction: column;
@@ -1797,6 +1892,12 @@
 }
 
 @media (max-width: 640px) {
+  .hm-chart-card { padding: 12px 10px; margin-bottom: 14px; }
+  .hm-chart-heading { gap: 8px; }
+  .hm-chart-heading h3 { font-size: 12px; }
+  .hm-chart-heading p { font-size: 10px; }
+  .hm-chart-basis { padding: 4px 7px; font-size: 9px; }
+  .hm-chart-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .hm-table {
     gap: 6px;
     overflow-x: auto;
@@ -2055,8 +2156,8 @@
     grid-template-columns: 1fr !important;
     gap: var(--sp-3) !important;
   }
-  /* Dropdown: Best/Worst side-by-side minimal on mobile */
-  .poll-pickers.mobile-open .grid-2 {
+  /* Keep course pickers visible without a dropdown toggle. */
+  .poll-pickers .grid-2 {
     grid-template-columns: 1fr 1fr !important;
     gap: var(--sp-2) !important;
   }
@@ -2064,7 +2165,7 @@
     grid-template-columns: 1fr !important;
     gap: var(--sp-3) !important;
   }
-  .poll-pickers.mobile-open .poll-pick-card {
+  .poll-pickers .poll-pick-card {
     padding: var(--sp-2) !important;
     gap: var(--sp-2) !important;
   }
@@ -2072,7 +2173,7 @@
   .poll-widget .schedule-dotted-divider {
     margin: 4px 0 4px !important;
   }
-  .poll-pickers.mobile-open {
+  .poll-pickers {
     margin-top: 4px !important;
   }
   #ballot-form > div.grid-2 {
@@ -2087,13 +2188,13 @@
   .poll-widget > form + .poll-leaderboards {
     margin-top: var(--sp-2) !important;
   }
-  .poll-pickers.mobile-open .poll-pick-head {
+  .poll-pickers .poll-pick-head {
     font-size: 11px !important;
     gap: 6px !important;
   }
-  .poll-pickers.mobile-open .poll-pick-head h4 { font-size: 11px !important; }
-  .poll-pickers.mobile-open .poll-pick-slots { gap: 6px !important; }
-  .poll-pickers.mobile-open .poll-pick-slots input {
+  .poll-pickers .poll-pick-head h4 { font-size: 11px !important; }
+  .poll-pickers .poll-pick-slots { gap: 6px !important; }
+  .poll-pickers .poll-pick-slots input {
     padding: 6px 8px !important;
     font-size: 11px !important;
     min-height: 32px !important;
@@ -2122,18 +2223,7 @@
   .poll-recorded { width: 100%; justify-content: center; }
   .poll-recorded-banner { padding: var(--sp-3); gap: 10px; }
   .poll-submit-warning { margin: 0 0 var(--sp-3); font-size: 11px; }
-  /* Mobile: pickers hidden first, dropdown on first Submit click */
-  .poll-pickers { display: none !important; }
-  .poll-pickers.mobile-open {
-    display: block !important;
-    animation: pollDropdownIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
-    margin-top: var(--sp-3);
-  }
-  .poll-pickers.mobile-hidden { display: none !important; }
-  @keyframes pollDropdownIn {
-    from { opacity: 0; transform: translateY(-8px) scale(0.98); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-  }
+  .poll-pickers { display: block !important; }
 }
 
 /* ═══════════════════════════════════════════════════════════════

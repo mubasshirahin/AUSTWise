@@ -17,8 +17,7 @@ const HorizontalFeatures = lazy(() => import('./HorizontalFeatures'));
 const StickyContentSwitch = lazy(() => import('./StickyContentSwitch'));
 const ImageTrailShowcase = lazy(() => import('./ImageTrailShowcase'));
 import LandingNav from './LandingNav';
-import logoLight from '../../assets/vector1-1.svg';
-import logoDark from '../../assets/vector1-1.svg';
+import brandMark from '../../assets/austwise-icon-final.svg';
 import { useTheme } from '../../context/ThemeContext';
 import './LandingPage.css';
 import { topTestimonials, bottomTestimonials } from '../../data/testimonials';
@@ -869,8 +868,7 @@ export default function LandingPage() {
   const [heroLoaded, setHeroLoaded] = useState(false);
   const [cursorPos, setCursorPos] = useState({ x: -100, y: -100 });
   const [activeMembers, setActiveMembers] = useState(null);
-  const lightThemes = new Set(['light','swiss','newsprint','sketchbook','minimalist-monochrome','industrial']);
-  const footerLogo = lightThemes.has(theme) ? logoLight : logoDark;
+  const footerLogo = brandMark;
 
   // Real-time member count via SSE with HTTP polling fallback.
   // SSE pushes updates within seconds; the fallback polls /api/stats/count
@@ -1296,7 +1294,7 @@ export default function LandingPage() {
         <div className="landing-footer-inner">
           <ScrollReveal direction="left">
             <div className="landing-footer-brand">
-              <div className="landing-logo"><img src={footerLogo} alt="AUSTWise" className="landing-logo-img" /><span className="landing-logo-text"><span className="landing-logo-wm"></span><span className="landing-logo-wm accent"></span></span></div>
+              <div className="landing-logo"><img src={footerLogo} alt="" className="landing-logo-img" /><span className="landing-logo-text">AUSTWise</span></div>
               <p className="landing-footer-desc"></p>
               <p className="landing-footer-copy">&copy; {currentYear} AUSTWise. All rights reserved.</p>
             </div>

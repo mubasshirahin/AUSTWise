@@ -54,6 +54,7 @@ export default function useMessageNotifications(_userId) {
       title: fromName,
       body: preview,
       type: 'info',
+      category: 'messages',
       icon: 'MessageCircle',
       path: `/messages?peer=${fromId}`,
       timestamp: timestamp ? new Date(timestamp).getTime() : Date.now(),
@@ -70,6 +71,7 @@ export default function useMessageNotifications(_userId) {
       preview,
       {
         tag: `msg-${fromId}-${timestamp || Date.now()}`,
+        category: 'messages',
         requireInteraction: false,
         data: { peerId: fromId, conversationId: fromId },
       }

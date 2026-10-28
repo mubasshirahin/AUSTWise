@@ -92,7 +92,7 @@ function Th({ col, sort, onSort }) {
 
 // ─── Fare cell — pill inside table, click → details writing (optional, briefly) ──
 
-function FareCell({ value, title, fareKey, source, activeFare, setActiveFare }) {
+function FareCell({ value, title, fareKey, source, activeFare, openFareDetails }) {
   const na = isDash(value);
   const isFree = !na && /free/i.test(String(value));
   const isActive = activeFare && activeFare.source === source && activeFare.fareKey === fareKey;
@@ -103,7 +103,7 @@ function FareCell({ value, title, fareKey, source, activeFare, setActiveFare }) 
         className={`dr-fare-chip${na ? ' dr-fare-na' : ''}${isFree ? ' dr-fare-free' : ''}${isActive ? ' dr-fare-active' : ''}`}
         onClick={() => {
           if (na) return;
-          setActiveFare(isActive ? null : { source, fareKey });
+          openFareDetails(isActive ? null : { source, fareKey });
         }}
         aria-expanded={isActive}
         style={{ cursor: na ? 'default' : 'pointer' }}
@@ -118,10 +118,15 @@ function FareCell({ value, title, fareKey, source, activeFare, setActiveFare }) 
 // ─── Main table ─────────────────────────────────────────────────
 
 function RouteTable({ rows }) {
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole?.('admin') || hasRole?.('moderator');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState(null);
   const [activeFare, setActiveFare] = useState(null);
   const [fareDetails, setFareDetails] = useState({});
+  const [detailDraft, setDetailDraft] = useState('');
+  const [detailsSaving, setDetailsSaving] = useState(false);
+  const [detailsError, setDetailsError] = useState('');
 
   const filtered = useMemo(() => {
     const q = normalize(query);
@@ -148,6 +153,44 @@ function RouteTable({ rows }) {
 
   const activeKey = activeFare ? `${activeFare.source}__${activeFare.fareKey}` : null;
   const activeLabel = activeFare ? FARE_COLS.find((c) => c.key === activeFare.fareKey)?.label : null;
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/bhara-koto/fare-details', { credentials: 'same-origin' })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => { if (!cancelled && data?.success) setFareDetails(data.details || {}); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  const openFareDetails = (fare) => {
+    if (!fare) { setActiveFare(null); return; }
+    const key = `${fare.source}__${fare.fareKey}`;
+    setDetailsError('');
+    setDetailDraft(fareDetails[key] || '');
+    setActiveFare(fare);
+  };
+
+  const saveFareDetails = async () => {
+    if (!activeFare) return;
+    setDetailsSaving(true);
+    setDetailsError('');
+    try {
+      const response = await fetch('/api/bhara-koto/fare-details', {
+        method: 'PUT', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: activeFare.source, fareKey: activeFare.fareKey, details: detailDraft }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || 'Could not save fare details.');
+      setFareDetails(data.details || {});
+      setActiveFare(null);
+    } catch (error) {
+      setDetailsError(error.message || 'Could not save fare details.');
+    } finally {
+      setDetailsSaving(false);
+    }
+  };
 
   return (
     <div className="dr-table-area">
@@ -216,7 +259,7 @@ function RouteTable({ rows }) {
                   </td>
                   <td className="dr-td dr-num dr-free">৳{row.walking_cost}</td>
                   {FARE_COLS.map((col) => (
-                    <FareCell key={col.key} value={row[col.key]} title={col.label} fareKey={col.key} source={row.source} activeFare={activeFare} setActiveFare={setActiveFare} />
+                    <FareCell key={col.key} value={row[col.key]} title={col.label} fareKey={col.key} source={row.source} activeFare={activeFare} openFareDetails={openFareDetails} />
                   ))}
                 </tr>
               ))
@@ -237,32 +280,37 @@ function RouteTable({ rows }) {
           <div className="bhara-details-panel dr-details-panel animate-fadeInUp" onClick={(e) => e.stopPropagation()}>
             <div className="bhara-details-head">
               <span className="bhara-details-title">
-                <PencilLine size={13} /> {activeFare.source} — {activeLabel} — Details (optional)
+                <PencilLine size={13} /> {activeFare.source} — {activeLabel} — Fare details
               </span>
               <button type="button" className="bhara-details-close" onClick={() => setActiveFare(null)} aria-label="Close">
                 <X size={12} />
               </button>
             </div>
-            <p className="bhara-details-hint">
-              <Info size={11} /> {FARE_PILL_DETAILS[activeFare.fareKey] || 'Briefly bhenge bhenge likho — optional, e.g., point akare'}
-            </p>
-            <textarea
-              className="input bhara-details-input"
-              rows={3}
-              placeholder="Briefly bhenge bhenge likho — e.g., kon route, koto bhara, keno — optional..."
-              value={fareDetails[activeKey] || ''}
-              onChange={(e) => setFareDetails((prev) => ({ ...prev, [activeKey]: e.target.value }))}
-              autoFocus
-            />
-            <div className="bhara-details-actions">
-              <span className="bhara-details-count">{(fareDetails[activeKey] || '').length} chars • optional</span>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setFareDetails((prev) => ({ ...prev, [activeKey]: '' }))}>Clear</button>
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => setActiveFare(null)}>Done</button>
-            </div>
-            {(fareDetails[activeKey] || '').trim() && (
+            {isAdmin ? (
+              <>
+                <p className="bhara-details-hint"><Info size={11} /> {FARE_PILL_DETAILS[activeFare.fareKey]}</p>
+                <textarea
+                  className="input bhara-details-input"
+                  rows={3}
+                  maxLength={1000}
+                  placeholder="Add fare details for users…"
+                  value={detailDraft}
+                  onChange={(e) => setDetailDraft(e.target.value)}
+                  autoFocus
+                />
+                <div className="bhara-details-actions">
+                  <span className="bhara-details-count">{detailDraft.length} / 1000</span>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setDetailDraft('')}>Clear</button>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setActiveFare(null)}>Cancel</button>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={saveFareDetails} disabled={detailsSaving}>{detailsSaving ? 'Saving…' : 'Save'}</button>
+                </div>
+                {detailsError && <p role="alert" className="bhara-details-error">{detailsError}</p>}
+              </>
+            ) : (
               <div className="bhara-details-preview">
-                <span className="bhara-details-preview-label">Preview:</span>
-                <p>{fareDetails[activeKey]}</p>
+                {(fareDetails[activeKey] || '').trim()
+                  ? <p>{fareDetails[activeKey]}</p>
+                  : <p className="bhara-details-empty">No extra details added yet.</p>}
               </div>
             )}
           </div>
@@ -385,17 +433,6 @@ export default function DhakaRoutes() {
 
       <div className="schedule-dotted-divider" />
 
-      {/* ── Banner note ── */}
-      <div className="dr-banner">
-        <Info size={14} />
-        <span>
-          Distances via <strong>{meta.api || 'OSRM public routing'}</strong>. Transport costs are
-          estimated using standard Dhaka local fare logic as of{' '}
-          <strong>{meta.generatedAt ? new Date(meta.generatedAt).toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Aug 2026'}</strong>{' '}
-          — verify against current rates before publishing.
-        </span>
-      </div>
-
       {/* ── Live table — fare chips inside are clickable pills (details optional) ── */}
       <RouteTable rows={rows} />
 
@@ -426,13 +463,6 @@ export default function DhakaRoutes() {
         </div>
       )}
 
-      {/* ── Footer note ── */}
-      <div className="dr-footer">
-        <Info size={12} />
-        <span>
-          Admin er inputted table ekhane show kore — edit korte <code>Admin → Bhara Koto</code> e jan (only admin). Tap any column header to sort; search filters by area name.
-        </span>
-      </div>
     </div>
   );
 }

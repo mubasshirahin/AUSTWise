@@ -1,5 +1,33 @@
 const NOTIFS_KEY = 'aust-inapp-notifs-v1';
 const NATIVE_SHOWN_KEY = 'aust-inapp-notifs-native-v1';
+const DEFAULT_CHANNELS = {
+  telegram: { notices: true, classSchedule: true, classReminders: true, attendance: true, deadlines: true },
+  browser: { notices: true, classReminders: true, deadlines: true, tasks: true, messages: true, applications: true },
+  bell: { notices: true, deadlines: true, tasks: true, messages: true, applications: true },
+};
+
+export function getNotificationChannelEnabled(channel, category) {
+  try {
+    const settings = JSON.parse(localStorage.getItem('aust-notifications-v1') || '{}');
+    const value = settings.channels?.[channel]?.[category];
+    if (typeof value === 'boolean') return value;
+    const legacy = channel === 'telegram'
+      ? { classSchedule: settings.notifyDigest, classReminders: settings.notifyClass, attendance: settings.notifyAttendance, deadlines: settings.notifyDeadline }
+      : channel === 'browser'
+        ? { classReminders: settings.notifyClass, deadlines: settings.notifyDeadline }
+        : {};
+    if (typeof legacy[category] === 'boolean') return legacy[category];
+  } catch { /* use defaults when storage is unavailable */ }
+  return DEFAULT_CHANNELS[channel]?.[category] !== false;
+}
+
+function categoryForNotification(item) {
+  if (item.category) return item.category;
+  if (item.type === 'notice') return 'notices';
+  if (item.type === 'deadline') return 'deadlines';
+  if (item.type === 'task') return 'tasks';
+  return 'messages';
+}
 
 function getUserScopedKey(baseKey) {
   try {
@@ -90,6 +118,7 @@ export function markAllAsRead() {
 }
 
 export function addNotification(item) {
+  if (!getNotificationChannelEnabled('bell', categoryForNotification(item))) return;
   const items = loadNotifications();
   // Avoid duplicates by checking id
   if (items.some((n) => n.id === item.id)) return;
@@ -135,6 +164,7 @@ function saveNativeShownIds(ids) {
  * @param {Object} item - AppNotification shape ({ id, title, body })
  */
 export function showNativeNotification(item) {
+  if (!getNotificationChannelEnabled('browser', categoryForNotification(item))) return;
   if (typeof window === 'undefined' || !('Notification' in window)) return;
   const shown = getNativeShownIds();
   if (shown.has(item.id)) return;
@@ -144,7 +174,7 @@ export function showNativeNotification(item) {
   const options = {
     body,
     tag: item.id,
-    icon: '/icon-192x192.png',
+    icon: '/austwise-icon-final.svg',
   };
 
   const fire = () => {
@@ -197,6 +227,7 @@ export function seedFromNotices(notices, user) {
   const existingIds = new Set(existing.map((n) => n.id));
 
   visibleNotices.forEach((notice) => {
+    if (!getNotificationChannelEnabled('bell', 'notices')) return;
     const id = `notice-${notice.id}`;
     if (existingIds.has(id)) return;
     existing.push({
@@ -221,6 +252,7 @@ export function seedFromDeadlines(deadlines) {
   const existingIds = new Set(existing.map((n) => n.id));
 
   deadlines.forEach((dl) => {
+    if (!getNotificationChannelEnabled('bell', 'deadlines')) return;
     const due = dl.dueDate ? new Date(dl.dueDate).getTime() : Date.now();
     const now = Date.now();
     const diff = due - now;
@@ -251,6 +283,7 @@ export function seedFromTasks(tasks) {
   const existingIds = new Set(existing.map((n) => n.id));
 
   tasks.forEach((task) => {
+    if (!getNotificationChannelEnabled('bell', 'tasks')) return;
     const taskDate = new Date(task.date);
     if (task.time) {
       const [h, m] = task.time.split(':');
@@ -286,6 +319,7 @@ export function seedFromRoleApplications(applications) {
   const existingIds = new Set(existing.map((n) => n.id));
 
   applications.forEach((app) => {
+    if (!getNotificationChannelEnabled('bell', 'applications')) return;
     if (app.status !== 'pending') return;
     const id = `roleapp-${app.id}`;
     if (existingIds.has(id)) return;
@@ -295,6 +329,7 @@ export function seedFromRoleApplications(applications) {
       title: `New ${isCr ? 'CR' : 'SR'} application`,
       body: `${app.userName} applied for ${isCr ? 'Class Representative' : 'Student Representative'} (${app.userDepartment} · Sem ${app.userSemester}).`,
       type: 'info',
+      category: 'applications',
       icon: 'Users',
       path: '/admin/applications',
       timestamp: new Date(app.createdAt).getTime() || Date.now(),

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Users, Search, X, ChevronDown, ChevronRight,
   BookOpen, WifiOff, Loader2, Lock, UserCog, Zap,
-  GraduationCap, School, Briefcase,
+  GraduationCap, School, Briefcase, UserRound,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import useWebSocket from '../../hooks/useWebSocket';
@@ -269,7 +269,7 @@ function MemberGroup({ title, icon, count, children, defaultOpen, forceOpen, exp
 }
 
 /* ─── Member profile popover (anchored to the clicked row) ─── */
-function MemberPopover({ member, rect, onClose }) {
+function MemberPopover({ member, rect, onClose, onViewProfile }) {
   const popRef = useRef(null);
   const { stalk } = useStalk();
 
@@ -366,17 +366,20 @@ function MemberPopover({ member, rect, onClose }) {
               <span className="am-pop-info-value">{member.semester ? `Semester ${member.semester}` : '—'}</span>
             </div>
           )}
-          <div className="am-pop-info-row">
-            <span className="am-pop-info-label">CGPA</span>
-            <span className="am-pop-info-value">
-              {member.cgpa != null ? member.cgpa.toFixed(2) : 'Private'}
-            </span>
-          </div>
         </div>
 
         <div className="am-pop-divider" />
 
         <div className="am-pop-actions">
+          <button
+            type="button"
+            className="am-pop-action"
+            onClick={() => onViewProfile(member)}
+            title={`View ${member.name}'s profile`}
+          >
+            <UserRound size={14} />
+            <span>View Profile</span>
+          </button>
           <button
             type="button"
             className="am-pop-action am-pop-action-stalk"
@@ -952,7 +955,15 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
       </aside>
 
       {popover && popover.rect && (
-        <MemberPopover member={popover.member} rect={popover.rect} onClose={() => setPopover(null)} />
+        <MemberPopover
+          member={popover.member}
+          rect={popover.rect}
+          onClose={() => setPopover(null)}
+          onViewProfile={(member) => {
+            setPopover(null);
+            navigate(`/members/${encodeURIComponent(member.studentId || member.id)}`);
+          }}
+        />
       )}
     </>
   );

@@ -321,7 +321,7 @@ BEGIN
 END
 GO
 
--- ── MarketplaceListing ──────────────────────────────────────────────────────
+-- ── --------------------------------  MarketplaceListing ──────────────────────────────────────────────────────
 IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'MarketplaceListing')
 BEGIN
     CREATE TABLE MarketplaceListing (

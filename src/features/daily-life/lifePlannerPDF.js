@@ -8,6 +8,8 @@
  * consistent with the in-app planner.
  */
 
+import austwiseIcon from '../../assets/austwise-icon-final.svg';
+
 // ── small helpers ────────────────────────────────────────────────────────────
 
 const esc = (s) => String(s ?? '')
@@ -30,7 +32,7 @@ function fmtMoney(n) {
 function sectionCover(doc, stats) {
   return `
     <div style="text-align:center; padding:60px 0 30px;">
-      <div style="font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:var(--text-tertiary);">AUSTWise · Life Planner</div>
+      <div style="display:flex; justify-content:center; align-items:center; gap:8px; font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:var(--text-tertiary);"><img src="${austwiseIcon}" alt="AUSTWise" style="width:24px; height:24px; object-fit:contain;" />AUSTWise · Life Planner</div>
       <h1 style="margin:10px 0 6px;">My Life Plan</h1>
       <div style="font-size:12px; color:var(--text-secondary);">Generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
       <div style="display:flex; justify-content:center; gap:26px; margin-top:34px;">
@@ -275,3 +277,4 @@ export async function exportLifePlannerPDF(doc) {
     document.body.removeChild(container);
   }
 }
+

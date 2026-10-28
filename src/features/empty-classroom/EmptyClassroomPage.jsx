@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   DoorOpen, Search, X, Building2, Check, Hourglass, CalendarDays, Clock3,
-  ChevronDown, ChevronRight,
+  ChevronDown, ChevronRight, BookOpen,
 } from 'lucide-react';
 import { roomCatalog,
   computeRoomAvailability,
@@ -11,6 +11,45 @@ import '../campus/SemesterViewWidget.css';
 import './EmptyClassroomPage.css';
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const ROOM_GRID_BOUNDARIES = ['08:00', '08:50', '09:40', '10:30', '11:20', '12:10', '13:00', '13:50', '14:40', '15:30', '16:20', '17:10', '18:00'];
+const ROOM_GRID_LABELS = ['08:00-08:50', '08:50-09:40', '09:40-10:30', '10:30-11:20', '11:20-12:10', '12:10-01:00', '01:00-01:50', '01:50-02:40', '02:40-03:30', '03:30-04:20', '04:20-05:10', '05:10-06:00'];
+const ROOM_GRID_SLOTS = ROOM_GRID_BOUNDARIES.slice(0, -1).map((start, index) => ({
+  start,
+  end: ROOM_GRID_BOUNDARIES[index + 1],
+  label: ROOM_GRID_LABELS[index],
+}));
+
+function normalizeRoutineTime(value) {
+  const match = String(value || '').trim().match(/^(\d{1,2}):(\d{2})\s*(am|pm)?$/i);
+  if (!match) return null;
+  let hour = Number(match[1]);
+  const period = match[3]?.toLowerCase();
+  if (period === 'pm' && hour !== 12) hour += 12;
+  if (period === 'am' && hour === 12) hour = 0;
+  if (!period && hour >= 1 && hour <= 6) hour += 12;
+  return `${String(hour).padStart(2, '0')}:${match[2]}`;
+}
+
+function getRoomGridRange(time) {
+  const matches = [...String(time || '').matchAll(/(\d{1,2}:\d{2})\s*(am|pm)?/gi)];
+  const start = normalizeRoutineTime(matches[0] ? `${matches[0][1]} ${matches[0][2] || ''}` : '');
+  const end = normalizeRoutineTime(matches[1] ? `${matches[1][1]} ${matches[1][2] || ''}` : '');
+  let startIdx = ROOM_GRID_BOUNDARIES.indexOf(start);
+  let endIdx = ROOM_GRID_BOUNDARIES.indexOf(end);
+  if (startIdx < 0 && start) {
+    const next = ROOM_GRID_BOUNDARIES.findIndex((boundary) => boundary > start);
+    startIdx = next <= 0 ? 0 : Math.min(next - 1, ROOM_GRID_SLOTS.length - 1);
+  }
+  if (startIdx < 0) startIdx = 0;
+  if (startIdx >= ROOM_GRID_SLOTS.length) startIdx = ROOM_GRID_SLOTS.length - 1;
+  if (endIdx < 0 && end) {
+    const next = ROOM_GRID_BOUNDARIES.findIndex((boundary) => boundary >= end);
+    endIdx = next < 0 ? ROOM_GRID_BOUNDARIES.length - 1 : next;
+  }
+  if (endIdx <= startIdx) endIdx = startIdx + 1;
+  endIdx = Math.min(endIdx, ROOM_GRID_BOUNDARIES.length - 1);
+  return { startIdx, colSpan: Math.max(1, endIdx - startIdx) };
+}
 
 function localDateValue(date = new Date()) {
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
@@ -50,7 +89,11 @@ export default function EmptyClassroomPage() {
   const [selectedTime, setSelectedTime] = useState(() => currentTimeString());
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [floorFilter, setFloorFilter] = useState('all');
+  const [scheduleRoom, setScheduleRoom] = useState(null);
+  const [roomSchedule, setRoomSchedule] = useState([]);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [scheduleError, setScheduleError] = useState('');
+  const scheduleCloseRef = useRef(null);
   // All floors start collapsed so the page is compact; tap a floor's arrow
   // (or its label) to expand/collapse it.
   const [collapsedFloors, setCollapsedFloors] = useState(
@@ -65,6 +108,64 @@ export default function EmptyClassroomPage() {
       return next;
     });
   };
+
+  const openRoomSchedule = async (room) => {
+    setScheduleRoom(room);
+    setRoomSchedule([]);
+    setScheduleError('');
+    setScheduleLoading(true);
+    try {
+      const response = await fetch('/api/routines/shared');
+      if (!response.ok) throw new Error('Could not load shared routines.');
+      const payload = await response.json();
+      if (!payload.success || !Array.isArray(payload.routines)) throw new Error('Routine data is unavailable.');
+      const normalizeRoomId = (value) => String(value || '').replace(/[^a-z0-9]/gi, '').toLowerCase();
+      const targetRoomId = normalizeRoomId(room.id);
+      const entries = payload.routines.flatMap((record) => {
+        let routine = record.routine;
+        if (typeof routine === 'string') {
+          try { routine = JSON.parse(routine); } catch { routine = {}; }
+        }
+        return Object.entries(routine || {}).flatMap(([day, classes]) => (
+          Array.isArray(classes) ? classes
+            .filter((item) => normalizeRoomId(item.room || item.roomId) === targetRoomId)
+            .map((item) => ({
+              day,
+              time: item.time || '',
+              course: item.course || '',
+              courseName: item.name || item.courseName || '',
+              teacher: item.teacher || '',
+              department: record.department || '',
+              semester: record.yearSemester || '',
+              section: record.section || '',
+            })) : []
+        ));
+      });
+      const dayOrder = new Map(WEEKDAYS.map((day, index) => [day.toLowerCase(), index]));
+      entries.sort((a, b) => (dayOrder.get(String(a.day).toLowerCase()) ?? 99) - (dayOrder.get(String(b.day).toLowerCase()) ?? 99)
+        || String(a.time).localeCompare(String(b.time)));
+      setRoomSchedule(entries);
+    } catch (error) {
+      setScheduleError(error.message || 'Could not load this room schedule.');
+    } finally {
+      setScheduleLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!scheduleRoom) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    scheduleCloseRef.current?.focus();
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setScheduleRoom(null);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [scheduleRoom]);
 
   // Fetch availability for the selected weekday/time from CR-published
   // routines. Local events also trigger a refresh; offline mode uses the same
@@ -114,21 +215,12 @@ export default function EmptyClassroomPage() {
 
   const { floors: allFloors } = { floors: liveFloors };
 
-  // 1) Floor filter
-  const floorScoped = useMemo(
-    () =>
-      floorFilter === 'all'
-        ? allFloors
-        : allFloors.filter((f) => f.id === floorFilter),
-    [allFloors, floorFilter]
-  );
-
-  // 2) Search filter
+  // 1) Search filter
   const searchFloors = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
-    if (!q) return floorScoped;
+    if (!q) return allFloors;
 
-    return floorScoped
+    return allFloors
       .map((floor) => ({
         ...floor,
         rooms: floor.rooms.filter((room) => {
@@ -157,9 +249,9 @@ export default function EmptyClassroomPage() {
         }),
       }))
       .filter((floor) => floor.rooms.length > 0);
-  }, [floorScoped, searchTerm]);
+  }, [allFloors, searchTerm]);
 
-  // 3) Totals across all floors (always full counts — not search-filtered)
+  // 2) Totals across all floors (always full counts — not search-filtered)
   const totals = useMemo(() => {
     let free = 0;
     let busy = 0;
@@ -169,7 +261,7 @@ export default function EmptyClassroomPage() {
     return { free, busy, total: free + busy };
   }, [allFloors]);
 
-  // 4) Status filter for display
+  // 3) Status filter for display
   const displayFloors = useMemo(
     () =>
       statusFilter === 'all'
@@ -189,7 +281,7 @@ export default function EmptyClassroomPage() {
   // previous filter state so live data refreshes don't reset manual expands.
   const wasFilteringRef = useRef(false);
   const isFiltering =
-    searchTerm.trim() !== '' || statusFilter !== 'all' || floorFilter !== 'all';
+    searchTerm.trim() !== '' || statusFilter !== 'all';
 
   useEffect(() => {
     const wasFiltering = wasFilteringRef.current;
@@ -207,7 +299,7 @@ export default function EmptyClassroomPage() {
       return next;
     });
      
-  }, [displayFloors, searchTerm, statusFilter, floorFilter, isFiltering]);
+  }, [displayFloors, searchTerm, statusFilter, isFiltering]);
 
   return (
     <div className="glass-card-static schedule-widget sv-widget ecf-widget animate-fadeInUp">
@@ -316,20 +408,6 @@ export default function EmptyClassroomPage() {
           ))}
         </div>
 
-        <div className="ecf-floor-select">
-          <select
-            value={floorFilter}
-            onChange={(e) => setFloorFilter(e.target.value)}
-            className="ecf-floor-select-input"
-            aria-label="Filter by floor"
-          >
-            <option value="all">All Floors</option>
-            {roomCatalog.floors.map((f) => (
-              <option key={f.id} value={f.id}>{f.label}</option>
-            ))}
-          </select>
-        </div>
-
         <div className="ecf-filter-meta">
           {statusFilter === 'all'
             ? `${totals.total} rooms`
@@ -393,7 +471,7 @@ export default function EmptyClassroomPage() {
                           </div>
                           <div className="ecf-grid">
                             {group.rooms.map((room) => (
-                              <RoomCard key={room.id} room={room} />
+                              <RoomCard key={room.id} room={room} onOpenSchedule={openRoomSchedule} />
                             ))}
                           </div>
                         </div>
@@ -407,11 +485,80 @@ export default function EmptyClassroomPage() {
         </div>
       )}
 
+      {scheduleRoom && (
+        <div className="ecf-schedule-backdrop" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setScheduleRoom(null);
+        }}>
+          <section className="ecf-schedule-dialog" role="dialog" aria-modal="true" aria-labelledby="ecf-schedule-title">
+            <header className="ecf-schedule-dialog-head">
+              <div className="ecf-schedule-room-icon"><BookOpen size={17} /></div>
+              <div>
+                <span className="schedule-overline">Weekly Class Schedule</span>
+                <h3 id="ecf-schedule-title">{scheduleRoom.name}</h3>
+              </div>
+              <button ref={scheduleCloseRef} type="button" className="ecf-schedule-close" onClick={() => setScheduleRoom(null)} aria-label="Close weekly schedule"><X size={17} /></button>
+            </header>
+            {scheduleLoading ? (
+              <p className="ecf-schedule-message">Loading weekly routine…</p>
+            ) : scheduleError ? (
+              <p className="ecf-schedule-message is-error">{scheduleError}</p>
+            ) : roomSchedule.length === 0 ? (
+              <p className="ecf-schedule-message">No shared classes are scheduled in this room this week.</p>
+            ) : (
+              <div className="ecf-room-grid-scroll">
+                <table className="ecf-room-grid">
+                  <thead>
+                    <tr>
+                      <th className="ecf-room-grid-day-head">Day</th>
+                      {ROOM_GRID_SLOTS.map((slot) => <th key={slot.start}>{slot.label}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {WEEKDAYS.map((day) => {
+                      const dayEntries = roomSchedule
+                        .filter((entry) => String(entry.day).toLowerCase() === day.toLowerCase())
+                        .map((entry) => ({ ...entry, ...getRoomGridRange(entry.time) }))
+                        .sort((a, b) => a.startIdx - b.startIdx);
+                      return (
+                        <tr key={day}>
+                          <th className="ecf-room-grid-day">{day.slice(0, 3)}</th>
+                          {ROOM_GRID_SLOTS.map((slot, slotIndex) => {
+                            if (dayEntries.some((entry) => slotIndex > entry.startIdx && slotIndex < entry.startIdx + entry.colSpan)) return null;
+                            const classes = dayEntries.filter((entry) => entry.startIdx === slotIndex);
+                            const colSpan = Math.max(1, ...classes.map((entry) => entry.colSpan));
+                            return (
+                              <td key={`${day}-${slot.start}`} colSpan={classes.length ? colSpan : 1} className={classes.length ? 'has-class' : ''}>
+                                {classes.length ? classes.map((entry, index) => (
+                                  <div
+                                    className="ecf-room-grid-class"
+                                    key={`${entry.course}-${index}`}
+                                    title={[entry.courseName, entry.department, entry.semester, entry.section && `Section ${entry.section}`, entry.teacher].filter(Boolean).join(' · ')}
+                                  >
+                                    <strong>{entry.course || entry.courseName || 'Class'}</strong>
+                                    {entry.courseName && entry.courseName !== entry.course && <span>{entry.courseName}</span>}
+                                    <small>{[entry.department, entry.semester, entry.section && `Sec ${entry.section}`].filter(Boolean).join(' · ')}</small>
+                                    {entry.teacher && <small>{entry.teacher}</small>}
+                                  </div>
+                                )) : <span className="ecf-room-grid-empty">—</span>}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+
     </div>
   );
 }
 
-function RoomCard({ room }) {
+function RoomCard({ room, onOpenSchedule }) {
   const isFree = room.status === 'free';
   const d = room.details;
 
@@ -474,7 +621,19 @@ function RoomCard({ room }) {
 
   // ── Regular room / lab card ──
   return (
-    <div className={`ecf-card ${isFree ? 'free' : 'busy'}`}>
+    <div
+      className={`ecf-card ${isFree ? 'free' : 'busy'} is-schedulable`}
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpenSchedule(room)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onOpenSchedule(room);
+        }
+      }}
+      aria-label={`View weekly class schedule for ${room.name}`}
+    >
       <div className="ecf-card-top">
         <span className="ecf-card-id">
           {room.id}
@@ -483,21 +642,17 @@ function RoomCard({ room }) {
         <span className={`ecf-led ${isFree ? 'free' : 'busy'}`} title={isFree ? 'Free' : 'Busy'} />
       </div>
 
-      {isFree ? (
-        <div className="ecf-card-free">Available for self-study</div>
-      ) : (
-        d && (
-          <div className="ecf-card-details">
-            <div className="ecf-detail-row">
-              <span className="ecf-detail-dept">{d.dept}</span>
-              {d.semester}{d.section ? ` · ${d.section}` : ''}
-            </div>
-            <div className="ecf-detail-row">
-              <span className="ecf-detail-course"><strong>{d.course}</strong> — {d.courseName}</span>
-            </div>
-            <div className="ecf-detail-meta">{d.teacher} · {d.time}</div>
+      {!isFree && d && (
+        <div className="ecf-card-details">
+          <div className="ecf-detail-row">
+            <span className="ecf-detail-dept">{d.dept}</span>
+            {d.semester}{d.section ? ` · ${d.section}` : ''}
           </div>
-        )
+          <div className="ecf-detail-row">
+            <span className="ecf-detail-course"><strong>{d.course}</strong> — {d.courseName}</span>
+          </div>
+          <div className="ecf-detail-meta">{d.teacher} · {d.time}</div>
+        </div>
       )}
     </div>
   );

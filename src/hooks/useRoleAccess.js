@@ -23,6 +23,14 @@ export function pageAccessKey(pageKey) {
     pageKey || (typeof window !== 'undefined' ? window.location.pathname : '/') || '/',
   );
   p = p.split('?')[0].split('#')[0];
+  const canonicalAliases = {
+    '/gradelab': '/analytics', '/insideaust': '/campus', '/resource-vault': '/vault',
+    '/connectbox': '/messages', '/question-bank': '/question-bank-analyzer',
+    '/downtime': '/chill-zone', '/see-plans': '/pro', '/code-pulse': '/cp-hub',
+    '/takagelokoi': '/money-tracker', '/study-time': '/study-room', '/wakemeup': '/auto-alarm',
+    '/cheat-sheets': '/cheatsheets',
+  };
+  p = canonicalAliases[p] || p;
   if (p.length > 1 && p.endsWith('/')) p = p.slice(0, -1);
   return p || '/';
 }

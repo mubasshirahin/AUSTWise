@@ -17,29 +17,29 @@ import './Sidebar.css';
 
 // Top nav — primary campus tools.
 const navItems = [
-  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/dashboard/quickstats', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/daily-life', label: 'Daily Life', icon: Home },
-  { path: '/analytics', label: 'GradeLab', icon: BarChart3 },
-  { path: '/campus', label: 'InsideAUST', icon: MapPin },
-  { path: '/vault', label: 'Resource Vault', icon: BookOpen },
+  { path: '/gradelab', label: 'GradeLab', icon: BarChart3 },
+  { path: '/insideaust', label: 'InsideAUST', icon: MapPin },
+  { path: '/resource-vault', label: 'Resource Vault', icon: BookOpen },
   { path: '/notebook', label: 'Notebook', icon: NotebookPen },
-  { path: '/question-bank-analyzer', label: 'Question Bank', icon: FileSearch },
+  { path: '/question-bank', label: 'Question Bank', icon: FileSearch },
   { path: '/community', label: 'Community', icon: Users },
-  { path: '/messages', label: 'ConnectBox', icon: MessageSquare },
+  { path: '/connectbox', label: 'ConnectBox', icon: MessageSquare },
   { path: '/productivity', label: 'Productivity', icon: Zap },
   { path: '/marketplace', label: 'Marketplace', icon: ShoppingBag },
-  { path: '/chill-zone', label: 'DownTime', icon: Coffee },
+  { path: '/downtime', label: 'DownTime', icon: Coffee },
   { path: '/shadow', label: 'Shadow', icon: Moon },
 ];
 
 // Bottom nav — secondary/utility items, separated by a divider.
 const bottomNavItems = [
   { path: '/settings', label: 'Settings', icon: Settings },
-  { path: '/pro', label: 'See Plans', icon: Crown },
+  { path: '/see-plans', label: 'See Plans', icon: Crown },
 ];
 
 function RoleAwareNavItem({ item, collapsed, unread }) {
-  const isPro = item.path === '/pro';
+  const isPro = item.path === '/see-plans';
   const baseClass = `nav-item ${collapsed ? 'collapsed' : ''}`;
   const extraClass = isPro ? ' nav-item-premium' : '';
   const sparklePositions = [
@@ -54,21 +54,21 @@ function RoleAwareNavItem({ item, collapsed, unread }) {
     <NavLink
       key={item.path}
       to={item.path}
-      className={({ isActive }) => `${baseClass}${extraClass}${isActive ? ' active' : ''}`}
-      end={item.path === '/'}
+      className={({ isActive }) => `${baseClass}${extraClass}${(isActive || (item.label === 'Dashboard' && window.location.pathname.startsWith('/dashboard/'))) ? ' active' : ''}`}
+      end={false}
       onMouseEnter={() => prefetchRoute(item.path)}
       onFocus={() => prefetchRoute(item.path)}
     >
       <div className="nav-icon-wrapper">
         <item.icon size={20} />
-        {item.path === '/messages' && unread > 0 && (
+        {item.path === '/connectbox' && unread > 0 && (
           <span className="nav-badge">{unread > 99 ? '99+' : unread}</span>
         )}
       </div>
       {!collapsed && (
         <span className="nav-label">
           {item.label}
-          {item.path === '/messages' && unread > 0 && (
+          {item.path === '/connectbox' && unread > 0 && (
             <span className="nav-badge-inline">{unread > 99 ? '99+' : unread}</span>
           )}
         </span>
@@ -122,7 +122,7 @@ export default function Sidebar({ collapsed, onToggle }) {
   if (user?.role === 'admin' || user?.role === 'moderator') {
     // For admin users, show the Admin Panel plus the normal student links.
     navList = [
-      { path: '/admin', label: 'Admin Panel', icon: Shield },
+      { path: '/admin-panel/overview', label: 'Admin Panel', icon: Shield },
       ...navItems,
     ];
     bottomList = [{ path: '/settings', label: 'Settings', icon: Settings }];

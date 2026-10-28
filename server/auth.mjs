@@ -518,11 +518,14 @@ async function handleAlumniCarry(req, res) {
   }
   try {
     const current = await getUserById(payload.id);
-    if (!current || !['alumni', 'alumni_with_carry'].includes(current.role)) {
+    const currentRoles = new Set([...(Array.isArray(current?.roles) ? current.roles : []), current?.role].filter(Boolean));
+    if (!current || (!currentRoles.has('alumni') && !currentRoles.has('alumni_with_carry'))) {
       return sendJson(res, 403, { success: false, error: 'Only Alumni accounts can change carry-course status.' });
     }
-    const role = body.hasCarry ? 'alumni_with_carry' : 'alumni';
-    const user = await updateUserProfile(payload.id, { role }, { allowRole: true });
+    const alumniRole = body.hasCarry ? 'alumni_with_carry' : 'alumni';
+    const role = currentRoles.has('faculty') ? 'faculty' : alumniRole;
+    const roles = [...new Set([...currentRoles].filter(item => item !== 'alumni' && item !== 'alumni_with_carry').concat('alumni', ...(body.hasCarry ? ['alumni_with_carry'] : [])))];
+    const user = await updateUserProfile(payload.id, { role, roles }, { allowRole: true });
     if (!user) return sendJson(res, 404, { success: false, error: 'User not found.' });
     return sendJson(res, 200, { success: true, user: sanitizeUser(user) });
   } catch (err) {

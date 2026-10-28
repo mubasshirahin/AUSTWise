@@ -19,7 +19,9 @@ import {
   getTodayClasses,
   setTelegramWebhook,
   getWebhookInfo,
-  sendNoticeToAllUsers
+  sendNoticeToAllUsers,
+  checkTelegramBotAvailability,
+  sendTelegramMessage,
 } from './telegramNotifier.mjs';
 import {
   unregisterUser,
@@ -136,7 +138,7 @@ import {
   getSharedStoreValue, setSharedStoreValue, deleteSharedStoreValue,
   isUserStoreDeleted, isSharedStoreDeleted,
 } from './storeDB.mjs';
-import { startTelegramScheduler } from './telegramSchedulerJob.mjs';
+import { startTelegramScheduler, sendTelegramTestMessage } from './telegramSchedulerJob.mjs';
 import { sendInvitationEmail } from './inviteEmail.mjs';
 import { previewSemesterMove, moveToNextSemester, saveAcademicResult, advanceAllStudents } from './academicEngine.mjs';
 
@@ -479,13 +481,18 @@ function isSameSiteRequest(req) {
 const DEFAULT_USER_SETTINGS = {
   notifications: {
     enabled: false,
-    classReminderMins: 10,
-    deadlineReminderHours: 24,
+    classReminderMins: 30,
+    deadlineReminderHours: 12,
     notifyClass: true,
     notifyDeadline: true,
     notifyNotices: false,
     notifyAttendance: true,
     notifyDigest: true,
+    channels: {
+      telegram: { notices: true, classSchedule: true, classReminders: true, attendance: true, deadlines: true },
+      browser: { notices: true, classReminders: true, deadlines: true, tasks: true, messages: true, applications: true },
+      bell: { notices: true, deadlines: true, tasks: true, messages: true, applications: true },
+    },
   },
   telegram: { chatId: '', enabled: false },
   libraryTracking: false,
@@ -494,16 +501,24 @@ const DEFAULT_USER_SETTINGS = {
 function normalizeUserSettings(raw) {
   const s = raw && typeof raw === 'object' ? raw : {};
   const notif = { ...DEFAULT_USER_SETTINGS.notifications, ...(s.notifications || {}) };
-  const mins = Number(notif.classReminderMins);
-  const hours = Number(notif.deadlineReminderHours);
-  notif.classReminderMins = Number.isFinite(mins) ? Math.min(30, Math.max(5, mins)) : 10;
-  notif.deadlineReminderHours = Number.isFinite(hours) ? Math.min(48, Math.max(6, hours)) : 24;
+  notif.classReminderMins = 30;
+  notif.deadlineReminderHours = 12;
   notif.enabled = notif.enabled === true;
   notif.notifyClass = notif.notifyClass !== false;
   notif.notifyDeadline = notif.notifyDeadline !== false;
   notif.notifyNotices = notif.notifyNotices === true;
   notif.notifyAttendance = notif.notifyAttendance !== false;
   notif.notifyDigest = notif.notifyDigest !== false;
+  const channelDefaults = DEFAULT_USER_SETTINGS.notifications.channels;
+  notif.channels = Object.fromEntries(Object.entries(channelDefaults).map(([channel, defaults]) => {
+    const stored = s.notifications?.channels?.[channel] || {};
+    const legacy = channel === 'telegram'
+      ? { classSchedule: notif.notifyDigest, classReminders: notif.notifyClass, attendance: notif.notifyAttendance, deadlines: notif.notifyDeadline }
+      : channel === 'browser'
+        ? { classReminders: notif.notifyClass, deadlines: notif.notifyDeadline }
+        : {};
+    return [channel, Object.fromEntries(Object.entries(defaults).map(([key, fallback]) => [key, typeof stored[key] === 'boolean' ? stored[key] : (legacy[key] ?? fallback)]))];
+  }));
   const telegram = { ...DEFAULT_USER_SETTINGS.telegram, ...(s.telegram || {}) };
   telegram.chatId = typeof telegram.chatId === 'string' ? telegram.chatId.trim().slice(0, 64) : '';
   telegram.enabled = telegram.enabled === true;
@@ -968,6 +983,24 @@ async function handleApiRequest(req, res) {
       const removed = await unregisterUser(chatId);
 
       if (removed) {
+        const disconnectMessage = [
+          '🔕 <b>AUSTWise Telegram disconnected</b>',
+          '',
+          'This Telegram account has been unlinked. You will no longer receive AUSTWise notifications here.',
+          '',
+          'To reconnect, visit <b>AUSTWise → Settings → Notifications</b>.',
+          '',
+          '<b>— AUSTWise</b>',
+        ].join('\n');
+        const telegramMessageResult = await sendTelegramMessage(
+          process.env.TELEGRAM_BOT_TOKEN,
+          chatId,
+          disconnectMessage,
+          'HTML',
+        );
+        if (!telegramMessageResult.success) {
+          console.warn('Telegram disconnect confirmation could not be delivered:', telegramMessageResult.error);
+        }
         if (user && isOwner) {
           const current = normalizeUserSettings(user.settings);
           if (String(current.telegram.chatId) === String(chatId)) {
@@ -990,6 +1023,52 @@ async function handleApiRequest(req, res) {
         success: false,
         error: error.message || 'Unregistration failed.',
       });
+    }
+    return;
+  }
+
+  // Get user registration status
+  if (req.url === '/api/telegram/connection' && req.method === 'GET') {
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    try {
+      const account = await getUserById(auth.id);
+      if (!account) return sendJson(res, 404, { success: false, error: 'User not found.' });
+      const accountChatId = account.settings?.telegram?.chatId;
+      // Query the durable link directly instead of searching getAllUsers(),
+      // which intentionally returns enabled users only. This lets us tell a
+      // persisted-but-disabled account apart from a missing/failed lookup.
+      const telegramUserByAwid = account.awid ? await getUserByAwid(account.awid) : null;
+      const telegramUserByChatId = !telegramUserByAwid && accountChatId
+        ? await getUser(accountChatId)
+        : null;
+      const telegramUser = telegramUserByAwid || telegramUserByChatId;
+      const chatId = telegramUser?.chatId ?? telegramUser?.ChatId ?? '';
+      const registered = Boolean(telegramUser && (telegramUser.enabled ?? telegramUser.Enabled) !== false);
+      sendJson(res, 200, { success: true, chatId: registered ? String(chatId) : '', registered });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Could not load Telegram connection.' });
+    }
+    return;
+  }
+
+  // Get user registration status
+  if (req.url === '/api/telegram/notification-health' && req.method === 'GET') {
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    try {
+      const user = await getUserById(auth.id);
+      const settings = normalizeUserSettings(user?.settings);
+      const linked = user?.awid ? await getUserByAwid(user.awid) : null;
+      const chatId = linked?.chatId ?? linked?.ChatId ?? settings.telegram.chatId;
+      if (!chatId || !(await isRegistered(chatId))) {
+        sendJson(res, 200, { success: true, ready: false, reason: 'not_registered' });
+        return;
+      }
+      const bot = await checkTelegramBotAvailability(chatId);
+      sendJson(res, 200, { success: true, ready: bot.ready, reason: bot.reason || null });
+    } catch {
+      sendJson(res, 200, { success: true, ready: false, reason: 'status_unavailable' });
     }
     return;
   }
@@ -1148,7 +1227,12 @@ async function handleApiRequest(req, res) {
   if (req.url === '/api/admin/academic/advance-all' && req.method === 'POST') {
     const auth = requireRole('admin', 'moderator')(req, res);
     if (!auth) return;
-    try { return sendJson(res, 200, { success: true, ...(await advanceAllStudents()) }); }
+    try {
+      const body = await readJsonBody(req);
+      const result = await advanceAllStudents({ semesterStartDate: String(body.semesterStartDate || '') });
+      broadcastToAll({ type: 'store-change', payload: { scope: 'shared', key: 'semester-start-date' } });
+      return sendJson(res, 200, { success: true, ...result });
+    }
     catch (error) { return sendJson(res, 500, { success: false, error: error.message || 'Could not advance students.' }); }
   }
   if (req.url === '/api/auth/personal-email' && req.method === 'PUT') {
@@ -1180,15 +1264,45 @@ async function handleApiRequest(req, res) {
     if (!auth) return;
     try {
       const users = await getAllUsers();
-      const stats = await getStats();
+      const accounts = await getAllUsersSafe();
+      if (!accounts.some((account) => String(account.id) === String(auth.id))) {
+        sendJson(res, 503, { success: false, error: 'Could not verify website accounts; Telegram links were left unchanged.' });
+        return;
+      }
+      const accountByAwid = new Map();
+      const accountByChatId = new Map();
+      for (const account of accounts) {
+        if (account.awid) accountByAwid.set(String(account.awid), account);
+        const linkedChatId = account.settings?.telegram?.chatId;
+        if (linkedChatId) accountByChatId.set(String(linkedChatId), account);
+      }
       
       // Remove sensitive data from response
-      const sanitizedUsers = users.map(u => ({
-        chatId: u.chatId,
-        enabled: u.enabled,
-        createdAt: u.createdAt,
-        updatedAt: u.updatedAt
-      }));
+      const sanitizedUsers = [];
+      for (const u of users) {
+        const chatId = String(u.chatId ?? u.ChatId ?? '');
+        const awid = u.awid ?? u.Awid;
+        const account = (awid && accountByAwid.get(String(awid))) || accountByChatId.get(chatId);
+        if (!account) {
+          // Remove stale Telegram-only records left by accounts deleted before
+          // the account deletion hook was added. Keeping one here would let
+          // the scheduler continue sending to a Chat ID with no website user.
+          if (chatId) await unregisterUser(chatId);
+          continue;
+        }
+        const emailPrefix = String(account?.email || '').split('@')[0];
+        const inferredStudentId = emailPrefix.replace(/^[a-z.]+/i, '');
+        sanitizedUsers.push({
+          chatId,
+          accountName: account.name || 'Unknown account',
+          studentId: account?.studentId ? String(account.studentId) : (/^\d+$/.test(inferredStudentId) ? inferredStudentId : ''),
+          awid: String(awid ?? account?.awid ?? ''),
+          enabled: (u.enabled ?? u.Enabled) !== false,
+          createdAt: u.createdAt ?? u.CreatedAt ?? null,
+          updatedAt: u.updatedAt ?? u.UpdatedAt ?? null,
+        });
+      }
+      const stats = await getStats();
       
       sendJson(res, 200, {
         success: true,
@@ -1267,7 +1381,7 @@ async function handleApiRequest(req, res) {
           return;
         }
         primaryRole = 'faculty';
-        roles = ['faculty', facultyDepartmentRole(facultyDepartment)];
+        roles = [...new Set(['faculty', facultyDepartmentRole(facultyDepartment), ...(currentRoles.has('alumni') || currentRoles.has('alumni_with_carry') ? ['alumni'] : [])])];
       }
       const updated = await updateUserProfile(userId, { role: primaryRole, roles: [...new Set(roles)], ...(facultyDepartment ? { department: facultyDepartment } : {}) }, { allowRole: true });
       if (!updated) {
@@ -1402,6 +1516,16 @@ async function handleApiRequest(req, res) {
         return;
       }
       const deleted = await deleteUserById(userId);
+      if (deleted) {
+        const awid = existing.awid ?? existing.Awid;
+        const linkedChatId = normalizeUserSettings(existing.settings).telegram.chatId;
+        try {
+          if (awid) await unregisterByAwid(awid);
+          if (linkedChatId) await unregisterUser(linkedChatId);
+        } catch (cleanupError) {
+          console.warn('Telegram cleanup after account deletion failed:', cleanupError?.message || cleanupError);
+        }
+      }
       sendJson(res, 200, { success: deleted });
     } catch (error) {
       sendJson(res, 500, { success: false, error: error.message || 'Failed to delete user.' });
@@ -1459,6 +1583,49 @@ async function handleApiRequest(req, res) {
   }
 
   // ── Bhara Koto — Admin managed Dhaka → AUST table ─────────────
+  // Public fare details are readable by everyone; changes require admin access.
+  if (req.url === '/api/bhara-koto/fare-details' && req.method === 'GET') {
+    try {
+      const file = path.resolve(__dirname, '..', 'src', 'data', 'dhakaRouteFareDetails.json');
+      const raw = await readFile(file, 'utf8').catch((error) => error.code === 'ENOENT' ? '{}' : Promise.reject(error));
+      const details = JSON.parse(raw);
+      sendJson(res, 200, { success: true, details: details && typeof details === 'object' ? details : {} });
+    } catch {
+      sendJson(res, 500, { success: false, error: 'Failed to load fare details.' });
+    }
+    return;
+  }
+  if (req.url === '/api/bhara-koto/fare-details' && req.method === 'PUT') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const body = await readJsonBody(req);
+      const source = String(body.source || '').trim();
+      const fareKey = String(body.fareKey || '');
+      const allowedFareKeys = new Set(['rickshaw_cost', 'metro_cost', 'local_bus_cost', 'aust_shuttle_cost', 'tempo_cost', 'taxi_cost', 'rideshare_cost']);
+      const detailsText = String(body.details || '').trim();
+      if (!source || !allowedFareKeys.has(fareKey)) {
+        sendJson(res, 400, { success: false, error: 'A valid source and fare type are required.' });
+        return;
+      }
+      if (detailsText.length > 1000) {
+        sendJson(res, 400, { success: false, error: 'Fare details must be 1000 characters or fewer.' });
+        return;
+      }
+      const file = path.resolve(__dirname, '..', 'src', 'data', 'dhakaRouteFareDetails.json');
+      const raw = await readFile(file, 'utf8').catch((error) => error.code === 'ENOENT' ? '{}' : Promise.reject(error));
+      const details = JSON.parse(raw);
+      const key = `${source}__${fareKey}`;
+      if (detailsText) details[key] = detailsText;
+      else delete details[key];
+      await writeFile(file, JSON.stringify(details, null, 2), 'utf8');
+      sendJson(res, 200, { success: true, details });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to save fare details.' });
+    }
+    return;
+  }
+
   // Public: GET /api/bhara-koto — live table (admin input is source of truth)
   if (req.url === '/api/bhara-koto' && req.method === 'GET') {
     try {
@@ -1903,6 +2070,36 @@ async function handleApiRequest(req, res) {
     return;
   }
 
+  // Send one professionally formatted Telegram message sample to the signed-in user's linked chat.
+  if (req.url === '/api/telegram/test-message' && req.method === 'POST') {
+    if (!requireFeature('telegram', res, 'TELEGRAM_BOT_TOKEN')) return;
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    if (!auth) return;
+    try {
+      const { type, routine } = await readJsonBody(req);
+      const account = await getUserById(auth.id);
+      if (!account) { sendJson(res, 404, { success: false, error: 'User not found.' }); return; }
+      const savedChatId = account.settings?.telegram?.chatId || '';
+      const telegramUser = (account.awid ? await getUserByAwid(account.awid) : null)
+        || (savedChatId ? await getUser(savedChatId) : null);
+      const linkedAwid = telegramUser?.awid ?? telegramUser?.Awid;
+      if (!telegramUser || (linkedAwid && String(linkedAwid) !== String(account.awid))) {
+        sendJson(res, 409, { success: false, error: 'Connect Telegram in Settings before sending a test message.' });
+        return;
+      }
+      if ((telegramUser.enabled ?? telegramUser.Enabled) === false) {
+        sendJson(res, 409, { success: false, error: 'Telegram notifications are currently disabled for this account.' });
+        return;
+      }
+      const chatId = telegramUser.chatId ?? telegramUser.ChatId;
+      const result = await sendTelegramTestMessage(chatId, type, routine ?? telegramUser.routine ?? telegramUser.Routine ?? {});
+      sendJson(res, result.success ? 200 : 502, result);
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Could not send Telegram test message.' });
+    }
+    return;
+  }
+
   // Handle attendance callback from Telegram bot (webhook) — authenticated so
   // third parties can't forge attendance records.
   if (req.url === '/api/telegram/attendance-callback' && req.method === 'POST') {
@@ -1981,7 +2178,9 @@ async function handleApiRequest(req, res) {
 
         console.log(`🔘 Callback received: ${callbackData} from chat ${chatId}`);
 
-        if (callbackData && callbackData.startsWith('attend_')) {
+        if (callbackData && callbackData.startsWith('preview_attend_')) {
+          await answerCallbackQueryFn(botToken, callbackQueryId, 'Test only — attendance was not changed.');
+        } else if (callbackData && callbackData.startsWith('attend_')) {
           // Parse callback data: attend_yes_0_CSE101 or attend_no_0_CSE101
           const parts = callbackData.split('_');
           if (parts.length >= 4) {
@@ -3363,11 +3562,102 @@ async function handleApiRequest(req, res) {
 
   // ========== Presence / Active Members ==========
 
+  // GET /api/presence/profiles/:id — authenticated profile summary for the member
+  // directory. Activity values are counts of the selected user's own synced
+  // contributions; no stored content is returned.
+  const publicProfileMatch = req.method === 'GET'
+    ? /^\/api\/presence\/profiles\/([^/?]+)$/.exec(new URL(req.url, 'http://localhost').pathname)
+    : null;
+  if (publicProfileMatch) {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
+    try {
+      const profileKey = decodeURIComponent(publicProfileMatch[1]);
+      const users = await getAllUsersSafe();
+      const getStudentId = (entry) => {
+        if (entry.studentId) return String(entry.studentId);
+        const emailPrefix = String(entry.email || '').split('@')[0];
+        const fromEmail = emailPrefix.replace(/^[a-z.]+/i, '');
+        return /^\d+$/.test(fromEmail) ? fromEmail : '';
+      };
+      const user = users.find((entry) =>
+        entry.id === profileKey || entry.awid === profileKey || getStudentId(entry) === profileKey
+      );
+      if (!user || user.id === 'guest') {
+        sendJson(res, 404, { success: false, error: 'Member not found.' });
+        return;
+      }
+
+      const [streakData, semesterResultsValue] = await Promise.all([
+        getUserStoreValue(user.id, 'aust-study-streak', null),
+        getUserStoreValue(user.id, 'aust-user-semester-results', null),
+      ]);
+      const asArray = (value) => Array.isArray(value) ? value : [];
+      const semesters = asArray(semesterResultsValue);
+      const recordedSemesters = semesters.filter((semester) => asArray(semester?.courses).length > 0);
+      const transcriptCourses = recordedSemesters.reduce((total, semester) => total + asArray(semester.courses).length, 0);
+      const currentStudyStreak = Number(streakData?.count ?? streakData?.currentStreak ?? streakData) || 0;
+      const maxStudyStreak = Math.max(currentStudyStreak, Number(streakData?.maxCount ?? streakData?.best) || 0);
+      const presence = getPresenceMap();
+      const email = user.email || '';
+      const studentId = getStudentId(user);
+      const linkedAccounts = (() => {
+        try {
+          const parsed = typeof user.linkedAccounts === 'string' ? JSON.parse(user.linkedAccounts) : user.linkedAccounts;
+          return Array.isArray(parsed) ? parsed.map((account) => ({
+            provider: account?.provider || '',
+            providerName: account?.providerName || '',
+            username: account?.username || '',
+            displayName: account?.displayName || '',
+            link: account?.link || '',
+          })) : [];
+        } catch { return []; }
+      })();
+      sendJson(res, 200, {
+        success: true,
+        profile: {
+          id: user.id,
+          awid: user.awid || '',
+          name: user.name || '',
+          initials: String(user.name || 'AU').trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'AU',
+          avatar: user.avatar || null,
+          role: user.role || 'student',
+          email,
+          studentId,
+          bloodGroup: user.bloodGroup || '',
+          department: user.department || '',
+          batch: user.batch || user.batchName || user.batchNo || '',
+          batchNo: user.batchNo || '',
+          batchName: user.batchName || '',
+          semester: user.semester ?? null,
+          yearSemester: user.yearSemester || '',
+          section: user.section || '',
+          labSection: user.labSection || '',
+          designation: user.designation || '',
+          company: user.company || '',
+          graduationYear: user.graduationYear || '',
+          createdAt: user.createdAt || null,
+          status: presence[user.id]?.status || 'offline',
+          linkedAccounts,
+          orbit: user.orbit || null,
+          lastSeenAt: presence[user.id]?.lastSeenAt || (user.lastSeenAt ? new Date(user.lastSeenAt).getTime() : null),
+          activity: {
+            maxStreak: maxStudyStreak,
+            semestersRecorded: recordedSemesters.length,
+            transcriptCourses,
+          },
+        },
+      });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to load member profile.' });
+    }
+    return;
+  }
+
   // GET /api/presence/members — sanitized directory of every registered user
-  // with live presence (online/idle/offline) merged in, plus privacy-gated
-  // cgpa/attendance. PUBLIC — anyone (guest or logged in) can read the member
-  // list so the Active Members sidebar works without an account. Sensitive
-  // stats (CGPA/attendance) stay privacy-gated per user below.
+  // with live presence (online/idle/offline) merged in. PUBLIC — anyone (guest
+  // or logged in) can read the member list so the Active Members sidebar works
+  // without an account. Academic grades and attendance are not included.
   if (req.url === '/api/presence/members' && req.method === 'GET') {
     try {
       const users = await getAllUsersSafe();
@@ -3376,11 +3666,10 @@ async function handleApiRequest(req, res) {
         .filter(u => u.id && u.name && u.id !== 'guest')
         .map(u => {
           const p = presence[u.id] || { status: 'offline', lastSeenAt: null };
-          const privacy = u.privacy || {};
-          const showCgpa = privacy.showCgpa !== false;
           return {
             id: u.id,
             awid: u.awid || '',
+            studentId: String(u.studentId || String(u.email || '').split('@')[0].replace(/^[a-z.]+/i, '')).match(/^\d+$/)?.[0] || '',
             name: u.name,
             initials: String(u.name || 'AU').trim().split(/\s+/).slice(0, 2).map(x => x[0]?.toUpperCase()).join('') || 'AU',
             avatar: u.avatar || null,
@@ -3396,12 +3685,8 @@ async function handleApiRequest(req, res) {
             designation: u.designation || '',
             status: p.status,
             lastSeenAt: p.lastSeenAt || (u.lastSeenAt ? new Date(u.lastSeenAt).getTime() : null),
-            cgpa: showCgpa && u.cgpa > 0 ? Number(u.cgpa) : null,
             // Attendance is always private — never exposed to other members.
             attendancePct: null,
-            privacy: {
-              showCgpa,
-            },
             // The member's configured orbit (checkpoints + favorite color) —
             // public by design so anyone visiting their orbit sees it.
             orbit: u.orbit || null,
@@ -4780,8 +5065,8 @@ async function handleApiRequest(req, res) {
 
       const body = await readJsonBody(req);
       const appliedRole = body.appliedRole;
-      if (!['cr', 'sr', 'vp', 'gs'].includes(appliedRole)) {
-        sendJson(res, 400, { success: false, error: 'Invalid role. Choose cr, sr, vp or gs.' });
+      if (!['cr', 'sr', 'vp', 'gs', 'faculty'].includes(appliedRole)) {
+        sendJson(res, 400, { success: false, error: 'Invalid role.' });
         return;
       }
 
@@ -4792,16 +5077,20 @@ async function handleApiRequest(req, res) {
         return;
       }
       const currentRoles = new Set([...(Array.isArray(user.roles) ? user.roles : []), user.role]);
+      if (appliedRole === 'faculty' && (!currentRoles.has('alumni') && !currentRoles.has('alumni_with_carry'))) {
+        sendJson(res, 403, { success: false, error: 'Only AUST alumni can apply for the alumni faculty role.' });
+        return;
+      }
       if (currentRoles.has(appliedRole)) {
         sendJson(res, 409, { success: false, error: 'You already have this role.' });
         return;
       }
       const studentMembershipRoles = ['cr', 'sr', 'gs', 'vp', 'readd', 'bus_coordinator', 'clubs_representative'];
-      if (!currentRoles.has('student') && !studentMembershipRoles.some((role) => currentRoles.has(role))) {
+      if (appliedRole !== 'faculty' && !currentRoles.has('student') && !studentMembershipRoles.some((role) => currentRoles.has(role))) {
         sendJson(res, 403, { success: false, error: 'Only current students can apply for student roles.' });
         return;
       }
-      const exclusiveLeadershipRoles = ['cr', 'sr', 'gs', 'vp', 'readd'];
+      const exclusiveLeadershipRoles = appliedRole === 'faculty' ? [] : ['cr', 'sr', 'gs', 'vp', 'readd'];
       const heldLeadershipRole = exclusiveLeadershipRoles.find((role) => currentRoles.has(role) && role !== appliedRole);
       if (heldLeadershipRole) {
         sendJson(res, 409, { success: false, error: `You already hold ${heldLeadershipRole.toUpperCase()}. Resign before applying for another student leadership role.` });
@@ -4833,6 +5122,13 @@ async function handleApiRequest(req, res) {
       if (appliedRole === 'cr' && !targetLabSection) {
         sendJson(res, 400, { success: false, error: 'Lab group is required for CR applications.' });
         return;
+      }
+      if (appliedRole === 'faculty') {
+        const allUsers = await getAllUsersSafe();
+        if (allUsers.some(item => item.id === user.id && new Set([...(Array.isArray(item.roles) ? item.roles : []), item.role]).has('faculty'))) {
+          sendJson(res, 409, { success: false, error: 'You already have the Faculty role.' });
+          return;
+        }
       }
 
       // Server-side slot vacancy check (authoritative — mirrors the client check).
@@ -4954,9 +5250,21 @@ async function handleApiRequest(req, res) {
         sendJson(res, 404, { success: false, error: 'Pending application not found.' });
         return;
       }
-      if (status === 'approved' && ['vp', 'gs'].includes(existingApp.appliedRole) && auth.role !== 'admin') {
-        sendJson(res, 403, { success: false, error: 'Only an admin can approve VP or GS applications.' });
+      if (status === 'approved' && ['vp', 'gs', 'faculty'].includes(existingApp.appliedRole) && auth.role !== 'admin') {
+        sendJson(res, 403, { success: false, error: 'Only an admin can approve VP, GS, or Faculty applications.' });
         return;
+      }
+      if (status === 'approved' && existingApp.appliedRole === 'faculty') {
+        const applicant = await getUserById(existingApp.userId);
+        const applicantRoles = new Set([...(Array.isArray(applicant?.roles) ? applicant.roles : []), applicant?.role]);
+        if (!applicant || (!applicantRoles.has('alumni') && !applicantRoles.has('alumni_with_carry'))) {
+          sendJson(res, 409, { success: false, error: 'Only AUST alumni can be approved for the Faculty role.' });
+          return;
+        }
+        if (!FACULTY_DEPARTMENTS.some(item => item.toLowerCase() === String(applicant.department || '').trim().toLowerCase())) {
+          sendJson(res, 409, { success: false, error: 'Applicant needs a valid AUST department before Faculty approval.' });
+          return;
+        }
       }
       if (status === 'approved' && ['vp', 'gs'].includes(existingApp.appliedRole)) {
         const applicant = await getUserById(existingApp.userId);
@@ -4983,9 +5291,10 @@ async function handleApiRequest(req, res) {
           return;
         }
         const applicantRoles = new Set([...(Array.isArray(applicant.roles) ? applicant.roles : []), applicant.role]);
+        const isFacultyApplication = existingApp.appliedRole === 'faculty';
         const studentMembershipRoles = ['cr', 'sr', 'gs', 'vp', 'readd', 'bus_coordinator', 'clubs_representative'];
-        if (!applicantRoles.has('student') && !studentMembershipRoles.some((role) => applicantRoles.has(role))) {
-          sendJson(res, 409, { success: false, error: 'Only current students can hold student roles.' });
+        if (isFacultyApplication ? (!applicantRoles.has('alumni') && !applicantRoles.has('alumni_with_carry')) : (!applicantRoles.has('student') && !studentMembershipRoles.some((role) => applicantRoles.has(role)))) {
+          sendJson(res, 409, { success: false, error: isFacultyApplication ? 'Only AUST alumni can hold the alumni Faculty role.' : 'Only current students can hold student roles.' });
           return;
         }
         const exclusiveLeadershipRoles = ['cr', 'sr', 'gs', 'vp', 'readd'];
@@ -5019,7 +5328,9 @@ async function handleApiRequest(req, res) {
         if (applicant) {
           const leadershipRoles = ['cr', 'sr', 'vp', 'gs', 'readd'];
           const currentRoles = new Set([...(Array.isArray(applicant.roles) ? applicant.roles : []), applicant.role]);
-          const roles = leadershipRoles.includes(app.appliedRole)
+          const roles = app.appliedRole === 'faculty'
+            ? [...new Set(['faculty', facultyDepartmentRole(applicant.department || ''), 'alumni'])]
+            : leadershipRoles.includes(app.appliedRole)
             ? [...new Set(['student', ...['bus_coordinator', 'clubs_representative'].filter((role) => currentRoles.has(role)), app.appliedRole])]
             : [app.appliedRole];
           await updateUserProfile(app.userId, { role: app.appliedRole, roles }, { allowRole: true });
@@ -5038,8 +5349,8 @@ async function handleApiRequest(req, res) {
           reviewedAt: app.reviewedAt,
           title: approved ? 'Application approved' : 'Application rejected',
           body: approved
-            ? `Congratulations ${app.userName}! Your role is now ${({ cr: 'Class Representative (CR)', sr: 'Student Representative (SR)', vp: 'Vice President (VP)', gs: 'General Secretary (GS)' })[app.appliedRole] || app.appliedRole}.`
-            : `Your ${({ cr: 'CR', sr: 'SR', vp: 'VP', gs: 'GS' })[app.appliedRole] || app.appliedRole} application was rejected by the admin. You can re-apply when eligible.`,
+            ? `Congratulations ${app.userName}! Your role is now ${({ cr: 'Class Representative (CR)', sr: 'Student Representative (SR)', vp: 'Vice President (VP)', gs: 'General Secretary (GS)', faculty: 'Faculty' })[app.appliedRole] || app.appliedRole}.`
+            : `Your ${({ cr: 'CR', sr: 'SR', vp: 'VP', gs: 'GS', faculty: 'Faculty' })[app.appliedRole] || app.appliedRole} application was rejected by the admin. You can re-apply when eligible.`,
           path: '/settings',
           timestamp: Date.now(),
         },

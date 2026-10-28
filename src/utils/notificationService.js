@@ -1,18 +1,24 @@
+import { getNotificationChannelEnabled } from './inAppNotifications';
+
 const STORAGE_KEY = 'aust-notifications-v1';
 const LAST_WRITE_KEY = 'aust-notifications-lastwrite-v1';
 const FIRED_KEY = 'aust-notifications-fired-v1';
 const SERVER_SETTINGS_URL = '/api/user/settings';
-
 // Exposed so other modules can react to localStorage writes in other tabs.
 export const SETTINGS_STORAGE_KEY = STORAGE_KEY;
 
 const defaultSettings = {
   enabled: false,
-  classReminderMins: 10,
-  deadlineReminderHours: 24,
+  classReminderMins: 30,
+  deadlineReminderHours: 12,
   notifyClass: true,
   notifyDeadline: true,
   notifyNotices: false,
+  channels: {
+    telegram: { notices: true, classSchedule: true, classReminders: true, attendance: true, deadlines: true },
+    browser: { notices: true, classReminders: true, deadlines: true, tasks: true, messages: true, applications: true },
+    bell: { notices: true, deadlines: true, tasks: true, messages: true, applications: true },
+  },
 };
 
 export function isNotificationSupported() {
@@ -36,8 +42,20 @@ export async function requestPermission() {
 
 export function loadSettings() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? { ...defaultSettings, ...JSON.parse(raw) } : { ...defaultSettings };
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    if (!raw) return { ...defaultSettings };
+    const channels = {
+      ...defaultSettings.channels,
+      ...(raw.channels || {}),
+      telegram: { ...defaultSettings.channels.telegram, ...(raw.channels?.telegram || {}) },
+      browser: { ...defaultSettings.channels.browser, ...(raw.channels?.browser || {}) },
+      bell: { ...defaultSettings.channels.bell, ...(raw.channels?.bell || {}) },
+    };
+    if (!raw.channels) {
+      channels.telegram = { ...channels.telegram, classSchedule: raw.notifyDigest !== false, classReminders: raw.notifyClass !== false, attendance: raw.notifyAttendance !== false, deadlines: raw.notifyDeadline !== false };
+      channels.browser = { ...channels.browser, classReminders: raw.notifyClass !== false, deadlines: raw.notifyDeadline !== false };
+    }
+    return { ...defaultSettings, ...raw, channels, classReminderMins: 30, deadlineReminderHours: 12 };
   } catch {
     return { ...defaultSettings };
   }
@@ -96,7 +114,10 @@ export async function hydrateSettingsFromServer() {
   // about to be pushed to the server — don't let a poll clobber it.
   const localAge = getLocalWriteAge();
   if (localAge !== null && localAge < 5000) return null;
-  const merged = { ...loadSettings(), ...server.notifications };
+  const merged = { ...loadSettings(), ...server.notifications, channels: {
+    ...loadSettings().channels,
+    ...(server.notifications.channels || {}),
+  } };
   saveSettings(merged);
   return merged;
 }
@@ -127,12 +148,13 @@ function hasFired(key) {
 }
 
 export function sendNotification(title, body, opts = {}) {
+  if (opts.category && !getNotificationChannelEnabled('browser', opts.category)) return null;
   if (!isNotificationSupported() || Notification.permission !== 'granted') return null;
   try {
     const n = new Notification(title, {
       body,
-      icon: '/favicon.svg',
-      badge: '/favicon.svg',
+      icon: '/austwise-icon-final.svg',
+      badge: '/austwise-icon-final.svg',
       tag: opts.tag || title,
       requireInteraction: opts.requireInteraction || false,
       ...opts,
@@ -156,7 +178,7 @@ function getTodayDayName() {
   return days[new Date().getDay()];
 }
 
-export function checkClassReminders(routine, weekDays, minutesBefore = 10) {
+export function checkClassReminders(routine, weekDays, minutesBefore = 30) {
   const today = getTodayDayName();
   if (!weekDays.includes(today)) return;
   const classes = routine[today] || [];
@@ -181,14 +203,14 @@ export function checkClassReminders(routine, weekDays, minutesBefore = 10) {
         sendNotification(
           `🔔 Class in ${diff} minute${diff === 1 ? '' : 's'}`,
           `${cls.course} — ${cls.name}\n📍 Room ${cls.room} at ${timeStr}`,
-          { tag: key, requireInteraction: true }
+          { tag: key, requireInteraction: true, category: 'classReminders' }
         );
       }
     }
   });
 }
 
-export function checkDeadlineReminders(deadlines, hoursBefore = 24) {
+export function checkDeadlineReminders(deadlines, hoursBefore = 12) {
   const now = Date.now();
   const thresholdMs = hoursBefore * 60 * 60 * 1000;
 
@@ -205,7 +227,7 @@ export function checkDeadlineReminders(deadlines, hoursBefore = 24) {
         sendNotification(
           `⏰ Deadline Alert — ${dl.course}`,
           `"${dl.title}" is due in ${timeLabel}!\nType: ${dl.type} • Priority: ${dl.priority}`,
-          { tag: key, requireInteraction: true }
+          { tag: key, requireInteraction: true, category: 'deadlines' }
         );
       }
     }

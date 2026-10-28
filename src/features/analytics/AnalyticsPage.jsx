@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useEffect, useState, useMemo } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { TrendingUp, Layers, Grid3x3, Trophy, FlaskConical, GitBranch } from 'lucide-react';
 import CGPAGraph from './CGPAGraph';
 import SemesterTracker from './SemesterTracker';
@@ -10,7 +10,6 @@ import GliderTabs from '../../components/GliderTabs';
 import MastheadAccessControl from '../../components/MastheadAccessControl';
 import FeatureAccessGate from '../admin/FeatureAccessGate';
 import SidebarPageAccessPanel from '../admin/SidebarPageAccessPanel';
-import useTabUrlState from '../../hooks/useTabUrlState';
 import useAdminMode from '../../hooks/useAdminMode';
 import './AnalyticsPage.css';
 import './analytics-tokens.css';
@@ -27,16 +26,35 @@ const gradeLabTabs = [
 
 export default function AnalyticsPage() {
   const { isAdmin } = useAdminMode();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const sectionTab = ({ 'cgpa-calculator': 'cgpagraph', 'semester-wise': 'semestertracker', 'dept-heatmap': 'heatmap', 'best-worst': 'bestworst', prerequisites: 'prereqs' })[location.pathname.split('/')[2]];
   const [activeTab, setActiveTab] = useState(() => {
+    if (sectionTab) return sectionTab;
     return searchParams.get('tab') || localStorage.getItem(TAB_KEY) || 'cgpagraph';
   });
 
-  const handleTabChange = useTabUrlState({
-    storageKey: TAB_KEY,
-    defaultValue: 'cgpagraph',
-    onChange: setActiveTab,
-  });
+  const handleTabChange = (tab) => {
+    const section = ({ cgpagraph: 'cgpa-calculator', semestertracker: 'semester-wise', heatmap: 'dept-heatmap', bestworst: 'best-worst', prereqs: 'prerequisites' })[tab] || 'cgpa-calculator';
+    setActiveTab(tab);
+    localStorage.setItem(TAB_KEY, tab);
+    navigate(`/gradelab/${section}`, { replace: true });
+  };
+
+  useEffect(() => {
+    const queryTab = searchParams.get('tab');
+    const selected = sectionTab || queryTab;
+    if (selected && gradeLabTabs.some((tab) => tab.id === selected)) {
+      setActiveTab(selected);
+      if (queryTab) navigate(`/gradelab/${({ cgpagraph: 'cgpa-calculator', semestertracker: 'semester-wise', heatmap: 'dept-heatmap', bestworst: 'best-worst', prereqs: 'prerequisites' })[selected]}`, { replace: true });
+    } else if (location.pathname === '/gradelab') {
+      const stored = localStorage.getItem(TAB_KEY);
+      const initial = gradeLabTabs.some((tab) => tab.id === stored) ? stored : 'cgpagraph';
+      navigate(`/gradelab/${({ cgpagraph: 'cgpa-calculator', semestertracker: 'semester-wise', heatmap: 'dept-heatmap', bestworst: 'best-worst', prereqs: 'prerequisites' })[initial]}`, { replace: true });
+      setActiveTab(initial);
+    }
+  }, [location.pathname, searchParams]);
 
   const renderActiveTab = () => {
     switch (activeTab) {

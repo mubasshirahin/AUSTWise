@@ -50,6 +50,54 @@ let stopped = false;
 const localWrites = new Map(); // `${scope}:${key}` -> timestamp
 const LOCAL_WRITE_TTL = 15000;
 
+// Bare localStorage keys that hold per-user data. The browser cache is shared
+// by every account that logs in on this device, so logging out must erase it —
+// otherwise the next account (or a guest) can read the previous user's CGPA,
+// attendance and tasks until the server responds. The key NAMES are kept in a
+// small registry so a later logout also clears keys written by an earlier
+// browser session.
+const USER_KEYS_META = 'aust-livestore-user-keys';
+const userLocalKeys = new Set();
+let lastUserId = null;
+
+function rememberUserLocalKey(scope, key) {
+  if (scope !== 'user' || typeof key !== 'string' || !key) return;
+  if (userLocalKeys.has(key)) return;
+  userLocalKeys.add(key);
+  try {
+    const raw = localStorage.getItem(USER_KEYS_META);
+    const known = raw ? JSON.parse(raw) : [];
+    if (Array.isArray(known)) {
+      if (!known.includes(key)) {
+        known.push(key);
+        localStorage.setItem(USER_KEYS_META, JSON.stringify(known));
+      }
+    } else {
+      localStorage.setItem(USER_KEYS_META, JSON.stringify([key]));
+    }
+  } catch { /* ignore */ }
+}
+
+/** Drop every cached per-user value from memory and localStorage. */
+function purgeUserLocalCache() {
+  const keys = new Set(userLocalKeys);
+  try {
+    const raw = localStorage.getItem(USER_KEYS_META);
+    const known = raw ? JSON.parse(raw) : [];
+    if (Array.isArray(known)) known.forEach((key) => { if (typeof key === 'string') keys.add(key); });
+  } catch { /* ignore */ }
+
+  keys.forEach((key) => {
+    try { localStorage.removeItem(key); } catch { /* ignore */ }
+  });
+  try { localStorage.removeItem(USER_KEYS_META); } catch { /* ignore */ }
+  userLocalKeys.clear();
+
+  for (const composite of Array.from(cache.keys())) {
+    if (composite.startsWith('user:')) cache.delete(composite);
+  }
+}
+
 function markLocalWrite(k) {
   localWrites.set(k, Date.now());
 }
@@ -92,6 +140,7 @@ function storeFor(scope) {
 export function ensureFetched(scope, key) {
   const k = cacheKey(scope, key);
   if (cache.has(k) || inFlight.has(k) || fetched.has(k)) return;
+  rememberUserLocalKey(scope, key);
   try {
     const raw = localStorage.getItem(key);
     if (raw !== null) cache.set(k, JSON.parse(raw));
@@ -129,9 +178,19 @@ export function useLiveRefresh(keys, refreshFn) {
 /** Fetch a key from the server and publish it locally (cache + localStorage). */
 async function fetchKey(scope, key) {
   const k = cacheKey(scope, key);
+  const requestUserId = wsUserId;
   try {
     const value = await storeFor(scope).get(key);
+    // Logged out (or switched account) while the request was in flight — the
+    // response belongs to the previous session, so never publish it. A null
+    // `requestUserId` means the very first render happened before auth
+    // restored; that fetch is allowed to finish.
+    if (stopped || (scope === 'user' && requestUserId && requestUserId !== wsUserId)) {
+      inFlight.delete(k);
+      return;
+    }
     if (value !== null) {
+      rememberUserLocalKey(scope, key);
       cache.set(k, value);
       try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
       fetched.add(k);
@@ -163,6 +222,7 @@ async function fetchKey(scope, key) {
 /** Write a value optimistically, then persist to the server (which broadcasts). */
 export async function setLiveValue(scope, key, value) {
   const k = cacheKey(scope, key);
+  rememberUserLocalKey(scope, key);
   markLocalWrite(k);
   cache.set(k, value);
   try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
@@ -176,6 +236,7 @@ export async function setLiveValue(scope, key, value) {
 /** Delete a value everywhere (server + local cache). */
 export async function delLiveValue(scope, key) {
   const k = cacheKey(scope, key);
+  rememberUserLocalKey(scope, key);
   markLocalWrite(k);
   cache.delete(k);
   try { localStorage.removeItem(key); } catch { /* ignore */ }
@@ -313,6 +374,10 @@ export function onRealtimeStatus(cb) {
 /** Open (or reuse) the real-time channel for a user. Idempotent per user id. */
 export function initLiveStore(userId) {
   if (!userId) return;
+  // A different account on the same browser must never inherit the previous
+  // user's cached values.
+  if (lastUserId && lastUserId !== userId) purgeUserLocalCache();
+  lastUserId = userId;
   // Allow re-init after logout (destroyLiveStore) → login without a page
   // reload. The shared socket is now the only realtime channel (chat
   // included), so it must come back after a re-login.
@@ -332,6 +397,8 @@ export function destroyLiveStore() {
   if (ws) { ws.onclose = null; ws.close(); ws = null; }
   notifyStatus(false);
   wsUserId = null;
+  lastUserId = null;
+  purgeUserLocalCache();
   cache.clear();
   inFlight.clear();
   fetched.clear();

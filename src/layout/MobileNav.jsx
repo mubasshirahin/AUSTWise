@@ -10,11 +10,11 @@ import './MobileNav.css';
 
 // Primary items shown in the fixed bottom bar (most-used campus tools)
 const primaryItems = [
-  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/analytics', label: 'GradeLab', icon: BarChart3 },
-  { path: '/vault', label: 'Vault', icon: BookOpen },
+  { path: '/dashboard/quickstats', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/gradelab', label: 'GradeLab', icon: BarChart3 },
+  { path: '/resource-vault', label: 'Resource Vault', icon: BookOpen },
   { path: '/community', label: 'Social', icon: Users },
-  { path: '/messages', label: 'Chat', icon: MessageSquare },
+  { path: '/connectbox', label: 'Chat', icon: MessageSquare },
 ];
 
 // Everything else lives in the "More" bottom sheet
@@ -23,9 +23,9 @@ const moreSections = [
     title: 'Campus',
     items: [
       { path: '/daily-life', label: 'Daily Life', icon: Home },
-      { path: '/campus', label: 'InsideAUST', icon: MapPin },
+      { path: '/insideaust', label: 'InsideAUST', icon: MapPin },
       { path: '/notebook', label: 'Notebook', icon: NotebookPen },
-      { path: '/question-bank-analyzer', label: 'Question Bank', icon: FileSearch },
+      { path: '/question-bank', label: 'Question Bank', icon: FileSearch },
       { path: '/productivity', label: 'Productivity', icon: Zap },
     ],
   },
@@ -33,7 +33,7 @@ const moreSections = [
     title: 'Extras',
     items: [
       { path: '/marketplace', label: 'Marketplace', icon: ShoppingBag },
-      { path: '/chill-zone', label: 'DownTime', icon: Coffee },
+      { path: '/downtime', label: 'DownTime', icon: Coffee },
       { path: '/shadow', label: 'Shadow', icon: Moon },
     ],
   },
@@ -41,7 +41,7 @@ const moreSections = [
     title: 'Account',
     items: [
       { path: '/settings', label: 'Settings', icon: Settings },
-      { path: '/pro', label: 'See Plans', icon: Crown },
+      { path: '/see-plans', label: 'See Plans', icon: Crown },
     ],
   },
 ];
@@ -50,9 +50,9 @@ function PrimaryMobileLink({ item, onClick }) {
   return (
     <NavLink
       to={item.path}
-      className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}
+      className={({ isActive }) => `mobile-nav-item ${isActive || (item.label === 'Dashboard' && window.location.pathname.startsWith('/dashboard/')) ? 'active' : ''}`}
       onClick={onClick}
-      end={item.path === '/'}
+      end={false}
       onMouseEnter={() => prefetchRoute(item.path)}
       onFocus={() => prefetchRoute(item.path)}
     >

@@ -25,6 +25,7 @@ export async function registerUser(chatId, routine = null, awid = null) {
       return result.recordset[0] || null;
     } catch (err) {
       console.warn('⚠️  SQL Server registerUser failed, using JSON database fallback:', err.message);
+      if (process.env.DATABASE_URL || process.env.DB_PASSWORD) throw err;
       useJsonFallback = true;
     }
   }
@@ -56,6 +57,7 @@ export async function getUserByAwid(awid) {
       return r.recordset[0] || null;
     } catch (err) {
       console.warn('⚠️  SQL Server getUserByAwid failed, using JSON database fallback:', err.message);
+      if (process.env.DATABASE_URL || process.env.DB_PASSWORD) throw err;
       useJsonFallback = true;
     }
   }
@@ -72,6 +74,7 @@ export async function unregisterByAwid(awid) {
       return (r.rowsAffected && r.rowsAffected[0] > 0) || r.rowCount > 0;
     } catch (err) {
       console.warn('⚠️  SQL Server unregisterByAwid failed, using JSON database fallback:', err.message);
+      if (process.env.DATABASE_URL || process.env.DB_PASSWORD) throw err;
       useJsonFallback = true;
     }
   }
@@ -91,6 +94,7 @@ export async function unregisterUser(chatId) {
       return r.rowsAffected[0] > 0;
     } catch (err) {
       console.warn('⚠️  SQL Server unregisterUser failed, using JSON database fallback:', err.message);
+      if (process.env.DATABASE_URL || process.env.DB_PASSWORD) throw err;
       useJsonFallback = true;
     }
   }
@@ -103,6 +107,23 @@ export async function unregisterUser(chatId) {
   return list.length < initialLen;
 }
 
+export async function unregisterAllUsers() {
+  if (!useJsonFallback) {
+    try {
+      const result = await query('DELETE FROM "TelegramUsers"');
+      return result.rowCount ?? result.rowsAffected?.[0] ?? 0;
+    } catch (err) {
+      console.warn('⚠️  SQL Server unregisterAllUsers failed, using JSON database fallback:', err.message);
+      if (process.env.DATABASE_URL || process.env.DB_PASSWORD) throw err;
+      useJsonFallback = true;
+    }
+  }
+
+  const list = await readJson('telegram_users.json');
+  await writeJson('telegram_users.json', []);
+  return list.length;
+}
+
 export async function getUser(chatId) {
   if (!useJsonFallback) {
     try {
@@ -110,6 +131,7 @@ export async function getUser(chatId) {
       return r.recordset[0] || null;
     } catch (err) {
       console.warn('⚠️  SQL Server getUser failed, using JSON database fallback:', err.message);
+      if (process.env.DATABASE_URL || process.env.DB_PASSWORD) throw err;
       useJsonFallback = true;
     }
   }
@@ -126,6 +148,7 @@ export async function getAllUsers() {
       return r.recordset;
     } catch (err) {
       console.warn('⚠️  SQL Server getAllUsers failed, using JSON database fallback:', err.message);
+      if (process.env.DATABASE_URL || process.env.DB_PASSWORD) throw err;
       useJsonFallback = true;
     }
   }
@@ -145,6 +168,7 @@ export async function updateUserRoutine(chatId, routine) {
       return r.recordset[0] || null;
     } catch (err) {
       console.warn('⚠️  SQL Server updateUserRoutine failed, using JSON database fallback:', err.message);
+      if (process.env.DATABASE_URL || process.env.DB_PASSWORD) throw err;
       useJsonFallback = true;
     }
   }
@@ -166,6 +190,7 @@ export async function toggleUserStatus(chatId) {
       return r.recordset[0] || null;
     } catch (err) {
       console.warn('⚠️  SQL Server toggleUserStatus failed, using JSON database fallback:', err.message);
+      if (process.env.DATABASE_URL || process.env.DB_PASSWORD) throw err;
       useJsonFallback = true;
     }
   }
@@ -188,6 +213,7 @@ export async function getStats() {
       return { totalUsers: row.totalUsers || 0, enabledUsers: row.enabledUsers || 0, disabledUsers: row.disabledUsers || 0, lastUpdated: new Date().toISOString() };
     } catch (err) {
       console.warn('⚠️  SQL Server getStats failed, using JSON database fallback:', err.message);
+      if (process.env.DATABASE_URL || process.env.DB_PASSWORD) throw err;
       useJsonFallback = true;
     }
   }
@@ -206,6 +232,7 @@ export async function isRegistered(chatId) {
       return (r.recordset[0]?.cnt || 0) > 0;
     } catch (err) {
       console.warn('⚠️  SQL Server isRegistered failed, using JSON database fallback:', err.message);
+      if (process.env.DATABASE_URL || process.env.DB_PASSWORD) throw err;
       useJsonFallback = true;
     }
   }
@@ -229,6 +256,7 @@ export async function saveAttendanceRecord(chatId, courseCode, attended) {
       return r.recordset[0] || null;
     } catch (err) {
       console.warn('⚠️  SQL Server saveAttendanceRecord failed, using JSON database fallback:', err.message);
+      if (process.env.DATABASE_URL || process.env.DB_PASSWORD) throw err;
       useJsonFallback = true;
     }
   }
@@ -257,6 +285,7 @@ export async function saveAttendanceRecordForDate(chatId, courseCode, attended, 
       return r.recordset[0] || null;
     } catch (err) {
       console.warn('⚠️  SQL Server saveAttendanceRecordForDate failed, using JSON database fallback:', err.message);
+      if (process.env.DATABASE_URL || process.env.DB_PASSWORD) throw err;
       useJsonFallback = true;
     }
   }
@@ -289,6 +318,7 @@ export async function getTodayAttendanceRecord(chatId, courseCode) {
       return r.recordset[0] || null;
     } catch (err) {
       console.warn('⚠️  SQL Server getTodayAttendanceRecord failed, using JSON database fallback:', err.message);
+      if (process.env.DATABASE_URL || process.env.DB_PASSWORD) throw err;
       useJsonFallback = true;
     }
   }
@@ -306,6 +336,7 @@ export async function getUserAttendanceRecords(chatId) {
       return r.recordset;
     } catch (err) {
       console.warn('⚠️  SQL Server getUserAttendanceRecords failed, using JSON database fallback:', err.message);
+      if (process.env.DATABASE_URL || process.env.DB_PASSWORD) throw err;
       useJsonFallback = true;
     }
   }
@@ -323,6 +354,7 @@ export async function getAttendanceSummary(chatId, courseCode) {
       return { course: courseCode, total: row.total || 0, attended: row.attended || 0, absent: row.absent || 0, percentage: row.total > 0 ? Math.round((row.attended / row.total) * 100) : 0 };
     } catch (err) {
       console.warn('⚠️  SQL Server getAttendanceSummary failed, using JSON database fallback:', err.message);
+      if (process.env.DATABASE_URL || process.env.DB_PASSWORD) throw err;
       useJsonFallback = true;
     }
   }

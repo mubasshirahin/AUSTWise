@@ -288,7 +288,7 @@
   border-color: color-mix(in srgb, var(--accent-amber) 32%, var(--border-primary));
 }
 .att-row.is-danger {
-  box-shadow: inset 2px 0 0 var(--accent-rose);
+  box-shadow: none;
 }
 
 /* ─── Course row header ─────────────────────────────────────────── */
@@ -673,7 +673,7 @@
 }
 .att-note.is-sync {
   border-style: solid;
-  border-color: color-mix(in srgb, var(--accent-emerald) 28%, transparent);
+  border-color: var(--border-primary);
   color: var(--text-secondary);
 }
 

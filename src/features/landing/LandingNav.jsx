@@ -5,8 +5,7 @@ import {
   Type, Orbit, Grid2x2, Newspaper, PenTool, Gauge, Pen, Sun, Check, ArrowRight,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
-import wordmarkLight from '../../assets/austwise-4.svg';
-import wordmarkDark from '../../assets/austwise-5.svg';
+import brandMark from '../../assets/austwise-icon-final.svg';
 import './LandingPage.css';
 
 const darkThemeOptions = [
@@ -71,8 +70,7 @@ export default function LandingNav() {
 
   const activeTheme = allThemeOptions.find((t) => t.id === theme) || allThemeOptions[0];
   const ThemeIcon = activeTheme.icon;
-  const lightThemes = new Set(lightThemeOptions.map((t) => t.id));
-  const wordmarkSrc = lightThemes.has(theme) ? wordmarkLight : wordmarkDark;
+  const wordmarkSrc = brandMark;
 
   return (
     <nav className="landing-nav">
@@ -90,6 +88,7 @@ export default function LandingNav() {
               title="Click 3x for Nexus Terminal"
               aria-label="AUSTWise logo"
             />
+            <span className="topbar-brand-name">AUSTWise</span>
             <div className="logo-burst" aria-hidden="true">
               <i></i><i></i><i></i><i></i>
               <i></i><i></i><i></i><i></i>

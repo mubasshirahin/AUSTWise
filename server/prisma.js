@@ -1159,7 +1159,9 @@ export async function getSharedRoutineBySlot(slot) {
 // Publishing a routine replaces any existing routine for the same CR slot.
 export async function upsertSharedRoutine(data) {
   const record = {
-    id: data.id || null,
+    // Always send a concrete ID: some generated Prisma clients treat this
+    // field as required even though the schema also declares @default(uuid()).
+    id: data.id || randomUUID(),
     crId: data.crId || '',
     crName: data.crName || '',
     department: data.department || '',

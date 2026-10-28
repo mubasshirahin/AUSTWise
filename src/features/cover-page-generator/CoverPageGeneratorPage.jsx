@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
-import austwiseLogo from '../../assets/austwise-4.svg';
+import austwiseLogo from '../../assets/austwise-icon-final.svg';
 import austLogo from '../../assets/aust-logo.jpg';
 import { useRoleAccess } from '../../hooks/useRoleAccess';
 import { getAccessRole } from '../../utils/accessRole';
@@ -229,11 +229,10 @@ export default function CoverPageGeneratorPage() {
   const watermarkX = savedForm.watermarkX ?? 0;
   const watermarkY = savedForm.watermarkY ?? 0;
 
-  // Footer logo settings — choto + left e (user request)
-  const savedSize = savedForm.footerLogoSize;
-  const footerLogoSize = (savedSize && savedSize !== 60 && savedSize !== 80 && savedSize !== 110) ? savedSize : 80;
-  const footerLogoX = savedForm.footerLogoX ?? -18;
-  const footerLogoY = savedForm.footerLogoY ?? 0;
+  // Keep the brand mark small and anchored in the cover's bottom-right corner.
+  const footerLogoSize = 24;
+  const footerLogoX = 0;
+  const footerLogoY = 0;
 
   // Save form to localStorage on every change
   useEffect(() => {
@@ -931,6 +930,7 @@ const MinimalCover = ({
             transform: `translate(${footerLogoX}px, ${footerLogoY}px)`,
           }}
         />
+        <span className="cpgen-min-footer-name">AUSTWise</span>
       </div>
     </div>
   );

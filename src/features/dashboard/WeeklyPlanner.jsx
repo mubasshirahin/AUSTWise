@@ -7,9 +7,10 @@ import CourseAutocomplete from '../../components/CourseAutocomplete';
 import RoomAutocomplete from '../../components/RoomAutocomplete';
 import TeacherAutocomplete from '../../components/TeacherAutocomplete';
 import { getAutoColorForCourse } from '../../utils/autoColorPalette';
-import logoLight from '../../assets/vector1-1.svg';
-import logoDark from '../../assets/vector1-1.svg';
+import brandMark from '../../assets/austwise-icon-final.svg';
 import { useAuth } from '../../context/AuthContext';
+import useWebSocket from '../../hooks/useWebSocket';
+import { userStore } from '../../utils/storageService';
 
 const isGeneratedRoutineFixture = (routine) => String(routine?.id || '').startsWith('dev-rt-');
 
@@ -103,6 +104,7 @@ export default function WeeklyPlanner() {
   const isCR = !!(user && (user.role === 'cr' || (typeof user.hasRole === 'function' && user.hasRole('cr'))));
   const isFaculty = !!(user && (user.role === 'faculty' || (typeof user.hasRole === 'function' && user.hasRole('faculty'))));
   const [sharedRoutines, setSharedRoutines] = useState([]);
+  const [sharedRoutinesReady, setSharedRoutinesReady] = useState(false);
   const [sharedStats, setSharedStats] = useState({ shared: 0, total: CR_TOTAL_SLOTS });
   const [sharedLoading, setSharedLoading] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
@@ -111,6 +113,8 @@ export default function WeeklyPlanner() {
   const [loadSearch, setLoadSearch] = useState('');
   const [loadDept, setLoadDept] = useState('all');
   const [loadSem, setLoadSem] = useState('all');
+  const [loadError, setLoadError] = useState('');
+  const [loadedSharedRoutine, setLoadedSharedRoutine] = useState(null);
 
   useEffect(() => {
     localStorage.setItem('aust-ramadan-mode', ramadanMode);
@@ -144,7 +148,10 @@ export default function WeeklyPlanner() {
         try {
           const listRes = await fetch('/api/routines/shared', { credentials: 'same-origin' });
           const listData = await listRes.json();
-          if (!cancelled && listData.routines) setSharedRoutines(listData.routines.filter((routine) => !isGeneratedRoutineFixture(routine)));
+          if (!cancelled && listData.routines) {
+            setSharedRoutines(listData.routines.filter((routine) => !isGeneratedRoutineFixture(routine)));
+            setSharedRoutinesReady(true);
+          }
         } catch { /* keep empty list */ }
       }
     })();
@@ -340,23 +347,22 @@ export default function WeeklyPlanner() {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || 'Request failed');
+    if (data.success === false) throw new Error(data.error || 'The server could not complete the routine request.');
     return data;
   };
 
   const refreshSharedRoutines = async () => {
-    try {
       const [sharedRes, statsRes] = await Promise.all([
         sharedApi('/api/routines/shared'),
         sharedApi('/api/routines/shared/stats'),
       ]);
+      if (!sharedRes.success || !statsRes.success) throw new Error('Server could not load shared routines.');
       const publishedRoutines = (sharedRes.routines || []).filter((routine) => !isGeneratedRoutineFixture(routine));
       setSharedRoutines(publishedRoutines);
+      setSharedRoutinesReady(true);
       setSharedStats({ ...(statsRes.stats || { total: CR_TOTAL_SLOTS }), shared: publishedRoutines.length });
-    } catch (e) {
-      console.warn('Failed to load shared routines:', e.message);
-      setSharedRoutines([]);
-      setSharedStats({ shared: 0, total: CR_TOTAL_SLOTS });
-    }
+      setLoadError('');
+      return publishedRoutines;
   };
 
   const openLoadModal = async () => {
@@ -366,8 +372,10 @@ export default function WeeklyPlanner() {
     setLoadDept('all');
     setLoadSem('all');
     setShowLoadModal(true);
+    setLoadError('');
     setSharedLoading(true);
-    await refreshSharedRoutines();
+    try { await refreshSharedRoutines(); }
+    catch (e) { setLoadError(e.message || 'Could not load routines from the server.'); }
     setSharedLoading(false);
   };
 
@@ -375,17 +383,21 @@ export default function WeeklyPlanner() {
     ? `${user.department || ''}|${user.yearSemester || ''}|${user.section || ''}|${user.labSection || ''}`
     : null;
   const myShared = mySlotKey ? sharedRoutines.find(r => `${r.department || ''}|${r.yearSemester || ''}|${r.section || ''}|${r.labSection || ''}` === mySlotKey) : null;
+  const liveShareRef = useRef({ id: '', snapshot: '' });
+  const unshareRequestedRef = useRef(false);
+  const routineSnapshot = JSON.stringify({ routine, weekDays });
 
   const handleShareRoutine = async () => {
     if (shareBusy) return;
+    unshareRequestedRef.current = false;
     setShareBusy(true);
     setShareMsg(null);
     try {
-      await sharedApi('/api/routines/shared', {
+      const data = await sharedApi('/api/routines/shared', {
         method: 'POST',
         body: JSON.stringify({ routine, weekDays }),
       });
-      setShareMsg('Routine shared ✓');
+      liveShareRef.current = { id: data.routine?.id || '', snapshot: routineSnapshot };
       // Tell any open Free Rooms page to recompute availability right away.
       window.dispatchEvent(new Event('routine-updated'));
       await refreshSharedRoutines();
@@ -398,27 +410,108 @@ export default function WeeklyPlanner() {
 
   const handleUnshareRoutine = async () => {
     if (shareBusy) return;
+    unshareRequestedRef.current = true;
     setShareBusy(true);
     setShareMsg(null);
     try {
       await sharedApi('/api/routines/shared', { method: 'DELETE' });
-      setShareMsg('Routine removed from load list');
       window.dispatchEvent(new Event('routine-updated'));
       await refreshSharedRoutines();
     } catch (e) {
+      unshareRequestedRef.current = false;
       setShareMsg(e.message || 'Failed to remove — try again');
     } finally {
       setShareBusy(false);
     }
   };
 
-  const handleLoadTemplate = () => {
+  const handleLoadTemplate = async () => {
     if (selectedTemplate) {
-      replaceRoutine(selectedTemplate.routine, selectedTemplate.weekDays);
-      setShowLoadModal(false);
-      setSelectedTemplate(null);
+      try {
+        // Re-fetch the selected record so a stale modal cannot load an old copy.
+        const latestData = await sharedApi('/api/routines/shared');
+        if (!latestData.success) throw new Error('Could not verify the selected routine on the server.');
+        const latest = (latestData.routines || []).find((item) => item.id === selectedTemplate.id);
+        if (!latest) throw new Error('This routine is no longer shared. Refresh the list and try again.');
+        await replaceRoutine(latest.routine, latest.weekDays);
+        if (latest.crId && user?.id) {
+          const saved = await userStore.set(`aust-loaded-shared-routine:${user.id}`, latest.crId);
+          if (!saved) throw new Error('Routine loaded, but its live sync could not be saved to your account.');
+        }
+        setLoadedSharedRoutine(latest);
+        setShowLoadModal(false);
+        setSelectedTemplate(null);
+      } catch (e) {
+        setLoadError(e.message || 'Could not load this routine from the server.');
+      }
     }
   };
+
+  const syncLoadedSharedRoutine = async ({ action, crId } = {}) => {
+    if (!user?.id || !crId) return;
+    const sourceKey = `aust-loaded-shared-routine:${user.id}`;
+    if (await userStore.get(sourceKey) !== crId) return;
+    if (action === 'delete') {
+      await userStore.del(sourceKey);
+      setLoadedSharedRoutine((current) => current?.crId === crId ? null : current);
+      return;
+    }
+    try {
+      const data = await sharedApi('/api/routines/shared');
+      const latest = (data.routines || []).find(item => item.crId === crId);
+      if (!latest) {
+        await userStore.del(sourceKey);
+        setLoadedSharedRoutine((current) => current?.crId === crId ? null : current);
+        return;
+      }
+      await replaceRoutine(latest.routine, latest.weekDays);
+      setLoadedSharedRoutine(latest);
+      window.dispatchEvent(new Event('routine-updated'));
+    } catch (error) {
+      console.warn('Could not sync loaded shared routine:', error.message);
+    }
+  };
+
+  useWebSocket(user?.id || null, { onRoutineShared: syncLoadedSharedRoutine });
+
+  // Catch up after the user was offline while the CR published changes.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!user?.id) return;
+      const crId = await userStore.get(`aust-loaded-shared-routine:${user.id}`);
+      if (!cancelled && crId) syncLoadedSharedRoutine({ action: 'publish', crId });
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  // Once a CR has published, persist every later grid edit automatically.
+  // A short debounce combines rapid edits into one live update.
+  useEffect(() => {
+    if (!isCR || !myShared || !sharedRoutinesReady || isLoading || unshareRequestedRef.current) return undefined;
+    const currentId = myShared.id || '';
+    if (liveShareRef.current.id !== currentId) {
+      const publishedSnapshot = JSON.stringify({ routine: myShared.routine, weekDays: myShared.weekDays });
+      liveShareRef.current = { id: currentId, snapshot: publishedSnapshot };
+    }
+    if (liveShareRef.current.snapshot === routineSnapshot) return undefined;
+    const snapshot = routineSnapshot;
+    const timer = setTimeout(async () => {
+      try {
+        const data = await sharedApi('/api/routines/shared', {
+          method: 'POST',
+          body: JSON.stringify({ routine, weekDays }),
+        });
+        liveShareRef.current = { id: data.routine?.id || currentId, snapshot };
+        window.dispatchEvent(new Event('routine-updated'));
+      } catch (error) {
+        setShareMsg(error.message || 'Could not update the shared routine.');
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routineSnapshot, myShared?.id, isCR, sharedRoutinesReady, isLoading]);
 
   const handleLoadDeptChange = (value) => {
     setLoadDept(value);
@@ -450,9 +543,7 @@ export default function WeeklyPlanner() {
     const textPri = cs('--text-primary');
     const textSec = cs('--text-secondary');
     const textTer = cs('--text-tertiary');
-    const themeAttr = root.getAttribute('data-theme') || 'dark';
-    const lightSet = new Set(['light','swiss','newsprint','sketchbook','minimalist-monochrome','industrial']);
-    const logoUrl = lightSet.has(themeAttr) ? logoLight : logoDark;
+    const logoUrl = brandMark;
 
     const container = document.createElement('div');
     container.style.cssText = `
@@ -556,9 +647,7 @@ export default function WeeklyPlanner() {
     const root = document.documentElement;
     const cs = (name) => getComputedStyle(root).getPropertyValue(name).trim();
     const bg = cs('--bg-primary');
-    const themeAttr = root.getAttribute('data-theme') || 'dark';
-    const lightSet = new Set(['light','swiss','newsprint','sketchbook','minimalist-monochrome','industrial']);
-    const logoUrl = lightSet.has(themeAttr) ? logoLight : logoDark;
+    const logoUrl = brandMark;
 
     const container = document.createElement('div');
     container.style.cssText = `
@@ -658,7 +747,7 @@ export default function WeeklyPlanner() {
                disabled={shareBusy}
                onClick={() => { if (myShared) handleUnshareRoutine(); else handleShareRoutine(); }}
                title={myShared
-                 ? 'Your routine is live — every student can load it and Free Rooms shows your rooms as busy. Click to remove.'
+                 ? 'Your routine is live. Edits sync automatically for students who loaded it. Click to unshare.'
                  : 'Publish your routine — it automatically appears in Load Routine and Free Rooms for everyone.'}
              >
                {shareBusy ? <Loader2 size={14} className="spin" /> : myShared ? <Check size={14} /> : <Share2 size={14} />}
@@ -709,6 +798,22 @@ export default function WeeklyPlanner() {
        </div>
 
        <div className="schedule-dotted-divider" />
+
+        {loadedSharedRoutine && (
+          <div role="status" style={{
+            display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap',
+            padding: '9px 12px', margin: '0 0 10px', borderRadius: '10px',
+            color: 'var(--text-secondary)', background: 'var(--accent-blue-glow)',
+            border: '1px solid var(--border-primary)', fontSize: 'var(--fs-xs)',
+          }}>
+            <Share2 size={14} style={{ color: 'var(--accent-blue)', flexShrink: 0 }} />
+            <span>
+              Loaded routine shared by <strong style={{ color: 'var(--text-primary)' }}>{loadedSharedRoutine.crName || 'CR'}</strong>
+              {' · '}{loadedSharedRoutine.department} {loadedSharedRoutine.yearSemester}
+              {' · Section '}{loadedSharedRoutine.section} · Lab {loadedSharedRoutine.labSection}
+            </span>
+          </div>
+        )}
 
         {gridScale !== 1 && (
           <div className="zoom-indicator" onClick={() => setGridScale(1)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '4px 0', cursor: 'pointer' }}>
@@ -1100,9 +1205,14 @@ export default function WeeklyPlanner() {
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {loadError && (
+                    <div role="alert" style={{ padding: '12px', borderRadius: '8px', color: 'var(--accent-rose)', background: 'var(--accent-rose-glow)' }}>
+                      {loadError}
+                    </div>
+                  )}
                   {filteredShared.length === 0 && (
                     <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
-                      <p>{sharedRoutines.length === 0 ? 'No CR has shared a routine yet.' : 'No routines match your search.'}</p>
+                      <p>{loadError ? 'The shared routine list is unavailable.' : sharedRoutines.length === 0 ? 'No CR has shared a routine yet.' : 'No routines match your search.'}</p>
                     </div>
                   )}
                   {filteredShared.length > 0 && (
@@ -1158,7 +1268,7 @@ export default function WeeklyPlanner() {
               <button
                 className="btn btn-primary flex-1"
                 onClick={handleLoadTemplate}
-                disabled={!selectedTemplate}
+                disabled={!selectedTemplate || !!loadError}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: selectedTemplate ? 1 : 0.5 }}
               >
                 <Download size={16} /> Load Routine
