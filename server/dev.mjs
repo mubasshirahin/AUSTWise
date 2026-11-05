@@ -3575,7 +3575,8 @@ async function handleApiRequest(req, res) {
       const platform = vaultText(body.platform, 'Platform', true);
       const email = vaultText(body.email, 'Email or phone', true);
       const username = vaultText(body.username, 'Username');
-      const password = vaultText(body.password, 'Password', true);
+      // The password is optional — an account can be tracked without one.
+      const password = vaultText(body.password, 'Password');
       // Encrypt instantly — the raw password exists only in this request scope.
       const record = await saveCredential(auth.id, {
         platform,
@@ -3624,7 +3625,8 @@ async function handleApiRequest(req, res) {
       const platform = vaultText(body.platform, 'Platform', true);
       const email = vaultText(body.email, 'Email or phone', true);
       const username = vaultText(body.username, 'Username');
-      const password = vaultText(body.password, 'Password', true);
+      // The password is optional — an account can be tracked without one.
+      const password = vaultText(body.password, 'Password');
       // Re-encrypt the (possibly changed) password.
       const record = await updateCredential(vaultIdFromUrl(req), auth.id, {
         platform,

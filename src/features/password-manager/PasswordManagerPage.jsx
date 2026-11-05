@@ -164,8 +164,8 @@ export default function PasswordManagerPage() {
   const handleSave = async (e) => {
     e.preventDefault();
     const row = rows[0];
-    if (!platform.trim() || !row.email.trim() || !row.password) {
-      setError('Platform, Email/Phone and Password are all required.');
+    if (!platform.trim() || !row.email.trim()) {
+      setError('Platform and Email/Phone are required.');
       return;
     }
     setError('');
@@ -201,8 +201,8 @@ export default function PasswordManagerPage() {
   const handleUpdate = async (e) => {
     e.preventDefault();
     if (!editing) return;
-    if (!editFields.platform.trim() || !editFields.email.trim() || !editFields.password) {
-      setError('Platform, Email/Phone and Password are all required.');
+    if (!editFields.platform.trim() || !editFields.email.trim()) {
+      setError('Platform and Email/Phone are required.');
       return;
     }
     setError('');
@@ -233,6 +233,10 @@ export default function PasswordManagerPage() {
   };
 
   const copyPassword = async (rec) => {
+    if (!rec.password) {
+      flash('No password saved for this account.');
+      return;
+    }
     try {
       await navigator.clipboard.writeText(rec.password || '');
     } catch {
@@ -456,8 +460,7 @@ export default function PasswordManagerPage() {
 
                   <label className="pm-field" htmlFor="pm-add-password-0">
                     <span>
-                      Password <em>*</em>
-                      <span className="pm-gen-tag">one click = strong</span>
+                      Password <small>(optional)</small>
                     </span>
                     <div className="pm-pass-row">
                       <div className="pm-pass-input">
@@ -466,8 +469,7 @@ export default function PasswordManagerPage() {
                           type={row.showPass ? 'text' : 'password'}
                           value={row.password}
                           onChange={(e) => setRows([{ ...row, password: e.target.value }])}
-                          placeholder="••••••••"
-                          required
+                          placeholder="No password saved"
                           autoComplete="new-password"
                         />
                         <button
@@ -599,7 +601,13 @@ export default function PasswordManagerPage() {
                                 <td className="pm-td-email">{rec.email}</td>
                                 <td className="pm-td-username">{rec.username ? `@${rec.username.replace(/^@/, '')}` : <span className="pm-td-empty">—</span>}</td>
                                 <td className="pm-td-pass">
-                                  <span className="pm-pass-text">{revealed ? rec.password : masked(rec.password?.length || 8)}</span>
+                                  <span className="pm-pass-text">
+                                    {!rec.password
+                                      ? <span className="pm-td-empty">—</span>
+                                      : revealed
+                                        ? rec.password
+                                        : masked(rec.password.length)}
+                                  </span>
                                 </td>
                                 <td className="pm-td-strength">
                                   <StrengthRing pct={strength.pct} tone={strength.tone} grade={strength.grade} />
@@ -649,8 +657,7 @@ export default function PasswordManagerPage() {
               </label>
               <label className="pm-field" htmlFor="pm-edit-password">
                 <span>
-                  Password <em>*</em>
-                  <span className="pm-gen-tag">one click = strong</span>
+                  Password <small>(optional)</small>
                 </span>
                 <div className="pm-pass-row">
                   <div className="pm-pass-input">

@@ -52,7 +52,9 @@ export async function saveCredential(userId, { platform, email, username, enc })
   const platformName = String(platform || '').trim();
   if (!platformName) throw new Error('Platform name is required.');
   if (!email || !String(email).trim()) throw new Error('Email or phone is required.');
-  if (!enc?.iv || !enc?.content || !enc?.authTag) throw new Error('Encrypted payload missing.');
+  // An empty password still produces a valid payload: AES-GCM gives an empty
+  // ciphertext plus an auth tag, so only a missing field counts as invalid.
+  if (!enc?.iv || enc?.content == null || !enc?.authTag) throw new Error('Encrypted payload missing.');
 
   const stored = {
     iv: String(enc.iv),
@@ -103,7 +105,9 @@ export async function updateCredential(id, userId, { platform, email, username, 
   const platformName = String(platform || '').trim();
   if (!platformName) throw new Error('Platform name is required.');
   if (!email || !String(email).trim()) throw new Error('Email or phone is required.');
-  if (!enc?.iv || !enc?.content || !enc?.authTag) throw new Error('Encrypted payload missing.');
+  // An empty password still produces a valid payload: AES-GCM gives an empty
+  // ciphertext plus an auth tag, so only a missing field counts as invalid.
+  if (!enc?.iv || enc?.content == null || !enc?.authTag) throw new Error('Encrypted payload missing.');
 
   const stored = {
     iv: String(enc.iv),

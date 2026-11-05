@@ -54,6 +54,8 @@ export function serialize(enc) {
 /** Parse a stored string back into { iv, content, authTag }. */
 export function parse(serialized) {
   const [iv, content, authTag] = String(serialized).split(':');
-  if (!iv || !content || !authTag) throw new Error('Malformed encrypted credential.');
+  // `content` may legitimately be empty — AES-GCM of an empty password keeps
+  // the auth tag but no ciphertext.
+  if (!iv || content == null || !authTag) throw new Error('Malformed encrypted credential.');
   return { iv, content, authTag };
 }
