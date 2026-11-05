@@ -43,6 +43,79 @@ function CatSelect({ value, onChange, className = '' }) {
   );
 }
 
+function CategoryPieChart({ cats, activeId, onHover }) {
+  const total = useMemo(() => cats.reduce((s, c) => s + c.total, 0), [cats]);
+  if (!total) return null;
+
+  const R = 44;
+  const r = 24;
+
+  let acc = 0;
+  const slices = cats.map(c => {
+    const startAngle = (acc / total) * 360;
+    acc += c.total;
+    const endAngle = (acc / total) * 360;
+    return { ...c, startAngle, endAngle };
+  });
+
+  const activeCat = cats.find(c => c.id === activeId);
+
+  return (
+    <div className="tgk-pie-wrap">
+      <div className="tgk-pie-chart">
+        <svg viewBox="0 0 100 100" className="tgk-pie-svg">
+          {cats.length === 1 ? (
+            <circle cx="50" cy="50" r={R} fill={cats[0].color} stroke="var(--bg-card)" strokeWidth="2" />
+          ) : (
+            slices.map(s => {
+              const span = s.endAngle - s.startAngle;
+              if (span >= 359.9) {
+                return <circle key={s.id} cx="50" cy="50" r={R} fill={s.color} />;
+              }
+              const a1 = ((s.startAngle - 90) * Math.PI) / 180;
+              const a2 = ((s.endAngle - 90) * Math.PI) / 180;
+              const x1 = 50 + R * Math.cos(a1);
+              const y1 = 50 + R * Math.sin(a1);
+              const x2 = 50 + R * Math.cos(a2);
+              const y2 = 50 + R * Math.sin(a2);
+              const x3 = 50 + r * Math.cos(a2);
+              const y3 = 50 + r * Math.sin(a2);
+              const x4 = 50 + r * Math.cos(a1);
+              const y4 = 50 + r * Math.sin(a1);
+              const large = span > 180 ? 1 : 0;
+              const d = `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${R} ${R} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} L ${x3.toFixed(2)} ${y3.toFixed(2)} A ${r} ${r} 0 ${large} 0 ${x4.toFixed(2)} ${y4.toFixed(2)} Z`;
+              const isSelected = activeId === s.id;
+
+              return (
+                <path
+                  key={s.id}
+                  d={d}
+                  fill={s.color}
+                  stroke="var(--bg-card)"
+                  strokeWidth="2"
+                  className={`tgk-pie-slice${isSelected ? ' is-active' : ''}`}
+                  onMouseEnter={() => onHover?.(s.id)}
+                  onMouseLeave={() => onHover?.(null)}
+                >
+                  <title>{`${s.label}: ${fmtMoney(s.total)} (${s.pct}%)`}</title>
+                </path>
+              );
+            })
+          )}
+        </svg>
+        <div className="tgk-pie-center">
+          <span className="tgk-pie-center-val">
+            {activeCat ? fmtMoney(activeCat.total) : fmtMoney(total)}
+          </span>
+          <span className="tgk-pie-center-lbl">
+            {activeCat ? activeCat.label : 'Total'}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function MoneyTrackerPage() {
   const [doc, update] = useTakaGeloKoi();
 
@@ -117,12 +190,13 @@ export default function MoneyTrackerPage() {
     ? 'var(--border-primary)'
     : isOverBudget
       ? 'var(--accent-rose)'
-      : budgetUsed >= 80
-        ? 'var(--accent-amber)'
-        : 'var(--accent-emerald)';
+      : budgetUsed >= 85
+        ? 'var(--accent-rose)'
+        : 'var(--accent-amber)';
 
   const cats = useMemo(() => catTotals(doc), [doc]);
   const recent = useMemo(() => recentDaily(doc, 6), [doc]);
+  const [hoveredCatId, setHoveredCatId] = useState(null);
 
   /* ── Budget inline edit ── */
   const [budgetEditing, setBudgetEditing] = useState(false);
@@ -139,23 +213,30 @@ export default function MoneyTrackerPage() {
     setBudgetEditing(false);
   };
 
-  /* ── Fixed expenses form state ── */
+  /* ── Fixed expenses modal state ── */
+  const [fixedModal, setFixedModal] = useState(false);
   const [fixedName, setFixedName] = useState('');
   const [fixedAmt, setFixedAmt] = useState('');
   const [fixedNote, setFixedNote] = useState('');
   const [fixedCat, setFixedCat] = useState('bills');
 
-  /* ── Day modal ── */
+  /* ── Day modal state ── */
   const [dayModal, setDayModal] = useState(null);
   const [dayTitle, setDayTitle] = useState('');
   const [dayAmt, setDayAmt] = useState('');
   const [dayNote, setDayNote] = useState('');
   const [dayCat, setDayCat] = useState('food');
 
+  const openFixedModal = () => {
+    setFixedName(''); setFixedAmt(''); setFixedNote(''); setFixedCat('bills');
+    setFixedModal(true);
+  };
+
   const handleAddFixed = () => {
     if (!fixedName.trim() || !fixedAmt) return;
     update(d => addFixed(d, { title: fixedName, amount: fixedAmt, note: fixedNote, cat: fixedCat }));
     setFixedName(''); setFixedAmt(''); setFixedNote(''); setFixedCat('bills');
+    setFixedModal(false);
   };
 
   const openDay = (key) => {
@@ -205,7 +286,7 @@ export default function MoneyTrackerPage() {
           <i
             style={{
               width: `${pct}%`,
-              background: isExceed ? 'var(--accent-rose)' : 'var(--accent-emerald)',
+              background: isExceed ? 'var(--accent-rose)' : 'var(--accent-amber)',
             }}
           />
         </span>
@@ -301,7 +382,7 @@ export default function MoneyTrackerPage() {
                   ? 'var(--accent-rose)'
                   : budgetUsed >= 80
                     ? 'linear-gradient(90deg, var(--accent-amber), var(--accent-rose))'
-                    : 'linear-gradient(90deg, var(--accent-emerald), var(--accent-amber))',
+                    : 'var(--accent-amber)',
               }}
             />
           </div>
@@ -328,7 +409,7 @@ export default function MoneyTrackerPage() {
               <span
                 style={{
                   width: `${todayPct}%`,
-                  background: todayExceeds ? 'var(--accent-rose)' : 'var(--accent-emerald)',
+                  background: todayExceeds ? 'var(--accent-rose)' : 'var(--accent-amber)',
                 }}
               />
             </div>
@@ -342,7 +423,7 @@ export default function MoneyTrackerPage() {
           ════════════════════════════════════════ */}
       <div className="tgk-kpis">
         <div className="tgk-kpi">
-          <div className={`tgk-kpi-icon ${isOverBudget ? 'rose' : 'green'}`}><Wallet size={15} /></div>
+          <div className={`tgk-kpi-icon ${isOverBudget ? 'rose' : 'amber'}`}><Wallet size={15} /></div>
           <div className="tgk-kpi-body">
             <span className={`tgk-kpi-value${isOverBudget ? ' is-over' : ' is-ok'}`}>{fmtMoney(rem)}</span>
             <span className="tgk-kpi-label">Remaining</span>
@@ -370,7 +451,7 @@ export default function MoneyTrackerPage() {
           </div>
         </div>
         <div className="tgk-kpi">
-          <div className={`tgk-kpi-icon ${isOverBudget ? 'rose' : 'green'}`}><BarChart2 size={15} /></div>
+          <div className={`tgk-kpi-icon ${isOverBudget ? 'rose' : 'amber'}`}><BarChart2 size={15} /></div>
           <div className="tgk-kpi-body">
             <span className="tgk-kpi-value">{fmtMoney(avgPerDay)}</span>
             <span className="tgk-kpi-label">Avg / day</span>
@@ -472,7 +553,7 @@ export default function MoneyTrackerPage() {
                   <span className="tgk-day-track tgk-day-track-lg">
                     <i style={{
                       width: `${Math.min(100, Math.round((spent / Math.max(1, limitForDay)) * 100))}%`,
-                      background: isExceed ? 'var(--accent-rose)' : 'var(--accent-emerald)',
+                      background: isExceed ? 'var(--accent-rose)' : 'var(--accent-amber)',
                     }} />
                   </span>
                 )}
@@ -517,22 +598,30 @@ export default function MoneyTrackerPage() {
             {cats.length === 0 ? (
               <p className="tgk-empty-hint">No expenses yet — categories will show up here.</p>
             ) : (
-              <div className="tgk-cat-list">
-                {cats.map(c => (
-                  <div key={c.id} className="tgk-cat-row">
-                    <div className="tgk-cat-row-top">
-                      <span className="tgk-cat-name"><CatDot id={c.id} /> {c.label}</span>
-                      <span className="tgk-cat-amt">
-                        {fmtMoney(c.total)}
-                        <em className="tgk-cat-pct">{c.pct}%</em>
-                      </span>
+              <>
+                <CategoryPieChart cats={cats} activeId={hoveredCatId} onHover={setHoveredCatId} />
+                <div className="tgk-cat-list">
+                  {cats.map(c => (
+                    <div
+                      key={c.id}
+                      className={`tgk-cat-row${hoveredCatId === c.id ? ' is-hovered' : ''}`}
+                      onMouseEnter={() => setHoveredCatId(c.id)}
+                      onMouseLeave={() => setHoveredCatId(null)}
+                    >
+                      <div className="tgk-cat-row-top">
+                        <span className="tgk-cat-name"><CatDot id={c.id} /> {c.label}</span>
+                        <span className="tgk-cat-amt">
+                          {fmtMoney(c.total)}
+                          <em className="tgk-cat-pct">{c.pct}%</em>
+                        </span>
+                      </div>
+                      <div className="tgk-cat-track">
+                        <span style={{ width: `${c.pct}%`, background: c.color }} />
+                      </div>
                     </div>
-                    <div className="tgk-cat-track">
-                      <span style={{ width: `${c.pct}%`, background: c.color }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
 
@@ -573,48 +662,21 @@ export default function MoneyTrackerPage() {
 
           {/* Fixed expenses */}
           <div className="tgk-card tgk-form-panel">
-            <h4 className="tgk-card-title"><Home size={14} /> Fixed expenses</h4>
-
-            <div className="tgk-form-row">
-              <input
-                className="input"
-                value={fixedName}
-                onChange={e => setFixedName(e.target.value)}
-                placeholder="Title — e.g. Home Rent"
-                style={{ flex: '2 1 140px' }}
-              />
-              <input
-                className="input tgk-amt"
-                type="number"
-                value={fixedAmt}
-                onChange={e => setFixedAmt(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAddFixed()}
-                placeholder="Amount"
-                style={{ flex: '1 1 90px' }}
-              />
+            <div className="tgk-card-head-row">
+              <h4 className="tgk-card-title"><Home size={14} /> Fixed expenses</h4>
+              <button
+                type="button"
+                className="tgk-add-icon-btn"
+                onClick={openFixedModal}
+                title="Add fixed expense"
+                aria-label="Add fixed expense"
+              >
+                <Plus size={14} />
+              </button>
             </div>
-            <div className="tgk-form-row">
-              <CatSelect value={fixedCat} onChange={setFixedCat} className="tgk-select-grow" />
-              <input
-                className="input"
-                value={fixedNote}
-                onChange={e => setFixedNote(e.target.value)}
-                placeholder="Note (optional)"
-                style={{ flex: '2 1 130px' }}
-              />
-            </div>
-            <button
-              type="button"
-              className="btn btn-primary btn-sm tgk-add-btn"
-              onClick={handleAddFixed}
-              disabled={!fixedName.trim() || !fixedAmt}
-            >
-              <Plus size={13} /> Add fixed expense
-            </button>
-            <div className="tgk-form-spacer" />
 
             {doc.fixed.length === 0 ? (
-              <p className="tgk-empty-hint">No fixed expenses yet — add rent, wifi, subscriptions…</p>
+              <p className="tgk-empty-hint">No fixed expenses yet — click + to add rent, wifi, subscriptions…</p>
             ) : (
               <div className="tgk-expense-list">
                 {doc.fixed.map(f => (
@@ -761,6 +823,78 @@ export default function MoneyTrackerPage() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════
+          FIXED EXPENSE MODAL
+          ════════════════════════════════════════ */}
+      {fixedModal && (
+        <div className="modal-overlay" onClick={() => setFixedModal(false)}>
+          <div className="modal tgk-modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Add fixed expense">
+            <div className="tgk-modal-head">
+              <span className="tgk-modal-title">
+                <Home size={13} /> Add fixed expense
+              </span>
+              <button
+                type="button"
+                className="tgk-modal-close"
+                onClick={() => setFixedModal(false)}
+                aria-label="Close"
+              >
+                <X size={12} />
+              </button>
+            </div>
+
+            <div className="tgk-form-row">
+              <input
+                className="input"
+                value={fixedName}
+                onChange={e => setFixedName(e.target.value)}
+                placeholder="Title — e.g. Home Rent"
+                style={{ flex: '2 1 140px' }}
+                autoFocus
+              />
+              <input
+                className="input tgk-amt"
+                type="number"
+                value={fixedAmt}
+                onChange={e => setFixedAmt(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAddFixed()}
+                placeholder="Amount"
+                style={{ flex: '1 1 90px' }}
+              />
+            </div>
+            <div className="tgk-form-row">
+              <CatSelect value={fixedCat} onChange={setFixedCat} className="tgk-select-grow" />
+              <input
+                className="input"
+                value={fixedNote}
+                onChange={e => setFixedNote(e.target.value)}
+                placeholder="Note (optional)"
+                style={{ flex: '2 1 130px' }}
+              />
+            </div>
+            <div className="tgk-form-row">
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={handleAddFixed}
+                disabled={!fixedName.trim() || !fixedAmt}
+                style={{ flex: 1 }}
+              >
+                <Plus size={13} /> Add
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => setFixedModal(false)}
+                style={{ flex: 1 }}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

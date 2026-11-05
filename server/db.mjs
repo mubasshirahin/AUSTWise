@@ -159,7 +159,7 @@ CREATE TABLE IF NOT EXISTS "PasswordVault" (
   "EncAuthTag" TEXT         NOT NULL,
   "CreatedAt"  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
   "UpdatedAt"  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-  CONSTRAINT "UQ_PasswordVault_User" UNIQUE ("UserId", "Platform")
+  CONSTRAINT "UQ_PasswordVault_User" UNIQUE ("UserId", "Platform", "Email")
 );
 CREATE INDEX IF NOT EXISTS "IX_PasswordVault_UserId" ON "PasswordVault" ("UserId");
 
@@ -182,6 +182,33 @@ CREATE INDEX IF NOT EXISTS "IX_Invitations_Status" ON "Invitations" ("Status");
 export async function initializeDatabase() {
   await pool.query(TABLE_DDL);
   console.log('✅ Database tables ready (auto-created if missing)');
+
+  // Migration: widen PasswordVault unique constraint to include Email
+  // so multiple accounts per platform are allowed.
+  try {
+    // Check current constraint columns
+    const constraintCheck = await pool.query(`
+      SELECT kcu.column_name
+      FROM information_schema.table_constraints tc
+      JOIN information_schema.key_column_usage kcu
+        ON tc.constraint_name = kcu.constraint_name
+       AND tc.table_name = kcu.table_name
+      WHERE tc.table_name = 'PasswordVault'
+        AND tc.constraint_type = 'UNIQUE'
+        AND tc.constraint_name = 'UQ_PasswordVault_User'
+      ORDER BY kcu.ordinal_position
+    `);
+    const cols = constraintCheck.rows.map(r => r.column_name);
+    const needsMigration = !cols.includes('Email');
+    if (needsMigration) {
+      await pool.query(`ALTER TABLE "PasswordVault" DROP CONSTRAINT IF EXISTS "UQ_PasswordVault_User"`);
+      await pool.query(`ALTER TABLE "PasswordVault" ADD CONSTRAINT "UQ_PasswordVault_User" UNIQUE ("UserId", "Platform", "Email")`);
+      console.log('✅ PasswordVault constraint migrated → (UserId, Platform, Email)');
+    }
+  } catch (err) {
+    console.log('ℹ️ PasswordVault constraint migration skipped:', err.message);
+  }
+
   return true;
 }
 

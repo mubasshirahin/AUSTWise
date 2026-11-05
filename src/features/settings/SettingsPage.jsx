@@ -4,7 +4,7 @@ import QRCode from 'qrcode';
 import { useTheme, getThemeAccent } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useRoutine } from '../../context/RoutineContext';
-import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, ShieldAlert, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, SquareTerminal, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2, Orbit, PawPrint, Palette } from 'lucide-react';
+import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, ShieldAlert, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, SquareTerminal, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2, Orbit, PawPrint, Palette, Sparkles } from 'lucide-react';
 import AboutUs from './AboutUs';
 import LinkedAccountsSection from './LinkedAccountsSection';
 import GliderTabs from '../../components/GliderTabs';
@@ -489,6 +489,22 @@ export default function SettingsPage() {
   const [notifMsg, setNotifMsg] = useState('');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [vacancyMap, setVacancyMap] = useState(null);
+  const [assistiveEnabled, setAssistiveEnabled] = useState(() => {
+    try {
+      return localStorage.getItem('aust-assistive-enabled') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleAssistive = () => {
+    setAssistiveEnabled((prev) => {
+      const next = !prev;
+      localStorage.setItem('aust-assistive-enabled', next ? 'true' : 'false');
+      window.dispatchEvent(new Event('aust-assistive-change'));
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (!isAuthenticated || !user?.id) return;
@@ -1577,6 +1593,34 @@ export default function SettingsPage() {
                         </button>
                       );
                     })}
+                  </div>
+                </div>
+
+                {/* ─── Assistive Touch / Floating Hub Setting ─── */}
+                <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--border-primary)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                      <span style={{ width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)', flexShrink: 0 }}>
+                        <Sparkles size={18} />
+                      </span>
+                      <div>
+                        <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                          Assistive Quick Hub Button
+                        </h4>
+                        <p style={{ margin: '3px 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                          Floating shortcut button on screen with quick jump, theme switcher &amp; expense add.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={assistiveEnabled}
+                      className={`delivery-switch ${assistiveEnabled ? 'is-on' : ''}`}
+                      onClick={toggleAssistive}
+                    >
+                      <span />
+                    </button>
                   </div>
                 </div>
               </div>

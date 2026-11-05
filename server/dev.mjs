@@ -131,6 +131,7 @@ import {
   deleteCredential,
   revealPassword,
 } from './passwordVaultDB.mjs';
+import { encrypt as encryptPassword } from './passwordCrypto.mjs';
 import { createCharge, verifyPayment } from './payment.mjs';
 import { createWSServer, closeWSServer, broadcastToAll, broadcastToUsers, broadcastToUser, getPresenceMap } from './wsServer.mjs';
 import {
@@ -259,6 +260,92 @@ const globalRateLimiter = rateLimit({
   windowMs: 60_000,
   max: Number(process.env.RATE_LIMIT_GLOBAL_MAX) || 600,
 });
+
+// ── Password Vault guards ────────────────────────────────────────────────────
+// The vault holds private per-user data, so it carries its own defences on top
+// of the JWT check:
+//   • only real accounts (never guest / banned) may touch a vault
+//   • a per-account rate limit, so a stolen session cannot loop the whole vault
+//   • a same-origin check on writes, because the production auth cookie is
+//     SameSite=None — otherwise a third-party page could replay a write with
+//     the victim's cookie attached
+//   • no-store headers, so decrypted passwords never reach a browser or proxy
+//     cache
+// Read/write budget per user is RATE_LIMIT_VAULT_MAX requests per minute.
+const VAULT_ROLES = [
+  'student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior',
+  'vp', 'gs', 'bus_coordinator', 'clubs_representative', 'help_desk',
+];
+const VAULT_BODY_LIMIT = 8 * 1024; // one credential is a few hundred bytes
+const VAULT_FIELD_LIMIT = 512;     // platform / email / username / password
+const VAULT_ID_PATH = /^\/api\/passwords\/([A-Za-z0-9][A-Za-z0-9-]{0,63})$/;
+const VAULT_RESERVED_IDS = new Set(['save', 'list']);
+
+const vaultRateLimiter = rateLimit({
+  windowMs: 60_000,
+  max: Number(process.env.RATE_LIMIT_VAULT_MAX) || 120,
+  keyFn: (req) => `vault:${readTokenCookie(req)?.id || req.socket?.remoteAddress || 'anon'}`,
+});
+
+/** Extract a validated credential id from /api/passwords/:id, else null. */
+function vaultIdFromUrl(req) {
+  try {
+    const match = VAULT_ID_PATH.exec(new URL(req.url, 'http://localhost').pathname);
+    if (!match) return null;
+    return VAULT_RESERVED_IDS.has(match[1].toLowerCase()) ? null : match[1];
+  } catch {
+    return null;
+  }
+}
+
+/** True when a state-changing request came from this site (CSRF guard). */
+function isSameOriginRequest(req) {
+  const source = req.headers.origin || req.headers.referer;
+  if (!source) return true; // scripts/same-origin fetches may omit it; no cookie, no access
+  const allowed = [req.headers.host, process.env.PUBLIC_BASE_URL]
+    .filter(Boolean)
+    .map((entry) => String(entry).replace(/^https?:\/\//i, '').replace(/\/+$/, ''));
+  try {
+    return allowed.includes(new URL(source).host);
+  } catch {
+    return false;
+  }
+}
+
+/** Trimmed, length-capped field. Throws a user-safe error when invalid. */
+function vaultText(value, label, required = false) {
+  const text = value == null ? '' : String(value).trim();
+  if (required && !text) {
+    const err = new Error(`${label} is required.`);
+    err.expose = true;
+    throw err;
+  }
+  if (text.length > VAULT_FIELD_LIMIT) {
+    const err = new Error(`${label} is too long (max ${VAULT_FIELD_LIMIT} characters).`);
+    err.expose = true;
+    throw err;
+  }
+  return text;
+}
+
+/** Shared gate for every /api/passwords route → JWT payload, or null if blocked. */
+function vaultGuard(req, res) {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+
+  const auth = requireRole(...VAULT_ROLES)(req, res);
+  if (!auth) return null;
+
+  if (!vaultRateLimiter(req, res)) return null;
+
+  if (req.method !== 'GET' && !isSameOriginRequest(req)) {
+    sendJson(res, 403, { success: false, error: 'Request blocked: origin mismatch.' });
+    return null;
+  }
+
+  return auth;
+}
 // Cover stats specific limiters — prevent spam inflating uniqueUsers/totalPdf
 const coverTrackLimiter = rateLimit({
   windowMs: 60_000,
@@ -3474,32 +3561,42 @@ async function handleApiRequest(req, res) {
   }
 
   // ========== Password Vault (Daily Life — Password Manager) ==========
-  // All endpoints require login. Credentials are scoped per-user via auth.id
-  // and stored AES-256-GCM encrypted — plaintext is never persisted or logged.
+  // Private per-user data. vaultGuard() enforces, in order: no-store headers,
+  // an authenticated non-guest session, a per-account rate limit, and — for
+  // writes — a same-origin check. Ownership always comes from auth.id (the JWT),
+  // never from an id supplied by the client.
 
   // POST /api/passwords/save — encrypt + store a credential.
   if (req.url === '/api/passwords/save' && req.method === 'POST') {
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    const auth = vaultGuard(req, res);
     if (!auth) return;
     try {
-      const { platform, email, username, password } = await readJsonBody(req);
-      if (!password || !String(password)) {
-        sendJson(res, 400, { success: false, error: 'Password is required.' });
-        return;
-      }
+      const body = await readJsonBody(req, VAULT_BODY_LIMIT);
+      const platform = vaultText(body.platform, 'Platform', true);
+      const email = vaultText(body.email, 'Email or phone', true);
+      const username = vaultText(body.username, 'Username');
+      const password = vaultText(body.password, 'Password', true);
       // Encrypt instantly — the raw password exists only in this request scope.
-      const enc = (await import('./passwordCrypto.mjs')).encrypt(String(password));
-      const record = await saveCredential(auth.id, { platform, email, username, enc });
+      const record = await saveCredential(auth.id, {
+        platform,
+        email,
+        username,
+        enc: encryptPassword(password),
+      });
       sendJson(res, 201, { success: true, credential: record });
     } catch (error) {
-      sendJson(res, 400, { success: false, error: error.message || 'Failed to save credential.' });
+      if (!error.expose) console.error('[vault] save failed:', error.message);
+      sendJson(res, error.expose ? 400 : 500, {
+        success: false,
+        error: error.expose ? error.message : 'Could not save the credential.',
+      });
     }
     return;
   }
 
-  // GET /api/passwords/list — fetch user's credentials, decrypt in-memory.
+  // GET /api/passwords/list — fetch the caller's credentials, decrypt in-memory.
   if (req.url === '/api/passwords/list' && req.method === 'GET') {
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    const auth = vaultGuard(req, res);
     if (!auth) return;
     try {
       const records = await listCredentials(auth.id);
@@ -3512,50 +3609,58 @@ async function handleApiRequest(req, res) {
       });
       sendJson(res, 200, { success: true, credentials });
     } catch (error) {
-      sendJson(res, 500, { success: false, error: error.message || 'Failed to load credentials.' });
+      console.error('[vault] list failed:', error.message);
+      sendJson(res, 500, { success: false, error: 'Could not load your vault.' });
     }
     return;
   }
 
   // PUT /api/passwords/:id — update a credential (ownership enforced).
-  if (req.url.startsWith('/api/passwords/') && req.method === 'PUT') {
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+  if (req.method === 'PUT' && vaultIdFromUrl(req)) {
+    const auth = vaultGuard(req, res);
     if (!auth) return;
     try {
-      const id = new URL(req.url, `http://${req.headers.host}`).pathname.split('/').pop();
-      const { platform, email, username, password } = await readJsonBody(req);
-      if (!password || !String(password)) {
-        sendJson(res, 400, { success: false, error: 'Password is required.' });
-        return;
-      }
+      const body = await readJsonBody(req, VAULT_BODY_LIMIT);
+      const platform = vaultText(body.platform, 'Platform', true);
+      const email = vaultText(body.email, 'Email or phone', true);
+      const username = vaultText(body.username, 'Username');
+      const password = vaultText(body.password, 'Password', true);
       // Re-encrypt the (possibly changed) password.
-      const enc = (await import('./passwordCrypto.mjs')).encrypt(String(password));
-      const record = await updateCredential(id, auth.id, { platform, email, username, enc });
+      const record = await updateCredential(vaultIdFromUrl(req), auth.id, {
+        platform,
+        email,
+        username,
+        enc: encryptPassword(password),
+      });
       if (!record) {
         sendJson(res, 404, { success: false, error: 'Credential not found.' });
         return;
       }
       sendJson(res, 200, { success: true, credential: record });
     } catch (error) {
-      sendJson(res, 400, { success: false, error: error.message || 'Failed to update credential.' });
+      if (!error.expose) console.error('[vault] update failed:', error.message);
+      sendJson(res, error.expose ? 400 : 500, {
+        success: false,
+        error: error.expose ? error.message : 'Could not update the credential.',
+      });
     }
     return;
   }
 
   // DELETE /api/passwords/:id — remove a credential (ownership enforced).
-  if (req.url.startsWith('/api/passwords/') && req.method === 'DELETE') {
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+  if (req.method === 'DELETE' && vaultIdFromUrl(req)) {
+    const auth = vaultGuard(req, res);
     if (!auth) return;
     try {
-      const id = new URL(req.url, `http://${req.headers.host}`).pathname.split('/').pop();
-      const deleted = await deleteCredential(id, auth.id);
+      const deleted = await deleteCredential(vaultIdFromUrl(req), auth.id);
       if (!deleted) {
         sendJson(res, 404, { success: false, error: 'Credential not found.' });
         return;
       }
       sendJson(res, 200, { success: true });
     } catch (error) {
-      sendJson(res, 500, { success: false, error: error.message || 'Failed to delete credential.' });
+      console.error('[vault] delete failed:', error.message);
+      sendJson(res, 500, { success: false, error: 'Could not delete the credential.' });
     }
     return;
   }

@@ -32,6 +32,7 @@ const PricingPage = lazy(() => import('./pages/PricingPage'));
 const AboutUsPage = lazy(() => import('./pages/AboutUsPage'));
 const NotificationRunner = lazy(() => import('./components/NotificationRunner'));
 const FloatingBackground = lazy(() => import('./components/FloatingBackground'));
+const AssistiveWidget = lazy(() => import('./components/AssistiveWidget'));
 const ActiveMembersSidebar = lazy(() => import('./features/active-members/ActiveMembersSidebar'));
 const MemberProfilePage = lazy(() => import('./features/active-members/MemberProfilePage'));
 
@@ -487,6 +488,12 @@ function App() {
         <AuthProvider>
           <PomodoroProvider>
             <AppShell />
+            {/* Messenger-style chat head. Mounted here — outside AppShell's
+                auth/layout branches — so it floats on every screen: landing
+                page, auth screens, the full app, desktop and mobile alike. */}
+            <Suspense fallback={null}>
+              <AssistiveWidget />
+            </Suspense>
           </PomodoroProvider>
         </AuthProvider>
       </ThemeProvider>

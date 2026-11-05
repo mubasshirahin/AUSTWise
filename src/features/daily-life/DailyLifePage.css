@@ -14,9 +14,9 @@
   padding-bottom: var(--sp-10);
 }
 
-/* Cover Page Generator tab — wide editor so the live preview can show the
-   cover at its full page size instead of a small letterboxed box. */
-.daily-life-page:has(.cpgen-widget) {
+/* Cover Page Generator & TakaGeloKoi tabs — wide editor / dashboard layout */
+.daily-life-page:has(.cpgen-widget),
+.daily-life-page:has(.tgk-widget) {
   max-width: 1440px;
 }
 

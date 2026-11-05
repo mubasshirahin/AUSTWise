@@ -46,7 +46,7 @@ function toDto(row) {
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
-/** Insert or update a credential. `enc` is { iv, content, authTag }. */
+/** Always inserts a new credential row. `enc` is { iv, content, authTag }. */
 export async function saveCredential(userId, { platform, email, username, enc }) {
   if (!userId) throw new Error('userId is required.');
   const platformName = String(platform || '').trim();
@@ -62,61 +62,26 @@ export async function saveCredential(userId, { platform, email, username, enc })
 
   // PostgreSQL path
   if (useDb) {
-    const existing = await query(
-      'SELECT "Id" FROM "PasswordVault" WHERE "UserId" = @userId AND "Platform" = @platform LIMIT 1',
-      { userId: { value: userId }, platform: { value: platformName } }
-    );
-    if (existing.recordset.length > 0) {
-      const result = await query(
-        `UPDATE "PasswordVault"
-           SET "Email" = @email, "Username" = @username,
-               "EncIv" = @iv, "EncContent" = @content, "EncAuthTag" = @authTag,
-               "UpdatedAt" = NOW()
-           WHERE "Id" = @id
-           RETURNING *`,
-        {
-          email: { value: String(email).trim() },
-          username: { value: String(username || '').trim() || null },
-          iv: { value: stored.iv },
-          content: { value: stored.content },
-          authTag: { value: stored.authTag },
-          id: { value: existing.recordset[0].Id },
-        }
-      );
-      return toDto(result.recordset[0]);
-    }
     const result = await query(
       `INSERT INTO "PasswordVault" ("UserId", "Platform", "Email", "Username", "EncIv", "EncContent", "EncAuthTag")
          VALUES (@userId, @platform, @email, @username, @iv, @content, @authTag)
        RETURNING *`,
       {
-        userId: { value: userId },
+        userId:   { value: userId },
         platform: { value: platformName },
-        email: { value: String(email).trim() },
+        email:    { value: String(email).trim() },
         username: { value: String(username || '').trim() || null },
-        iv: { value: stored.iv },
-        content: { value: stored.content },
-        authTag: { value: stored.authTag },
+        iv:       { value: stored.iv },
+        content:  { value: stored.content },
+        authTag:  { value: stored.authTag },
       }
     );
     return toDto(result.recordset[0]);
   }
 
-  // JSON fallback
+  // JSON fallback — always push a new entry
   const list = await readVault();
-  const idx = list.findIndex((c) => c.userId === userId && c.platform === platformName);
   const now = new Date().toISOString();
-  if (idx !== -1) {
-    list[idx] = {
-      ...list[idx],
-      email: String(email).trim(),
-      username: String(username || '').trim(),
-      encPassword: serialize(stored),
-      updatedAt: now,
-    };
-    await writeVault(list);
-    return list[idx];
-  }
   const record = {
     id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
     userId,
