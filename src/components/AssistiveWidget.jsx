@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useTakaGeloKoi, addDaily, todayKey30, fmtMoney } from '../features/money-tracker/takaGeloKoiStorage';
+import brandMark from '../assets/austwise-icon-final.svg';
 import './AssistiveWidget.css';
 
 // The bubble is one fixed element shared by every screen — desktop window,
@@ -47,28 +48,6 @@ export default function AssistiveWidget() {
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
   const [, updateTgk] = useTakaGeloKoi();
-
-  const [enabled, setEnabled] = useState(() => {
-    try {
-      return localStorage.getItem('aust-assistive-enabled') !== 'false';
-    } catch {
-      return true;
-    }
-  });
-
-  useEffect(() => {
-    const onToggle = () => {
-      try {
-        setEnabled(localStorage.getItem('aust-assistive-enabled') !== 'false');
-      } catch { /* ignore */ }
-    };
-    window.addEventListener('storage', onToggle);
-    window.addEventListener('aust-assistive-change', onToggle);
-    return () => {
-      window.removeEventListener('storage', onToggle);
-      window.removeEventListener('aust-assistive-change', onToggle);
-    };
-  }, []);
 
   const [isOpen, setIsOpen] = useState(false);
   const [showQuickExpense, setShowQuickExpense] = useState(false);
@@ -206,8 +185,6 @@ export default function AssistiveWidget() {
 
   const isDark = theme === 'dark' || theme === 'midnight' || theme === 'terminal';
 
-  if (!enabled) return null;
-
   return (
     <>
       {/* Floating assistive bubble */}
@@ -223,7 +200,17 @@ export default function AssistiveWidget() {
         aria-label="Assistive Quick Hub"
       >
         <span className="assistive-bubble-inner">
-          {isOpen ? <X size={20} /> : <Sparkles size={20} />}
+          {isOpen ? (
+            <X size={20} />
+          ) : (
+            <img
+              src={brandMark}
+              alt=""
+              aria-hidden="true"
+              draggable="false"
+              className="assistive-bubble-logo"
+            />
+          )}
         </span>
       </button>
 

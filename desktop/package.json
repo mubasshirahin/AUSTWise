@@ -1,0 +1,13 @@
+{
+  "name": "austwise-desktop-bubble",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AUSTWise floating chat head for the desktop — stays on top of every app.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}

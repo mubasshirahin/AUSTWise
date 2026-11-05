@@ -1,0 +1,15 @@
+.gradle/
+build/
+app/build/
+local.properties
+
+# Project-local JDK + Android SDK used for command-line builds
+.tooling/
+
+# Build artefacts
+*.apk
+*.aab
+*.iml
+.idea/
+captures/
+.DS_Store

@@ -56,12 +56,26 @@
   width: 100%;
   height: 100%;
   border-radius: 50%;
+  overflow: hidden;
   color: var(--accent-amber);
   transition: transform 0.25s ease;
 }
 
-.assistive-bubble:hover .assistive-bubble-inner {
-  transform: rotate(15deg);
+/* AUSTWise brand mark (same asset as the navbar logo) fills the chat head. */
+.assistive-bubble-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* The logo reads as a badge — scale it instead of spinning it on hover. */
+.assistive-bubble:hover .assistive-bubble-logo {
+  transform: scale(1.04);
 }
 
 /* ── Overlay Backing ── */

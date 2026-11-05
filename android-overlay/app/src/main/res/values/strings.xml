@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AUSTWise Bubble</string>
+    <string name="notif_channel_name">Floating bubble</string>
+    <string name="notif_title">AUSTWise bubble is on</string>
+    <string name="notif_text">Tap to open AUSTWise · drag the bubble anywhere</string>
+</resources>

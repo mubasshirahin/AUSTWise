@@ -27,14 +27,21 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,svg}'],
+        // html + webmanifest must be precached too, otherwise an offline visit
+        // has JS chunks but no document to boot them.
+        globPatterns: ['**/*.{js,css,svg,html,webmanifest}'],
         globIgnores: ['**/vendor-three*', '**/vendor-pdfgen*', '**/vendor-pdfjs*', '**/vendor-diagram*', '**/vendor-gsap*'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         cleanupOutdatedCaches: true,
-        navigateFallback: null,
+        // Serve the cached app shell for every SPA route while offline.
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api\//, /^\/__dev\//, /^\/socket\.io\//],
         runtimeCaching: [
           { urlPattern: /^https:\/\/cdnjs\.cloudflare\.com\/.*/i, handler: 'CacheFirst', options: { cacheName: 'cdnjs-cache', expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 30 } } },
           { urlPattern: /\/assets\/vendor-(three|pdfgen|pdfjs|diagram|gsap)-.*/i, handler: 'CacheFirst', options: { cacheName: 'heavy-vendor', expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 30 } } },
+          // Brand icons, screenshots and webfonts: cached on first view so they
+          // still render when the device is offline.
+          { urlPattern: /\.(png|jpe?g|webp|avif|woff2?|ttf)$/i, handler: 'CacheFirst', options: { cacheName: 'media-assets', expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 } } },
         ],
       },
     }),
