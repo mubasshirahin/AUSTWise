@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Crosshair, Flag, Target, ListChecks } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Crosshair, Flag, Target, ListChecks, CalendarDays, List } from 'lucide-react';
 import { buildTimelineRange, fmtDate, todayKey, goalDisplayNumber, byId } from './lifePlannerStorage';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -30,6 +30,8 @@ export default function TimelineView({ doc, onOpenGoal }) {
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [mode, setMode] = useState('month'); // 'year' | 'month'
+  const [calView, setCalView] = useState('list'); // 'list' | 'calendar'
+  const [selectedDate, setSelectedDate] = useState(today);
 
   // Keep selectedYear inside decade window when decade shifts via arrows
   useEffect(() => {
@@ -93,6 +95,45 @@ export default function TimelineView({ doc, onOpenGoal }) {
     return monthDateKeys(selectedYear, selectedMonth);
   }, [mode, selectedYear, selectedMonth]);
 
+  // Entries by date (whole decade) — for calendar grid dots/counts
+  const byDate = useMemo(() => {
+    const map = new Map();
+    for (const e of allEntries) {
+      if (!map.has(e.date)) map.set(e.date, []);
+      map.get(e.date).push(e);
+    }
+    return map;
+  }, [allEntries]);
+
+  const msList = useMemo(
+    () => doc.goals.filter((g) => (g.types || []).includes('milestone')).sort((a, b) => (a.order || 0) - (b.order || 0)),
+    [doc.goals]
+  );
+
+  // Keep selectedDate inside the visible period (calendar day panel)
+  useEffect(() => {
+    const y = Number(selectedDate.slice(0, 4));
+    const mo = Number(selectedDate.slice(5, 7)) - 1;
+    if (mode === 'month' && (y !== selectedYear || mo !== selectedMonth)) {
+      const inMonth = today.startsWith(`${selectedYear}-${pad2(selectedMonth + 1)}`);
+      setSelectedDate(inMonth ? today : `${selectedYear}-${pad2(selectedMonth + 1)}-01`);
+    } else if (mode === 'year' && y !== selectedYear) {
+      setSelectedDate(today.startsWith(`${selectedYear}-`) ? today : `${selectedYear}-01-01`);
+    }
+  }, [mode, selectedYear, selectedMonth, selectedDate, today]);
+
+  // ── Calendar grid cells (week starts Friday, matching the app schedule) ──
+  const calCells = useMemo(() => {
+    const firstDow = new Date(selectedYear, selectedMonth, 1).getDay(); // 0=Sun..6=Sat
+    const offset = (firstDow - 5 + 7) % 7; // Friday=5 first
+    const days = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+    const cells = Array.from({ length: offset }, () => null);
+    for (let d = 1; d <= days; d++) cells.push(`${selectedYear}-${pad2(selectedMonth + 1)}-${pad2(d)}`);
+    while (cells.length % 7 !== 0) cells.push(null);
+    return cells;
+  }, [selectedYear, selectedMonth]);
+  const selectedEntries = byDate.get(selectedDate) || [];
+
   // ── Scrollable timeline — only inner scrolls, today centered ──
   const timelineRef = useRef(null);
   const [showTodayFab, setShowTodayFab] = useState(false);
@@ -138,6 +179,61 @@ export default function TimelineView({ doc, onOpenGoal }) {
     return () => { sc.removeEventListener('scroll', check); ro.disconnect(); clearInterval(id); };
   }, [allDateKeys, today]);
 
+  // ── Shared entry row (list view + calendar day panel) ──
+  const renderEntry = (e, i) => {
+    const milestone = e.milestone || null;
+    const goal = e.goal || null;
+    const task = e.task || null;
+    const msIdx = milestone ? msList.findIndex((x) => x.id === milestone.id) : -1;
+    const open = () => goal && onOpenGoal(goal.id, { taskId: task?.id || null, stepId: e.step?.id || null, milestoneId: milestone?.id || null });
+    return (
+      <div key={`${e.date}-${e.kind}-${i}`} className="lp-tl-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 0 }}>
+        <div className="lp-tl-label" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          {e.recurring && <span className="lp-badge lp-badge-amber" style={{ fontSize: 9 }}>Recurring</span>}
+          {e.kind === 'goal' && <span className="lp-badge lp-badge-purple" style={{ fontSize: 9 }}>Goal deadline</span>}
+          {e.kind === 'milestone' && <span className="lp-badge lp-badge-purple" style={{ fontSize: 9 }}>Milestone deadline</span>}
+          {e.kind === 'task' && !e.recurring && <span className="lp-badge lp-badge-amber" style={{ fontSize: 9 }}>Task</span>}
+          {e.kind === 'step' && !e.recurring && <span className="lp-badge lp-badge-emerald" style={{ fontSize: 9 }}>Step</span>}
+          <span
+            role={goal ? 'button' : undefined}
+            tabIndex={goal ? 0 : undefined}
+            title={goal ? 'Open in Goals' : undefined}
+            style={{ cursor: goal ? 'pointer' : 'default', textDecoration: goal ? 'underline dotted' : 'none', textUnderlineOffset: 3, fontSize: 13 }}
+            onClick={open}
+            onKeyDown={(ev) => { if ((ev.key === 'Enter' || ev.key === ' ') && goal) { ev.preventDefault(); open(); } }}
+          >
+            {e.kind === 'task' ? <strong>{e.label}</strong> : e.label}
+          </span>
+          {e.done && <span className="lp-badge lp-badge-emerald" style={{ fontSize: 9 }}>Done</span>}
+        </div>
+        <div className="lp-tl-entry-footer">
+          {milestone && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--accent-purple)', fontWeight: 600 }}>
+              <Flag size={10} /> Milestone {msIdx >= 0 ? msIdx + 1 : '?'}: {milestone.title}
+            </span>
+          )}
+          {goal && (
+            <>
+              {milestone && <span style={{ opacity: 0.4 }}>›</span>}
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--accent-amber)', fontWeight: 600 }}>
+                <Target size={10} /> Goal G{goalDisplayNumber(doc, goal)}: {goal.title}
+              </span>
+            </>
+          )}
+          {e.kind === 'step' && task && (
+            <>
+              <span style={{ opacity: 0.4 }}>›</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--accent-cyan)', fontWeight: 600 }}>
+                <ListChecks size={10} /> {task.name}
+              </span>
+            </>
+          )}
+          {e.kind === 'step' && <span style={{ color: 'var(--accent-emerald)', fontWeight: 600, fontSize: 10 }}>› Step</span>}
+        </div>
+      </div>
+    );
+  };
+
   const shiftDecade = (dir) => {
     setDecadeStart(s => s + dir * 10);
   };
@@ -172,8 +268,8 @@ export default function TimelineView({ doc, onOpenGoal }) {
         onJumpToday={jumpToToday}
       />
 
-      {/* Filter summary bar */}
-      <div className="lp-tl-summary">
+      {/* Filter summary bar + List/Calendar toggle */}
+      <div className="lp-tl-summary" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <span className="lp-badge lp-badge-cyan" style={{fontSize:11}}>
           {mode === 'year' ? `${selectedYear} • ${filtered.length} items` : `${MONTHS_FULL[selectedMonth]} ${selectedYear} • ${filtered.length} items`}
         </span>
@@ -181,9 +277,76 @@ export default function TimelineView({ doc, onOpenGoal }) {
           <span style={{fontSize:11, color:'var(--text-tertiary)'}}>• Today in view</span>
         )}
         {filtered.some(e=>e.date < today) && <span className="lp-badge lp-badge-rose" style={{fontSize:10}}>Has overdue</span>}
+        <div className="lp-tl-view-toggle" style={{ marginLeft: 'auto' }} role="tablist" aria-label="Timeline view">
+          <button type="button" role="tab" aria-selected={calView === 'list'} className={calView === 'list' ? 'active' : ''} onClick={() => setCalView('list')}>
+            <List size={13} /> List
+          </button>
+          <button type="button" role="tab" aria-selected={calView === 'calendar'} className={calView === 'calendar' ? 'active' : ''} onClick={() => { setMode('month'); setCalView('calendar'); }}>
+            <CalendarDays size={13} /> Calendar
+          </button>
+        </div>
       </div>
 
+      {/* ── Calendar grid view ── */}
+      {calView === 'calendar' && (
+        <div className="lp-cal-wrap">
+          <div className="lp-cal-head" aria-hidden="true">
+            {['Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu'].map((d) => <span key={d}>{d}</span>)}
+          </div>
+          <div className="lp-cal-grid" role="grid" aria-label={`${MONTHS_FULL[selectedMonth]} ${selectedYear} calendar`}>
+            {calCells.map((dateKey, i) => {
+              if (!dateKey) return <div key={`empty-${i}`} className="lp-cal-cell is-empty" />;
+              const dayEntries = byDate.get(dateKey) || [];
+              const dayNum = Number(dateKey.slice(8, 10));
+              const isToday = dateKey === today;
+              const isSel = dateKey === selectedDate;
+              const isOverdue = dateKey < today && dayEntries.some((e) => !e.done);
+              const dots = dayEntries.slice(0, 3);
+              return (
+                <button
+                  key={dateKey}
+                  type="button"
+                  role="gridcell"
+                  aria-selected={isSel}
+                  aria-label={`${fmtDate(dateKey)} — ${dayEntries.length} item${dayEntries.length === 1 ? '' : 's'}`}
+                  className={`lp-cal-cell${isToday ? ' is-today' : ''}${isSel ? ' is-selected' : ''}${isOverdue ? ' is-overdue' : ''}${dayEntries.length ? ' has-items' : ''}`}
+                  onClick={() => setSelectedDate(dateKey)}
+                >
+                  <span className="lp-cal-day">{dayNum}</span>
+                  {dayEntries.length > 0 && (
+                    <span className="lp-cal-dots">
+                      {dots.map((e, di) => <i key={di} className={`lp-cal-dot kind-${e.kind}`} />)}
+                      {dayEntries.length > 3 && <span className="lp-cal-more">+{dayEntries.length - 3}</span>}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <div className="lp-cal-legend" aria-hidden="true">
+            <span><i className="lp-cal-dot kind-task" /> Task</span>
+            <span><i className="lp-cal-dot kind-step" /> Step</span>
+            <span><i className="lp-cal-dot kind-goal" /> Goal</span>
+          </div>
+          <div className="lp-cal-day-panel">
+            <div className="lp-cal-day-title">
+              <CalendarDays size={14} /> {fmtDate(selectedDate)}
+              {selectedDate === today && <span className="lp-badge lp-badge-amber" style={{ marginLeft: 6, fontSize: 9 }}>Today</span>}
+              <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-tertiary)' }}>{selectedEntries.length} item{selectedEntries.length === 1 ? '' : 's'}</span>
+            </div>
+            {selectedEntries.length === 0 ? (
+              <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontStyle: 'italic', padding: '6px 2px' }}>No tasks/steps — empty</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {selectedEntries.map((e, i) => renderEntry(e, i))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Entries — separate scrollable section, only inner scrolls; today centered + Today FAB */}
+      {calView === 'list' && (
       <div style={{ position: 'relative' }}>
         <div ref={timelineRef} className="lp-timeline-scroll">
           <div className="lp-timeline">
@@ -192,7 +355,6 @@ export default function TimelineView({ doc, onOpenGoal }) {
               const isToday = dateKey === today;
               const isOverdue = dateKey < today;
               const isEmpty = entries.length === 0;
-              const msList = doc.goals.filter((g) => (g.types || []).includes('milestone')).sort((a,b)=>(a.order||0)-(b.order||0));
               return (
                 <div key={dateKey} data-date={dateKey}>
                   <div className={`lp-tl-item ${isToday ? '' : isOverdue ? 'overdue' : 'past'}${isEmpty ? ' lp-tl-item--empty' : ''}`}>
@@ -205,56 +367,7 @@ export default function TimelineView({ doc, onOpenGoal }) {
                           <span style={{fontSize:12, color:'var(--text-tertiary)', fontStyle:'italic'}}>No tasks/steps — empty</span>
                         </div>
                       </div>
-                    ) : entries.map((e, i) => {
-                      const milestone = e.milestone || null;
-                      const goal = e.goal || null;
-                      const task = e.task || null;
-                      const msIdx = milestone ? msList.findIndex((x)=>x.id===milestone.id) : -1;
-                      return (
-                      <div key={`${e.date}-${e.kind}-${i}`} className="lp-tl-row" style={{ flexDirection:'column', alignItems:'stretch', gap:0 }}>
-                        <div className="lp-tl-label" style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
-                          {e.recurring && <span className="lp-badge lp-badge-amber" style={{fontSize:9}}>Recurring</span>}
-                          {e.kind==='goal' && <span className="lp-badge lp-badge-purple" style={{fontSize:9}}>Goal deadline</span>}
-                          {e.kind==='milestone' && <span className="lp-badge lp-badge-purple" style={{fontSize:9}}>Milestone deadline</span>}
-                          {e.kind==='task' && !e.recurring && <span className="lp-badge lp-badge-amber" style={{fontSize:9}}>Task</span>}
-                          {e.kind==='step' && !e.recurring && <span className="lp-badge lp-badge-emerald" style={{fontSize:9}}>Step</span>}
-                          <span
-                            role={goal ? 'button' : undefined}
-                            tabIndex={goal ? 0 : undefined}
-                            style={{ cursor: goal ? 'pointer' : 'default', textDecoration: goal ? 'underline dotted' : 'none', textUnderlineOffset:3, fontSize:13 }}
-                            onClick={() => goal && onOpenGoal(goal.id)}
-                            onKeyDown={(ev)=>{ if((ev.key==='Enter'||ev.key===' ')&&goal){ ev.preventDefault(); onOpenGoal(goal.id);} }}
-                          >
-                            {e.kind==='task' ? <strong>{e.label}</strong> : e.label}
-                          </span>
-                          {e.done && <span className="lp-badge lp-badge-emerald" style={{fontSize:9}}>Done</span>}
-                        </div>
-                        <div className="lp-tl-entry-footer">
-                          {milestone && (
-                            <span style={{ display:'inline-flex', alignItems:'center', gap:4, color:'var(--accent-purple)', fontWeight:600 }}>
-                              <Flag size={10} /> Milestone {msIdx>=0?msIdx+1:'?'}: {milestone.title}
-                            </span>
-                          )}
-                          {goal && (
-                            <>
-                              {milestone && <span style={{opacity:0.4}}>›</span>}
-                              <span style={{ display:'inline-flex', alignItems:'center', gap:4, color:'var(--accent-amber)', fontWeight:600 }}>
-                                <Target size={10} /> Goal G{goalDisplayNumber(doc, goal)}: {goal.title}
-                              </span>
-                            </>
-                          )}
-                          {e.kind==='step' && task && (
-                            <>
-                              <span style={{opacity:0.4}}>›</span>
-                              <span style={{ display:'inline-flex', alignItems:'center', gap:4, color:'var(--accent-cyan)', fontWeight:600 }}>
-                                <ListChecks size={10} /> {task.name}
-                              </span>
-                            </>
-                          )}
-                          {e.kind==='step' && <span style={{color:'var(--accent-emerald)', fontWeight:600, fontSize:10}}>› Step</span>}
-                        </div>
-                      </div>
-                    );})}
+                    ) : entries.map((e, i) => renderEntry(e, i))}
                   </div>
                 </div>
               );
@@ -272,6 +385,7 @@ export default function TimelineView({ doc, onOpenGoal }) {
           </button>
         )}
       </div>
+      )}
     </div>
   );
 }

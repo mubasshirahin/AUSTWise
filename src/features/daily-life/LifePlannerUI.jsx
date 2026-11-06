@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Target, CalendarDays } from 'lucide-react';
+import { Target, CalendarDays, LayoutDashboard, BookOpen, Network, CalendarRange } from 'lucide-react';
 
 // ── Date input — always shows dd/mm/yy, stores ISO (yyyy-mm-dd) ──────────────
 
@@ -104,26 +104,30 @@ export function LpDateInput({
 
 export function LpSubnav({ view, onChange }) {
   const views = [
-    { id: 'dashboard', label: 'Dashboard' },
-    { id: 'goals',     label: 'Goals' },
-    { id: 'courses',   label: 'Courses' },
-    { id: 'mindmap',   label: 'Mindmap' },
-    { id: 'timeline',  label: 'Timeline' },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'goals',     label: 'Goals',     icon: Target },
+    { id: 'courses',   label: 'Courses',   icon: BookOpen },
+    { id: 'mindmap',   label: 'Mindmap',   icon: Network },
+    { id: 'timeline',  label: 'Timeline',  icon: CalendarRange },
   ];
   return (
     <div className="lp-subnav" role="tablist" aria-label="Life Planner sections">
-      {views.map((v) => (
-        <button
-          key={v.id}
-          type="button"
-          role="tab"
-          aria-selected={view === v.id}
-          className={`lp-subnav-btn${view === v.id ? ' active' : ''}`}
-          onClick={() => onChange(v.id)}
-        >
-          {v.label}
-        </button>
-      ))}
+      {views.map((v) => {
+        const Icon = v.icon;
+        return (
+          <button
+            key={v.id}
+            type="button"
+            role="tab"
+            aria-selected={view === v.id}
+            className={`lp-subnav-btn${view === v.id ? ' active' : ''}`}
+            onClick={() => onChange(v.id)}
+          >
+            <Icon size={14} strokeWidth={2.1} aria-hidden="true" />
+            <span>{v.label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }

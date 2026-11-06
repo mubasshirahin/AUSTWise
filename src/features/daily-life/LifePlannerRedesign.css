@@ -1,0 +1,118 @@
+/* ═══════════════════════════════════════════════════════════════
+   Life Planner — header, sub-nav and dashboard refresh
+   Loaded after LifePlannerPage.css so these rules win by order.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Heading box: shared .schedule-masthead (LifePlannerPage.css), same as
+   Bhara Koto / TakaGeloKoi — title left, stats center, actions right.
+   The old bespoke .lp-hero styles were removed for consistency. ── */
+
+/* ── Sub-navigation: segmented control with icons ────────────── */
+.lp-subnav {
+  display: flex;
+  gap: 4px;
+  flex-wrap: nowrap;
+  padding: 5px;
+  border-radius: 14px;
+  border: 1px solid var(--border-primary);
+  background: var(--bg-tertiary);
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.lp-subnav::-webkit-scrollbar {
+  display: none;
+}
+
+.lp-subnav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.lp-subnav-btn svg {
+  opacity: 0.8;
+  flex: none;
+}
+
+.lp-subnav-btn:hover {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--bg-card) 70%, transparent);
+}
+
+.lp-subnav-btn:hover svg {
+  opacity: 1;
+}
+
+.lp-subnav-btn.active {
+  color: var(--text-primary);
+  background: var(--bg-card);
+  border-color: color-mix(in srgb, var(--accent-amber) 45%, var(--border-primary));
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+}
+
+.lp-subnav-btn.active svg {
+  color: var(--accent-amber);
+  opacity: 1;
+}
+
+/* ── Dashboard panels ───────────────────────────────────────── */
+.lp-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.lp-panel-head .lp-panel-title {
+  margin: 0;
+}
+
+.lp-panel-head-value {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--accent-amber);
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-overall-bar {
+  margin-bottom: 14px;
+}
+
+/* Stat cards: a touch more air, and a purple tone used by the milestone tile. */
+.lp-stat {
+  border-radius: 16px;
+  padding: 15px 16px;
+}
+
+.lp-stat-icon.purple {
+  background: var(--accent-purple-glow, rgba(139, 92, 246, 0.16));
+  color: var(--accent-purple);
+}
+
+.lp-stat-value {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Responsive (masthead breakpoints live in LifePlannerPage.css,
+   mirroring Bhara Koto) ─────────────────────────────────────────── */
+@media (max-width: 560px) {
+  .lp-subnav-btn {
+    padding: 7px 11px;
+    font-size: 12px;
+  }
+}

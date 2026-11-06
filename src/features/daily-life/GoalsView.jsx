@@ -127,7 +127,7 @@ export default function GoalsView({
 
       {/* Milestone → Goals (direct, no Phase) */}
       {activeMilestoneId && !activeGoalId && (
-        <div className={`lp-panel${openGoalMenuId && milestoneGoals.some((g)=>g.id===openGoalMenuId) ? ' lp-panel--menu-open' : ''}`} style={{ marginTop: 14, transform: 'translateY(-2px)' }}>
+        <div className={`lp-panel${openGoalMenuId && milestoneGoals.some((g)=>g.id===openGoalMenuId) ? ' lp-panel--menu-open' : ''}`} data-milestone-id={activeMilestoneId} style={{ marginTop: 14, transform: 'translateY(-2px)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, marginTop: 8, paddingTop: 4 }}>
             <Flag size={20} style={{ color: 'var(--accent-purple)', flexShrink: 0 }} />
             <h3 style={{ margin: 0, fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2, wordBreak: 'break-word' }}>Milestone {activeMilestone ? milestones.findIndex((m) => m.id === activeMilestone.id) + 1 : ''} : {activeMilestone?.title}</h3>
@@ -198,7 +198,7 @@ export default function GoalsView({
                     const isEditingThisTask = editingTaskId === task.id;
                     const taskIsRecurring = !!task.isRecurring;
                     return (
-                    <div key={task.id} className="lp-task" style={{ borderColor: isActiveTask ? 'var(--accent-amber)' : undefined, borderLeft: taskIsRecurring ? '2px solid var(--accent-amber)' : undefined }}>
+                    <div key={task.id} className="lp-task" data-task-id={task.id} style={{ borderColor: isActiveTask ? 'var(--accent-amber)' : undefined, borderLeft: taskIsRecurring ? '2px solid var(--accent-amber)' : undefined }}>
                       <div style={{ display: 'flex', alignItems: 'stretch' }}>
                         <button type="button" className="lp-task-header" onClick={() => setActiveTaskId(isActiveTask ? null : task.id)} aria-expanded={isActiveTask} style={{ flex: 1 }}>
                           {steps.length === 0 && (
@@ -297,7 +297,7 @@ export default function GoalsView({
                       {isActiveTask && (
                         <div className="lp-task-body">
                           {steps.length === 0 ? <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>No steps yet.</span> : steps.map((s) => (
-                            <div key={s.id} className="lp-step-row" style={{ flexWrap: 'wrap' }}>
+                            <div key={s.id} className="lp-step-row" data-step-id={s.id} style={{ flexWrap: 'wrap' }}>
                               <input type="checkbox" className="lp-step-check" checked={s.isDone} onChange={() => {
                                 if (!s.isDone && activeGoal && goalLocked(doc, activeGoal.id)) {
                                   const depNames = depsOfGoal(doc, activeGoal.id).map((d) => byId(doc.goals, d.dependsOnGoalId)?.title).filter(Boolean).join(', ');
@@ -458,7 +458,7 @@ function GoalCard({
   };
 
   return (
-    <div className={isMenuOpen ? 'goal-row goal-row--menu-open' : 'goal-row'} style={{ display: 'flex', alignItems: 'stretch', gap: 6, flexDirection: 'column' }}>
+    <div className={isMenuOpen ? 'goal-row goal-row--menu-open' : 'goal-row'} data-goal-id={goal.id} style={{ display: 'flex', alignItems: 'stretch', gap: 6, flexDirection: 'column' }}>
       <div style={{ display: 'flex', alignItems: 'stretch', gap: 6, width: '100%' }}>
       {(canMoveUp || canMoveDown) && (
         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2 }}>

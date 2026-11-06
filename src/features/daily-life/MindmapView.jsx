@@ -243,7 +243,7 @@ export default function MindmapView({ doc, onOpenMilestone, onOpenGoal, onOpenTa
         <span className="lp-mm-hint">
           <Workflow size={13} />
           <span>
-            <strong>Click</strong> a node to expand / collapse ·
+            <strong>Click</strong> a node to open it in Goals · chevron to expand / collapse ·
             <strong> Scroll</strong> to zoom ·
             <strong> Drag</strong> canvas to pan
           </span>
@@ -388,7 +388,7 @@ function MilestoneBranch({ doc, m, idx, expanded, toggle, onOpenMilestone, onOpe
           hasChildren={goals.length > 0}
           collapsed={!isExpanded}
           onToggle={() => toggle(m.id)}
-          onClick={() => toggle(m.id)}
+          onClick={() => onOpenMilestone?.(m)}
         />
         {isExpanded && goals.length > 0 && (
           <span className="lp-mm-edge-connector" style={{ '--mm': 'var(--accent-purple)' }} />
@@ -441,7 +441,7 @@ function GoalBranch({ doc, g, expanded, toggle, onOpenGoal, onOpenTask }) {
           hasChildren={tasks.length > 0}
           collapsed={!isExpanded}
           onToggle={() => toggle(g.id)}
-          onClick={() => toggle(g.id)}
+          onClick={() => onOpenGoal?.(g)}
         />
         {isExpanded && tasks.length > 0 && (
           <span className="lp-mm-edge-connector" style={{ '--mm': 'var(--accent-amber)' }} />
@@ -489,7 +489,7 @@ function TaskBranch({ doc, t, expanded, toggle, onOpenTask }) {
           hasChildren={steps.length > 0}
           collapsed={!isExpanded}
           onToggle={() => toggle(t.id)}
-          onClick={() => toggle(t.id)}
+          onClick={() => onOpenTask?.(t)}
         />
         {isExpanded && steps.length > 0 && (
           <span className="lp-mm-edge-connector" style={{ '--mm': 'var(--accent-cyan)' }} />
@@ -509,7 +509,7 @@ function TaskBranch({ doc, t, expanded, toggle, onOpenTask }) {
                 ) : s.isDone ? (
                   <span className="lp-badge lp-badge-emerald">Done</span>
                 ) : null}
-                onClick={undefined}
+                onClick={() => onOpenTask?.(t, s.id)}
               />
             </li>
           ))}

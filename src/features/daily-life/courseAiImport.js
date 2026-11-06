@@ -16,6 +16,13 @@ export function validateCourseAiJson(parsed) {
     errors.push('Missing or empty "courseTitle" (string required)');
   }
 
+  // Optional top-level string fields (new prompt schema) — type-check when present.
+  for (const field of ['description', 'platform', 'instructor', 'language', 'level', 'totalDuration']) {
+    if (parsed[field] !== undefined && typeof parsed[field] !== 'string') {
+      errors.push(`"${field}" must be a string if provided`);
+    }
+  }
+
   if (parsed.structure !== undefined && !Array.isArray(parsed.structure)) {
     errors.push('"structure" must be an array if provided');
   }
@@ -45,6 +52,9 @@ export function validateCourseAiJson(parsed) {
       }
       if (n.type !== undefined && typeof n.type !== 'string') {
         errors.push(`"type" at ${curPath} must be a string`);
+      }
+      if (n.duration !== undefined && typeof n.duration !== 'string') {
+        errors.push(`"duration" at ${curPath} must be a string`);
       }
       if (n.children !== undefined) {
         if (!Array.isArray(n.children)) {
@@ -109,6 +119,10 @@ export function importCourseFromAiJson(courses, nodes, jsonString) {
   const provider = (parsed.platform || '').toString().trim();
   const instructor = (parsed.instructor || '').toString().trim();
   const duration = (parsed.totalDuration || '').toString().trim();
+  // New prompt schema fields — saved on the course, "" when unknown (never invented).
+  const description = (parsed.description || '').toString().trim();
+  const language = (parsed.language || '').toString().trim();
+  const level = (parsed.level || '').toString().trim();
 
   // Create course
   const color = COURSE_COLORS[courses.length % COURSE_COLORS.length];
@@ -117,6 +131,9 @@ export function importCourseFromAiJson(courses, nodes, jsonString) {
     provider,
     instructor,
     duration,
+    description,
+    language,
+    level,
     category: '',
     link: '',
     notes: '',
@@ -137,6 +154,7 @@ export function importCourseFromAiJson(courses, nodes, jsonString) {
       accNodes = createCourseNode(accNodes, newCourse.id, parentId, {
         title: item.title.trim(),
         type,
+        duration: (item.duration || '').toString().trim(),
       });
       const createdNode = accNodes[accNodes.length - 1];
       created += 1;

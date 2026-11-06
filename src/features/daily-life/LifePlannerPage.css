@@ -152,11 +152,13 @@
   opacity: 0.85 !important;
 }
 
-/* ── Masthead — Mess Meal style (boxed amber, glow tile, top hairline) ──
+/* ── Masthead — same shared box as Bhara Koto / TakaGeloKoi
+   (1fr auto 1fr: title left, stats center, actions right;
+   boxed amber, glow tile, top hairline).
    overflow visible so the ⋮ dropdown is not clipped. */
 .lp-widget .schedule-masthead {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: var(--sp-3);
   position: relative;
@@ -169,6 +171,26 @@
   overflow: visible;
   z-index: 40;
   isolation: isolate;
+}
+.lp-widget .schedule-masthead-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+/* Tablet — center stats drop to a full row below, like Bhara Koto */
+@media (max-width: 1000px) {
+  .lp-widget .schedule-masthead {
+    grid-template-columns: 1fr auto;
+  }
+  .lp-widget .schedule-masthead-center {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+  .lp-widget .schedule-actions {
+    justify-content: flex-end;
+  }
 }
 .lp-widget .schedule-masthead::before { content: none; }
 .lp-widget .schedule-masthead::after {
@@ -234,7 +256,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 220px;
+  max-width: 260px;
   opacity: 1;
 }
 .lp-widget .schedule-nav-btn {
@@ -261,9 +283,28 @@
 }
 @media (max-width: 640px) {
   .lp-widget .schedule-masthead {
+    grid-template-columns: 1fr auto;
     padding: var(--sp-3);
     gap: var(--sp-2);
     border-width: 1px;
+  }
+  /* Compact masthead like Bhara Koto — center stats hide on small screens
+     (the same counts live in the Dashboard stat cards below). */
+  .lp-widget .schedule-masthead-center {
+    display: none;
+  }
+  .lp-widget .schedule-title {
+    font-size: var(--fs-sm);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .lp-widget .schedule-subtitle {
+    font-size: 9px;
+    max-width: 100%;
+  }
+  .lp-widget .schedule-actions {
+    justify-content: flex-end;
   }
 }
 
@@ -881,6 +922,126 @@
 .lp-tl-row { padding: 6px 0; border-bottom: 1px solid var(--border-secondary); }
 .lp-tl-row:last-child { border-bottom: none; }
 
+/* ── Timeline: List/Calendar toggle ────────────────────────────── */
+.lp-tl-view-toggle {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid var(--border-primary);
+  background: var(--bg-tertiary);
+}
+.lp-tl-view-toggle button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.lp-tl-view-toggle button:hover { color: var(--text-primary); }
+.lp-tl-view-toggle button.active {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--accent-amber) 45%, var(--border-primary));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+.lp-tl-view-toggle button.active svg { color: var(--accent-amber); }
+
+/* ── Timeline: Calendar grid ───────────────────────────────────── */
+.lp-cal-wrap {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+.lp-cal-head, .lp-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+.lp-cal-head {
+  margin-bottom: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+.lp-cal-grid { align-items: stretch; }
+.lp-cal-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-height: 64px;
+  padding: 7px 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+  font-family: inherit;
+}
+.lp-cal-cell:hover { border-color: var(--accent-amber); transform: translateY(-1px); }
+.lp-cal-cell.is-empty { background: transparent; border-style: dashed; cursor: default; }
+.lp-cal-cell.is-empty:hover { border-color: var(--border-primary); transform: none; }
+.lp-cal-cell.has-items { background: color-mix(in srgb, var(--accent-amber) 5%, var(--bg-tertiary)); }
+.lp-cal-cell.is-today { border-color: var(--accent-amber); }
+.lp-cal-cell.is-today .lp-cal-day { color: var(--accent-amber); font-weight: 800; }
+.lp-cal-cell.is-overdue .lp-cal-day { color: var(--accent-rose); }
+.lp-cal-cell.is-selected {
+  background: var(--accent-amber-glow);
+  border-color: var(--accent-amber);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-amber) 35%, transparent);
+}
+.lp-cal-day { font-size: 12px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.lp-cal-dots { display: inline-flex; align-items: center; gap: 3px; margin-top: auto; }
+.lp-cal-dot { width: 7px; height: 7px; border-radius: 999px; display: inline-block; background: var(--text-tertiary); }
+.lp-cal-dot.kind-task { background: var(--accent-amber); }
+.lp-cal-dot.kind-step { background: var(--accent-emerald); }
+.lp-cal-dot.kind-goal, .lp-cal-dot.kind-milestone { background: var(--accent-purple); }
+.lp-cal-more { font-size: 9px; font-weight: 800; color: var(--text-tertiary); }
+.lp-cal-legend {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 10px 2px 0;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+.lp-cal-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.lp-cal-day-panel {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border-primary);
+}
+.lp-cal-day-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+@media (max-width: 560px) {
+  .lp-cal-cell { min-height: 52px; padding: 5px 6px; }
+  .lp-cal-day { font-size: 11px; }
+  .lp-cal-dot { width: 6px; height: 6px; }
+}
+
 /* ── Timeline — premium ── */
 .lp-timeline { position: relative; padding-left: 20px; }
 .lp-timeline::before { content: ''; position: absolute; left: 6px; top: 8px; bottom: 8px; width: 2px; background: var(--border-primary); border-radius: 999px; }
@@ -1006,6 +1167,12 @@
   40% { transform: scale(1.25); }
   100% { transform: scale(1); }
 }
+/* ── Jump target flash (Timeline/Mindmap → Goals) ─────────────── */
+@keyframes lp-flash-ring {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  25%, 60% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-amber) 55%, transparent), 0 0 24px color-mix(in srgb, var(--accent-amber) 35%, transparent); }
+}
+.lp-flash { animation: lp-flash-ring 1.6s ease; border-radius: 10px; }
 .lp-mm-toolbar {
   display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
 }

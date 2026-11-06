@@ -25,7 +25,7 @@ export function useCourses() {
   return [courses, update];
 }
 
-export function createCourse(courses, { title, provider, code, instructor, duration, link, category, level, status, price, startDate, endDate, certificateLink, notes, color }) {
+export function createCourse(courses, { title, provider, code, instructor, duration, link, category, level, description, language, status, price, startDate, endDate, certificateLink, notes, color }) {
   const course = {
     id: uid(),
     title: title.trim(),
@@ -34,7 +34,9 @@ export function createCourse(courses, { title, provider, code, instructor, durat
     duration: duration?.trim() || '',
     link: link?.trim() || '',
     category: category?.trim() || '',
-    level: level || 'beginner',
+    description: description?.trim() || '',
+    language: language?.trim() || '',
+    level: level?.trim() || '',
     status: status || 'planned',
     price: price?.trim() || '',
     startDate: startDate || null,
@@ -137,7 +139,7 @@ function nextNodeOrder(nodes, courseId, parentId) {
   return siblings.reduce((m, n) => Math.max(m, n.order || 0), -1) + 1;
 }
 
-export function createCourseNode(nodes, courseId, parentId, { title, type = 'custom', notes = '' }) {
+export function createCourseNode(nodes, courseId, parentId, { title, type = 'custom', notes = '', duration = '' }) {
   const node = {
     id: uid(),
     courseId,
@@ -145,6 +147,7 @@ export function createCourseNode(nodes, courseId, parentId, { title, type = 'cus
     title: title.trim(),
     type: type || 'custom',
     notes: notes?.trim() || '',
+    duration: duration?.trim() || '',
     order: nextNodeOrder(nodes, courseId, parentId),
     collapsed: false,
     isDone: false,

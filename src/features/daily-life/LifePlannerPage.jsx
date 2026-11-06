@@ -2,9 +2,10 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   CalendarDays, MoreVertical, Target, ListChecks,
   Clock, TrendingUp, FileDown, ChevronRight, RotateCcw,
-  Flag, Sparkles, Repeat,
+  Flag, Sparkles, Repeat, AlertTriangle,
 } from 'lucide-react';
 import './LifePlannerPage.css';
+import './LifePlannerRedesign.css';
 import {
   useLifePlanner, EMPTY_DOC, overallProgress, milestoneProgress, goalsOfMilestone, byId, tasksOfGoal, stepsOfTask, WEEKDAYS,
   buildTimeline, fmtDate, todayKey, daysBetween,
@@ -279,25 +280,52 @@ export default function LifePlannerPage() {
     });
   };
 
-  // ── Mindmap → jump into Goals view at the clicked node ──
-  const openMindmapMilestone = (m) => {
+  // ── Timeline / Mindmap → jump into Goals view at the clicked node ──
+  const scrollToFocus = (selector) => {
+    setTimeout(() => {
+      const el = document.querySelector(selector);
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('lp-flash');
+      setTimeout(() => el.classList.remove('lp-flash'), 1700);
+    }, 350);
+  };
+  const openTarget = ({ milestoneId = null, goalId = null, taskId = null, stepId = null }) => {
     setView('goals');
-    setActiveMilestoneId(m.id);
-    setActiveGoalId(null);
-    setActiveTaskId(null);
+    setActiveMilestoneId(milestoneId);
+    setActiveGoalId(goalId);
+    setActiveTaskId(taskId);
+    const sel = stepId
+      ? `[data-step-id="${stepId}"]`
+      : taskId
+        ? `[data-task-id="${taskId}"]`
+        : goalId
+          ? `[data-goal-id="${goalId}"]`
+          : milestoneId
+            ? `[data-milestone-id="${milestoneId}"]`
+            : null;
+    if (sel) scrollToFocus(sel);
+  };
+  const openMindmapMilestone = (m) => {
+    openTarget({ milestoneId: m.id });
   };
   const openMindmapGoal = (g) => {
-    setView('goals');
-    setActiveMilestoneId(g.milestoneId || null);
-    setActiveGoalId(g.id);
-    setActiveTaskId(null);
+    openTarget({ milestoneId: g.milestoneId || null, goalId: g.id });
   };
-  const openMindmapTask = (t) => {
+  const openMindmapTask = (t, stepId = null) => {
     const g = byId(doc.goals, t.goalId);
-    setView('goals');
-    setActiveMilestoneId(g?.milestoneId || null);
-    setActiveGoalId(g?.id || null);
-    setActiveTaskId(t.id);
+    openTarget({ milestoneId: g?.milestoneId || null, goalId: g?.id || null, taskId: t.id, stepId });
+  };
+  // Timeline entry click — task/step entries land on their task/step
+  const openTimelineEntry = (goalId, extra = {}) => {
+    const g = byId(doc.goals, goalId);
+    if (!g) return;
+    openTarget({
+      milestoneId: g.milestoneId || extra.milestoneId || null,
+      goalId: g.id,
+      taskId: extra.taskId || null,
+      stepId: extra.stepId || null,
+    });
   };
 
   // ── Shared props for goal-related views ──
@@ -313,20 +341,46 @@ export default function LifePlannerPage() {
   return (
     <div className="glass-card-static schedule-widget lp-widget animate-fadeInUp">
 
-      {/* ── Masthead (tool's own header) ── */}
+      {/* ── Masthead — shared box, same as TakaGeloKoi / Bhara Koto ── */}
       <div className="schedule-masthead">
         <div className="schedule-title-block">
-          <div className="schedule-icon-tile">
+          <div className="schedule-icon-tile lp-icon-tile">
             <CalendarDays size={20} strokeWidth={2.2} />
           </div>
           <div>
             <span className="schedule-overline">Daily Life</span>
             <p className="schedule-title">Life Planner</p>
-            <span className="schedule-subtitle">Goals &amp; week plan</span>
+            <span className="schedule-subtitle">Milestones, goals &amp; week plan</span>
+          </div>
+        </div>
+
+        <div className="schedule-masthead-center">
+          <div className="schedule-stats">
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{doc.goals.length}</span>
+              <span className="schedule-stat-label">Goals</span>
+            </div>
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{doc.goals.filter((g) => (g.types || []).includes('milestone')).length}</span>
+              <span className="schedule-stat-label">Milestones</span>
+            </div>
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{timeline.length}</span>
+              <span className="schedule-stat-label">Timeline</span>
+            </div>
+            {upcoming.overdue.length > 0 && (
+              <div className="schedule-stat">
+                <span className="schedule-stat-value" style={{ color: 'var(--accent-rose)' }}>{upcoming.overdue.length}</span>
+                <span className="schedule-stat-label">Overdue</span>
+              </div>
+            )}
           </div>
         </div>
 
         <div className="schedule-actions">
+          <span className="lp-badge lp-badge-amber" role="img" aria-label={`Overall progress ${progress}%`}>
+            <TrendingUp size={10} /> {progress}% complete
+          </span>
           <div className="export-dropdown" ref={menuBtnRef}>
             <button
               type="button"
@@ -352,7 +406,6 @@ export default function LifePlannerPage() {
           </div>
         </div>
       </div>
-
       <div className="schedule-dotted-divider" />
 
       {/* ── Sub-navigation + Add Milestone/Goal (Phase removed) ── */}
@@ -508,7 +561,7 @@ export default function LifePlannerPage() {
           hasGoals={hasGoals}
           onPhaseClick={() => setView('goals')}
           onViewTimeline={() => setView('timeline')}
-          onOpenGoal={() => {}}
+          onOpenGoal={openTimelineEntry}
         />
       )}
 
@@ -646,7 +699,7 @@ export default function LifePlannerPage() {
       )}
 
       {view === 'courses' && <CoursesView />}
-      {view === 'timeline' && <TimelineView doc={doc} onOpenGoal={() => {}} />}
+      {view === 'timeline' && <TimelineView doc={doc} onOpenGoal={openTimelineEntry} />}
       {view === 'mindmap' && (
         <MindmapView
           doc={doc}
@@ -710,14 +763,25 @@ function DashboardView({
     <div>
       <div className="lp-stats">
         <LpStat icon={<Target size={17} />} value={`${doneGoals}/${doc.goals.length}`} label="Goals done" />
+        <LpStat icon={<Flag size={17} />} tone="purple" value={String(doc.goals.filter((g) => (g.types || []).includes('milestone')).length)} label="Milestones" />
         {nextDeadline && (
           <LpStat icon={<Clock size={17} />} tone="cyan" value={daysLeft === 0 ? 'Today' : `${daysLeft}d`} label={`Next: ${nextDeadline.label.slice(0, 22)}`} />
         )}
+        <LpStat
+          icon={<AlertTriangle size={17} />}
+          tone={upcoming.overdue.length > 0 ? 'rose' : 'green'}
+          value={String(upcoming.overdue.length)}
+          label="Overdue items"
+        />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
         <div className="lp-panel">
-          <h4 className="lp-panel-title"><TrendingUp size={15} /> Overall progress</h4>
+          <div className="lp-panel-head">
+            <h4 className="lp-panel-title"><TrendingUp size={15} /> Overall progress</h4>
+            <span className="lp-panel-head-value">{progress}%</span>
+          </div>
+          <div className="lp-overall-bar"><LpBar pct={progress} /></div>
           {hasGoals ? (() => {
             const milestones = doc.goals.filter((g) => (g.types || []).includes('milestone'));
             const unMilestoned = doc.goals.filter((g) => !(g.types || []).includes('milestone') && !g.milestoneId && !g.phaseId);
@@ -784,7 +848,7 @@ function TimelineRow({ entry, overdue = false, onOpenGoal }) {
   return (
     <button
       type="button"
-      onClick={() => entry.goal && onOpenGoal(entry.goal.id)}
+      onClick={() => entry.goal && onOpenGoal(entry.goal.id, { taskId: entry.task?.id || null, stepId: entry.step?.id || null, milestoneId: entry.milestone?.id || null })}
       className="lp-phase-row"
       style={{ alignItems: 'flex-start' }}
       disabled={!entry.goal}
