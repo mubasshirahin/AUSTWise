@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  School, Search, Mail, ExternalLink, Users, MessageCircle,
+  School, Search, Mail, ExternalLink, Users, MessageCircle, Phone, X,
 } from 'lucide-react';
 import { getAllAccounts, getInitials } from '../../utils/authStorage';
 import { useAuth } from '../../context/AuthContext';
@@ -56,7 +56,7 @@ async function loadFacultyList() {
         const existing = byId.get(a.id);
         if (existing) {
           // Merge contact fields the member list omits.
-          byId.set(a.id, { ...existing, email: existing.email || a.email || '', linkedin: existing.linkedin || a.linkedin || '' });
+          byId.set(a.id, { ...existing, email: existing.email || a.email || '', phone: existing.phone || a.phone || '', linkedin: existing.linkedin || a.linkedin || '' });
         } else {
           push(a);
         }
@@ -67,6 +67,7 @@ async function loadFacultyList() {
     id: m.id,
     name: m.name,
     email: m.email || '',
+    phone: m.phone || '',
     avatar: m.avatar || null,
     initials: m.initials || getInitials(m.name),
     department: m.department || 'Department not set',
@@ -167,7 +168,7 @@ export default function FacultyDirectory() {
             <span className="schedule-overline">Community</span>
             <h2 className="student-dir-header-title">Faculty Directory</h2>
             <p className="student-dir-header-subtitle">
-              Find AUST faculty members — grouped by department &amp; designation.
+              Find AUST faculty members.
             </p>
           </div>
         </div>
@@ -186,14 +187,25 @@ export default function FacultyDirectory() {
         </div>
 
         <div className="schedule-actions">
-          <div className="search-box alumni-search">
+          <div className="search-box faculty-search">
+            <Search size={15} />
             <input
               type="text"
-              placeholder="Search name / designation..."
+              placeholder="Search name or designation…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               aria-label="Search faculty"
             />
+            {searchTerm && (
+              <button
+                type="button"
+                className="faculty-search-clear"
+                onClick={() => setSearchTerm('')}
+                aria-label="Clear search"
+              >
+                <X size={13} />
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -285,23 +297,30 @@ export default function FacultyDirectory() {
                     return (
                       <div key={f.id} className="alumni-card">
                         <div className="alumni-card-top">
-                          <div
+                          <button
+                            type="button"
                             className="avatar"
                             style={{
-                              width: '40px',
-                              height: '40px',
+                              width: '32px',
+                              height: '32px',
                               flexShrink: 0,
-                              background: 'var(--accent-purple-glow)',
-                              color: 'var(--accent-purple)',
-                              fontSize: '12px',
+                              background: 'var(--accent-amber-glow)',
+                              color: 'var(--accent-amber)',
+                              fontSize: '11px',
                               fontWeight: 700,
                               overflow: 'hidden',
+                              padding: 0,
+                              border: 'none',
+                              cursor: 'pointer',
                             }}
+                            onClick={() => navigate(`/members/${f.id}`)}
+                            title={`View ${f.name}'s profile / ID`}
+                            aria-label={`View ${f.name}'s profile`}
                           >
                             {f.avatar ? (
                               <img src={f.avatar} alt="" style={AVATAR_IMG_STYLE} />
                             ) : f.initials}
-                          </div>
+                          </button>
                           <div className="alumni-card-info">
                             <h3 className="alumni-card-name">
                               {f.name}
@@ -311,27 +330,25 @@ export default function FacultyDirectory() {
                                 </span>
                               )}
                             </h3>
-                            <p className="alumni-card-dept">{dept}</p>
+                            {f.designation && (
+                              <p className="alumni-card-dept" style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                <School size={11} /> {f.designation}
+                              </p>
+                            )}
+                            <p className="alumni-card-dept">{DEPT_FULL_NAMES[dept] || dept}</p>
                           </div>
                         </div>
 
                         <div className="alumni-card-details">
-                          {f.designation && (
-                            <span className="alumni-card-detail">
-                              <School size={12} /> {f.designation}
-                            </span>
-                          )}
-                          {f.email && (
-                            <a href={`mailto:${f.email}`} className="alumni-card-email">
-                              <Mail size={12} /> {f.email}
-                            </a>
-                          )}
+                          <span className="alumni-card-detail">
+                            <Mail size={12} /> {f.email || ''}
+                          </span>
+                          <span className="alumni-card-detail">
+                            <Phone size={12} /> {f.phone || ''}
+                          </span>
                         </div>
 
                         <div className="alumni-card-footer">
-                          <span className="faculty-chip">
-                            <School size={10} /> Faculty
-                          </span>
                           {f.linkedin ? (
                             <a
                               href={f.linkedin}

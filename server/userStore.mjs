@@ -944,6 +944,31 @@ export async function getUserById(id) {
   return safe;
 }
 
+/**
+ * Fast lookup by id OR awid via direct SQL (AuthUsers has an awid column).
+ * Falls back to a full scan for legacy rows without the column value.
+ * Returns the full user (with password field present — callers strip it).
+ */
+export async function getUserByIdOrAwid(key) {
+  const k = String(key || '');
+  if (!k) return null;
+  if (await isDbAvailable()) {
+    await ensureAuthTables();
+    try {
+      const rows = await query(
+        'SELECT data FROM "AuthUsers" WHERE id = @k OR awid = @k',
+        [{ name: 'k', type: sql.NVarChar(200), value: k }]
+      );
+      if (rows && rows[0]) {
+        const user = fromUserRow(rows[0]);
+        if (user) return user;
+      }
+    } catch { /* fall through to JSON scan */ }
+  }
+  const users = await readUsers();
+  return users.find((u) => u && (u.id === k || u.awid === k)) || null;
+}
+
 /** Get a user by email (without password hash) */
 export async function getUserByEmail(email) {
   const normalized = String(email || '').trim().toLowerCase();

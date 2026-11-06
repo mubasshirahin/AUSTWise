@@ -403,7 +403,7 @@ export async function handleMe(req, res) {
 // Fields a user may edit about themselves. id/email/role/awid/privacy etc.
 // are deliberately excluded so the server stays the source of truth.
 const SELF_EDITABLE_FIELDS = [
-  'name', 'avatar', 'bloodGroup',
+  'name', 'avatar', 'bloodGroup', 'phone',
   'department', 'batch', 'batchNo', 'batchName',
   'yearSemester', 'section', 'labSection',
   'designation', 'company', 'graduationYear',

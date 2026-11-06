@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MessageSquarePlus, X, UserCheck, Trash2, Mail } from 'lucide-react';
+import { MessageSquarePlus, X, UserCheck, Trash2, Mail, LayoutGrid, Inbox } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
   listMentorRequests,
   addMentorRequest,
+  addMentorResponse,
   deleteMentorRequest,
   formatPostedDate,
   getUserInitials,
@@ -17,7 +18,6 @@ import ConfirmDialog from '../marketplace/ConfirmDialog';
 const defaultForm = {
   topic: '',
   description: '',
-  contact: '',
 };
 
 export default function MentorRequests() {
@@ -28,6 +28,21 @@ export default function MentorRequests() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [section, setSection] = useState('feed'); // 'feed' | 'mine'
+  const [respondTarget, setRespondTarget] = useState(null);
+  const [respondForm, setRespondForm] = useState({ message: '', contact: '' });
+  const [sortBy, setSortBy] = useState('recent'); // 'recent' (default) | 'responses'
+
+  const myRequests = requests.filter((r) => r.contributorId === user?.id);
+
+  // Feed order — Most Recent by default, or Least Responses first
+  const sortedRequests = [...requests].sort((a, b) => {
+    if (sortBy === 'responses') {
+      const byResponses = (a.responses?.length || 0) - (b.responses?.length || 0);
+      if (byResponses !== 0) return byResponses;
+    }
+    return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
+  });
 
   const refresh = () => setRequests(listMentorRequests());
 
@@ -40,8 +55,8 @@ export default function MentorRequests() {
       addMentorRequest({
         topic: sanitizeUserInput(form.topic, MAX_TITLE_LENGTH),
         description: sanitizeUserInput(form.description, MAX_SHORT_TEXT_LENGTH),
-        contact: sanitizeUserInput(form.contact, MAX_TITLE_LENGTH),
         requesterName: sanitizeUserInput(form.requesterName, MAX_TITLE_LENGTH),
+        avatar: user?.avatar || null,
         batch: getBatchNoFromUser(user),
         department: user?.department || '',
       });
@@ -61,16 +76,43 @@ export default function MentorRequests() {
       setError('Please login to respond as a mentor.');
       return;
     }
+    if (req.contributorId === user?.id) {
+      setError('You cannot respond to your own post.');
+      return;
+    }
+    setRespondTarget((prev) => (prev?.id === req.id ? null : req));
+    setRespondForm({ message: '', contact: '' });
+    setError('');
+    setMessage('');
+  };
+
+  const handleRespondSubmit = (event) => {
+    event.preventDefault();
+    if (!respondTarget) return;
+    if (respondTarget.contributorId === user?.id) {
+      setError('You cannot respond to your own post.');
+      return;
+    }
+    const msg = sanitizeUserInput(respondForm.message, MAX_SHORT_TEXT_LENGTH);
+    if (!msg) {
+      setError('Write a response message first.');
+      return;
+    }
     try {
-      sendMessage(
-        user.id,
-        req.contributorId,
-        `📚 Mentor Request: I can help you with "${req.topic}"! Let's connect.`
-      );
-      setMessage('Mentor request sent to your inbox. Continue the conversation there.');
-      setTimeout(() => navigate(`/messages?peer=${req.contributorId}`), 800);
+      // Save on the request (shows in the owner's "My Responses" section)
+      addMentorResponse(respondTarget.id, {
+        message: msg,
+        contact: sanitizeUserInput(respondForm.contact, MAX_TITLE_LENGTH),
+        responderName: user?.name || 'Anonymous',
+        responderBatch: getBatchNoFromUser(user),
+      });
+      // Also DM the requester so they can chat directly
+      sendMessage(user.id, respondTarget.contributorId, `📚 Mentor Request (${respondTarget.topic}): ${msg}`);
+      setRespondTarget(null);
+      refresh();
+      setMessage('Response sent. The requester will see it in their inbox and My Responses.');
     } catch (err) {
-      setError(err.message || 'Could not send message.');
+      setError(err.message || 'Could not send response.');
     }
   };
 
@@ -142,17 +184,81 @@ export default function MentorRequests() {
             Description (optional)
             <textarea id="mentor-description" name="description" className="input" value={form.description} onChange={(e) => setForm((c) => ({ ...c, description: e.target.value }))} maxLength={MAX_SHORT_TEXT_LENGTH} placeholder="Describe what you need help with..." rows={2} />
           </label>
-          <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            Your contact (for mentors to reach you)
-            <input id="mentor-contact" name="contact" className="input" value={form.contact} onChange={(e) => setForm((c) => ({ ...c, contact: e.target.value }))} maxLength={MAX_TITLE_LENGTH} placeholder="Phone / Telegram / Email" required />
-          </label>
           <button type="submit" className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start' }}>
             Publish Request
           </button>
         </form>
       )}
 
-      {requests.length === 0 ? (
+      {/* ── Sections: Feed (all) | My Responses (own posts) ── */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '16px 0 12px' }} role="tablist" aria-label="Mentor sections">
+        <button type="button" role="tab" aria-selected={section === 'feed'} className={`btn btn-sm ${section === 'feed' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('feed')} style={{ gap: 6 }}>
+          <LayoutGrid size={13} /> Feed · {requests.length}
+        </button>
+        <button type="button" role="tab" aria-selected={section === 'mine'} className={`btn btn-sm ${section === 'mine' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('mine')} style={{ gap: 6 }}>
+          <Inbox size={13} /> My Responses · {myRequests.reduce((n, r) => n + (r.responses?.length || 0), 0)}
+        </button>
+        {section === 'feed' && (
+          <select
+            className="input"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            aria-label="Sort feed"
+            style={{ width: 'auto', marginLeft: 'auto', fontSize: 'var(--fs-xs)', padding: '6px 10px' }}
+          >
+            <option value="recent">Most Recent</option>
+            <option value="responses">Least Responses</option>
+          </select>
+        )}
+      </div>
+
+      {section === 'mine' ? (
+        myRequests.length === 0 ? (
+          <div className="empty-state" style={{ padding: '28px' }}>
+            <Inbox size={36} />
+            <h3>No posts yet</h3>
+            <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
+              Post a mentor request and responses from mentors will show up here.
+            </p>
+          </div>
+        ) : (
+          <div className="mentor-request-grid">
+            {myRequests.map((req) => (
+              <div key={req.id} className="community-cell mentor-req-card">
+                <div className="mentor-req-topic" style={{ display: 'inline-flex' }}>
+                  <UserCheck size={12} /> {req.topic}
+                </div>
+                {req.description && (
+                  <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: '8px' }}>{req.description}</p>
+                )}
+                <p style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '6px' }}>
+                  Posted {formatPostedDate(req.postedAt)} · {req.responses?.length || 0} response{req.responses?.length === 1 ? '' : 's'}
+                </p>
+                {req.responses?.length > 0 ? (
+                  <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--border-secondary)', paddingTop: '10px' }}>
+                    {req.responses.map((res) => (
+                      <div key={res.id} style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', padding: '10px 12px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                        <div className="flex justify-between items-center flex-wrap gap-2">
+                          <span style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>
+                            {res.responderName} <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', fontWeight: 'normal' }}>• Batch {res.responderBatch}</span>
+                          </span>
+                          <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>{formatPostedDate(res.postedAt)}</span>
+                        </div>
+                        <p style={{ marginTop: '4px' }}>{res.message}</p>
+                        {res.contact && (
+                          <p style={{ fontSize: '10px', color: 'var(--accent-amber)', marginTop: '4px', fontWeight: 'bold' }}>Contact: {res.contact}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontStyle: 'italic', marginTop: '10px' }}>No responses yet — mentors will see your post in the Feed.</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )
+      ) : requests.length === 0 ? (
         <div className="empty-state" style={{ padding: '28px' }}>
           <MessageSquarePlus size={36} />
           <h3>No mentor requests yet</h3>
@@ -162,7 +268,7 @@ export default function MentorRequests() {
         </div>
       ) : (
         <div className="mentor-request-grid">
-          {requests.map((req) => {
+          {sortedRequests.map((req) => {
             // Density by mentor response count — 0 → emerald · 1 → cyan · 2 → amber · 3+ → rose
             const responseCount = (req.responses || []).length;
             const densityClass = responseCount >= 3 ? 'is-rose' : responseCount === 2 ? 'is-amber' : responseCount === 1 ? 'is-cyan' : 'is-emerald';
@@ -170,9 +276,16 @@ export default function MentorRequests() {
             <div key={req.id} className={`community-cell mentor-req-card ${densityClass}`}>
                 <div className="flex justify-between items-start flex-wrap gap-3">
                   <div className="flex gap-3 items-start">
-                    <div className="avatar sm" style={{ width: '36px', height: '36px' }}>
-                      {getUserInitials(req.requesterName)}
-                    </div>
+                    <button
+                      type="button"
+                      className="avatar sm"
+                      style={{ width: '36px', height: '36px', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', flexShrink: 0 }}
+                      onClick={() => navigate(`/members/${req.contributorId}`)}
+                      title={`View ${req.requesterName}'s profile / ID`}
+                      aria-label={`View ${req.requesterName}'s profile`}
+                    >
+                      {req.avatar ? <img src={req.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} /> : getUserInitials(req.requesterName)}
+                    </button>
                     <div>
                       <h3 style={{ fontSize: '14px', fontWeight: 'bold' }}>
                         {req.requesterName}{' '}
@@ -180,26 +293,17 @@ export default function MentorRequests() {
                           • Batch {req.batch} • {req.department}
                         </span>
                       </h3>
-                      <div className="mentor-req-topic">
-                        <UserCheck size={12} />
-                        {req.topic}
-                      </div>
+                      <p style={{ display: 'inline-block', fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.5, padding: '4px 10px', border: '1px dotted var(--border-primary)', borderRadius: '8px' }}>
+                        <strong style={{ color: 'var(--text-primary)' }}>Topics:</strong> {req.topic}
+                      </p>
                       {req.description && (
-                        <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: '8px', maxWidth: '600px' }}>
+                        <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: '8px', maxWidth: '600px', lineHeight: 1.5 }}>
                           {req.description}
                         </p>
                       )}
-                      <p style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '6px' }}>
-                        Posted {formatPostedDate(req.postedAt)}
-                      </p>
                     </div>
                   </div>
                   <div className="mentor-req-head-right">
-                    {responseCount > 0 && (
-                      <span className={`sv-count${responseCount >= 3 ? ' hot' : ''}`} title={`${responseCount} response${responseCount !== 1 ? 's' : ''}`}>
-                        {responseCount}
-                      </span>
-                    )}
                     {(user?.role === 'admin' || req.contributorId === user?.id) && (
                       <button type="button" className="btn btn-ghost btn-sm" onClick={() => handleDelete(req)} style={{ color: 'var(--accent-rose)', padding: '4px 8px' }}>
                         <Trash2 size={14} />
@@ -207,6 +311,11 @@ export default function MentorRequests() {
                     )}
                   </div>
                 </div>
+
+                <p style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
+                  <span>Posted {formatPostedDate(req.postedAt)}</span>
+                  <span style={{ fontSize: '9px', letterSpacing: '0.04em' }}>{responseCount} {responseCount === 1 ? 'response' : 'responses'}</span>
+                </p>
 
               {req.responses && req.responses.length > 0 && (
                 <div style={{ marginTop: '12px', marginLeft: '48px', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--border-secondary)', paddingTop: '10px' }}>
@@ -232,14 +341,32 @@ export default function MentorRequests() {
                 </div>
               )}
 
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                style={{ marginTop: '10px', marginLeft: '48px', fontSize: '10px' }}
-                onClick={() => handleRespondAsMentor(req)}
-              >
-                <Mail size={12} /> Respond as Mentor
-              </button>
+              {req.contributorId !== user?.id && (
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  style={{ marginTop: '10px', marginLeft: '48px', fontSize: '10px' }}
+                  onClick={() => handleRespondAsMentor(req)}
+                >
+                  <Mail size={12} /> Respond as Mentor
+                </button>
+              )}
+              {respondTarget?.id === req.id && (
+                <form onSubmit={handleRespondSubmit} style={{ marginTop: '10px', marginLeft: '48px', display: 'flex', flexDirection: 'column', gap: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-md)', padding: '12px' }}>
+                  <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    Your response *
+                    <textarea className="input" value={respondForm.message} onChange={(e) => setRespondForm((c) => ({ ...c, message: e.target.value }))} placeholder="How can you help? (also sent as a DM)" rows={2} required autoFocus />
+                  </label>
+                  <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    Contact (optional)
+                    <input className="input" value={respondForm.contact} onChange={(e) => setRespondForm((c) => ({ ...c, contact: e.target.value }))} placeholder="Phone / Telegram / Email" />
+                  </label>
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setRespondTarget(null)}>Cancel</button>
+                    <button type="submit" className="btn btn-primary btn-sm"><Mail size={12} /> Send Response</button>
+                  </div>
+                </form>
+              )}
             </div>
             );
           })}

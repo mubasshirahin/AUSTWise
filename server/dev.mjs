@@ -55,7 +55,7 @@ import { handleCleanerRequest } from './googleCleaner.mjs';
 import { handleAuthRoute, readTokenCookie, handleDevSwitchUser, handleDevSeedUsers, handleDevUsers, issueAuthCookie } from './auth.mjs';
 import { requireRole, requireAuth } from './middleware.mjs';
 import { rateLimit, extractRoutineRateLimiter } from './rateLimiter.mjs';
-import { getUserById, getUserByEmail, getAllUsersSafe, updateUserProfile, setUserPasswordHash, deleteUserById, countUsers, createUser, hashPassword, ADMIN_ASSIGNABLE_ROLES, FACULTY_DEPARTMENTS, facultyDepartmentRole } from './userStore.mjs';
+import { getUserById, getUserByEmail, getAllUsersSafe, getUserByIdOrAwid, updateUserProfile, setUserPasswordHash, deleteUserById, countUsers, createUser, hashPassword, ADMIN_ASSIGNABLE_ROLES, FACULTY_DEPARTMENTS, facultyDepartmentRole } from './userStore.mjs';
 import {
   listMarketplace,
   addMarketplaceListing,
@@ -3680,16 +3680,19 @@ async function handleApiRequest(req, res) {
     if (!auth) return;
     try {
       const profileKey = decodeURIComponent(publicProfileMatch[1]);
-      const users = await getAllUsersSafe();
       const getStudentId = (entry) => {
         if (entry.studentId) return String(entry.studentId);
         const emailPrefix = String(entry.email || '').split('@')[0];
         const fromEmail = emailPrefix.replace(/^[a-z.]+/i, '');
         return /^\d+$/.test(fromEmail) ? fromEmail : '';
       };
-      const user = users.find((entry) =>
-        entry.id === profileKey || entry.awid === profileKey || getStudentId(entry) === profileKey
-      );
+      // Fast path: direct SQL by id/awid (no full table scan)
+      let user = await getUserByIdOrAwid(profileKey);
+      if (!user) {
+        // Legacy fallback: match by student ID (derived from aust.edu email)
+        const users = await getAllUsersSafe();
+        user = users.find((entry) => getStudentId(entry) === profileKey);
+      }
       if (!user || user.id === 'guest') {
         sendJson(res, 404, { success: false, error: 'Member not found.' });
         return;
@@ -3730,6 +3733,7 @@ async function handleApiRequest(req, res) {
           avatar: user.avatar || null,
           role: user.role || 'student',
           email,
+          phone: user.phone || '',
           studentId,
           bloodGroup: user.bloodGroup || '',
           department: user.department || '',
@@ -3790,6 +3794,7 @@ async function handleApiRequest(req, res) {
             section: u.section || '',
             labSection: u.labSection || '',
             designation: u.designation || '',
+            phone: u.phone || '',
             status: p.status,
             lastSeenAt: p.lastSeenAt || (u.lastSeenAt ? new Date(u.lastSeenAt).getTime() : null),
             // Attendance is always private — never exposed to other members.
@@ -4548,6 +4553,7 @@ async function handleApiRequest(req, res) {
       const payload = await readJsonBody(req);
       const convId = [auth.id, payload.toId].sort().join('|');
       const msg = await saveMessage({
+        id: payload.id || undefined,
         conversationId: convId,
         fromId: auth.id,
         toId: payload.toId,

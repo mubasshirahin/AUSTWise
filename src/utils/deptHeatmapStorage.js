@@ -6,9 +6,12 @@ const submissionsKey = 'aust-helper-dept-heatmap-submissions-v1';
 const contributorKey = 'aust-helper-dept-heatmap-contributor-id';
 const userStorageKey = 'aust-user-profile';
 
-export const MIN_BATCH_CONTRIBUTORS = 1;
-export const MIN_CELL_CONTRIBUTORS = 1;
+// A batch row (and its semester averages) shows only once at least
+// 5 students from that batch have submitted CGPA data.
+export const MIN_BATCH_CONTRIBUTORS = 5;
+export const MIN_CELL_CONTRIBUTORS = 5;
 export const HEATMAP_SEMESTER_COUNT = 8;
+export const MAX_VISIBLE_BATCHES = 10;
 
 const departments = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'];
 
@@ -230,9 +233,13 @@ export function buildHeatmapView(department, submissionsSource = null) {
 
   const sortByBatchNo = (left, right) => Number(right.batchNo) - Number(left.batchNo);
 
+  // Recent batch first (53 before 52), max 10 batches — only batches that
+  // actually submitted CGPA data (visibleBatches) are ever returned here.
+  const sorted = visibleBatches.sort(sortByBatchNo);
   return {
-    visibleBatches: visibleBatches.sort(sortByBatchNo),
+    visibleBatches: sorted.slice(0, MAX_VISIBLE_BATCHES),
     pendingBatches: pendingBatches.sort(sortByBatchNo),
+    totalBatches: sorted.length,
     totalSubmissions: submissions.length,
   };
 }

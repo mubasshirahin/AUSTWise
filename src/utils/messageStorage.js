@@ -47,9 +47,18 @@ function saveMessages(list) {
 
 export function getThread(userId, peerId) {
   const convId = getConversationId(userId, peerId);
-  return loadMessages()
+  const sorted = loadMessages()
     .filter((m) => m.conversationId === convId)
     .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  // One-time cleanup: collapse accidental double-sends (same sender + text
+  // within 10s but different ids — old API-fallback duplicates).
+  const seen = new Set();
+  return sorted.filter((m) => {
+    const key = `${m.fromId}|${m.text}|${Math.floor(new Date(m.timestamp).getTime() / 10000)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export function getConversations(userId) {
@@ -102,18 +111,25 @@ const DEFAULT_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 
 // ── Sync cache mutators (also fire async server writes) ────────────────────────
 
-/** @returns {object} message object (sync), server write is fire-and-forget */
-export function sendMessage(fromId, toId, text, replyTo) {
+/** @returns {object} message object (sync), server write is fire-and-forget.
+ *  Pass existingId/existingTimestamp (WS relay payload) to keep the sender's
+ *  original id — re-storing with a fresh id would duplicate the message. */
+export function sendMessage(fromId, toId, text, replyTo, existingId = null, existingTimestamp = null) {
   const clean = sanitizeUserInput(String(text || '').trim(), MAX_TEXT_LENGTH);
   if (!clean || !fromId || !toId || fromId === toId) return null;
 
+  if (existingId) {
+    const existing = loadMessages().find((m) => m.id === existingId);
+    if (existing) return existing; // already stored (e.g. sender echo) — no duplicate
+  }
+
   const message = {
-    id: `MSG-${Date.now()}-${crypto.randomUUID().slice(0, 6)}`,
+    id: existingId || `MSG-${Date.now()}-${crypto.randomUUID().slice(0, 6)}`,
     conversationId: getConversationId(fromId, toId),
     fromId,
     toId,
     text: clean,
-    timestamp: new Date().toISOString(),
+    timestamp: existingTimestamp || new Date().toISOString(),
     read: false,
   };
   if (replyTo && replyTo.messageId) {
@@ -128,10 +144,13 @@ export function sendMessage(fromId, toId, text, replyTo) {
   list.push(message);
   saveMessages(list);
 
-  // Persist to server (non-blocking — local cache is authoritative for instant UI)
-  void api.sendMessage(fromId, toId, clean, replyTo).catch(() => {
-    /* keep local copy; sync on next refresh */
-  });
+  // Persist to server (non-blocking — local cache is authoritative for instant UI).
+  // WS-relayed messages (existingId) are already on the server — don't re-POST.
+  if (!existingId) {
+    void api.sendMessage(fromId, toId, clean, replyTo, message.id).catch(() => {
+      /* keep local copy; sync on next refresh */
+    });
+  }
   return message;
 }
 

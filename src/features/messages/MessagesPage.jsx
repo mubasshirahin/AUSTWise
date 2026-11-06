@@ -62,7 +62,7 @@ function ReactionsBar({ messageId, reactions, userId, onReact, disabled }) {
   );
 }
 
-function ReactionPicker({ messageId, onReact, disabled, onClose }) {
+function ReactionPicker({ messageId, onReact, disabled, onClose, reactions, userId, hoverHandlers }) {
   const pickerRef = useRef(null);
 
   // Close on click outside
@@ -77,22 +77,27 @@ function ReactionPicker({ messageId, onReact, disabled, onClose }) {
   }, [onClose]);
 
   return (
-    <div className="reaction-picker" ref={pickerRef}>
-      {REACTION_EMOJIS.map((emoji) => (
+    <div className="reaction-picker" ref={pickerRef} {...hoverHandlers}>
+      {REACTION_EMOJIS.map((emoji) => {
+        const isActive = (reactions?.[emoji] || []).includes(userId);
+        return (
         <button
           key={emoji}
           type="button"
-          className="reaction-picker-btn"
+          className={`reaction-picker-btn${isActive ? ' is-active' : ''}`}
           onClick={() => {
+            // Toggle and keep the picker open — the reaction sticks,
+            // click again (or ✕) to remove it.
             onReact(messageId, emoji);
-            onClose?.();
           }}
           disabled={disabled}
-          title={`React with ${emoji}`}
+          title={isActive ? `Remove ${emoji}` : `React with ${emoji}`}
+          aria-pressed={isActive}
         >
           {emoji}
         </button>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -151,6 +156,7 @@ function HighlightedText({ text, query }) {
 }
 
 function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping, wsSendRead, wsSendReaction, wsSendDelete, wsSendEdit, peerTyping, setPeerTyping, wsReady, connected, onMessageStatusUpdate, queueMessage, onReactionChange, onDeleteEvent, onEditEvent }) {
+  const navigate = useNavigate();
   const [thread, setThread] = useState(() => getThread(userId, peerId));
   const [draft, setDraft] = useState('');
   const [deliveredIds, setDeliveredIds] = useState(new Set());
@@ -165,6 +171,14 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
   const [activeResultIdx, setActiveResultIdx] = useState(-1);
   const scrollRef = useRef(null);
   const typingTimerRef = useRef(null);
+  // Grace timer: picker sits above the bubble (outside its box), so closing
+  // on mouseleave instantly would kill the picker before it can be clicked.
+  const pickerCloseTimerRef = useRef(null);
+  const schedulePickerClose = useCallback(() => {
+    clearTimeout(pickerCloseTimerRef.current);
+    pickerCloseTimerRef.current = setTimeout(() => setOpenPickerId(null), 300);
+  }, []);
+  const cancelPickerClose = useCallback(() => clearTimeout(pickerCloseTimerRef.current), []);
   const chatSearchInputRef = useRef(null);
   const resultRefs = useRef({});
   const conversationId = getConversationId(userId, peerId);
@@ -179,12 +193,28 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
     setThread(getThread(userId, peerId));
   }, [userId, peerId]);
 
-  // Auto-scroll to bottom
+  // Auto-scroll to bottom — only when already near the bottom, so reading
+  // older messages never gets yanked down (scroll jump fix).
+  const nearBottomRef = useRef(true);
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    const el = scrollRef.current;
+    if (!el) return undefined;
+    const onScroll = () => {
+      nearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    };
+    onScroll();
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const lastMsg = thread[thread.length - 1];
+    const justSentMine = lastMsg && lastMsg.fromId === userId && Date.now() - new Date(lastMsg.timestamp).getTime() < 1500;
+    if (nearBottomRef.current || justSentMine) {
+      el.scrollTop = el.scrollHeight;
     }
-  }, [thread, peerTyping]);
+  }, [thread, peerTyping, userId]);
 
   // Poll thread as fallback
   useEffect(() => {
@@ -293,10 +323,14 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
     };
   }, []);
 
+  const sendingRef = useRef(false);
   const handleSend = (e) => {
     e.preventDefault();
+    if (sendingRef.current) return; // double-submit guard
     const text = sanitizeUserInput(draft.trim(), MAX_TEXT_LENGTH);
     if (!text) return;
+    sendingRef.current = true;
+    setTimeout(() => { sendingRef.current = false; }, 600);
 
     const replyData = replyTarget ? {
       messageId: replyTarget.messageId,
@@ -395,7 +429,7 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
     // Refresh thread
     setThread(getThread(userId, peerId));
     // Send via WebSocket
-    if (wsReady) {
+    if (wsReady && typeof wsSendReaction === 'function') {
       wsSendReaction(messageId, emoji, userId, conversationId);
     }
   };
@@ -407,7 +441,10 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
     return 'sent';
   };
 
-  const closePicker = useCallback(() => setOpenPickerId(null), []);
+  const closePicker = useCallback(() => {
+    clearTimeout(pickerCloseTimerRef.current);
+    setOpenPickerId(null);
+  }, []);
 
   /** Navigate search results */
   const goToResult = (direction) => {
@@ -433,9 +470,16 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
           <ArrowLeft size={18} />
         </button>
         <div className="avatar-wrapper">
-          <div className="avatar" style={{ width: '40px', height: '40px' }}>
+          <button
+            type="button"
+            className="avatar"
+            style={{ width: '40px', height: '40px', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
+            onClick={() => navigate(`/members/${peerId}`)}
+            title={peer?.name ? `View ${peer.name}'s profile / ID` : 'View profile'}
+            aria-label="View profile"
+          >
             {peer?.initials}
-          </div>
+          </button>
           <span className={`avatar-status-dot ${connected ? 'online' : 'offline'}`} />
         </div>
         <div className="chat-peer-info" style={{ flex: 1 }}>
@@ -539,8 +583,8 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
               <div
                 className={`chat-bubble-wrapper ${isActiveResult(m.id) ? 'chat-bubble-wrapper-active' : ''}`}
                 ref={(el) => { resultRefs.current[m.id] = el; }}
-                onMouseEnter={() => !mine && setOpenPickerId(m.id)}
-                onMouseLeave={() => !mine && openPickerId === m.id && setOpenPickerId(null)}
+                onMouseEnter={() => { if (!mine) { cancelPickerClose(); setOpenPickerId(m.id); } }}
+                onMouseLeave={() => { if (!mine && openPickerId === m.id) schedulePickerClose(); }}
               >
                 {/* Deleted message placeholder */}
                 {isDeleted ? (
@@ -609,14 +653,24 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
                       {mine && <MessageStatus status={status} />}
                     </div>
 
-                    {/* Reactions on this message */}
+                    {/* Reactions on this message — toggle works offline (local) */}
                     {hasReactions && (
                       <ReactionsBar
                         messageId={m.id}
                         reactions={m.reactions}
                         userId={userId}
                         onReact={handleReact}
-                        disabled={!wsReady}
+                      />
+                    )}
+                    {/* Reaction picker — inside wrapper so mouse can reach it */}
+                    {!mine && !isDeleted && openPickerId === m.id && (
+                      <ReactionPicker
+                        messageId={m.id}
+                        onReact={handleReact}
+                        onClose={closePicker}
+                        reactions={m.reactions}
+                        userId={userId}
+                        hoverHandlers={{ onMouseEnter: cancelPickerClose, onMouseLeave: schedulePickerClose }}
                       />
                     )}
                   </div>
@@ -634,22 +688,12 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
                   </button>
                 )}
 
-                {/* Reaction picker — shown on hover for received messages */}
-                {!mine && !isDeleted && openPickerId === m.id && (
-                  <ReactionPicker
-                    messageId={m.id}
-                    onReact={handleReact}
-                    disabled={!wsReady}
-                    onClose={closePicker}
-                  />
-                )}
-
                 {/* Actions & reaction button for own messages */}
                 {mine && !isDeleted && !isEditing && (
                   <div
                     className="own-message-actions"
-                    onMouseEnter={() => setOpenPickerId(m.id)}
-                    onMouseLeave={() => setOpenPickerId(null)}
+                    onMouseEnter={() => { cancelPickerClose(); setOpenPickerId(m.id); }}
+                    onMouseLeave={() => schedulePickerClose()}
                   >
                     <div className="own-actions-row">
                       <button
@@ -680,7 +724,6 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
                         type="button"
                         className="own-reaction-btn msg-action-reaction"
                         onClick={() => setOpenPickerId(openPickerId === m.id ? null : m.id)}
-                        disabled={!wsReady}
                         title="Add reaction"
                       >
                         <SmilePlus size={12} />
@@ -690,8 +733,10 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
                       <ReactionPicker
                         messageId={m.id}
                         onReact={handleReact}
-                        disabled={!wsReady}
                         onClose={closePicker}
+                        reactions={m.reactions}
+                        userId={userId}
+                        hoverHandlers={{ onMouseEnter: cancelPickerClose, onMouseLeave: schedulePickerClose }}
                       />
                     )}
                   </div>
@@ -869,13 +914,15 @@ export default function MessagesPage() {
     sendRead: wsSendRead,
     sendDelete: wsSendDelete,
     sendEdit: wsSendEdit,
+    sendReaction: wsSendReaction,
     subscribe: wsSubscribe,
     unsubscribe: wsUnsubscribe,
   } = useWebSocket(currentUserId, {
     onMessage: useCallback((payload) => {
-      const { fromId, toId, text, timestamp, replyTo } = payload;
+      const { fromId, toId, text, timestamp, replyTo, id } = payload;
       if (!fromId || !toId || !text) return;
-      storeMessage(fromId, toId, text, replyTo ? { messageId: replyTo.messageId, text: replyTo.text, fromId: replyTo.fromId } : null);
+      // Keep the relayed id so the same message never stores twice
+      storeMessage(fromId, toId, text, replyTo ? { messageId: replyTo.messageId, text: replyTo.text, fromId: replyTo.fromId } : null, id || null, timestamp || null);
       if (currentUserId) {
         setConversations(getConversations(currentUserId));
         // Show notification if message is FROM someone else (not our own send)
@@ -1008,7 +1055,7 @@ export default function MessagesPage() {
 
   // Single shared conversation-cell renderer — used by every list mode
   // (All / Unread / search results) so cells look identical everywhere.
-  const renderConversationCell = (c) => {
+  const renderConversationCell = (c, cellIdx = 0) => {
     const isActive = c.peerId === activePeerId;
     const isOnline = onlineUsers.includes(c.peerId);
     const unread = c.unread || 0;
@@ -1018,6 +1065,7 @@ export default function MessagesPage() {
         key={c.conversationId}
         type="button"
         className={`sv-cell conversation-cell ${densityClass}${isActive ? ' active' : ''}${unread > 0 ? ' has-unread' : ''}`}
+        style={{ '--conv-delay': `${Math.min(cellIdx * 40, 280)}ms` }}
         onClick={() => openConversation(c.peerId)}
       >
         {unread > 0 && <span className={`sv-count${unread >= 3 ? ' hot' : ''}`}>{unread}</span>}
@@ -1274,6 +1322,7 @@ export default function MessagesPage() {
                 onEditEvent={onEditEvent}
                 wsSendDelete={wsSendDelete}
                 wsSendEdit={wsSendEdit}
+                wsSendReaction={wsSendReaction}
                 queueMessage={queueMessage}
               />
             )}

@@ -118,7 +118,7 @@ export default function DeptHeatmap() {
     return `${command} ${chartX(index)} ${chartY(item.average)}`;
   }).filter(Boolean).join(' ');
 
-  const totalBatches = heatmapView.visibleBatches.length + heatmapView.pendingBatches.length;
+  const totalBatches = heatmapView.totalBatches ?? heatmapView.visibleBatches.length;
 
   return (
     <div className="glass-card-static schedule-widget st-widget heatmap-widget animate-fadeInUp">

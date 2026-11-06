@@ -819,6 +819,7 @@ export default function SettingsPage() {
     id: detectedStudentId,
     name: user.name || '',
     email: user.email || '',
+    phone: user.phone || '',
     avatar: user.avatar || '',
     bloodGroup: user.bloodGroup || '',
   });
@@ -845,6 +846,7 @@ export default function SettingsPage() {
       id: emailId || user.id || '',
       name: user.name || '',
       email,
+      phone: user.phone || '',
       avatar: user.avatar || '',
       bloodGroup: user.bloodGroup || '',
     });
@@ -858,7 +860,7 @@ export default function SettingsPage() {
       labSection: user.labSection || '',
     });
     setYearSemTouched(false);
-  }, [isEditingProfile, user.id, user.email, user.name, user.avatar, user.bloodGroup, user.department, user.batchName, user.yearSemester, user.section, user.labSection, user.semester]);
+  }, [isEditingProfile, user.id, user.email, user.phone, user.name, user.avatar, user.bloodGroup, user.department, user.batchName, user.yearSemester, user.section, user.labSection, user.semester]);
 
   const resetProfileDrafts = () => {
     const nextBatchNo = getBatchNoFromUser(user);
@@ -870,6 +872,7 @@ export default function SettingsPage() {
       id: resetId,
       name: user.name || '',
       email: user.email || '',
+      phone: user.phone || '',
       avatar: user.avatar || '',
       bloodGroup: user.bloodGroup || '',
 
@@ -1030,6 +1033,7 @@ export default function SettingsPage() {
     try {
       await saveUserProfile({
         name: nextName,
+        phone: (profileDetails.phone || '').trim(),
         avatar: profileDetails.avatar,
         bloodGroup: profileDetails.bloodGroup,
         department: quickProfile.department,
@@ -1396,6 +1400,19 @@ export default function SettingsPage() {
                           className="input mt-1"
                         />
                       </label>
+                      <label>
+                        <span>Phone Number</span>
+                        <input
+                          type="tel"
+                          id="profile-phone"
+                          name="phone"
+                          autoComplete="tel"
+                          value={profileDetails.phone}
+                          onChange={(event) => updateProfileDetailsField('phone', event.target.value)}
+                          placeholder="+880 1XXX-XXXXXX"
+                          className="input mt-1"
+                        />
+                      </label>
                     <label>
                       <span>Blood Group</span>
                       <select
@@ -1423,6 +1440,8 @@ export default function SettingsPage() {
                       <strong>{profileDetails.id || 'Not set'}</strong>
                       <span className="profile-read-sub-label">Email</span>
                       <strong>{profileDetails.email || 'Not set'}</strong>
+                      <span className="profile-read-sub-label">Phone</span>
+                      <strong>{profileDetails.phone || 'Not set'}</strong>
                       <span className="profile-read-sub-label">Blood Group</span>
                       <strong>{profileDetails.bloodGroup || 'Not set'}</strong>
                     </div>

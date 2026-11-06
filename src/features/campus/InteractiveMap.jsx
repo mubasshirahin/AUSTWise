@@ -5,8 +5,6 @@ import {
 } from 'lucide-react';
 import { campusFloors as staticCampusFloors } from '../../data/mockData';
 import GliderTabs from '../../components/GliderTabs';
-import FirstFloorInteractivePlan from './FirstFloorInteractivePlan';
-import BuildingStructure from './BuildingStructure';
 import './SemesterViewWidget.css';
 
 // Attempt to fetch campus locations from API — falls back to static data
@@ -23,6 +21,9 @@ function fetchCampusLocations() {
 const zoomLevels = [
   { id: 'fit', label: 'Fit' },
 ];
+
+// Basic plan shown for floors without their own image (2nd–8th).
+const GROUND_FLOOR_IMAGE = '/campus/ground-floor.png';
 
 const RESIZE_DIRECTIONS = {
   nw: { dl: 1, dt: 1, dw: -1, dh: -1 },
@@ -44,9 +45,7 @@ function FloorShowcase({ floorData, selectedFloor, floorTabs, onFloorChange }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedRoomId, setSelectedRoomId] = useState(null);
   const [selectedHotspotKey, setSelectedHotspotKey] = useState(null);
-  const [floorView, setFloorView] = useState('image');
   const [editMode] = useState(false);
-  const [selectedZone, setSelectedZone] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
   const [positions, setPositions] = useState(() => {
@@ -99,7 +98,6 @@ function FloorShowcase({ floorData, selectedFloor, floorTabs, onFloorChange }) {
   const clearSelection = useCallback(() => {
     setSelectedRoomId(null);
     setSelectedHotspotKey(null);
-    setSelectedZone(null);
   }, []);
 
   const handleHotspotPointerDown = (e, room, hotspot, hotspotKey) => {
@@ -232,64 +230,6 @@ function FloorShowcase({ floorData, selectedFloor, floorTabs, onFloorChange }) {
     document.addEventListener('pointerup', handlePointerUp);
   };
 
-  const isInteractiveFloor = floorView === 'interactive';
-
-  /** Generate SVG text labels for floors 2-8 which reuse the same building structure */
-  function renderOtherFloorLabels(floor, floorData) {
-    const rooms = floorData.rooms;
-    const classroomRooms = rooms.filter((r) => r.type === 'classroom');
-    const labRooms = rooms.filter((r) => r.type === 'lab');
-    const adminRooms = rooms.filter((r) => r.type === 'admin');
-    const otherRooms = rooms.filter((r) => r.type !== 'classroom' && r.type !== 'lab' && r.type !== 'admin' && r.type !== 'lift' && r.type !== 'washroom');
-    const washroom = rooms.find((r) => r.type === 'washroom');
-
-    // Distribute classroom/lab rooms across positions in the Classroom Block zone
-    const roomList = [...classroomRooms, ...labRooms];
-    const classPositions = [674, 754, 834, 915, 995];
-
-    return (
-      <>
-        {/* Zone name labels — same physical zones but generic names */}
-        <text className="ground-room-label" x="365" y="228">Prayer &</text>
-        <text className="ground-room-label" x="365" y="252">Medical</text>
-        <text className="ground-zone-title ground-zone-title-small" x="352" y="366">Plaza</text>
-        <text className="ground-zone-title" x="640" y="372">Badamtola</text>
-        <text className="ground-room-label" x="1132" y="392" textAnchor="middle" style={{ fontSize: '35px', fontWeight: 'bold' }}>Library</text>
-
-        {/* Classroom / Lab rooms in the Classroom Block zone */}
-        {roomList.map((room, i) =>
-          i < classPositions.length ? (
-            <text key={room.id} className="ground-cell-label" x={classPositions[i]} y="168" textAnchor="middle">
-              {room.id}
-            </text>
-          ) : null
-        )}
-
-        {/* Admin / Faculty rooms in the Admin zone */}
-        {adminRooms.map((room, i) => (
-          <text key={room.id} className="ground-small-label" x={280} y={540 + i * 28} style={{ fontSize: '16px', fontWeight: 'bold' }}>
-            {room.name}
-          </text>
-        ))}
-
-        {/* Other rooms (hall, facility) in the badamtola zone */}
-        {otherRooms.map((room, i) => (
-          <text key={room.id} className="ground-small-label" x={640} y={500 + i * 30} textAnchor="middle" style={{ fontSize: '16px', fontWeight: 'bold' }}>
-            {room.name}
-          </text>
-        ))}
-
-        {/* Washroom */}
-        {washroom && (
-          <>
-            <text className="ground-tiny-label" x="1215" y="155" textAnchor="middle" style={{ fontSize: '15px', fontWeight: 'bold' }}>Wash</text>
-            <text className="ground-tiny-label" x="1215" y="170" textAnchor="middle" style={{ fontSize: '15px', fontWeight: 'bold' }}>room</text>
-          </>
-        )}
-      </>
-    );
-  }
-
   return (
     <div className="glass-card-static schedule-widget sv-widget floor-map-widget animate-fadeInUp">
 
@@ -321,23 +261,6 @@ function FloorShowcase({ floorData, selectedFloor, floorTabs, onFloorChange }) {
             </button>
             {menuOpen && (
               <div className="export-menu" role="menu">
-                <button
-                  className={`export-menu-item${floorView === 'image' ? ' menu-active' : ''}`}
-                  onClick={() => { setFloorView('image'); setSelectedZone(null); setMenuOpen(false); }}
-                  role="menuitem"
-                >
-                  Image View
-                  {floorView === 'image' && <Check size={14} className="menu-check" />}
-                </button>
-                <button
-                  className={`export-menu-item${floorView === 'interactive' ? ' menu-active' : ''}`}
-                  onClick={() => { setFloorView('interactive'); clearSelection(); setMenuOpen(false); }}
-                  role="menuitem"
-                >
-                  Interactive View
-                  {floorView === 'interactive' && <Check size={14} className="menu-check" />}
-                </button>
-                <div className="export-menu-sep" />
                 {zoomLevels.map(level => (
                   <button
                     key={level.id}
@@ -391,24 +314,9 @@ function FloorShowcase({ floorData, selectedFloor, floorTabs, onFloorChange }) {
                 onKeyDown={(e) => { if (e.key === 'Escape') clearSelection(); }}
                 role="presentation"
               >
-                {isInteractiveFloor ? (
-                  selectedFloor === '1st' ? (
-                    <FirstFloorInteractivePlan
-                      onZoneSelect={setSelectedZone}
-                      selectedZone={selectedZone}
-                    />
-                  ) : (
-                    <BuildingStructure
-                      selectedZone={selectedZone}
-                      onZoneSelect={setSelectedZone}
-                      title={`AUST CAMPUS — ${selectedFloor} Floor`}
-                    >
-                      {renderOtherFloorLabels(selectedFloor, floorData)}
-                    </BuildingStructure>
-                  )
-                ) : floorData.mapImage ? (
+                {(floorData.mapImage || GROUND_FLOOR_IMAGE) ? (
                   <img
-                    src={floorData.mapImage}
+                    src={floorData.mapImage || GROUND_FLOOR_IMAGE}
                     alt={`AUST ${selectedFloor} Floor Plan`}
                     className="floor-plan-image"
                     draggable={false}

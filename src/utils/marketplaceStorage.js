@@ -461,16 +461,18 @@ export function listMentorRequests() {
 export async function addMentorRequest(payload) {
   const topic = sanitizeUserInput(String(payload.topic || '').trim(), MAX_TITLE_LENGTH);
   const description = sanitizeUserInput(String(payload.description || '').trim(), MAX_SHORT_TEXT_LENGTH);
+  // Contact is no longer collected — mentors reach the requester through
+  // their AUSTWise profile (avatar → /members/:id) and Messages.
   const contact = sanitizeUserInput(String(payload.contact || '').trim(), MAX_TITLE_LENGTH);
 
   if (!topic) throw new Error('Topic is required (e.g., CP, Web Dev, ML).');
-  if (!contact) throw new Error('Contact number is required.');
 
   const user = loadUserProfile();
   const store = await loadStoreAsync();
   const entry = {
     ...createBaseEntry(),
     requesterName: payload.requesterName || user?.name || 'Anonymous',
+    avatar: payload.avatar || user?.avatar || null,
     batch: payload.batch || getBatchNoFromUser(user) || '—',
     department: payload.department || user?.department || '—',
     topic,

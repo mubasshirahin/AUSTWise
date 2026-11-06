@@ -43,10 +43,11 @@ function writeLocal(list) {
   try { localStorage.setItem(messagesKey, JSON.stringify(list)); } catch { /* full */ }
 }
 
-export async function sendMessage(userId, toId, text, replyTo) {
+export async function sendMessage(userId, toId, text, replyTo, messageId = null) {
   const clean = sanitizeUserInput(String(text || '').trim(), MAX_TEXT_LENGTH);
   if (!clean || !userId || !toId || userId === toId) return null;
   const payload = { toId, text: clean };
+  if (messageId) payload.id = messageId;
   if (replyTo && replyTo.messageId) {
     payload.replyTo = {
       messageId: replyTo.messageId,
@@ -68,10 +69,9 @@ export async function sendMessage(userId, toId, text, replyTo) {
   try {
     await api().fetch('/api/messages', { method: 'POST', body: JSON.stringify(payload) });
   } catch {
-    // Offline fallback: write to local cache so the thread isn't lost.
-    const list = readLocal();
-    list.push(message);
-    writeLocal(list);
+    // NOTE: do NOT write to the local cache here — the caller
+    // (messageStorage.sendMessage) already cached the optimistic copy.
+    // Writing another copy here duplicated the message on every POST failure.
   }
   return message;
 }

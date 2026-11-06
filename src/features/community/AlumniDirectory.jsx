@@ -189,11 +189,18 @@ export default function AlumniDirectory() {
                   return (
                     <div key={al.id} className="alumni-card">
                       <div className="alumni-card-top">
-                        <div className="avatar" style={{ width: '40px', height: '40px', flexShrink: 0 }}>
+                        <button
+                          type="button"
+                          className="avatar"
+                          style={{ width: '40px', height: '40px', flexShrink: 0, padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
+                          onClick={() => navigate(`/members/${al.id}`)}
+                          title={`View ${al.name}'s profile / ID`}
+                          aria-label={`View ${al.name}'s profile`}
+                        >
                           {al.avatar ? (
-                            <img src={al.avatar} alt="" />
+                            <img src={al.avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
                           ) : al.initials}
-                        </div>
+                        </button>
                         <div className="alumni-card-info">
                           <h3 className="alumni-card-name">
                             {al.name}

@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Users, Filter, X, ChevronDown, ChevronRight,
   GraduationCap, BookOpen, Layers,
@@ -62,6 +63,7 @@ function escapeHtml(value) {
 
 export default function StudentDirectory() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [activeDept, setActiveDept] = useState('all');
   const [expandedSems, setExpandedSems] = useState({});
   const [directoryAccounts, setDirectoryAccounts] = useState(() => getAllAccounts());
@@ -494,11 +496,19 @@ export default function StudentDirectory() {
                       const exec = deptExecs[dept]?.[role];
                       return (
                         <div key={role} className={`student-dir-exec-slot${exec ? '' : ' vacant'}`}>
-                          <div className={`student-dir-exec-avatar ${role === 'vp' ? 'stu-avatar-vp' : 'stu-avatar-gs'}`}>
+                          <button
+                            type="button"
+                            className={`student-dir-exec-avatar ${role === 'vp' ? 'stu-avatar-vp' : 'stu-avatar-gs'}`}
+                            disabled={!exec}
+                            onClick={() => exec && navigate(`/members/${exec.id}`)}
+                            title={exec ? `View ${exec.name}'s profile / ID` : undefined}
+                            aria-label={exec ? `View ${exec.name}'s profile` : undefined}
+                            style={{ padding: 0, border: 'none', background: 'transparent', cursor: exec ? 'pointer' : 'default' }}
+                          >
                             {exec?.avatar ? (
                               <img src={exec.avatar} alt="" style={AVATAR_IMG_STYLE} />
                             ) : icon}
-                          </div>
+                          </button>
                           <div className="student-dir-slot-info">
                             {exec ? (
                               <span className="student-dir-slot-name">{exec.name}</span>
@@ -620,11 +630,18 @@ export default function StudentDirectory() {
                                   const uniq = `sr-${dept}-${sem}-${slot.section}`;
                                   return sr ? (
                                     <div key={uniq} className="student-dir-slot-card student-dir-slot-sr">
-                                      <div className="student-dir-slot-avatar stu-avatar-sr">
+                                      <button
+                                        type="button"
+                                        className="student-dir-slot-avatar stu-avatar-sr"
+                                        onClick={() => navigate(`/members/${sr.id}`)}
+                                        title={`View ${sr.name}'s profile / ID`}
+                                        aria-label={`View ${sr.name}'s profile`}
+                                        style={{ padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
+                                      >
                                         {sr.avatar ? (
                                           <img src={sr.avatar} alt="" style={AVATAR_IMG_STYLE} />
                                         ) : <Star size={15} />}
-                                      </div>
+                                      </button>
                                       <div className="student-dir-slot-info">
                                         <span className="student-dir-slot-name">{sr.name}</span>
                                         <span className="student-dir-slot-sub">{slot.label}</span>
@@ -658,11 +675,18 @@ export default function StudentDirectory() {
                                   const uniq = `cr-${dept}-${sem}-${slot.lab}`;
                                   return cr ? (
                                     <div key={uniq} className="student-dir-slot-card student-dir-slot-cr">
-                                      <div className="student-dir-slot-avatar stu-avatar-cr">
+                                      <button
+                                        type="button"
+                                        className="student-dir-slot-avatar stu-avatar-cr"
+                                        onClick={() => navigate(`/members/${cr.id}`)}
+                                        title={`View ${cr.name}'s profile / ID`}
+                                        aria-label={`View ${cr.name}'s profile`}
+                                        style={{ padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
+                                      >
                                         {cr.avatar ? (
                                           <img src={cr.avatar} alt="" style={AVATAR_IMG_STYLE} />
                                         ) : <BadgeCheck size={15} />}
-                                      </div>
+                                      </button>
                                       <div className="student-dir-slot-info">
                                         <span className="student-dir-slot-name">{cr.name}</span>
                                         <span className="student-dir-slot-sub">{slot.label}</span>
@@ -711,20 +735,31 @@ export default function StudentDirectory() {
                                           className={`student-dir-table-row${student.id === user?.id ? ' is-me' : ''}`}
                                         >
                                           <td className="stu-td-name">
-                                            <span className="student-dir-student-avatar" style={{
-                                              background: student.avatar ? 'transparent' : 'var(--accent-amber-glow)',
-                                              color: 'var(--accent-amber)',
-                                              width: '28px',
-                                              height: '28px',
-                                              fontSize: '9px',
-                                              overflow: 'hidden',
-                                            }}>
+                                            <button
+                                              type="button"
+                                              className="student-dir-student-avatar"
+                                              style={{
+                                                background: student.avatar ? 'transparent' : 'var(--accent-amber-glow)',
+                                                color: 'var(--accent-amber)',
+                                                width: '28px',
+                                                height: '28px',
+                                                fontSize: '9px',
+                                                overflow: 'hidden',
+                                                padding: 0,
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                flexShrink: 0,
+                                              }}
+                                              onClick={() => navigate(`/members/${student.id}`)}
+                                              title={`View ${student.name}'s profile / ID`}
+                                              aria-label={`View ${student.name}'s profile`}
+                                            >
                                               {student.avatar ? (
                                                 <img src={student.avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
                                               ) : (
                                                 student.initials || student.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'
                                               )}
-                                            </span>
+                                            </button>
                                             <span className="student-dir-table-stu-name">{student.name}</span>
                                             {student.role === 'vp' && (
                                               <span className="student-dir-role-badge is-vp">VP</span>

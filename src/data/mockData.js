@@ -87,7 +87,7 @@ export const campusFloors = [
     { id: '1-APS', name: 'Architecture Project Showcase', type: 'facility', hotspot: { left: 34.2, top: 56.7, width: 7.5, height: 10.8 } },
     { id: '1-SR', name: 'Study Room', type: 'library', hotspot: { left: 66.4, top: 78.2, width: 9.6, height: 5.9 } },
   ]},
-  { floor: '2nd', rooms: [
+  { floor: '2nd', mapImage: '/campus/ground-floor.png', rooms: [
     { id: '2A-01', name: 'Room 2A-01', type: 'classroom', x: 18, y: 28 },
     { id: '2A-02', name: 'Room 2A-02', type: 'classroom', x: 38, y: 28 },
     { id: '2A-03', name: 'Room 2A-03', type: 'classroom', x: 58, y: 28 },
@@ -97,7 +97,7 @@ export const campusFloors = [
     { id: '2-LIFT', name: 'Lift', type: 'lift', x: 8, y: 32 },
     { id: '2-M', name: 'Washroom', type: 'washroom', x: 90, y: 22 },
   ]},
-  { floor: '3rd', rooms: [
+  { floor: '3rd', mapImage: '/campus/ground-floor.png', rooms: [
     { id: '3A-01', name: 'Room 3A-01', type: 'classroom', x: 18, y: 28 },
     { id: '3A-02', name: 'Room 3A-02', type: 'classroom', x: 38, y: 28 },
     { id: '3A-03', name: 'Room 3A-03', type: 'classroom', x: 58, y: 28 },
@@ -107,7 +107,7 @@ export const campusFloors = [
     { id: '3-LIFT', name: 'Lift', type: 'lift', x: 8, y: 32 },
     { id: '3-M', name: 'Washroom', type: 'washroom', x: 90, y: 22 },
   ]},
-  { floor: '4th', rooms: [
+  { floor: '4th', mapImage: '/campus/ground-floor.png', rooms: [
     { id: '4A-01', name: 'CSE Lab 1', type: 'lab', x: 20, y: 30 },
     { id: '4A-02', name: 'CSE Lab 2', type: 'lab', x: 50, y: 30 },
     { id: '4A-03', name: 'Room 4A-03', type: 'classroom', x: 80, y: 30 },
@@ -116,7 +116,7 @@ export const campusFloors = [
     { id: '4-LIFT', name: 'Lift', type: 'lift', x: 8, y: 30 },
     { id: '4-M', name: 'Washroom', type: 'washroom', x: 90, y: 20 },
   ]},
-  { floor: '5th', rooms: [
+  { floor: '5th', mapImage: '/campus/ground-floor.png', rooms: [
     { id: '5A-01', name: 'Room 5A-01', type: 'classroom', x: 20, y: 30 },
     { id: '5B-01', name: 'Room 5B-01', type: 'classroom', x: 50, y: 30 },
     { id: '5B-02', name: 'Room 5B-02', type: 'classroom', x: 80, y: 30 },
@@ -125,7 +125,7 @@ export const campusFloors = [
     { id: '5-LIFT', name: 'Lift', type: 'lift', x: 8, y: 30 },
     { id: '5-M', name: 'Washroom', type: 'washroom', x: 90, y: 20 },
   ]},
-  { floor: '6th', rooms: [
+  { floor: '6th', mapImage: '/campus/ground-floor.png', rooms: [
     { id: '6A-01', name: 'Room 6A-01', type: 'classroom', x: 15, y: 25 },
     { id: '6A-02', name: 'Room 6A-02', type: 'classroom', x: 35, y: 25 },
     { id: '6A-03', name: 'Room 6A-03', type: 'classroom', x: 55, y: 25 },
@@ -134,7 +134,7 @@ export const campusFloors = [
     { id: '6-LIFT', name: 'Lift', type: 'lift', x: 8, y: 30 },
     { id: '6-M', name: 'Washroom', type: 'washroom', x: 90, y: 20 },
   ]},
-  { floor: '7th', rooms: [
+  { floor: '7th', mapImage: '/campus/ground-floor.png', rooms: [
     { id: '7A-01', name: 'Room 7A-01', type: 'classroom', x: 15, y: 25 },
     { id: '7A-02', name: 'Room 7A-02', type: 'classroom', x: 35, y: 25 },
     { id: '7A-03', name: 'Room 7A-03', type: 'classroom', x: 55, y: 25 },
@@ -144,7 +144,7 @@ export const campusFloors = [
     { id: '7-LIFT', name: 'Lift', type: 'lift', x: 8, y: 30 },
     { id: '7-M', name: 'Washroom', type: 'washroom', x: 90, y: 20 },
   ]},
-  { floor: '8th', rooms: [
+  { floor: '8th', mapImage: '/campus/ground-floor.png', rooms: [
     { id: '8A-01', name: 'Room 8A-01', type: 'classroom', x: 15, y: 25 },
     { id: '8A-02', name: 'Room 8A-02', type: 'classroom', x: 35, y: 25 },
     { id: '8A-03', name: 'Room 8A-03', type: 'classroom', x: 55, y: 25 },

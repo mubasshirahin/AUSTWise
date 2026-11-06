@@ -624,7 +624,7 @@ export async function saveMessage(data) {
   if (!_prismaAvailable) {
     const list = await readJson('messages.json');
     const message = {
-      id: Math.random().toString(36).substring(2, 11),
+      id: data.id || Math.random().toString(36).substring(2, 11),
       conversationId: data.conversationId,
       fromId: data.fromId,
       toId: data.toId,

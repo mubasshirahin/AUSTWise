@@ -1,11 +1,54 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, Award, BookOpen, CalendarDays, Flame, GraduationCap, Mail,
-  Orbit, Sparkles, UserRound,
+  ArrowLeft, Award, BookOpen, CalendarDays, Droplets, Flame, GraduationCap, Mail,
+  Orbit, Phone, Sparkles, UserRound,
 } from 'lucide-react';
 import { useStalk } from '../stalk-road/StalkContext';
+import { getAllAccounts } from '../../utils/authStorage';
 import './MemberProfilePage.css';
+
+/** Local fallback: accounts that exist only on this device (not yet on the
+ *  server) still get a viewable profile from localStorage. */
+function findLocalProfile(memberId) {
+  try {
+    const accounts = getAllAccounts();
+    const acc = accounts.find(
+      (a) => a && (a.id === memberId || a.awid === memberId || (a.email || '').split('@')[0] === memberId)
+    );
+    if (!acc) return null;
+    return {
+      id: acc.id,
+      awid: acc.awid || '',
+      name: acc.name || '',
+      initials: acc.initials || '',
+      avatar: acc.avatar || null,
+      role: acc.role || 'student',
+      email: acc.email || '',
+      phone: acc.phone || '',
+      studentId: '',
+      bloodGroup: acc.bloodGroup || '',
+      department: acc.department || '',
+      batch: acc.batch || '',
+      batchNo: acc.batchNo || '',
+      batchName: acc.batchName || '',
+      yearSemester: acc.yearSemester || '',
+      semester: acc.semester ?? null,
+      section: acc.section || '',
+      labSection: acc.labSection || '',
+      designation: acc.designation || '',
+      company: acc.company || '',
+      graduationYear: acc.graduationYear || '',
+      createdAt: acc.createdAt || null,
+      status: 'offline',
+      linkedAccounts: [],
+      activity: {},
+      orbit: acc.orbit || null,
+    };
+  } catch {
+    return null;
+  }
+}
 
 function roleLabel(role = 'student') {
   if (role === 'cr') return 'CR';
@@ -37,45 +80,98 @@ export default function MemberProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const [retryCount, setRetryCount] = useState(0);
+
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
     setError('');
-    fetch(`/api/presence/profiles/${encodeURIComponent(memberId)}`, {
-      credentials: 'same-origin',
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok || !data.success) throw new Error(data.error || 'Could not load this profile.');
+    const load = async () => {
+      const response = await fetch(`/api/presence/profiles/${encodeURIComponent(memberId)}`, {
+        credentials: 'same-origin',
+        signal: controller.signal,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
+        const err = new Error(data.error || 'Could not load this profile.');
+        err.status = response.status;
+        throw err;
+      }
+      return data;
+    };
+    load()
+      .then((data) => {
         setProfile(data.profile);
         if (data.profile.studentId && data.profile.studentId !== memberId) {
           navigate(`/members/${encodeURIComponent(data.profile.studentId)}`, { replace: true });
         }
       })
-      .catch((fetchError) => {
-        if (fetchError.name !== 'AbortError') setError(fetchError.message || 'Could not load this profile.');
+      .catch(async (fetchError) => {
+        if (fetchError.name === 'AbortError') return;
+        // One retry for transient server/network blips (e.g. buffer errors)
+        try {
+          await new Promise((r) => setTimeout(r, 800));
+          if (controller.signal.aborted) return;
+          const data = await load();
+          setProfile(data.profile);
+          return;
+        } catch { /* fall through to local fallback / error state */ }
+        // Server has no such member — try this device's local accounts
+        const local = findLocalProfile(memberId);
+        if (local) {
+          setProfile(local);
+          return;
+        }
+        setError(fetchError.status === 401 ? 'Please login to view this profile.' : fetchError.message || 'Could not load this profile.');
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [memberId, navigate]);
+  }, [memberId, navigate, retryCount]);
 
+  // Role-specific profile: Faculty / Alumni / Student show different fields
   const identity = useMemo(() => {
     if (!profile) return [];
-    return [
+    const role = String(profile.role || 'student').toLowerCase();
+    const isFaculty = role === 'faculty';
+    const isAlumni = role === 'alumni' || role === 'alumni_with_carry';
+    const batchValue = profile.batchName || profile.batchNo || profile.batch;
+    const sectionValue = profile.section && profile.labSection ? `${profile.section} · Lab ${profile.labSection}` : profile.section || profile.labSection;
+    const common = [
       { label: 'AUSTWise ID', value: profile.awid, icon: UserRound },
-      { label: 'Student ID', value: profile.studentId, icon: GraduationCap },
       { label: 'Email', value: profile.email, icon: Mail, kind: 'email' },
+      { label: 'Phone', value: profile.phone, icon: Phone },
       { label: 'Blood group', value: profile.bloodGroup, icon: Droplets },
       { label: 'Department', value: profile.department, icon: BookOpen },
-      { label: 'Batch', value: profile.batchName || profile.batchNo || profile.batch, icon: CalendarDays },
+    ];
+    if (isFaculty) {
+      return [
+        ...common,
+        { label: 'Designation', value: profile.designation, icon: Award },
+        { label: 'Company', value: profile.company, icon: Orbit },
+      ].filter((item) => item.value !== '' && item.value !== null && item.value !== undefined);
+    }
+    if (isAlumni) {
+      return [
+        common[0],
+        { label: 'Student ID', value: profile.studentId, icon: GraduationCap },
+        ...common.slice(1),
+        { label: 'Batch', value: batchValue, icon: CalendarDays },
+        { label: 'Graduation year', value: profile.graduationYear, icon: CalendarDays },
+        { label: 'Designation', value: profile.designation, icon: Award },
+        { label: 'Company', value: profile.company, icon: Orbit },
+      ].filter((item) => item.value !== '' && item.value !== null && item.value !== undefined);
+    }
+    // Student (default)
+    return [
+      common[0],
+      { label: 'Student ID', value: profile.studentId, icon: GraduationCap },
+      ...common.slice(1),
+      { label: 'Batch', value: batchValue, icon: CalendarDays },
       { label: 'Year · Semester', value: profile.yearSemester || (profile.semester ? `Semester ${profile.semester}` : ''), icon: GraduationCap },
-      { label: 'Section', value: profile.section && profile.labSection ? `${profile.section} · Lab ${profile.labSection}` : profile.section || profile.labSection, icon: BookOpen },
+      { label: 'Section', value: sectionValue, icon: BookOpen },
       { label: 'Designation', value: profile.designation, icon: Award },
-      { label: 'Company', value: profile.company, icon: Orbit },
-      { label: 'Graduation year', value: profile.graduationYear, icon: CalendarDays },
     ].filter((item) => item.value !== '' && item.value !== null && item.value !== undefined);
   }, [profile]);
 
@@ -91,7 +187,10 @@ export default function MemberProfilePage() {
     return (
       <div className="member-profile-state">
         <p>{error || 'Member not found.'}</p>
-        <button type="button" className="btn btn-secondary" onClick={() => navigate(-1)}><ArrowLeft size={16} /> Go back</button>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+          <button type="button" className="btn btn-secondary" onClick={() => setRetryCount((c) => c + 1)}>Retry</button>
+          <button type="button" className="btn btn-secondary" onClick={() => navigate(-1)}><ArrowLeft size={16} /> Go back</button>
+        </div>
       </div>
     );
   }
@@ -124,7 +223,12 @@ export default function MemberProfilePage() {
           <div className="member-profile-name-block">
             <span className="member-profile-role">{roleLabel(profile.role)}</span>
             <h1>{profile.name}</h1>
-            <p>{[profile.department, profile.yearSemester || (profile.semester ? `Semester ${profile.semester}` : '')].filter(Boolean).join(' · ') || 'AUSTWise member'}</p>
+            <p>{[
+              profile.department,
+              String(profile.role || '').toLowerCase() === 'faculty'
+                ? profile.designation
+                : (profile.yearSemester || (profile.semester ? `Semester ${profile.semester}` : '')),
+            ].filter(Boolean).join(' · ') || 'AUSTWise member'}</p>
           </div>
           {joinedDate && <span className="member-profile-joined">Member since {joinedDate}</span>}
         </div>

@@ -240,16 +240,28 @@ export async function deleteQuestionPaper(id, userId, isAdmin = false) {
     throw new Error('You can only delete your own uploads.');
   }
 
-  await deleteQuestionPaperFile(id).catch(() => {});
-  const nextItems = items.filter((item) => item.id !== id);
-  saveUserQuestions(nextItems);
-  // Best-effort server delete.
+  // Delete on the server first and verify it actually worked — otherwise
+  // refreshQuestionBank() pulls the server copy back and the paper
+  // flickers (gone → back → gone).
   try {
-    await fetch('/api/question-papers/' + encodeURIComponent(id), {
+    const res = await fetch('/api/question-papers/' + encodeURIComponent(id), {
       method: 'DELETE',
       credentials: 'same-origin',
     });
-  } catch { /* offline — local delete stands */ }
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data?.error || 'Server rejected the delete.');
+    }
+  } catch (serverError) {
+    // Network failure (offline) → keep the local delete. An HTTP rejection
+    // (403/500) means the server kept the paper — don't delete locally either,
+    // or the next refresh resurrects it.
+    if (!(serverError instanceof TypeError)) throw serverError;
+  }
+
+  await deleteQuestionPaperFile(id).catch(() => {});
+  const nextItems = items.filter((item) => item.id !== id);
+  saveUserQuestions(nextItems);
 }
 
 export async function readQuestionPaperFile(file, maxBytes = MAX_QUESTION_PAPER_BYTES) {

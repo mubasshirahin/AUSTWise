@@ -314,6 +314,49 @@
   width: 220px;
 }
 
+/* Faculty search — premium pill with icon + clear, amber focus */
+.faculty-search {
+  width: 260px;
+  max-width: 100%;
+}
+.faculty-search input {
+  border-radius: var(--radius-full);
+  padding: 9px 34px 9px 38px;
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--accent-amber) 5%, var(--bg-input)),
+    var(--bg-input));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-amber) 12%, transparent);
+  transition: border-color 0.2s ease, box-shadow 0.25s ease;
+}
+.faculty-search input:focus {
+  border-color: var(--accent-amber);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-amber) 18%, transparent);
+}
+.faculty-search svg {
+  color: var(--accent-amber);
+}
+.faculty-search-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: none;
+  background: var(--bg-secondary);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.faculty-search-clear:hover {
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
+}
+
 /* Open for Talk self-service banner */
 .open-for-talk-banner {
   display: flex;
@@ -1935,24 +1978,33 @@
 }
 
 /* ════════════════════════════════════════════════════════════
-   FACULTY DIRECTORY
-   Reuses the student-dir shells (masthead, filter chips, dept
-   sections) and alumni-card grid — only the accent shifts to the
-   purple faculty tone and the cards get a faculty chip.
+   FACULTY DIRECTORY — theme-matched (brand amber, like the rest
+   of Community) with premium cards.
    ════════════════════════════════════════════════════════════ */
-.faculty-dir .student-dir-header-icon {
-  background: var(--accent-purple-glow);
-  color: var(--accent-purple);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-purple) 18%, transparent);
-}
 
-.faculty-dir .student-dir-dept-section.faculty-dept .student-dir-dept-icon {
-  background: var(--accent-purple-glow);
-  color: var(--accent-purple);
+/* Faculty cards — amber-tinted gradient, lift on hover (compact) */
+.faculty-dir .alumni-card {
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--accent-amber) 6%, var(--bg-card)),
+    var(--bg-card) 65%);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  gap: 8px;
 }
-
-.faculty-dir .student-dir-dept-section.faculty-dept .student-dir-dept-count {
-  color: var(--accent-purple);
+.faculty-dir .alumni-card-name { font-size: 13px; }
+.faculty-dir .alumni-card-dept { font-size: 10px; }
+.faculty-dir .alumni-card-details { gap: 3px; font-size: 10px; }
+.faculty-dir .alumni-card-footer { gap: 6px; }
+.faculty-dir .alumni-card .btn-sm { padding: 4px 8px; font-size: 10px; }
+.faculty-dir .faculty-chip { padding: 2px 8px; font-size: 9px; }
+.faculty-dir .faculty-card-linkedin { width: 24px; height: 24px; }
+.faculty-dir .alumni-card:hover {
+  border-color: color-mix(in srgb, var(--accent-amber) 40%, var(--border-primary));
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--accent-amber) 14%, transparent);
+  transform: translateY(-2px);
+}
+.faculty-dir .avatar {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-amber) 25%, transparent);
 }
 
 /* Card body — padded grid inside each department section */
@@ -1967,9 +2019,9 @@
   gap: 5px;
   padding: 3px 10px;
   border-radius: var(--radius-full);
-  background: var(--accent-purple-glow);
-  border: 1px solid color-mix(in srgb, var(--accent-purple) 26%, transparent);
-  color: var(--accent-purple);
+  background: var(--accent-amber-glow);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 26%, transparent);
+  color: var(--accent-amber);
   font-size: 10px;
   font-weight: var(--fw-semibold);
 }
@@ -1989,9 +2041,9 @@
 }
 
 .faculty-card-linkedin:hover {
-  background: var(--accent-purple-glow);
-  border-color: var(--accent-purple);
-  color: var(--accent-purple);
+  background: var(--accent-amber-glow);
+  border-color: var(--accent-amber);
+  color: var(--accent-amber);
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -2012,6 +2064,22 @@
 
 .mentor-req-card > * {
   min-width: 0;
+}
+
+/* Feed cards: no hover lift/glow (static cards) */
+.mentor-req-card.community-cell:hover {
+  border-color: var(--border-primary);
+  transform: none;
+  box-shadow: none;
+}
+
+/* Feed cards: no green left-border strip (plain border) */
+.mentor-req-card.community-cell.is-emerald,
+.mentor-req-card.community-cell.is-cyan,
+.mentor-req-card.community-cell.is-amber,
+.mentor-req-card.community-cell.is-rose {
+  border-left-width: 1px;
+  border-left-color: var(--border-primary);
 }
 
 .mentor-req-head-right {

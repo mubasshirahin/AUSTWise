@@ -463,25 +463,33 @@
   flex-direction: column;
   justify-content: center;
   gap: var(--sp-3);
-  padding: var(--sp-3);
-  min-height: 84px;
-  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  min-height: 76px;
+  border-radius: 14px;
   border: 1px solid var(--border-primary);
-  border-left-width: 2px;
+  border-left-width: 3px;
   border-left-color: var(--border-primary);
-  background: var(--bg-card);
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--accent-amber) 4%, var(--bg-card)),
+    var(--bg-card) 70%);
   cursor: pointer;
   text-align: left;
   color: var(--text-primary);
   font-family: inherit;
   width: 100%;
   transition: border-color 0.22s cubic-bezier(0.4, 0, 0.2, 1), transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: conv-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--conv-delay, 0ms);
+}
+@keyframes conv-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .messages-page .sv-cell.conversation-cell:hover {
-  border-color: var(--border-focus);
+  border-color: color-mix(in srgb, var(--accent-amber) 40%, var(--border-primary));
   transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent-amber) 10%, transparent);
 }
 
 .messages-page .sv-cell.conversation-cell:active {
@@ -580,6 +588,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.messages-page .sv-cell.conversation-cell.has-unread .conv-preview {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+.messages-page .sv-cell.conversation-cell.has-unread .conv-name {
+  color: var(--accent-amber);
+}
 
 .conv-preview .preview-status {
   flex-shrink: 0;
@@ -593,17 +608,19 @@
 }
 
 .avatar-wrapper .avatar {
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius-full);
   display: flex;
+  background: linear-gradient(135deg, var(--accent-amber-glow), var(--accent-purple-glow));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-amber) 22%, transparent);
+  font-weight: 800;
   align-items: center;
   justify-content: center;
   font-weight: var(--fw-bold);
   font-size: var(--fs-sm);
-  color: var(--text-inverse);
+  color: var(--accent-amber);
   overflow: hidden;
-  background: var(--accent-blue);
 }
 
 .avatar-status-dot {
@@ -1066,6 +1083,13 @@ mark.chat-highlight {
 
 .reaction-picker-btn:active {
   transform: scale(0.9);
+}
+
+/* Stuck/active reaction in the picker — stays highlighted */
+.reaction-picker-btn.is-active {
+  background: var(--accent-amber-glow);
+  box-shadow: inset 0 0 0 1px var(--accent-amber);
+  transform: scale(1.15);
 }
 
 /* ── Own message reaction trigger ── */
