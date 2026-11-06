@@ -881,14 +881,14 @@
 .lp-tl-year-pill.selected .lp-tl-year-count { background: rgba(255,255,255,0.22); color: white; }
 /* Month strip */
 .lp-tl-month-strip {
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;
   padding: 10px 12px; background: var(--bg-tertiary);
   border: 1px solid var(--border-primary); border-radius: 12px;
   margin-bottom: 8px;
 }
 .lp-tl-month-year-label { font-size: 13px; font-weight: 800; color: var(--text-primary); min-width: 44px; text-align: center; }
 .lp-tl-months {
-  flex: 1; display: flex; gap: 4px; flex-wrap: wrap;
+  flex: 1 1 auto; display: flex; gap: 4px; flex-wrap: wrap; justify-content: center;
   min-width: 160px;
 }
 .lp-tl-month-pill {

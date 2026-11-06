@@ -250,7 +250,11 @@ export default function LifePlannerPage() {
     const open = timeline.filter((e) => !(e.kind === 'step' && e.done));
     const overdue = open.filter((e) => e.date < today);
     const future = open.filter((e) => e.date >= today);
-    return { overdue, next: future.slice(0, 3) };
+    // Upcoming panel: all tasks in the next 5 days; if none, the next 5 tasks
+    const in5Days = future.filter((e) => daysBetween(new Date(), e.date) <= 5);
+    const usingFallback = in5Days.length === 0 && future.length > 0;
+    const list = usingFallback ? future.slice(0, 5) : in5Days;
+    return { overdue, next: future, list, usingFallback };
   }, [timeline, today]);
 
   const nextDeadline = upcoming.next[0] || null;
@@ -822,22 +826,22 @@ function DashboardView({
         </div>
 
         <div className="lp-panel">
-          <h4 className="lp-panel-title"><Clock size={15} /> Today</h4>
-          {upcoming.overdue.length === 0 && upcoming.next.length === 0 ? (
-            <LpEmpty icon={Clock} title="Nothing scheduled" hint="Items with due dates from your tasks and steps will show up here." />
+          <div className="lp-panel-head">
+            <h4 className="lp-panel-title" style={{ margin: 0 }}><Clock size={15} /> Upcoming</h4>
+            <span className="lp-panel-head-value" style={{ fontSize: 11 }}>{upcoming.usingFallback ? 'next 5 tasks' : 'next 5 days'}</span>
+          </div>
+          {upcoming.overdue.length === 0 && upcoming.list.length === 0 ? (
+            <LpEmpty icon={Clock} title="Nothing upcoming" hint="No tasks or steps due ahead. Items with due dates will show up here." />
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 340, overflowY: 'auto', paddingRight: 2 }}>
               {upcoming.overdue.slice(0, 3).map((e, i) => (
                 <TimelineRow key={`od-${i}`} entry={e} overdue onOpenGoal={onOpenGoal} />
               ))}
-              {upcoming.next.map((e, i) => (
+              {upcoming.list.map((e, i) => (
                 <TimelineRow key={`nx-${i}`} entry={e} onOpenGoal={onOpenGoal} />
               ))}
             </div>
           )}
-          <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-            <button type="button" className="btn btn-secondary btn-sm" onClick={onViewTimeline}>View Timeline</button>
-          </div>
         </div>
       </div>
     </div>
