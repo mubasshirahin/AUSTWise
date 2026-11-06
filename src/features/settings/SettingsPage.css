@@ -791,6 +791,37 @@
   overflow-wrap: anywhere;
 }
 
+/* Batch tile becomes a single inline editor while the profile is being edited. */
+.profile-summary-grid > div.is-editing {
+  border-color: color-mix(in srgb, var(--accent-amber) 34%, transparent);
+  background: color-mix(in srgb, var(--accent-amber) 6%, transparent);
+  box-shadow: 0 2px 14px -6px color-mix(in srgb, var(--accent-amber) 30%, transparent);
+  transform: none;
+}
+
+.profile-summary-input {
+  width: 100%;
+  margin-top: 2px;
+  padding: 7px 10px;
+  font-size: var(--fs-sm);
+}
+
+.profile-summary-grid .batch-edit-preview {
+  display: block;
+  margin: 5px 0 0;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-tertiary);
+}
+
+.profile-summary-grid .batch-edit-preview strong {
+  display: inline;
+  font-size: inherit;
+  color: var(--accent-amber);
+}
+
 .profile-linked-social {
   margin-top: var(--sp-5);
 }
@@ -1172,6 +1203,18 @@
 
 .quick-option-grid.wide-options {
   grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));
+}
+
+/* ─── Batch editor hint ─── */
+.batch-edit-preview {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-tertiary);
+}
+
+.batch-edit-preview strong {
+  color: var(--accent-amber);
+  font-weight: var(--fw-semibold);
 }
 
 .batch-option-group {

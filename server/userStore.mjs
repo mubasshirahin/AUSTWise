@@ -78,7 +78,26 @@ function fromUserRow(row) {
 export const FACULTY_DEPARTMENTS = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'];
 export const facultyDepartmentRole = (department) => `faculty_${String(department || '').trim().toLowerCase()}`;
 const facultyDepartmentRoles = FACULTY_DEPARTMENTS.map(facultyDepartmentRole);
-export const VALID_ROLES = ['student', 'faculty', 'alumni', 'alumni_with_carry', 'admin', 'cr', 'sr', 'senior', 'moderator', 'vp', 'gs', 'readd', 'bus_coordinator', 'guest', 'clubs_representative', 'help_desk', 'banned', ...facultyDepartmentRoles];
+export const VALID_ROLES = ['student', 'faculty', 'alumni', 'alumni_with_carry', 'admin', 'cr', 'sr', 'moderator', 'vp', 'gs', 'readd', 'bus_coordinator', 'guest', 'clubs_representative', 'help_desk', 'banned', ...facultyDepartmentRoles];
+/**
+ * Legacy `senior` values from before the role was removed. They read as
+ * plain students (their semester already marks them as 3.1+).
+ */
+export function normalizeLegacySenior(user) {
+  if (!user || typeof user !== 'object') return user;
+  const role = String(user.role || '').trim().toLowerCase();
+  const roles = Array.isArray(user.roles) ? user.roles : [];
+  if (role !== 'senior' && !roles.some((value) => String(value || '').trim().toLowerCase() === 'senior')) {
+    return user;
+  }
+  const nextRoles = [...new Set(roles.map((value) => String(value || '').trim().toLowerCase()).filter((value) => value && value !== 'senior'))];
+  if (!nextRoles.includes('student')) nextRoles.unshift('student');
+  return {
+    ...user,
+    role: role === 'senior' ? 'student' : user.role,
+    roles: nextRoles,
+  };
+}
 /** Roles an admin may assign to another user via the admin panel / approvals. */
 export const ADMIN_ASSIGNABLE_ROLES = ['student', 'cr', 'sr', 'vp', 'gs', 'readd', 'faculty', ...facultyDepartmentRoles, 'alumni', 'alumni_with_carry', 'moderator', 'bus_coordinator', 'guest', 'clubs_representative', 'help_desk', 'banned'];
 const DEV_PASSWORD = 'Dev@123456';
@@ -97,7 +116,7 @@ export async function readUsers() {
     await ensureAuthTables();
     try {
       const rows = await query('SELECT id, email, data FROM "AuthUsers"');
-      const users = rows.map(fromUserRow).filter(Boolean);
+      const users = rows.map(fromUserRow).filter(Boolean).map(normalizeLegacySenior);
       // One-time migration: if the JSON file has rows and SQL is empty, push
       // the file's accounts up so nothing the user created before survives on
       // the persistent store.
@@ -108,7 +127,7 @@ export async function readUsers() {
             for (const user of legacy) {
               await upsertUserRow(toUserRow(user));
             }
-            users.push(...legacy);
+            users.push(...legacy.map(normalizeLegacySenior));
           }
         } catch { /* invalid/absent file — ignore */ }
       }
@@ -120,7 +139,7 @@ export async function readUsers() {
   try {
     if (!existsSync(DB_PATH)) return [];
     const raw = await readFile(DB_PATH, 'utf-8');
-    return JSON.parse(raw);
+    return JSON.parse(raw).map(normalizeLegacySenior);
   } catch { return []; }
 }
 
@@ -184,14 +203,15 @@ async function readRawUser(id) {
     try {
       const rows = await query('SELECT data FROM "AuthUsers" WHERE id = @id',
         [{ name: 'id', type: sql.NVarChar(50), value: id }]);
-      if (rows && rows[0]) return fromUserRow(rows[0]);
+      if (rows && rows[0]) return normalizeLegacySenior(fromUserRow(rows[0]));
       // Not in SQL yet — fall through to the JSON mirror below.
     } catch (err) {
       console.warn('⚠️  userStore: SQL single read failed, using JSON fallback:', err.message);
     }
   }
   const users = await readJsonUsers();
-  return users.find((u) => u && u.id === id) || null;
+  const found = users.find((u) => u && u.id === id) || null;
+  return found ? normalizeLegacySenior(found) : null;
 }
 
 /**
@@ -241,6 +261,11 @@ function toYearSemester(value) {
   const s = String(value || '').trim();
   if (!s) return '';
   if (/Year\s*\d+\s*-\s*Semester\s*\d+/i.test(s)) return s;
+  const plain = /^Semester\s*(\d{1,2})$/i.exec(s);
+  if (plain) {
+    const n = Number(plain[1]);
+    return `Year ${Math.ceil(n / 2)} - Semester ${n % 2 === 0 ? 2 : 1}`;
+  }
   const parts = s.split('.');
   const yr = Number(parts[0]);
   const term = Number(parts[1]);
@@ -431,7 +456,7 @@ const DESIGNATIONS = ['Professor', 'Associate Professor', 'Assistant Professor',
  *
  *   every department × every semester × every section × every lab group
  *   gets `studentsPerCombo` students (1 CR per lab group, 1 SR per section),
- *   plus faculty + alumni + senior + moderator accounts per department.
+ *   plus faculty + alumni + 3.1+ semester students + moderator per department.
  *
  * Re-runs REPLACE the previous dev users (id `DEV-*` / email `dev-*@…`) so the
  * matrix is always deterministic — real users are never touched. All dev
@@ -463,7 +488,7 @@ export async function seedDevUsers() {
   const labsForSection = (section) =>
     cfg.labGroups.filter((lab) => String(lab).toUpperCase().startsWith(String(section).toUpperCase()));
 
-  const deptUsers = new Map(); // dept -> [] (for faculty/alumni/senior lookup)
+  const deptUsers = new Map(); // dept -> [] (for faculty/alumni/3.1+ lookup)
 
   for (const dept of cfg.departments) {
     const deptKey = String(dept).toUpperCase();
@@ -654,16 +679,16 @@ export async function seedDevUsers() {
       pushUser(user);
     }
 
-    // Senior (student body representative) per department.
-    const snrEmail = `dev-senior-${deptKey.toLowerCase()}@aust.edu`;
+    // Semester-7 student (3.1+ batch) per department.
+    const snrEmail = `dev-${deptKey.toLowerCase()}-s7@aust.edu`;
     if (!seenEmails.has(snrEmail)) {
       const user = {
-        id: `DEV-${deptKey}-SENIOR`,
+        id: `DEV-${deptKey}-S7`,
         awid: nextAwid(deptKey),
         email: snrEmail,
         name: `${deptKey} Senior Rep`,
         password: hash,
-        role: 'senior',
+        role: 'student',
         department: deptKey,
         batch: `2024-${deptKey}`,
         batchNo: '2024',
@@ -855,7 +880,7 @@ export async function createUser(payload, { invitationAuthorized = false, passwo
 
   const hash = passwordHash || await hashPassword(password);
   const rnd = Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 6).toUpperCase();
-  const prefix = { student: 'STU', faculty: 'FAC', alumni: 'ALU', admin: 'ADM', cr: 'CR', sr: 'SR', senior: 'SNR', moderator: 'MOD', bus_coordinator: 'BUS', guest: 'GST', clubs_representative: 'CLB', help_desk: 'HLP', banned: 'BAN' }[role] || 'USR';
+  const prefix = { student: 'STU', faculty: 'FAC', alumni: 'ALU', admin: 'ADM', cr: 'CR', sr: 'SR', moderator: 'MOD', bus_coordinator: 'BUS', guest: 'GST', clubs_representative: 'CLB', help_desk: 'HLP', banned: 'BAN' }[role] || 'USR';
   const id = `${prefix}-${rnd}`;
   const awid = generateAwid(users, role, department || 'GEN');
 
@@ -935,10 +960,30 @@ export async function validateLogin(email, password) {
   return safe;
 }
 
-/** Get user by ID (without password hash) */
+/** Get user by ID (without password hash) — direct SQL lookup when DB is live. */
 export async function getUserById(id) {
+  const k = String(id || '');
+  if (!k) return null;
+  if (await isDbAvailable()) {
+    await ensureAuthTables();
+    try {
+      const rows = await query(
+        'SELECT data FROM "AuthUsers" WHERE id = @k',
+        [{ name: 'k', type: sql.NVarChar(50), value: k }]
+      );
+      if (rows && rows[0]) {
+        const user = normalizeLegacySenior(fromUserRow(rows[0]));
+        if (user) {
+          const { password: _, ...safe } = user;
+          return safe;
+        }
+        return null;
+      }
+      // No row in SQL — fall through to JSON scan for legacy accounts.
+    } catch { /* fall through to JSON scan */ }
+  }
   const users = await readUsers();
-  const user = users.find(u => u.id === id);
+  const user = users.find(u => u.id === k);
   if (!user) return null;
   const { password: _, ...safe } = user;
   return safe;
@@ -961,7 +1006,7 @@ export async function getUserByIdOrAwid(key) {
       );
       if (rows && rows[0]) {
         const user = fromUserRow(rows[0]);
-        if (user) return user;
+        if (user) return normalizeLegacySenior(user);
       }
     } catch { /* fall through to JSON scan */ }
   }
@@ -969,9 +1014,28 @@ export async function getUserByIdOrAwid(key) {
   return users.find((u) => u && (u.id === k || u.awid === k)) || null;
 }
 
-/** Get a user by email (without password hash) */
+/** Get a user by email (without password hash) — direct SQL lookup when DB is live. */
 export async function getUserByEmail(email) {
   const normalized = String(email || '').trim().toLowerCase();
+  if (!normalized) return null;
+  if (await isDbAvailable()) {
+    await ensureAuthTables();
+    try {
+      const rows = await query(
+        'SELECT data FROM "AuthUsers" WHERE email = @email',
+        [{ name: 'email', type: sql.NVarChar(200), value: normalized }]
+      );
+      if (rows && rows[0]) {
+        const user = normalizeLegacySenior(fromUserRow(rows[0]));
+        if (user) {
+          const { password: _, ...safe } = user;
+          return safe;
+        }
+        return null;
+      }
+      // No row in SQL — fall through to JSON scan for legacy accounts.
+    } catch { /* fall through to JSON scan */ }
+  }
   const users = await readUsers();
   const user = users.find(u => u.email === normalized);
   if (!user) return null;

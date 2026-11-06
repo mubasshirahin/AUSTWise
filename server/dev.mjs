@@ -273,7 +273,7 @@ const globalRateLimiter = rateLimit({
 //     cache
 // Read/write budget per user is RATE_LIMIT_VAULT_MAX requests per minute.
 const VAULT_ROLES = [
-  'student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior',
+  'student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr',
   'vp', 'gs', 'bus_coordinator', 'clubs_representative', 'help_desk',
 ];
 const VAULT_BODY_LIMIT = 8 * 1024; // one credential is a few hundred bytes
@@ -648,6 +648,123 @@ function getPublicBaseUrl(req) {
   const local = /^(localhost|127\.0\.0\.1)(:\d+)?$/i.test(host);
   const protocol = local ? 'http' : 'https';
   return `${protocol}://${host}`;
+}
+
+// ── Batch Drive lock (8-digit code, max 5 people per sharer) ────
+// Junior viewers (semester 1–4) and CR/SR are locked; a one-time 8-digit
+// code from a semester-5+ (3.1+) student unlocks one account. Each
+// generated code is single-use. Login parity with the client helpers in
+// src/utils/batchDriveLock.js — keep the rules in sync.
+const BATCH_DRIVE_LOCK_KEY = 'aust-batch-drive-lock-v1';
+const BATCH_DRIVE_CODE_MAX_USES = 5;
+
+function parseBatchDriveSemesterNum(dbUser) {
+  const rawSem = String(dbUser?.semester ?? '').trim();
+  // semester stored as "3.1"-style year-term must not truncate to 3.
+  const semAsYearTerm = /^(\d+)\.(\d)(?:\..*)?$/.exec(rawSem);
+  if (semAsYearTerm) return (Number(semAsYearTerm[1]) - 1) * 2 + Number(semAsYearTerm[2]);
+  const num = Number(dbUser?.semester);
+  if (Number.isFinite(num) && num >= 1) return Math.trunc(num);
+  const ys = String(dbUser?.yearSemester || dbUser?.currentSemester || '').trim();
+  const full = /Year\s*(\d+)\s*[-–]\s*Semester\s*(\d+)/i.exec(ys);
+  if (full) return (Number(full[1]) - 1) * 2 + Number(full[2]);
+  const short = /^(\d+)\.(\d)(?:\..*)?$/.exec(ys);
+  if (short) return (Number(short[1]) - 1) * 2 + Number(short[2]);
+  const plain = /^Semester\s*(\d{1,2})$/i.exec(ys);
+  if (plain) return Number(plain[1]);
+  const bare = /^(\d{1,2})$/.exec(ys);
+  if (bare) return Number(bare[1]);
+  return null;
+}
+
+function batchDriveRoleSet(dbUser) {
+  const roles = new Set();
+  const add = (value) => { const v = String(value || '').trim().toLowerCase(); if (v) roles.add(v); };
+  add(dbUser?.role);
+  if (Array.isArray(dbUser?.roles)) dbUser.roles.forEach(add);
+  return roles;
+}
+
+function isBatchDriveStudentLike(dbUser) {
+  const roles = batchDriveRoleSet(dbUser);
+  const nonStudent = new Set(['faculty', 'alumni', 'alumni_with_carry', 'admin', 'moderator', 'guest', 'banned']);
+  if ([...roles].some((r) => nonStudent.has(r) || r.startsWith('faculty_'))) return false;
+  return true;
+}
+
+function isBatchDriveCrSr(dbUser) {
+  const roles = batchDriveRoleSet(dbUser);
+  return roles.has('cr') || roles.has('sr');
+}
+
+function batchDriveNeedsUnlock(dbUser) {
+  if (!isBatchDriveStudentLike(dbUser)) return false;
+  if (isBatchDriveCrSr(dbUser)) return true;
+  const semesterNum = parseBatchDriveSemesterNum(dbUser);
+  if (semesterNum === null) return true;
+  return semesterNum <= 4;
+}
+
+function canBatchDriveGenerate(dbUser) {
+  if (!isBatchDriveStudentLike(dbUser)) return false;
+  const semesterNum = parseBatchDriveSemesterNum(dbUser);
+  return semesterNum !== null && semesterNum >= 5;
+}
+
+async function readBatchDriveLockState() {
+  const raw = await getSharedStoreValue(BATCH_DRIVE_LOCK_KEY, null);
+  const state = (raw && typeof raw === 'object') ? raw : {};
+  return {
+    sharers: (state.sharers && typeof state.sharers === 'object') ? state.sharers : {},
+    unlocked: (state.unlocked && typeof state.unlocked === 'object') ? state.unlocked : {},
+  };
+}
+
+async function writeBatchDriveLockState(state) {
+  await setSharedStoreValue(BATCH_DRIVE_LOCK_KEY, state, 'batch-drive-lock');
+  broadcastToAll({ type: 'store-change', payload: { scope: 'shared', key: BATCH_DRIVE_LOCK_KEY } });
+}
+
+function batchDriveShareSummary(sharer) {
+  const codes = Array.isArray(sharer?.codes) ? sharer.codes : [];
+  const usedCount = codes.filter((entry) => entry?.usedById).length;
+  return {
+    enabled: true,
+    usedCount,
+    maxUses: BATCH_DRIVE_CODE_MAX_USES,
+    remaining: Math.max(0, BATCH_DRIVE_CODE_MAX_USES - usedCount),
+    codes: codes.map((entry) => ({
+      code: entry.code,
+      createdAt: entry.createdAt || null,
+      usedById: entry.usedById || null,
+      usedByName: entry.usedByName || '',
+      usedAt: entry.usedAt || null,
+    })),
+  };
+}
+
+function batchDriveStudentIdFromEmail(email) {
+  const prefix = String(email || '').split('@')[0];
+  const digits = prefix.replace(/^[a-z.]+/i, '');
+  return /^\d+$/.test(digits) ? digits : '';
+}
+
+function batchDriveBatchLabel(dbUser) {
+  const name = String(dbUser?.batchName || '').trim();
+  const no = String(dbUser?.batchNo || '').trim();
+  if (name && no && name !== no) return `${name} ${no}`.replace(/\s+/g, ' ').trim();
+  if (name) return name;
+  const raw = String(dbUser?.batch || '').trim();
+  if (/[^\d\s]/.test(raw)) return raw;
+  if (no) return `Batch ${no}`;
+  return '';
+}
+
+function batchDriveYearSemLabel(semesterNum) {
+  if (!semesterNum) return '';
+  const year = Math.ceil(semesterNum / 2);
+  const term = semesterNum % 2 === 0 ? 2 : 1;
+  return `${year}.${term}`;
 }
 
 async function sendStaticFile(req, res) {
@@ -1116,7 +1233,7 @@ async function handleApiRequest(req, res) {
 
   // Get user registration status
   if (req.url === '/api/telegram/connection' && req.method === 'GET') {
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     try {
       const account = await getUserById(auth.id);
@@ -1141,7 +1258,7 @@ async function handleApiRequest(req, res) {
 
   // Get user registration status
   if (req.url === '/api/telegram/notification-health' && req.method === 'GET') {
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     try {
       const user = await getUserById(auth.id);
@@ -2160,7 +2277,7 @@ async function handleApiRequest(req, res) {
   // Send one professionally formatted Telegram message sample to the signed-in user's linked chat.
   if (req.url === '/api/telegram/test-message' && req.method === 'POST') {
     if (!requireFeature('telegram', res, 'TELEGRAM_BOT_TOKEN')) return;
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     try {
       const { type, routine } = await readJsonBody(req);
@@ -3732,6 +3849,7 @@ async function handleApiRequest(req, res) {
           initials: String(user.name || 'AU').trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'AU',
           avatar: user.avatar || null,
           role: user.role || 'student',
+          roles: [...new Set([user.role || 'student', ...(Array.isArray(user.roles) ? user.roles : [])].filter(Boolean))],
           email,
           phone: user.phone || '',
           studentId,
@@ -3785,6 +3903,7 @@ async function handleApiRequest(req, res) {
             initials: String(u.name || 'AU').trim().split(/\s+/).slice(0, 2).map(x => x[0]?.toUpperCase()).join('') || 'AU',
             avatar: u.avatar || null,
             role: u.role || 'student',
+            roles: [...new Set([u.role || 'student', ...(Array.isArray(u.roles) ? u.roles : [])].filter(Boolean))],
             department: u.department || '',
             batch: u.batch || u.batchName || u.batchNo || '',
             batchNo: u.batchNo || '',
@@ -3814,7 +3933,7 @@ async function handleApiRequest(req, res) {
   // POST /api/presence/privacy — update the viewer's own privacy toggles
   // ({ showCgpa, showAttendance }). Stored on the user record in users.json.
   if (req.url === '/api/presence/privacy' && req.method === 'POST') {
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     try {
       const body = await readJsonBody(req);
@@ -3841,7 +3960,7 @@ async function handleApiRequest(req, res) {
   // prefs, Telegram chat id/status, library tracking). Stored on the user
   // record; Telegram registration status is recomputed from the Telegram store.
   if (req.url === '/api/user/settings' && req.method === 'GET') {
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     try {
       const user = await getUserById(auth.id);
@@ -3864,7 +3983,7 @@ async function handleApiRequest(req, res) {
   // POST /api/user/settings — save the viewer's cross-device settings.
   // Accepts partial payloads; merged over the stored settings.
   if (req.url === '/api/user/settings' && req.method === 'POST') {
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     try {
       const body = await readJsonBody(req);
@@ -3895,7 +4014,7 @@ async function handleApiRequest(req, res) {
   // ── Generic KV Store API ──────────────────────────────────────────────
   // GET /api/store/user/:key — read a per-user stored value
   if (req.url.startsWith('/api/store/user/') && req.method === 'GET') {
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     const key = decodeURIComponent(req.url.slice('/api/store/user/'.length));
     try {
@@ -3909,7 +4028,7 @@ async function handleApiRequest(req, res) {
 
   // PUT /api/store/user/:key — write a per-user stored value
   if (req.url.startsWith('/api/store/user/') && req.method === 'PUT') {
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     const key = decodeURIComponent(req.url.slice('/api/store/user/'.length));
     try {
@@ -3968,7 +4087,7 @@ async function handleApiRequest(req, res) {
 
   // DELETE /api/store/user/:key — delete a per-user stored value
   if (req.url.startsWith('/api/store/user/') && req.method === 'DELETE') {
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     const key = decodeURIComponent(req.url.slice('/api/store/user/'.length));
     try {
@@ -3985,7 +4104,7 @@ async function handleApiRequest(req, res) {
 
   // GET /api/store/user — list all keys for the current user
   if (req.url === '/api/store/user' && req.method === 'GET') {
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     try {
       const keys = await listUserStoreKeys(auth.id);
@@ -3998,9 +4117,13 @@ async function handleApiRequest(req, res) {
 
   // GET /api/store/shared/:key — read a shared stored value
   if (req.url.startsWith('/api/store/shared/') && req.method === 'GET') {
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     const key = decodeURIComponent(req.url.slice('/api/store/shared/'.length));
+    if (key === BATCH_DRIVE_LOCK_KEY) {
+      sendJson(res, 403, { success: false, error: 'Use the Batch Drive lock API for this data.' });
+      return;
+    }
     try {
       const value = await getSharedStoreValue(key, null);
       sendJson(res, 200, { success: true, key, value });
@@ -4012,9 +4135,13 @@ async function handleApiRequest(req, res) {
 
   // PUT /api/store/shared/:key — write a shared stored value
   if (req.url.startsWith('/api/store/shared/') && req.method === 'PUT') {
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     const key = decodeURIComponent(req.url.slice('/api/store/shared/'.length));
+    if (key === BATCH_DRIVE_LOCK_KEY) {
+      sendJson(res, 403, { success: false, error: 'Use the Batch Drive lock API for this data.' });
+      return;
+    }
     try {
       const body = await readJsonBody(req);
       if (key.startsWith('aust-semester-tasks:')) {
@@ -4190,9 +4317,13 @@ async function handleApiRequest(req, res) {
 
   // DELETE /api/store/shared/:key — delete a shared stored value
   if (req.url.startsWith('/api/store/shared/') && req.method === 'DELETE') {
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     const key = decodeURIComponent(req.url.slice('/api/store/shared/'.length));
+    if (key === BATCH_DRIVE_LOCK_KEY) {
+      sendJson(res, 403, { success: false, error: 'Use the Batch Drive lock API for this data.' });
+      return;
+    }
     if (key.startsWith('aust-semester-tasks:')) {
       const dbUser = auth.role === 'cr' ? await getUserById(auth.id) : null;
       const group = key.slice(key.lastIndexOf(':') + 1).toUpperCase();
@@ -4230,7 +4361,7 @@ async function handleApiRequest(req, res) {
 
   // PUT /api/store/migrate — bulk migrate localStorage keys to server
   if (req.url === '/api/store/migrate' && req.method === 'PUT') {
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     try {
       const body = await readJsonBody(req);
@@ -4262,11 +4393,266 @@ async function handleApiRequest(req, res) {
     return;
   }
 
+  // ── Batch Drive lock (8-digit code) ────────────────────────────────
+  // Viewer lock: semester 1–4 (1.1–2.2) students and all CR/SR are locked
+  // until they redeem a code. Sharers: semester 5+ (3.1+) students generate
+  // single-use 8-digit codes; max 5 people may redeem per sharer. Drive
+  // Links (CR/SR link editor) is separate and stays open.
+  const BATCH_DRIVE_LOCK_ROLES = ['student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'vp', 'gs', 'readd', 'bus_coordinator', 'clubs_representative', 'help_desk', 'banned'];
+
+  if (req.url === '/api/batch-drive/lock/me' && req.method === 'GET') {
+    const auth = requireRole(...BATCH_DRIVE_LOCK_ROLES)(req, res);
+    if (!auth) return;
+    try {
+      const dbUser = await getUserById(auth.id);
+      if (!dbUser) {
+        sendJson(res, 404, { success: false, error: 'User not found.' });
+        return;
+      }
+      const state = await readBatchDriveLockState();
+      const semesterNum = parseBatchDriveSemesterNum(dbUser);
+      const needsUnlock = batchDriveNeedsUnlock(dbUser);
+      const unlockedRecord = state.unlocked[dbUser.id] || null;
+      const unlocked = Boolean(unlockedRecord);
+      const canShare = canBatchDriveGenerate(dbUser);
+      const sharer = state.sharers[dbUser.id] || null;
+      sendJson(res, 200, {
+        success: true,
+        locked: needsUnlock && !unlocked,
+        needsUnlock,
+        unlocked,
+        canShare,
+        department: dbUser.department || '',
+        semesterNum,
+        yearSemLabel: batchDriveYearSemLabel(semesterNum),
+        share: canShare && sharer ? { ...batchDriveShareSummary(sharer), hasGenerated: true } : (canShare ? { enabled: true, usedCount: 0, maxUses: BATCH_DRIVE_CODE_MAX_USES, remaining: BATCH_DRIVE_CODE_MAX_USES, codes: [], hasGenerated: false } : null),
+        unlock: unlockedRecord,
+      });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to load lock status.' });
+    }
+    return;
+  }
+
+  if (req.url === '/api/batch-drive/lock/generate' && req.method === 'POST') {
+    const auth = requireRole(...BATCH_DRIVE_LOCK_ROLES)(req, res);
+    if (!auth) return;
+    try {
+      const dbUser = await getUserById(auth.id);
+      if (!dbUser) {
+        sendJson(res, 404, { success: false, error: 'User not found.' });
+        return;
+      }
+      if (!canBatchDriveGenerate(dbUser)) {
+        sendJson(res, 403, { success: false, error: 'Only students in semester 3.1 or above can generate a code.' });
+        return;
+      }
+      const state = await readBatchDriveLockState();
+      const sharer = state.sharers[dbUser.id] || { enabled: true, codes: [], updatedAt: null };
+      const usedCount = (Array.isArray(sharer.codes) ? sharer.codes : []).filter((entry) => entry?.usedById).length;
+      if (usedCount >= BATCH_DRIVE_CODE_MAX_USES) {
+        sendJson(res, 409, { success: false, error: `You already gave access to ${BATCH_DRIVE_CODE_MAX_USES} people. No more codes can be redeemed.` });
+        return;
+      }
+      const existingCodes = new Set();
+      Object.values(state.sharers).forEach((item) => {
+        (Array.isArray(item?.codes) ? item.codes : []).forEach((entry) => { if (entry?.code) existingCodes.add(entry.code); });
+      });
+      let code = '';
+      for (let attempt = 0; attempt < 50; attempt += 1) {
+        code = String(crypto.randomInt(0, 100000000)).padStart(8, '0');
+        if (!existingCodes.has(code)) break;
+        code = '';
+      }
+      if (!code) {
+        sendJson(res, 500, { success: false, error: 'Could not generate a unique code. Try again.' });
+        return;
+      }
+      sharer.codes = Array.isArray(sharer.codes) ? sharer.codes : [];
+      sharer.codes.push({ code, createdAt: new Date().toISOString(), usedById: null, usedByName: '', usedAt: null });
+      sharer.enabled = true;
+      sharer.updatedAt = new Date().toISOString();
+      state.sharers[dbUser.id] = sharer;
+      await writeBatchDriveLockState(state);
+      sendJson(res, 200, { success: true, code, share: { ...batchDriveShareSummary(sharer), hasGenerated: true } });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to generate code.' });
+    }
+    return;
+  }
+
+  if (req.url === '/api/batch-drive/lock/toggle' && req.method === 'POST') {
+    const auth = requireRole(...BATCH_DRIVE_LOCK_ROLES)(req, res);
+    if (!auth) return;
+    try {
+      const body = await readJsonBody(req);
+      const dbUser = await getUserById(auth.id);
+      if (!dbUser) {
+        sendJson(res, 404, { success: false, error: 'User not found.' });
+        return;
+      }
+      const state = await readBatchDriveLockState();
+      const sharer = state.sharers[dbUser.id] || null;
+      if (!canBatchDriveGenerate(dbUser) && !sharer) {
+        sendJson(res, 403, { success: false, error: 'Only students in semester 3.1 or above can change sharing.' });
+        return;
+      }
+      const next = sharer || { enabled: true, codes: [], updatedAt: null };
+      next.enabled = true;
+      next.updatedAt = new Date().toISOString();
+      state.sharers[dbUser.id] = next;
+      await writeBatchDriveLockState(state);
+      sendJson(res, 200, { success: true, share: { ...batchDriveShareSummary(next), hasGenerated: Array.isArray(next.codes) && next.codes.length > 0 } });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to update sharing.' });
+    }
+    return;
+  }
+
+  if (req.url === '/api/batch-drive/lock/redeem' && req.method === 'POST') {
+    const auth = requireRole(...BATCH_DRIVE_LOCK_ROLES)(req, res);
+    if (!auth) return;
+    try {
+      const body = await readJsonBody(req);
+      const code = String(body?.code || '').trim();
+      if (!/^\d{8}$/.test(code)) {
+        sendJson(res, 400, { success: false, error: 'Enter the 8-digit code.' });
+        return;
+      }
+      const dbUser = await getUserById(auth.id);
+      if (!dbUser) {
+        sendJson(res, 404, { success: false, error: 'User not found.' });
+        return;
+      }
+      const state = await readBatchDriveLockState();
+      if (state.unlocked[dbUser.id]) {
+        sendJson(res, 200, { success: true, alreadyUnlocked: true, unlock: state.unlocked[dbUser.id] });
+        return;
+      }
+      if (!batchDriveNeedsUnlock(dbUser)) {
+        sendJson(res, 400, { success: false, error: 'Your Batch Drive is already open.' });
+        return;
+      }
+      let ownerId = null;
+      let ownerSharer = null;
+      let codeEntry = null;
+      for (const [sharerId, sharer] of Object.entries(state.sharers)) {
+        const found = (Array.isArray(sharer?.codes) ? sharer.codes : []).find((entry) => entry?.code === code);
+        if (found) {
+          ownerId = sharerId;
+          ownerSharer = sharer;
+          codeEntry = found;
+          break;
+        }
+      }
+      if (!codeEntry) {
+        sendJson(res, 404, { success: false, error: 'Invalid code.' });
+        return;
+      }
+      if (ownerId === dbUser.id) {
+        sendJson(res, 400, { success: false, error: 'You cannot use your own code.' });
+        return;
+      }
+      // Same-department only: your own department 3.1+ student can unlock you.
+      const ownerUser = await getUserById(ownerId);
+      const redeemerDept = String(dbUser.department || '').trim().toUpperCase();
+      const ownerDept = String(ownerUser?.department || '').trim().toUpperCase();
+      if (!ownerUser || !redeemerDept || !ownerDept || redeemerDept !== ownerDept) {
+        sendJson(res, 403, { success: false, error: `This code is for ${ownerDept || 'another department'} students only. Your department is ${redeemerDept || 'not set'}.` });
+        return;
+      }
+      if (!ownerSharer) {
+        sendJson(res, 404, { success: false, error: 'Invalid code.' });
+        return;
+      }
+      if (codeEntry.usedById) {
+        sendJson(res, 400, { success: false, error: 'This code was already used.' });
+        return;
+      }
+      const usedCount = ownerSharer.codes.filter((entry) => entry?.usedById).length;
+      if (usedCount >= BATCH_DRIVE_CODE_MAX_USES) {
+        sendJson(res, 409, { success: false, error: `This code already gave access to ${BATCH_DRIVE_CODE_MAX_USES} people.` });
+        return;
+      }
+      codeEntry.usedById = dbUser.id;
+      codeEntry.usedByName = dbUser.name || '';
+      codeEntry.usedAt = new Date().toISOString();
+      ownerSharer.updatedAt = new Date().toISOString();
+      state.unlocked[dbUser.id] = { ownerId, code, redeemedAt: codeEntry.usedAt };
+      await writeBatchDriveLockState(state);
+      sendJson(res, 200, { success: true, unlock: state.unlocked[dbUser.id] });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to redeem code.' });
+    }
+    return;
+  }
+
+  if (req.url === '/api/batch-drive/lock/admin' && req.method === 'GET') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const state = await readBatchDriveLockState();
+      const users = await getAllUsersSafe();
+      const byId = new Map(users.map((entry) => [entry.id, entry]));
+      const sharerIds = new Set(Object.keys(state.sharers).filter((id) => byId.has(id)));
+      users.forEach((entry) => {
+        if (canBatchDriveGenerate(entry)) sharerIds.add(entry.id);
+      });
+      const sharers = [...sharerIds].map((userId) => {
+        const entry = byId.get(userId);
+        const sharer = state.sharers[userId] || null;
+        const summary = batchDriveShareSummary(sharer || { enabled: false, codes: [] });
+        const semesterNum = parseBatchDriveSemesterNum(entry);
+        const uses = summary.codes
+          .filter((codeEntry) => codeEntry.usedById)
+          .map((codeEntry) => {
+            const recipient = byId.get(codeEntry.usedById) || null;
+            return {
+              userId: codeEntry.usedById,
+              name: recipient?.name || codeEntry.usedByName || 'Unknown',
+              avatar: recipient?.avatar || null,
+              email: recipient?.email || '',
+              studentId: recipient ? batchDriveStudentIdFromEmail(recipient.email) : '',
+              department: recipient?.department || '',
+              batchLabel: recipient ? batchDriveBatchLabel(recipient) : '',
+              semesterNum: recipient ? parseBatchDriveSemesterNum(recipient) : null,
+              yearSemLabel: recipient ? batchDriveYearSemLabel(parseBatchDriveSemesterNum(recipient)) : '',
+              code: codeEntry.code,
+              redeemedAt: codeEntry.usedAt || null,
+            };
+          })
+          .sort((a, b) => String(a.redeemedAt || '').localeCompare(String(b.redeemedAt || '')));
+        return {
+          userId: entry.id,
+          name: entry.name || '',
+          email: entry.email || '',
+          avatar: entry.avatar || null,
+          studentId: batchDriveStudentIdFromEmail(entry.email),
+          department: entry.department || '',
+          batchLabel: batchDriveBatchLabel(entry),
+          semesterNum,
+          yearSemLabel: batchDriveYearSemLabel(semesterNum),
+          enabled: summary.enabled,
+          hasGenerated: summary.codes.length > 0,
+          usedCount: summary.usedCount,
+          maxUses: summary.maxUses,
+          remaining: summary.remaining,
+          codes: summary.codes,
+          uses,
+        };
+      }).sort((a, b) => (b.usedCount - a.usedCount) || String(a.name || '').localeCompare(String(b.name || '')));
+      sendJson(res, 200, { success: true, maxUses: BATCH_DRIVE_CODE_MAX_USES, sharers });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to load code shares.' });
+    }
+    return;
+  }
+
   // POST /api/presence/attendance — sync the user's attendance percentage to
   // their record so the Active Members popup can show a real value when the
   // "Show my attendance" privacy toggle is enabled.
   if (req.url === '/api/presence/attendance' && req.method === 'POST') {
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     try {
       const body = await readJsonBody(req);
@@ -4468,7 +4854,7 @@ async function handleApiRequest(req, res) {
   if (req.url === '/api/marketplace' && req.method === 'POST') {
     if (!requireFeature('db', res, 'Database connection')) return;
     try {
-      const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+      const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
       if (!auth) return;
       const payload = await readJsonBody(req);
       payload.contributorId = auth.id;
@@ -4484,7 +4870,7 @@ async function handleApiRequest(req, res) {
   if (req.url.startsWith('/api/marketplace/') && req.method === 'DELETE') {
     if (!requireFeature('db', res, 'Database connection')) return;
     try {
-      const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+      const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
       if (!auth) return;
       const id = new URL(req.url, `http://${req.headers.host}`).pathname.split('/').pop();
       await deleteMarketplaceListing(id, auth.id, auth.role === 'admin' || auth.role === 'moderator');
@@ -4499,7 +4885,7 @@ async function handleApiRequest(req, res) {
   // ── Grades ──
   if (req.url === '/api/grades' && req.method === 'GET') {
     if (!requireFeature('db', res, 'Database connection')) return;
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     try {
       const results = await getSemesterResults(auth.id);
@@ -4512,7 +4898,7 @@ async function handleApiRequest(req, res) {
 
   if (req.url === '/api/grades' && req.method === 'POST') {
     if (!requireFeature('db', res, 'Database connection')) return;
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     try {
       const data = await readJsonBody(req);
@@ -4527,7 +4913,7 @@ async function handleApiRequest(req, res) {
   // ── Messages ──
   if (req.url === '/api/messages' && req.method === 'GET') {
     if (!requireFeature('db', res, 'Database connection')) return;
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     try {
       const url = new URL(req.url, `http://${req.headers.host}`);
@@ -4547,7 +4933,7 @@ async function handleApiRequest(req, res) {
 
   if (req.url === '/api/messages' && req.method === 'POST') {
     if (!requireFeature('db', res, 'Database connection')) return;
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     try {
       const payload = await readJsonBody(req);
@@ -4569,7 +4955,7 @@ async function handleApiRequest(req, res) {
   // PUT /api/messages/:id — edit own message (ownership enforced)
   if (req.url.startsWith('/api/messages/') && req.method === 'PUT') {
     if (!requireFeature('db', res, 'Database connection')) return;
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     try {
       const id = new URL(req.url, `http://${req.headers.host}`).pathname.split('/').pop();
@@ -4594,7 +4980,7 @@ async function handleApiRequest(req, res) {
   // DELETE /api/messages/:id — soft-delete own message
   if (req.url.startsWith('/api/messages/') && req.method === 'DELETE') {
     if (!requireFeature('db', res, 'Database connection')) return;
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     try {
       const id = new URL(req.url, `http://${req.headers.host}`).pathname.split('/').pop();
@@ -4609,7 +4995,7 @@ async function handleApiRequest(req, res) {
   // POST /api/messages/:id/reaction — toggle a reaction
   if (req.url.startsWith('/api/messages/') && req.url.endsWith('/reaction') && req.method === 'POST') {
     if (!requireFeature('db', res, 'Database connection')) return;
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     try {
       const id = new URL(req.url, `http://${req.headers.host}`).pathname.split('/').slice(-2)[0];
@@ -4719,7 +5105,7 @@ async function handleApiRequest(req, res) {
   }
 
   if (req.url.startsWith('/api/clubs/') && req.url.endsWith('/join') && req.method === 'POST') {
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     try {
       const clubId = new URL(req.url, `http://${req.headers.host}`).pathname.split('/')[3];
@@ -4732,7 +5118,7 @@ async function handleApiRequest(req, res) {
   }
 
   if (req.url.startsWith('/api/clubs/') && req.url.endsWith('/leave') && req.method === 'POST') {
-    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'senior')(req, res);
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     try {
       const clubId = new URL(req.url, `http://${req.headers.host}`).pathname.split('/')[3];
@@ -5918,6 +6304,13 @@ const ENDPOINT_GROUPS = [
     ['PUT',  '/api/store/shared/:key', 'Set a shared-store value'],
     ['DELETE', '/api/store/shared/:key', 'Delete a shared-store value'],
     ['PUT',  '/api/store/migrate', 'Migrate localStorage → server store'],
+  ]},
+  { title: '🔒 Batch Drive Lock', items: [
+    ['GET',  '/api/batch-drive/lock/me', 'My Batch Drive lock status'],
+    ['POST', '/api/batch-drive/lock/generate', 'Generate a code'],
+    ['POST', '/api/batch-drive/lock/toggle', 'Enable/disable sharing'],
+    ['POST', '/api/batch-drive/lock/redeem', 'Redeem an 8-digit code'],
+    ['GET',  '/api/batch-drive/lock/admin', 'Code shares (admin)'],
   ]},
   { title: '📍 Presence & Routines', items: [
     ['GET',  '/api/presence/members', 'Active members'],

@@ -1,34 +1,39 @@
 /* ════════════════════════════════════════════════════════════════
-   MOBILE BOTTOM NAV
+   MOBILE BOTTOM NAV — floating premium pill (brand amber)
    ════════════════════════════════════════════════════════════════ */
 .mobile-nav {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 78px;
-  background: var(--bg-secondary);
+  height: 66px;
+  background: color-mix(in srgb, var(--bg-secondary) 88%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border-top: 1px solid var(--border-secondary);
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: space-around;
-  padding: var(--sp-2) var(--sp-1) calc(var(--sp-2) + env(safe-area-inset-bottom));
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
   z-index: var(--z-sticky);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.14);
 }
 
 .mobile-nav-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: var(--sp-2) var(--sp-2) var(--sp-3);
-  border-radius: var(--radius-md);
+  gap: 3px;
+  padding: 5px 6px 6px;
+  border-radius: 14px;
   color: var(--text-tertiary);
-  font-size: 10px;
-  font-weight: var(--fw-medium);
-  transition: color var(--transition-base);
+  font-size: 9.5px;
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.01em;
+  transition: color var(--transition-base), background var(--transition-base), transform var(--transition-base);
   text-decoration: none;
-  min-width: 48px;
+  min-width: 52px;
   position: relative;
   border: none;
   background: none;
@@ -38,21 +43,33 @@
 .mobile-nav-item:hover {
   color: var(--text-secondary);
 }
+.mobile-nav-item:active {
+  transform: scale(0.94);
+}
+
+.mobile-nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 26px;
+  border-radius: 9px;
+  transition: background var(--transition-base), color var(--transition-base), transform var(--transition-base);
+}
 
 .mobile-nav-item.active {
-  color: var(--accent-blue);
+  color: var(--accent-amber);
+}
+
+.mobile-nav-item.active .mobile-nav-icon {
+  background: var(--bg-tertiary);
+  color: var(--accent-amber);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-amber) 30%, transparent);
+  transform: none;
 }
 
 .mobile-nav-item.active::after {
-  content: '';
-  position: absolute;
-  bottom: 3px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--accent-blue);
+  display: none;
 }
 
 /* More button — slightly wider for the icon + label */
@@ -206,23 +223,24 @@
 }
 
 .mobile-more-item.active {
-  color: var(--accent-blue);
+  color: var(--accent-amber);
 }
 
 .mobile-more-icon {
   width: 40px;
   height: 40px;
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   background: var(--bg-tertiary);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background var(--transition-fast), color var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .mobile-more-item.active .mobile-more-icon {
-  background: var(--accent-blue-glow);
-  color: var(--accent-blue);
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-amber) 30%, transparent);
 }
 
 .mobile-more-item:hover .mobile-more-icon {

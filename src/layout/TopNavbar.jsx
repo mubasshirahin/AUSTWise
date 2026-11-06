@@ -1,6 +1,7 @@
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
-import { getRoleLabel, getRoleBadgeClass, AUTH_ROLES } from '../utils/authStorage';
+import { getDisplayRoles, getRoleDisplayName, getRoleBadgeClass } from '../utils/authStorage';
+import { getAcademicLabels, getDisplayBatchText } from '../utils/batchIdentity';
 import NavPomodoro from './NavPomodoro';
 import {
   Search, Bell, BellRing, Sun, Moon, Newspaper, Terminal, SquareTerminal, Check, User,
@@ -76,23 +77,12 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
   const handleAvatarError = useCallback(() => setAvatarError(true), []);
   useEffect(() => { setAvatarError(false); }, [user?.avatar]);
   const [logoClicked, setLogoClicked] = useState(false);
-  const logoClickTimes = useRef([]);
 
 
   const toggleLogo = () => {
     setLogoClicked(true);
     setTimeout(() => setLogoClicked(false), 600);
-    const now = Date.now();
-    logoClickTimes.current.push(now);
-    const windowMs = 3000;
-    const threshold = 3;
-    logoClickTimes.current = logoClickTimes.current.filter(t => now - t < windowMs);
-    if (logoClickTimes.current.length >= threshold) {
-      logoClickTimes.current = [];
-      navigate('/terminal');
-    } else {
-      navigate('/');
-    }
+    navigate('/');
   };
   const themeSwitcherRef = useRef(null);
   const notifRef = useRef(null);
@@ -152,7 +142,7 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
             role="button"
             tabIndex={0}
             onKeyDown={(e) => e.key === 'Enter' && toggleLogo()}
-            title="Click 3x for Nexus Terminal"
+            title="AUSTWise"
             aria-label="AUSTWise logo"
           />
           <span className="topbar-brand-name">AUSTWise</span>
@@ -359,7 +349,7 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
               type="button"
               className={`topbar-profile-btn ${profileMenuOpen ? 'open' : ''}`}
               onClick={() => setProfileMenuOpen((o) => !o)}
-              title={`${user.name} · ${user.role}`}
+              title={`${user.name} · ${getDisplayRoles(user).map(getRoleDisplayName).join(' · ')}`}
               aria-haspopup="true"
               aria-expanded={profileMenuOpen}
             >
@@ -368,11 +358,7 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
               </div>
               <div className="profile-info">
                 <span className="profile-info-name">{user.name}</span>
-                <span className="profile-info-role">{
-                  ['admin', 'moderator', 'faculty', 'alumni', 'cr', 'sr'].includes(user.role)
-                    ? getRoleLabel(user.role)
-                    : 'Student'
-                }</span>
+                <span className="profile-info-role">{getDisplayRoles(user).map(getRoleDisplayName).join(' · ')}</span>
               </div>
             </button>
 
@@ -387,72 +373,33 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
                     <span className="profile-dropdown-email">{user.email || user.id}</span>
                     {user.department && (
                       <span className="profile-dropdown-dept">
-                        {user.department}{user.batch ? ` • Batch ${user.batch}` : ''}
+                        {user.department}{getDisplayBatchText(user) ? ` • ${getDisplayBatchText(user)}` : ''}
                       </span>
                     )}
                   </div>
                 </div>
 
                 <div className="profile-dropdown-body">
-                  {/* Role + Dept pills — organized in rows */}
+                  {/* Role pills — ALL display roles, same helper as member list/profile */}
                   <div className="profile-role-pills">
                     <div className="profile-pills-label">roles:</div>
-                    {/* Row 1: Primary role (Student / Faculty / Alumni / Admin / Moderator) */}
                     <div className="profile-role-pills-row">
-                      {/* For student sub-roles (CR/SR/Senior): show 'Student' pill */}
-                      {['cr', 'sr', 'senior'].includes(user.role) && (
-                        <span className="role-pill badge-blue">{getRoleLabel('student')}</span>
-                      )}
-                      {/* For direct primary roles: show role pill */}
-                      {!['cr', 'sr', 'senior'].includes(user.role) && AUTH_ROLES.includes(user.role) && (
-                        <span className={`role-pill ${getRoleBadgeClass(user.role)}`}>
-                          {getRoleLabel(user.role)}
-                        </span>
-                      )}
-                      {/* Extra primary-type roles from roles array */}
-                      {user?.roles?.filter(r => r !== user.role && !['cr', 'sr', 'senior'].includes(r) && AUTH_ROLES.includes(r)).map(role => (
+                      {getDisplayRoles(user).map((role) => (
                         <span key={role} className={`role-pill ${getRoleBadgeClass(role)}`}>
-                          {getRoleLabel(role)}
+                          {getRoleDisplayName(role)}
                         </span>
                       ))}
                     </div>
 
-                    {/* Row 2: Dept / Quanta / Lab Group */}
-                    {(user.department || user.batchNo || user.labSection) && (
+                    {/* Academic pills — same labels/order as member popover */}
+                    {getAcademicLabels(user, { hideSemester: getDisplayRoles(user).includes('admin') }).length > 0 && (
                       <div className="profile-role-pills-row">
-                        {user.department && (
-                          <span className="role-pill badge-dept">{user.department}</span>
-                        )}
-                        {user.batchNo && (
-                          <span className="role-pill badge-dept">Quanta {user.batchNo}</span>
-                        )}
-                        {user.labSection && (
-                          <span className="role-pill badge-dept">{user.labSection}</span>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Row 3: CR / SR roles */}
-                    {[...new Set([user.role, ...(user?.roles || [])].filter(r => ['cr', 'sr'].includes(r)))].length > 0 && (
-                      <div className="profile-role-pills-row">
-                        {[...new Set([user.role, ...(user?.roles || [])].filter(r => ['cr', 'sr'].includes(r)))].map(role => (
-                          <span key={role} className={`role-pill ${getRoleBadgeClass(role)}`}>
-                            {getRoleLabel(role)}
-                          </span>
+                        {getAcademicLabels(user, { hideSemester: getDisplayRoles(user).includes('admin') }).map((label) => (
+                          <span key={label} className="role-pill badge-dept">{label}</span>
                         ))}
                       </div>
                     )}
 
-                    {/* Row 4: Senior role */}
-                    {[...new Set([user.role, ...(user?.roles || [])].filter(r => r === 'senior'))].length > 0 && (
-                      <div className="profile-role-pills-row">
-                        {[...new Set([user.role, ...(user?.roles || [])].filter(r => r === 'senior'))].map(role => (
-                          <span key={role} className={`role-pill ${getRoleBadgeClass(role)}`}>
-                            {getRoleLabel(role)}
-                          </span>
-                        ))}
-                      </div>
-                    )}
                   </div>
 
                   <button

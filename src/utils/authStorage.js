@@ -4,6 +4,7 @@
 // Keys are now role-namespaced for proper directory separation.
 // Keep userStoragePrefixes helpers until phased out.
 import { addNotification, makeNotifId, showNativeNotification } from './inAppNotifications';
+import { getBatchLabel, getBatchRole } from './batchIdentity';
 
 const accountsKey = 'aust-auth-accounts-v1';
 const sessionKey = 'aust-auth-session-v1';
@@ -164,7 +165,7 @@ export function resetAllLocalData() {
   }
 }
 
-export const AUTH_ROLES = ['student', 'faculty', 'alumni', 'alumni_with_carry', 'admin', 'cr', 'sr', 'senior', 'moderator', 'vp', 'gs', 'readd', 'bus_coordinator', 'guest', 'clubs_representative', 'help_desk', 'banned', ...['cse', 'eee', 'ce', 'me', 'ipe', 'te', 'arch', 'bba'].map(department => `faculty_${department}`)];
+export const AUTH_ROLES = ['student', 'faculty', 'alumni', 'alumni_with_carry', 'admin', 'cr', 'sr', 'moderator', 'vp', 'gs', 'readd', 'bus_coordinator', 'guest', 'clubs_representative', 'help_desk', 'banned', ...['cse', 'eee', 'ce', 'me', 'ipe', 'te', 'arch', 'bba'].map(department => `faculty_${department}`)];
 export const ALLOWED_EMAIL_DOMAINS = ['aust.edu', 'www.aust.edu'];
 
 export const guestUser = {
@@ -188,7 +189,6 @@ const rolePrefixes = {
   alumni: 'ALU',
   cr: 'CR',
   sr: 'SR',
-  senior: 'SNR',
   moderator: 'MOD',
   bus_coordinator: 'BUS',
   guest: 'GST',
@@ -418,6 +418,7 @@ export function accountToUser(account) {
     account.yearSemester,
     account.labSection ? `lab.${account.labSection}` : null,
     account.batchNo ? `batch.${account.batchNo}` : null,
+    getBatchRole(account) || null,
     account.section ? `sec.${account.section}` : null,
   ].filter(Boolean);
   const mergedRoles = [...new Set([...baseRoles, ...extraRoles, ...metadataRoles])];
@@ -434,6 +435,7 @@ export function accountToUser(account) {
     batch: account.batch || '',
     batchNo: account.batchNo || '',
     batchName: account.batchName || account.batchNo || '',
+    batchLabel: getBatchLabel(account),
     designation: account.designation || '',
     company: account.company || '',
     graduationYear: account.graduationYear || '',
@@ -651,25 +653,113 @@ export function restoreSessionUser() {
   return user;
 }
 
-export function getRoleLabel(role) {
-  if (String(role || '').startsWith('faculty_')) return `Faculty of ${String(role).slice('faculty_'.length).toUpperCase()}`;
-  if (role === 'guest') return 'Guest';
-  if (role === 'faculty') return 'Faculty';
-  if (role === 'alumni') return 'Alumni';
-  if (role === 'alumni_with_carry') return 'Alumni with Carry';
-  if (role === 'readd') return 'Re-add';
-  if (role === 'admin') return 'Admin';
-  if (role === 'moderator') return 'Moderator';
-  if (role === 'cr') return 'Class Representative (CR)';
-  if (role === 'sr') return 'Student Representative (SR)';
-  if (role === 'vp') return 'Vice President';
-  if (role === 'gs') return 'General Secretary';
-  if (role === 'senior') return 'Senior';
-  if (role === 'bus_coordinator') return 'Bus Coordinator';
-  if (role === 'clubs_representative') return 'Clubs Representative';
-  if (role === 'help_desk') return 'Help Desk';
-  if (role === 'banned') return 'Banned';
+// ─── Unified role display (single source of truth) ───
+// Every UI that shows roles — navbar subtitle + pills, member-list rows,
+// member popover, member profile, stalk portfolio — uses these helpers so
+// ALL roles a user has are shown IDENTICALLY in every place:
+//   getRoleDisplayName(role)        → one short label per role key
+//   getDisplayRoles({ role, roles }) → ordered, de-duplicated role keys
+//   getDisplayRoleLabels(input)      → labels for the keys above
+//   getDisplayRoleText(input, sep)   → joined labels for compact lines
+//
+// Note: `user.roles` from the server also contains metadata strings that
+// hasRole() relies on (department, `lab.A1`, `batch.45`, `sec.A`,
+// year-semester, batch label). Those are NOT display roles, so only keys
+// in AUTH_ROLES (plus faculty_* which is already in AUTH_ROLES) are kept.
+
+export function getRoleDisplayName(role) {
+  const key = String(role || '').trim().toLowerCase();
+  if (key.startsWith('faculty_')) return `Faculty of ${key.slice('faculty_'.length).toUpperCase()}`;
+  if (key === 'guest') return 'Guest';
+  if (key === 'faculty') return 'Faculty';
+  if (key === 'alumni') return 'Alumni';
+  if (key === 'alumni_with_carry') return 'Alumni with Carry';
+  if (key === 'readd') return 'Re-add';
+  if (key === 'admin') return 'Admin';
+  if (key === 'moderator') return 'Moderator';
+  if (key === 'cr') return 'CR';
+  if (key === 'sr') return 'SR';
+  if (key === 'vp') return 'VP';
+  if (key === 'gs') return 'GS';
+  // Legacy `senior` values read as plain students (semester marks 3.1+).
+  if (key === 'senior') return 'Student';
+  if (key === 'bus_coordinator') return 'Bus Coordinator';
+  if (key === 'clubs_representative') return 'Clubs Representative';
+  if (key === 'help_desk') return 'Help Desk';
+  if (key === 'banned') return 'Banned';
+  if (key === 'student') return 'Student';
+  // Unknown legacy key: humanize real role-like keys (lowercase + underscores)
+  // instead of forcing "Student". Metadata strings smuggled into `roles`
+  // (department codes, `lab.A1`, `batch.45`, year-semester text) don't match
+  // that shape, so they keep the old safe fallback.
+  if (key && /^[a-z_]+$/.test(key)) return key.replaceAll('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
   return 'Student';
+}
+
+// Kept for backward compat — now delegates to the unified display name so
+// notifications / older call sites match the UI exactly (CR/SR short form).
+export function getRoleLabel(role) {
+  return getRoleDisplayName(role);
+}
+
+// Student sub-roles: the account's base is still Student (CR/SR/VP/GS are
+// students with a duty; Re-add is a student status flag — see accessRole.js).
+const STUDENT_SUB_ROLES = new Set([
+  'cr', 'sr', 'vp', 'gs', 'readd',
+  'bus_coordinator', 'clubs_representative', 'help_desk',
+]);
+// Primary account types — if one of these is present, Student is NOT added.
+const PRIMARY_ROLES = new Set(['student', 'faculty', 'alumni', 'alumni_with_carry', 'admin', 'moderator', 'guest']);
+
+// Stable display order: base types first, then overlays.
+const ROLE_ORDER = [
+  'admin', 'moderator', 'faculty', 'alumni', 'alumni_with_carry',
+  'student', 'cr', 'sr', 'vp', 'gs', 'readd',
+  'bus_coordinator', 'clubs_representative', 'help_desk', 'banned', 'guest',
+];
+
+function isDisplayRoleKey(key) {
+  return AUTH_ROLES.includes(key);
+}
+
+export function getDisplayRoles(input) {
+  const collected = new Set();
+  const add = (value) => {
+    const key = String(value || '').trim().toLowerCase();
+    if (!key) return;
+    if (isDisplayRoleKey(key)) collected.add(key);
+  };
+  if (typeof input === 'string') {
+    add(input);
+  } else if (input && typeof input === 'object') {
+    add(input.role);
+    if (Array.isArray(input.roles)) input.roles.forEach(add);
+  }
+
+  // Expand student sub-roles to include the Student base (CR → Student · CR).
+  const hasSubRole = [...collected].some((r) => STUDENT_SUB_ROLES.has(r));
+  const hasPrimary = [...collected].some((r) => PRIMARY_ROLES.has(r) || r.startsWith('faculty_'));
+  if (hasSubRole && !hasPrimary) collected.add('student');
+
+  if (collected.size === 0) return ['student'];
+
+  return [...collected].sort((a, b) => {
+    const ia = ROLE_ORDER.indexOf(a);
+    const ib = ROLE_ORDER.indexOf(b);
+    const oa = ia === -1 ? ROLE_ORDER.length : ia;
+    const ob = ib === -1 ? ROLE_ORDER.length : ib;
+    if (oa !== ob) return oa - ob;
+    // faculty_* keys sit right after plain faculty; others keep alpha order.
+    return a.localeCompare(b);
+  });
+}
+
+export function getDisplayRoleLabels(input) {
+  return getDisplayRoles(input).map(getRoleDisplayName);
+}
+
+export function getDisplayRoleText(input, separator = ' · ') {
+  return getDisplayRoleLabels(input).join(separator);
 }
 
 export function getRoleBadgeClass(role) {
@@ -684,7 +774,6 @@ export function getRoleBadgeClass(role) {
     case 'sr': return 'badge-emerald';
     case 'vp': return 'badge-amber';
     case 'gs': return 'badge-emerald';
-    case 'senior': return 'badge-purple';
     case 'bus_coordinator': return 'badge-cyan';
     case 'guest': return 'badge-blue';
     case 'clubs_representative': return 'badge-amber';

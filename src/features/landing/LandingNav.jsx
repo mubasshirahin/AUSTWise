@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Moon, MoonStar, Cpu, Terminal, SquareTerminal, Zap, Building2,
@@ -37,24 +37,10 @@ export default function LandingNav() {
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const themeSwitcherRef = useRef(null);
   const [logoClicked, setLogoClicked] = useState(false);
-  const logoClickTimes = useRef([]);
-
-  const checkEasterEgg = useCallback(() => {
-    const now = Date.now();
-    logoClickTimes.current.push(now);
-    const windowMs = 3000;
-    const threshold = 3;
-    logoClickTimes.current = logoClickTimes.current.filter(t => now - t < windowMs);
-    if (logoClickTimes.current.length >= threshold) {
-      logoClickTimes.current = [];
-      navigate('/terminal');
-    }
-  }, [navigate]);
 
   const toggleLogo = () => {
     setLogoClicked(true);
     setTimeout(() => setLogoClicked(false), 600);
-    checkEasterEgg();
   };
 
   // Click-outside closes theme menu
@@ -85,7 +71,7 @@ export default function LandingNav() {
               role="button"
               tabIndex={0}
               onKeyDown={(e) => e.key === 'Enter' && toggleLogo()}
-              title="Click 3x for Nexus Terminal"
+              title="AUSTWise"
               aria-label="AUSTWise logo"
             />
             <span className="topbar-brand-name">AUSTWise</span>

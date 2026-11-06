@@ -87,9 +87,9 @@ export default function CGPAGraph() {
           borderDash: [6, 3],
           pointBackgroundColor: '#2dd4bf',
           pointBorderColor: '#fff',
-          pointBorderWidth: 2,
-          pointRadius: 5,
-          pointHoverRadius: 8,
+          pointBorderWidth: 2.5,
+          pointRadius: 7,
+          pointHoverRadius: 10,
           pointHoverBackgroundColor: '#2dd4bf',
           pointHoverBorderColor: '#fff',
           pointHoverBorderWidth: 3,
@@ -109,12 +109,12 @@ export default function CGPAGraph() {
           },
           fill: true,
           tension: 0.35,
-          borderWidth: 3.5,
+          borderWidth: 4.5,
           pointBackgroundColor: '#fbbf24',
           pointBorderColor: '#fff',
-          pointBorderWidth: 2.5,
-          pointRadius: 6,
-          pointHoverRadius: 9,
+          pointBorderWidth: 3,
+          pointRadius: 8,
+          pointHoverRadius: 11,
           pointHoverBackgroundColor: '#fbbf24',
           pointHoverBorderColor: '#fff',
           pointHoverBorderWidth: 3.5,
@@ -136,10 +136,12 @@ export default function CGPAGraph() {
         align: 'center',
         labels: {
           color: '#ffffff',
-          font: { family: 'Inter', size: 13, weight: '600' },
-          padding: 16,
+          font: { family: 'Inter', size: 14, weight: '600' },
+          padding: 18,
           usePointStyle: true,
-          pointStyle: 'circle'
+          pointStyle: 'circle',
+          boxWidth: 14,
+          boxHeight: 14
         }
       },
       tooltip: {
@@ -173,8 +175,8 @@ export default function CGPAGraph() {
         },
         ticks: { 
           color: '#ffffff',
-          font: { size: 11, weight: '500', family: 'Inter' },
-          padding: 8
+          font: { size: 12, weight: '500', family: 'Inter' },
+          padding: 10
         },
         border: {
           color: 'rgba(255,255,255,0.10)'
@@ -189,9 +191,9 @@ export default function CGPAGraph() {
         },
         ticks: { 
           color: '#ffffff',
-          font: { size: 11, weight: '500', family: 'Inter' },
+          font: { size: 12, weight: '500', family: 'Inter' },
           stepSize: 0.25,
-          padding: 8,
+          padding: 10,
           callback: (value) => value.toFixed(2)
         },
         border: {

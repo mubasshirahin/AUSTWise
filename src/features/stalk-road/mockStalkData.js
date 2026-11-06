@@ -144,6 +144,7 @@ export function buildStalkPortfolio(member) {
     avatar: member?.avatar || null,
     initials: member?.initials || name.slice(0, 2).toUpperCase(),
     role: member?.role || 'student',
+    roles: Array.isArray(member?.roles) ? member.roles : (member?.role ? [member.role] : []),
     department: member?.department || 'Undeclared',
     semester: member?.semester || null,
     favoriteColor,

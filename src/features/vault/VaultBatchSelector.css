@@ -248,3 +248,162 @@
   background: color-mix(in srgb, var(--accent-amber) 8%, transparent);
   box-shadow: 0 0 14px color-mix(in srgb, var(--accent-amber) 10%, transparent);
 }
+
+/* ── Card extras: reaction + open affordance ──────────────────── */
+.vb-card.has-drive {
+  cursor: pointer;
+}
+
+.vb-card-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent-emerald);
+}
+
+.vb-own-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 34%, transparent);
+  background: color-mix(in srgb, var(--accent-amber) 12%, transparent);
+  color: var(--accent-amber);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.vb-card-by {
+  margin-top: 1px;
+  font-size: 9px;
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vb-react {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 9px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-tertiary);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.vb-react:hover {
+  border-color: color-mix(in srgb, var(--accent-amber) 32%, transparent);
+  color: var(--accent-amber);
+  background: color-mix(in srgb, var(--accent-amber) 9%, transparent);
+}
+
+.vb-react.is-on {
+  border-color: color-mix(in srgb, var(--accent-amber) 45%, transparent);
+  background: color-mix(in srgb, var(--accent-amber) 16%, transparent);
+  color: var(--accent-amber);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent-amber) 18%, transparent);
+}
+
+.vb-react.is-on svg {
+  animation: vbFlamePop 0.28s ease;
+}
+
+@keyframes vbFlamePop {
+  0% { transform: scale(0.75); }
+  60% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+.vb-card-open {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--accent-amber) 10%, transparent);
+  color: var(--accent-amber);
+  opacity: 0.6;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.vb-card:hover .vb-card-open {
+  opacity: 1;
+  transform: translateX(2px);
+}
+
+.vb-inline-error {
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-xs);
+  color: var(--accent-rose);
+}
+
+/* ── Empty state ─────────────────────────────────────────────── */
+.vb-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  padding: 34px 16px;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-lg);
+  color: var(--text-tertiary);
+}
+
+.vb-empty svg { color: var(--accent-amber); opacity: 0.85; }
+
+.vb-empty p {
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.vb-empty span {
+  font-size: var(--fs-xs);
+  max-width: 300px;
+  line-height: 1.5;
+}
+
+/* ── Mobile (≤768px): stacked online/offline-style rows, compact ── */
+@media (max-width: 768px) {
+  .vb-selector {
+    padding: var(--sp-3);
+    padding-left: var(--sp-3);
+    padding-right: var(--sp-3);
+  }
+  .vb-card-main {
+    padding: var(--sp-2) var(--sp-3);
+  }
+  .vb-card-icon { width: 32px; height: 32px; }
+  .vb-card-name { font-size: 12px; }
+  .vb-card-meta { font-size: 10px; }
+  .vb-card-status { font-size: 9px; padding: 3px 8px; }
+  /* Add-batch form: stack name / no / url in one column */
+  .vb-form { padding: var(--sp-3); }
+  .vb-form-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .vb-input {
+    min-width: 0;
+    width: 100%;
+    font-size: 12px;
+  }
+}
+@media (max-width: 480px) {
+  .vb-card-actions { gap: 3px; }
+  .vb-card-disconnect { font-size: 8px; padding: 2px 8px; }
+  .vb-form-actions .btn { flex: 1; justify-content: center; }
+}

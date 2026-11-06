@@ -6,6 +6,8 @@ import {
   GraduationCap, School, Briefcase, UserRound,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { getDisplayRoles, getRoleDisplayName } from '../../utils/authStorage';
+import { getAcademicLabels, getDisplayBatchText, getSemesterText } from '../../utils/batchIdentity';
 import useWebSocket from '../../hooks/useWebSocket';
 import { useStalk } from '../stalk-road/StalkContext';
 import './ActiveMembersSidebar.css';
@@ -38,7 +40,6 @@ const LABS_BY_SECTION = { A: ['A1', 'A2'], B: ['B1', 'B2'], C: ['C1', 'C2'], D: 
 // Admins stay pinned in their own section above everything.
 
 const DESIGNATION_ORDER = ['Professor', 'Associate Professor', 'Assistant Professor', 'Lecturer'];
-const isStudentRole = (r) => r === 'student' || r === 'cr' || r === 'sr' || r === 'senior';
 
 // Students keep the full canonical structure visible (every department,
 // semester, section and lab group renders, even when empty).
@@ -175,17 +176,8 @@ const buildAlumniGroups = (list) => {
     });
 };
 
-function getRoleDisplay(role) {
-  if (role === 'cr') return 'CR';
-  if (role === 'sr') return 'SR';
-  if (role === 'senior') return 'Senior';
-  if (role === 'admin') return 'Admin';
-  if (role === 'moderator') return 'Moderator';
-  if (role === 'faculty') return 'Faculty';
-  if (role === 'alumni' || role === 'alumni_with_carry') return 'Alumni';
-  return 'Student';
-}
-
+// Role text uses the shared helper in authStorage so member rows,
+// popovers, navbar and profile pages all show identical role labels.
 const AVATAR_IMG_STYLE = { width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' };
 
 function presenceMeta(status) {
@@ -203,6 +195,7 @@ function PresenceDot({ status, size }) {
 
 /* ─── Member row ─── */
 function MemberRow({ member, onClick, isOffline, isAdmin, devSwitch, switching }) {
+  const roleText = getDisplayRoles(member).map(getRoleDisplayName).join(' · ');
   return (
     <div
       className={`am-member-row${isOffline ? ' am-row-offline' : ''}${isAdmin ? ' am-row-admin' : ''}${devSwitch ? ' am-row-dev-switch' : ''}`}
@@ -230,9 +223,9 @@ function MemberRow({ member, onClick, isOffline, isAdmin, devSwitch, switching }
             {member.isYou && <span className="am-you">You</span>}
           </span>
           <span className="am-row-sub">
-            {isAdmin ? (member.department || getRoleDisplay(member.role)) : getRoleDisplay(member.role)}
-            {!isAdmin && member.department ? ` • ${member.department}` : ''}
-            {!isAdmin && member.semester ? ` • Sem ${member.semester}` : ''}
+            {roleText}
+            {member.department ? ` • ${member.department}` : ''}
+            {member.semester ? ` • Sem ${member.semester}` : ''}
           </span>
         </span>
         <span className="am-row-status-dot" data-status={member.status} />
@@ -312,7 +305,8 @@ function MemberPopover({ member, rect, onClose, onViewProfile }) {
 
   if (!member || !rect || !placed) return null;
 
-  const roleClass = `am-role-${member.role === 'admin' || member.role === 'moderator' ? 'admin' : member.role === 'faculty' ? 'faculty' : (member.role === 'cr' || member.role === 'sr') ? 'crsr' : 'student'}`;
+  const memberRoles = getDisplayRoles(member);
+  const roleClass = `am-role-${memberRoles.includes('admin') || memberRoles.includes('moderator') ? 'admin' : memberRoles.includes('faculty') || memberRoles.some((r) => r.startsWith('faculty_')) ? 'faculty' : (memberRoles.includes('cr') || memberRoles.includes('sr')) ? 'crsr' : 'student'}`;
 
   return (
     <div
@@ -340,13 +334,12 @@ function MemberPopover({ member, rect, onClose, onViewProfile }) {
       <div className="am-pop-body">
         <h3 className="am-pop-name">{member.name}</h3>
         <div className="am-pop-badges">
-          <span className="am-chip am-chip-role">{getRoleDisplay(member.role)}</span>
-    {member.batchNo && <span className="am-chip">Batch {member.batchNo}</span>}
-    {member.department && <span className="am-chip">{member.department}</span>}
-    {member.role !== 'admin' && (member.semester ? <span className="am-chip">Semester {member.semester}</span>
-      : member.yearSemester ? <span className="am-chip">{member.yearSemester}</span> : null)}
-          {member.section && <span className="am-chip">Section {member.section}</span>}
-          {member.labSection && <span className="am-chip">Lab {member.labSection}</span>}
+          {getDisplayRoles(member).map((roleKey) => (
+            <span key={roleKey} className="am-chip am-chip-role">{getRoleDisplayName(roleKey)}</span>
+          ))}
+          {getAcademicLabels(member, { hideSemester: memberRoles.includes('admin') }).map((label) => (
+            <span key={label} className="am-chip">{label}</span>
+          ))}
         </div>
 
         <div className="am-pop-divider" />
@@ -358,14 +351,22 @@ function MemberPopover({ member, rect, onClose, onViewProfile }) {
           </div>
           <div className="am-pop-info-row">
             <span className="am-pop-info-label">Batch</span>
-            <span className="am-pop-info-value">{member.batchNo ? `Batch ${member.batchNo}` : (member.batch || '—')}</span>
+            <span className="am-pop-info-value">{getDisplayBatchText(member) || member.batch || '—'}</span>
           </div>
-          {member.role !== 'admin' && (
+          {!memberRoles.includes('admin') && (
             <div className="am-pop-info-row">
               <span className="am-pop-info-label">Semester</span>
-              <span className="am-pop-info-value">{member.semester ? `Semester ${member.semester}` : '—'}</span>
+              <span className="am-pop-info-value">{getSemesterText(member) || '—'}</span>
             </div>
           )}
+          <div className="am-pop-info-row">
+            <span className="am-pop-info-label">Section</span>
+            <span className="am-pop-info-value">{member.section ? `Section ${member.section}` : '—'}</span>
+          </div>
+          <div className="am-pop-info-row">
+            <span className="am-pop-info-label">Lab</span>
+            <span className="am-pop-info-value">{member.labSection ? `Lab ${member.labSection}` : '—'}</span>
+          </div>
         </div>
 
         <div className="am-pop-divider" />
@@ -520,9 +521,9 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
   // Online = everyone currently active (online/idle), with the signed-in user
   // always pinned in so you can see yourself ("You" row).
   const onlineMembers = useMemo(() => {
-    const list = members.filter((m) => (m.status === 'online' || m.status === 'idle') && m.role !== 'admin');
-    if (isAuthenticated && user?.id && user?.role !== 'admin' && !list.some((m) => m.id === user.id)) {
-      list.push({ id: user.id, name: user.name, initials: user.initials, avatar: user.avatar, role: user.role, department: user.department, semester: user.semester, status: 'online', lastSeenAt: SELF_ROW_SEEN_AT, isYou: true });
+    const list = members.filter((m) => (m.status === 'online' || m.status === 'idle') && !getDisplayRoles(m).includes('admin'));
+    if (isAuthenticated && user?.id && !getDisplayRoles(user).includes('admin') && !list.some((m) => m.id === user.id)) {
+      list.push({ id: user.id, name: user.name, initials: user.initials, avatar: user.avatar, role: user.role, roles: user.roles, department: user.department, semester: user.semester, status: 'online', lastSeenAt: SELF_ROW_SEEN_AT, isYou: true });
     }
     return list.map((m) => (m.id === user?.id ? { ...m, isYou: true } : m));
   }, [members, user, isAuthenticated]);
@@ -531,7 +532,7 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
   // tracks "who is online" live (admins live in their own pinned section,
   // so they're added back into the count here).
   const onlineCount = useMemo(
-    () => onlineMembers.length + members.filter((m) => m.role === 'admin').length,
+    () => onlineMembers.length + members.filter((m) => getDisplayRoles(m).includes('admin')).length,
     [onlineMembers, members]
   );
   const filtered = useMemo(() => {
@@ -551,20 +552,22 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
   // offline styling, and "Active now" in their profile popover.
   const admins = useMemo(
     () => filtered
-      .filter((m) => m.role === 'admin')
+      .filter((m) => getDisplayRoles(m).includes('admin'))
       .map((m) => ({ ...m, status: 'online', ...(m.id === user?.id ? { isYou: true } : {}) })),
     [filtered, user]
   );
 
   // Split the filtered list into the three role sections (admins pinned above).
+  // Uses ALL display roles so a multi-role member groups by their base type
+  // (e.g. faculty_* → Faculty, alumni_with_carry → Alumni).
   const roleSections = useMemo(() => {
     const byRole = { students: [], faculty: [], alumni: [] };
     filtered.forEach((m) => {
-      if (m.role === 'admin') return; // admins pinned in their own section
-      if (isStudentRole(m.role)) byRole.students.push(m);
-      else if (m.role === 'faculty' || m.role === 'moderator') byRole.faculty.push(m);
-      else if (m.role === 'alumni' || m.role === 'alumni_with_carry') byRole.alumni.push(m);
-      else byRole.students.push(m); // unknown roles fall back to Students
+      const roles = getDisplayRoles(m);
+      if (roles.includes('admin')) return; // admins pinned in their own section
+      if (roles.includes('faculty') || roles.some((r) => r.startsWith('faculty_')) || roles.includes('moderator')) byRole.faculty.push(m);
+      else if (roles.includes('alumni') || roles.includes('alumni_with_carry')) byRole.alumni.push(m);
+      else byRole.students.push(m); // students + student sub-roles + fallback
     });
     return {
       students: buildStudentGroups(byRole.students),

@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   ZoomIn, Maximize2, Minimize2,
-  Compass, MoreVertical, Check,
+  Compass, MoreVertical, Check, Plus, Minus, RotateCcw,
 } from 'lucide-react';
 import { campusFloors as staticCampusFloors } from '../../data/mockData';
 import GliderTabs from '../../components/GliderTabs';
@@ -19,8 +19,14 @@ function fetchCampusLocations() {
 }
 
 const zoomLevels = [
-  { id: 'fit', label: 'Fit' },
+  { id: 'fit', label: 'Fit', scale: 1 },
+  { id: '1.5', label: '1.5×', scale: 1.5 },
+  { id: '2', label: '2×', scale: 2 },
+  { id: '3', label: '3×', scale: 3 },
+  { id: '4', label: '4×', scale: 4 },
 ];
+const MIN_SCALE = 1;
+const MAX_SCALE = 4;
 
 // Basic plan shown for floors without their own image (2nd–8th).
 const GROUND_FLOOR_IMAGE = '/campus/ground-floor.png';
@@ -42,6 +48,8 @@ const getRoomColor = (_type) => 'var(--accent-blue)';
 
 function FloorShowcase({ floorData, selectedFloor, floorTabs, onFloorChange }) {
   const [zoom, setZoom] = useState('fit');
+  const [scale, setScale] = useState(1);
+  const [isPinching, setIsPinching] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedRoomId, setSelectedRoomId] = useState(null);
   const [selectedHotspotKey, setSelectedHotspotKey] = useState(null);
@@ -63,6 +71,106 @@ function FloorShowcase({ floorData, selectedFloor, floorTabs, onFloorChange }) {
   const viewportRef = useRef(null);
   const hotspotRefs = useRef({});
   const imageWrapRef = useRef(null);
+  const pointersRef = useRef(new Map());
+  const pinchRef = useRef(null);
+  const scaleRef = useRef(scale);
+  scaleRef.current = scale;
+
+  const clampScale = (s) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.round(s * 100) / 100));
+
+  const applyScaleAtPoint = useCallback((nextScale, focal) => {
+    const vp = viewportRef.current;
+    const prev = scaleRef.current;
+    const next = clampScale(nextScale);
+    if (next === prev) return;
+    const ratio = next / prev;
+    if (vp && focal) {
+      const rect = vp.getBoundingClientRect();
+      const fx = focal.x - rect.left + vp.scrollLeft;
+      const fy = focal.y - rect.top + vp.scrollTop;
+      vp.scrollLeft = fx * ratio - (focal.x - rect.left);
+      vp.scrollTop = fy * ratio - (focal.y - rect.top);
+    }
+    setScale(next);
+    setZoom(next === 1 ? 'fit' : String(next));
+  }, []);
+
+  const fitZoom = useCallback(() => {
+    const vp = viewportRef.current;
+    setScale(1);
+    setZoom('fit');
+    // scroll reset happens on next frame after width shrinks
+    requestAnimationFrame(() => {
+      if (vp) { vp.scrollLeft = 0; vp.scrollTop = 0; }
+    });
+  }, []);
+
+  const onPinchPointerDown = (e) => {
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointersRef.current.size === 2) {
+      const [a, b] = [...pointersRef.current.values()];
+      pinchRef.current = {
+        dist: Math.hypot(b.x - a.x, b.y - a.y),
+        mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+        scale: scaleRef.current,
+      };
+      setIsPinching(true);
+    }
+  };
+
+  const onPinchPointerMove = (e) => {
+    if (!pointersRef.current.has(e.pointerId)) return;
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointersRef.current.size !== 2 || !pinchRef.current) return;
+    e.preventDefault();
+    const [a, b] = [...pointersRef.current.values()];
+    const dist = Math.hypot(b.x - a.x, b.y - a.y);
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    if (pinchRef.current.dist > 0) {
+      applyScaleAtPoint(pinchRef.current.scale * (dist / pinchRef.current.dist), mid);
+    }
+    pinchRef.current.dist = dist;
+    pinchRef.current.mid = mid;
+    pinchRef.current.scale = scaleRef.current;
+  };
+
+  const onPinchPointerEnd = (e) => {
+    pointersRef.current.delete(e.pointerId);
+    if (pointersRef.current.size < 2) {
+      pinchRef.current = null;
+      setIsPinching(false);
+    }
+  };
+
+  const onWheelZoom = (e) => {
+    if (!e.ctrlKey && !e.metaKey) return;
+    e.preventDefault();
+    applyScaleAtPoint(scaleRef.current * (e.deltaY < 0 ? 1.1 : 0.9), { x: e.clientX, y: e.clientY });
+  };
+
+  const onDoubleTapZoom = () => {
+    const vp = viewportRef.current;
+    if (!vp) return;
+    const rect = vp.getBoundingClientRect();
+    if (scaleRef.current > 1) fitZoom();
+    else applyScaleAtPoint(2, { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+  };
+
+  // Sync menu choice → scale (menu sets zoom string)
+  const handleZoomSelect = (level) => {
+    setZoom(level.id);
+    setMenuOpen(false);
+    const vp = viewportRef.current;
+    if (level.scale === 1) {
+      fitZoom();
+    } else if (vp) {
+      const rect = vp.getBoundingClientRect();
+      applyScaleAtPoint(level.scale, { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+    } else {
+      setScale(level.scale);
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem('aust-campus-positions', JSON.stringify(positions));
@@ -265,7 +373,7 @@ function FloorShowcase({ floorData, selectedFloor, floorTabs, onFloorChange }) {
                   <button
                     key={level.id}
                     className={`export-menu-item${zoom === level.id ? ' menu-active' : ''}`}
-                    onClick={() => { setZoom(level.id); setMenuOpen(false); }}
+                    onClick={() => handleZoomSelect(level)}
                     role="menuitem"
                   >
                     <ZoomIn size={14} /> Zoom {level.label}
@@ -304,14 +412,30 @@ function FloorShowcase({ floorData, selectedFloor, floorTabs, onFloorChange }) {
 
           <div
             ref={viewportRef}
-            className={`floor-plan-viewport floor-plan-zoom-${zoom}`}
+            className={`floor-plan-viewport floor-plan-zoom-${zoom}${scale > 1 ? ' is-zoomed' : ''}${isPinching ? ' is-pinching' : ''}`}
+            onWheel={onWheelZoom}
+            onDoubleClick={onDoubleTapZoom}
+            aria-label={`Floor map — pinch to zoom (${Math.round(scale * 100)}%)`}
           >
-            <div className="floor-plan-image-frame">
+            <div
+              className="floor-plan-image-frame"
+              style={{
+                width: `${scale * 100}%`,
+                minWidth: scale > 1 ? `${scale * 100}%` : undefined,
+                margin: '0 auto',
+                transition: isPinching ? 'none' : 'width .35s cubic-bezier(.4,0,.2,1)',
+              }}
+            >
               <div
                 ref={imageWrapRef}
                 className="floor-plan-image-wrap"
                 onClick={clearSelection}
                 onKeyDown={(e) => { if (e.key === 'Escape') clearSelection(); }}
+                onPointerDown={onPinchPointerDown}
+                onPointerMove={onPinchPointerMove}
+                onPointerUp={onPinchPointerEnd}
+                onPointerCancel={onPinchPointerEnd}
+                onLostPointerCapture={onPinchPointerEnd}
                 role="presentation"
               >
                 {(floorData.mapImage || GROUND_FLOOR_IMAGE) ? (
@@ -402,6 +526,27 @@ function FloorShowcase({ floorData, selectedFloor, floorTabs, onFloorChange }) {
                       </div>
                     );
                   }                ))}
+              </div>
+            </div>
+
+            {/* Pinch hint + zoom controls */}
+            <div className="floor-plan-zoom-hud">
+              <span className="floor-plan-zoom-hint">
+                {isPinching ? `${Math.round(scale * 100)}%` : scale > 1 ? `${Math.round(scale * 100)}% · pinch to zoom` : 'Pinch to zoom'}
+              </span>
+              <div className="floor-plan-zoom-btns">
+                <button type="button" className="floor-plan-zoom-fab" aria-label="Zoom out" disabled={scale <= MIN_SCALE}
+                  onClick={(e) => { e.stopPropagation(); const vp = viewportRef.current; const rect = vp?.getBoundingClientRect(); if (vp && rect) applyScaleAtPoint(scaleRef.current - 0.5, { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }); }}>
+                  <Minus size={18} />
+                </button>
+                <button type="button" className="floor-plan-zoom-fab" aria-label="Reset zoom" disabled={scale === 1}
+                  onClick={(e) => { e.stopPropagation(); fitZoom(); }}>
+                  <RotateCcw size={16} />
+                </button>
+                <button type="button" className="floor-plan-zoom-fab" aria-label="Zoom in" disabled={scale >= MAX_SCALE}
+                  onClick={(e) => { e.stopPropagation(); const vp = viewportRef.current; const rect = vp?.getBoundingClientRect(); if (vp && rect) applyScaleAtPoint(scaleRef.current + 0.5, { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }); }}>
+                  <Plus size={18} />
+                </button>
               </div>
             </div>
           </div>

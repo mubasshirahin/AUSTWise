@@ -414,8 +414,75 @@
   min-height: min(78vh, 820px);
   max-height: min(85vh, 900px);
   padding: var(--sp-4);
+  padding-left: var(--sp-4);
+  padding-right: var(--sp-4);
   box-shadow: var(--shadow-lift);
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--accent-amber) 40%, var(--border-primary)) transparent;
+}
+.floor-plan-viewport.is-pinching {
+  overflow: hidden;
+  cursor: grabbing;
+}
+.floor-plan-image-wrap {
+  touch-action: pan-x pan-y;
+}
+.floor-plan-image-frame {
+  transform-origin: center center;
+}
+
+/* Pinch zoom HUD — hint (bottom-center) + zoom buttons (bottom-right) */
+.floor-plan-zoom-hud {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+  pointer-events: none;
+}
+.floor-plan-zoom-hint {
+  pointer-events: auto;
+  font-size: 11px;
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-full);
+  padding: 6px 12px;
+  backdrop-filter: blur(8px);
+  white-space: nowrap;
+}
+.floor-plan-zoom-btns {
+  pointer-events: auto;
+  display: flex;
+  gap: 8px;
+}
+.floor-plan-zoom-fab {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--border-primary);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  transition: transform .15s ease, background .15s ease;
+  touch-action: manipulation;
+}
+.floor-plan-zoom-fab:active { transform: scale(.92); }
+.floor-plan-zoom-fab:disabled { opacity: .45; cursor: default; }
+
+@media (max-width: 768px) {
+  .floor-plan-zoom-hud { margin-top: var(--sp-2); }
+  .floor-plan-zoom-hint { font-size: 10px; padding: 5px 10px; }
+  .floor-plan-zoom-fab { width: 42px; height: 42px; }
 }
 
 .floor-plan-zoom-fit .floor-plan-image-frame {
@@ -1305,6 +1372,33 @@
   line-height: 1.5;
 }
 
+/* ── Floor Map: left/right gaps must be identical at every size ── */
+.interactive-map-root,
+.floor-map-widget,
+.floor-plan-workspace,
+.floor-plan-main,
+.floor-plan-viewport {
+  box-sizing: border-box;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+.floor-plan-viewport {
+  padding-left: var(--sp-4);
+  padding-right: var(--sp-4);
+  margin-left: 0;
+  margin-right: 0;
+}
+.cp-content-card {
+  padding-left: var(--sp-5);
+  padding-right: var(--sp-5);
+  box-sizing: border-box;
+}
+.campus-page {
+  padding-left: 0;
+  padding-right: 0;
+}
+
 /* ─── Responsive ─── */
 @media (max-width: 960px) {
   .floor-plan-workspace {
@@ -1340,9 +1434,38 @@
     justify-content: center;
   }
 
+  /* ── Viewport: fit the floor image to the screen, allow 2-finger scroll ── */
   .floor-plan-viewport {
-    min-height: 55vh;
-    padding: var(--sp-3);
+    min-height: 320px;
+    max-height: 62vh;
+    padding: var(--sp-2) var(--sp-2);
+    padding-left: var(--sp-2);
+    padding-right: var(--sp-2);
+    overflow-x: auto;
+    overflow-y: auto;
+  }
+  .floor-plan-image-frame {
+    min-width: 0;
+    width: 100%;
+  }
+  .floor-plan-image-wrap {
+    width: 100%;
+  }
+  .floor-plan-image {
+    width: 100%;
+    max-width: 100%;
+  }
+  .floor-plan-no-image-fallback svg {
+    height: 300px;
+  }
+  /* Hotspot label: wrap instead of overflowing the small map */
+  .floor-plan-hotspot-label {
+    font-size: 10px;
+    padding: 4px 8px;
+    max-width: 56vw;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.25;
   }
 
   .ground-interactive-card {
@@ -1356,6 +1479,36 @@
 
   .faculty-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .floor-plan-viewport {
+    min-height: 260px;
+    max-height: 55vh;
+    padding: var(--sp-2) var(--sp-2);
+    padding-left: var(--sp-2);
+    padding-right: var(--sp-2);
+    border-radius: var(--radius-lg);
+  }
+  .cp-content-card {
+    padding-left: var(--sp-3);
+    padding-right: var(--sp-3);
+  }
+  .floor-plan-no-image-fallback svg {
+    height: 240px;
+  }
+  .floor-plan-hotspot-label {
+    font-size: 9px;
+    padding: 3px 7px;
+    max-width: 48vw;
+  }
+  .floor-plan-resize-handle {
+    width: 16px;
+    height: 16px;
+  }
+  .cp-content-card {
+    padding: var(--sp-3);
   }
 }
 

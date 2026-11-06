@@ -384,10 +384,12 @@ export default function BusTracker() {
 
         <div className="schedule-actions">
           <button
-            className="bus-add-btn"
+            className="bus-add-btn bus-add-btn--icon"
             onClick={() => { setEditingBusId(null); setForm(INITIAL_FORM_STATE); setShowAddModal(true); }}
+            title="Add Bus"
+            aria-label="Add Bus"
           >
-            <Plus size={14} /> Add Bus
+            <Plus size={16} />
           </button>
         </div>
       </div>

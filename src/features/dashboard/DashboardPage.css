@@ -848,6 +848,46 @@
   }
 }
 
+/* ── Quick Stats — tablet + mobile responsive ────────────────── */
+@media (max-width: 1000px) {
+  .quick-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 640px) {
+  .quick-stats-widget .schedule-masthead {
+    padding: var(--sp-3);
+  }
+  .quick-stats-widget .schedule-subtitle {
+    max-width: 100%;
+  }
+  .quick-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--sp-2);
+  }
+  .quick-stats-widget .quick-stat-cell {
+    padding: 10px;
+    min-height: 0;
+  }
+  .quick-stat-icon {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+  }
+  .quick-stat-name {
+    font-size: 9px;
+  }
+  .quick-stat-value {
+    font-size: var(--fs-lg);
+  }
+  .quick-stat-top { gap: 6px; }
+}
+@media (max-width: 360px) {
+  .quick-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ─── Daily Flow / Deadlines / Notice Board (Semester View design language) ─── */
 .routine-widget .routine-list,
 .deadline-widget .deadline-list,
@@ -3853,6 +3893,47 @@ tr.day-row-active {
   font-weight: var(--fw-medium);
 }
 
+/* ── Study streak — mobile: smaller + minimal ───────────────── */
+@media (max-width: 640px) {
+  .study-streak-widget {
+    gap: 6px;
+    padding: 7px 10px;
+    border-radius: 10px;
+    min-height: 0;
+  }
+  .streak-flame {
+    width: 26px;
+    height: 26px;
+    flex-basis: 26px;
+    border-radius: 8px;
+  }
+  .study-streak-widget .streak-flame svg {
+    width: 15px;
+    height: 15px;
+  }
+  .study-streak-widget .streak-info {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 5px;
+  }
+  .study-streak-widget .streak-count {
+    font-size: var(--fs-md);
+  }
+  .study-streak-widget .streak-label {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 380px) {
+  .study-streak-widget {
+    padding: 6px 8px;
+    gap: 5px;
+  }
+  .study-streak-widget .streak-label {
+    font-size: 9px;
+  }
+}
+
 
 /* ── Spin utility (global) ── */
 .spin {
@@ -4279,8 +4360,14 @@ tr.day-row-active {
     order: 0;
     justify-content: center;
   }
+  .schedule-actions .schedule-week-nav {
+    margin-left: auto;
+  }
   .schedule-week-nav {
     gap: 4px;
+  }
+  .schedule-week-pill {
+    margin-left: auto;
   }
   .schedule-nav-btn {
     width: 26px;

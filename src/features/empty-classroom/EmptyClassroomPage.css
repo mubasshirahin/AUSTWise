@@ -1,5 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════
    FREE ROOMS — Premium SaaS design
+   Theme: monochrome amber (InsideAUST brand) + semantic
+   emerald (free) / rose (busy) only for status. No cyan/purple/blue.
    ═══════════════════════════════════════════════════════════════ */
 
 .ecf-widget {
@@ -452,9 +454,9 @@
 .ecf-card.canteen-card { border-left-color: var(--accent-amber); }
 .ecf-card.canteen-card.free { border-left-color: var(--accent-emerald); }
 .ecf-card.canteen-card.busy { border-left-color: var(--accent-rose); }
-.ecf-card.auditorium-card { border-left-color: var(--accent-purple); }
+.ecf-card.auditorium-card { border-left-color: var(--accent-amber); }
 .ecf-card.auditorium-card.free { border-left-color: var(--accent-emerald); }
-.ecf-card.auditorium-card.busy { border-left-color: var(--accent-purple); }
+.ecf-card.auditorium-card.busy { border-left-color: var(--accent-amber); }
 
 .ecf-card.venue-card .ecf-card-free { font-weight: var(--fw-semibold); }
 
@@ -876,7 +878,7 @@
   padding: 12px;
   border: 1px solid var(--border-primary);
   background:
-    radial-gradient(ellipse at 4% 0%, color-mix(in srgb, var(--accent-cyan) 7%, transparent), transparent 34%),
+    radial-gradient(ellipse at 4% 0%, color-mix(in srgb, var(--accent-amber) 7%, transparent), transparent 34%),
     var(--bg-card);
 }
 .ecf-masthead {
@@ -892,8 +894,8 @@
   height: 36px;
   min-width: 36px;
   border-radius: 11px;
-  background: color-mix(in srgb, var(--accent-cyan) 13%, var(--bg-card));
-  color: var(--accent-cyan);
+  background: color-mix(in srgb, var(--accent-amber) 13%, var(--bg-card));
+  color: var(--accent-amber);
 }
 .ecf-masthead .schedule-title { font-size: 15px; letter-spacing: -0.025em; }
 .ecf-masthead .schedule-subtitle { margin-top: 2px; color: var(--text-secondary); font-size: 10px; }
@@ -928,7 +930,7 @@
   background: var(--bg-card);
   font-size: 11px;
 }
-.ecf-date-time-field svg { color: var(--accent-cyan); }
+.ecf-date-time-field svg { color: var(--accent-amber); }
 .ecf-date-time-hint { font-size: 11px; }
 .ecf-widget .schedule-dotted-divider { margin: 9px 0; opacity: .65; }
 .ecf-filterbar {
@@ -1105,7 +1107,7 @@
 
 .ecf-card.is-schedulable { cursor: pointer; }
 .ecf-card.is-schedulable:focus-visible {
-  outline: 2px solid var(--accent-cyan);
+  outline: 2px solid var(--accent-amber);
   outline-offset: 2px;
 }
 .ecf-schedule-backdrop {
@@ -1153,8 +1155,8 @@
   height: 34px;
   flex: 0 0 auto;
   border-radius: 10px;
-  color: var(--accent-cyan);
-  background: color-mix(in srgb, var(--accent-cyan) 12%, var(--bg-secondary));
+  color: var(--accent-amber);
+  background: color-mix(in srgb, var(--accent-amber) 12%, var(--bg-secondary));
 }
 .ecf-schedule-dialog-head .schedule-overline { font-size: 9px; }
 .ecf-schedule-dialog-head h3 { margin: 2px 0 0; font-size: 15px; }
@@ -1200,7 +1202,7 @@
 .ecf-room-grid .ecf-room-grid-day { position: sticky; left: 0; z-index: 2; min-width: 52px; width: 52px; color: var(--text-secondary); background: var(--bg-secondary); font-size: 10px; font-weight: 800; }
 .ecf-room-grid .ecf-room-grid-day-head { z-index: 4; }
 .ecf-room-grid td { background: var(--bg-card); }
-.ecf-room-grid td.has-class { background: color-mix(in srgb, var(--accent-cyan) 5%, var(--bg-card)); }
+.ecf-room-grid td.has-class { background: color-mix(in srgb, var(--accent-amber) 5%, var(--bg-card)); }
 .ecf-room-grid tr:last-child th,
 .ecf-room-grid tr:last-child td { border-bottom: 0; }
 .ecf-room-grid th:last-child,

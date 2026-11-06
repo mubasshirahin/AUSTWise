@@ -254,13 +254,13 @@ function ancestorsOf(id) {
 
 const DEPARTMENTS = [
   { id: 'CSE', label: 'CSE', available: true },
-  { id: 'EEE', label: 'EEE', available: false },
-  { id: 'CE',  label: 'CE',  available: false },
-  { id: 'ME',  label: 'ME',  available: false },
-  { id: 'IPE', label: 'IPE', available: false },
-  { id: 'TE',  label: 'TE',  available: false },
-  { id: 'ARCH',label: 'ARCH',available: false },
-  { id: 'BBA', label: 'BBA', available: false },
+  { id: 'EEE', label: 'EEE', available: true },
+  { id: 'CE',  label: 'CE',  available: true },
+  { id: 'ME',  label: 'ME',  available: true },
+  { id: 'IPE', label: 'IPE', available: true },
+  { id: 'TE',  label: 'TE',  available: true },
+  { id: 'ARCH',label: 'ARCH',available: true },
+  { id: 'BBA', label: 'BBA', available: true },
 ];
 
 export default function PrerequisiteTree() {
@@ -272,7 +272,10 @@ export default function PrerequisiteTree() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
   const [deptDropdownOpen, setDeptDropdownOpen] = useState(false);
+  const [deptMenuPos, setDeptMenuPos] = useState({ top: 0, left: 0 });
   const deptDropdownRef = useRef(null);
+  const deptTriggerRef = useRef(null);
+  const deptMenuRef = useRef(null);
   // single transform state so zoom + pan update atomically (cursor-anchored zoom)
   const [view, setView] = useState({ scale: 1, x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
@@ -484,13 +487,11 @@ export default function PrerequisiteTree() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  // Close dept dropdown on outside click (mouse + touch) — also handles portal menu
+  // Close dept dropdown on outside click (mouse + touch) — portal menu
   useEffect(() => {
     const handleClick = (event) => {
-      const dd = deptDropdownRef.current;
-      const menu = document.querySelector('.prereq-dept-menu');
-      const insideDD = dd && dd.contains(event.target);
-      const insideMenu = menu && menu.contains(event.target);
+      const insideDD = deptDropdownRef.current && deptDropdownRef.current.contains(event.target);
+      const insideMenu = deptMenuRef.current && deptMenuRef.current.contains(event.target);
       if (!insideDD && !insideMenu) setDeptDropdownOpen(false);
     };
     document.addEventListener('mousedown', handleClick);
@@ -501,12 +502,27 @@ export default function PrerequisiteTree() {
     };
   }, []);
 
-  // Mobile: keep menu fixed under trigger (no scroll-move) — close on scroll instead
+  // Portal menu follows the trigger (reposition on scroll/resize, don't close)
   useEffect(() => {
     if (!deptDropdownOpen) return;
-    const onScroll = () => setDeptDropdownOpen(false);
-    window.addEventListener('scroll', onScroll, true);
-    return () => window.removeEventListener('scroll', onScroll, true);
+    const onMove = () => {
+      const el = deptTriggerRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const left = Math.max(8, Math.min(rect.left, window.innerWidth - 190));
+      // Flip above the trigger if 8-item list (~260px) wouldn't fit below
+      const top = rect.bottom + 6 + 270 > window.innerHeight && rect.top > 280
+        ? Math.max(8, rect.top - 270 - 6)
+        : rect.bottom + 6;
+      setDeptMenuPos({ top, left });
+    };
+    onMove();
+    window.addEventListener('scroll', onMove, true);
+    window.addEventListener('resize', onMove);
+    return () => {
+      window.removeEventListener('scroll', onMove, true);
+      window.removeEventListener('resize', onMove);
+    };
   }, [deptDropdownOpen]);
 
 
@@ -694,36 +710,52 @@ export default function PrerequisiteTree() {
 
       <div className="schedule-dotted-divider" />
 
-      {/* Dept dropdown — 8 options below box */}
+      {/* Dept dropdown — 8 options below box (portal-fixed, no ancestor clip) */}
       <div className="prereq-dept-dropdown" ref={deptDropdownRef}>
         <button
+          type="button"
+          ref={deptTriggerRef}
           className="prereq-dept-trigger"
-          onClick={() => setDeptDropdownOpen((v) => !v)}
+          onClick={() => {
+            const el = deptTriggerRef.current;
+            if (el) {
+              const rect = el.getBoundingClientRect();
+              const left = Math.max(8, Math.min(rect.left, window.innerWidth - 190));
+              const top = rect.bottom + 6 + 270 > window.innerHeight && rect.top > 280
+                ? Math.max(8, rect.top - 270 - 6)
+                : rect.bottom + 6;
+              setDeptMenuPos({ top, left });
+            }
+            setDeptDropdownOpen((v) => !v);
+          }}
           aria-expanded={deptDropdownOpen}
           aria-haspopup="true"
         >
           <span>{DEPARTMENTS.find((d) => d.id === dept)?.label || dept}</span>
           <ChevronDown size={14} className={deptDropdownOpen ? 'open' : ''} />
         </button>
-        {deptDropdownOpen && (
-          <div className="prereq-dept-menu">
+        {deptDropdownOpen && createPortal(
+          <div
+            className="prereq-dept-menu"
+            ref={deptMenuRef}
+            style={{ position: 'fixed', top: deptMenuPos.top, left: deptMenuPos.left, right: 'auto', bottom: 'auto', zIndex: 999999 }}
+          >
             {DEPARTMENTS.map((d) => (
               <button
                 key={d.id}
+                type="button"
                 className={`prereq-dept-item ${dept === d.id ? 'active' : ''}`}
                 onClick={() => {
-                  if (!d.available) return;
                   setDept(d.id);
                   setDeptDropdownOpen(false);
                 }}
-                disabled={!d.available}
               >
                 <span>{d.label}</span>
-                {!d.available && <em className="prereq-dept-soon">soon</em>}
                 {dept === d.id && <Check size={12} />}
               </button>
             ))}
-          </div>
+          </div>,
+          document.body
         )}
       </div>
 

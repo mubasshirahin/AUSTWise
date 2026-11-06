@@ -56,7 +56,7 @@ function PrimaryMobileLink({ item, onClick }) {
       onMouseEnter={() => prefetchRoute(item.path)}
       onFocus={() => prefetchRoute(item.path)}
     >
-      <item.icon size={20} />
+      <span className="mobile-nav-icon"><item.icon size={20} /></span>
       <span>{item.label}</span>
     </NavLink>
   );
@@ -111,7 +111,7 @@ export default function MobileNav() {
           className={`mobile-nav-item mobile-nav-more ${moreOpen || isMoreActive ? 'active' : ''}`}
           onClick={() => setMoreOpen(true)}
         >
-          <MoreHorizontal size={20} />
+          <span className="mobile-nav-icon"><MoreHorizontal size={20} /></span>
           <span>More</span>
         </button>
       </nav>

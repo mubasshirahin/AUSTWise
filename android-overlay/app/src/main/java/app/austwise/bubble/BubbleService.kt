@@ -238,7 +238,7 @@ class BubbleService : Service() {
     companion object {
         private const val CHANNEL_ID = "austwise_bubble"
         private const val NOTIF_ID = 42
-        private const val SITE = "https://austwise.vercel.app"
+        private const val SITE = "https://austwise.vercel.app/?app=1"
         const val ACTION_STOP = "app.austwise.bubble.STOP"
     }
 }

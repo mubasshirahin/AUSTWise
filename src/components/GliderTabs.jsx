@@ -10,6 +10,7 @@ export default function GliderTabs({
   onChange,
   variant = 'default',
   compact = false,
+  extra,
 }) {
   const trackRef = useRef(null);
   const activeRef = useRef(null);
@@ -35,10 +36,32 @@ export default function GliderTabs({
     const active = activeRef.current;
     if (!track || !active) return;
 
-    const trackRect = track.getBoundingClientRect();
-    const activeRect = active.getBoundingClientRect();
-    track.style.setProperty('--glider-x', `${activeRect.left - trackRect.left}px`);
-    track.style.setProperty('--glider-w', `${activeRect.width}px`);
+    const place = () => {
+      const trackRect = track.getBoundingClientRect();
+      const activeRect = active.getBoundingClientRect();
+      track.style.setProperty('--glider-x', `${activeRect.left - trackRect.left}px`);
+      track.style.setProperty('--glider-w', `${activeRect.width}px`);
+    };
+    place();
+    // Keep the active tab visible inside the strip only (no page jump)
+    const wrap = track.parentElement;
+    if (wrap) {
+      const trackRect = track.getBoundingClientRect();
+      const activeRect = active.getBoundingClientRect();
+      const target = activeRect.left - trackRect.left - wrap.clientWidth / 2 + activeRect.width / 2;
+      wrap.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
+    }
+    // Re-place after layout settles (fonts, resize, orientation change)
+    const onResize = () => place();
+    window.addEventListener('resize', onResize);
+    if (document.fonts?.ready) document.fonts.ready.then(place).catch(() => {});
+    const t1 = setTimeout(place, 150);
+    const t2 = setTimeout(place, 500);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, [activeTab, visibleTabs, compact]);
 
   return (
@@ -74,6 +97,7 @@ export default function GliderTabs({
           );
         })}
       </div>
+      {extra && <div className="glider-tabs-extra">{extra}</div>}
     </div>
   );
 }

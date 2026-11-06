@@ -522,7 +522,7 @@ export default function LifePlannerPage() {
                   <LpDateInput value={taskRecurringEndDate} onChange={setTaskRecurringEndDate} style={{ height: 34, width: '100%' }} required />
                 </div>
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{taskRecurringWeekdays.length === 0 ? 'Ekta din o select koro' : `${taskRecurringWeekdays.length} din • ${taskRecurringWeekdays.join(', ')}`} {taskRecurringEndDate ? `• till ${fmtDate(taskRecurringEndDate)}` : '• end date daw'} — task + steps auto recurring hobe</div>
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{taskRecurringWeekdays.length === 0 ? 'Select at least one day' : `${taskRecurringWeekdays.length} days • ${taskRecurringWeekdays.join(', ')}`} {taskRecurringEndDate ? `• until ${fmtDate(taskRecurringEndDate)}` : '• set an end date'} — the task and steps will repeat automatically</div>
             </div>
           )}
         </div>

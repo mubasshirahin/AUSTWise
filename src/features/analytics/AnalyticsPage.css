@@ -686,14 +686,13 @@
   justify-self: end;
 }
 
-/* Load Template: full-width strip below the masthead box on mobile */
-.cgpa-load-mobile-wrap {
+/* Mobile: Load Template lives inside the ⋮ menu (not a separate strip) */
+.cgpa-load-mobile-item,
+.cgpa-load-mobile-sep {
   display: none;
 }
-.cgpa-load-mobile-wrap .cgpa-load-template-btn {
-  width: auto;
-  justify-content: center;
-  padding: 9px 14px;
+.cgpa-load-mobile-wrap {
+  display: none !important;
 }
 @media (max-width: 768px) {
   .cgpa-bol-widget .schedule-masthead {
@@ -703,10 +702,14 @@
   .cgpa-breakdown-box .cgpa-transcript-actions > button.cgpa-load-template-btn {
     display: none;
   }
-  .cgpa-load-mobile-wrap {
+  .cgpa-load-mobile-item {
     display: flex;
-    justify-content: flex-end;
-    margin: 0 0 4px;
+  }
+  .cgpa-load-mobile-sep {
+    display: block;
+  }
+  .cgpa-load-mobile-wrap {
+    display: none !important;
   }
   .gl-content-card {
     overflow: visible;
@@ -2337,8 +2340,13 @@
     height: 10px;
   }
   .cgpa-chart-body {
-    height: 120px;
-    padding: var(--sp-1) var(--sp-2) var(--sp-2);
+    height: clamp(340px, 55vw, 420px);
+    padding: var(--sp-3) var(--sp-3) var(--sp-4);
+  }
+  .cgpa-chart-body canvas {
+    width: 100% !important;
+    height: 100% !important;
+    max-height: clamp(340px, 55vw, 420px);
   }
 
   /* ── Semester Breakdown box ── */
@@ -2374,14 +2382,9 @@
     height: 14px;
   }
 
-  /* ── Load Template mobile strip ── */
+  /* Mobile: Load Template is a ⋮ menu item (button hidden in masthead) */
   .cgpa-load-mobile-wrap {
-    margin: 0 0 2px;
-  }
-  .cgpa-load-mobile-wrap .cgpa-load-template-btn {
-    padding: 5px 10px;
-    font-size: 8px;
-    height: 26px;
+    display: none !important;
   }
 
   /* ── Semester list: ultra-compact ── */
@@ -2514,8 +2517,14 @@
   }
 
   /* ── Chart legend: compact ── */
+  .cgpa-chart-body {
+    height: clamp(340px, 55vw, 420px);
+    padding: var(--sp-3) var(--sp-3) var(--sp-4);
+  }
   .cgpa-chart-body canvas {
-    max-height: 110px;
+    width: 100% !important;
+    height: 100% !important;
+    max-height: clamp(340px, 55vw, 420px);
   }
 
   /* ── GliderTabs: dashboard-consistent on mobile ──

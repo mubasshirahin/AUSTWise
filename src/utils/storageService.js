@@ -241,7 +241,6 @@ const MIGRATION_KEYS = {
     'aust-cheatsheets',
     'aust-question-bank',
     'aust-vault-courses',
-    'aust-vault-batches',
     'aust-media-tracker',
     'aust-transcript-templates',
     'aust-routine-templates',

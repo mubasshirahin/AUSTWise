@@ -6,6 +6,7 @@ import {
   Route, GraduationCap, Users, Timer,
 } from 'lucide-react';
 import { STATUS_META } from './mockStalkData';
+import { getDisplayRoles, getRoleDisplayName } from '../../utils/authStorage';
 
 function PlatformIcon({ platform }) {
   if (platform === 'Mobile') return <Smartphone size={12} />;
@@ -240,7 +241,7 @@ export { ThisOrThatSection };
 /* ─── Root portfolio ─── */
 export default function StalkPortfolio({ portfolio, onClose }) {
   const accent = portfolio.favoriteColor;
-  const roleLabel = { admin: 'Admin', moderator: 'Moderator', faculty: 'Faculty', alumni: 'Alumni', cr: 'CR', sr: 'SR' }[portfolio.role] || 'Student';
+  const roleLabel = getDisplayRoles(portfolio).map(getRoleDisplayName).join(' · ');
 
   return (
     <div className="sp-portfolio" style={{ '--stalk-accent': accent }}>

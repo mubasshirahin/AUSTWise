@@ -553,7 +553,7 @@ Layer 4  Admin mode                   → admin hole QuickStats render e hoy na 
 | Viewer | Quick Stats dekhbe? | Ki dekhbe |
 |--------|---------------------|-----------|
 | `student` (default) | ✅ | Full card, data thakle values |
-| `cr` / `sr` / `senior` / `vp` / `gs` / `readd` / `alumni` etc. | ✅ (jodi `featureHidden` e na thake) | Full card |
+| `cr` / `sr` / `vp` / `gs` / `readd` / `alumni` etc. | ✅ (jodi `featureHidden` e na thake) | Full card |
 | `faculty` | ❌ | `FeatureAccessGate` `null` return kore |
 | `guest` (guest login) | ✅ card, but data nai | Placeholder + "Sign in" CTA |
 | `moderator` | ⚠️ Mixed | `isFeatureAvailable` moderator ke admin hisebe treat kore, but `FeatureAccessGate` shudhu `role === 'admin'` bypass kore → gate apply hote pare |
@@ -583,7 +583,7 @@ if (!isAdmin && config.featureHidden?.includes(accessRole)) return null;
 
 | Method | Endpoint | Auth | Purpose |
 |--------|----------|------|---------|
-| `GET` | `/api/store/user/:key` | Logged-in role (student/faculty/alumni/admin/moderator/cr/sr/senior) | Read per-user value (`liveStore.fetchKey`) |
+| `GET` | `/api/store/user/:key` | Logged-in role (student/faculty/alumni/admin/moderator/cr/sr) | Read per-user value (`liveStore.fetchKey`) |
 | `PUT` | `/api/store/user/:key` | Same | Write per-user value + WS broadcast |
 | `DELETE` | `/api/store/user/:key` | Same | Delete key + `deleted: true` broadcast |
 | `GET` | `/api/store/user` | Same | List all keys |

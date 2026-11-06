@@ -1,9 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Archive, HardDrive, Cpu } from 'lucide-react';
+import { Archive, HardDrive, Cpu, Link2, KeyRound } from 'lucide-react';
 import VaultSelection from './VaultSelection';
 import VaultStepProgress from './VaultStepProgress';
 import VaultBatchSelector from './VaultBatchSelector';
+import BatchDriveManager from './BatchDriveManager';
+import BatchDriveLockPanel from './BatchDriveLockPanel';
+import BatchDriveCodeGenerate from './BatchDriveCodeGenerate';
 import MaterialFolders from './MaterialFolders';
 import GliderTabs from '../../components/GliderTabs';
 import MastheadAccessControl from '../../components/MastheadAccessControl';
@@ -11,6 +14,8 @@ import FeatureAccessGate from '../admin/FeatureAccessGate';
 import SidebarPageAccessPanel, { SidebarPageAccessHeader } from '../admin/SidebarPageAccessPanel';
 import useTabUrlState from '../../hooks/useTabUrlState';
 import useAdminMode from '../../hooks/useAdminMode';
+import { useBatchDriveLock } from '../../hooks/useBatchDriveLock';
+import { useAuth } from '../../context/AuthContext';
 import { loadVaultSelection, saveVaultSelection } from './vaultSelectionStorage';
 import './VaultPage.css';
 import './VaultBatchSelector.css';
@@ -25,6 +30,7 @@ function getSelectionStep(department, yearSem, batch) {
 
 export default function VaultPage() {
   const { isAdmin } = useAdminMode();
+  const { user } = useAuth();
   const [initialSelection] = useState(loadVaultSelection);
   const [department, setDepartment] = useState(initialSelection.department);
   const [yearSem, setYearSem] = useState(initialSelection.yearSem);
@@ -41,6 +47,23 @@ export default function VaultPage() {
     onChange: setVaultTab,
   });
   const [transitioning, setTransitioning] = useState(null);
+
+  // Only CR/SR of a batch may manage the shared semester Drive links.
+  const canManageDrive = Boolean(
+    user && (
+      user.role === 'cr' || user.role === 'sr'
+      || user.hasRole?.('cr') || user.hasRole?.('sr')
+    ),
+  );
+  const activeTab = vaultTab === 'drive-links' && !canManageDrive ? 'batch-drive' : vaultTab;
+
+  // Batch Drive lock — semester 1–4 + all CR/SR need a code from an
+  // own-department 3.1+ student. Drive Links (CR/SR editor) is separate
+  // and stays open, but eligible 3.1+ users also get the generator there.
+  const lock = useBatchDriveLock({
+    enabled: activeTab === 'batch-drive' || activeTab === 'drive-links' || activeTab === 'code-generate',
+  });
+  const isBatchDriveLocked = Boolean(activeTab === 'batch-drive' && lock.status?.locked);
 
   const isReady = Boolean(department && yearSem && batch);
   const selectionStep = getSelectionStep(department, yearSem, batch);
@@ -106,12 +129,46 @@ export default function VaultPage() {
 
   const vaultTabs = [
     { id: 'batch-drive', label: 'Batch Drive', icon: HardDrive, desc: 'Study materials & drive', color: 'amber', accessKey: 'feature:vault:batch-drive' },
+    ...(canManageDrive
+      ? [{ id: 'drive-links', label: 'Drive Links', icon: Link2, desc: 'CR/SR semester links', color: 'amber', accessKey: 'feature:vault:drive-links' }]
+      : []),
     { id: 'carbon-vault', label: 'Carbon Vault', icon: Cpu, desc: 'Coming soon', color: 'emerald', accessKey: 'feature:vault:carbon-vault' },
+    { id: 'code-generate', label: 'Code Generate', icon: KeyRound, desc: 'Semester 3.1+ share code', color: 'amber', accessKey: 'feature:vault:code-generate' },
   ];
 
 
+  const lockPanel = (
+    <BatchDriveLockPanel
+      status={lock.status}
+      loading={lock.loading}
+      onGenerate={lock.generateCode}
+      onToggle={lock.toggleShare}
+      onRedeem={lock.redeemCode}
+      onRefresh={lock.refresh}
+    />
+  );
+
   const renderVaultContent = () => {
-    if (vaultTab === 'carbon-vault') {
+    if (activeTab === 'drive-links') {
+      return (
+        <>
+          {lock.status?.canShare ? (
+            <BatchDriveLockPanel
+              status={lock.status}
+              loading={lock.loading}
+              onGenerate={lock.generateCode}
+              onToggle={lock.toggleShare}
+              onRedeem={lock.redeemCode}
+              onRefresh={lock.refresh}
+              showLockForm={false}
+            />
+          ) : null}
+          <BatchDriveManager />
+        </>
+      );
+    }
+
+    if (activeTab === 'carbon-vault') {
       return (
         <div className="vault-coming-soon-wrap">
           <div className="schedule-masthead">
@@ -137,10 +194,28 @@ export default function VaultPage() {
       );
     }
 
+    if (activeTab === 'code-generate') {
+      return (
+        <BatchDriveCodeGenerate
+          status={lock.status}
+          loading={lock.loading}
+          onGenerate={lock.generateCode}
+          onToggle={lock.toggleShare}
+          onRedeem={lock.redeemCode}
+          onRefresh={lock.refresh}
+        />
+      );
+    }
+
+    if (isBatchDriveLocked) {
+      return lockPanel;
+    }
+
     if (!isReady) {
       return (
         <div className="vault-selection-box">
           <div className={`vault-panel-content ${transitioning ? 'vault-panel-exit' : ''}`}>
+            {lock.status?.canShare ? lockPanel : null}
             {selectionStep === 'batch' ? (
               <VaultBatchSelector
                 department={department}
@@ -179,6 +254,7 @@ export default function VaultPage() {
     return (
       <div className="vault-workspace vault-workspace-enter">
         <div className="vault-content-area">
+          {lock.status?.canShare ? lockPanel : null}
           <MaterialFolders
             vaultContext={vaultContext}
             progress={
@@ -212,11 +288,15 @@ export default function VaultPage() {
             Resource<span className="vl-hero-name"> Vault</span>
           </h1>
           <p className="vl-hero-subtitle">
-            {vaultTab === 'carbon-vault'
+            {activeTab === 'carbon-vault'
               ? 'Monitor your semester resource emissions'
-              : (isReady
-                ? `${department} — Semester ${yearSem} · ${batch.batchName}`
-                : 'Pick the semester. Unlock lecture notes, papers & more.')}
+              : activeTab === 'code-generate'
+                ? 'Semester 3.1 and above — generate single-use codes for your juniors'
+              : activeTab === 'drive-links'
+                ? 'CR / SR — keep every semester Drive link up to date'
+                : (isReady
+                  ? `${department} — Semester ${yearSem} · ${batch.batchName}`
+                  : 'Pick the semester. Unlock lecture notes, papers & more.')}
           </p>
         </div>
       </header>}
@@ -226,7 +306,7 @@ export default function VaultPage() {
       <div className="glass-card-static vl-tabs-card">
         <GliderTabs
           tabs={vaultTabs}
-          activeTab={vaultTab}
+          activeTab={activeTab}
           onChange={handleVaultTabChange}
           variant="dashboard"
           compact
@@ -234,10 +314,10 @@ export default function VaultPage() {
       </div>
 
       {/* ── 3. Main content box (own card, gated by per-tab featureHidden) ── */}
-      {isAdmin ? <SidebarPageAccessPanel pageKey="/vault" featureKey={`feature:vault:${vaultTab}`} part="child" /> : <MastheadAccessControl>
-        <div className="vl-content-card" key={vaultTab}>
+      {isAdmin ? <SidebarPageAccessPanel pageKey="/vault" featureKey={`feature:vault:${activeTab}`} part="child" /> : <MastheadAccessControl>
+        <div className="vl-content-card" key={activeTab}>
           <div className="vault-content-area">
-            <FeatureAccessGate featureKey={`feature:vault:${vaultTab}`}>
+            <FeatureAccessGate featureKey={`feature:vault:${activeTab}`}>
               {renderVaultContent()}
             </FeatureAccessGate>
           </div>

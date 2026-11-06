@@ -516,7 +516,7 @@ export default function CoverPageGeneratorPage() {
           <button
             className="btn btn-rose btn-sm"
             onClick={async () => {
-              if (!confirm('Reset all 6 counters to 0? New start hobe.')) return;
+              if (!confirm('Reset all 6 counters to 0? This starts fresh.')) return;
               try {
                 const res = await fetch('/api/admin/cover-stats/reset', { method: 'POST', credentials: 'same-origin' });
                 const d = await res.json();

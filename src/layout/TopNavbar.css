@@ -100,10 +100,10 @@
 
 @media (max-width: 768px) {
   .topbar-wordmark-img {
-    width: 30px;
-    height: 30px;
+    width: 42px;
+    height: 42px;
   }
-  .topbar-brand-name { font-size: 14px; }
+  .topbar-brand-name { font-size: 16px; }
 }
 
 .topbar-logo .logo-burst {

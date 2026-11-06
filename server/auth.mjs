@@ -418,6 +418,11 @@ function toYearSemester(value) {
   const s = String(value || '').trim();
   if (!s) return '';
   if (/Year\s*\d+\s*-\s*Semester\s*\d+/i.test(s)) return s;
+  const plain = /^Semester\s*(\d{1,2})$/i.exec(s);
+  if (plain) {
+    const n = Number(plain[1]);
+    return `Year ${Math.ceil(n / 2)} - Semester ${n % 2 === 0 ? 2 : 1}`;
+  }
   const parts = s.split('.');
   const yr = Number(parts[0]);
   const term = Number(parts[1]);
@@ -533,9 +538,23 @@ async function handleAlumniCarry(req, res) {
   }
 }
 
+/** Full batch label — "Quanta 52" from the name + number pair. */
+function getBatchLabel(user) {
+  if (!user) return '';
+  const name = String(user.batchName || '').trim();
+  const no = String(user.batchNo || '').trim();
+  const raw = String(user.batch || '').trim();
+  if (name && no && name !== no) return `${name} ${no}`.replace(/\s+/g, ' ').trim();
+  if (name) return name;
+  if (/^[A-Za-z][A-Za-z\s]*\s+\d+$/.test(raw)) return raw.replace(/\s+/g, ' ').trim();
+  if (no) return no;
+  return /^\d+-[A-Z]+$/.test(raw) ? '' : raw;
+}
+
 /** Return user without sensitive fields */
 function sanitizeUser(user) {
   const { password: _password, ...safe } = user;
+  const batchLabel = getBatchLabel(safe);
   // Add helper that matches the expected frontend shape
   const baseRoles = [safe.role];
   const extraRoles = Array.isArray(safe.roles) ? safe.roles : [];
@@ -544,11 +563,13 @@ function sanitizeUser(user) {
     safe.yearSemester,
     safe.labSection ? `lab.${safe.labSection}` : null,
     safe.batchNo ? `batch.${safe.batchNo}` : null,
+    batchLabel ? `batch.${batchLabel}` : null,
     safe.section ? `sec.${safe.section}` : null,
   ].filter(Boolean);
   const mergedRoles = [...new Set([...baseRoles, ...extraRoles, ...metadataRoles])];
   return {
     ...safe,
+    batchLabel,
     roles: mergedRoles,
     hasRole(roleType) { return mergedRoles.includes(roleType) || safe.role === roleType; },
     initials: getInitials(safe.name),

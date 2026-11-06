@@ -172,7 +172,7 @@ export default function StudentDirectory() {
   }, [activeDept]);
 
   // First visible semester is expanded by default (until the user toggles it).
-  // Semesters are ordered senior → junior, so the senior-most starts expanded.
+  // Semesters are ordered highest → lowest, so the top semester starts expanded.
   const defaultExpandedKey = displayDepts.length > 0
     ? `${displayDepts[0]}-${Object.keys(grouped[displayDepts[0]]).sort((a, b) => Number(b) - Number(a))[0]}`
     : null;
@@ -464,7 +464,7 @@ export default function StudentDirectory() {
       ) : (
         <div className="student-dir-content">
           {displayDepts.map(dept => {
-            // Seniors first — highest semester on top, juniors below.
+            // Higher semesters first — highest semester on top, lower below.
             const sems = Object.keys(grouped[dept]).sort((a, b) => Number(b) - Number(a));
 
             return (

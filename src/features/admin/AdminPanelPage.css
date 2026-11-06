@@ -777,4 +777,58 @@
   border-bottom-color: #2d2d2d;
 }
 
+/* Roles directory */
+.admin-roles-stats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.admin-roles-stats span { display: inline-flex; align-items: baseline; gap: 6px; padding: 6px 10px; border: 1px solid var(--admin-line); border-radius: 999px; color: var(--text-secondary); background: var(--admin-surface); font-size: 10px; }
+.admin-roles-stats strong { color: var(--admin-accent); font-size: 13px; }
+.admin-roles-search-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.admin-roles-search, .admin-roles-member-search { display: flex; flex: 1; min-width: 220px; align-items: center; gap: 8px; padding: 0 12px; border: 1px solid var(--admin-line); border-radius: var(--radius-md, 10px); background: var(--bg-input); }
+.admin-roles-member-search { min-width: 240px; }
+.admin-roles-selected { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+.admin-roles-selected-label { color: var(--text-tertiary); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.admin-roles-chip { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border: 1px solid var(--admin-accent); border-radius: 999px; color: var(--admin-accent); background: var(--admin-accent-soft); font-size: 10px; font-weight: 700; cursor: pointer; }
+.admin-roles-group { margin-bottom: 12px; padding: 12px; border: 1px solid var(--admin-line); border-radius: var(--radius-lg, 14px); background: var(--admin-surface); }
+.admin-roles-group > header { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.admin-roles-group > header strong { color: var(--text-primary); font-size: 12px; }
+.admin-roles-group > header span { color: var(--text-tertiary); font-size: 10px; }
+.admin-roles-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 7px; }
+.admin-roles-card { display: flex; min-width: 0; min-height: 52px; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 10px; border: 1px solid var(--admin-line); border-radius: 10px; color: var(--text-primary); background: color-mix(in srgb, var(--admin-surface) 94%, var(--text-primary) 6%); text-align: left; cursor: pointer; }
+.admin-roles-card:hover { border-color: var(--admin-accent); }
+.admin-roles-card > span { display: grid; min-width: 0; gap: 2px; }
+.admin-roles-card strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.admin-roles-card small { color: var(--text-tertiary); font-size: 9px; }
+.admin-roles-card > b { display: grid; min-width: 28px; height: 24px; place-items: center; padding-inline: 6px; border: 1px solid var(--admin-line); border-radius: 7px; color: var(--admin-accent); background: var(--admin-accent-soft); font-size: 11px; }
+.admin-roles-card.is-selected { border-color: var(--admin-accent); background: var(--admin-accent-soft); box-shadow: 0 0 0 1px color-mix(in srgb, var(--admin-accent) 30%, transparent); }
+.admin-roles-empty { padding: 28px 16px; text-align: center; }
+.admin-roles-empty p { margin: 0 0 6px; color: var(--text-primary); font-size: 12px; font-weight: 700; }
+.admin-roles-empty small { color: var(--text-tertiary); font-size: 10px; line-height: 1.5; }
+.admin-roles-members { margin-top: 12px; padding: 16px; }
+.admin-roles-members .admin-user-empty { padding: 20px 12px; text-align: center; color: var(--text-tertiary); font-size: 11px; }
+@media (max-width: 640px) {
+  .admin-roles-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  .admin-roles-search-row { align-items: stretch; flex-direction: column; }
+}
+
+/* Code shares */
+.admin-code-shares { display: grid; gap: 10px; }
+.admin-code-share-card { padding: 14px; }
+.admin-code-share-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.admin-code-avatar, .admin-code-recipient-avatar { display: grid; place-items: center; overflow: hidden; border: 1px solid var(--admin-line); border-radius: 50%; color: var(--text-primary); background: var(--admin-surface); font-size: 10px; font-weight: 800; cursor: pointer; }
+.admin-code-avatar { width: 36px; height: 36px; flex: 0 0 auto; }
+.admin-code-avatar img, .admin-code-recipient-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.admin-code-share-head > div { display: grid; min-width: 0; gap: 2px; flex: 1 1 200px; }
+.admin-code-share-head > div strong { color: var(--text-primary); font-size: 13px; }
+.admin-code-share-head > div span { color: var(--text-secondary); font-size: 11px; }
+.admin-code-share-head > div small { color: var(--text-tertiary); font-size: 10px; }
+.admin-code-share-meta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; color: var(--text-secondary); font-size: 11px; }
+.admin-code-share-meta strong { color: var(--text-primary); }
+.admin-code-share-codes { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; color: var(--text-tertiary); font-size: 10px; }
+.admin-code-share-uses { display: grid; gap: 7px; margin-top: 12px; border-top: 1px solid var(--admin-line); padding-top: 10px; color: var(--text-secondary); font-size: 11px; }
+.admin-code-share-uses > strong { color: var(--text-primary); font-size: 11px; }
+.admin-code-share-uses ul { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.admin-code-share-uses li { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.admin-code-recipient-avatar { width: 28px; height: 28px; flex: 0 0 auto; }
+.admin-code-share-uses li span { min-width: 0; overflow-wrap: anywhere; }
+.admin-code-share-uses code { color: var(--text-primary); font-weight: 700; letter-spacing: .06em; }
+
 

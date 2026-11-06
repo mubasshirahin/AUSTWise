@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { isNativeApp, isAssistiveEnabled } from '../utils/isNativeApp';
 import {
   Sparkles, LayoutDashboard, DollarSign, BookOpen,
   GraduationCap, Sun, Moon, ArrowUp, Maximize, Minimize,
@@ -10,16 +11,34 @@ import { useTakaGeloKoi, addDaily, todayKey30, fmtMoney } from '../features/mone
 import brandMark from '../assets/austwise-icon-final.svg';
 import './AssistiveWidget.css';
 
-// The bubble is one fixed element shared by every screen — desktop window,
-// tablet and mobile — so nothing here is gated on viewport size. These numbers
-// mirror .assistive-bubble in AssistiveWidget.css and keep the bubble fully
-// inside the *visible* viewport (mobile URL bars and the bottom nav included).
+// App-only floating bubble (APK / installed PWA). Web & desktop browser
+// never render it — see isNativeApp() in utils/isNativeApp.js.
+// These numbers mirror .assistive-bubble in AssistiveWidget.css and keep the
+// bubble fully inside the *visible* viewport (mobile URL bars, bottom nav
+// and safe-area included).
 const BUBBLE_SIZE = 52;
 const EDGE_MARGIN = 12;
-const MOBILE_NAV_RESERVE = 92; // 78px bottom nav + breathing room
+const MOBILE_NAV_HEIGHT = 66; // .mobile-nav height (bottom:0 full-width bar)
+const NAV_BREATHING = 14;
 
 const isCompact = () => window.innerWidth <= 1024;
-const bottomReserve = () => (isCompact() ? MOBILE_NAV_RESERVE : EDGE_MARGIN);
+
+function getSafeAreaBottom() {
+  try {
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed;bottom:0;left:0;height:env(safe-area-inset-bottom,0px);visibility:hidden;pointer-events:none;';
+    document.body.appendChild(el);
+    const h = parseFloat(getComputedStyle(el).height) || 0;
+    el.remove();
+    return h;
+  } catch { return 0; }
+}
+
+function bottomReserve() {
+  const safeArea = getSafeAreaBottom();
+  // Mobile nav (66px) sits flush at bottom:0 + safe-area inset in app mode.
+  return (isCompact() ? MOBILE_NAV_HEIGHT + safeArea + NAV_BREATHING : EDGE_MARGIN + safeArea);
+}
 
 /** Clamp a position so the whole bubble stays on screen at the current size. */
 function clampToViewport(pos) {
@@ -49,6 +68,19 @@ export default function AssistiveWidget() {
   const { theme, toggleTheme } = useTheme();
   const [, updateTgk] = useTakaGeloKoi();
 
+  // App-only gate: web/desktop → no bubble at all.
+  const [isApp] = useState(() => isNativeApp());
+  const [enabled, setEnabled] = useState(() => isAssistiveEnabled());
+  useEffect(() => {
+    const onToggle = () => setEnabled(isAssistiveEnabled());
+    window.addEventListener('aust-assistive-toggle', onToggle);
+    window.addEventListener('storage', onToggle);
+    return () => {
+      window.removeEventListener('aust-assistive-toggle', onToggle);
+      window.removeEventListener('storage', onToggle);
+    };
+  }, []);
+
   const [isOpen, setIsOpen] = useState(false);
   const [showQuickExpense, setShowQuickExpense] = useState(false);
   const [expTitle, setExpTitle] = useState('');
@@ -66,10 +98,11 @@ export default function AssistiveWidget() {
       if (raw) saved = JSON.parse(raw);
     } catch { /* ignore */ }
     const usable = saved && Number.isFinite(saved.x) && Number.isFinite(saved.y);
+    const vv = window.visualViewport;
     return clampToViewport(
       usable
         ? saved
-        : { x: window.innerWidth - BUBBLE_SIZE - 22, y: window.innerHeight - BUBBLE_SIZE - 140 }
+        : { x: (vv?.width ?? window.innerWidth) - BUBBLE_SIZE - 22, y: (vv?.height ?? window.innerHeight) - BUBBLE_SIZE - bottomReserve() - 20 }
     );
   });
 
@@ -184,6 +217,9 @@ export default function AssistiveWidget() {
   };
 
   const isDark = theme === 'dark' || theme === 'midnight' || theme === 'terminal';
+
+  // Web / desktop browser: bubble removed entirely.
+  if (!isApp || !enabled) return null;
 
   return (
     <>

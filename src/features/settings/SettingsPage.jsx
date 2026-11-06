@@ -18,20 +18,11 @@ import { OrbitsProvider, useOrbits } from '../orbits/OrbitsContext';
 import OrbitsConfigurationPanel from '../orbits/OrbitsConfigurationPanel';
 import { useStalk } from '../stalk-road/StalkContext';
 import { submitRoleApplication, getApplicationsByUserId, getUserApplicationStatus, getSlotVacancyMap, resignFromRole, withdrawApplication, deleteAccountById, createAwid, syncRoleApplicationsFromServer } from '../../utils/authStorage';
+import { isNativeApp, isAssistiveEnabled, setAssistiveEnabled } from '../../utils/isNativeApp';
 import './SettingsPage.css';
 import '../../components/PageHero.css';
 
 const departments = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'];
-const juniorBatchByDepartment = {
-  CSE: 55,
-  EEE: 55,
-  CE: 55,
-  BBA: 55,
-  ARCH: 55,
-  TE: 45,
-  IPE: 35,
-  ME: 29,
-};
 const getYearSemesters = (department) => {
   const maxYear = department === 'ARCH' ? 5 : 4;
   const options = [];
@@ -69,22 +60,6 @@ const quickProfileFields = ['department', 'yearSemester', 'section', 'labSection
 const getLabSectionOptions = (section) => {
   if (!section) return [];
   return [`${section}1`, `${section}2`];
-};
-
-const getBatchOptions = (department) => {
-  const juniorBatch = juniorBatchByDepartment[department];
-  if (!juniorBatch) return [];
-
-  return Array.from({ length: juniorBatch }, (_, index) => {
-    const batchNo = index + 1;
-    const batchName = String(batchNo);
-
-    return {
-      label: batchName,
-      batchName,
-      batchNo: String(batchNo),
-    };
-  });
 };
 
 const getYearSemesterShortName = (yearSemester) => {
@@ -127,13 +102,31 @@ const getBatchNoFromUser = (user) => {
 
 const parseBatchInput = (input) => {
   const raw = String(input || '').trim();
-  const match = raw.match(/^(.*?)\s*(\d{1,2})$/);
+  const match = raw.match(/^(.*?)\s*(\d+)$/);
   if (match) {
     const name = match[1].trim();
     const num = match[2];
     return { batchName: name || num, batchNo: num };
   }
   return { batchName: raw, batchNo: raw };
+};
+
+/** Split an account's batch into the editable name + number pair. */
+const getBatchPartsFromUser = (user) => {
+  const batchNo = getBatchNoFromUser(user);
+  let batchName = String(user.batchName || '').trim();
+  if (!batchName) {
+    const match = String(user.batch || '').trim().match(/^(.*?)\s*(\d+)$/);
+    if (match) batchName = match[1].trim();
+  }
+  // Guard against a full "Quanta 52" label already sitting in batchName.
+  if (batchName && batchNo) {
+    const match = batchName.match(/^(.*?)\s*(\d+)$/);
+    if (match && match[2] === batchNo && match[1].trim()) batchName = match[1].trim();
+  }
+  // Legacy rows stored the number as the name — keep the field blank.
+  if (!batchName || batchName === batchNo) batchName = '';
+  return { batchName, batchNo };
 };
 
 const darkThemes = [
@@ -336,6 +329,13 @@ export default function SettingsPage() {
     }
   }, [isAuthenticated]);
   useEffect(() => { refreshTelegramHealth(); }, [refreshTelegramHealth]);
+  const [isApp] = useState(() => isNativeApp());
+  const [assistiveOn, setAssistiveOn] = useState(() => isAssistiveEnabled());
+  const handleAssistiveToggle = () => {
+    const next = !assistiveOn;
+    setAssistiveOn(next);
+    setAssistiveEnabled(next);
+  };
   const updateChannelPreference = (channel, category, value) => {
     const channels = notifSettings.channels || {};
     updateSetting('channels', { ...channels, [channel]: { ...(channels[channel] || {}), [category]: value } });
@@ -803,7 +803,7 @@ export default function SettingsPage() {
       setInviteSending(false);
     }
   };
-  const initialBatchNo = getBatchNoFromUser(user);
+  const initialBatchParts = getBatchPartsFromUser(user);
   
   // Extract student ID from @aust.edu email: "cse12345@aust.edu" -> "12345"
   const detectedStudentId = (() => {
@@ -825,8 +825,8 @@ export default function SettingsPage() {
   });
   const [quickProfile, setQuickProfile] = useState({
     department: user.department || '',
-    batchName: user.batchName || initialBatchNo || '',
-    batchNo: initialBatchNo,
+    batchName: initialBatchParts.batchName,
+    batchNo: initialBatchParts.batchNo,
     batchCustomName: '',
     yearSemester: user.yearSemester || getYearSemesterFromSemester(user.semester),
     section: user.section || '',
@@ -841,7 +841,7 @@ export default function SettingsPage() {
     const emailId = email.includes('@aust.edu')
       ? (email.split('@')[0] || '').replace(/^[a-z.]+/i, '')
       : '';
-    const batchNo = getBatchNoFromUser(user);
+    const batchParts = getBatchPartsFromUser(user);
     setProfileDetails({
       id: emailId || user.id || '',
       name: user.name || '',
@@ -852,18 +852,18 @@ export default function SettingsPage() {
     });
     setQuickProfile({
       department: user.department || '',
-      batchName: user.batchName || batchNo || '',
-      batchNo,
+      batchName: batchParts.batchName,
+      batchNo: batchParts.batchNo,
       batchCustomName: '',
       yearSemester: user.yearSemester || getYearSemesterFromSemester(user.semester),
       section: user.section || '',
       labSection: user.labSection || '',
     });
     setYearSemTouched(false);
-  }, [isEditingProfile, user.id, user.email, user.phone, user.name, user.avatar, user.bloodGroup, user.department, user.batchName, user.yearSemester, user.section, user.labSection, user.semester]);
+  }, [isEditingProfile, user.id, user.email, user.phone, user.name, user.avatar, user.bloodGroup, user.department, user.batch, user.batchName, user.batchNo, user.yearSemester, user.section, user.labSection, user.semester]);
 
   const resetProfileDrafts = () => {
-    const nextBatchNo = getBatchNoFromUser(user);
+    const batchParts = getBatchPartsFromUser(user);
     const email = user.email || '';
     const resetId = email.includes('@aust.edu')
       ? (email.split('@')[0] || '').replace(/^[a-z.]+/i, '') || user.id
@@ -879,8 +879,8 @@ export default function SettingsPage() {
     });
     setQuickProfile({
       department: user.department || '',
-      batchName: user.batchName || nextBatchNo || '',
-      batchNo: nextBatchNo,
+      batchName: batchParts.batchName,
+      batchNo: batchParts.batchNo,
       batchCustomName: '',
       yearSemester: user.yearSemester || getYearSemesterFromSemester(user.semester),
       section: user.section || '',
@@ -1020,7 +1020,11 @@ export default function SettingsPage() {
     }
 
     const nextName = profileDetails.name.trim();
-    const finalBatchName = quickProfile.batchCustomName.trim() || quickProfile.batchName;
+    const finalBatchName = String(quickProfile.batchName || '').trim();
+    const finalBatchNo = String(quickProfile.batchNo || '').trim();
+    const finalBatchLabel = finalBatchName && finalBatchNo && finalBatchName !== finalBatchNo
+      ? `${finalBatchName} ${finalBatchNo}`
+      : (finalBatchNo || finalBatchName);
 
     const semesterNum = (() => {
       const m = (quickProfile.yearSemester || '').match(/Year (\d+) - Semester (\d+)/);
@@ -1037,9 +1041,9 @@ export default function SettingsPage() {
         avatar: profileDetails.avatar,
         bloodGroup: profileDetails.bloodGroup,
         department: quickProfile.department,
-        batch: finalBatchName,
-        batchName: finalBatchName,
-        batchNo: quickProfile.batchNo,
+        batch: finalBatchLabel,
+        batchName: finalBatchName || finalBatchNo,
+        batchNo: finalBatchNo,
         yearSemester: quickProfile.yearSemester,
         semester: semesterNum,
         section: quickProfile.section,
@@ -1059,45 +1063,31 @@ export default function SettingsPage() {
     ? (quickProfile.batchName === quickProfile.batchNo ? quickProfile.batchName : `${quickProfile.batchName} ${quickProfile.batchNo}`)
     : quickProfile.batchName || quickProfile.batchNo || 'Not selected';
 
+  // The single "Batch" field shows the merged label and parses back on edit.
+  const batchInputValue = quickProfile.batchName && quickProfile.batchNo
+    ? (quickProfile.batchName === quickProfile.batchNo
+      ? quickProfile.batchName
+      : `${quickProfile.batchName} ${quickProfile.batchNo}`)
+    : quickProfile.batchName || quickProfile.batchNo || '';
+
+  const updateBatchInput = (value) => {
+    const parsed = parseBatchInput(value);
+    setQuickProfile((currentProfile) => ({
+      ...currentProfile,
+      batchName: parsed.batchName,
+      batchNo: parsed.batchNo,
+      batchCustomName: '',
+    }));
+  };
+
   const quickChangeSteps = [
     { label: 'Department', field: 'department', options: departments, visible: true },
-    { label: 'Batch', field: 'batch', options: getBatchOptions(quickProfile.department), visible: false },
     { label: 'Year-Sem', field: 'yearSemester', options: getYearSemesters(quickProfile.department), visible: Boolean(quickProfile.department) },
     { label: 'Section', field: 'section', options: sections, visible: Boolean(quickProfile.yearSemester && yearSemTouched) },
     { label: 'Lab Section', field: 'labSection', options: getLabSectionOptions(quickProfile.section), visible: Boolean(quickProfile.section) },
   ];
 
   const renderOptionGroup = (label, field, options) => {
-    const isBatchField = field === 'batch';
-
-    if (isBatchField) {
-      return (
-        <div className="quick-option-group">
-          <span>Batch</span>
-          <input
-            type="text"
-            id="batch-input"
-            name="batchName"
-            autoComplete="off"
-            className="input"
-            value={quickProfile.batchName && quickProfile.batchNo
-              ? (quickProfile.batchName === quickProfile.batchNo ? quickProfile.batchName : `${quickProfile.batchName} ${quickProfile.batchNo}`)
-              : quickProfile.batchName || quickProfile.batchNo || ''}
-            placeholder="e.g. Quanta 52"
-            onChange={(event) => {
-              const parsed = parseBatchInput(event.target.value);
-              setQuickProfile((currentProfile) => ({
-                ...currentProfile,
-                batchName: parsed.batchName,
-                batchNo: parsed.batchNo,
-                batchCustomName: '',
-              }));
-            }}
-          />
-        </div>
-      );
-    }
-
     return (
     <div className="quick-option-group">
       <span>{label}</span>
@@ -1453,9 +1443,29 @@ export default function SettingsPage() {
                     <span>Department</span>
                     <strong>{quickProfile.department || 'Not selected'}</strong>
                   </div>
-                  <div>
+                  <div className={`profile-summary-item${isEditingProfile ? ' is-editing' : ''}`}>
                     <span>Batch</span>
-                    <strong>{visibleBatchName}</strong>
+                    {isEditingProfile ? (
+                      <>
+                        <input
+                          type="text"
+                          id="batch-input"
+                          name="batch"
+                          autoComplete="off"
+                          className="input profile-summary-input"
+                          placeholder="e.g. Quanta 52"
+                          value={batchInputValue}
+                          onChange={(event) => updateBatchInput(event.target.value)}
+                        />
+                        <span className="batch-edit-preview">
+                          {batchInputValue
+                            ? <>Saved as <strong>{batchInputValue}</strong></>
+                            : 'Name + number, e.g. Quanta 52'}
+                        </span>
+                      </>
+                    ) : (
+                      <strong>{visibleBatchName}</strong>
+                    )}
                   </div>
                   <div>
                     <span>Year-Sem</span>
@@ -1598,22 +1608,47 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                {/* ─── Assistive Touch / Floating Hub (always on, like a chat head) ─── */}
+                {/* ─── Assistive Touch / Floating Hub (app only — APK / installed PWA) ─── */}
+                {isApp && (
                 <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--border-primary)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
                     <span style={{ width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)', flexShrink: 0 }}>
                       <Sparkles size={18} />
                     </span>
-                    <div>
+                    <div style={{ flex: '1 1 auto', minWidth: 0 }}>
                       <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                        Assistive Quick Hub Button
+                        Assistive Touch (App only)
                       </h4>
                       <p style={{ margin: '3px 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                        Always on screen like a chat head — drag it anywhere, tap for quick jump, theme switcher &amp; expense add.
+                        Only inside the AUSTWise app (APK). Drag it anywhere, tap for quick jump, theme switcher &amp; expense add.
                       </p>
                     </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={assistiveOn}
+                      aria-label="Toggle Assistive Touch"
+                      onClick={handleAssistiveToggle}
+                      style={{
+                        flexShrink: 0,
+                        width: 46, height: 26, borderRadius: 999,
+                        border: '1px solid var(--border-primary)',
+                        background: assistiveOn ? 'var(--accent-amber)' : 'var(--bg-tertiary)',
+                        position: 'relative', cursor: 'pointer', transition: 'background .2s ease',
+                      }}
+                    >
+                      <span style={{
+                        position: 'absolute', top: 2, left: assistiveOn ? 22 : 2,
+                        width: 20, height: 20, borderRadius: '50%', background: '#fff',
+                        boxShadow: '0 1px 4px rgba(0,0,0,.25)', transition: 'left .2s ease',
+                      }} />
+                    </button>
                   </div>
+                  <p style={{ margin: '6px 0 0 50px', fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                    {assistiveOn ? 'On — floating bubble visible' : 'Off — floating bubble hidden'}
+                  </p>
                 </div>
+                )}
               </div>
             </div>
           )}

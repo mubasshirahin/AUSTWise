@@ -261,7 +261,9 @@ export default function SemesterTracker() {
 
   /* ── ⋮ dropdown menu ── */
   const [stMenuOpen, setStMenuOpen] = useState(false);
+  const [stMenuPos, setStMenuPos] = useState({ top: 0, right: 0 });
   const stMenuRef = useRef(null);
+  const stMenuBtnRef = useRef(null);
 
   useEffect(() => {
     const handleClick = (e) => {
@@ -716,11 +718,17 @@ export default function SemesterTracker() {
             </button>
           </div>
           <div className="export-dropdown" ref={stMenuRef}>
-            <button className="schedule-nav-btn" onClick={() => setStMenuOpen((v) => !v)} aria-label="More options" aria-haspopup="true">
+            <button className="schedule-nav-btn" ref={stMenuBtnRef} onClick={() => {
+              if (!stMenuOpen && stMenuBtnRef.current) {
+                const rect = stMenuBtnRef.current.getBoundingClientRect();
+                setStMenuPos({ top: rect.bottom + 6, right: Math.max(8, window.innerWidth - rect.right) });
+              }
+              setStMenuOpen((v) => !v);
+            }} aria-label="More options" aria-haspopup="true">
               <MoreVertical size={18} />
             </button>
-            {stMenuOpen && (
-              <div className="export-menu">
+            {stMenuOpen && createPortal(
+              <div className="export-menu" ref={stMenuRef} style={{ position: 'fixed', top: stMenuPos.top, right: stMenuPos.right, left: 'auto', bottom: 'auto', zIndex: 99999, minWidth: '200px' }}>
                 <button className="export-menu-item" onClick={() => { setStMenuOpen(false); exportSemesterPdf(); }}>
                   <FileDown size={14} /> Export PDF
                 </button>
@@ -739,7 +747,8 @@ export default function SemesterTracker() {
                 >
                   <RotateCcw size={14} /> Reset Lab Marks
                 </button>
-              </div>
+              </div>,
+              document.body
             )}
           </div>
         </div>
@@ -779,6 +788,7 @@ export default function SemesterTracker() {
           const maxBest = Math.max(...theoryCourses.map(c => theoryConfig[c.id]?.bestOf || 2));
           const maxFields = getTheoryFields(maxQuizCount, maxBest);
           return (
+        <div className="st-scroll-wrap">
         <div className="st-table-scroll">
           <table className="st-table">
             <thead>
@@ -917,6 +927,8 @@ export default function SemesterTracker() {
               })}
             </tbody>
           </table>
+        </div>
+        <span className="st-scroll-hint" aria-hidden="true">&larr; swipe &rarr;</span>
         </div>
           );
         })()

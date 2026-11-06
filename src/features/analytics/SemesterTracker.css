@@ -412,27 +412,57 @@
     width: 100%;
     justify-content: flex-end;
   }
+  /* Draft rows stay in ONE row: Component | Count | Total | Per Item | × */
   .st-draft-header-row {
-    display: none;
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 24px;
+    gap: 6px;
+    padding: 6px 8px;
+    font-size: 8px;
   }
   .st-draft-row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 24px;
+    align-items: center;
+    flex-direction: row;
+    gap: 6px;
+    padding: 6px 8px;
   }
   .st-draft-label,
   .st-draft-label-text {
     flex: none;
-    width: 100%;
+    width: auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 10px;
   }
   .st-draft-num {
     flex: none;
-    width: 100%;
+    width: auto;
+    min-width: 0;
   }
   .st-draft-input {
     flex: 1;
     min-width: 0;
+    width: 100%;
+    font-size: 10px;
+    padding: 4px 4px;
+  }
+  .st-draft-sub {
+    text-align: center;
+    font-size: 10px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .st-draft-row .st-icon-btn {
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    padding: 0;
   }
   .st-setup-panel {
     padding: 10px 12px;
@@ -535,13 +565,47 @@
 /* ══════════════════════════════════
    SHARED TABLE STYLES
 ══════════════════════════════════ */
+.st-scroll-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.st-scroll-hint {
+  align-self: center;
+  font-size: 9px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-amber);
+  opacity: 0.85;
+  pointer-events: none;
+  user-select: none;
+}
 .st-table-scroll {
   width: 100%;
   overflow-x: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: auto;
+  scrollbar-color: var(--accent-amber) transparent;
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
   background: var(--bg-card);
+}
+.st-table-scroll::-webkit-scrollbar {
+  display: block;
+  height: 10px;
+}
+.st-table-scroll::-webkit-scrollbar-track {
+  background: var(--bg-input);
+  border-radius: var(--radius-full);
+}
+.st-table-scroll::-webkit-scrollbar-thumb {
+  background: var(--accent-amber);
+  border-radius: var(--radius-full);
+  border: 2px solid var(--bg-card);
 }
 
 .st-table {

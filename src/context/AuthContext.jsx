@@ -9,10 +9,11 @@ import {
 } from '../utils/authStorage';
 import { runMigrationOnLogin } from '../utils/storageService';
 import { initLiveStore, destroyLiveStore } from '../utils/liveStore';
+import { getBatchLabel, getBatchRole } from '../utils/batchIdentity';
 
 const AuthContext = createContext();
 const userStorageKey = 'aust-user-profile';
-const MOCKABLE_ROLES = new Set(['student', 'faculty', 'alumni', 'alumni_with_carry', 'readd', 'admin', 'moderator', 'guest', 'cr', 'sr', 'senior', 'vp', 'gs', 'bus_coordinator', 'clubs_representative', 'help_desk', 'banned']);
+const MOCKABLE_ROLES = new Set(['student', 'faculty', 'alumni', 'alumni_with_carry', 'readd', 'admin', 'moderator', 'guest', 'cr', 'sr', 'vp', 'gs', 'bus_coordinator', 'clubs_representative', 'help_desk', 'banned']);
 
 function readMockRole(search) {
   if (!import.meta.env.DEV) return '';
@@ -70,6 +71,7 @@ function hydrateUser(raw) {
     yearSemester,
     raw.labSection ? `lab.${raw.labSection}` : null,
     raw.batchNo ? `batch.${raw.batchNo}` : null,
+    getBatchRole(raw) || null,
     raw.section ? `sec.${raw.section}` : null,
   ].filter(Boolean);
   const mergedRoles = [...new Set([...roles, ...metaRoles])];
@@ -85,6 +87,7 @@ function hydrateUser(raw) {
     initials: getInitials(raw.name),
     isGuest: false,
     batchName: raw.batchName || raw.batchNo || '',
+    batchLabel: getBatchLabel(raw),
   };
 }
 

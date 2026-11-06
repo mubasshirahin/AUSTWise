@@ -26,7 +26,6 @@ import {
   updateAnnotationData,
   removeAnnotation,
 } from '../../utils/annotationsStorage';
-import { updateBatchDriveUrl } from '../../utils/vaultBatchStorage';
 import VaultMasthead from './VaultMasthead';
 import './MaterialFolders.css';
 
@@ -670,7 +669,7 @@ function GeminiChat() {
           ⚠️ Gemini AI is not configured yet.
         </p>
         <p style={{fontSize:'9px',color:'var(--text-tertiary)',lineHeight:1.5}}>
-          Server e GEMINI_API_KEY set kora hoyni. Admin ke janaben.
+          GEMINI_API_KEY is not set on the server yet. Please contact an admin.
         </p>
       </div>
     );
@@ -1362,6 +1361,9 @@ function AnnotPopup({ note, editing, editContent, setEditContent, onSave, onEdit
 export default function MaterialFolders({ vaultContext, progress }) {
   const { course, courseName, department, yearSem, batch } = vaultContext;
   const isSemesterMode = !course; // No course selected — use semester-level folder
+  // Batch Drive links are owned by the batch's CR/SR (see Drive Links tab).
+  // Regular students only browse the shared folder, so hide every edit path.
+  const canEditFolder = !batch;
 
   /* ─── State ─── */
   const initialUrl = batch?.driveUrl
@@ -1372,7 +1374,7 @@ export default function MaterialFolders({ vaultContext, progress }) {
   const initialFolderId = batch?.folderId || null;
   const [folderUrl, setFolderUrl] = useState(initialUrl);
   const [imgErrors, setImgErrors] = useState({});
-  const [isEditing, setIsEditing] = useState(!initialUrl);
+  const [isEditing, setIsEditing] = useState(!initialUrl && !batch);
   const [allFiles, setAllFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -1400,7 +1402,7 @@ export default function MaterialFolders({ vaultContext, progress }) {
         : (getCourseFolderUrl(course, department, yearSem) || '');
     const savedFolderId = batch?.folderId || null;
     setFolderUrl(savedUrl);
-    setIsEditing(!savedUrl);
+    setIsEditing(!savedUrl && !batch);
     setAllFiles([]);
     setCurrentFolderId(savedFolderId);
     setError(null);
@@ -1494,10 +1496,9 @@ export default function MaterialFolders({ vaultContext, progress }) {
 
   /* ─── Save / remove folder URL ─── */
   const handleSaveUrl = () => {
+    if (batch) return; // CR/SR-only — see BatchDriveManager
     if (folderUrl.trim()) {
-      if (batch) {
-        updateBatchDriveUrl(department, yearSem, batch.id, folderUrl.trim());
-      } else if (isSemesterMode) {
+      if (isSemesterMode) {
         saveSemesterFolderUrl(department, yearSem, folderUrl.trim());
       } else {
         saveCourseFolderUrl(course, department, yearSem, folderUrl.trim());
@@ -1512,15 +1513,14 @@ export default function MaterialFolders({ vaultContext, progress }) {
   };
 
   const handleRemoveUrl = () => {
+    if (batch) return; // CR/SR-only — see BatchDriveManager
     setFolderUrl('');
     setAllFiles([]);
     setIsEditing(true);
     setCurrentFolderId(null);
     setCurrentFolderName('');
     setBreadcrumbs([]);
-    if (batch) {
-      updateBatchDriveUrl(department, yearSem, batch.id, '');
-    } else if (isSemesterMode) {
+    if (isSemesterMode) {
       saveSemesterFolderUrl(department, yearSem, '');
     } else {
       saveCourseFolderUrl(course, department, yearSem, '');
@@ -1903,19 +1903,27 @@ export default function MaterialFolders({ vaultContext, progress }) {
         <div className="mf-empty">
           <div className="mf-empty-icon"><Folder size={32} /></div>
           <h3>This folder is empty</h3>
-          <p>No files or folders found. Try connecting a different folder.</p>
-          <button className="btn btn-secondary btn-sm" onClick={handleRemoveUrl}>
-            Change Folder
-          </button>
+          <p>No files or folders found. {canEditFolder ? 'Try connecting a different folder.' : 'Ask your CR/SR to update this Drive link.'}</p>
+          {canEditFolder ? (
+            <button className="btn btn-secondary btn-sm" onClick={handleRemoveUrl}>
+              Change Folder
+            </button>
+          ) : (
+            <span className="mf-readonly-hint">Only this batch&apos;s CR/SR can change the link.</span>
+          )}
         </div>
       ) : !isEditing && !folderUrl ? (
         <div className="mf-empty">
           <div className="mf-empty-icon"><Link size={32} /></div>
           <h3>No folder connected</h3>
           <p>Connect a Google Drive folder to see lecture notes for {isSemesterMode ? `Semester ${yearSem}` : courseName}.</p>
-          <button className="btn btn-primary btn-sm" onClick={() => setIsEditing(true)}>
-            <Plus size={14} /> Connect Folder
-          </button>
+          {canEditFolder ? (
+            <button className="btn btn-primary btn-sm" onClick={() => setIsEditing(true)}>
+              <Plus size={14} /> Connect Folder
+            </button>
+          ) : (
+            <span className="mf-readonly-hint">No Drive link has been added for this batch yet.</span>
+          )}
         </div>
       ) : !isEditing ? (
         viewMode === 'grid' ? renderFileGrid() : renderFileList()

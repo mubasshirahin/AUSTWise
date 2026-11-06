@@ -81,6 +81,13 @@
   padding-top: 8px;
 }
 
+.member-profile-roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
 .member-profile-role {
   display: inline-flex;
   padding: 3px 8px;

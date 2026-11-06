@@ -28,18 +28,32 @@ export const MANAGED_PAGES = [
   { key: '/shadow', label: 'Shadow' },
   { key: '/daily-life', label: 'Daily Life' },
   { key: '/productivity', label: 'Productivity' },
-  { key: '/terminal', label: 'Terminal' },
   { key: '/zen', label: 'Zen Study' },
 ];
 
+// Module cache — repeat visits to a page skip the fetch entirely, so
+// navigation never flashes a loading spinner for known pages.
+const availabilityCache = new Map();
+
 export function usePageAvailability(pageKey) {
-  const [state, setState] = useState({ loading: true, enabled: true });
+  const [state, setState] = useState(() => {
+    const cached = availabilityCache.get(pageKey);
+    return cached !== undefined
+      ? { loading: false, enabled: cached }
+      : { loading: true, enabled: true };
+  });
   useEffect(() => {
+    if (availabilityCache.has(pageKey)) return undefined;
     let active = true;
     fetch(`/api/page-availability?key=${encodeURIComponent(pageKey)}`, { credentials: 'same-origin' })
       .then((res) => res.ok ? res.json() : null)
-      .then((data) => { if (active && data?.success) setState({ loading: false, enabled: data.enabled !== false }); })
-      .catch(() => { if (active) setState({ loading: false, enabled: true }); });
+      .then((data) => {
+        if (!active) return;
+        const enabled = data?.success ? data.enabled !== false : true;
+        availabilityCache.set(pageKey, enabled);
+        setState({ loading: false, enabled });
+      })
+      .catch(() => { if (active) { availabilityCache.set(pageKey, true); setState({ loading: false, enabled: true }); } });
     return () => { active = false; };
   }, [pageKey]);
   return state;

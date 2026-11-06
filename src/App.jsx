@@ -48,7 +48,6 @@ const MarketplacePage = lazy(() => import('./features/marketplace/index.jsx'));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
 const AdminPanelPage = lazy(() => import('./features/admin/AdminPanelPage'));
 const MessagesPage = lazy(() => import('./features/messages/MessagesPage'));
-const TerminalPage = lazy(() => import('./features/terminal/TerminalPage'));
 const WorkspacePage = lazy(() => import('./features/workspace/WorkspacePage'));
 const StudyRoomPage = lazy(() => import('./features/study-room/StudyRoomPage'));
 const ZenStudyRoom = lazy(() => import('./features/study-room/ZenStudyRoom'));
@@ -197,8 +196,9 @@ function AppContent() {
     // key as the page's own gate and the admin card.
     const { config, loading } = useRoleAccess(accessPath);
     const isStaff = hasRole?.('admin') || hasRole?.('moderator');
-    if (!isStaff && availability.loading) return <div className="page-loading"><div className="page-loading-spinner" /><span>Loading page…</span></div>;
-    if (!isStaff && !availability.enabled) return <div className="glass-card-static" style={{ margin: '32px auto', maxWidth: '560px', padding: '32px', textAlign: 'center' }}><div style={{ fontSize: '32px', marginBottom: '12px' }}>🚧</div><h2 style={{ margin: '0 0 8px' }}>Coming soon</h2><p style={{ margin: 0, color: 'var(--text-secondary)' }}>This page is being prepared and will be available soon.</p></div>;
+    // Never block navigation on the availability fetch — render immediately
+    // (fail-open) and gate only once we know the page is disabled.
+    if (!isStaff && !availability.loading && !availability.enabled) return <div className="glass-card-static" style={{ margin: '32px auto', maxWidth: '560px', padding: '32px', textAlign: 'center' }}><div style={{ fontSize: '32px', marginBottom: '12px' }}>🚧</div><h2 style={{ margin: '0 0 8px' }}>Coming soon</h2><p style={{ margin: 0, color: 'var(--text-secondary)' }}>This page is being prepared and will be available soon.</p></div>;
     // Skip guard for pages that gate their own content internally — their hero
     // box + glider tab bar must stay visible at all times (like the dashboard),
     // with only the content box below the tabs hidden for feature-hidden roles.
@@ -381,7 +381,6 @@ function AppShell() {
     '/admin/role-preview': 'Live Role Access Preview',
     '/admin-panel': 'Admin Panel',
     '/admin': 'Admin Panel',
-    '/terminal': 'Terminal',
     '/shadow': 'Shadow',
     '/workspace': 'Workspace',
     '/zen': 'Zen Study Room',
@@ -426,12 +425,11 @@ function AppShell() {
     );
   }
 
-  // Terminal / Zen routes — full screen overlays outside main layout
-  if (isAuthenticated && (location.pathname === '/terminal' || location.pathname === '/zen' || location.pathname === '/zen-study-room')) {
+  // Zen routes — full screen overlays outside main layout
+  if (isAuthenticated && (location.pathname === '/zen' || location.pathname === '/zen-study-room')) {
     return (
       <Suspense fallback={null}>
         <Routes>
-          <Route path="/terminal" element={<TerminalPage />} />
           <Route path="/zen" element={<Navigate to="/zen-study-room" replace />} />
           <Route path="/zen-study-room" element={<ZenStudyRoom
             onExit={() => { window.location.href = '/study-time'; }}
@@ -488,9 +486,8 @@ function App() {
         <AuthProvider>
           <PomodoroProvider>
             <AppShell />
-            {/* Messenger-style chat head. Mounted here — outside AppShell's
-                auth/layout branches — so it floats on every screen: landing
-                page, auth screens, the full app, desktop and mobile alike. */}
+            {/* Assistive bubble — app only (APK / installed PWA). Gated inside
+                AssistiveWidget via isNativeApp(); web & desktop never see it. */}
             <Suspense fallback={null}>
               <AssistiveWidget />
             </Suspense>

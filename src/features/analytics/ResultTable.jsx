@@ -765,6 +765,13 @@ export default function ResultTable({ onResultsChange }) {
           {showMenu && (
             <div className="export-menu">
               <button
+                className="export-menu-item cgpa-load-mobile-item"
+                onClick={() => { setShowMenu(false); setShowDeptModal(true); }}
+              >
+                <Layers size={14} /> Load Template
+              </button>
+              <div className="export-menu-sep cgpa-load-mobile-sep" />
+              <button
                 className="export-menu-item"
                 onClick={() => { setShowMenu(false); exportTranscript(); }}
               >
@@ -781,13 +788,6 @@ export default function ResultTable({ onResultsChange }) {
           )}
           </div>
         </div>
-      </div>
-
-      {/* Mobile: Load Template sits right below the masthead box, right-aligned */}
-      <div className="cgpa-load-mobile-wrap">
-        <button className="schedule-nav-btn cgpa-load-template-btn" onClick={() => setShowDeptModal(true)}>
-          <Layers size={15} /> Load Template
-        </button>
       </div>
 
       <div className="schedule-dotted-divider" />

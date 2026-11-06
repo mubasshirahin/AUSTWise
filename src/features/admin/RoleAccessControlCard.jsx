@@ -10,7 +10,6 @@ const ALL_ROLES = [
   { id: 'readd', label: 'Re-add' },
   { id: 'cr', label: 'CR' },
   { id: 'sr', label: 'SR' },
-  { id: 'senior', label: 'Senior' },
   { id: 'vp', label: 'VP' },
   { id: 'gs', label: 'GS' },
   { id: 'bus_coordinator', label: 'Bus Coordinator' },

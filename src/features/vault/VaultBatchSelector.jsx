@@ -1,66 +1,64 @@
-import { useState } from 'react';
-import { Plus, X, Users, Check, Link, Unlink } from 'lucide-react';
-import { getBatchConfigs, addBatchConfig, updateBatchDriveUrl } from '../../utils/vaultBatchStorage';
-import { useLiveRefresh } from '../../utils/liveStore';
+import { useMemo, useState } from 'react';
+import { Users, Check, Flame, FolderOpen, HardDrive } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { useLiveValue } from '../../utils/liveStore';
+import { batchLabelOf, sameBatch, toggleDriveReaction } from '../../utils/vaultBatchStorage';
 import { extractFolderId } from '../../utils/googleDrive';
 import VaultMasthead from './VaultMasthead';
 
-export default function VaultBatchSelector({ department, yearSem, onSelectBatch, progress }) {
-  const [batches, setBatches] = useState(() => getBatchConfigs(department, yearSem));
-  const [showForm, setShowForm] = useState(batches.length === 0);
-  const [batchNo, setBatchNo] = useState('');
-  const [batchName, setBatchName] = useState('');
-  const [driveUrl, setDriveUrl] = useState('');
-  const [editingDrive, setEditingDrive] = useState(null);
+const SHARED_KEY = 'aust-batch-drives';
 
-  const refresh = () => {
-    setBatches(getBatchConfigs(department, yearSem));
-  };
-
-  // Live-sync: reload batches when another device adds/edits them.
-  useLiveRefresh(['aust-vault-batches'], refresh);
-
-  const handleAdd = () => {
-    if (!batchNo.trim() || !batchName.trim()) return;
-    addBatchConfig(department, yearSem, {
-      batchNo: batchNo.trim(),
-      batchName: batchName.trim(),
-      driveUrl: driveUrl.trim() || '',
+function prettyUpdated(entry) {
+  if (!entry?.updatedAt) return '';
+  try {
+    return new Date(entry.updatedAt).toLocaleDateString(undefined, {
+      day: 'numeric', month: 'short', year: 'numeric',
     });
-    setBatchNo('');
-    setBatchName('');
-    setDriveUrl('');
-    setShowForm(false);
-    refresh();
-  };
+  } catch {
+    return '';
+  }
+}
 
-  const handleDisconnect = (id) => {
-    updateBatchDriveUrl(department, yearSem, id, '');
-    refresh();
-  };
+export default function VaultBatchSelector({ department, yearSem, onSelectBatch, progress }) {
+  const { user } = useAuth();
+  const [store] = useLiveValue('shared', SHARED_KEY, {});
+  const [error, setError] = useState('');
+
+  // Only batches whose CR/SR has actually uploaded a Drive link are shown.
+  // Order: your own batch first, then the most recently updated link.
+  const batches = useMemo(() => {
+    const list = store?.[department]?.[yearSem] || [];
+    return list
+      .filter((b) => Boolean(b.driveUrl))
+      .sort((a, b) => {
+        const aOwn = user && sameBatch(a, user) ? 1 : 0;
+        const bOwn = user && sameBatch(b, user) ? 1 : 0;
+        if (aOwn !== bOwn) return bOwn - aOwn;
+        const aTime = a.updatedAt ? Date.parse(a.updatedAt) : 0;
+        const bTime = b.updatedAt ? Date.parse(b.updatedAt) : 0;
+        if (aTime !== bTime) return bTime - aTime;
+        return batchLabelOf(a).localeCompare(batchLabelOf(b), undefined, { numeric: true });
+      });
+  }, [store, department, yearSem, user]);
+
+  const isOwnBatch = (batch) => Boolean(user && sameBatch(batch, user));
+
+  const reactions = store?.[department]?.reactions || {};
 
   const handleSelect = (batch) => {
-    if (batch.driveUrl) {
-      const folderId = extractFolderId(batch.driveUrl);
-      if (folderId) {
-        onSelectBatch({ ...batch, folderId });
-        return;
-      }
+    const folderId = extractFolderId(batch.driveUrl);
+    if (!folderId) {
+      setError('That Drive link looks broken. Ask your CR/SR to update it.');
+      return;
     }
-    setEditingDrive(batch.id);
+    setError('');
+    onSelectBatch({ ...batch, folderId });
   };
 
-  const handleSetDrive = (batchId) => {
-    const url = driveUrl.trim();
-    if (!url) return;
-    const folderId = extractFolderId(url);
-    if (!folderId) return;
-    updateBatchDriveUrl(department, yearSem, batchId, url);
-    setDriveUrl('');
-    setEditingDrive(null);
-    refresh();
-    const batch = batches.find(b => b.id === batchId);
-    if (batch) onSelectBatch({ ...batch, driveUrl: url, folderId });
+  const handleReact = (event, batch) => {
+    event.stopPropagation();
+    if (!user?.id) return;
+    toggleDriveReaction(department, batch.id, user.id);
   };
 
   return (
@@ -69,96 +67,72 @@ export default function VaultBatchSelector({ department, yearSem, onSelectBatch,
 
       {progress}
 
-      <div className="vb-list">
-        {[...batches].reverse().map(batch => (
-          <div key={batch.id} className={`vb-card ${batch.driveUrl ? 'has-drive' : ''}`}>
-            <div className="vb-card-main" onClick={() => handleSelect(batch)}>
-              <div className="vb-card-left">
-                <div className="vb-card-icon">
-                  <Users size={18} />
-                </div>
-                <div className="vb-card-info">
-                  <div className="vb-card-name">{batch.batchName} {batch.batchNo}</div>
-                </div>
-              </div>
-              <div className="vb-card-right">
-                {batch.driveUrl ? (
-                  <div className="vb-card-actions">
-                    <span className="vb-card-status connected">
-                      <Check size={12} /> Connected
-                    </span>
-                    <button className="vb-card-disconnect" onClick={e => { e.stopPropagation(); handleDisconnect(batch.id); }}>
-                      <Unlink size={12} /> Disconnect
-                    </button>
-                  </div>
-                ) : (
-                  <span className="vb-card-status no-drive">
-                    <Link size={12} /> Set Drive
-                  </span>
-                )}
-              </div>
-            </div>
-            {editingDrive === batch.id && (
-              <div className="vb-drive-input" onClick={e => e.stopPropagation()}>
-                <input
-                  className="vb-input"
-                  placeholder="Paste Google Drive folder link..."
-                  value={driveUrl}
-                  onChange={e => setDriveUrl(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSetDrive(batch.id)}
-                  autoFocus
-                />
-                <button className="btn btn-primary btn-sm" onClick={() => handleSetDrive(batch.id)} disabled={!driveUrl.trim()}>
-                  <Link size={13} /> Connect
-                </button>
-                <button className="btn btn-ghost btn-sm" onClick={() => { setEditingDrive(null); setDriveUrl(''); }}>
-                  <X size={13} />
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+      {error && <p className="vb-inline-error">{error}</p>}
 
-      {showForm ? (
-        <div className="vb-form">
-          <div className="vb-form-row">
-            <input
-              className="vb-input"
-              placeholder="Batch name (e.g. Encrypt)"
-              value={batchName}
-              onChange={e => setBatchName(e.target.value)}
-            />
-            <input
-              className="vb-input"
-              placeholder="Batch no (e.g. 51)"
-              value={batchNo}
-              onChange={e => setBatchNo(e.target.value)}
-            />
-          </div>
-          <div className="vb-form-row">
-            <input
-              className="vb-input"
-              placeholder="Google Drive folder link (optional)"
-              value={driveUrl}
-              onChange={e => setDriveUrl(e.target.value)}
-            />
-          </div>
-          <div className="vb-form-actions">
-            <button className="btn btn-primary btn-sm" onClick={handleAdd} disabled={!batchNo.trim() || !batchName.trim()}>
-              <Plus size={14} /> Add Batch
-            </button>
-            {batches.length > 0 && (
-              <button className="btn btn-ghost btn-sm" onClick={() => setShowForm(false)}>
-                <X size={14} /> Cancel
-              </button>
-            )}
-          </div>
+      {batches.length === 0 ? (
+        <div className="vb-empty">
+          <HardDrive size={30} strokeWidth={1.5} />
+          <p>No Drive links yet for {department} · {yearSem}</p>
+          <span>Your CR or SR can add the semester Drive link from the Drive Links tab.</span>
         </div>
       ) : (
-        <button className="vb-add-btn" onClick={() => setShowForm(true)}>
-          <Plus size={14} /> Add another batch
-        </button>
+        <div className="vb-list">
+          {batches.map((batch) => {
+            const reactorMap = reactions[batch.id] || {};
+            const count = Object.keys(reactorMap).length;
+            const reacted = Boolean(user?.id && reactorMap[user.id]);
+            const updated = prettyUpdated(batch);
+            const own = isOwnBatch(batch);
+            const label = batchLabelOf(batch) || [batch.batchName, batch.batchNo].filter(Boolean).join(' ');
+
+            return (
+              <div
+                key={batch.id}
+                className="vb-card has-drive"
+                onClick={() => handleSelect(batch)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSelect(batch); }}
+              >
+                <div className="vb-card-main">
+                  <div className="vb-card-left">
+                    <div className="vb-card-icon">
+                      <Users size={18} />
+                    </div>
+                    <div className="vb-card-info">
+                      <div className="vb-card-name">
+                        {label}
+                        {own && <span className="vb-own-badge">Your batch</span>}
+                      </div>
+                      <div className="vb-card-meta">
+                        <Check size={10} /> Drive connected{updated ? ` · ${updated}` : ''}
+                      </div>
+                      {batch.updatedBy && (
+                        <div className="vb-card-by">by {batch.updatedBy}</div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="vb-card-right">
+                    <button
+                      type="button"
+                      className={`vb-react ${reacted ? 'is-on' : ''}`}
+                      onClick={(e) => handleReact(e, batch)}
+                      title={reacted ? 'Remove reaction' : 'React to this Drive'}
+                      aria-pressed={reacted}
+                    >
+                      <Flame size={15} />
+                      <span>{count}</span>
+                    </button>
+                    <span className="vb-card-open">
+                      <FolderOpen size={14} />
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );

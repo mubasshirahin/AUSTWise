@@ -5,7 +5,8 @@ import {
   Orbit, Phone, Sparkles, UserRound,
 } from 'lucide-react';
 import { useStalk } from '../stalk-road/StalkContext';
-import { getAllAccounts } from '../../utils/authStorage';
+import { getAllAccounts, getDisplayRoles, getRoleDisplayName } from '../../utils/authStorage';
+import { getDisplayBatchText } from '../../utils/batchIdentity';
 import './MemberProfilePage.css';
 
 /** Local fallback: accounts that exist only on this device (not yet on the
@@ -24,6 +25,7 @@ function findLocalProfile(memberId) {
       initials: acc.initials || '',
       avatar: acc.avatar || null,
       role: acc.role || 'student',
+      roles: Array.isArray(acc.roles) ? acc.roles : (acc.role ? [acc.role] : []),
       email: acc.email || '',
       phone: acc.phone || '',
       studentId: '',
@@ -48,13 +50,6 @@ function findLocalProfile(memberId) {
   } catch {
     return null;
   }
-}
-
-function roleLabel(role = 'student') {
-  if (role === 'cr') return 'CR';
-  if (role === 'sr') return 'SR';
-  if (role === 'alumni_with_carry') return 'Alumni with carry';
-  return role.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function identityValue(value) {
@@ -130,13 +125,15 @@ export default function MemberProfilePage() {
     return () => controller.abort();
   }, [memberId, navigate, retryCount]);
 
-  // Role-specific profile: Faculty / Alumni / Student show different fields
+  // Role-specific profile: Faculty / Alumni / Student show different fields.
+  // Uses ALL display roles so faculty_* → Faculty and
+  // alumni_with_carry → Alumni even when role is the more specific key.
+  const displayRoles = useMemo(() => (profile ? getDisplayRoles(profile) : []), [profile]);
   const identity = useMemo(() => {
     if (!profile) return [];
-    const role = String(profile.role || 'student').toLowerCase();
-    const isFaculty = role === 'faculty';
-    const isAlumni = role === 'alumni' || role === 'alumni_with_carry';
-    const batchValue = profile.batchName || profile.batchNo || profile.batch;
+    const isFaculty = displayRoles.includes('faculty') || displayRoles.some((r) => r.startsWith('faculty_'));
+    const isAlumni = displayRoles.includes('alumni') || displayRoles.includes('alumni_with_carry');
+    const batchValue = getDisplayBatchText(profile) || profile.batch || '';
     const sectionValue = profile.section && profile.labSection ? `${profile.section} · Lab ${profile.labSection}` : profile.section || profile.labSection;
     const common = [
       { label: 'AUSTWise ID', value: profile.awid, icon: UserRound },
@@ -173,7 +170,7 @@ export default function MemberProfilePage() {
       { label: 'Section', value: sectionValue, icon: BookOpen },
       { label: 'Designation', value: profile.designation, icon: Award },
     ].filter((item) => item.value !== '' && item.value !== null && item.value !== undefined);
-  }, [profile]);
+  }, [profile, displayRoles]);
 
   const joinedDate = profile?.createdAt
     ? new Date(profile.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
@@ -221,11 +218,15 @@ export default function MemberProfilePage() {
             {profile.avatar ? <img src={profile.avatar} alt="" /> : profile.initials}
           </div>
           <div className="member-profile-name-block">
-            <span className="member-profile-role">{roleLabel(profile.role)}</span>
+            <div className="member-profile-roles">
+              {displayRoles.map((roleKey) => (
+                <span key={roleKey} className="member-profile-role">{getRoleDisplayName(roleKey)}</span>
+              ))}
+            </div>
             <h1>{profile.name}</h1>
             <p>{[
               profile.department,
-              String(profile.role || '').toLowerCase() === 'faculty'
+              (displayRoles.includes('faculty') || displayRoles.some((r) => r.startsWith('faculty_')))
                 ? profile.designation
                 : (profile.yearSemester || (profile.semester ? `Semester ${profile.semester}` : '')),
             ].filter(Boolean).join(' · ') || 'AUSTWise member'}</p>

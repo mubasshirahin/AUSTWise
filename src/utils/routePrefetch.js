@@ -56,7 +56,6 @@ const routeImports = {
   '/auto-alarm': () => import('../features/auto-alarm/AutoAlarmPage'),
   '/wakemeup': () => import('../features/auto-alarm/AutoAlarmPage'),
   '/austeddit': () => import('../features/austeddit/AustedditPage'),
-  '/terminal': () => import('../features/terminal/TerminalPage'),
   '/zen': () => import('../features/study-room/ZenStudyRoom'),
   '/zen-study-room': () => import('../features/study-room/ZenStudyRoom'),
   '/payment/success': () => import('../pages/PaymentSuccessPage'),

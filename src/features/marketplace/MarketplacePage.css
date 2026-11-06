@@ -692,15 +692,16 @@
   .marketplace-hero-title {
     font-size: var(--fs-xl);
   }
-  .glider-tabs-dashboard .glider-tabs-track {
+  /* Marketplace tabs only — must NOT leak to other pages' glider tabs */
+  .marketplace-page .glider-tabs-dashboard .glider-tabs-track {
     flex-direction: column;
     border-radius: 12px;
   }
-  .glider-tabs-dashboard .glider-tab {
+  .marketplace-page .glider-tabs-dashboard .glider-tab {
     width: 100%;
     justify-content: flex-start;
   }
-  .glider-tabs-dashboard .glider-tabs-glider {
+  .marketplace-page .glider-tabs-dashboard .glider-tabs-glider {
     display: none;
   }
 }

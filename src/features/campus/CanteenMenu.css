@@ -26,11 +26,165 @@
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: var(--sp-3);
+  margin-left: auto;
+  margin-right: auto;
   background: transparent;
   border: 2px solid var(--accent-amber);
   border-radius: var(--radius-lg);
   padding: var(--sp-4);
+  padding-left: var(--sp-4);
+  padding-right: var(--sp-4);
+  box-sizing: border-box;
   box-shadow: var(--shadow-sm);
+}
+
+/* ── Mobile (≤768px): ek row — title | status (center) | ⋮ (right) ── */
+@media (max-width: 768px) {
+  .canteen-widget .schedule-masthead {
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding: var(--sp-2) var(--sp-3);
+    padding-left: var(--sp-3);
+    padding-right: var(--sp-3);
+    border-width: 1.5px;
+  }
+  .canteen-widget .schedule-title-block {
+    grid-column: 1;
+    grid-row: 1;
+    gap: 8px;
+    min-width: 0;
+  }
+  .canteen-widget .schedule-masthead-center {
+    grid-column: 2;
+    grid-row: 1;
+    justify-content: center;
+    width: auto;
+    min-width: 0;
+  }
+  .canteen-widget .schedule-actions {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: center;
+    justify-self: end;
+    justify-content: flex-end;
+    width: auto;
+    margin: 0 0 0 auto;
+  }
+  .canteen-widget .schedule-icon-tile {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+  }
+  .canteen-widget .schedule-title {
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  .canteen-widget .schedule-subtitle {
+    font-size: 9px;
+    max-width: 110px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* Status only — Items hide on mobile */
+  .canteen-widget .schedule-stats {
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    width: auto;
+  }
+  .canteen-widget .schedule-stat:nth-child(2) {
+    display: none;
+  }
+  .canteen-widget .schedule-stat {
+    align-items: center;
+    text-align: center;
+    min-width: 0;
+  }
+  .canteen-widget .schedule-stat-value {
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .canteen-widget .schedule-stat-label {
+    font-size: 8px;
+    white-space: nowrap;
+  }
+  /* ⋮ choto */
+  .canteen-widget .schedule-nav-btn {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    border-radius: 8px;
+  }
+  .canteen-widget .schedule-nav-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+  .canteen-widget .export-dropdown {
+    align-self: center;
+    height: fit-content;
+  }
+  .canteen-widget .export-menu {
+    top: calc(100% + 2px);
+    right: -2px;
+    min-width: 160px;
+    max-width: calc(100vw - 32px);
+    margin-top: 0;
+  }
+  /* Search full-width, filters 2-col */
+  .canteen-search {
+    max-width: 100%;
+  }
+  .canteen-filterbar {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .canteen-filter-select {
+    width: 100%;
+    min-width: 0;
+  }
+  /* Slot chip wraps cleanly */
+  .canteen-slot-chip {
+    font-size: 11px;
+    line-height: 1.45;
+  }
+  /* Food grid: 1 column */
+  .canteen-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .canteen-widget .schedule-masthead {
+    padding: var(--sp-3);
+    padding-left: var(--sp-3);
+    padding-right: var(--sp-3);
+  }
+  .canteen-widget .schedule-title {
+    font-size: 13px;
+  }
+  .canteen-widget .schedule-overline {
+    font-size: 7px;
+  }
+  .canteen-widget .schedule-stat-value {
+    font-size: 12px;
+  }
+  .canteen-widget .schedule-subtitle {
+    font-size: 8px;
+    max-width: 76px;
+  }
+  .canteen-widget .schedule-icon-tile {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+  }
+  .canteen-widget .schedule-nav-btn {
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+  }
 }
 
 .canteen-widget .schedule-masthead::after {

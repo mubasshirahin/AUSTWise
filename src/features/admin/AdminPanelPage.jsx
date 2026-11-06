@@ -4,7 +4,9 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Shield, ShieldCheck, ShieldX, Coffee, Activity, Users, Trash2, Plus, AlertCircle, Eye, EyeOff, Edit3, Search, X, Save, Check, CheckCircle2, XCircle, ClipboardList, CalendarDays, Mic, CalendarClock, Ban, Banknote, FileText, Percent, PanelsTopLeft } from 'lucide-react';
 import { getAuditoriumEvent, setAuditoriumEvent, defaultAuditoriumEvent } from '../../data/mockData';
 import { loadSharedSync, loadSharedAsync, saveShared } from '../../utils/storageService';
-import { getRoleLabel, getRoleBadgeClass, getAllAccounts, reviewRoleApplication, resetAllLocalData, getCurrentUserId } from '../../utils/authStorage';
+import { getDisplayRoles, getRoleDisplayName, getRoleBadgeClass, getAllAccounts, reviewRoleApplication, resetAllLocalData, getCurrentUserId } from '../../utils/authStorage';
+import { getDisplayBatchText, getSemesterText } from '../../utils/batchIdentity';
+import { buildRoleDirectory, getAccountRoleEntries, matchesRoleSearch, normalizeRoleSearchText } from '../../utils/roleDirectory';
 import { sendMessage } from '../../utils/messageStorage';
 import RoutineTemplatesPanel from './RoutineTemplatesPanel';
 import BharaKotoPanel from './BharaKotoPanel';
@@ -88,8 +90,8 @@ const getDirectoryProfile = (account) => {
     ['CGPA', Number(account.cgpa) > 0 ? account.cgpa : ''], ['Credits Completed', account.creditsCompleted], ['Total Credits', account.totalCredits],
     ['WhatsApp / Phone', account.whatsapp], ['Facebook', account.facebook], ['LinkedIn', account.linkedin],
     ['Discord', account.discord], ['Open for Talk', typeof account.openForTalk === 'boolean' ? (account.openForTalk ? 'Yes' : 'No') : ''],
-    ['Primary Role', getRoleLabel(account.role || '')],
-    ['Additional Roles', (Array.isArray(account.roles) ? account.roles : []).filter(role => role !== account.role).map(getRoleLabel).join(', ')],
+    ['Primary Role', getRoleDisplayName(account.role || '')],
+    ['Additional Roles', (Array.isArray(account.roles) ? account.roles : []).filter(role => role !== account.role).map(getRoleDisplayName).join(', ')],
     ['Account Created', account.createdAt ? new Date(account.createdAt).toLocaleDateString() : ''],
   ];
   const providers = Object.entries(PROVIDER_MAP).map(([key, config]) => {
@@ -127,6 +129,8 @@ export default function AdminPanelPage() {
     if (path === '/admin/canteen') return 'canteen';
     if (path === '/admin/library') return 'library';
     if (path === '/admin/users') return 'accounts';
+    if (path === '/admin/roles') return 'roles';
+    if (path === '/admin/code-shares') return 'code-shares';
     if (path === '/admin/academic') return 'academic';
     if (path === '/admin/availability') return 'availability';
     if (path === '/admin/applications') return 'applications';
@@ -152,6 +156,8 @@ export default function AdminPanelPage() {
       'canteen': '/admin-panel/canteen',
       'library': '/admin-panel/library',
       'accounts': '/admin-panel/accounts',
+      'roles': '/admin-panel/roles',
+      'code-shares': '/admin-panel/code-shares',
       'academic': '/admin-panel/academic',
       'availability': '/admin-panel/availability',
       'applications': '/admin-panel/applications',
@@ -190,7 +196,11 @@ export default function AdminPanelPage() {
   useEffect(() => { loadSharedAsync('aust-library-data', defaultLibrary).then(setLibraryInfo); }, []);
 
   // User Accounts State — lazy-initialized from localStorage
+  // People tab hides demo/DEV seed accounts; Roles directory must include
+  // EVERY account (including DEV seed) so counts match the member list —
+  // `roleAccounts` holds that unfiltered list.
   const [accounts, setAccounts] = useState(() => normalizeAdminAccounts(getAllAccounts()));
+  const [roleAccounts, setRoleAccounts] = useState(() => getAllAccounts());
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [departmentFilter, setDepartmentFilter] = useState('all');
@@ -200,6 +210,18 @@ export default function AdminPanelPage() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
   const [editFormData, setEditFormData] = useState({});
+
+  // Roles directory — search roles (case-insensitive) + multi-select AND filter.
+  const [roleSearchQuery, setRoleSearchQuery] = useState('');
+  const [selectedRoleKeys, setSelectedRoleKeys] = useState([]);
+  const [roleMemberSearch, setRoleMemberSearch] = useState('');
+
+  // Code shares — own-department 3.1+ code sharing overview. One 8-digit
+  // code per sharer, each code single-use, max 5 people per sharer.
+  const [codeShares, setCodeShares] = useState([]);
+  const [codeSharesLoading, setCodeSharesLoading] = useState(false);
+  const [codeSharesError, setCodeSharesError] = useState('');
+  const [codeSharesSearch, setCodeSharesSearch] = useState('');
 
   // CR/SR Applications State — lazy-initialized from the local mirror
   const [applications, setApplications] = useState(() => {
@@ -237,9 +259,43 @@ export default function AdminPanelPage() {
             };
           });
           setAccounts(normalizeAdminAccounts(hydratedUsers));
+          // Roles directory gets the full unfiltered list (DEV/sem seed
+          // members included) — only deduped by id/email like the member
+          // list, so every member counts under their roles.
+          {
+            const seen = new Set();
+            const deduped = hydratedUsers.filter((account) => {
+              if (!account || !account.id) return false;
+              const key = String(account.id || account.email || '').trim().toLowerCase();
+              if (!key || seen.has(key)) return false;
+              seen.add(key);
+              return true;
+            });
+            setRoleAccounts(deduped);
+          }
         }
       })
       .catch(() => { /* offline — keep the localStorage accounts list */ });
+  }, []);
+
+  // Code shares — every eligible sharer + their redemptions.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setCodeSharesLoading(true);
+      setCodeSharesError('');
+      try {
+        const res = await fetch('/api/batch-drive/lock/admin', { credentials: 'same-origin' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.success) throw new Error(data?.error || 'Failed to load code shares.');
+        if (!cancelled) setCodeShares(Array.isArray(data.sharers) ? data.sharers : []);
+      } catch (err) {
+        if (!cancelled) setCodeSharesError(err?.message || 'Failed to load code shares.');
+      } finally {
+        if (!cancelled) setCodeSharesLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   // Load CR/SR applications from the server (authoritative) and mirror them
@@ -316,12 +372,61 @@ if (!res.ok || !Array.isArray(data.applications)) return;
           ? (account.batch || account.batchNo || 'Batch not set')
           : accountGrouping === 'status'
             ? (account.accountStatus || account.status || 'ACTIVE').replaceAll('_', ' ')
-            : getRoleLabel(account.role || 'guest');
+            : getRoleDisplayName(account.role || 'guest');
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(account);
     });
     return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true })).map(([key, users]) => ({ key, users }));
   }, [filteredAccounts, accountGrouping]);
+
+  // Roles directory — every role in the whole website (system + batch +
+  // department/semester/section/lab), grouped case-insensitively.
+  // Uses `roleAccounts` (unfiltered — DEV/seed members included) so counts
+  // match the member list instead of the People tab's filtered view.
+  const roleDirectory = useMemo(() => buildRoleDirectory(roleAccounts), [roleAccounts]);
+  const accountRoleKeysById = useMemo(() => {
+    const map = new Map();
+    roleAccounts.forEach((account) => {
+      map.set(account.id, new Set(getAccountRoleEntries(account).map((entry) => entry.key)));
+    });
+    return map;
+  }, [roleAccounts]);
+  const filteredRoleRows = useMemo(
+    () => roleDirectory.rows.filter((row) => matchesRoleSearch(row, roleSearchQuery)),
+    [roleDirectory, roleSearchQuery]
+  );
+  const groupedRoleRows = useMemo(() => {
+    const groups = new Map();
+    filteredRoleRows.forEach((row) => {
+      if (!groups.has(row.kind)) groups.set(row.kind, []);
+      groups.get(row.kind).push(row);
+    });
+    return [...groups.entries()].map(([kind, rows]) => ({ kind, rows }));
+  }, [filteredRoleRows]);
+  const selectedRoleMembers = useMemo(() => {
+    if (selectedRoleKeys.length === 0) return [];
+    let list = roleAccounts.filter((account) => selectedRoleKeys.every((key) => accountRoleKeysById.get(account.id)?.has(key)));
+    const query = normalizeRoleSearchText(roleMemberSearch);
+    if (query) {
+      list = list.filter((account) => {
+        const haystack = normalizeRoleSearchText(
+          `${account.name || ''} ${account.email || ''} ${account.department || ''} ${getDisplayBatchText(account)} ${getSemesterText(account)} ${account.section || ''} ${account.labSection || ''}`
+        );
+        return haystack.includes(query);
+      });
+    }
+    return [...list].sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true }));
+  }, [roleAccounts, selectedRoleKeys, accountRoleKeysById, roleMemberSearch]);
+  const toggleRoleKey = (key) => {
+    setSelectedRoleKeys((previous) => previous.includes(key) ? previous.filter((item) => item !== key) : [...previous, key]);
+  };
+  const filteredCodeShares = useMemo(() => {
+    const query = normalizeRoleSearchText(codeSharesSearch);
+    if (!query) return codeShares;
+    return codeShares.filter((sharer) => normalizeRoleSearchText(
+      `${sharer.name || ''} ${sharer.email || ''} ${sharer.department || ''} ${sharer.batchLabel || ''} ${sharer.yearSemLabel || ''} ${(sharer.codes || []).map((entry) => entry.code).join(' ')} ${(sharer.uses || []).map((entry) => `${entry.name || ''} ${entry.email || ''} ${entry.code || ''}`).join(' ')}`
+    ).includes(query));
+  }, [codeShares, codeSharesSearch]);
 
   // Update Canteen
   const handleUpdateCanteen = (field, value) => {
@@ -381,7 +486,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
 
   // Delete Account (server-side — localStorage is just a mirror)
   const handleDeleteAccount = async (id) => {
-    const target = accounts.find(acc => acc.id === id);
+    const target = roleAccounts.find(acc => acc.id === id) || accounts.find(acc => acc.id === id);
     if (target && target.role === 'admin') {
       alert('Cannot delete an admin account.');
       return;
@@ -401,22 +506,25 @@ if (!res.ok || !Array.isArray(data.applications)) return;
       }
       const updated = accounts.filter(acc => acc.id !== id);
       setAccounts(updated);
+      setRoleAccounts((prev) => prev.filter(acc => acc.id !== id));
     } catch {
       alert('Failed to delete user. Are you online?');
     }
   };
 
-  // View User Profile (from the server-backed accounts list)
+  // View User Profile (from the server-backed accounts list — Roles members
+  // include DEV/seed accounts that the People tab hides, so look in
+  // `roleAccounts` first, then the filtered People list.)
   const handleViewUser = (userId) => {
-    const account = accounts.find(acc => acc.id === userId);
+    const account = roleAccounts.find(acc => acc.id === userId) || accounts.find(acc => acc.id === userId);
     if (account) {
       setSelectedUser(account);
     }
   };
 
-  // Start Editing User (from the server-backed accounts list)
+  // Start Editing User (same combined lookup as handleViewUser)
   const handleStartEditUser = (userId) => {
-    const account = accounts.find(acc => acc.id === userId);
+    const account = roleAccounts.find(acc => acc.id === userId) || accounts.find(acc => acc.id === userId);
     if (account) {
       setEditingUser(userId);
       setEditFormData({
@@ -459,7 +567,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
 
   // Save Edited User (server-side — localStorage is just a mirror)
   const handleSaveEditUser = async (userId) => {
-    const target = accounts.find(acc => acc.id === userId);
+    const target = roleAccounts.find(acc => acc.id === userId) || accounts.find(acc => acc.id === userId);
     if (target && target.role === 'admin' && editFormData.role !== 'admin') {
       alert('Cannot change the role of an admin account.');
       return;
@@ -504,6 +612,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
         acc.id === userId ? { ...acc, ...data.user } : acc
       );
       setAccounts(newAccounts);
+      setRoleAccounts((prev) => prev.map(acc => acc.id === userId ? { ...acc, ...data.user } : acc));
       setEditingUser(null);
       setEditFormData({});
     } catch {
@@ -596,6 +705,8 @@ if (!res.ok || !Array.isArray(data.applications)) return;
           <header className="admin-nav-card-heading"><span>01</span><div><strong>Accounts &amp; approvals</strong><small>People, roles and access requests</small></div></header>
           <div className="admin-nav-items">
             <button className={activeTab === 'accounts' ? 'is-active' : ''} onClick={() => navigateToTab('accounts')}><span>People</span><small>Search accounts and update roles</small></button>
+            <button className={activeTab === 'roles' ? 'is-active' : ''} onClick={() => navigateToTab('roles')}><span>Roles</span><small>All roles, counts and membership</small></button>
+            <button className={activeTab === 'code-shares' ? 'is-active' : ''} onClick={() => navigateToTab('code-shares')}><span>Code Shares</span><small>Who can share, 5-er koto use, kake kake diche</small></button>
             <button onClick={() => navigate('/admin/access-requests')}><span>Invitations</span><small>Review faculty and alumni requests</small></button>
           </div>
         </section>
@@ -1007,7 +1118,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                   <h2>{selectedUser.name || 'Unnamed user'}</h2>
                   <p>{selectedUser.awid || selectedUser.email || 'AUSTWise account'}</p>
                   <div className="admin-profile-role-list">
-                    {[...new Set([selectedUser.role, ...(Array.isArray(selectedUser.roles) ? selectedUser.roles : [])].filter(Boolean))].map(role => <span key={role} className={`badge ${getRoleBadgeClass(role)}`}>{getRoleLabel(role)}</span>)}
+                    {getDisplayRoles(selectedUser).map(role => <span key={role} className={`badge ${getRoleBadgeClass(role)}`}>{getRoleDisplayName(role)}</span>)}
                   </div>
                 </div>
               </div>
@@ -1500,15 +1611,9 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                           <td className="admin-user-email">{acc.email}</td>
                           <td className="admin-user-roles">
                             <div className="admin-user-role-list">
-                            {accountHasRole(acc, 'student') ? <>
-                              <span className={`badge ${getRoleBadgeClass('student')}`}>Student</span>
-                              {studentChildRoles.filter(role => accountRoleSet(acc).has(role)).map(role => (
-                                <span key={role} className={`badge ${getRoleBadgeClass(role)}`}>{getRoleLabel(role)}</span>
-                              ))}
-                            </> : acc.role === 'faculty' ? <>
-                              <span className={`badge ${getRoleBadgeClass('faculty')}`}>Faculty</span>
-                              <span className={`badge ${getRoleBadgeClass(facultyDepartmentRole(acc.department))}`}>{getRoleLabel(facultyDepartmentRole(acc.department))}</span>
-                            </> : <span className={`badge ${getRoleBadgeClass(acc.role)}`}>{getRoleLabel(acc.role)}</span>}
+                            {getDisplayRoles(acc).map(role => (
+                              <span key={role} className={`badge ${getRoleBadgeClass(role)}`}>{getRoleDisplayName(role)}</span>
+                            ))}
                             </div>
                           </td>
                           <td className="admin-user-meta-cell">
@@ -1585,6 +1690,297 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                 </table>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ROLES PANEL */}
+        {activeTab === 'roles' && (
+          <div>
+            <div className="admin-roles-stats">
+              <span><strong>{roleDirectory.rows.length}</strong> roles in total</span>
+              <span><strong>{roleDirectory.totalMembers}</strong> members</span>
+            </div>
+
+            <div className="glass-card-static mb-4">
+              <div className="admin-roles-search-row">
+                <div className="admin-roles-search">
+                  <Search size={16} style={{ color: 'var(--text-tertiary)' }} />
+                  <input
+                    type="text"
+                    placeholder="Search roles… (quanta, QUANTA 52, CSE, Semester 5)"
+                    value={roleSearchQuery}
+                    onChange={(e) => setRoleSearchQuery(e.target.value)}
+                    aria-label="Search roles"
+                    style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 'var(--fs-sm)' }}
+                  />
+                  {roleSearchQuery && (
+                    <button onClick={() => setRoleSearchQuery('')} aria-label="Clear role search" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
+                      <X size={14} style={{ color: 'var(--text-tertiary)' }} />
+                    </button>
+                  )}
+                </div>
+                {selectedRoleKeys.length > 0 && (
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSelectedRoleKeys([])}>
+                    Clear selection ({selectedRoleKeys.length})
+                  </button>
+                )}
+              </div>
+
+              {selectedRoleKeys.length > 0 && (
+                <div className="admin-roles-selected">
+                  <span className="admin-roles-selected-label">Selected:</span>
+                  {selectedRoleKeys.map((key) => {
+                    const row = roleDirectory.rows.find((item) => item.key === key);
+                    return row ? (
+                      <button
+                        key={key}
+                        type="button"
+                        className="admin-roles-chip is-selected"
+                        onClick={() => toggleRoleKey(key)}
+                        title="Click to remove"
+                      >
+                        {row.label} <X size={12} />
+                      </button>
+                    ) : null;
+                  })}
+                </div>
+              )}
+            </div>
+
+            {filteredRoleRows.length === 0 ? (
+              <div className="glass-card-static admin-roles-empty">
+                <p>No role matches &ldquo;{roleSearchQuery}&rdquo;.</p>
+                <small>Spelling matters — <strong>Quanta 52</strong> and <strong>Quantaa 52</strong> are different roles. Letter case does not: <strong>QUANTA 52</strong> counts as <strong>Quanta 52</strong>.</small>
+              </div>
+            ) : (
+              groupedRoleRows.map(({ kind, rows }) => (
+                <section key={kind} className="admin-roles-group">
+                  <header><strong>{kind} roles</strong><span>{rows.length}</span></header>
+                  <div className="admin-roles-grid">
+                    {rows.map((row) => {
+                      const isSelected = selectedRoleKeys.includes(row.key);
+                      return (
+                        <button
+                          key={row.key}
+                          type="button"
+                          className={`admin-roles-card${isSelected ? ' is-selected' : ''}`}
+                          aria-pressed={isSelected}
+                          onClick={() => toggleRoleKey(row.key)}
+                          title={`${isSelected ? 'Remove' : 'Select'} ${row.label} filter`}
+                        >
+                          <span><strong>{row.label}</strong><small>{isSelected ? 'Selected — click to remove' : 'Click to filter members'}</small></span>
+                          <b>{row.count}</b>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))
+            )}
+
+            <div className="glass-card-static admin-roles-members">
+              <div className="admin-directory-heading">
+                <div>
+                  <h3>Members</h3>
+                  <p>{selectedRoleKeys.length === 0 ? 'Select one or more roles above to see who has them.' : `${selectedRoleMembers.length} member${selectedRoleMembers.length === 1 ? '' : 's'} match selected roles (AND).`}</p>
+                </div>
+                {selectedRoleKeys.length > 0 && (
+                  <div className="admin-roles-member-search">
+                    <Search size={14} style={{ color: 'var(--text-tertiary)' }} />
+                    <input
+                      type="text"
+                      placeholder="Search members by name, email, dept, batch…"
+                      value={roleMemberSearch}
+                      onChange={(e) => setRoleMemberSearch(e.target.value)}
+                      aria-label="Search members in selected roles"
+                      style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 'var(--fs-sm)', minWidth: 0 }}
+                    />
+                    {roleMemberSearch && (
+                      <button onClick={() => setRoleMemberSearch('')} aria-label="Clear member search" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
+                        <X size={14} style={{ color: 'var(--text-tertiary)' }} />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {selectedRoleKeys.length === 0 ? (
+                <div className="admin-user-empty">Click a role above — for example <strong>Quanta 52</strong> — to list everyone under it.</div>
+              ) : selectedRoleMembers.length === 0 ? (
+                <div className="admin-user-empty">No members match this combination of roles.</div>
+              ) : (
+                <div className="admin-directory-scroll">
+                  <table className="admin-user-table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>System roles</th>
+                        <th>Department</th>
+                        <th>Batch</th>
+                        <th>Semester</th>
+                        <th>Section</th>
+                        <th>Lab</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedRoleMembers.map((account) => (
+                        <tr key={account.id} className="admin-user-row">
+                          <td className="admin-user-name-cell">
+                            <div className="admin-user-name">
+                              <div className="avatar" style={{ position: 'relative', overflow: 'hidden', width: 28, height: 28, fontSize: '10px', flexShrink: 0 }}>
+                                {getAccountAvatar(account) && <img
+                                  src={getAccountAvatar(account)}
+                                  alt={`${account.name || 'User'} profile`}
+                                  referrerPolicy="no-referrer"
+                                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                                  onError={event => { event.currentTarget.style.display = 'none'; if (event.currentTarget.nextElementSibling) event.currentTarget.nextElementSibling.style.display = 'grid'; }}
+                                />}
+                                <span style={{ display: getAccountAvatar(account) ? 'none' : 'grid', width: '100%', height: '100%', placeItems: 'center' }}>
+                                  {account.name?.charAt(0)?.toUpperCase() || 'U'}
+                                </span>
+                              </div>
+                              <span><strong>{account.name}</strong><small>{account.accountStatus || account.status || 'ACTIVE'}</small></span>
+                            </div>
+                          </td>
+                          <td className="admin-user-email">{account.email}</td>
+                          <td className="admin-user-roles">
+                            <div className="admin-user-role-list">
+                              {getDisplayRoles(account).map((role) => (
+                                <span key={role} className={`badge ${getRoleBadgeClass(role)}`}>{getRoleDisplayName(role)}</span>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="admin-user-meta-cell">{account.department || '-'}</td>
+                          <td className="admin-user-meta-cell">{getDisplayBatchText(account) || account.batchNo || '-'}</td>
+                          <td className="admin-user-meta-cell">{getSemesterText(account) || '-'}</td>
+                          <td className="admin-user-meta-cell">{account.section ? `Section ${String(account.section).toUpperCase()}` : '-'}</td>
+                          <td className="admin-user-meta-cell">{account.labSection ? `Lab ${String(account.labSection).toUpperCase()}` : '-'}</td>
+                          <td className="admin-user-actions-cell">
+                            <div>
+                              <button
+                                className="btn btn-secondary btn-icon"
+                                disabled={accountHasRole(account, 'admin')}
+                                onClick={() => handleViewUser(account.id)}
+                                title="View Profile"
+                                style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: accountHasRole(account, 'admin') ? 'var(--text-tertiary)' : 'var(--accent-blue)', opacity: accountHasRole(account, 'admin') ? 0.4 : 1, padding: '4px', width: '28px', height: '28px' }}
+                              >
+                                <Eye size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* CODE SHARES PANEL */}
+        {activeTab === 'code-shares' && (
+          <div>
+            <div className="admin-roles-stats">
+              <span><strong>{filteredCodeShares.length}</strong> sharers shown</span>
+              <span><strong>{codeShares.reduce((sum, s) => sum + (s.usedCount || 0), 0)}</strong> people unlocked</span>
+              <span>Max <strong>5</strong> per sharer</span>
+            </div>
+            <div className="glass-card-static mb-4">
+              <div className="admin-roles-search-row">
+                <div className="admin-roles-search">
+                  <Search size={16} style={{ color: 'var(--text-tertiary)' }} />
+                  <input
+                    type="text"
+                    placeholder="Search sharer, recipient, dept, batch or code…"
+                    value={codeSharesSearch}
+                    onChange={(e) => setCodeSharesSearch(e.target.value)}
+                    aria-label="Search code shares"
+                    style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 'var(--fs-sm)' }}
+                  />
+                  {codeSharesSearch && (
+                    <button onClick={() => setCodeSharesSearch('')} aria-label="Clear search" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
+                      <X size={14} style={{ color: 'var(--text-tertiary)' }} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {codeSharesLoading ? (
+              <div className="glass-card-static admin-user-empty">Loading code shares…</div>
+            ) : codeSharesError ? (
+              <div className="glass-card-static admin-user-empty">{codeSharesError}</div>
+            ) : filteredCodeShares.length === 0 ? (
+              <div className="glass-card-static admin-user-empty">No code sharers found.</div>
+            ) : (
+              <div className="admin-code-shares">
+                {filteredCodeShares.map((sharer) => (
+                  <article key={sharer.userId} className="glass-card-static admin-code-share-card">
+                    <div className="admin-code-share-head">
+                      <button
+                        type="button"
+                        className="admin-code-avatar"
+                        onClick={() => navigate(`/members/${encodeURIComponent(sharer.studentId || sharer.userId)}`)}
+                        title={`View ${sharer.name}'s profile`}
+                      >
+                        {sharer.avatar ? (
+                          <img src={sharer.avatar} alt="" referrerPolicy="no-referrer" />
+                        ) : (
+                          (sharer.name || '?').slice(0, 2).toUpperCase()
+                        )}
+                      </button>
+                      <div>
+                        <strong>{sharer.name}</strong>
+                        <span>{sharer.department || '—'}{sharer.batchLabel ? ` · ${sharer.batchLabel}` : ''}{sharer.yearSemLabel ? ` · ${sharer.yearSemLabel}` : ''}</span>
+                        <small>{sharer.email || ''}</small>
+                      </div>
+                      <span className={`badge ${sharer.enabled ? 'badge-emerald' : 'badge-rose'}`}>{sharer.enabled ? 'Share enabled' : 'Share disabled'}</span>
+                    </div>
+                    <div className="admin-code-share-meta">
+                      <span><strong>{sharer.usedCount}</strong> of <strong>{sharer.maxUses}</strong> used</span>
+                      <span><strong>{sharer.remaining}</strong> left</span>
+                      <span>{Array.isArray(sharer.codes) ? sharer.codes.length : 0} code(s) generated</span>
+                    </div>
+                    <div className="admin-code-share-codes">
+                      {Array.isArray(sharer.codes) && sharer.codes.length > 0 ? sharer.codes.map((entry, index) => (
+                        <span key={`${entry.code}-${index}`} className={`badge ${entry.usedById ? 'badge-blue' : 'badge-amber'}`}>
+                          {entry.code}{entry.usedById ? ` · ${entry.usedByName || 'used'}` : ' · unused'}
+                        </span>
+                      )) : <span>No code generated yet</span>}
+                    </div>
+                    <div className="admin-code-share-uses">
+                      <strong>Given to:</strong>
+                      {Array.isArray(sharer.uses) && sharer.uses.length > 0 ? (
+                        <ul>
+                          {sharer.uses.map((entry) => (
+                            <li key={`${entry.userId}-${entry.code}`}>
+                              <button
+                                type="button"
+                                className="admin-code-recipient-avatar"
+                                onClick={() => navigate(`/members/${encodeURIComponent(entry.studentId || entry.userId)}`)}
+                                title={`View ${entry.name}'s profile`}
+                              >
+                                {entry.avatar ? (
+                                  <img src={entry.avatar} alt="" referrerPolicy="no-referrer" />
+                                ) : (
+                                  (entry.name || '?').slice(0, 2).toUpperCase()
+                                )}
+                              </button>
+                              <span><strong>{entry.name}</strong> · {entry.department || '—'}{entry.batchLabel ? ` · ${entry.batchLabel}` : ''}{entry.yearSemLabel ? ` · ${entry.yearSemLabel}` : ''} · <code>{entry.code}</code></span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span>Not given to anyone yet.</span>
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

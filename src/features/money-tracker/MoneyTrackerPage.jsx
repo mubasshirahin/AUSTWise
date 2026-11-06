@@ -585,7 +585,7 @@ export default function MoneyTrackerPage() {
           )}
 
           <p className="tgk-cal-hint">
-            Box e click kore expense add karo — exceed hole red highlight, Today amber border.
+            Click a day to add an expense. Over budget shows red, today shows an amber border.
           </p>
         </div>
 
