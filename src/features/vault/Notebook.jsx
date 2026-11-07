@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, Fragment } from 'react';
-import { ImageIcon, Trash2, Move, Type, Check, Link2, Link2Off, Download, MoreVertical, NotebookPen, ZoomIn, ZoomOut, Pencil, Star } from 'lucide-react';
+import { ImageIcon, Trash2, Move, Type, Check, Link2, Link2Off, Download, MoreVertical, NotebookPen, ZoomIn, ZoomOut, Pencil, Star, PenTool, PenLine, Highlighter, Eraser, Square, Circle, Slash, MoveUpRight, Hand, FileText } from 'lucide-react';
 import { liveLoad, liveSave } from '../../utils/liveStorage';
 
 const STORAGE_PREFIX = 'aust-notebook-';
@@ -61,6 +61,45 @@ const bottomSpot = (w, h, items, areaW) => {
   }
   const maxX = Math.max(0, (areaW || 1000) - w - margin);
   return { x: Math.min(anchorX, maxX), y: maxBottom + margin };
+}
+
+// Smooth freehand path from pressure points (quadratic mid-point technique).
+function strokePath(points) {
+  if (!points || points.length === 0) return '';
+  if (points.length === 1) return `M ${points[0].x} ${points[0].y} L ${points[0].x + 0.1} ${points[0].y}`;
+  let d = `M ${points[0].x} ${points[0].y}`;
+  for (let i = 1; i < points.length - 1; i++) {
+    const mx = (points[i].x + points[i + 1].x) / 2;
+    const my = (points[i].y + points[i + 1].y) / 2;
+    d += ` Q ${points[i].x} ${points[i].y} ${mx} ${my}`;
+  }
+  const last = points[points.length - 1];
+  d += ` L ${last.x} ${last.y}`;
+  return d;
+}
+function strokeWidthFor(tool, pressure, baseWidth) {
+  const p = typeof pressure === 'number' && pressure > 0 ? Math.min(1, Math.max(0.15, pressure)) : 0.6;
+  if (tool === 'fountain') return Math.max(1, baseWidth * (0.35 + p * 1.1));
+  if (tool === 'ball') return baseWidth;
+  if (tool === 'pencil') return Math.max(0.8, baseWidth * (0.5 + p * 0.8));
+  if (tool === 'highlighter') return baseWidth;
+  return baseWidth;
+}
+function distToSegment(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const len2 = dx * dx + dy * dy;
+  let t = len2 ? ((px - x1) * dx + (py - y1) * dy) / len2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  const cx = x1 + t * dx, cy = y1 + t * dy;
+  return Math.hypot(px - cx, py - cy);
+}
+function strokeHit(stroke, pt, radius) {
+  if (!stroke.points || stroke.points.length === 0) return false;
+  for (let i = 0; i < stroke.points.length - 1; i++) {
+    if (distToSegment(pt.x, pt.y, stroke.points[i].x, stroke.points[i].y, stroke.points[i + 1].x, stroke.points[i + 1].y) <= radius) return true;
+  }
+  const last = stroke.points[stroke.points.length - 1];
+  return Math.hypot(pt.x - last.x, pt.y - last.y) <= radius;
 }
 
 // Sharp 5-point star (lucide's Star icon has soft/rounded corners — this
@@ -127,6 +166,23 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
   const [starGhost, setStarGhost] = useState(null); // ghost star following the cursor while star mode is on
   const [drawStart, setDrawStart] = useState(null);
   const [manualLines, setManualLines] = useState([]);
+  // Real-notebook tools (Notes+ / FreeNotes style)
+  const [tool, setTool] = useState('pan'); // pan | fountain | ball | pencil | highlighter | eraser | rect | ellipse | line | arrow
+  const [ink, setInk] = useState([]); // freehand strokes
+  const [paperStyle, setPaperStyle] = useState('dot'); // dot | lined | grid | blank
+  const [penColor, setPenColor] = useState('#1a1a1a');
+  const [penWidth, setPenWidth] = useState(3);
+  const [highlighterColor, setHighlighterColor] = useState('#facc15');
+  const [highlighterWidth] = useState(18);
+  const [shapeColor] = useState('#2397c9');
+  const [shapeStrokeWidth] = useState(3);
+  const [activeStroke, setActiveStroke] = useState(null);
+  const [shapePreview, setShapePreview] = useState(null);
+  const activePointerRef = useRef(null); // { id, type, startX, startY }
+  const pinchRef = useRef(null); // { id1, id2, dist, zoom }
+  const penActiveRef = useRef(false); // palm rejection: ignore touch while pen is down
+  const [paperOpen, setPaperOpen] = useState(false);
+  const [penSettingsOpen, setPenSettingsOpen] = useState(false);
   const [drawPreview, setDrawPreview] = useState(null);
   const [lineColor, setLineColor] = useState('#22c55e');
   const [lineStyle, setLineStyle] = useState('solid'); // solid | dashed | dotted
@@ -175,16 +231,18 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
       if (saved.items) setItems(saved.items);
       if (saved.connections) setConnections(saved.connections);
       if (saved.manualLines) setManualLines(saved.manualLines);
+      if (saved.ink) setInk(saved.ink);
+      if (saved.paperStyle) setPaperStyle(saved.paperStyle);
     }
   }, [storageKey, noteKey]);
 
   // Auto-save
   const doSave = useCallback(() => {
-    const data = { items, connections, manualLines };
+    const data = { items, connections, manualLines, ink, paperStyle };
     saveNotes(storageKey, data);
     setSaved(true);
     if (noteKey) onSaved?.(noteKey);
-  }, [items, connections, manualLines, storageKey, noteKey, onSaved]);
+  }, [items, connections, manualLines, ink, paperStyle, storageKey, noteKey, onSaved]);
 
   useEffect(() => {
     if (!saved) {
@@ -297,6 +355,7 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
         items: [...stateRef.current.items],
         connections: [...stateRef.current.connections],
         manualLines: [...stateRef.current.manualLines],
+        ink: [...(stateRef.current.ink || [])],
       });
       if (undoStackRef.current.length > 100) undoStackRef.current.shift();
       redoStackRef.current = [];
@@ -442,15 +501,16 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
   const undoStackRef = useRef([]);
   const redoStackRef = useRef([]);
   const dragStartState = useRef(null);
-  const stateRef = useRef({ items: [], connections: [], manualLines: [] });
+  const stateRef = useRef({ items: [], connections: [], manualLines: [], ink: [] });
   // eslint-disable-next-line react-hooks/immutability -- compiler false positive: ref is mutated in an effect, never during render
-  useEffect(() => { stateRef.current = { items, connections, manualLines }; }, [items, connections, manualLines]);
+  useEffect(() => { stateRef.current = { items, connections, manualLines, ink }; }, [items, connections, manualLines, ink]);
 
   const pushUndo = () => {
     undoStackRef.current.push({
       items: [...stateRef.current.items],
       connections: [...stateRef.current.connections],
       manualLines: [...stateRef.current.manualLines],
+      ink: [...(stateRef.current.ink || [])],
     });
     if (undoStackRef.current.length > 100) undoStackRef.current.shift();
     // eslint-disable-next-line react-hooks/immutability -- compiler false positive: clearing a ref array in an event handler
@@ -465,6 +525,7 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
       setItems(snap.items);
       setConnections(snap.connections);
       setManualLines(snap.manualLines);
+      setInk(snap.ink || []);
       // Cancel any in-progress draw / connect / edit / drag state
       setDrawPhase('idle');
       setDrawStart(null);
@@ -483,6 +544,7 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
         items: [...stateRef.current.items],
         connections: [...stateRef.current.connections],
         manualLines: [...stateRef.current.manualLines],
+        ink: [...(stateRef.current.ink || [])],
       });
       restore(prev);
     };
@@ -493,6 +555,7 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
         items: [...stateRef.current.items],
         connections: [...stateRef.current.connections],
         manualLines: [...stateRef.current.manualLines],
+        ink: [...(stateRef.current.ink || [])],
       });
       restore(next);
     };
@@ -524,6 +587,7 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
 
   const startDrag = (e, id) => {
     if (drawMode || starMode) return;
+    if (['fountain', 'ball', 'pencil', 'highlighter', 'eraser', 'rect', 'ellipse', 'line', 'arrow'].includes(tool)) return;
     const item = items.find(i => i.id === id);
     if (!item) return;
     dragStartState.current = stateRef.current;
@@ -534,6 +598,7 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
   // ─── Real-time resize (drag the corner handle) ───
   const startResize = (e, id) => {
     if (drawMode || starMode) return;
+    if (['fountain', 'ball', 'pencil', 'highlighter', 'eraser', 'rect', 'ellipse', 'line', 'arrow'].includes(tool)) return;
     const item = items.find(i => i.id === id);
     if (!item) return;
     e.stopPropagation(); // don't start a move-drag / connect
@@ -577,6 +642,7 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
           items: [...rs.snapshot.items],
           connections: [...rs.snapshot.connections],
           manualLines: [...rs.snapshot.manualLines],
+          ink: [...(rs.snapshot.ink || [])],
         });
         // eslint-disable-next-line react-hooks/immutability -- compiler false positive: clearing a ref array in an event handler
         redoStackRef.current = [];
@@ -597,6 +663,7 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
           items: [...before.items],
           connections: [...before.connections],
           manualLines: [...before.manualLines],
+          ink: [...(before.ink || [])],
         });
         redoStackRef.current = [];
       }
@@ -801,12 +868,177 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
     setSelectedConnId(null);
   };
 
+  // ─── Freehand ink (Apple Pencil / pen / finger) ───
+  const getPointerPoint = (e) => {
+    const rect = canvasRef.current.getBoundingClientRect();
+    return { x: (e.clientX - rect.left) / canvasZoom, y: (e.clientY - rect.top) / canvasZoom, pressure: e.pressure, type: e.pointerType };
+  };
+
+  const setToolMode = (next) => {
+    setTool(next);
+    setDrawMode(false);
+    setStarMode(false);
+    setStarGhost(null);
+    setDrawPhase('idle');
+    setDrawStart(null);
+    setDrawPreview(null);
+    setConnectFrom(null);
+    setSelectedLineId(null);
+    setSelectedConnId(null);
+  };
+
+  const commitShape = (preview) => {
+    if (!preview) return;
+    const { x, y, w, h } = preview;
+    if (Math.abs(w) < 4 && Math.abs(h) < 4) return;
+    pushUndo();
+    const nx = Math.min(x, x + w), ny = Math.min(y, y + h);
+    const nw = Math.abs(w), nh = Math.abs(h);
+    setItems((prev) => [...prev, {
+      id: Date.now(),
+      type: 'shape',
+      shapeKind: preview.kind,
+      x: nx, y: ny, w: nw, h: nh,
+      color: shapeColor,
+      strokeWidth: shapeStrokeWidth,
+    }]);
+    markDirty();
+  };
+
+  const eraseAt = (pt) => {
+    const radius = 18 / canvasZoom + 6;
+    const beforeInk = stateRef.current.ink || [];
+    const afterInk = beforeInk.filter((s) => !strokeHit(s, pt, radius));
+    // Also erase manual straight lines nearby (same radius).
+    const beforeLines = stateRef.current.manualLines || [];
+    const afterLines = beforeLines.filter((l) => distToSegment(pt.x, pt.y, l.x1, l.y1, l.x2, l.y2) > radius);
+    if (afterInk.length !== beforeInk.length || afterLines.length !== beforeLines.length) {
+      if (!eraserUndoRef.current) {
+        pushUndo();
+        eraserUndoRef.current = true;
+      }
+      setInk(afterInk);
+      setManualLines(afterLines);
+      markDirty();
+    }
+  };
+  const eraserUndoRef = useRef(false);
+
+  const isDrawTool = ['fountain', 'ball', 'pencil', 'highlighter', 'eraser', 'rect', 'ellipse', 'line', 'arrow'].includes(tool);
+  const onCanvasPointerDown = (e) => {
+    const onInteractive = e.target !== e.currentTarget && e.target.closest('.nb-canvas-item, .nb-line-hit, .nb-line-arrow, .nb-line-options, .nb-item-edit-menu, .nb-canvas-del, .nb-canvas-edit, .nb-resize-handle');
+    // Palm rejection: while the pen is drawing, ignore finger touches.
+    if (e.pointerType === 'touch' && penActiveRef.current) return;
+    if (e.pointerType === 'pen') penActiveRef.current = true;
+    // Pen always draws (even over items); mouse/finger pan only in pan mode.
+    if (onInteractive && tool === 'pan' && !drawMode && !starMode && !connectFrom) return;
+    if (onInteractive && isDrawTool) {
+      // Let drawing pass through over items — stop the item's drag from starting.
+      e.stopPropagation();
+    }
+    if (onInteractive && !isDrawTool) return;
+    if (drawMode || starMode) return;
+    if (connectFrom) return;
+    // Two-finger pinch begins → cancel any stroke.
+    if (activePointerRef.current) {
+      setActiveStroke(null);
+      setShapePreview(null);
+      pinchRef.current = { id1: activePointerRef.current.id, id2: e.pointerId, dist: 0, zoom: canvasZoom };
+      return;
+    }
+    const pt = getPointerPoint(e);
+    activePointerRef.current = { id: e.pointerId, type: e.pointerType, startX: pt.x, startY: pt.y };
+    if (drawMode || starMode) return;
+    if (connectFrom) return;
+    if (tool === 'fountain' || tool === 'ball' || tool === 'pencil' || tool === 'highlighter') {
+      e.preventDefault();
+      try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* noop */ }
+      const base = tool === 'highlighter' ? highlighterWidth : penWidth;
+      const stroke = {
+        id: Date.now() + Math.random(),
+        tool,
+        color: tool === 'highlighter' ? highlighterColor : tool === 'pencil' ? '#6b7280' : penColor,
+        width: base,
+        opacity: tool === 'highlighter' ? 0.35 : tool === 'pencil' ? 0.85 : 1,
+        points: [{ x: pt.x, y: pt.y, p: typeof pt.pressure === 'number' && pt.pressure > 0 ? pt.pressure : 0.6 }],
+      };
+      pushUndo();
+      setActiveStroke(stroke);
+      setInk((prev) => [...prev, stroke]);
+    } else if (tool === 'eraser') {
+      e.preventDefault();
+      eraserUndoRef.current = false;
+      eraseAt(pt);
+    } else if (tool === 'rect' || tool === 'ellipse' || tool === 'line' || tool === 'arrow') {
+      e.preventDefault();
+      try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* noop */ }
+      setShapePreview({ kind: tool, x: pt.x, y: pt.y, w: 0, h: 0 });
+    }
+  };
+
+  const onCanvasPointerMove = (e) => {
+    if (pinchRef.current) {
+      if (e.isPrimary === false) return;
+      return;
+    }
+    if (!activePointerRef.current || e.pointerId !== activePointerRef.current.id) return;
+    const pt = getPointerPoint(e);
+    if (tool === 'fountain' || tool === 'ball' || tool === 'pencil' || tool === 'highlighter') {
+      e.preventDefault();
+      setActiveStroke((cur) => {
+        if (!cur) return cur;
+        const last = cur.points[cur.points.length - 1];
+        if (Math.hypot(pt.x - last.x, pt.y - last.y) < 1.5) return cur;
+        const next = { ...cur, points: [...cur.points, { x: pt.x, y: pt.y, p: typeof pt.pressure === 'number' && pt.pressure > 0 ? pt.pressure : (last.p || 0.6) }] };
+        setInk((prev) => prev.map((s) => (s.id === next.id ? next : s)));
+        return next;
+      });
+    } else if (tool === 'eraser') {
+      e.preventDefault();
+      eraseAt(pt);
+    } else if (tool === 'rect' || tool === 'ellipse' || tool === 'line' || tool === 'arrow') {
+      e.preventDefault();
+      const start = activePointerRef.current;
+      setShapePreview((prev) => (prev ? { ...prev, w: pt.x - start.startX, h: pt.y - start.startY } : prev));
+    }
+  };
+
+  const onCanvasPointerUp = (e) => {
+    if (e.pointerType === 'pen') penActiveRef.current = false;
+    if (pinchRef.current) {
+      activePointerRef.current = null;
+      pinchRef.current = null;
+      return;
+    }
+    if (activePointerRef.current && e.pointerId !== activePointerRef.current.id) return;
+    activePointerRef.current = null;
+    eraserUndoRef.current = false;
+    if (activeStroke) {
+      markDirty();
+      setActiveStroke(null);
+    }
+    if (shapePreview) {
+      commitShape(shapePreview);
+      setShapePreview(null);
+    }
+  };
+
+  const selectTool = (next) => {
+    if (next === 'connect') { setConnectFrom((prev) => (prev === null ? 'ready' : null)); setTool('pan'); return; }
+    if (next === 'star') { toggleStarMode(); return; }
+    if (next === 'text') { addTextBox(); setTool('pan'); return; }
+    if (next === 'image') { canvasFileRef.current?.click(); setTool('pan'); return; }
+    if (next === 'pan') { setTool('pan'); setDrawMode(false); setStarMode(false); setConnectFrom(null); return; }
+    setToolMode(next);
+  };
+
   // ─── Clear ───
   const clearCanvas = () => {
     pushUndo();
     setItems([]);
     setConnections([]);
     setManualLines([]);
+    setInk([]);
     setDrawStart(null);
     setDrawPreview(null);
     setDrawPhase('idle');
@@ -1141,26 +1373,30 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
         onChange={e => { const f = e.target.files?.[0]; if (f) addCanvasImage(f); e.target.value = ''; }} />
 
       <div
-        className="nb-canvas-wrap"
+        className={`nb-canvas-wrap paper-${paperStyle}`}
         ref={canvasWrapRef}
         style={{
           // Grid tiles live on the scrolling wrapper and must scale with the
           // canvas so lines stay aligned with the zoomed items.
-          backgroundSize: `${40 * canvasZoom}px ${40 * canvasZoom}px`,
+          backgroundSize: paperStyle === 'lined' ? `100% ${32 * canvasZoom}px` : paperStyle === 'grid' ? `${32 * canvasZoom}px ${32 * canvasZoom}px` : `${24 * canvasZoom}px ${24 * canvasZoom}px`,
         }}
       >
         <div
           ref={canvasRef}
-          className={`nb-canvas ${drawMode ? 'draw-active' : ''} ${starMode ? 'star-active' : ''}`}
+          className={`nb-canvas ${drawMode ? 'draw-active' : ''} ${starMode ? 'star-active' : ''} ${tool === 'eraser' ? 'eraser-active' : ''}`}
           tabIndex={-1}
           onPaste={handleCanvasPaste}
           onDrop={handleCanvasDrop}
           onDragOver={handleCanvasDragOver}
-          onMouseMove={(e) => {
+          onPointerDown={onCanvasPointerDown}
+          onPointerMove={(e) => {
+            onCanvasPointerMove(e);
             onDrawMouseMove(e);
             onCanvasMouseMove(e);
             if (starMode) setStarGhost(getCanvasPoint(e));
           }}
+          onPointerUp={onCanvasPointerUp}
+          onPointerCancel={onCanvasPointerUp}
           onMouseUp={stopDrag}
           onMouseLeave={(e) => { stopDrag(e); if (starMode) setStarGhost(null); }}
           onClick={(e) => {
@@ -1418,6 +1654,87 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
               </div>
             );
           })()}
+          {/* Freehand ink strokes (pen / pencil / highlighter) */}
+          <svg className="nb-ink-layer" width={canvasLayoutW} height={canvasLayoutH} style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none', overflow: 'visible' }}>
+            {ink.map((stroke) => {
+              const d = strokePath(stroke.points);
+              const w = strokeWidthFor(stroke.tool, stroke.points[stroke.points.length - 1]?.p, stroke.width);
+              return (
+                <path
+                  key={stroke.id}
+                  d={d}
+                  fill="none"
+                  stroke={stroke.color}
+                  strokeWidth={w}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  opacity={stroke.opacity ?? 1}
+                  mixBlendMode={stroke.tool === 'highlighter' ? 'multiply' : 'normal'}
+                  style={{ filter: stroke.tool === 'highlighter' ? 'none' : 'drop-shadow(0 1px 1px rgba(0,0,0,0.12))' }}
+                />
+              );
+            })}
+            {shapePreview && ['line', 'arrow'].includes(shapePreview.kind) && (() => {
+              const { x, y, w, h } = shapePreview;
+              const angle = Math.atan2(h, w) * 180 / Math.PI;
+              const len = Math.hypot(w, h);
+              if (len < 2) return null;
+              return (
+                <g opacity={0.85}>
+                  <line x1={x} y1={y} x2={x + w} y2={y + h} stroke={shapeColor} strokeWidth={shapeStrokeWidth} strokeLinecap="round" />
+                  {shapePreview.kind === 'arrow' && (
+                    <polygon
+                      points={`0,-${shapeStrokeWidth * 2.2} ${shapeStrokeWidth * 3.2},0 0,${shapeStrokeWidth * 2.2}`}
+                      fill={shapeColor}
+                      transform={`translate(${x + w},${y + h}) rotate(${angle})`}
+                    />
+                  )}
+                </g>
+              );
+            })()}
+            {shapePreview && ['rect', 'ellipse'].includes(shapePreview.kind) && (() => {
+              const { x, y, w, h } = shapePreview;
+              const nx = Math.min(x, x + w), ny = Math.min(y, y + h);
+              const nw = Math.abs(w), nh = Math.abs(h);
+              if (shapePreview.kind === 'rect') {
+                return <rect x={nx} y={ny} width={nw} height={nh} fill="none" stroke={shapeColor} strokeWidth={shapeStrokeWidth} rx={shapeStrokeWidth * 2} opacity={0.85} />;
+              }
+              return <ellipse cx={nx + nw / 2} cy={ny + nh / 2} rx={nw / 2} ry={nh / 2} fill="none" stroke={shapeColor} strokeWidth={shapeStrokeWidth} opacity={0.85} />;
+            })()}
+          </svg>
+
+          {/* Shape items (rect / ellipse / line / arrow created via shape tools) */}
+          {items.filter((i) => i.type === 'shape').map((item) => {
+            const color = item.color || '#2397c9';
+            const sw = item.strokeWidth || 3;
+            if (item.shapeKind === 'line' || item.shapeKind === 'arrow') {
+              const dx = item.w, dy = 0;
+              const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+              const len = Math.hypot(dx, dy);
+              return (
+                <div key={item.id} className="nb-canvas-item" data-item-id={item.id} style={{ left: item.x, top: item.y, width: Math.max(8, len), height: 8 }}
+                  onMouseDown={(e) => { setSelectedItemId(item.id); if (connectFrom) { e.stopPropagation(); handleItemClick(item.id); } else { startDrag(e, item.id); } }}>
+                  <div style={{ position: 'absolute', left: 0, top: 2, width: len, height: 0, borderTop: `${sw}px solid ${color}`, transformOrigin: '0 0', transform: `rotate(${angle}deg)` }} />
+                  {item.shapeKind === 'arrow' && (
+                    <div style={{ position: 'absolute', right: 0, top: -8, width: 0, height: 0, borderTop: `${sw * 2 + 3}px solid transparent`, borderBottom: `${sw * 2 + 3}px solid transparent`, borderLeft: `${sw * 3 + 8}px solid ${color}` }} />
+                  )}
+                  <button className="nb-canvas-del" onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }} onMouseDown={e => e.stopPropagation()}><Trash2 size={12} /></button>
+                </div>
+              );
+            }
+            return (
+              <div key={item.id} className={`nb-canvas-item${selectedItemId === item.id ? ' selected' : ''}`} data-item-id={item.id}
+                style={{ left: item.x, top: item.y, width: item.w, height: item.h }}
+                onMouseDown={(e) => { setSelectedItemId(item.id); if (connectFrom) { e.stopPropagation(); handleItemClick(item.id); } else { startDrag(e, item.id); } }}>
+                <div className="nb-item-shape" style={{ borderColor: color, background: 'transparent', borderRadius: item.shapeKind === 'ellipse' ? '50%' : 2, borderWidth: sw }}>
+                  {item.shapeKind === 'ellipse' && <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `${sw}px solid ${color}`, background: 'transparent' }} />}
+                </div>
+                <button className="nb-canvas-del" onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }} onMouseDown={e => e.stopPropagation()}><Trash2 size={12} /></button>
+                <div className="nb-resize-handle" title="Resize" onMouseDown={(e) => startResize(e, item.id)} />
+              </div>
+            );
+          })}
+
           {/* Connection lines between items */}
           {connections.map(conn => {
             const from = items.find(i => i.id === conn.fromId);
@@ -1496,7 +1813,7 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
             );
           })}
 
-          {items.map(item => {
+          {items.filter((i) => i.type !== 'shape').map(item => {
             const isCircle = item.shape === 'circle';
             const boxH = isCircle ? item.w : item.h;
             // Largest rectangle fully inside the shape — text auto-fits to it
@@ -1624,23 +1941,100 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
       </div>
 
       <div className="nb-float-tool" role="toolbar" aria-label="Canvas tools">
-        <button className={`nb-float-btn${drawMode ? ' active' : ''}`} onClick={toggleDrawMode} title="Draw line">
-          <Move size={18} />
+        <button className={`nb-float-btn${tool === 'pan' ? ' active' : ''}`} onClick={() => selectTool('pan')} title="Pan / Select">
+          <Hand size={18} />
         </button>
-        <button className={`nb-float-btn${connectFrom ? ' active' : ''}`} onClick={toggleConnectMode} title="Connect items">
-          {connectFrom ? <Link2Off size={18} /> : <Link2 size={18} />}
+        <button className={`nb-float-btn${tool === 'fountain' ? ' active' : ''}`} onClick={() => { selectTool('fountain'); setPenSettingsOpen((o) => !o); }} title="Fountain pen (Apple Pencil pressure)">
+          <PenTool size={18} />
+        </button>
+        <button className={`nb-float-btn${tool === 'ball' ? ' active' : ''}`} onClick={() => selectTool('ball')} title="Ball pen">
+          <PenLine size={18} />
+        </button>
+        <button className={`nb-float-btn${tool === 'pencil' ? ' active' : ''}`} onClick={() => selectTool('pencil')} title="Pencil">
+          <Pencil size={18} />
+        </button>
+        <button className={`nb-float-btn${tool === 'highlighter' ? ' active' : ''}`} onClick={() => { selectTool('highlighter'); setPenSettingsOpen((o) => !o); }} title="Highlighter">
+          <Highlighter size={18} />
+        </button>
+        <button className={`nb-float-btn${tool === 'eraser' ? ' active' : ''}`} onClick={() => selectTool('eraser')} title="Eraser (stroke eraser)">
+          <Eraser size={18} />
         </button>
         <span className="nb-float-sep" />
-        <button className="nb-float-btn" onClick={() => canvasFileRef.current?.click()} title="Add image">
-          <ImageIcon size={18} />
+        <button className={`nb-float-btn${tool === 'rect' ? ' active' : ''}`} onClick={() => selectTool('rect')} title="Rectangle">
+          <Square size={18} />
         </button>
-        <button className="nb-float-btn" onClick={addTextBox} title="Add text box">
+        <button className={`nb-float-btn${tool === 'ellipse' ? ' active' : ''}`} onClick={() => selectTool('ellipse')} title="Circle / Ellipse">
+          <Circle size={18} />
+        </button>
+        <button className={`nb-float-btn${tool === 'line' ? ' active' : ''}`} onClick={() => selectTool('line')} title="Line">
+          <Slash size={18} />
+        </button>
+        <button className={`nb-float-btn${tool === 'arrow' ? ' active' : ''}`} onClick={() => selectTool('arrow')} title="Arrow">
+          <MoveUpRight size={18} />
+        </button>
+        <span className="nb-float-sep" />
+        <button className="nb-float-btn" onClick={() => selectTool('text')} title="Add text box">
           <Type size={18} />
         </button>
-        <button className={`nb-float-btn${starMode ? ' active' : ''}`} onClick={toggleStarMode} title="Star stamp — left-click place · right-click cancel">
+        <button className="nb-float-btn" onClick={() => selectTool('image')} title="Add image">
+          <ImageIcon size={18} />
+        </button>
+        <button className={`nb-float-btn${starMode ? ' active' : ''}`} onClick={() => selectTool('star')} title="Star stamp">
           <Star size={18} />
         </button>
+        <button className={`nb-float-btn${connectFrom ? ' active' : ''}`} onClick={() => selectTool('connect')} title="Connect items">
+          {connectFrom ? <Link2Off size={18} /> : <Link2 size={18} />}
+        </button>
+        <button className={`nb-float-btn${paperOpen ? ' active' : ''}`} onClick={() => { setPaperOpen((o) => !o); setPenSettingsOpen(false); }} title="Paper style">
+          <FileText size={18} />
+        </button>
       </div>
+
+      {penSettingsOpen && ['fountain', 'ball', 'pencil', 'highlighter'].includes(tool) && (
+        <div className="nb-pen-panel">
+          <span className="nb-pen-label">{tool === 'highlighter' ? 'Highlighter' : tool === 'pencil' ? 'Pencil' : tool === 'ball' ? 'Ball pen' : 'Fountain pen'}</span>
+          <div className="nb-pen-colors">
+            {['#1a1a1a', '#dc2626', '#ea580c', '#d97706', '#16a34a', '#2563eb', '#7c3aed', '#ec4899'].map((c) => (
+              <button key={c} className={`nb-pen-swatch ${(tool === 'highlighter' ? highlighterColor : penColor) === c ? 'active' : ''}`} style={{ background: c }} onClick={() => (tool === 'highlighter' ? setHighlighterColor(c) : setPenColor(c))} title={c} />
+            ))}
+          </div>
+          <span className="nb-pen-label">Size</span>
+          <div className="nb-pen-sizes">
+            {[2, 3, 5, 8].map((s) => (
+              <button key={s} className={`nb-pen-size-btn ${penWidth === s ? 'active' : ''}`} onClick={() => setPenWidth(s)} title={`${s}px`}><span className="nb-pen-size-dot" style={{ width: s + 2, height: s + 2 }} /></button>
+            ))}
+          </div>
+          {tool === 'highlighter' && (
+            <>
+              <span className="nb-pen-label">Highlighter</span>
+              <div className="nb-pen-colors">
+                {['#facc15', '#86efac', '#f9a8d4', '#93c5fd', '#c4b5fd'].map((c) => (
+                  <button key={c} className={`nb-pen-swatch ${highlighterColor === c ? 'active' : ''}`} style={{ background: c, opacity: 0.6 }} onClick={() => setHighlighterColor(c)} title={c} />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {paperOpen && (
+        <div className="nb-pen-panel nb-paper-panel">
+          <span className="nb-pen-label">Paper</span>
+          <div className="nb-paper-options">
+            {[
+              { key: 'dot', label: 'Dot grid' },
+              { key: 'lined', label: 'Lined' },
+              { key: 'grid', label: 'Grid' },
+              { key: 'blank', label: 'Blank' },
+            ].map((p) => (
+              <button key={p.key} className={`nb-paper-btn ${paperStyle === p.key ? 'active' : ''}`} onClick={() => { setPaperStyle(p.key); markDirty(); }} title={p.label}>
+                <span className={`nb-paper-preview paper-${p.key}`} />
+                <span>{p.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

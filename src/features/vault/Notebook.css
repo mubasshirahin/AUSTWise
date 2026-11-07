@@ -233,6 +233,7 @@
   position: relative;
   overflow: visible;
   min-height: 800px;
+  touch-action: none;
   /* Background comes from the scrolling wrapper (.nb-canvas-wrap) so the paper
      + grid always fill the visible box at any zoom; the canvas itself stays
      transparent so the wrapper's background-attachment: local grid shows through. */
@@ -772,18 +773,23 @@
 
 .nb-float-tool {
   position: fixed;
-  right: 24px;
+  left: 50%;
   bottom: 24px;
+  transform: translateX(-50%);
   z-index: 60;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px;
-  border-radius: 14px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-  backdrop-filter: blur(6px);
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 8px;
+  max-width: calc(100vw - 24px);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--bg-card) 92%, transparent);
+  border: 1px solid var(--border-primary);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 .nb-float-btn {
   display: flex;
@@ -1429,3 +1435,99 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ─── Paper templates ─── */
+.nb-canvas-wrap.paper-dot {
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--border-primary) 55%, transparent) 1.1px, transparent 1.1px);
+  background-size: 24px 24px;
+  background-repeat: repeat;
+  background-attachment: local;
+}
+.nb-canvas-wrap.paper-lined {
+  background-image: linear-gradient(transparent 31px, color-mix(in srgb, var(--border-primary) 45%, transparent) 32px);
+  background-size: 100% 32px;
+  background-repeat: repeat;
+  background-attachment: local;
+}
+.nb-canvas-wrap.paper-grid {
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--border-primary) 35%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--border-primary) 35%, transparent) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-repeat: repeat;
+  background-attachment: local;
+}
+.nb-canvas-wrap.paper-blank {
+  background-image: none;
+}
+.nb-canvas.eraser-active { cursor: cell; }
+.nb-ink-layer { overflow: visible; }
+
+/* ─── Pen + paper popover panels ─── */
+.nb-pen-panel {
+  position: fixed;
+  left: 50%;
+  bottom: 92px;
+  transform: translateX(-50%);
+  z-index: 61;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  min-width: 240px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--bg-card) 94%, transparent);
+  border: 1px solid var(--border-primary);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(12px);
+  animation: fadeInUp 0.18s ease;
+}
+.nb-pen-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+}
+.nb-pen-colors { display: flex; gap: 8px; flex-wrap: wrap; }
+.nb-pen-swatch {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+.nb-pen-swatch:hover { transform: scale(1.15); }
+.nb-pen-swatch.active { border-color: var(--text-primary); transform: scale(1.12); }
+.nb-pen-sizes { display: flex; gap: 6px; align-items: center; }
+.nb-pen-size-btn {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border-primary);
+  background: var(--bg-input);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.nb-pen-size-btn.active { border-color: var(--accent-amber); background: var(--accent-amber-glow); }
+.nb-pen-size-dot { border-radius: 50%; background: var(--text-primary); display: block; }
+.nb-paper-options { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.nb-paper-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border-primary);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 11px; font-weight: 600;
+  cursor: pointer;
+}
+.nb-paper-btn.active { border-color: var(--accent-amber); color: var(--accent-amber); background: var(--accent-amber-glow); }
+.nb-paper-preview { width: 44px; height: 30px; border-radius: 4px; border: 1px solid var(--border-primary); background: var(--bg-card); display: block; }
+.nb-paper-preview.paper-dot { background-image: radial-gradient(circle, var(--text-tertiary) 1px, transparent 1px); background-size: 8px 8px; }
+.nb-paper-preview.paper-lined { background-image: linear-gradient(transparent 7px, var(--border-primary) 8px); background-size: 100% 8px; }
+.nb-paper-preview.paper-grid { background-image: linear-gradient(var(--border-primary) 1px, transparent 1px), linear-gradient(90deg, var(--border-primary) 1px, transparent 1px); background-size: 10px 10px; }
+.nb-paper-preview.paper-blank { background-image: none; }
+
+/* ─── Shape toolbar active state visuals ─── */
+.nb-canvas.draw-active, .nb-canvas.star-active { cursor: crosshair; }
+.nb-canvas.draw-active .nb-canvas-item, .nb-canvas.star-active .nb-canvas-item { pointer-events: none; }
