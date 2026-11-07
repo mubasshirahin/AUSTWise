@@ -5,6 +5,7 @@ import {
   BarChart3,
   BookOpenCheck,
   CalendarDays,
+  Camera,
   Check,
   ChevronDown,
   ClipboardList,
@@ -36,6 +37,8 @@ import {
   filterPreviewData,
   PRIORITIES,
 } from './previewAnalytics';
+import OriginalPanel, { SourceFilesPanel } from './OriginalPanel';
+import './OriginalPanel.css';
 import { questionImageKey, semesterImageKey } from './qbaImageStore';
 import { isQuestionSolved, questionCheckIds } from './qbaChecklist';
 import { splitSemesterList, splitSubQuestions } from './parseQuestionBank';
@@ -856,8 +859,11 @@ function QuestionCard({
   solved = false,
   checklistEnabled = false,
   onToggleSolved,
+  qid: qidProp,
+  onOpenOriginal,
 }) {
   const value = priorityValue(priority);
+  const qidLabel = qidProp || question.qid || '';
   const variants = Array.isArray(question.variants) ? question.variants : [];
 
   // The wordings of this question: the AI's own "Version 1 / Version 2"
@@ -984,6 +990,13 @@ function QuestionCard({
               showTopic={false}
               sourceRefs={sourceRefsOf(imageKey)}
             />
+            {onOpenOriginal ? (
+              <div style={{ marginTop: 8 }}>
+                <button type="button" className="qba-original-btn" onClick={() => onOpenOriginal(qidLabel, question.question)}>
+                  <Camera size={13} aria-hidden="true" /> Original
+                </button>
+              </div>
+            ) : null}
           </>
         ) : (
           <>
@@ -1143,6 +1156,8 @@ function TopicAccordion({
   checklistEnabled = false,
   onToggleChecklist,
   highlightKey = '',
+  qidRows = null,
+  onOpenOriginal,
 }) {
   return (
     <div className="qba-dash-accordion">
@@ -1298,6 +1313,8 @@ function TopicAccordion({
                           checkIds={checkIds}
                           solved={isQuestionSolved(checklistItems, checkIds)}
                           onToggleSolved={onToggleChecklist}
+                          qid={question.qid || ''}
+                          onOpenOriginal={onOpenOriginal}
                         />
                       );
                     })}
@@ -1325,6 +1342,7 @@ function SemesterView({
   onRemovePicture,
   onDropPictures,
   onJump,
+  onOpenOriginal,
 }) {
   const usingPapers = papers.length > 0;
 
@@ -1379,6 +1397,8 @@ function SemesterView({
                 onPickPicture={onPickPicture}
                 onRemovePicture={onRemovePicture}
                 onDropPictures={onDropPictures}
+                qid={question.qid || ''}
+                onOpenOriginal={onOpenOriginal}
               />
             );
           })}
@@ -1518,11 +1538,14 @@ export default function PreviewPanel({
   checklistItems = {},
   onToggleChecklist,
   checklistEnabled = false,
+  sourceFiles = [],
+  onSourceFiles,
 }) {
   const [selectedTopics, setSelectedTopics] = useState(() => new Set());
   const [mergeTopic, setMergeTopic] = useState('');
   const [mergeSelection, setMergeSelection] = useState(() => new Set());
   const [lightbox, setLightbox] = useState(null);
+  const [originalTarget, setOriginalTarget] = useState(null); // { qid, questionText }
   const [highlightKey, setHighlightKey] = useState('');
   const pictureInputRef = useRef(null);
   const pendingKeyRef = useRef({ imageKey: '', kind: 'question' });
@@ -1574,6 +1597,20 @@ export default function PreviewPanel({
     if (!imageKey || !files || !files.length) return;
     await onAttachImage?.(imageKey, files, kind);
   };
+
+  // QID -> paper rows, for the Original modal (every row using the QID).
+  const qidRows = useMemo(() => {
+    const map = new Map();
+    (Array.isArray(data?.semesterPapers) ? data.semesterPapers : []).forEach((paper) => {
+      (paper.questions || []).forEach((question, index) => {
+        if (!question.qid) return;
+        const key = String(question.qid).toUpperCase();
+        if (!map.has(key)) map.set(key, []);
+        map.get(key).push({ semester: paper.semester, n: question.number ?? index + 1, exam: question.exam, marks: question.marks, sourceRegions: question.sourceRegions || [], source: question.source || '' });
+      });
+    });
+    return map;
+  }, [data]);
 
   // Every paper question is linked to the topic-wise wording it came from.
   // A paper question the AI forgot to put in a TOPIC block is added to an
@@ -1787,8 +1824,17 @@ export default function PreviewPanel({
     { key: 'approx', label: 'Approximate', value: analytics.approxCount, tone: 'orange' },
   ];
 
+  // Original modal data: pool text + every paper row for the QID.
+  const originalData = useMemo(() => {
+    if (!originalTarget) return null;
+    const qid = String(originalTarget.qid || '').trim().toUpperCase();
+    const rows = qid ? (qidRows.get(qid) || []) : [];
+    return { qid, questionText: originalTarget.questionText, rows };
+  }, [originalTarget, qidRows]);
+
   return (
     <div className="qba-dash">
+      <SourceFilesPanel files={data.files || []} onFiles={onSourceFiles} />
       <TopicFilter
         topics={topics}
         selectedTopics={selectedTopics}
@@ -2081,6 +2127,8 @@ export default function PreviewPanel({
           checklistEnabled={checklistEnabled}
           onToggleChecklist={onToggleChecklist}
           highlightKey={highlightKey}
+          qidRows={qidRows}
+          onOpenOriginal={(qid, text) => setOriginalTarget({ qid, questionText: text })}
         />
       </section>
 
@@ -2142,6 +2190,16 @@ export default function PreviewPanel({
           </div>
         </div>,
         document.body,
+      ) : null}
+
+      {originalData ? (
+        <OriginalPanel
+          qid={originalData.qid}
+          questionText={originalData.questionText}
+          data={data}
+          storedFiles={sourceFiles || []}
+          onClose={() => setOriginalTarget(null)}
+        />
       ) : null}
     </div>
   );

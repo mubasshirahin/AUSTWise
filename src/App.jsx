@@ -16,6 +16,7 @@ import { usePageAvailability } from './features/admin/PageAvailabilityPanel';
 import { prefetchRoutesIdle } from './utils/routePrefetch';
 import { getAccessRole } from './utils/accessRole';
 import { StalkProvider } from './features/stalk-road/StalkContext';
+import useUsageTracking from './hooks/useUsageTracking';
 const StalkRoadOverlay = lazy(() => import('./features/stalk-road/StalkRoadOverlay'));
 const AuthPage = lazy(() => import('./features/auth/AuthPage'));
 const LandingPage = lazy(() => import('./features/landing/LandingPage'));
@@ -143,6 +144,7 @@ function ProtectedAdminRoute({ children }) {
 
 // Main App Content Component (authenticated routes)
 function AppContent() {
+  useUsageTracking();
   const { hasRole, user } = useAuth();
   const isAdmin = hasRole ? hasRole('admin') || hasRole('moderator') : false;
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);

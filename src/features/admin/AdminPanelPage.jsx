@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Shield, ShieldCheck, ShieldX, Coffee, Activity, Users, Trash2, Plus, AlertCircle, Eye, EyeOff, Edit3, Search, X, Save, Check, CheckCircle2, XCircle, ClipboardList, CalendarDays, Mic, CalendarClock, Ban, Banknote, FileText, Percent, PanelsTopLeft } from 'lucide-react';
+import { Shield, ShieldCheck, ShieldX, Coffee, Activity, Users, Trash2, Plus, AlertCircle, Eye, EyeOff, Edit3, Search, X, Save, Check, CheckCircle2, XCircle, ClipboardList, CalendarDays, Mic, CalendarClock, Ban, Banknote, FileText, Percent, PanelsTopLeft, HardDrive, Clock } from 'lucide-react';
 import { getAuditoriumEvent, setAuditoriumEvent, defaultAuditoriumEvent } from '../../data/mockData';
 import { loadSharedSync, loadSharedAsync, saveShared } from '../../utils/storageService';
 import { getDisplayRoles, getRoleDisplayName, getRoleBadgeClass, getAllAccounts, reviewRoleApplication, resetAllLocalData, getCurrentUserId } from '../../utils/authStorage';
@@ -158,6 +158,8 @@ export default function AdminPanelPage() {
       'accounts': '/admin-panel/accounts',
       'roles': '/admin-panel/roles',
       'code-shares': '/admin-panel/code-shares',
+      'drive-coverage': '/admin-panel/drive-coverage',
+      'usage': '/admin-panel/usage',
       'academic': '/admin-panel/academic',
       'availability': '/admin-panel/availability',
       'applications': '/admin-panel/applications',
@@ -222,6 +224,63 @@ export default function AdminPanelPage() {
   const [codeSharesLoading, setCodeSharesLoading] = useState(false);
   const [codeSharesError, setCodeSharesError] = useState('');
   const [codeSharesSearch, setCodeSharesSearch] = useState('');
+
+  // Drive coverage — batches that have not uploaded any Batch Drive link yet.
+  const [driveSummary, setDriveSummary] = useState(null);
+  const [driveLoading, setDriveLoading] = useState(false);
+  const [driveError, setDriveError] = useState('');
+  const [driveSearch, setDriveSearch] = useState('');
+  const [driveOnlyMissing, setDriveOnlyMissing] = useState(true);
+
+  // Usage — active users, hours, page, feature heatmap.
+  const [usageData, setUsageData] = useState(null);
+  const [usageLoading, setUsageLoading] = useState(false);
+  const [usageError, setUsageError] = useState('');
+  const [usageSearch, setUsageSearch] = useState('');
+
+  // Drive coverage — fetch on demand when the section opens.
+  useEffect(() => {
+    if (activeTab !== 'drive-coverage' || driveSummary) return;
+    let cancelled = false;
+    (async () => {
+      setDriveLoading(true);
+      setDriveError('');
+      try {
+        const res = await fetch('/api/batch-drive/admin/summary', { credentials: 'same-origin' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.success) throw new Error(data?.error || 'Failed to load drive coverage.');
+        if (!cancelled) setDriveSummary(data);
+      } catch (err) {
+        if (!cancelled) setDriveError(err?.message || 'Failed to load drive coverage.');
+      } finally {
+        if (!cancelled) setDriveLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [activeTab, driveSummary]);
+
+  // Usage — fetch on demand + auto-refresh every 30s while open.
+  useEffect(() => {
+    if (activeTab !== 'usage') return undefined;
+    let cancelled = false;
+    const load = async () => {
+      setUsageLoading(true);
+      setUsageError('');
+      try {
+        const res = await fetch('/api/admin/usage', { credentials: 'same-origin' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.success) throw new Error(data?.error || 'Failed to load usage.');
+        if (!cancelled) setUsageData(data);
+      } catch (err) {
+        if (!cancelled) setUsageError(err?.message || 'Failed to load usage.');
+      } finally {
+        if (!cancelled) setUsageLoading(false);
+      }
+    };
+    load();
+    const id = setInterval(load, 30_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [activeTab]);
 
   // CR/SR Applications State — lazy-initialized from the local mirror
   const [applications, setApplications] = useState(() => {
@@ -707,6 +766,8 @@ if (!res.ok || !Array.isArray(data.applications)) return;
             <button className={activeTab === 'accounts' ? 'is-active' : ''} onClick={() => navigateToTab('accounts')}><span>People</span><small>Search accounts and update roles</small></button>
             <button className={activeTab === 'roles' ? 'is-active' : ''} onClick={() => navigateToTab('roles')}><span>Roles</span><small>All roles, counts and membership</small></button>
             <button className={activeTab === 'code-shares' ? 'is-active' : ''} onClick={() => navigateToTab('code-shares')}><span>Code Shares</span><small>Who can share, 5-er koto use, kake kake diche</small></button>
+            <button className={activeTab === 'drive-coverage' ? 'is-active' : ''} onClick={() => navigateToTab('drive-coverage')}><span>Drive Coverage</span><small>Kon kon batch ekhono drive upload kore nai</small></button>
+            <button className={activeTab === 'usage' ? 'is-active' : ''} onClick={() => navigateToTab('usage')}><span>Usage Analytics</span><small>Active user, hours ar feature heatmap</small></button>
             <button onClick={() => navigate('/admin/access-requests')}><span>Invitations</span><small>Review faculty and alumni requests</small></button>
           </div>
         </section>
@@ -1983,6 +2044,290 @@ if (!res.ok || !Array.isArray(data.applications)) return;
             )}
           </div>
         )}
+
+        {/* DRIVE COVERAGE PANEL — batches with no Batch Drive upload */}
+        {activeTab === 'drive-coverage' && (() => {
+          const batches = Array.isArray(driveSummary?.batches) ? driveSummary.batches : [];
+          const totals = driveSummary?.totals || {};
+          const q = normalizeRoleSearchText(driveSearch);
+          const visible = batches.filter((b) => (
+            (!driveOnlyMissing || b.status !== 'complete')
+            && (!q || normalizeRoleSearchText(`${b.department} ${b.batchLabel}`).includes(q))
+          ));
+          return (
+            <div>
+              <div className="admin-roles-stats">
+                <span><strong>{totals.totalBatches ?? 0}</strong> total batches</span>
+                <span><strong>{(totals.missingAll || []).length}</strong> batches with no drive</span>
+                <span><strong>{(totals.partial || []).length}</strong> partial</span>
+                <span><strong>{totals.missingSemesters ?? 0}</strong> semesters missing</span>
+              </div>
+              <div className="glass-card-static mb-4">
+                <div className="admin-roles-search-row">
+                  <div className="admin-roles-search">
+                    <Search size={16} style={{ color: 'var(--text-tertiary)' }} />
+                    <input
+                      type="text"
+                      placeholder="Search dept or batch (e.g. CSE Quanta 52)…"
+                      value={driveSearch}
+                      onChange={(e) => setDriveSearch(e.target.value)}
+                      aria-label="Search drive coverage"
+                      style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 'var(--fs-sm)' }}
+                    />
+                    {driveSearch && (
+                      <button onClick={() => setDriveSearch('')} aria-label="Clear search" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
+                        <X size={14} style={{ color: 'var(--text-tertiary)' }} />
+                      </button>
+                    )}
+                  </div>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-sm)', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={driveOnlyMissing} onChange={(e) => setDriveOnlyMissing(e.target.checked)} />
+                    Only missing
+                  </label>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDriveSummary(null)} disabled={driveLoading}>
+                    {driveLoading ? 'Loading…' : 'Refresh'}
+                  </button>
+                </div>
+              </div>
+
+              {driveLoading ? (
+                <div className="glass-card-static admin-user-empty">Loading drive coverage…</div>
+              ) : driveError ? (
+                <div className="glass-card-static admin-user-empty">{driveError}</div>
+              ) : visible.length === 0 ? (
+                <div className="glass-card-static admin-user-empty">{driveOnlyMissing ? 'All batches have a complete Batch Drive. No missing uploads.' : 'No batches found.'}</div>
+              ) : (
+                <div className="admin-code-shares">
+                  {visible.map((batch) => (
+                    <article key={`${batch.department}::${batch.batchLabel}`} className="glass-card-static admin-code-share-card">
+                      <div className="admin-code-share-head">
+                        <span className="admin-code-avatar" style={{ display: 'grid', placeItems: 'center' }}>
+                          <HardDrive size={18} />
+                        </span>
+                        <div>
+                          <strong>{batch.department} · {batch.batchLabel}</strong>
+                          <span>{batch.students} student{batch.students === 1 ? '' : 's'}</span>
+                        </div>
+                        <span className={`badge ${batch.status === 'complete' ? 'badge-emerald' : batch.status === 'partial' ? 'badge-amber' : 'badge-rose'}`}>
+                          {batch.status === 'complete' ? 'Complete' : batch.status === 'partial' ? `Partial ${batch.uploadedCount}/${batch.totalSemesters}` : 'No upload yet'}
+                        </span>
+                      </div>
+                      <div className="admin-code-share-meta">
+                        <span>{batch.uploadedCount} of {batch.totalSemesters} semesters have a drive</span>
+                      </div>
+                      <div className="admin-code-share-codes">
+                        {batch.semesters.map((sem) => (
+                          <span key={sem.yearSem} className={`badge ${sem.hasDrive ? 'badge-emerald' : 'badge-rose'}`}>
+                            {sem.yearSem}{sem.hasDrive ? ' ✓' : ' ✗'}
+                          </span>
+                        ))}
+                      </div>
+                      {batch.missing.length > 0 && (
+                        <p style={{ margin: '8px 0 0', fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
+                          Missing: {batch.missing.join(', ')}
+                        </p>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* USAGE ANALYTICS PANEL */}
+        {activeTab === 'usage' && (() => {
+          const stats = usageData?.stats || {};
+          const activeNow = Array.isArray(usageData?.activeNow) ? usageData.activeNow : [];
+          const topUsers = Array.isArray(usageData?.topUsers) ? usageData.topUsers : [];
+          const featureTotals = usageData?.featureTotals || {};
+          const heatmap = usageData?.heatmap || {};
+          const byPage = Array.isArray(usageData?.byPage) ? usageData.byPage : [];
+          const q = normalizeRoleSearchText(usageSearch);
+          const visibleActive = activeNow.filter((a) => !q || normalizeRoleSearchText(`${a.name} ${a.email} ${a.department} ${a.batchLabel} ${a.page} ${a.feature}`).includes(q));
+          const visibleTop = topUsers.filter((a) => !q || normalizeRoleSearchText(`${a.name} ${a.email} ${a.department} ${a.batchLabel}`).includes(q));
+          const features = Object.keys(featureTotals).sort((a, b) => (featureTotals[b]?.ms || 0) - (featureTotals[a]?.ms || 0));
+          const maxHeat = Math.max(1, ...Object.values(heatmap).flat());
+          const fmtHours = (ms) => `${Math.round(((ms || 0) / 3_600_000) * 10) / 10}h`;
+          const fmtSeen = (ts) => {
+            if (!ts) return '—';
+            const mins = Math.round((Date.now() - ts) / 60_000);
+            if (mins < 1) return 'just now';
+            if (mins < 60) return `${mins}m ago`;
+            const hrs = Math.round(mins / 60);
+            if (hrs < 24) return `${hrs}h ago`;
+            return `${Math.round(hrs / 24)}d ago`;
+          };
+          return (
+            <div>
+              <div className="admin-roles-stats">
+                <span><strong>{stats.activeUsers ?? 0}</strong> active now</span>
+                <span><strong>{stats.totalHours ?? 0}h</strong> total used</span>
+                <span><strong>{stats.avgHours ?? 0}h</strong> average per user</span>
+                <span><strong>{stats.totalVisits ?? 0}</strong> page visits</span>
+                <span><strong>{stats.trackedUsers ?? 0}</strong> tracked of {stats.totalRegistered ?? 0}</span>
+              </div>
+              <div className="glass-card-static mb-4">
+                <div className="admin-roles-search-row">
+                  <div className="admin-roles-search">
+                    <Search size={16} style={{ color: 'var(--text-tertiary)' }} />
+                    <input
+                      type="text"
+                      placeholder="Search user, dept, batch or page…"
+                      value={usageSearch}
+                      onChange={(e) => setUsageSearch(e.target.value)}
+                      aria-label="Search usage"
+                      style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 'var(--fs-sm)' }}
+                    />
+                    {usageSearch && (
+                      <button onClick={() => setUsageSearch('')} aria-label="Clear search" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
+                        <X size={14} style={{ color: 'var(--text-tertiary)' }} />
+                      </button>
+                    )}
+                  </div>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setUsageData(null)} disabled={usageLoading}>
+                    {usageLoading ? 'Loading…' : 'Refresh'}
+                  </button>
+                </div>
+              </div>
+
+              {usageLoading && !usageData ? (
+                <div className="glass-card-static admin-user-empty">Loading usage…</div>
+              ) : usageError ? (
+                <div className="glass-card-static admin-user-empty">{usageError}</div>
+              ) : (
+                <>
+                  <div className="glass-card-static mb-4">
+                    <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', margin: '0 0 12px' }}>Active now ({activeNow.length})</h3>
+                    {visibleActive.length === 0 ? (
+                      <p style={{ margin: 0, color: 'var(--text-secondary)' }}>No one is active right now. Active means seen in the last 5 minutes.</p>
+                    ) : (
+                      <div className="admin-code-shares">
+                        {visibleActive.map((a) => (
+                          <article key={a.userId} className="glass-card-static admin-code-share-card">
+                            <div className="admin-code-share-head">
+                              <span className="admin-code-avatar" style={{ display: 'grid', placeItems: 'center' }}>
+                                {a.avatar ? <img src={a.avatar} alt="" referrerPolicy="no-referrer" /> : (a.name || '?').slice(0, 2).toUpperCase()}
+                              </span>
+                              <div>
+                                <strong>{a.name}</strong>
+                                <span>{a.department || '—'}{a.batchLabel ? ` · ${a.batchLabel}` : ''}</span>
+                                <small>{a.email || ''}</small>
+                              </div>
+                              <span className="badge badge-emerald"><Clock size={12} /> {a.page || a.feature}</span>
+                            </div>
+                            <div className="admin-code-share-meta">
+                              <span>{fmtHours(a.totalMs)} total</span>
+                              <span>{a.visits} visits</span>
+                              <span>Seen {fmtSeen(a.lastSeen)}</span>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="glass-card-static mb-4">
+                    <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', margin: '0 0 12px' }}>Feature usage</h3>
+                    {features.length === 0 ? (
+                      <p style={{ margin: 0, color: 'var(--text-secondary)' }}>No usage yet. Data builds as users browse.</p>
+                    ) : (
+                      <div className="admin-code-shares">
+                        {features.map((f) => {
+                          const ms = featureTotals[f]?.ms || 0;
+                          const pct = Math.round((ms / Math.max(1, Math.max(...features.map((x) => featureTotals[x]?.ms || 0)))) * 100);
+                          return (
+                            <article key={f} className="glass-card-static admin-code-share-card">
+                              <div className="admin-code-share-head">
+                                <div>
+                                  <strong>{f}</strong>
+                                  <span>{featureTotals[f]?.visits || 0} visits</span>
+                                </div>
+                                <span className="badge badge-amber">{fmtHours(ms)}</span>
+                              </div>
+                              <div className="progress-bar" style={{ marginTop: 8 }}>
+                                <div className="progress-bar-fill" style={{ width: `${pct}%` }} />
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="glass-card-static mb-4">
+                    <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', margin: '0 0 12px' }}>Usage heatmap — feature × hour</h3>
+                    {features.length === 0 ? (
+                      <p style={{ margin: 0, color: 'var(--text-secondary)' }}>No heatmap data yet.</p>
+                    ) : (
+                      <div style={{ overflowX: 'auto' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: `minmax(120px, 160px) repeat(24, minmax(18px, 1fr))`, gap: 4, alignItems: 'center', minWidth: 640 }}>
+                          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Feature ↓ / Hour →</span>
+                          {Array.from({ length: 24 }, (_, h) => (
+                            <span key={h} style={{ fontSize: 9, color: 'var(--text-tertiary)', textAlign: 'center' }}>{h}</span>
+                          ))}
+                          {features.map((f) => (
+                            <Fragment key={f}>
+                              <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f}</span>
+                              {(heatmap[f] || new Array(24).fill(0)).map((ms, h) => {
+                                const intensity = Math.min(1, (ms || 0) / maxHeat);
+                                return (
+                                  <span key={h} title={`${f} at ${h}:00 — ${fmtHours(ms)}`} style={{
+                                    display: 'block', height: 18, borderRadius: 4,
+                                    background: `color-mix(in srgb, var(--accent-amber) ${Math.round(intensity * 100)}%, var(--bg-input))`,
+                                    border: '1px solid var(--border-primary)',
+                                  }} />
+                                );
+                              })}
+                            </Fragment>
+                          ))}
+                        </div>
+                        <p style={{ margin: '10px 0 0', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Darker = more time spent. Hover a cell for hours.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="glass-card-static mb-4">
+                    <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', margin: '0 0 12px' }}>Top users by hours</h3>
+                    {visibleTop.length === 0 ? (
+                      <p style={{ margin: 0, color: 'var(--text-secondary)' }}>No data yet.</p>
+                    ) : (
+                      <div className="admin-code-shares">
+                        {visibleTop.map((a) => (
+                          <article key={a.userId} className="glass-card-static admin-code-share-card">
+                            <div className="admin-code-share-head">
+                              <span className="admin-code-avatar" style={{ display: 'grid', placeItems: 'center' }}>
+                                {a.avatar ? <img src={a.avatar} alt="" referrerPolicy="no-referrer" /> : (a.name || '?').slice(0, 2).toUpperCase()}
+                              </span>
+                              <div>
+                                <strong>{a.name}</strong>
+                                <span>{a.department || '—'}{a.batchLabel ? ` · ${a.batchLabel}` : ''}</span>
+                              </div>
+                              <span className="badge badge-amber">{fmtHours(a.totalMs)}</span>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="glass-card-static">
+                    <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', margin: '0 0 12px' }}>Users per page</h3>
+                    {byPage.length === 0 ? (
+                      <p style={{ margin: 0, color: 'var(--text-secondary)' }}>No page data yet.</p>
+                    ) : (
+                      <div className="admin-code-share-codes">
+                        {byPage.map((p) => (
+                          <span key={p.page} className="badge badge-blue">{p.page || 'other'} · {p.users} user{p.users === 1 ? '' : 's'}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })()}
 
         {/* TEMPLATES PANEL (Routine) */}
         {activeTab === 'templates' && (

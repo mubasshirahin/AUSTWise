@@ -29,7 +29,7 @@ const searchItems = [
       { id: 'life-planner', label: 'Life Planner', keywords: 'life planner goals habits week plan' },
     ],
   },
-  { label: 'Notebook', path: '/notebook', icon: NotebookPen, keywords: 'notebook notes canvas whiteboard editor writing' },
+  { label: 'Notebook', path: '/resource-vault?tab=notebook', icon: NotebookPen, keywords: 'notebook notes canvas whiteboard editor writing' },
   { label: 'Question Bank Analyzer', path: '/question-bank-analyzer', icon: FileSearch, keywords: 'question bank analyzer past papers exam questions vips priority study plan ai markdown pdf course' },
   { label: 'ConnectBox', path: '/messages', icon: MessageSquare, keywords: 'messages chat inbox dm' },
   {

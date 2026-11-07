@@ -24,7 +24,6 @@ const moreSections = [
     items: [
       { path: '/daily-life', label: 'Daily Life', icon: Home },
       { path: '/insideaust', label: 'InsideAUST', icon: MapPin },
-      { path: '/notebook', label: 'Notebook', icon: NotebookPen },
       { path: '/question-bank', label: 'Question Bank', icon: FileSearch },
       { path: '/productivity', label: 'Productivity', icon: Zap },
     ],

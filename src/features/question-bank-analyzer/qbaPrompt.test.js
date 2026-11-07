@@ -28,9 +28,26 @@ describe('buildPrompt', () => {
 
   it('asks for the raw papers of every semester, unmerged', () => {
     expect(prompt).toContain('## SEMESTER_PAPERS');
-    expect(prompt).toContain('| # | Question | Exam | Marks |');
+    expect(prompt).toContain('| # | Question | Exam | Marks | Source |');
     expect(prompt).toMatch(/never merge/i);
     expect(prompt).toMatch(/### <semester name/);
+  });
+
+  it('asks for exact source location per paper row', () => {
+    expect(prompt).toContain('files: [every file name');
+    expect(prompt).toContain('<file name> :: p<page> :: <x1>,<y1>,<x2>,<y2>');
+    expect(prompt).toContain('RULE 9 — SOURCE LOCATION');
+    expect(prompt).toMatch(/fractions of the page/i);
+    expect(prompt).toMatch(/p1/);
+    expect(prompt).toContain('0,0,1,1');
+    expect(prompt).toContain(':: ?');
+    expect(prompt).toContain(':: none');
+  });
+
+  it('asks for PDF page counts in step one', () => {
+    expect(prompt).toContain('For every PDF also tell');
+    expect(prompt).toContain('how many pages it has');
+    expect(prompt).toContain('Wait for my "OK"');
   });
 
   it('keeps one master pool and puts sub-parts inside it', () => {

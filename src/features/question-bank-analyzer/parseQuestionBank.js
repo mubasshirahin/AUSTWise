@@ -24,7 +24,7 @@ const SEASON_RANK = { spring: 1, summer: 2, fall: 3, autumn: 3, winter: 4 };
 function stripEmphasis(value) {
   return String(value ?? '')
     .replace(/\*\*/g, '')
-    .replace(/__/g, '')
+    .replace(/(^|[^_])__([^_]+)__($|[^_])/g, '$1$2$3')
     .replace(/`/g, '')
     .trim();
 }
@@ -339,11 +339,54 @@ function describeQids(ids) {
   return ids.length > 4 ? `${shown} and ${ids.length - 4} more` : shown;
 }
 
+/**
+ * Parse one Source region: "<file name> :: p<page> :: <x1>,<y1>,<x2>,<y2>".
+ * Special values: "<file> :: ?" (unknown page), "<file> :: none" (no pages).
+ * Numbers are clamped to 0..1; an invalid box falls back to the whole page.
+ */
+export function parseSourceRegion(region) {
+  const raw = String(region ?? '').trim();
+  if (!raw) return null;
+  const parts = raw.split('::').map((part) => part.trim());
+  const file = parts[0] || '';
+  if (!file) return null;
+  if (parts.length === 1) return { file, kind: 'bare', raw };
+  const second = parts[1] || '';
+  if (second === '?') return { file, kind: 'unknown', raw };
+  if (/^none$/i.test(second)) return { file, kind: 'none', raw };
+  const pageMatch = second.match(/^p\s*(\d+)\s*$/i);
+  if (!pageMatch) return { file, kind: 'unknown', raw };
+  const page = Math.max(1, Number(pageMatch[1]) || 1);
+  const boxRaw = parts[2] || '';
+  const nums = boxRaw.split(',').map((v) => Number(String(v).trim()));
+  let box = [0, 0, 1, 1];
+  let invalidBox = false;
+  if (nums.length !== 4 || nums.some((n) => !Number.isFinite(n))) {
+    invalidBox = true;
+  } else {
+    const clamped = nums.map((n) => Math.min(1, Math.max(0, n)));
+    if (clamped[2] <= clamped[0] || clamped[3] <= clamped[1]) invalidBox = true;
+    else box = clamped;
+  }
+  return { file, kind: 'box', page, box, invalidBox, raw };
+}
+
+/** Parse a Source cell ("region ; region") into an array of regions. */
+export function parseSourceCell(cell) {
+  const raw = String(cell ?? '').trim();
+  if (!raw || raw === '-') return [];
+  return raw
+    .split(/\s*;\s*/)
+    .map((part) => parseSourceRegion(part))
+    .filter(Boolean);
+}
+
 function emptyData() {
   return {
     course: '',
     title: '',
     semesters: [],
+    files: [],
     topics: [],
     semesterPapers: [],
     vipMatrix: [],
@@ -488,11 +531,27 @@ function unquote(value) {
 }
 
 function parseSemesters(value) {
-  const raw = unquote(value).replace(/^\[/, '').replace(/\]$/, '');
+  const raw = String(value ?? '').trim().replace(/^\[/, '').replace(/\]$/, '');
+  if (!raw) return [];
+  // Semesters never contain underscores from double-underscores: strip ONLY
+  // the emphasis marks, not "_" itself (file names use "__").
+  return raw
+    .split(/,|;|\s+\|\s+/)
+    .map((part) => unquote(part).replace(/^__+|__+$/g, ''))
+    .filter(Boolean);
+}
+
+/**
+ * Parse the front-matter files list: [a.pdf, b.pdf]. File names only strip
+ * surrounding quotes/brackets — spaces and underscores are kept exactly,
+ * because the Source cells must match them character-for-character.
+ */
+function parseFileList(value) {
+  const raw = String(value ?? '').trim().replace(/^\[/, '').replace(/\]$/, '');
   if (!raw) return [];
   return raw
     .split(/,|;|\s+\|\s+/)
-    .map(unquote)
+    .map((part) => part.trim().replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').trim())
     .filter(Boolean);
 }
 
@@ -502,7 +561,7 @@ function extractFrontMatter(text) {
   for (let i = 0; i < lines.length; i += 1) {
     if (!/^\s*-{3,}\s*$/.test(lines[i])) continue;
     const lookahead = lines.slice(i + 1, i + 14);
-    const keyCount = lookahead.filter((line) => /^\s*(course|title|semesters)\s*:/i.test(line)).length;
+    const keyCount = lookahead.filter((line) => /^\s*(course|title|semesters|files)\s*:/i.test(line)).length;
     if (keyCount >= 1) {
       start = i;
       break;
@@ -891,13 +950,20 @@ function paperColumnIndices(header, rows) {
       question: findColumn(keys, ['question', 'questions', 'question text', 'ques', 'q']),
       exam: findColumn(keys, ['exam type', 'exam', 'assessment', 'type']),
       marks: findColumn(keys, ['marks', 'mark', 'score', 'points', 'weightage', 'weight']),
+      source: findColumn(keys, ['source', 'source location', 'location', 'reference']),
     };
   }
   const first = rows[0] || [];
   const firstLooksNumeric = /^\s*#?\s*\d+[.)]?\s*$/.test(first[0] || '');
   return firstLooksNumeric && first.length >= 4
-    ? { number: 0, question: 1, exam: 2, marks: 3 }
-    : { number: -1, question: 0, exam: 1, marks: 2 };
+    ? { number: 0, question: 1, exam: 2, marks: 3, source: first.length >= 5 ? 4 : -1 }
+    : { number: -1, question: 0, exam: 1, marks: 2, source: -1 };
+}
+
+/** Extract the QID from a raw QID reference cell, if present. */
+export function extractQidRef(value) {
+  const match = String(value ?? '').match(/\[\s*QID\s*:\s*([A-Za-z0-9_-]+)\s*\]/i);
+  return match ? match[1].toUpperCase() : '';
 }
 
 /**
@@ -937,13 +1003,21 @@ function parseSemesterPapers(lines, warn, note, masterPool = null) {
       const figure = extractFigureMarker(rawQuestion);
       const numberValue = parseInt(cellAt(row, indices.number), 10);
       const marksParsed = parseCount(cellAt(row, indices.marks));
+      const sourceRaw = cellAt(row, indices.source);
+      const sourceRegions = parseSourceCell(sourceRaw);
+      if (sourceRegions.some((region) => region.invalidBox)) {
+        warn(`Semester "${group.semester}" question ${Number.isFinite(numberValue) && numberValue > 0 ? numberValue : rowIndex + 1}: a Source box is invalid (x2<=x1 or y2<=y1) — the whole page will be shown instead.`);
+      }
 
       questions.push({
         number: Number.isFinite(numberValue) && numberValue > 0 ? numberValue : rowIndex + 1,
+        qid: extractQidRef(rawCell),
         question: figure.text || '—',
         exam: normalizeExam(cellAt(row, indices.exam)),
         marks: marksParsed.value,
         marksApproximate: marksParsed.approximate,
+        source: cleanInline(sourceRaw),
+        sourceRegions,
         needsFigure: figure.needsFigure,
         figurePosition: figure.figurePosition,
       });
@@ -1252,10 +1326,13 @@ export function parseQuestionBank(rawText) {
       warn(`The file says ${declaredMerged.value} question(s) remained after merging, but the topic tables hold ${topicRows} row(s). The preview shows the ${topicRows} row(s) it could read.`);
     }
 
+    // Front matter "files: [a.pdf, b.pdf]" — every file the Source cells may point at.
+    const files = parseFileList(fields.files || '');
     const data = {
       course: unquote(fields.course || ''),
       title: unquote(fields.title || ''),
       semesters: collectSemesters(parseSemesters(fields.semesters || ''), topics, semesterPapers),
+      files,
       topics,
       semesterPapers,
       vipMatrix,

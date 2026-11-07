@@ -642,6 +642,77 @@ function sendJson(res, status, payload) {
   res.end(JSON.stringify(payload));
 }
 
+// ── Usage analytics (active users, hours, page, feature heatmap) ───
+// Heartbeats arrive via POST /api/presence/heartbeat every ~20s + on route
+// change. Delta since the previous beat (capped at 60s) counts as active time
+// for the page the user was on. State is in-memory and flushed to the shared
+// store every 60s so totals survive restarts.
+const USAGE_KEY = 'aust-usage-v1';
+const usageState = new Map(); // userId -> { totalMs, visits, firstSeen, lastSeen, page, lastBeat, byFeature: Map, byHour: Map }
+let usageLoaded = false;
+let usageFlushTimer = null;
+
+async function loadUsageState() {
+  if (usageLoaded) return;
+  usageLoaded = true;
+  try {
+    const saved = await getSharedStoreValue(USAGE_KEY, null);
+    if (saved && typeof saved === 'object') {
+      for (const [userId, rec] of Object.entries(saved)) {
+        usageState.set(userId, {
+          totalMs: Number(rec.totalMs) || 0,
+          visits: Number(rec.visits) || 0,
+          firstSeen: Number(rec.firstSeen) || 0,
+          lastSeen: Number(rec.lastSeen) || 0,
+          page: '',
+          lastBeat: 0,
+          byFeature: new Map(Object.entries(rec.byFeature || {})),
+          byHour: new Map(Object.entries(rec.byHour || {})),
+        });
+      }
+    }
+  } catch { /* ignore */ }
+  if (!usageFlushTimer) {
+    usageFlushTimer = setInterval(async () => {
+      try {
+        const out = {};
+        for (const [userId, rec] of usageState) {
+          out[userId] = {
+            totalMs: rec.totalMs,
+            visits: rec.visits,
+            firstSeen: rec.firstSeen,
+            lastSeen: rec.lastSeen,
+            byFeature: Object.fromEntries(rec.byFeature),
+            byHour: Object.fromEntries(rec.byHour),
+          };
+        }
+        await setSharedStoreValue(USAGE_KEY, out, 'usage-flush');
+      } catch { /* ignore */ }
+    }, 60_000);
+    usageFlushTimer.unref?.();
+  }
+}
+
+function usageFeatureFromPath(page) {
+  const p = String(page || '').toLowerCase();
+  if (p.startsWith('/dashboard')) return 'dashboard';
+  if (p.startsWith('/daily-life')) return 'daily-life';
+  if (p.startsWith('/gradelab') || p.startsWith('/analytics')) return 'gradelab';
+  if (p.startsWith('/campus') || p.startsWith('/insideaust')) return 'campus';
+  if (p.includes('tab=notebook') || p.startsWith('/notebook')) return 'notebook';
+  if (p.startsWith('/resource-vault') || p.startsWith('/vault')) return 'resource-vault';
+  if (p.startsWith('/question-bank')) return 'question-bank';
+  if (p.startsWith('/community')) return 'community';
+  if (p.startsWith('/connectbox') || p.startsWith('/messages')) return 'connectbox';
+  if (p.startsWith('/productivity')) return 'productivity';
+  if (p.startsWith('/marketplace')) return 'marketplace';
+  if (p.startsWith('/downtime') || p.startsWith('/chill-zone')) return 'downtime';
+  if (p.startsWith('/shadow')) return 'shadow';
+  if (p.startsWith('/settings')) return 'settings';
+  if (p.startsWith('/members')) return 'members';
+  return 'other';
+}
+
 function getPublicBaseUrl(req) {
   if (process.env.PUBLIC_BASE_URL) return process.env.PUBLIC_BASE_URL.replace(/\/+$/, '');
   const host = req.headers.host || 'localhost:5174';
@@ -765,6 +836,23 @@ function batchDriveYearSemLabel(semesterNum) {
   const year = Math.ceil(semesterNum / 2);
   const term = semesterNum % 2 === 0 ? 2 : 1;
   return `${year}.${term}`;
+}
+
+function batchDriveSemesterOptions(department) {
+  const count = String(department || '').trim().toUpperCase() === 'ARCH' ? 10 : 8;
+  return Array.from({ length: count }, (_, i) => batchDriveYearSemLabel(i + 1));
+}
+
+function batchDriveSameBatch(a, b) {
+  const left = batchDriveBatchLabel(a).toLowerCase();
+  const right = batchDriveBatchLabel(b).toLowerCase();
+  if (left && right && left === right) return true;
+  const aHasName = /[^\d\s]/.test(left);
+  const bHasName = /[^\d\s]/.test(right);
+  if (aHasName && bHasName) return false;
+  const aNo = String(a?.batchNo || '').trim();
+  const bNo = String(b?.batchNo || '').trim();
+  return Boolean(aNo) && aNo === bNo;
 }
 
 async function sendStaticFile(req, res) {
@@ -3930,6 +4018,129 @@ async function handleApiRequest(req, res) {
     return;
   }
 
+  // POST /api/presence/heartbeat — usage heartbeat (active time + page).
+  if (req.url === '/api/presence/heartbeat' && req.method === 'POST') {
+    const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
+    if (!auth) return;
+    try {
+      const body = await readJsonBody(req).catch(() => ({}));
+      await loadUsageState();
+      const page = String(body.page || '').slice(0, 120);
+      const feature = usageFeatureFromPath(page);
+      const now = Date.now();
+      let rec = usageState.get(auth.id);
+      if (!rec) {
+        rec = { totalMs: 0, visits: 1, firstSeen: now, lastSeen: now, page, lastBeat: now, byFeature: new Map(), byHour: new Map() };
+        usageState.set(auth.id, rec);
+      } else {
+        const delta = rec.lastBeat ? Math.min(60_000, now - rec.lastBeat) : 0;
+        if (delta > 0) {
+          rec.totalMs += delta;
+          const feat = rec.byFeature.get(feature) || { ms: 0, visits: 0 };
+          feat.ms += delta;
+          rec.byFeature.set(feature, feat);
+          const hourKey = `${feature}|${new Date(now).getHours()}`;
+          rec.byHour.set(hourKey, (rec.byHour.get(hourKey) || 0) + delta);
+        }
+        if (rec.page !== page) rec.visits += 1;
+        rec.page = page;
+        rec.lastBeat = now;
+        rec.lastSeen = now;
+      }
+      sendJson(res, 200, { success: true });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Heartbeat failed.' });
+    }
+    return;
+  }
+
+  // GET /api/admin/usage — active users, hours, page, feature heatmap.
+  if (req.url === '/api/admin/usage' && req.method === 'GET') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      await loadUsageState();
+      const users = await getAllUsersSafe();
+      const byId = new Map(users.map((u) => [u.id, u]));
+      const presence = getPresenceMap();
+      const now = Date.now();
+      const activeNow = [];
+      for (const [userId, rec] of usageState) {
+        const p = presence[userId];
+        const isLive = p && (now - (p.lastSeenAt || 0) < 5 * 60_000);
+        const user = byId.get(userId);
+        if (!user) continue;
+        activeNow.push({
+          userId,
+          name: user.name || 'Unknown',
+          avatar: user.avatar || null,
+          email: user.email || '',
+          department: user.department || '',
+          batchLabel: batchDriveBatchLabel(user),
+          role: user.role || 'student',
+          status: p && p.status ? p.status : (isLive ? 'online' : 'offline'),
+          page: rec.page || '',
+          feature: usageFeatureFromPath(rec.page),
+          totalMs: rec.totalMs,
+          visits: rec.visits,
+          lastSeen: rec.lastSeen,
+        });
+      }
+      const live = activeNow.filter((a) => {
+        const p = presence[a.userId];
+        return p && (now - (p.lastSeenAt || 0) < 5 * 60_000);
+      });
+      const all = [...activeNow].sort((a, b) => b.totalMs - a.totalMs);
+      const totalMs = all.reduce((sum, a) => sum + a.totalMs, 0);
+      const totalVisits = all.reduce((sum, a) => sum + a.visits, 0);
+      // Feature totals + heatmap (feature x hour).
+      const featureTotals = {};
+      const byPage = {};
+      for (const rec of usageState.values()) {
+        for (const [feature, vals] of rec.byFeature) {
+          const t = featureTotals[feature] || { ms: 0, visits: 0 };
+          t.ms += vals.ms || 0;
+          t.visits += vals.visits || 0;
+          featureTotals[feature] = t;
+        }
+        byPage[rec.page || 'other'] = (byPage[rec.page || 'other'] || 0) + 1;
+      }
+      const features = Object.keys(featureTotals);
+      const heatmap = {};
+      for (const feature of features) {
+        heatmap[feature] = new Array(24).fill(0);
+      }
+      for (const rec of usageState.values()) {
+        for (const [key, ms] of rec.byHour) {
+          const [feature, hour] = key.split('|');
+          if (!heatmap[feature]) heatmap[feature] = new Array(24).fill(0);
+          heatmap[feature][Number(hour) || 0] += ms;
+        }
+      }
+      const byPageList = Object.entries(byPage).map(([page, users]) => ({ page, users })).sort((a, b) => b.users - a.users);
+      sendJson(res, 200, {
+        success: true,
+        generatedAt: now,
+        stats: {
+          activeUsers: live.length,
+          totalRegistered: users.length,
+          trackedUsers: all.length,
+          totalHours: Math.round((totalMs / 3_600_000) * 10) / 10,
+          avgHours: all.length ? Math.round(((totalMs / all.length) / 3_600_000) * 10) / 10 : 0,
+          totalVisits,
+        },
+        activeNow: live.sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0)),
+        topUsers: all.slice(0, 20),
+        featureTotals,
+        heatmap,
+        byPage: byPageList,
+      });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to load usage.' });
+    }
+    return;
+  }
+
   // POST /api/presence/privacy — update the viewer's own privacy toggles
   // ({ showCgpa, showAttendance }). Stored on the user record in users.json.
   if (req.url === '/api/presence/privacy' && req.method === 'POST') {
@@ -4644,6 +4855,69 @@ async function handleApiRequest(req, res) {
       sendJson(res, 200, { success: true, maxUses: BATCH_DRIVE_CODE_MAX_USES, sharers });
     } catch (error) {
       sendJson(res, 500, { success: false, error: error.message || 'Failed to load code shares.' });
+    }
+    return;
+  }
+
+  if (req.url === '/api/batch-drive/admin/summary' && req.method === 'GET') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const users = await getAllUsersSafe();
+      const drives = (await getSharedStoreValue('aust-batch-drives', {})) || {};
+      // Group active students by department + batch label.
+      const batchMap = new Map();
+      for (const entry of users) {
+        if (!isBatchDriveStudentLike(entry)) continue;
+        const dept = String(entry.department || '').trim().toUpperCase();
+        if (!dept) continue;
+        const label = batchDriveBatchLabel(entry);
+        if (!label) continue;
+        const key = `${dept}::${label.toLowerCase()}`;
+        if (!batchMap.has(key)) {
+          batchMap.set(key, {
+            department: dept,
+            batchLabel: label,
+            batchName: String(entry.batchName || '').trim(),
+            batchNo: String(entry.batchNo || '').trim(),
+            students: 0,
+          });
+        }
+        batchMap.get(key).students += 1;
+      }
+      const batches = [...batchMap.values()].sort((a, b) => a.department.localeCompare(b.department) || a.batchLabel.localeCompare(b.batchLabel, undefined, { numeric: true }));
+      const enriched = batches.map((batch) => {
+        const options = batchDriveSemesterOptions(batch.department);
+        const bucket = drives[batch.department] || {};
+        const semesters = options.map((yearSem) => {
+          const list = Array.isArray(bucket[yearSem]) ? bucket[yearSem] : [];
+          const entry = list.find((b) => b && String(b.driveUrl || '').trim() && batchDriveSameBatch(b, batch));
+          return { yearSem, hasDrive: Boolean(entry?.driveUrl), updatedBy: entry?.updatedBy || '', updatedAt: entry?.updatedAt || '' };
+        });
+        const uploadedCount = semesters.filter((s) => s.hasDrive).length;
+        const missing = semesters.filter((s) => !s.hasDrive).map((s) => s.yearSem);
+        return {
+          ...batch,
+          totalSemesters: options.length,
+          uploadedCount,
+          missing,
+          semesters,
+          status: uploadedCount === options.length ? 'complete' : uploadedCount === 0 ? 'none' : 'partial',
+        };
+      });
+      sendJson(res, 200, {
+        success: true,
+        batches: enriched,
+        totals: {
+          totalBatches: enriched.length,
+          withAny: enriched.filter((b) => b.uploadedCount > 0).length,
+          missingAll: enriched.filter((b) => b.uploadedCount === 0),
+          partial: enriched.filter((b) => b.uploadedCount > 0 && b.uploadedCount < b.totalSemesters),
+          missingSemesters: enriched.reduce((sum, b) => sum + b.missing.length, 0),
+        },
+      });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to load drive summary.' });
     }
     return;
   }

@@ -22,7 +22,6 @@ const navItems = [
   { path: '/gradelab', label: 'GradeLab', icon: BarChart3 },
   { path: '/insideaust', label: 'InsideAUST', icon: MapPin },
   { path: '/resource-vault', label: 'Resource Vault', icon: BookOpen },
-  { path: '/notebook', label: 'Notebook', icon: NotebookPen },
   { path: '/question-bank', label: 'Question Bank', icon: FileSearch },
   { path: '/community', label: 'Community', icon: Users },
   { path: '/connectbox', label: 'ConnectBox', icon: MessageSquare },

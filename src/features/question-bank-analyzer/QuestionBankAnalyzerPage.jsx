@@ -237,6 +237,7 @@ function QuestionBankAnalyzer() {
   const [courseCode, setCourseCode] = useState(initial.courseCode || '');
   const [courseTitle, setCourseTitle] = useState(initial.courseTitle || '');
   const [pasted, setPasted] = useState(initial.pasted || '');
+  const [sourceFiles, setSourceFiles] = useState([]);
   const [files, setFiles] = useState([]);
   const [dragging, setDragging] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -1170,6 +1171,8 @@ function QuestionBankAnalyzer() {
               checklistItems={checklist.items}
               checklistEnabled={hasData && checklist.enabled}
               onToggleChecklist={checklist.toggle}
+              sourceFiles={sourceFiles}
+              onSourceFiles={setSourceFiles}
             />
           </>
         ) : (

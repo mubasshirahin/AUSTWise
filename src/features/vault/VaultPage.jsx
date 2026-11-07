@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Archive, HardDrive, Cpu, Link2, KeyRound } from 'lucide-react';
+import { Archive, HardDrive, Cpu, Link2, KeyRound, NotebookPen } from 'lucide-react';
 import VaultSelection from './VaultSelection';
 import VaultStepProgress from './VaultStepProgress';
 import VaultBatchSelector from './VaultBatchSelector';
@@ -128,6 +128,7 @@ export default function VaultPage() {
   };
 
   const vaultTabs = [
+    { id: 'notebook', label: 'Notebook', icon: NotebookPen, desc: 'Coming soon', color: 'amber', accessKey: 'feature:vault:notebook' },
     { id: 'batch-drive', label: 'Batch Drive', icon: HardDrive, desc: 'Study materials & drive', color: 'amber', accessKey: 'feature:vault:batch-drive' },
     ...(canManageDrive
       ? [{ id: 'drive-links', label: 'Drive Links', icon: Link2, desc: 'CR/SR semester links', color: 'amber', accessKey: 'feature:vault:drive-links' }]
@@ -189,6 +190,32 @@ export default function VaultPage() {
             <Cpu size={48} strokeWidth={1.5} />
             <h3>Carbon Vault</h3>
             <p>Your carbon footprint tracker for semester resources — coming soon!</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (activeTab === 'notebook') {
+      return (
+        <div className="vault-coming-soon-wrap">
+          <div className="schedule-masthead">
+            <div className="schedule-title-block">
+              <div className="schedule-icon-tile">
+                <NotebookPen size={22} />
+              </div>
+              <div>
+                <span className="schedule-overline">Resource Vault</span>
+                <p className="schedule-title">Notebook</p>
+                <span className="schedule-subtitle">Handwritten notes</span>
+              </div>
+            </div>
+            <div className="schedule-masthead-center" />
+            <div className="schedule-actions" />
+          </div>
+          <div className="vault-coming-soon">
+            <NotebookPen size={48} strokeWidth={1.5} />
+            <h3>Coming Soon</h3>
+            <p>A real pen-and-paper notebook — with Apple Pencil pressure, shapes, and paper templates. Coming soon!</p>
           </div>
         </div>
       );
@@ -288,7 +315,9 @@ export default function VaultPage() {
             Resource<span className="vl-hero-name"> Vault</span>
           </h1>
           <p className="vl-hero-subtitle">
-            {activeTab === 'carbon-vault'
+            {activeTab === 'notebook'
+              ? 'Handwritten notes with pen and paper — coming soon'
+              : activeTab === 'carbon-vault'
               ? 'Monitor your semester resource emissions'
               : activeTab === 'code-generate'
                 ? 'Semester 3.1 and above — generate single-use codes for your juniors'
