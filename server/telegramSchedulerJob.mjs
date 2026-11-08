@@ -19,8 +19,6 @@
  */
 
 import 'dotenv/config';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { readJson, writeJson } from './jsonDB.mjs';
 import {
   getAllUsers,
@@ -36,8 +34,6 @@ import {
 import { getAllUsersSafe } from './userStore.mjs';
 import { getUserStoreValue } from './storeDB.mjs';
 import { getPool } from './db.mjs';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ── Timezone handling (Asia/Dhaka) ───────────────────────────────────────────
 const APP_TZ = 'Asia/Dhaka';
@@ -77,7 +73,7 @@ function dhakaNow() {
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 // ── Persistent send log (idempotency across restarts) ────────────────────────
-const LOG_FILE = path.join(__dirname, '.tg_schedule_log.json');
+const LOG_FILE = '.tg_schedule_log.json';
 
 async function loadLog() {
   const log = await readJson(LOG_FILE, {});

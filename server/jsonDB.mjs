@@ -9,7 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  * Reads a JSON file, returning defaultValue if it doesn't exist or is invalid.
  */
 export async function readJson(filename, defaultValue = []) {
-  const filePath = path.join(__dirname, filename);
+  const filePath = path.isAbsolute(filename) ? filename : path.join(__dirname, filename);
   try {
     if (!existsSync(filePath)) {
       return defaultValue;
@@ -26,7 +26,7 @@ export async function readJson(filename, defaultValue = []) {
  * Writes data to a JSON file.
  */
 export async function writeJson(filename, data) {
-  const filePath = path.join(__dirname, filename);
+  const filePath = path.isAbsolute(filename) ? filename : path.join(__dirname, filename);
   try {
     await writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
   } catch (error) {
