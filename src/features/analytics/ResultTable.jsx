@@ -91,7 +91,7 @@ const getDefaultResults = (maxSemester) => Array.from({ length: maxSemester }, (
 
 const roundTwo = (value) => Number(value.toFixed(2));
 
-const calculateSemesterStats = (results) => {
+const calculateSemesterStats = (results, { sort = true, coerceCredit = true } = {}) => {
   let totalCredits = 0;
   let totalWeightedPoints = 0;
 
@@ -103,12 +103,13 @@ const calculateSemesterStats = (results) => {
     totalCredits += semCredits;
     totalWeightedPoints += semWeightedPoints;
 
+    const mappedCourses = sem.courses.map((course) => (coerceCredit
+      ? { ...course, credit: getCreditValue(course.credit) }
+      : { ...course }));
+
     return {
       ...sem,
-      courses: sortCourses(sem.courses.map((course) => ({
-        ...course,
-        credit: getCreditValue(course.credit),
-      }))),
+      courses: sort ? sortCourses(mappedCourses) : mappedCourses,
       sgpa: semCredits > 0 ? roundTwo(semWeightedPoints / semCredits) : null,
       cgpa: totalCredits > 0 ? roundTwo(totalWeightedPoints / totalCredits) : null,
     };
@@ -348,6 +349,22 @@ export default function ResultTable({ onResultsChange }) {
     onResultsChange?.(defaultResults);
   };
 
+  const pendingFocusRef = useRef(null);
+
+  useEffect(() => {
+    if (!pendingFocusRef.current) return;
+    const { semNum, rowIdx, field } = pendingFocusRef.current;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const el = inputRefs.current[`r_${semNum}_${rowIdx}_${field}`];
+      if (el) {
+        el.focus();
+        if (typeof el.select === 'function') el.select();
+        el.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+      }
+      pendingFocusRef.current = null;
+    }));
+  }, [draftResults]);
+
   const updateCourseField = (semNum, courseIndex, field, value) => {
     setDraftResults((currentDraft) => calculateSemesterStats(currentDraft.map((sem) => {
       if (sem.semester !== semNum) return sem;
@@ -366,18 +383,21 @@ export default function ResultTable({ onResultsChange }) {
           return updatedCourse;
         }),
       };
-    })));
+    }), { sort: false, coerceCredit: false }));
   };
 
   const addCourse = (semNum) => {
-    setDraftResults((currentDraft) => calculateSemesterStats(currentDraft.map((sem) => {
-      if (sem.semester !== semNum) return sem;
+    const sem = draftResults.find((s) => s.semester === semNum);
+    const newIndex = sem ? sem.courses.length : 0;
+    pendingFocusRef.current = { semNum, rowIdx: newIndex, field: 'code' };
+    setDraftResults((currentDraft) => calculateSemesterStats(currentDraft.map((s) => {
+      if (s.semester !== semNum) return s;
 
       return {
-        ...sem,
-        courses: [...sem.courses, createBlankCourse(semNum, sem.courses.length)],
+        ...s,
+        courses: [...s.courses, createBlankCourse(semNum, s.courses.length)],
       };
-    })));
+    }), { sort: false, coerceCredit: false }));
   };
 
   const removeCourse = (semNum, courseIndex) => {
@@ -388,7 +408,7 @@ export default function ResultTable({ onResultsChange }) {
         ...sem,
         courses: sem.courses.filter((_, index) => index !== courseIndex),
       };
-    })));
+    }), { sort: false, coerceCredit: false }));
   };
 
   const exportTranscript = async () => {
@@ -574,12 +594,12 @@ export default function ResultTable({ onResultsChange }) {
             <table className="cgpa-sem-table">
               <thead>
                 <tr>
-                  <th>Course Code</th>
-                  <th>Course Title</th>
-                  <th style={{ textAlign: 'center' }}>Credits</th>
-                  <th style={{ textAlign: 'center' }}>Grade</th>
-                  <th style={{ textAlign: 'center' }}>GPA</th>
-                  {isEditing && <th style={{ width: '52px', textAlign: 'center' }}>Action</th>}
+                  <th className="cgpa-col-code">Code</th>
+                  <th className="cgpa-col-title">Course Title</th>
+                  <th className="cgpa-col-credit" style={{ textAlign: 'center' }}>Credits</th>
+                  <th className="cgpa-col-grade" style={{ textAlign: 'center' }}>Grade</th>
+                  <th className="cgpa-col-gpa" style={{ textAlign: 'center' }}>GPA</th>
+                  {isEditing && <th className="cgpa-col-action" style={{ textAlign: 'center' }}>Action</th>}
                 </tr>
               </thead>
               <tbody>
@@ -588,7 +608,7 @@ export default function ResultTable({ onResultsChange }) {
                     key={`${displaySemester.semester}-${courseIndex}`}
                     className="cgpa-course-row"
                   >
-                    <td style={{ fontWeight: 'var(--fw-semibold)', position: 'relative', zIndex: 1000 }}>
+                    <td className="cgpa-col-code" style={{ fontWeight: 'var(--fw-semibold)', position: 'relative', zIndex: 1000 }}>
                       {isEditing ? (
                         <input
                           ref={el => inputRefs.current[`r_${displaySemester.semester}_${courseIndex}_code`] = el}
@@ -615,7 +635,7 @@ export default function ResultTable({ onResultsChange }) {
                         <span style={{ color: 'var(--accent-blue)', fontWeight: 'var(--fw-bold)' }}>{course.code || '-'}</span>
                       )}
                     </td>
-                    <td className="cgpa-course-name">
+                    <td className="cgpa-course-name cgpa-col-title">
                       {isEditing ? (
                         <input
                           ref={el => inputRefs.current[`r_${displaySemester.semester}_${courseIndex}_0`] = el}
@@ -641,15 +661,16 @@ export default function ResultTable({ onResultsChange }) {
                         course.name
                       )}
                     </td>
-                    <td style={{ textAlign: 'center' }}>
+                    <td className="cgpa-col-credit" style={{ textAlign: 'center' }}>
                       {isEditing ? (
                         <input
                           ref={el => inputRefs.current[`r_${displaySemester.semester}_${courseIndex}_1`] = el}
                           className="input cgpa-credit-input"
-                          type="number"
-                          min="0"
-                          step="0.5"
-                          value={formatCredit(course.credit)}
+                          type="text"
+                          inputMode="decimal"
+                          pattern="[0-9.]*"
+                          placeholder="3"
+                          value={course.credit ?? ''}
                           onChange={(event) => updateCourseField(displaySemester.semester, courseIndex, 'credit', event.target.value)}
                           style={{
                             width: '56px',
@@ -669,7 +690,7 @@ export default function ResultTable({ onResultsChange }) {
                         formatCredit(course.credit)
                       )}
                     </td>
-                    <td style={{ textAlign: 'center' }}>
+                    <td className="cgpa-col-grade" style={{ textAlign: 'center' }}>
                       {isEditing ? (
                         <select
                           ref={el => inputRefs.current[`r_${displaySemester.semester}_${courseIndex}_2`] = el}
@@ -706,11 +727,11 @@ export default function ResultTable({ onResultsChange }) {
                         </span>
                       )}
                     </td>
-                    <td style={{ textAlign: 'center', fontWeight: 'var(--fw-semibold)' }}>
+                    <td className="cgpa-col-gpa" style={{ textAlign: 'center', fontWeight: 'var(--fw-semibold)' }}>
                       {course.point !== null ? course.point.toFixed(2) : '-'}
                     </td>
                     {isEditing && (
-                      <td style={{ textAlign: 'center' }}>
+                      <td className="cgpa-col-action" style={{ textAlign: 'center' }}>
                         <button
                           className="btn btn-secondary btn-icon"
                           onClick={() => removeCourse(displaySemester.semester, courseIndex)}
@@ -728,7 +749,7 @@ export default function ResultTable({ onResultsChange }) {
             </table>
             {isEditing && (
               <div className="cgpa-sem-foot">
-                <button className="btn btn-secondary btn-sm" onClick={() => addCourse(displaySemester.semester)}>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => addCourse(displaySemester.semester)}>
                   <Plus size={14} /> Add Course
                 </button>
               </div>
