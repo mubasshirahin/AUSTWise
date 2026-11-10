@@ -1,8 +1,13 @@
 .glider-tabs-wrap {
+  width: 100%;
+  box-sizing: border-box;
   overflow-x: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--border-primary) transparent;
-  padding-bottom: 2px;
+  padding: 6px;
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 12%, var(--border-primary));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--accent-amber) 4%, var(--bg-input));
 }
 
 /* Mobile: hide the scrollbar (swipe to scroll) — keep the track tappable area */
@@ -42,12 +47,13 @@
   flex-wrap: nowrap;
   gap: 6px;
   padding: 6px;
-  background: var(--bg-input);
-  border: 1px solid var(--border-primary);
-  border-radius: 16px;
-  min-width: min-content;
-  width: max-content;
-  max-width: 760px;
+  width: 100%;
+  min-width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+  justify-content: flex-start;
+  border: 0;
+  background: transparent;
 }
 
 .glider-tabs-glider {
@@ -167,8 +173,8 @@
 }
 
 .glider-tabs-dashboard .glider-tabs-track {
-  background: color-mix(in srgb, var(--accent-amber) 4%, var(--bg-input));
-  border-color: color-mix(in srgb, var(--accent-amber) 12%, var(--border-primary));
+  background: transparent;
+  border: 0;
 }
 
 .glider-tabs-dashboard .glider-tabs-glider {

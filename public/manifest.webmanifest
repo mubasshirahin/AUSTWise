@@ -9,9 +9,21 @@
   "start_url": "/",
   "icons": [
     {
-      "src": "/austwise-icon-final.svg",
+      "src": "/austwise_icon_final.svg?v=3",
       "sizes": "any",
       "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-192x192.png?v=3",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512x512.png?v=3",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]

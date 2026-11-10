@@ -18,6 +18,8 @@ import '../campus/SemesterViewWidget.css';
 import './CommunityPage.css';
 
 const COMMUNITY_TAB_KEY = 'aust-community-active-tab';
+const STUDENT_DIRECTORY_EXPANSION_KEY = 'aust-student-directory-expanded-v1';
+const STUDENT_DIRECTORY_DEPARTMENT_EXPANSION_KEY = 'aust-student-directory-expanded-departments-v1';
 
 // Unified theme: every tab uses the single brand accent (amber) so the tab bar
 // stays monochrome instead of rotating purple/green/blue per category.
@@ -42,6 +44,14 @@ export default function CommunityPage() {
     defaultValue: 'alumni',
     onChange: setActiveTab,
   });
+
+  const handleCommunityTabChange = (nextTab) => {
+    if (activeTab === 'students' && nextTab !== 'students') {
+      sessionStorage.removeItem(STUDENT_DIRECTORY_EXPANSION_KEY);
+      sessionStorage.removeItem(STUDENT_DIRECTORY_DEPARTMENT_EXPANSION_KEY);
+    }
+    handleTabChange(nextTab);
+  };
 
   const renderActiveTab = () => {
     switch (activeTab) {
@@ -72,7 +82,7 @@ export default function CommunityPage() {
             Communit<span className="cm-hero-name">y</span>
           </h1>
           <p className="cm-hero-subtitle">
-            {activeMeta.desc} · connect with alumni, faculty, clubs, classmates and mentors.
+            {activeMeta.desc} · faculty, clubs, classmates and mentors.
           </p>
         </div>
       </header>}
@@ -84,7 +94,7 @@ export default function CommunityPage() {
           <GliderTabs
             tabs={communityTabs}
             activeTab={activeTab}
-            onChange={handleTabChange}
+            onChange={handleCommunityTabChange}
             variant="dashboard"
           />
         </div>

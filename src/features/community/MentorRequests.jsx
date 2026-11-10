@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MessageSquarePlus, X, UserCheck, Trash2, Mail, LayoutGrid, Inbox } from 'lucide-react';
+import { MessageSquarePlus, X, UserCheck, Trash2, Mail, LayoutGrid, Inbox, Send } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
   listMentorRequests,
@@ -141,21 +141,26 @@ export default function MentorRequests() {
           <div>
             <span className="schedule-overline">Community</span>
             <div className="schedule-title">Find a Mentor</div>
-            <span className="schedule-subtitle">Need help with a topic? Post what you need and mentors will respond.</span>
+            <span className="schedule-subtitle">Need help with a topic?</span>
           </div>
         </div>
 
         <div className="schedule-masthead-center" />
 
         <div className="schedule-actions">
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowForm((open) => !open)}>
+          <button
+            type="button"
+            className={`btn mentor-post-btn ${showForm ? 'is-open' : ''}`}
+            onClick={() => setShowForm((open) => !open)}
+            aria-expanded={showForm}
+          >
             {showForm ? <X size={14} /> : <MessageSquarePlus size={14} />}
-            {showForm ? 'Cancel' : 'Post Request'}
+            <span>{showForm ? 'Cancel' : 'Post Request'}</span>
           </button>
         </div>
       </div>
 
-      <div className="schedule-dotted-divider" style={{ marginTop: 0 }} />
+      <div className="schedule-dotted-divider" />
 
       {message && (
         <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent-emerald)', padding: '8px 12px', background: 'var(--bg-input)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-primary)' }}>
@@ -184,14 +189,14 @@ export default function MentorRequests() {
             Description (optional)
             <textarea id="mentor-description" name="description" className="input" value={form.description} onChange={(e) => setForm((c) => ({ ...c, description: e.target.value }))} maxLength={MAX_SHORT_TEXT_LENGTH} placeholder="Describe what you need help with..." rows={2} />
           </label>
-          <button type="submit" className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start' }}>
-            Publish Request
+          <button type="submit" className="btn btn-primary btn-sm mentor-publish-btn" style={{ alignSelf: 'flex-start' }}>
+            <Send size={13} /> Publish Request
           </button>
         </form>
       )}
 
       {/* ── Sections: Feed (all) | My Responses (own posts) ── */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '16px 0 12px' }} role="tablist" aria-label="Mentor sections">
+      <div className="mentor-tabs-row" role="tablist" aria-label="Mentor sections">
         <button type="button" role="tab" aria-selected={section === 'feed'} className={`btn btn-sm ${section === 'feed' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('feed')} style={{ gap: 6 }}>
           <LayoutGrid size={13} /> Feed · {requests.length}
         </button>
@@ -200,11 +205,10 @@ export default function MentorRequests() {
         </button>
         {section === 'feed' && (
           <select
-            className="input"
+            className="input mentor-tabs-sort"
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
             aria-label="Sort feed"
-            style={{ width: 'auto', marginLeft: 'auto', fontSize: 'var(--fs-xs)', padding: '6px 10px' }}
           >
             <option value="recent">Most Recent</option>
             <option value="responses">Least Responses</option>

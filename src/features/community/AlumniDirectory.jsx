@@ -1,29 +1,80 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Mail, Building2, GraduationCap, Users, MessageCircle, Radio } from 'lucide-react';
+import { Search, GraduationCap, Users, MessageCircle, Radio } from 'lucide-react';
 import { getAlumniAccounts, setOpenForTalk } from '../../utils/authStorage';
+import { getCachedMembers, refreshMemberDirectory } from '../../utils/memberDirectory';
 import { useAuth } from '../../context/AuthContext';
 
 export default function AlumniDirectory() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState('All');
-  const [alumni, setAlumni] = useState(() => getAlumniAccounts());
+  const [alumni, setAlumni] = useState(() => {
+    const cached = getCachedMembers();
+    const localById = new Map(getAlumniAccounts().map((account) => [account.id, account]));
+    return cached.filter((member) => ['alumni', 'alumni_with_carry'].includes(member.role)
+      || member.roles?.some((role) => ['alumni', 'alumni_with_carry'].includes(role)))
+      .map((member) => ({ ...localById.get(member.id), ...member }));
+  });
 
   const isAlumniViewer = user?.role === 'alumni' || user?.role === 'alumni_with_carry';
   const isGuest = user?.role === 'guest' || !user?.id;
 
-  // Registered alumni (role === 'alumni'). Reloaded after the
-  // "Open for Talk" toggle so the change reflects immediately.
-  const refreshAlumni = () => setAlumni(getAlumniAccounts());
+  // Accounts are server-side (JWT): localStorage only mirrors the accounts
+  // that happen to have signed in on THIS browser, so reading it alone left
+  // the directory empty for everyone else. Load the public member directory
+  // instead and use the local mirror only for fields the server keeps private
+  // (email). Falls back to the local mirror when offline.
+  useEffect(() => {
+    let cancelled = false;
+
+    const sync = async () => {
+      try {
+        const members = await refreshMemberDirectory();
+        if (cancelled) return;
+        const localById = new Map(getAlumniAccounts().map((a) => [a.id, a]));
+        const rows = members
+          .filter((m) => {
+            const roles = [m.role, ...(Array.isArray(m.roles) ? m.roles : [])];
+            return roles.includes('alumni') || roles.includes('alumni_with_carry');
+          })
+          .map((m) => {
+            const local = localById.get(m.id) || {};
+            return {
+              id: m.id,
+              name: m.name,
+              email: local.email || '',
+              department: m.department || local.department || '',
+              batchNo: String(m.batchNo || local.batchNo || '').trim(),
+              batch: m.batch || local.batch || 'N/A',
+              batchName: m.batchName || local.batchName || m.batch || local.batch || '',
+              company: m.company || local.company || '',
+              designation: m.designation || local.designation || '',
+              graduationYear: m.graduationYear || local.graduationYear || '',
+              avatar: m.avatar || local.avatar || null,
+              initials: m.initials || local.initials || 'AU',
+              openForTalk: Boolean(m.openForTalk ?? local.openForTalk),
+            };
+          })
+          .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+        if (!cancelled) setAlumni(rows);
+      } catch { /* Keep the local directory when offline. */ }
+    };
+
+    sync();
+    const timer = setInterval(sync, 15000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, []);
 
   const myOpenForTalk = alumni.find((a) => a.id === user?.id)?.openForTalk ?? false;
 
   const toggleMyAvailability = () => {
+    if (!user?.id) return;
     const next = !myOpenForTalk;
-    setOpenForTalk(user.id, next);
-    refreshAlumni();
+    setOpenForTalk(user.id, next); // local mirror
+    setAlumni((prev) => prev.map((a) => (a.id === user.id ? { ...a, openForTalk: next } : a)));
+    updateUser?.({ openForTalk: next }); // persist so other browsers see it
   };
 
   // Departments that actually have alumni, for the selector.
@@ -84,7 +135,7 @@ export default function AlumniDirectory() {
           <div>
             <span className="schedule-overline">Community</span>
             <div className="schedule-title">Alumni Corner</div>
-            <span className="schedule-subtitle">Registered AUST graduates, grouped by batch — oldest batches first</span>
+            <span className="schedule-subtitle">Registered AUST graduates</span>
           </div>
         </div>
 
@@ -104,9 +155,10 @@ export default function AlumniDirectory() {
           </select>
 
           <div className="search-box alumni-search">
+            <Search size={12} aria-hidden="true" />
             <input
               type="text"
-              placeholder="Search by name / company..."
+              placeholder="Search name or company..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -137,12 +189,12 @@ export default function AlumniDirectory() {
             </div>
             <div>
               <h3 style={{ fontSize: '14px', margin: 0, fontWeight: 700 }}>
-                Open for Talk {myOpenForTalk ? 'ON' : 'OFF'}
+                Open for Messages {myOpenForTalk ? 'ON' : 'OFF'}
               </h3>
               <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: '2px 0 0' }}>
                 {myOpenForTalk
                   ? 'Students and other alumni can message you directly from this directory.'
-                  : 'Turn this on so others can message you from the Alumni Directory.'}
+                  : 'Turn this on to let others message you from the Alumni Directory.'}
               </p>
             </div>
           </div>
@@ -151,7 +203,7 @@ export default function AlumniDirectory() {
             onClick={toggleMyAvailability}
             role="switch"
             aria-checked={myOpenForTalk}
-            aria-label="Toggle Open for Talk"
+            aria-label="Toggle Open for Messages"
           />
         </div>
       )}
@@ -192,7 +244,7 @@ export default function AlumniDirectory() {
                         <button
                           type="button"
                           className="avatar"
-                          style={{ width: '40px', height: '40px', flexShrink: 0, padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
+                          style={{ width: '40px', height: '40px', flexShrink: 0, padding: 0, border: 'none', cursor: 'pointer' }}
                           onClick={() => navigate(`/members/${al.id}`)}
                           title={`View ${al.name}'s profile / ID`}
                           aria-label={`View ${al.name}'s profile`}
@@ -204,59 +256,41 @@ export default function AlumniDirectory() {
                         <div className="alumni-card-info">
                           <h3 className="alumni-card-name">
                             {al.name}
-                            {isMe && (
-                              <span className="badge badge-amber" style={{ fontSize: '9px', marginLeft: '6px', padding: '1px 6px' }}>
-                                You
-                              </span>
-                            )}
+                            {isMe && <span className="alumni-card-you">you</span>}
                           </h3>
                           <p className="alumni-card-dept">
                             {al.department}
-                            {al.graduationYear ? ` · Class of ${al.graduationYear}` : ''}
+                            {al.batchName ? ` · ${al.batchName}` : ''}
+                            {al.graduationYear ? ` · ${al.graduationYear}` : ''}
                           </p>
+                          {(al.designation || al.company || al.email) && (
+                            <p className="alumni-card-meta">
+                              {[al.designation, al.company].filter(Boolean).join(' · ')}
+                              {al.email && (
+                                <>
+                                  {(al.designation || al.company) && ' · '}
+                                  <a href={`mailto:${al.email}`} className="alumni-card-email" title={al.email}>
+                                    {al.email}
+                                  </a>
+                                </>
+                              )}
+                            </p>
+                          )}
                         </div>
-                      </div>
 
-                      <div className="alumni-card-details">
-                        {al.designation && (
-                          <span className="alumni-card-detail">
-                            <GraduationCap size={12} /> {al.designation}
-                          </span>
-                        )}
-                        {al.company && (
-                          <span className="alumni-card-detail">
-                            <Building2 size={12} /> {al.company}
-                          </span>
-                        )}
-                        {al.email && (
-                          <a href={`mailto:${al.email}`} className="alumni-card-email">
-                            <Mail size={12} /> {al.email}
-                          </a>
-                        )}
-                      </div>
-
-                      <div className="alumni-card-footer">
-                        {al.openForTalk ? (
-                          <span className="alumni-card-status alumni-card-status-online">
-                            <Radio size={11} /> Open for Talk
-                          </span>
-                        ) : (
-                          <span className="alumni-card-status alumni-card-status-offline">Not available</span>
-                        )}
-
-                        {canMessage ? (
-                          <button
-                            type="button"
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => handleMessage(al)}
-                          >
-                            <MessageCircle size={13} /> Message
-                          </button>
-                        ) : isMe ? (
-                          <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>Your profile</span>
-                        ) : (
-                          <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>Messaging off</span>
-                        )}
+                        <div className="alumni-card-actions">
+                          {canMessage && (
+                            <button
+                              type="button"
+                              className="alumni-card-msg"
+                              onClick={() => handleMessage(al)}
+                              title={`Message ${al.name}`}
+                              aria-label={`Message ${al.name}`}
+                            >
+                              <MessageCircle size={14} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );

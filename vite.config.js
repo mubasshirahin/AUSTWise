@@ -7,7 +7,13 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['austwise-icon-themeable.svg', 'favicon.ico'],
+      includeAssets: [
+        'austwise_icon_final.svg',
+        'favicon.png',
+        'apple-touch-icon.png',
+        'icon-192x192.png',
+        'icon-512x512.png',
+      ],
       manifest: {
         name: 'AUSTWise',
         short_name: 'AUSTWise',
@@ -19,9 +25,21 @@ export default defineConfig({
         start_url: '/',
         icons: [
           {
-            src: 'austwise-icon-themeable.svg',
+            src: 'austwise_icon_final.svg',
             sizes: 'any',
             type: 'image/svg+xml',
+            purpose: 'any maskable',
+          },
+          {
+            src: 'icon-192x192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: 'icon-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
             purpose: 'any maskable',
           },
         ],

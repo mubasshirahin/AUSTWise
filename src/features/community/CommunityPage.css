@@ -124,7 +124,6 @@
   min-width: 0;
 }
 
-
 /* Sub-tab mastheads (Alumni, Clubs, Students, Mentors) reuse the shared
    schedule-masthead base; keep the "joined" stat readable with the
    semantic emerald highlight. */
@@ -306,12 +305,216 @@
   flex-wrap: wrap;
 }
 
-.alumni-select {
-  min-width: 160px;
+/* Department filter — amber-tinted pill that pairs with the search field:
+   one shared geometry (36px tall, full radius, 1px border, soft fill) so the
+   filter tray reads as a single control group instead of two stray widgets. */
+.community-page .alumni-page .alumni-select {
+  appearance: none;
+  -webkit-appearance: none;
+  width: auto;
+  min-width: 172px;
+  min-height: 36px;
+  max-width: 100%;
+  padding: 7px 28px 7px 31px;
+  border-radius: var(--radius-full);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 30%, var(--border-primary));
+  background-color: color-mix(in srgb, var(--accent-amber) 5%, var(--bg-input));
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23F59E0B' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3'%3E%3C/polygon%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat, no-repeat;
+  background-position: left 11px center, right 10px center;
+  background-size: 11px 11px, 9px 9px;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 6%, transparent);
+  color: var(--text-primary);
+  font-size: 11.5px;
+  font-weight: var(--fw-semibold);
+  letter-spacing: normal;
+  line-height: 1.3;
+  cursor: pointer;
+  text-transform: none;
+  text-overflow: ellipsis;
+  transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+}
+.community-page .student-dir .alumni-select {
+  appearance: none;
+  -webkit-appearance: none;
+  width: auto;
+  min-width: 146px;
+  min-height: 28px;
+  max-width: 100%;
+  padding: 4px 24px 4px 26px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-primary);
+  background-color: transparent;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3'%3E%3C/polygon%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat, no-repeat;
+  background-position: left 9px center, right 8px center;
+  background-size: 10px 10px, 9px 9px;
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-weight: var(--fw-medium);
+  line-height: 1.2;
+  cursor: pointer;
+  text-overflow: ellipsis;
+  transition: border-color 0.18s ease, color 0.18s ease;
+}
+.community-page .alumni-page .alumni-select:hover {
+  border-color: color-mix(in srgb, var(--accent-amber) 55%, var(--border-primary));
+  background-color: color-mix(in srgb, var(--accent-amber) 7%, var(--bg-input));
+  box-shadow: 0 2px 6px -3px color-mix(in srgb, var(--accent-amber) 40%, transparent);
+}
+.community-page .student-dir .alumni-select:hover {
+  border-color: var(--border-focus);
+  color: var(--text-secondary);
+}
+.community-page .alumni-page .alumni-select:focus,
+.community-page .alumni-page .alumni-select:focus-visible {
+  outline: none;
+  border-color: var(--accent-amber);
+  background-color: color-mix(in srgb, var(--accent-amber) 9%, var(--bg-input));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #ffffff 8%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--accent-amber) 18%, transparent);
+}
+.community-page .alumni-page .alumni-select option {
+  background: var(--bg-secondary, var(--bg-input));
+  color: var(--text-primary);
+  text-transform: none;
+}
+.community-page .student-dir .alumni-select:focus,
+.community-page .student-dir .alumni-select:focus-visible {
+  outline: none;
+  border-color: var(--accent-amber);
+  color: var(--text-primary);
 }
 
-.alumni-search {
-  width: 220px;
+/* Search field — same pill language as the department filter: 36px tall,
+   full radius, soft amber gradient fill, inner highlight, amber focus ring. */
+.community-page .alumni-page .alumni-search input {
+  width: 100%;
+  min-height: 36px;
+  padding: 7px 14px 7px 32px;
+  border-radius: var(--radius-full);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 22%, var(--border-primary));
+  background:
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--accent-amber) 7%, var(--bg-input)),
+      var(--bg-input) 72%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #ffffff 7%, transparent),
+    0 1px 2px color-mix(in srgb, #000000 22%, transparent);
+  color: var(--text-primary);
+  font-size: 11.5px;
+  letter-spacing: 0.01em;
+  transition: border-color 0.2s ease, box-shadow 0.25s ease, background 0.25s ease;
+}
+.community-page .student-dir .alumni-search input {
+  min-height: 30px;
+  padding: 5px 12px 5px 28px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-primary);
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--accent-amber) 8%, var(--bg-input)),
+    var(--bg-input) 70%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #ffffff 7%, transparent),
+    0 1px 2px color-mix(in srgb, #000000 22%, transparent);
+  color: var(--text-primary);
+  font-size: 11px;
+  letter-spacing: 0.01em;
+  transition: border-color 0.2s ease, box-shadow 0.25s ease, background 0.25s ease;
+}
+.community-page .alumni-page .alumni-search input:hover {
+  border-color: color-mix(in srgb, var(--accent-amber) 48%, var(--border-primary));
+  background:
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--accent-amber) 11%, var(--bg-input)),
+      var(--bg-input) 72%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #ffffff 9%, transparent),
+    0 3px 8px -3px color-mix(in srgb, var(--accent-amber) 35%, transparent);
+}
+.community-page .student-dir .alumni-search input:hover {
+  border-color: color-mix(in srgb, var(--accent-amber) 40%, var(--border-primary));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #ffffff 9%, transparent),
+    0 2px 6px -2px color-mix(in srgb, var(--accent-amber) 25%, transparent);
+}
+.community-page .alumni-page .alumni-search input:focus {
+  outline: none;
+  border-color: var(--accent-amber);
+  background:
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--accent-amber) 13%, var(--bg-input)),
+      var(--bg-input) 75%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #ffffff 8%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--accent-amber) 18%, transparent);
+}
+.community-page .student-dir .alumni-search input:focus {
+  outline: none;
+  border-color: var(--accent-amber);
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--accent-amber) 13%, var(--bg-input)),
+    var(--bg-input) 75%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #ffffff 8%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--accent-amber) 18%, transparent);
+}
+.community-page .alumni-page .alumni-search input::placeholder {
+  color: var(--text-tertiary);
+  opacity: 1;
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  letter-spacing: normal;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+.community-page .student-dir .alumni-search input::placeholder {
+  color: var(--text-tertiary);
+  opacity: 1;
+  font-size: 9.5px;
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+.community-page .alumni-page .alumni-search input:focus::placeholder {
+  opacity: 0.5;
+}
+.community-page .student-dir .alumni-search input:focus::placeholder {
+  opacity: 0.5;
+}
+.community-page .alumni-page .alumni-search svg {
+  left: 11px;
+  width: 13px;
+  height: 13px;
+  color: var(--accent-amber);
+  opacity: 0.75;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.community-page .student-dir .alumni-search svg {
+  left: 10px;
+  width: 12px;
+  height: 12px;
+  color: var(--accent-amber);
+  opacity: 0.75;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.community-page .alumni-page .alumni-search:focus-within svg {
+  opacity: 1;
+  transform: translateY(-50%) scale(1.08);
+}
+.community-page .student-dir .alumni-search:focus-within svg {
+  opacity: 1;
+  transform: translateY(-50%) scale(1.08);
+}
+
+.community-page .alumni-page .alumni-search {
+  width: 260px;
+  max-width: 100%;
 }
 
 /* Faculty search — premium pill with icon + clear, amber focus */
@@ -520,6 +723,128 @@
 
 .alumni-card-status-offline {
   color: var(--text-tertiary);
+}
+
+/* ── Compact card treatment (alumni directory only; faculty reuses the
+   base .alumni-card styles) ─────────────────────────────────────────────
+   One tight row: 28px avatar, name + dept + one muted meta line, and a
+   hairline footer-free card. Actions are a 5px availability dot and a
+   24px icon button, so a whole card is ~56px tall. */
+.community-page .alumni-page .alumni-grid-inner {
+  gap: 8px;
+}
+
+.community-page .alumni-page .alumni-card {
+  gap: 0;
+  padding: 8px 10px;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--border-primary) 65%, transparent);
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+}
+
+.community-page .alumni-page .alumni-card:hover {
+  border-color: color-mix(in srgb, var(--accent-amber) 35%, var(--border-primary));
+  transform: none;
+  box-shadow: none;
+}
+
+.community-page .alumni-page .alumni-card-top {
+  gap: 8px;
+  align-items: center;
+}
+
+.community-page .alumni-page .alumni-card .avatar {
+  width: 28px !important;
+  height: 28px !important;
+  font-size: 10px;
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
+  font-weight: var(--fw-semibold);
+}
+
+.community-page .alumni-page .alumni-card-name {
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+  letter-spacing: -0.005em;
+  line-height: 1.25;
+}
+
+.community-page .alumni-page .alumni-card-you {
+  font-size: 8px;
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent-amber);
+  background: var(--accent-amber-glow);
+  border-radius: var(--radius-full);
+  padding: 0 5px;
+  margin-left: 5px;
+  vertical-align: 1px;
+}
+
+.community-page .alumni-page .alumni-card-dept {
+  font-size: 9px;
+  margin-top: 0;
+  line-height: 1.3;
+}
+
+.community-page .alumni-page .alumni-card-meta {
+  font-size: 9px;
+  color: var(--text-tertiary);
+  margin: 1px 0 0;
+  line-height: 1.3;
+  min-width: 0;
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+}
+
+.community-page .alumni-page .alumni-card-email {
+  font-size: 9px;
+  color: inherit;
+}
+
+.community-page .alumni-page .alumni-card-email:hover {
+  color: var(--accent-amber);
+  text-decoration: none;
+}
+
+.community-page .alumni-page .alumni-card-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.community-page .alumni-page .alumni-card-open-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: var(--radius-full);
+  background: var(--accent-emerald);
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+.community-page .alumni-page .alumni-card-msg {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 0;
+  transition: background-color 0.16s ease, color 0.16s ease;
+}
+
+.community-page .alumni-page .alumni-card-msg:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
 }
 
 .alumni-empty-state {
@@ -1102,8 +1427,44 @@
 .student-dir-controls {
   display: flex;
   align-items: center;
-  gap: var(--sp-3);
-  flex-wrap: wrap;
+  gap: 8px;
+  flex-wrap: nowrap;
+  max-width: 460px;
+}
+
+.community-page .student-dir .schedule-actions.student-dir-controls {
+  align-self: center;
+}
+
+.student-dir-filter-select-wrap {
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.student-dir-search {
+  flex: 1 1 220px;
+  min-width: 0;
+  max-width: 260px;
+}
+
+@media (max-width: 900px) {
+  .community-page .student-dir .schedule-masthead {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .community-page .student-dir .schedule-masthead-center {
+    display: none;
+  }
+
+  .community-page .student-dir .student-dir-controls {
+    width: 100%;
+    max-width: 100%;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+  }
 }
 
 .student-dir-filter-group {
@@ -1223,8 +1584,37 @@
   display: flex;
   align-items: center;
   gap: var(--sp-3);
+  width: 100%;
+  min-height: 72px;
   padding: var(--sp-4);
   border-bottom: 1px solid var(--border-secondary);
+  border-top: 0;
+  border-left: 0;
+  border-right: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.student-dir-dept-header:hover {
+  background: color-mix(in srgb, var(--accent-amber) 4%, transparent);
+}
+
+.student-dir-dept-header:focus-visible {
+  outline: 2px solid var(--accent-amber);
+  outline-offset: -3px;
+}
+
+.student-dir-dept-chevron {
+  flex: 0 0 auto;
+  color: var(--text-tertiary);
+}
+
+.student-dir-dept-body {
+  min-width: 0;
 }
 
 .student-dir-dept-icon {
@@ -1240,11 +1630,13 @@
 }
 
 .student-dir-dept-info {
+  display: block;
   flex: 1;
   min-width: 0;
 }
 
 .student-dir-dept-name {
+  display: block;
   font-size: var(--fs-md);
   font-weight: var(--fw-bold);
   margin: 0;
@@ -2052,8 +2444,51 @@
 .mentor-page {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-4);
+  gap: 10px;
   width: 100%;
+}
+
+/* Masthead (16px bottom margin) + flex gap + divider margins used to stack
+   into a dead band between the header and the Feed / My Responses tabs.
+   Collapse them so the tabs sit right under the header. */
+.mentor-page .schedule-masthead {
+  margin-bottom: 0;
+}
+.mentor-page .schedule-dotted-divider {
+  margin: 8px 0 2px;
+}
+
+/* Feed · N | My Responses · N | sort */
+.mentor-tabs-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 10px;
+}
+
+.mentor-page .mentor-tabs-sort {
+  width: auto;
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+  padding: 6px 30px 6px 12px;
+  border-radius: var(--radius-full);
+  background-color: var(--bg-input);
+  background-position: right 10px center;
+  background-size: 11px 11px;
+  cursor: pointer;
+  transition: border-color 0.18s ease, color 0.18s ease, background-color 0.18s ease;
+}
+.mentor-page .mentor-tabs-sort:hover {
+  border-color: var(--accent-blue);
+  color: var(--text-primary);
+}
+.mentor-page .mentor-tabs-sort:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
 }
 
 .mentor-request-grid {
@@ -2113,6 +2548,66 @@
 .mentor-req-card.is-amber    .mentor-req-topic { color: var(--accent-amber); border-color: var(--accent-amber); }
 .mentor-req-card.is-rose     .mentor-req-topic { color: var(--accent-rose); border-color: var(--accent-rose); }
 
+/* ── "Post Request" action button — amber pill matching the masthead
+   accent, never wraps to a second line. ── */
+.mentor-page .schedule-actions {
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+.mentor-post-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  line-height: 1.2;
+  white-space: nowrap;
+  border-radius: var(--radius-full);
+  color: var(--accent-amber);
+  background: var(--accent-amber-glow);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 45%, transparent);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--accent-amber) 18%, transparent);
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+.mentor-post-btn svg {
+  flex-shrink: 0;
+}
+.mentor-post-btn:hover {
+  color: var(--accent-amber);
+  background: color-mix(in srgb, var(--accent-amber) 22%, transparent);
+  border-color: var(--accent-amber);
+  transform: translateY(-1px);
+}
+.mentor-post-btn:active {
+  transform: scale(0.97);
+}
+.mentor-post-btn:focus-visible {
+  outline: 2px solid var(--accent-amber);
+  outline-offset: 2px;
+}
+/* Open state (Cancel) — quiet, neutral, same footprint */
+.mentor-post-btn.is-open {
+  color: var(--text-secondary);
+  background: var(--bg-input);
+  border-color: var(--border-primary);
+  box-shadow: none;
+}
+.mentor-post-btn.is-open:hover {
+  color: var(--text-primary);
+  background: var(--bg-input);
+  border-color: var(--text-tertiary);
+}
+
+/* "Publish Request" submit button inside the form */
+.mentor-publish-btn {
+  border-radius: var(--radius-full);
+  padding: 7px 16px;
+  font-weight: var(--fw-semibold);
+  box-shadow: 0 2px 8px -4px color-mix(in srgb, var(--accent-blue) 60%, transparent);
+}
+
 /* ════════════════════════════════════════════════════════════
    RESPONSIVE
    ════════════════════════════════════════════════════════════ */
@@ -2136,6 +2631,11 @@
     align-items: stretch;
   }
 
+  .community-page .student-dir-controls {
+    flex-direction: row;
+    align-items: center;
+  }
+
   .alumni-select,
   .alumni-search,
   .clubs-search {
@@ -2157,6 +2657,79 @@
 }
 
 @media (max-width: 600px) {
+  .community-page .student-dir {
+    gap: 14px;
+    min-width: 0;
+  }
+
+  .community-page .student-dir-controls {
+    gap: 8px;
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .community-page .student-dir-filter-select-wrap {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .community-page .student-dir .alumni-select {
+    flex: 0 1 auto;
+    width: auto;
+    min-width: 0;
+    max-width: 46%;
+    min-height: 32px;
+    font-size: 10.5px;
+  }
+
+  .community-page .student-dir-search {
+    flex: 1 1 110px;
+    width: auto;
+    max-width: none;
+  }
+
+  .community-page .student-dir .alumni-search input {
+    min-height: 32px;
+    font-size: 16px;
+    padding: 8px 12px 8px 28px;
+  }
+
+  .community-page .student-dir-dept-header {
+    gap: 9px;
+    padding: 12px;
+  }
+
+  .community-page .student-dir-dept-icon {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+  }
+
+  .community-page .student-dir-dept-name {
+    font-size: var(--fs-sm);
+    overflow-wrap: anywhere;
+  }
+
+  .community-page .student-dir-dept-meta {
+    font-size: 10px;
+    line-height: 1.4;
+  }
+
+  .community-page .student-dir-dept-count {
+    min-width: 30px;
+    height: 30px;
+    padding: 0 7px;
+    font-size: 11px;
+  }
+
+  .community-page .student-dir-exec-section {
+    padding: 12px;
+  }
+
+  .community-page .student-dir-sem-body {
+    padding: 12px;
+  }
+
   .student-dir-slot-row {
     grid-template-columns: 1fr;
   }
@@ -2165,18 +2738,131 @@
     grid-template-columns: 1fr;
   }
 
-  .stu-th-id,
-  .stu-th-awid,
-  .stu-th-email,
-  .stu-th-batch {
+  .community-page .student-dir-table-wrapper {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+  }
+
+  .community-page .student-dir-table,
+  .community-page .student-dir-table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .community-page .student-dir-table thead {
     display: none;
   }
 
-  .stu-td-id,
-  .stu-td-awid,
-  .stu-td-email,
-  .stu-td-batch {
+  .community-page .student-dir-table-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 8px;
+    margin-bottom: 10px;
+    padding: 8px 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+  }
+
+  .community-page .student-dir-table-row:last-child {
+    margin-bottom: 0;
+  }
+
+  .community-page .student-dir-table td,
+  .community-page .stu-td-id,
+  .community-page .stu-td-awid,
+  .community-page .stu-td-email,
+  .community-page .stu-td-batch {
+    display: block;
+    width: auto;
+    min-width: 0;
+    padding: 7px 2px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-secondary);
+    overflow-wrap: anywhere;
+  }
+
+  .community-page .student-dir-table td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 3px;
+    color: var(--text-tertiary);
+    font-size: 9px;
+    font-weight: var(--fw-bold);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .community-page .student-dir-table .stu-td-name {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 2px 9px;
+  }
+
+  .community-page .student-dir-table .stu-td-name::before {
     display: none;
+  }
+
+  .community-page .student-dir-table .student-dir-table-stu-name {
+    flex: 1 1 120px;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .community-page .student-dir-table .stu-td-email {
+    grid-column: 1 / -1;
+  }
+
+  .community-page .student-dir-email {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .community-page .student-dir-table .stu-td-batch {
+    border-bottom: 0;
+  }
+
+  .community-page .student-dir-table .stu-td-lab,
+  .community-page .student-dir-table .stu-td-blood {
+    text-align: left;
+  }
+
+  .community-page .student-dir-table .stu-td-blood .student-dir-blood {
+    padding-left: 0;
+  }
+
+  .community-page .student-dir-sem-head-row {
+    min-width: 0;
+  }
+
+  .community-page .student-dir-sem-header {
+    gap: 8px;
+    padding: 10px 9px;
+  }
+
+  .community-page .student-dir-sem-header-left {
+    gap: 6px;
+    min-width: 0;
+    font-size: 11px;
+  }
+
+  .community-page .student-dir-sem-header-right {
+    gap: 5px;
+  }
+
+  .community-page .student-dir-sem-export {
+    padding: 0 5px;
+  }
+
+  .community-page .student-dir-export-trigger {
+    width: 38px;
+    height: 38px;
   }
 }
 
@@ -2253,5 +2939,373 @@
 @media (max-width: 480px) {
   .community-page .mentor-req-card div[style*="margin-left: 48px"] {
     margin-left: 0;
+  }
+}
+
+/* ── Mentor page: keep the "Post Request" button on the SAME row as the
+   title on mobile. The shared community masthead collapses to a single
+   column and makes actions full-width, which drops the button onto its own
+   line and stretches it — override back to a compact right-aligned pill. */
+@media (max-width: 640px) {
+  .community-page .mentor-page .schedule-masthead {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+  }
+  .community-page .mentor-page .schedule-actions {
+    width: auto;
+    flex-wrap: nowrap;
+    justify-self: end;
+  }
+  .community-page .mentor-page .schedule-title-block {
+    gap: 8px;
+    min-width: 0;
+  }
+  .community-page .mentor-page .schedule-title-block > div:last-child {
+    min-width: 0;
+  }
+  .community-page .mentor-page .schedule-title,
+  .community-page .mentor-page .schedule-subtitle {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .community-page .mentor-page .mentor-post-btn {
+    padding: 7px 12px;
+    font-size: 10px;
+    gap: 5px;
+    flex-shrink: 0;
+  }
+  .community-page .mentor-page .mentor-post-btn svg {
+    width: 12px;
+    height: 12px;
+  }
+  .community-page .mentor-page .mentor-publish-btn {
+    align-self: stretch;
+    justify-content: center;
+    width: 100%;
+    min-height: 40px;
+    font-size: var(--fs-xs);
+  }
+
+  /* Feed · N | My Responses · N | Most Recent — all on ONE row.
+     No wrapping; if a 320px screen can't fit, the row scrolls sideways
+     instead of dropping the sort control onto a second line. */
+  .community-page .mentor-page .mentor-tabs-row {
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 8px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  .community-page .mentor-page .mentor-tabs-row::-webkit-scrollbar {
+    display: none;
+  }
+  .community-page .mentor-page .mentor-tabs-row .btn {
+    flex: 0 0 auto;
+    padding: 6px 10px;
+    font-size: 10px;
+    gap: 5px;
+    min-height: 32px;
+  }
+  .community-page .mentor-page .mentor-tabs-row .btn svg {
+    width: 11px;
+    height: 11px;
+  }
+  .community-page .mentor-page .mentor-tabs-sort {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 0;
+    margin-left: auto;
+    font-size: 10px;
+    padding: 6px 24px 6px 10px;
+    background-position: right 8px center;
+    background-size: 10px 10px;
+    min-height: 32px;
+  }
+}
+
+/* Very narrow phones — tighten the pill a touch, keep the label visible */
+@media (max-width: 380px) {
+  .community-page .mentor-page .mentor-post-btn {
+    padding: 6px 10px;
+    font-size: 9px;
+    gap: 4px;
+  }
+  .community-page .mentor-page .mentor-post-btn svg {
+    width: 11px;
+    height: 11px;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   ALUMNI DIRECTORY — tablet / small laptop
+   Base masthead switches to a 1fr + auto grid below 1000px, which let the
+   two-row filter tray overlap the long subtitle. Stack the title above a
+   single filter row instead, and allow the text column to shrink.
+   ════════════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .community-page .alumni-page .schedule-masthead {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .community-page .alumni-page .schedule-title-block > div:last-child {
+    min-width: 0;
+  }
+  .community-page .alumni-page .schedule-subtitle {
+    max-width: 100%;
+  }
+  .community-page .alumni-page .schedule-masthead-center {
+    display: none;
+  }
+  .community-page .alumni-page .schedule-actions {
+    width: 100%;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 8px;
+  }
+  .community-page .alumni-page .alumni-select {
+    flex: 0 1 auto;
+    width: auto;
+    min-width: 168px;
+    max-width: 46%;
+  }
+  .community-page .alumni-page .alumni-search {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   ALUMNI DIRECTORY — mobile
+   ════════════════════════════════════════════════════════════ */
+@media (min-width: 901px) {
+  .community-page .alumni-page .schedule-actions {
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+
+  .community-page .alumni-page .alumni-select {
+    flex: 0 1 auto;
+    min-width: 146px;
+    max-width: 190px;
+  }
+
+  .community-page .alumni-page .alumni-search {
+    flex: 0 1 220px;
+    width: 220px;
+    min-width: 140px;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Kill the stacked masthead / divider margins that left a dead band */
+  .community-page .alumni-page {
+    gap: 10px;
+  }
+  .community-page .alumni-page .schedule-masthead {
+    margin-bottom: 0;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .community-page .alumni-page .schedule-dotted-divider {
+    margin: 6px 0 2px;
+  }
+  .community-page .alumni-page .schedule-title-block {
+    gap: 8px;
+  }
+  .community-page .alumni-page .schedule-title-block > div:last-child {
+    min-width: 0;
+  }
+  .community-page .alumni-page .schedule-title {
+    font-size: 14px;
+  }
+  .community-page .alumni-page .schedule-subtitle {
+    font-size: 9px;
+    max-width: 100%;
+  }
+  /* Filter controls: department select + search share ONE row */
+  .community-page .alumni-page .schedule-actions {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+  }
+  .community-page .alumni-page .alumni-select {
+    flex: 0 1 auto;
+    width: auto;
+    min-width: 148px;
+    max-width: 46%;
+    min-height: 36px;
+    font-size: 11px;
+  }
+  .community-page .alumni-page .alumni-search {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+  }
+  .community-page .alumni-page .alumni-search input {
+    min-height: 36px;
+    /* 16px avoids iOS auto-zoom when the field is focused */
+    font-size: 16px;
+    /* 16px text sits too high with desktop's 7px vertical padding on a
+       36px box — symmetric 8px padding + tight line-height centers it. */
+    padding: 8px 12px 8px 32px;
+    line-height: 1.2;
+  }
+  .community-page .alumni-page .alumni-search input::placeholder {
+    font-size: 9.5px;
+    letter-spacing: normal;
+  }
+
+  /* Open for Talk banner */
+  .community-page .alumni-page .open-for-talk-banner {
+    padding: 10px 12px;
+    gap: 10px;
+    border-radius: var(--radius-sm);
+  }
+  .community-page .alumni-page .open-for-talk-banner h3 {
+    font-size: 12px !important;
+  }
+  .community-page .alumni-page .open-for-talk-banner p {
+    font-size: 10px !important;
+    line-height: 1.35;
+  }
+  .community-page .alumni-page .open-for-talk-icon {
+    width: 32px;
+    height: 32px;
+  }
+  .community-page .alumni-page .open-for-talk-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* Batch groups */
+  .community-page .alumni-page .alumni-groups {
+    gap: 14px;
+  }
+  .community-page .alumni-page .alumni-batch-header {
+    gap: 6px;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+  }
+  .community-page .alumni-page .alumni-batch-badge {
+    font-size: 9px;
+    padding: 2px 8px;
+  }
+  .community-page .alumni-page .alumni-batch-count {
+    font-size: 9px;
+    padding: 2px 7px;
+  }
+  .community-page .alumni-page .alumni-batch-count svg {
+    width: 10px;
+    height: 10px;
+  }
+
+  /* Cards — single column, compact, no hover lift on touch */
+  .community-page .alumni-page .alumni-grid-inner {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .community-page .alumni-page .alumni-card {
+    padding: 12px;
+    gap: 10px;
+    border-radius: var(--radius-sm);
+  }
+  .community-page .alumni-page .alumni-card:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: var(--border-primary);
+  }
+  .community-page .alumni-page .alumni-card-top {
+    gap: 10px;
+    align-items: center;
+  }
+  .community-page .alumni-page .alumni-card .avatar {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 12px;
+  }
+  .community-page .alumni-page .alumni-card-name {
+    font-size: 13px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+  .community-page .alumni-page .alumni-card-dept {
+    font-size: 10px;
+    margin-top: 1px;
+    overflow-wrap: anywhere;
+  }
+  .community-page .alumni-page .alumni-card-details {
+    gap: 4px;
+    font-size: 10px;
+  }
+  .community-page .alumni-page .alumni-card-detail {
+    gap: 5px;
+    align-items: flex-start;
+    overflow-wrap: anywhere;
+  }
+  .community-page .alumni-page .alumni-card-detail svg {
+    width: 11px;
+    height: 11px;
+    margin-top: 2px;
+  }
+  .community-page .alumni-page .alumni-card-email {
+    gap: 5px;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .community-page .alumni-page .alumni-card-email-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .community-page .alumni-page .alumni-card-footer {
+    gap: 8px;
+    flex-wrap: wrap;
+    padding-top: 0;
+  }
+  .community-page .alumni-page .alumni-card-status {
+    font-size: 9px;
+  }
+  .community-page .alumni-page .alumni-card-footer .btn {
+    margin-left: auto;
+    padding: 5px 10px;
+    font-size: 10px;
+    gap: 4px;
+    min-height: 32px;
+  }
+
+  /* Empty states */
+  .community-page .alumni-page .alumni-empty-state {
+    padding: 32px 12px;
+  }
+  .community-page .alumni-page .alumni-empty-state h3 {
+    font-size: var(--fs-sm);
+  }
+  .community-page .alumni-page .alumni-empty-state p {
+    font-size: 11px;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 400px) {
+  .community-page .alumni-page .schedule-title {
+    font-size: 13px;
+  }
+  .community-page .alumni-page .alumni-card {
+    padding: 10px;
+  }
+  .community-page .alumni-page .alumni-card-name {
+    font-size: 12px;
+  }
+  .community-page .alumni-page .alumni-card-details {
+    font-size: 9.5px;
   }
 }

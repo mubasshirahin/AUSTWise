@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeProvider';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -155,6 +155,17 @@ function AppContent() {
   });
   const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 1024);
   const location = useLocation();
+  const previousPathnameRef = useRef(location.pathname);
+
+  useEffect(() => {
+    const wasInCommunity = previousPathnameRef.current.startsWith('/community');
+    const isInCommunity = location.pathname.startsWith('/community');
+    if (wasInCommunity && !isInCommunity) {
+      sessionStorage.removeItem('aust-student-directory-expanded-v1');
+      sessionStorage.removeItem('aust-student-directory-expanded-departments-v1');
+    }
+    previousPathnameRef.current = location.pathname;
+  }, [location.pathname]);
 
   // Track desktop/mobile breakpoint + persist the members panel preference
   useEffect(() => {

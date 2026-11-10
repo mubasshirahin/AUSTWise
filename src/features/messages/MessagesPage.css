@@ -1277,6 +1277,7 @@ mark.chat-highlight {
   color: var(--text-tertiary);
   cursor: pointer;
   opacity: 0;
+  pointer-events: none;
   transition: all var(--transition-fast);
   padding: 0;
   z-index: 5;
@@ -1285,6 +1286,7 @@ mark.chat-highlight {
 
 .chat-bubble-wrapper:hover .theirs-reply-btn {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .theirs-reply-btn:hover {
@@ -1383,11 +1385,13 @@ mark.chat-highlight {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   opacity: 0;
+  pointer-events: none;
   transition: opacity var(--transition-fast);
 }
 
 .chat-bubble-wrapper:hover .own-actions-row {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .msg-action-btn {
@@ -1444,6 +1448,111 @@ mark.chat-highlight {
   display: flex;
   gap: 4px;
   margin-left: auto;
+}
+
+/* ── Long-press / right-click message action sheet ──
+   Rendered in a portal at the touch point, so it escapes the scrolling
+   transcript and never gets clipped by the bubble. */
+.msg-menu-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  background: color-mix(in srgb, #000000 24%, transparent);
+  touch-action: none;
+  animation: msgMenuFade 0.14s ease;
+}
+
+.msg-menu {
+  position: fixed;
+  min-width: 190px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow:
+    0 18px 44px -14px color-mix(in srgb, #000000 55%, transparent),
+    0 2px 8px color-mix(in srgb, #000000 20%, transparent);
+  transform-origin: top left;
+  animation: msgMenuPop 0.16s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.msg-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: var(--fw-medium);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.msg-menu-item svg {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+  transition: color var(--transition-fast);
+}
+
+.msg-menu-item:hover {
+  background: var(--bg-input);
+}
+
+.msg-menu-item:hover svg {
+  color: var(--accent-amber);
+}
+
+.msg-menu-danger,
+.msg-menu-danger svg {
+  color: var(--accent-rose);
+}
+
+.msg-menu-danger:hover {
+  background: var(--accent-rose-glow);
+  color: var(--accent-rose);
+}
+
+.msg-menu-danger:hover svg {
+  color: var(--accent-rose);
+}
+
+@keyframes msgMenuFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes msgMenuPop {
+  from { opacity: 0; transform: scale(0.94) translateY(-4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Touch devices: the hover toolbar can never be reached, and the browser's
+   own long-press selection callout would fight the action sheet. */
+@media (hover: none) {
+  .chat-bubble-wrapper {
+    -webkit-touch-callout: none;
+  }
+
+  .chat-bubble,
+  .chat-bubble p {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* No hover on touch: the long-press sheet is the action path, so don't
+     leave an invisible toolbar (and its buttons) sitting under the finger. */
+  .own-actions-row {
+    display: none;
+  }
 }
 
 /* ─── Typing indicator ─── */

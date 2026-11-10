@@ -1,13 +1,14 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Users, Filter, X, ChevronDown, ChevronRight,
+  Users, Search, ChevronDown, ChevronRight,
   GraduationCap, BookOpen, Layers,
   BadgeCheck, Star, Download, FileDown, Loader2,
   Crown, Briefcase,
 } from 'lucide-react';
 import brandMark from '../../assets/austwise-icon-final.svg';
 import { getAllAccounts, createAwid } from '../../utils/authStorage';
+import { getCachedMembers, refreshMemberDirectory } from '../../utils/memberDirectory';
 import { useAuth } from '../../context/AuthContext';
 import { formatSemesterLabel, getSemesterCountForDepartment } from '../../utils/semester';
 
@@ -37,6 +38,15 @@ const DEPT_FULL_NAMES = {
 
 const LAB_ORDER = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2'];
 const SECTION_ORDER = ['A', 'B', 'C', 'D'];
+const EXPANDED_SEMESTERS_KEY = 'aust-student-directory-expanded-v1';
+const EXPANDED_DEPARTMENTS_KEY = 'aust-student-directory-expanded-departments-v1';
+
+function getSavedExpandedState(key) {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(key) || '{}');
+    return saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {};
+  } catch { return {}; }
+}
 
 function getSectionLetter(section) {
   return (section || '')[0]?.toUpperCase() || 'Z';
@@ -65,8 +75,13 @@ export default function StudentDirectory() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [activeDept, setActiveDept] = useState('all');
-  const [expandedSems, setExpandedSems] = useState({});
-  const [directoryAccounts, setDirectoryAccounts] = useState(() => getAllAccounts());
+  const [searchTerm, setSearchTerm] = useState('');
+  const [expandedSems, setExpandedSems] = useState(() => getSavedExpandedState(EXPANDED_SEMESTERS_KEY));
+  const [expandedDepts, setExpandedDepts] = useState(() => getSavedExpandedState(EXPANDED_DEPARTMENTS_KEY));
+  const [directoryAccounts, setDirectoryAccounts] = useState(() => {
+    const localById = new Map(getAllAccounts().map((account) => [account.id, account]));
+    return getCachedMembers().map((member) => ({ ...localById.get(member.id), ...member }));
+  });
 
   // Role approvals happen server-side. Refresh the sanitized public directory
   // list so VP/GS appointments appear for other users without relying on each
@@ -75,11 +90,10 @@ export default function StudentDirectory() {
     let cancelled = false;
     const syncDirectory = async () => {
       try {
-        const res = await fetch('/api/presence/members');
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || !Array.isArray(data.members) || cancelled) return;
+        const members = await refreshMemberDirectory();
+        if (cancelled) return;
         const localById = new Map(getAllAccounts().map((account) => [account.id, account]));
-        setDirectoryAccounts(data.members.map((member) => ({
+        setDirectoryAccounts(members.map((member) => ({
           ...(localById.get(member.id) || {}),
           ...member,
           email: localById.get(member.id)?.email || '',
@@ -91,12 +105,38 @@ export default function StudentDirectory() {
     return () => { cancelled = true; clearInterval(timer); };
   }, []);
 
+  useEffect(() => {
+    try {
+      if (Object.keys(expandedSems).length) {
+        sessionStorage.setItem(EXPANDED_SEMESTERS_KEY, JSON.stringify(expandedSems));
+      } else {
+        sessionStorage.removeItem(EXPANDED_SEMESTERS_KEY);
+      }
+    } catch { /* Expansion state is best-effort across refreshes. */ }
+  }, [expandedSems]);
+
+  useEffect(() => {
+    try {
+      if (Object.keys(expandedDepts).length) {
+        sessionStorage.setItem(EXPANDED_DEPARTMENTS_KEY, JSON.stringify(expandedDepts));
+      } else {
+        sessionStorage.removeItem(EXPANDED_DEPARTMENTS_KEY);
+      }
+    } catch { /* Expansion state is best-effort across refreshes. */ }
+  }, [expandedDepts]);
+
   // Get all accounts and group them by dept → sem.
   // Every semester slot (1 → total for the dept) is always created so the full
   // academic structure renders — whether or not students are registered yet.
   const { grouped, deptStats, deptExecs } = useMemo(() => {
-    const allAccounts = directoryAccounts;
-    const students = allAccounts.filter(a => ['student', 'cr', 'sr', 'vp', 'gs'].includes(a.role));
+    const query = searchTerm.trim().toLowerCase();
+    const students = directoryAccounts.filter((account) => {
+      if (!['student', 'cr', 'sr', 'vp', 'gs'].includes(account.role)) return false;
+      if (!query) return true;
+      return [account.name, account.email, account.studentId, account.awid,
+        account.department, account.labSection, account.section, extractStudentId(account)]
+        .some((value) => String(value || '').toLowerCase().includes(query));
+    });
 
     const grouped = {};
     const deptStats = {};
@@ -161,25 +201,21 @@ export default function StudentDirectory() {
     }
 
     return { grouped, deptStats, deptExecs };
-  }, [directoryAccounts]);
+  }, [directoryAccounts, searchTerm]);
 
   // Every department is listed — the directory renders the full semester
   // structure even for departments that have no students yet.
   const displayDepts = useMemo(() => {
-    return activeDept === 'all'
+    const departments = activeDept === 'all'
       ? DEPARTMENTS
       : (DEPARTMENTS.includes(activeDept) ? [activeDept] : []);
-  }, [activeDept]);
-
-  // First visible semester is expanded by default (until the user toggles it).
-  // Semesters are ordered highest → lowest, so the top semester starts expanded.
-  const defaultExpandedKey = displayDepts.length > 0
-    ? `${displayDepts[0]}-${Object.keys(grouped[displayDepts[0]]).sort((a, b) => Number(b) - Number(a))[0]}`
-    : null;
-
-  const totalStudents = useMemo(() => {
-    return Object.values(deptStats).reduce((sum, s) => sum + s.total, 0);
-  }, [deptStats]);
+    const hasMatches = activeDept === 'all'
+      ? Object.values(deptStats).some((stats) => stats.total > 0)
+      : (deptStats[activeDept]?.total || 0) > 0;
+    return searchTerm.trim() && !hasMatches
+      ? []
+      : departments;
+  }, [activeDept, searchTerm, deptStats]);
 
   // Toggle semester expansion
   const toggleSem = (dept, sem) => {
@@ -187,6 +223,10 @@ export default function StudentDirectory() {
       ...prev,
       [`${dept}-${sem}`]: !prev[`${dept}-${sem}`],
     }));
+  };
+
+  const toggleDept = (dept) => {
+    setExpandedDepts((previous) => ({ ...previous, [dept]: !previous[dept] }));
   };
 
   // Build SR slot data (3 slots: A, B, C)
@@ -388,69 +428,48 @@ export default function StudentDirectory() {
       {/* Masthead */}
       <div className="schedule-masthead">
         <div className="schedule-title-block">
-          <div className="student-dir-header-icon">
-            <GraduationCap size={26} />
+          <div className="schedule-icon-tile">
+            <GraduationCap size={20} strokeWidth={2.2} />
           </div>
           <div>
             <span className="schedule-overline">Community</span>
-            <h2 className="student-dir-header-title">Student Directory</h2>
-            <p className="student-dir-header-subtitle">
-              Find classmates, SRs &amp; CRs — sorted by name.
-            </p>
+            <div className="schedule-title">Student Directory</div>
+            <span className="schedule-subtitle">Find classmates, SRs &amp; CRs — sorted by name.</span>
           </div>
         </div>
 
-        <div className="schedule-masthead-center">
-          <div className="schedule-stats">
-            <div className="schedule-stat">
-              <span className="schedule-stat-value">{DEPARTMENTS.length}</span>
-              <span className="schedule-stat-label">Departments</span>
-            </div>
-            <div className="schedule-stat">
-              <span className="schedule-stat-value">{totalStudents}</span>
-              <span className="schedule-stat-label">Students</span>
-            </div>
+        <div className="schedule-masthead-center" />
+
+        <div className="schedule-actions student-dir-controls">
+          <div className="student-dir-filter-select-wrap">
+            <select
+              className="input alumni-select"
+              value={activeDept}
+              onChange={(event) => setActiveDept(event.target.value)}
+              aria-label="Filter students by department"
+            >
+              <option value="all">All departments</option>
+              {DEPARTMENTS.map((dept) => (
+                <option key={dept} value={dept}>
+                  {dept} ({deptStats[dept]?.total || 0})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="search-box alumni-search student-dir-search">
+            <Search size={14} aria-hidden="true" />
+            <input
+              type="search"
+              placeholder="Search name / ID"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              aria-label="Search students by name or ID"
+            />
           </div>
         </div>
-
-        <div className="schedule-actions" />
       </div>
 
       <div className="schedule-dotted-divider" style={{ marginTop: 0 }} />
-
-      {/* Filter bar */}
-      <div className="student-dir-controls">
-        <div className="student-dir-filter-group">
-          <Filter size={14} />
-          <button
-            className={`student-dir-filter-btn ${activeDept === 'all' ? 'active' : ''}`}
-            onClick={() => setActiveDept('all')}
-          >
-            All
-            {totalStudents > 0 && (
-              <span className="student-dir-filter-count">{totalStudents}</span>
-            )}
-          </button>
-          {DEPARTMENTS.map(dept => (
-            <button
-              key={dept}
-              className={`student-dir-filter-btn ${activeDept === dept ? 'active' : ''}`}
-              onClick={() => setActiveDept(dept)}
-            >
-              {dept}
-              {deptStats[dept]?.total > 0 && (
-                <span className="student-dir-filter-count">{deptStats[dept].total}</span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {activeDept !== 'all' && (
-          <button className="student-dir-clear-filter" onClick={() => setActiveDept('all')}>
-            <X size={12} /> Clear filter
-          </button>
-        )}
-      </div>
 
       {/* Content */}
       {displayDepts.length === 0 ? (
@@ -459,7 +478,9 @@ export default function StudentDirectory() {
             <Users size={28} />
           </div>
           <h3>No students found</h3>
-          <p>No student accounts are registered in the directory yet. When classmates sign up, they'll appear here grouped by department and semester.</p>
+          <p>{searchTerm.trim()
+            ? `No students match “${searchTerm.trim()}”. Try another name or ID.`
+            : "No student accounts are registered in the directory yet. When classmates sign up, they'll appear here grouped by department and semester."}</p>
         </div>
       ) : (
         <div className="student-dir-content">
@@ -469,21 +490,28 @@ export default function StudentDirectory() {
 
             return (
               <div key={dept} className="student-dir-dept-section">
-                <div className="student-dir-dept-header">
-                  <div className="student-dir-dept-icon">
+                <button
+                  type="button"
+                  className="student-dir-dept-header"
+                  onClick={() => toggleDept(dept)}
+                  aria-expanded={Boolean(expandedDepts[dept])}
+                >
+                  {expandedDepts[dept] ? <ChevronDown size={16} className="student-dir-dept-chevron" /> : <ChevronRight size={16} className="student-dir-dept-chevron" />}
+                  <span className="student-dir-dept-icon">
                     <BookOpen size={18} />
-                  </div>
-                  <div className="student-dir-dept-info">
-                    <h3 className="student-dir-dept-name">
+                  </span>
+                  <span className="student-dir-dept-info">
+                    <span className="student-dir-dept-name" role="heading" aria-level="3">
                       Department of {DEPT_FULL_NAMES[dept] || dept}
-                    </h3>
+                    </span>
                     <span className="student-dir-dept-meta">
                       {deptStats[dept]?.total || 0} students · {deptStats[dept]?.semesters || 0} of {deptStats[dept]?.totalSemesters || 0} semesters
                     </span>
-                  </div>
+                  </span>
                   <span className="student-dir-dept-count">{deptStats[dept]?.total || 0}</span>
-                </div>
+                </button>
 
+                {expandedDepts[dept] && <div className="student-dir-dept-body">
                 {/* ═══ Department Executive Slots (VP · GS) ═══ */}
                 <div className="student-dir-exec-section">
                   <div className="student-dir-exec-label">
@@ -531,9 +559,7 @@ export default function StudentDirectory() {
                 <div className="student-dir-sem-list">
                   {sems.map(sem => {
                     const semKey = `${dept}-${sem}`;
-                    // User toggles override the default; otherwise the first
-                    // visible semester starts expanded.
-                    const isExpanded = expandedSems[semKey] ?? semKey === defaultExpandedKey;
+                    const isExpanded = Boolean(expandedSems[semKey]);
                     const data = grouped[dept][sem];
                     const { srs, crs, regulars } = data;
                     // regulars already includes SRs & CRs, so it's the unique count.
@@ -734,7 +760,7 @@ export default function StudentDirectory() {
                                           key={student.id}
                                           className={`student-dir-table-row${student.id === user?.id ? ' is-me' : ''}`}
                                         >
-                                          <td className="stu-td-name">
+                                          <td className="stu-td-name" data-label="Student">
                                             <button
                                               type="button"
                                               className="student-dir-student-avatar"
@@ -777,22 +803,22 @@ export default function StudentDirectory() {
                                               <span className="student-dir-you-badge">You</span>
                                             )}
                                           </td>
-                                          <td className="stu-td-id">
+                                          <td className="stu-td-id" data-label="AUST ID">
                                             <code className="student-dir-id-code">{extractStudentId(student)}</code>
                                           </td>
-                                          <td className="stu-td-awid">
+                                          <td className="stu-td-awid" data-label="AWID">
                                             <code className="student-dir-id-code" style={{ fontSize: '9px' }}>{student.awid || createAwid(student.department) || '—'}</code>
                                           </td>
-                                          <td className="stu-td-email">
+                                          <td className="stu-td-email" data-label="Email">
                                             <span className="student-dir-email">{student.email || '—'}</span>
                                           </td>
-                                          <td className="stu-td-lab">{student.labSection || student.section || '—'}</td>
-                                          <td className="stu-td-blood">
+                                          <td className="stu-td-lab" data-label="Lab">{student.labSection || student.section || '—'}</td>
+                                          <td className="stu-td-blood" data-label="Blood">
                                             <span className={`student-dir-blood ${student.bloodGroup ? 'has-blood' : ''}`}>
                                               {student.bloodGroup || '—'}
                                             </span>
                                           </td>
-                                          <td className="stu-td-batch">{student.batch || student.batchName || student.batchNo || '—'}</td>
+                                          <td className="stu-td-batch" data-label="Batch">{student.batch || student.batchName || student.batchNo || '—'}</td>
                                         </tr>
                                       ))}
                                     </tbody>
@@ -816,6 +842,7 @@ export default function StudentDirectory() {
                     );
                   })}
                 </div>
+                </div>}
               </div>
             );
           })}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   MessageSquare, Send, ArrowLeft, Inbox, Mail, Search, X,
@@ -164,6 +165,10 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  // Mobile long-press action sheet (delete/edit/reply). Positioned at the
+  // touch point so it works no matter where in the bubble the finger landed.
+  const [actionMenu, setActionMenu] = useState(null);
+  const longPressRef = useRef({ timer: null, x: 0, y: 0 });
   const [replyTarget, setReplyTarget] = useState(null);
   const [chatSearchOpen, setChatSearchOpen] = useState(false);
   const [chatSearchQuery, setChatSearchQuery] = useState('');
@@ -458,6 +463,80 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
     return searchResultIds.length > 0 && searchResultIds[activeResultIdx] === msgId;
   };
 
+  /* ── Touch action sheet: long-press (or right-click) a message to get
+     Reply / Edit / Delete. Mobile has no hover, so the desktop hover toolbar
+     was unreachable there — this is the touch path to the delete action. ── */
+  const closeActionMenu = useCallback(() => setActionMenu(null), []);
+
+  const cancelLongPress = useCallback(() => {
+    if (longPressRef.current.timer) {
+      clearTimeout(longPressRef.current.timer);
+      longPressRef.current.timer = null;
+    }
+  }, []);
+
+  // Any scroll / resize / Escape dismisses the sheet.
+  useEffect(() => {
+    if (!actionMenu) return undefined;
+    const el = scrollRef.current;
+    const onKey = (event) => { if (event.key === 'Escape') closeActionMenu(); };
+    window.addEventListener('resize', closeActionMenu);
+    window.addEventListener('keydown', onKey);
+    el?.addEventListener('scroll', closeActionMenu, { passive: true });
+    return () => {
+      window.removeEventListener('resize', closeActionMenu);
+      window.removeEventListener('keydown', onKey);
+      el?.removeEventListener('scroll', closeActionMenu);
+    };
+  }, [actionMenu, closeActionMenu]);
+
+  useEffect(() => () => cancelLongPress(), [cancelLongPress]);
+
+  const openActionMenu = (msg, clientX, clientY) => {
+    const MENU_W = 190;
+    const MENU_H = 152;
+    setActionMenu({
+      id: msg.id,
+      x: Math.max(10, Math.min(clientX - 24, window.innerWidth - MENU_W - 10)),
+      y: Math.max(10, Math.min(clientY - 12, window.innerHeight - MENU_H - 10)),
+    });
+  };
+
+  const isMenuTarget = (msg) => !msg.deleted && msg.fromId === userId;
+
+  const handleBubbleTouchStart = (event, msg) => {
+    if (!isMenuTarget(msg)) return;
+    if (event.target.closest('button, a, input, textarea')) return;
+    const touch = event.touches[0];
+    if (!touch) return;
+    longPressRef.current.x = touch.clientX;
+    longPressRef.current.y = touch.clientY;
+    cancelLongPress();
+    longPressRef.current.timer = setTimeout(() => {
+      longPressRef.current.timer = null;
+      if (navigator.vibrate) navigator.vibrate(12);
+      openActionMenu(msg, longPressRef.current.x, longPressRef.current.y);
+    }, 450);
+  };
+
+  const handleBubbleTouchMove = (event) => {
+    if (!longPressRef.current.timer) return;
+    const touch = event.touches[0];
+    if (!touch) return;
+    if (Math.abs(touch.clientX - longPressRef.current.x) > 8
+      || Math.abs(touch.clientY - longPressRef.current.y) > 8) {
+      cancelLongPress();
+    }
+  };
+
+  const handleBubbleContextMenu = (event, msg) => {
+    if (!isMenuTarget(msg)) return;
+    event.preventDefault();
+    openActionMenu(msg, event.clientX, event.clientY);
+  };
+
+  const menuMessage = actionMenu ? thread.find((msg) => msg.id === actionMenu.id) : null;
+
   return (
     <>
       <header className="chat-header">
@@ -473,19 +552,19 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
           <button
             type="button"
             className="avatar"
-            style={{ width: '40px', height: '40px', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
+            style={{ width: '40px', height: '40px', padding: 0, border: 'none', cursor: 'pointer' }}
             onClick={() => navigate(`/members/${peerId}`)}
             title={peer?.name ? `View ${peer.name}'s profile / ID` : 'View profile'}
             aria-label="View profile"
           >
-            {peer?.initials}
+            {peer?.avatar ? <img src={peer.avatar} alt="" referrerPolicy="no-referrer" onError={(event) => { event.currentTarget.style.display = 'none'; }} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : peer?.initials}
           </button>
           <span className={`avatar-status-dot ${connected ? 'online' : 'offline'}`} />
         </div>
         <div className="chat-peer-info" style={{ flex: 1 }}>
-          <span className="chat-peer-name">{peer?.name}</span>
+          <span className="chat-peer-name">{peer?.name || 'Loading…'}</span>
           <span className="chat-peer-sub">
-            {getDisplayRoles(peer).map(getRoleDisplayName).join(' · ')}
+            {peer ? getDisplayRoles(peer).map(getRoleDisplayName).join(' · ') : ''}
             {peer?.department ? ` · ${peer.department}` : ''}
             <span style={{ marginLeft: '6px' }}>
               · {connected ? 'Online' : 'Offline'}
@@ -583,6 +662,11 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
                 ref={(el) => { resultRefs.current[m.id] = el; }}
                 onMouseEnter={() => { if (!mine) { cancelPickerClose(); setOpenPickerId(m.id); } }}
                 onMouseLeave={() => { if (!mine && openPickerId === m.id) schedulePickerClose(); }}
+                onTouchStart={(event) => handleBubbleTouchStart(event, m)}
+                onTouchMove={handleBubbleTouchMove}
+                onTouchEnd={cancelLongPress}
+                onTouchCancel={cancelLongPress}
+                onContextMenu={(event) => handleBubbleContextMenu(event, m)}
               >
                 {/* Deleted message placeholder */}
                 {isDeleted ? (
@@ -774,6 +858,52 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
         )}
       </div>
 
+      {/* Long-press / right-click menu for a message (mobile delete path) */}
+      {actionMenu && menuMessage && !menuMessage.deleted && createPortal(
+        <div
+          className="msg-menu-layer"
+          onPointerDown={closeActionMenu}
+          onContextMenu={(event) => { event.preventDefault(); closeActionMenu(); }}
+        >
+          <div
+            className="msg-menu"
+            style={{ left: actionMenu.x, top: actionMenu.y }}
+            role="menu"
+            aria-label="Message actions"
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              role="menuitem"
+              className="msg-menu-item"
+              onClick={() => { closeActionMenu(); startReply(menuMessage); }}
+            >
+              <Reply size={14} />
+              Reply
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="msg-menu-item"
+              onClick={() => { closeActionMenu(); startEdit(menuMessage); }}
+            >
+              <Edit3 size={14} />
+              Edit
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="msg-menu-item msg-menu-danger"
+              onClick={() => { closeActionMenu(); handleDelete(menuMessage.id); }}
+            >
+              <Trash2 size={14} />
+              Delete message
+            </button>
+          </div>
+        </div>,
+        document.body,
+      )}
+
       {/* Reply preview bar */}
       {replyTarget && (
         <div className="reply-preview-bar">
@@ -824,16 +954,53 @@ export default function MessagesPage() {
   const { isAdmin } = useAdminMode();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [, setSearchParams] = useSearchParams();
+  const urlParams = new URLSearchParams(window.location.search);
   const currentUserId = user?.id;
   const [conversations, setConversations] = useState(() =>
     currentUserId ? getConversations(currentUserId) : []
   );
-  const [activePeerId, setActivePeerId] = useState(searchParams.get('peer') || '');
+  const [memberProfiles, setMemberProfiles] = useState({});
+  const [activePeerId, setActivePeerId] = useState(urlParams.get('peer') || '');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMode, setFilterMode] = useState('all');
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
+
+  // A peer may not have signed in on this browser, so the local account cache
+  // cannot provide their public profile (role or avatar). Hydrate it from the
+  // same public directory used by Alumni Directory.
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/presence/members', { credentials: 'same-origin' })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => {
+        if (cancelled || !Array.isArray(data?.members)) return;
+        const profiles = Object.fromEntries(data.members.map((member) => [member.id, member]));
+        setMemberProfiles(profiles);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  // Resolve the open peer's public profile directly — much faster than waiting
+  // for the whole member directory, so the chat header shows the real name,
+  // role and avatar immediately after arriving from the Alumni Directory.
+  useEffect(() => {
+    if (!activePeerId) return undefined;
+    let cancelled = false;
+    fetch(`/api/presence/profiles/${encodeURIComponent(activePeerId)}`, { credentials: 'same-origin' })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => {
+        if (cancelled || !data?.profile?.id) return;
+        setMemberProfiles((previous) => ({
+          ...previous,
+          [data.profile.id]: { ...previous[data.profile.id], ...data.profile },
+        }));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [activePeerId]);
 
   // Close the ⋮ dropdown when clicking outside
   useEffect(() => {
@@ -852,6 +1019,14 @@ export default function MessagesPage() {
   const pendingQueueRef = useRef([]);
   const activePeerIdRef = useRef(activePeerId);
   useEffect(() => { activePeerIdRef.current = activePeerId; }, [activePeerId]);
+
+  // Sync the active conversation from the ?peer= URL param so that opening
+  // Messages from another page (e.g. Alumni Directory) lands directly on that
+  // peer's thread instead of the empty "select a conversation" state.
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search).get('peer');
+    if (p && p !== activePeerId) setActivePeerId(p);
+  }, [activePeerId]);
 
   // Subscribe to message status updates
   const onMessageStatusUpdate = useCallback((listener) => {
@@ -1026,17 +1201,42 @@ export default function MessagesPage() {
 
   const unreadTotal = currentUserId ? getUnreadCount(currentUserId) : 0;
 
+  const hydratedConversations = useMemo(() => conversations.map((conversation) => {
+    const profile = memberProfiles[conversation.peerId];
+    return profile ? {
+      ...conversation,
+      peer: {
+        ...conversation.peer,
+        ...profile,
+        name: profile.name || conversation.peer.name,
+        initials: profile.initials || conversation.peer.initials,
+        role: profile.role || conversation.peer.role,
+        roles: profile.roles || conversation.peer.roles,
+        avatar: profile.avatar || conversation.peer.avatar || null,
+        department: profile.department || conversation.peer.department,
+      },
+    } : conversation;
+  }), [conversations, memberProfiles]);
+
   const filteredConversations = useMemo(() => {
-    let list = conversations.filter((c) =>
+    let list = hydratedConversations.filter((c) =>
       c.peer.name.toLowerCase().includes(searchTerm.trim().toLowerCase())
     );
     if (filterMode === 'unread') {
       list = list.filter((c) => c.unread > 0);
     }
     return list;
-  }, [conversations, searchTerm, filterMode]);
+  }, [hydratedConversations, searchTerm, filterMode]);
 
-  const activePeer = conversations.find((c) => c.peerId === activePeerId)?.peer;
+  const activePeer = (() => {
+    const fromConversation = hydratedConversations.find((c) => c.peerId === activePeerId)?.peer;
+    if (fromConversation) return fromConversation;
+    if (!activePeerId) return null;
+    const local = getAccountById(activePeerId);
+    const directory = memberProfiles[activePeerId];
+    if (!local && !directory) return null;
+    return { ...local, ...directory };
+  })();
 
   const onlineChatCount = useMemo(
     () => conversations.filter((c) => onlineUsers.includes(c.peerId)).length,
@@ -1069,7 +1269,11 @@ export default function MessagesPage() {
         {unread > 0 && <span className={`sv-count${unread >= 3 ? ' hot' : ''}`}>{unread}</span>}
         <div className="conv-cell-main">
           <div className="avatar-wrapper">
-            <div className="avatar">{c.peer.initials}</div>
+            <div className="avatar">
+              {c.peer.avatar
+                ? <img src={c.peer.avatar} alt="" referrerPolicy="no-referrer" onError={(event) => { event.currentTarget.style.display = 'none'; }} />
+                : c.peer.initials}
+            </div>
             <span className={`avatar-status-dot ${isOnline ? 'online' : 'offline'}`} />
           </div>
           <div className="conv-cell-body">

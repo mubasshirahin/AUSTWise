@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  School, Search, Mail, ExternalLink, Users, MessageCircle, Phone, X,
+  School, Search, Mail, ExternalLink, MessageCircle, Phone,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { getAllAccounts, getInitials } from '../../utils/authStorage';
+import { getCachedMembers, refreshMemberDirectory } from '../../utils/memberDirectory';
 import { useAuth } from '../../context/AuthContext';
 
 // Canonical AUST department order — every department renders even when empty.
@@ -31,7 +33,7 @@ const AVATAR_IMG_STYLE = { width: '100%', height: '100%', borderRadius: '50%', o
  * per department); local accounts merge in extra contact fields (email,
  * linkedin) that the sanitized member list does not expose.
  */
-async function loadFacultyList() {
+function mapFacultyList(serverMembers = []) {
   const byId = new Map();
   const push = (m) => {
     if (!m || !String(m.name || '').trim()) return;
@@ -39,14 +41,8 @@ async function loadFacultyList() {
     if (id) byId.set(id, m);
   };
 
-  // 1) Server member list — authoritative for registered faculty
-  try {
-    const res = await fetch('/api/presence/members', { credentials: 'same-origin' });
-    const data = await res.json().catch(() => null);
-    if (data?.success && Array.isArray(data.members)) {
-      data.members.filter((m) => m.role === 'faculty').forEach(push);
-    }
-  } catch { /* server not reachable — keep local list */ }
+  // Server directory profiles are cached locally for an immediate first paint.
+  serverMembers.filter((m) => m.role === 'faculty' || m.roles?.includes('faculty')).forEach(push);
 
   // 2) Registered accounts stored locally (works offline / server down)
   try {
@@ -76,15 +72,28 @@ async function loadFacultyList() {
   }));
 }
 
+async function loadFacultyList() {
+  const members = await refreshMemberDirectory();
+  return mapFacultyList(members.length ? members : getCachedMembers());
+}
+
 export default function FacultyDirectory() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [faculty, setFaculty] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [faculty, setFaculty] = useState(() => mapFacultyList(getCachedMembers()));
+  const [loading, setLoading] = useState(() => getCachedMembers().length === 0);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeDept, setActiveDept] = useState('all');
+  // Department accordion. Deliberately NOT persisted: leaving the page (tab
+  // switch or route change) unmounts this component, so everything comes back
+  // collapsed instead of remembering a wall of open sections.
+  const [openDepts, setOpenDepts] = useState({});
 
   const isGuest = user?.role === 'guest' || !user?.id;
+
+  const toggleDept = (dept) => {
+    setOpenDepts((previous) => ({ ...previous, [dept]: !previous[dept] }));
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -103,8 +112,6 @@ export default function FacultyDirectory() {
     return DEPARTMENTS.filter((d) => present.has(d));
   }, [faculty]);
 
-  const totalFaculty = faculty.length;
-
   // Apply department + search filters.
   const filtered = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -114,6 +121,8 @@ export default function FacultyDirectory() {
         !term ||
         f.name.toLowerCase().includes(term) ||
         f.designation.toLowerCase().includes(term) ||
+        f.email.toLowerCase().includes(term) ||
+        f.phone.toLowerCase().includes(term) ||
         (DEPT_FULL_NAMES[f.department] || f.department).toLowerCase().includes(term);
       return matchesDept && matchesSearch;
     });
@@ -161,92 +170,46 @@ export default function FacultyDirectory() {
       {/* Masthead */}
       <div className="schedule-masthead">
         <div className="schedule-title-block">
-          <div className="student-dir-header-icon">
-            <School size={26} />
+          <div className="schedule-icon-tile">
+            <School size={20} strokeWidth={2.2} />
           </div>
           <div>
             <span className="schedule-overline">Community</span>
-            <h2 className="student-dir-header-title">Faculty Directory</h2>
-            <p className="student-dir-header-subtitle">
-              Find AUST faculty members.
-            </p>
+            <div className="schedule-title">Faculty Directory</div>
+            <span className="schedule-subtitle">Find AUST faculty members.</span>
           </div>
         </div>
 
-        <div className="schedule-masthead-center">
-          <div className="schedule-stats">
-            <div className="schedule-stat">
-              <span className="schedule-stat-value">{departments.length}</span>
-              <span className="schedule-stat-label">Departments</span>
-            </div>
-            <div className="schedule-stat">
-              <span className="schedule-stat-value">{loading ? '—' : totalFaculty}</span>
-              <span className="schedule-stat-label">Faculty</span>
-            </div>
-          </div>
-        </div>
+        <div className="schedule-masthead-center" />
 
-        <div className="schedule-actions">
-          <div className="search-box faculty-search">
-            <Search size={15} />
+        <div className="schedule-actions student-dir-controls">
+          <select
+            className="input alumni-select"
+            value={activeDept}
+            onChange={(event) => setActiveDept(event.target.value)}
+            aria-label="Filter faculty by department"
+          >
+            <option value="all">All Departments</option>
+            {departments.map((dept) => (
+              <option key={dept} value={dept}>
+                {dept} ({faculty.filter((member) => member.department === dept).length})
+              </option>
+            ))}
+          </select>
+          <div className="search-box alumni-search student-dir-search">
+            <Search size={14} aria-hidden="true" />
             <input
               type="text"
-              placeholder="Search name or designation…"
+              placeholder="Search name / designation"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               aria-label="Search faculty"
             />
-            {searchTerm && (
-              <button
-                type="button"
-                className="faculty-search-clear"
-                onClick={() => setSearchTerm('')}
-                aria-label="Clear search"
-              >
-                <X size={13} />
-              </button>
-            )}
           </div>
         </div>
       </div>
 
       <div className="schedule-dotted-divider" style={{ marginTop: 0 }} />
-
-      {/* Filter bar */}
-      {departments.length > 0 && (
-        <div className="student-dir-controls">
-          <div className="student-dir-filter-group">
-            <Search size={14} />
-            <button
-              className={`student-dir-filter-btn ${activeDept === 'all' ? 'active' : ''}`}
-              onClick={() => setActiveDept('all')}
-            >
-              All
-              {totalFaculty > 0 && (
-                <span className="student-dir-filter-count">{totalFaculty}</span>
-              )}
-            </button>
-            {departments.map((dept) => (
-              <button
-                key={dept}
-                className={`student-dir-filter-btn ${activeDept === dept ? 'active' : ''}`}
-                onClick={() => setActiveDept(dept)}
-              >
-                {dept}
-                <span className="student-dir-filter-count">
-                  {faculty.filter((f) => f.department === dept).length}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          {activeDept !== 'all' && (
-            <button className="student-dir-clear-filter" onClick={() => setActiveDept('all')}>
-              <Users size={12} /> Clear filter
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Content */}
       {loading ? (
@@ -273,114 +236,132 @@ export default function FacultyDirectory() {
         </div>
       ) : (
         <div className="student-dir-content">
-          {deptGroups.map(({ dept, members }) => (
-            <div key={dept} className="student-dir-dept-section faculty-dept">
-              <div className="student-dir-dept-header">
-                <div className="student-dir-dept-icon">
-                  <School size={18} />
-                </div>
-                <div className="student-dir-dept-info">
-                  <h3 className="student-dir-dept-name">
-                    Department of {DEPT_FULL_NAMES[dept] || dept}
-                  </h3>
-                  <span className="student-dir-dept-meta">
-                    {members.length} faculty member{members.length !== 1 ? 's' : ''}
+          {deptGroups.map(({ dept, members }) => {
+            // Searching or picking one department auto-reveals the matching
+            // group, so results never hide behind a collapsed header.
+            const isOpen = Boolean(openDepts[dept])
+              || Boolean(searchTerm.trim())
+              || activeDept !== 'all';
+
+            return (
+              <div key={dept} className="student-dir-dept-section faculty-dept">
+                <button
+                  type="button"
+                  className="student-dir-dept-header"
+                  onClick={() => toggleDept(dept)}
+                  aria-expanded={isOpen}
+                >
+                  {isOpen
+                    ? <ChevronDown size={16} className="student-dir-dept-chevron" />
+                    : <ChevronRight size={16} className="student-dir-dept-chevron" />}
+                  <span className="student-dir-dept-icon">
+                    <School size={18} />
                   </span>
-                </div>
-                <span className="student-dir-dept-count">{members.length}</span>
-              </div>
+                  <span className="student-dir-dept-info">
+                    <span className="student-dir-dept-name" role="heading" aria-level="3">
+                      Department of {DEPT_FULL_NAMES[dept] || dept}
+                    </span>
+                    <span className="student-dir-dept-meta">
+                      {members.length} faculty member{members.length !== 1 ? 's' : ''}
+                    </span>
+                  </span>
+                  <span className="student-dir-dept-count">{members.length}</span>
+                </button>
 
-              <div className="faculty-dir-dept-body">
-                <div className="alumni-grid-inner">
-                  {members.map((f) => {
-                    const isMe = f.id === user?.id;
-                    return (
-                      <div key={f.id} className="alumni-card">
-                        <div className="alumni-card-top">
-                          <button
-                            type="button"
-                            className="avatar"
-                            style={{
-                              width: '32px',
-                              height: '32px',
-                              flexShrink: 0,
-                              background: 'var(--accent-amber-glow)',
-                              color: 'var(--accent-amber)',
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              overflow: 'hidden',
-                              padding: 0,
-                              border: 'none',
-                              cursor: 'pointer',
-                            }}
-                            onClick={() => navigate(`/members/${f.id}`)}
-                            title={`View ${f.name}'s profile / ID`}
-                            aria-label={`View ${f.name}'s profile`}
-                          >
-                            {f.avatar ? (
-                              <img src={f.avatar} alt="" style={AVATAR_IMG_STYLE} />
-                            ) : f.initials}
-                          </button>
-                          <div className="alumni-card-info">
-                            <h3 className="alumni-card-name">
-                              {f.name}
-                              {isMe && (
-                                <span className="badge badge-amber" style={{ fontSize: '9px', marginLeft: '6px', padding: '1px 6px' }}>
-                                  You
-                                </span>
+                {isOpen && (
+                  <div className="faculty-dir-dept-body">
+                    <div className="alumni-grid-inner">
+                      {members.map((f) => {
+                        const isMe = f.id === user?.id;
+                        return (
+                          <div key={f.id} className="alumni-card">
+                            <div className="alumni-card-top">
+                              <button
+                                type="button"
+                                className="avatar"
+                                style={{
+                                  width: '32px',
+                                  height: '32px',
+                                  flexShrink: 0,
+                                  background: 'var(--accent-amber-glow)',
+                                  color: 'var(--accent-amber)',
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  overflow: 'hidden',
+                                  padding: 0,
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                }}
+                                onClick={() => navigate(`/members/${f.id}`)}
+                                title={`View ${f.name}'s profile / ID`}
+                                aria-label={`View ${f.name}'s profile`}
+                              >
+                                {f.avatar ? (
+                                  <img src={f.avatar} alt="" style={AVATAR_IMG_STYLE} />
+                                ) : f.initials}
+                              </button>
+                              <div className="alumni-card-info">
+                                <h3 className="alumni-card-name">
+                                  {f.name}
+                                  {isMe && (
+                                    <span className="badge badge-amber" style={{ fontSize: '9px', marginLeft: '6px', padding: '1px 6px' }}>
+                                      You
+                                    </span>
+                                  )}
+                                </h3>
+                                {f.designation && (
+                                  <p className="alumni-card-dept" style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                    <School size={11} /> {f.designation}
+                                  </p>
+                                )}
+                                <p className="alumni-card-dept">{DEPT_FULL_NAMES[dept] || dept}</p>
+                              </div>
+                            </div>
+
+                            <div className="alumni-card-details">
+                              <span className="alumni-card-detail">
+                                <Mail size={12} /> {f.email || ''}
+                              </span>
+                              <span className="alumni-card-detail">
+                                <Phone size={12} /> {f.phone || ''}
+                              </span>
+                            </div>
+
+                            <div className="alumni-card-footer">
+                              {f.linkedin ? (
+                                <a
+                                  href={f.linkedin}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="faculty-card-linkedin"
+                                  title={`${f.name} on LinkedIn`}
+                                >
+                                  <ExternalLink size={13} />
+                                </a>
+                              ) : (
+                                <span />
                               )}
-                            </h3>
-                            {f.designation && (
-                              <p className="alumni-card-dept" style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                                <School size={11} /> {f.designation}
-                              </p>
-                            )}
-                            <p className="alumni-card-dept">{DEPT_FULL_NAMES[dept] || dept}</p>
+                              {isMe ? (
+                                <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>Your profile</span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary btn-sm"
+                                  onClick={() => handleMessage(f)}
+                                >
+                                  <MessageCircle size={13} /> Message
+                                </button>
+                              )}
+                            </div>
                           </div>
-                        </div>
-
-                        <div className="alumni-card-details">
-                          <span className="alumni-card-detail">
-                            <Mail size={12} /> {f.email || ''}
-                          </span>
-                          <span className="alumni-card-detail">
-                            <Phone size={12} /> {f.phone || ''}
-                          </span>
-                        </div>
-
-                        <div className="alumni-card-footer">
-                          {f.linkedin ? (
-                            <a
-                              href={f.linkedin}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="faculty-card-linkedin"
-                              title={`${f.name} on LinkedIn`}
-                            >
-                              <ExternalLink size={13} />
-                            </a>
-                          ) : (
-                            <span />
-                          )}
-                          {isMe ? (
-                            <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>Your profile</span>
-                          ) : (
-                            <button
-                              type="button"
-                              className="btn btn-secondary btn-sm"
-                              onClick={() => handleMessage(f)}
-                            >
-                              <MessageCircle size={13} /> Message
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

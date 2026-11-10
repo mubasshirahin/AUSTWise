@@ -4001,6 +4001,11 @@ async function handleApiRequest(req, res) {
             section: u.section || '',
             labSection: u.labSection || '',
             designation: u.designation || '',
+            company: u.company || '',
+            graduationYear: u.graduationYear || '',
+            // Alumni "Open for Talk" flag — public by design, same intent as
+            // the alumni directory badge.
+            openForTalk: Boolean(u.openForTalk),
             phone: u.phone || '',
             status: p.status,
             lastSeenAt: p.lastSeenAt || (u.lastSeenAt ? new Date(u.lastSeenAt).getTime() : null),
