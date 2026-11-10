@@ -3902,7 +3902,21 @@ async function handleApiRequest(req, res) {
         sendJson(res, 404, { success: false, error: 'Member not found.' });
         return;
       }
-      const profileRoles = [...new Set([user.role || 'student', ...(Array.isArray(user.roles) ? user.roles : [])].filter(Boolean))];
+      const storedRoleValues = Array.isArray(user.roles)
+        ? user.roles
+        : typeof user.roles === 'string'
+          ? (() => {
+            try {
+              const parsed = JSON.parse(user.roles);
+              return Array.isArray(parsed) ? parsed : user.roles.split(/[,|]/);
+            } catch {
+              return user.roles.split(/[,|]/);
+            }
+          })()
+          : [];
+      const profileRoles = [...new Set([user.role || 'student', ...storedRoleValues]
+        .map((role) => String(role || '').trim().toLowerCase())
+        .filter(Boolean))];
       const isAlumniProfile = profileRoles.includes('alumni') || profileRoles.includes('alumni_with_carry');
 
       // Attribute only records whose persisted owner is this account's ID.
@@ -3993,6 +4007,7 @@ async function handleApiRequest(req, res) {
           avatar: user.avatar || null,
           coverPhoto: user.coverPhoto || null,
           profileView: ['classic', 'compact', 'spotlight'].includes(user.profileView) ? user.profileView : 'classic',
+          profileActivityVisible: Array.isArray(user.profileActivityVisible) ? user.profileActivityVisible : null,
           role: user.role || 'student',
           roles: profileRoles,
           email,

@@ -18,6 +18,7 @@ import { OrbitsProvider, useOrbits } from '../orbits/OrbitsContext';
 import OrbitsConfigurationPanel from '../orbits/OrbitsConfigurationPanel';
 import { useStalk } from '../stalk-road/StalkContext';
 import { submitRoleApplication, getApplicationsByUserId, getUserApplicationStatus, getSlotVacancyMap, resignFromRole, withdrawApplication, deleteAccountById, createAwid, syncRoleApplicationsFromServer, getDisplayRoles, getRoleDisplayName } from '../../utils/authStorage';
+import { copyText } from '../../utils/clipboard';
 import './SettingsPage.css';
 import '../../components/PageHero.css';
 import '../active-members/MemberProfilePage.css';
@@ -466,9 +467,11 @@ export default function SettingsPage() {
     const tab = searchParams.get('tab');
     return ['profile', 'theme', 'notifications', 'about', 'orbits', 'invite'].includes(tab) ? tab : 'profile';
   });
-  const [isPublicProfilePreview, setIsPublicProfilePreview] = useState(false);
+  const [isPublicProfilePreview, setIsPublicProfilePreview] = useState(true);
   const [publicProfileSummary, setPublicProfileSummary] = useState(null);
   const [publicProfileLoading, setPublicProfileLoading] = useState(false);
+  const [copiedProfileEmail, setCopiedProfileEmail] = useState('');
+  const [profileActivityVisible, setProfileActivityVisible] = useState(() => Array.isArray(user?.profileActivityVisible) ? user.profileActivityVisible : null);
   useEffect(() => {
     if (!isAuthenticated || !user?.id || activeSubTab !== 'profile') {
       setPublicProfileSummary(null);
@@ -511,16 +514,30 @@ export default function SettingsPage() {
       : '';
   const profileActivity = publicProfileSummary?.activity || {};
   const profileActivityStats = [
-    { icon: Flame, label: 'Max streak (days)', value: profileActivity.maxStreak, tone: 'is-amber' },
-    { icon: FileText, label: isFacultyMember ? 'Teaching resources' : isAlumniMember ? 'Academic resources' : 'Study resources shared', value: profileActivity.resourcesShared, tone: 'is-blue' },
-    { icon: Users, label: 'Community posts', value: profileActivity.communityPosts, tone: 'is-purple' },
-    { icon: Handshake, label: 'Mentor / study offers', value: profileActivity.peerOffers, tone: 'is-rose' },
-    { icon: GraduationCap, label: 'Course reviews & comments', value: profileActivity.courseReviews, tone: 'is-cyan' },
-    { icon: Vote, label: 'Course polls submitted', value: profileActivity.coursePolls, tone: 'is-purple' },
-    { icon: Coffee, label: 'Campus feedback', value: profileActivity.campusFeedback, tone: 'is-emerald' },
-    { icon: MessageSquare, label: 'Mentor replies', value: profileActivity.mentorReplies, tone: 'is-rose' },
-    { icon: BookOpen, label: 'Class routines shared', value: profileActivity.routinesShared, tone: 'is-blue' },
+    { id: 'streak', icon: Flame, label: 'Max streak (days)', value: profileActivity.maxStreak, tone: 'is-amber' },
+    { id: 'resources', icon: FileText, label: isFacultyMember ? 'Teaching resources' : isAlumniMember ? 'Academic resources' : 'Study resources shared', value: profileActivity.resourcesShared, tone: 'is-blue' },
+    { id: 'communityPosts', icon: Users, label: 'Community posts', value: profileActivity.communityPosts, tone: 'is-purple' },
+    { id: 'peerOffers', icon: Handshake, label: 'Mentor / study offers', value: profileActivity.peerOffers, tone: 'is-rose' },
+    { id: 'courseReviews', icon: GraduationCap, label: 'Course reviews & comments', value: profileActivity.courseReviews, tone: 'is-cyan' },
+    { id: 'coursePolls', icon: Vote, label: 'Course polls submitted', value: profileActivity.coursePolls, tone: 'is-purple' },
+    { id: 'campusFeedback', icon: Coffee, label: 'Campus feedback', value: profileActivity.campusFeedback, tone: 'is-emerald' },
+    { id: 'mentorReplies', icon: MessageSquare, label: 'Mentor replies', value: profileActivity.mentorReplies, tone: 'is-rose' },
+    { id: 'routinesShared', icon: BookOpen, label: 'Class routines shared', value: profileActivity.routinesShared, tone: 'is-blue' },
   ];
+  const visibleProfileActivityStats = profileActivityVisible === null
+    ? profileActivityStats
+    : profileActivityStats.filter(({ id }) => profileActivityVisible.includes(id));
+  const toggleProfileActivityStat = (id) => {
+    setProfileActivityVisible((current) => {
+      const selected = new Set(current === null ? profileActivityStats.map((stat) => stat.id) : current);
+      if (selected.has(id)) selected.delete(id);
+      else selected.add(id);
+      return [...selected];
+    });
+  };
+  useEffect(() => {
+    if (Array.isArray(user?.profileActivityVisible)) setProfileActivityVisible(user.profileActivityVisible);
+  }, [user?.id, user?.profileActivityVisible]);
   // Persist the generated AWID once so it stays stable for accounts that
   // don't have one yet (localStorage/social auth flows).
   const awidPersistedRef = useRef(false);
@@ -917,13 +934,17 @@ export default function SettingsPage() {
     labSection: user.labSection || '',
   });
   const previewProfile = publicProfileSummary || user || {};
-  const previewRoles = getDisplayRoles(previewProfile);
-  const previewBatch = previewProfile.batch || [quickProfile.batchName, quickProfile.batchNo].filter(Boolean).join(' ') || 'Not set';
-  const previewSection = [previewProfile.section || quickProfile.section, previewProfile.labSection || quickProfile.labSection ? `Lab ${previewProfile.labSection || quickProfile.labSection}` : ''].filter(Boolean).join(' · ');
+  const previewRoles = [...new Set([
+    ...getDisplayRoles(previewProfile),
+    previewProfile.role,
+    ...(Array.isArray(previewProfile.roles) ? previewProfile.roles : []),
+  ].map((role) => String(role || '').trim().toLowerCase()).filter(Boolean))];
+  const previewBatchParts = getBatchPartsFromUser(previewProfile);
+  const previewBatch = [previewBatchParts.batchName, previewBatchParts.batchNo].filter(Boolean).join(' ') || 'Not set';
   const previewIdentity = [
     { label: 'AUSTWise ID', value: previewProfile.awid || displayAwid, icon: User },
     ...(!isFacultyMember ? [{ label: 'Student ID', value: previewProfile.studentId || profileDetails.id, icon: GraduationCap }] : []),
-    { label: 'Email', value: previewProfile.email || profileDetails.email, icon: Mail },
+    { label: 'Email', value: previewProfile.email || profileDetails.email || user.email, icon: Mail, kind: 'email' },
     { label: 'Phone', value: previewProfile.privacy?.showPhone === false ? 'Hidden' : previewProfile.phone || profileDetails.phone, icon: Phone },
     { label: 'Blood group', value: previewProfile.bloodGroup || profileDetails.bloodGroup, icon: Droplets },
     { label: 'Department', value: previewProfile.department || quickProfile.department, icon: BookOpen },
@@ -938,9 +959,40 @@ export default function SettingsPage() {
     ] : [
       { label: 'Batch', value: previewBatch, icon: CalendarDays },
       { label: 'Year · Semester', value: previewProfile.yearSemester || quickProfile.yearSemester, icon: GraduationCap },
-      { label: 'Section', value: previewSection, icon: Users },
+      { label: 'Section', value: previewProfile.section || quickProfile.section, icon: Users },
+      { label: 'Lab Group', value: previewProfile.labSection || quickProfile.labSection, icon: Users },
     ]),
   ];
+  const handleCopyProfileEmail = async (email) => {
+    try {
+      await copyText(email);
+      setCopiedProfileEmail(email);
+      window.setTimeout(() => setCopiedProfileEmail(''), 1800);
+    } catch {
+      setCopiedProfileEmail('');
+    }
+  };
+  const renderPreviewIdentityValue = ({ label, value, kind }) => {
+    if (!isEditingProfile) {
+      return kind === 'email' && value
+        ? <button type="button" className="member-profile-email" onClick={() => handleCopyProfileEmail(value)} aria-label={copiedProfileEmail === value ? 'Email copied' : 'Copy email address'} title={copiedProfileEmail === value ? 'Copied!' : 'Click to copy'}>{value}{copiedProfileEmail === value && <CheckCircle2 size={13} aria-hidden="true" />}</button>
+        : <strong>{value === null || value === undefined || value === '' ? 'Not set' : value}</strong>;
+    }
+
+    const inputClass = 'input member-profile-inline-input';
+    if (label === 'Phone') return <input className={inputClass} type="tel" value={profileDetails.phone} onChange={(event) => updateProfileDetailsField('phone', event.target.value)} aria-label="Phone" />;
+    if (label === 'Blood group') return <select className={inputClass} value={profileDetails.bloodGroup} onChange={(event) => updateProfileDetailsField('bloodGroup', event.target.value)} aria-label="Blood group"><option value="">Not set</option>{['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((group) => <option key={group}>{group}</option>)}</select>;
+    if (label === 'Department') return <select className={inputClass} value={quickProfile.department} onChange={(event) => updateQuickProfileField('department', event.target.value)} aria-label="Department"><option value="">Select department</option>{departments.map((department) => <option key={department}>{department}</option>)}</select>;
+    if (label === 'Batch') return <input className={inputClass} value={batchInputValue} onChange={(event) => updateBatchInput(event.target.value)} placeholder="e.g. Quanta 52" aria-label="Batch name and number" />;
+    if (label === 'Year · Semester') return <select className={inputClass} value={quickProfile.yearSemester} onChange={(event) => updateQuickProfileField('yearSemester', event.target.value)} aria-label="Year and semester"><option value="">Select year and semester</option>{getYearSemesters(quickProfile.department).map((option) => <option key={option}>{option}</option>)}</select>;
+    if (label === 'Section') return <select className={inputClass} value={quickProfile.section} onChange={(event) => updateQuickProfileField('section', event.target.value)} aria-label="Section"><option value="">Select section</option>{sections.map((section) => <option key={section}>{section}</option>)}</select>;
+    if (label === 'Lab Group') return <select className={inputClass} value={quickProfile.labSection} onChange={(event) => updateQuickProfileField('labSection', event.target.value)} aria-label="Lab group"><option value="">Select lab group</option>{getLabSectionOptions(quickProfile.section).map((lab) => <option key={lab}>{lab}</option>)}</select>;
+    if (label === 'Designation' || label === 'Company') {
+      const field = label === 'Designation' ? 'designation' : 'company';
+      return <input className={inputClass} value={profileDetails[field]} onChange={(event) => updateProfileDetailsField(field, event.target.value)} aria-label={label} />;
+    }
+    return <strong>{value === null || value === undefined || value === '' ? 'Not set' : value}</strong>;
+  };
 
   // Keep the read-only profile and the next edit draft tied to the server
   // account. Do not touch an in-progress draft while the user is editing.
@@ -1180,6 +1232,7 @@ export default function SettingsPage() {
         avatar,
         coverPhoto,
         bloodGroup: profileDetails.bloodGroup,
+        ...(profileActivityVisible !== null ? { profileActivityVisible } : {}),
         ...(isAlumniMember ? {
           designation: (profileDetails.designation || '').trim(),
           company: (profileDetails.company || '').trim(),
@@ -1197,6 +1250,7 @@ export default function SettingsPage() {
       });
       setSaveMessage('Saved');
       setIsEditingProfile(false);
+      setIsPublicProfilePreview(true);
       window.setTimeout(() => setSaveMessage(''), 2200);
     } catch (error) {
       setSaveMessage(error.message || 'Could not save profile. Please try again.');
@@ -1392,10 +1446,6 @@ export default function SettingsPage() {
                 <div className="schedule-masthead-center" />
 
                 <div className="profile-save-actions">
-                  <div className="identity-view-toggle" role="group" aria-label="Choose Identity display">
-                    <button type="button" aria-pressed={!isPublicProfilePreview} className={!isPublicProfilePreview ? 'is-selected' : ''} onClick={() => setIsPublicProfilePreview(false)}>Current style</button>
-                    <button type="button" aria-pressed={isPublicProfilePreview} className={isPublicProfilePreview ? 'is-selected' : ''} onClick={() => setIsPublicProfilePreview(true)}>Public profile</button>
-                  </div>
                   <div className="profile-completion-circle" title={`${profilePercent}% complete`}>
                     <svg viewBox="0 0 36 36">
                       <path className="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
@@ -1408,8 +1458,10 @@ export default function SettingsPage() {
                       {saveMessage === 'Saved' ? <CheckCircle size={14} /> : <AlertTriangle size={14} />} {saveMessage}
                     </span>
                   )}
-                  <button className="btn btn-secondary btn-sm" onClick={() => {
-                    if (isPublicProfilePreview) setIsPublicProfilePreview(false);
+                  {isEditingProfile && <button type="button" className="btn btn-primary btn-sm" onClick={saveAllChanges} disabled={!allChangesReady || isProfileSaving}><Save size={14} /> {isProfileSaving ? 'Saving…' : 'Save'}</button>}
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => {
+                    setIsPublicProfilePreview(true);
+                    if (isEditingProfile) setProfileActivityVisible(Array.isArray(user?.profileActivityVisible) ? user.profileActivityVisible : null);
                     toggleProfileEditing();
                   }}>
                     <Pencil size={14} /> {isEditingProfile ? 'Cancel' : 'Edit'}
@@ -1418,25 +1470,32 @@ export default function SettingsPage() {
               </div>
 
               {isPublicProfilePreview && (
-                <div className="member-profile-page identity-public-preview">
+                <div className={`member-profile-page identity-public-preview profile-view-${['classic', 'compact', 'spotlight'].includes(previewProfile.profileView) ? previewProfile.profileView : 'classic'}`}>
                   <section className="member-profile-hero glass-card-static">
-                    <div className="member-profile-cover">{previewProfile.coverPhoto && <img src={previewProfile.coverPhoto} alt="" />}</div>
+                    <div className={`member-profile-cover${(isEditingProfile ? profileDetails.coverPhoto : previewProfile.coverPhoto) ? ' has-cover' : ' is-default-cover'}`}>
+                      {(isEditingProfile ? profileDetails.coverPhoto : previewProfile.coverPhoto) && <img src={isEditingProfile ? profileDetails.coverPhoto : previewProfile.coverPhoto} alt="" />}
+                      {isEditingProfile && <div className="identity-cover-actions">
+                        <label className="identity-cover-upload"><input type="file" accept="image/*" aria-label="Upload cover photo" onChange={handleCoverPhotoUpload} /><Camera size={14} /> {profileDetails.coverPhoto ? 'Change cover' : 'Add cover photo'}</label>
+                        {profileDetails.coverPhoto && <button type="button" className="identity-cover-remove" onClick={() => updateProfileDetailsField('coverPhoto', '')}>Remove</button>}
+                      </div>}
+                    </div>
                     <div className="member-profile-heading">
-                      <div className="member-profile-avatar">
-                        {previewProfile.avatar || profileDetails.avatar
-                          ? <img src={previewProfile.avatar || profileDetails.avatar} alt="" />
-                          : getInitials(previewProfile.name || user?.name)}
+                      <div className="avatar xl member-profile-avatar">
+                        {(isEditingProfile ? profileDetails.avatar : previewProfile.avatar || profileDetails.avatar)
+                          ? <img src={isEditingProfile ? profileDetails.avatar : previewProfile.avatar || profileDetails.avatar} alt="" />
+                          : getInitials(isEditingProfile ? profileDetails.name : previewProfile.name || user?.name)}
+                        {isEditingProfile && <label className="identity-preview-avatar-upload" title="Change profile photo"><input type="file" accept="image/*" aria-label="Upload profile photo" onChange={handleProfileImageUpload} /><Camera size={14} /></label>}
                       </div>
                       <div className="member-profile-name-block">
-                        <div className="member-profile-roles">{previewRoles.map((role) => <span key={role} className="member-profile-role">{getRoleDisplayName(role)}</span>)}</div>
-                        <h1>{previewProfile.name || user?.name}</h1>
+                        <div className="member-profile-roles" aria-label="Assigned roles">{previewRoles.map((role) => <span key={role} className="member-profile-role">{getRoleDisplayName(role)}</span>)}</div>
+                        {isEditingProfile ? <input className="input member-profile-name-input" value={profileDetails.name} onChange={(event) => updateProfileDetailsField('name', event.target.value)} aria-label="Name" /> : <h1>{previewProfile.name || user?.name}</h1>}
                         <p>{[
-                          previewProfile.department || quickProfile.department,
+                          isEditingProfile ? quickProfile.department : previewProfile.department || quickProfile.department,
                           isFacultyMember
                             ? previewProfile.designation || profileDetails.designation
                             : isAlumniMember
                               ? (previewProfile.graduationYear || user?.graduationYear ? `Graduated ${previewProfile.graduationYear || user.graduationYear}` : '')
-                              : previewProfile.yearSemester || quickProfile.yearSemester || (previewProfile.semester ? `Semester ${previewProfile.semester}` : ''),
+                              : isEditingProfile ? quickProfile.yearSemester : previewProfile.yearSemester || quickProfile.yearSemester || (previewProfile.semester ? `Semester ${previewProfile.semester}` : ''),
                         ].filter(Boolean).join(' · ') || 'AUSTWise member'}</p>
                       </div>
                       <div className="member-profile-hero-actions">
@@ -1448,16 +1507,11 @@ export default function SettingsPage() {
                     </div>
                   </section>
 
-                  <section className="member-profile-section glass-card-static" aria-labelledby="identity-preview-roles-title">
-                    <div className="member-profile-section-heading"><span className="member-profile-section-icon"><Users size={18} /></span><div><h2 id="identity-preview-roles-title">Roles</h2><p>Roles assigned to your profile</p></div></div>
-                    <div className="member-profile-roles">{previewRoles.map((role) => <span key={role} className="member-profile-role">{getRoleDisplayName(role)}</span>)}</div>
-                  </section>
-
                   <section className="member-profile-section glass-card-static" aria-labelledby="identity-preview-details-title">
-                    <div className="member-profile-section-heading"><span className="member-profile-section-icon"><User size={18} /></span><div><h2 id="identity-preview-details-title">Identity</h2><p>How other members see your profile details</p></div></div>
+                    <div className="member-profile-section-heading"><span className="member-profile-section-icon"><User size={18} /></span><div><h2 id="identity-preview-details-title">Identity</h2><p>{isEditingProfile ? 'Edit your details in place, then save your profile' : 'How other members see your profile details'}</p></div></div>
                     <div className="member-profile-identity-grid">
-                      {previewIdentity.map(({ label, value, icon: Icon }) => (
-                        <div className="member-profile-identity-item" key={label}><Icon size={15} aria-hidden="true" /><span>{label}</span><strong>{value === null || value === undefined || value === '' ? 'Not set' : value}</strong></div>
+                      {previewIdentity.map((item) => (
+                        <div className={`member-profile-identity-item${item.kind === 'email' ? ' is-email' : ''}`} key={item.label}><item.icon size={15} aria-hidden="true" /><span>{item.label}</span>{renderPreviewIdentityValue(item)}</div>
                       ))}
                     </div>
                     {Array.isArray(previewProfile.linkedAccounts) && previewProfile.linkedAccounts.some((account) => account?.providerName || account?.provider) && (
@@ -1473,10 +1527,14 @@ export default function SettingsPage() {
                   <section className="member-profile-section glass-card-static" aria-labelledby="identity-preview-activity-title">
                     <div className="member-profile-section-heading"><span className="member-profile-section-icon is-activity"><Orbit size={18} /></span><div><h2 id="identity-preview-activity-title">Contributions</h2><p>Verified resources and community activity{profileLastActiveText ? ` · ${profileLastActiveText}` : ''}</p></div></div>
                     <div className="member-profile-metrics">
-                      {profileActivityStats.map(({ icon: Icon, label, value, tone }) => (
-                        <div className={`member-profile-metric ${tone || ''}`} key={label}><span className="member-profile-metric-icon"><Icon size={17} /></span><strong>{Number(value || 0).toLocaleString()}</strong><span>{label}</span></div>
+                      {visibleProfileActivityStats.map(({ id, icon: Icon, label, value, tone }) => (
+                        <div className={`member-profile-metric ${tone || ''}`} key={id}><span className="member-profile-metric-icon"><Icon size={17} /></span><strong>{Number(value || 0).toLocaleString()}</strong><span>{label}</span></div>
                       ))}
                     </div>
+                    {isEditingProfile && <div className="identity-contribution-options">
+                      <h3>Choose visible stats</h3>
+                      <div>{profileActivityStats.map(({ id, label }) => <label key={id}><input type="checkbox" checked={profileActivityVisible === null || profileActivityVisible.includes(id)} onChange={() => toggleProfileActivityStat(id)} /><span>{label}</span></label>)}</div>
+                    </div>}
                   </section>
 
                   <section className="member-profile-fun glass-card-static" aria-labelledby="identity-preview-recent-title">

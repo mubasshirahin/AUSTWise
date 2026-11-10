@@ -409,6 +409,7 @@ const SELF_EDITABLE_FIELDS = [
   'designation', 'company', 'graduationYear',
   'personalEmail',
   'profileView',
+  'profileActivityVisible',
   'facebook', 'whatsapp', 'linkedin', 'discord',
   'openForTalk',
   'orbit', // { checkpoints, favoriteColor } — public, shown to anyone visiting the orbit
@@ -447,6 +448,11 @@ async function handleProfileUpdate(req, res) {
   }
   if ('profileView' in patch && !['classic', 'compact', 'spotlight'].includes(patch.profileView)) {
     delete patch.profileView;
+  }
+  if ('profileActivityVisible' in patch) {
+    const availableStats = new Set(['streak', 'resources', 'communityPosts', 'peerOffers', 'courseReviews', 'coursePolls', 'campusFeedback', 'mentorReplies', 'routinesShared']);
+    if (!Array.isArray(patch.profileActivityVisible)) delete patch.profileActivityVisible;
+    else patch.profileActivityVisible = [...new Set(patch.profileActivityVisible.filter((id) => availableStats.has(id)))];
   }
   if ('personalEmail' in patch) {
     const email = String(patch.personalEmail || '').trim().toLowerCase();
