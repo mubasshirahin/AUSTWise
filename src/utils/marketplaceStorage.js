@@ -90,6 +90,8 @@ loadStoreAsync();
 // ── Existing helpers (unchanged) ─────────────────────────────────────────────
 
 export function getContributorId() {
+  const profileId = loadUserProfile()?.id;
+  if (profileId && profileId !== 'guest') return profileId;
   try {
     const existing = localStorage.getItem(contributorKey);
     if (existing) return existing;
@@ -471,6 +473,7 @@ export async function addMentorRequest(payload) {
   const store = await loadStoreAsync();
   const entry = {
     ...createBaseEntry(),
+    contributorId: payload.contributorId || loadUserProfile()?.id || null,
     requesterName: payload.requesterName || user?.name || 'Anonymous',
     avatar: payload.avatar || user?.avatar || null,
     batch: payload.batch || getBatchNoFromUser(user) || '—',
@@ -499,6 +502,7 @@ export function addMentorResponse(requestId, payload) {
 
   const response = {
     id: crypto.randomUUID(),
+    contributorId: payload.contributorId || loadUserProfile()?.id || null,
     postedAt: new Date().toISOString(),
     responderName: responderName || loadUserProfile()?.name || 'Anonymous',
     responderBatch: payload.responderBatch || getBatchNoFromUser() || '—',

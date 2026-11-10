@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useLiveRefresh } from '../../utils/liveStore';
+import { useAuth } from '../../context/AuthContext';
 import { createPortal } from 'react-dom';
 import { Coffee, Flame, Star, MessageSquare, AlertTriangle, Plus, X, Info, MoreVertical, Check, Search, Trash2 } from 'lucide-react';
 import { canteenData, currentDayOfWeek } from '../../data/mockData';
@@ -163,6 +164,7 @@ function FoodCard({ food, onDelete }) {
 
 // ─── Feedback panel ───
 function FoodFeedback({ food, onChanged }) {
+  const { user } = useAuth();
   const [tab, setTab] = useState('reviews');
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState('');
@@ -175,7 +177,7 @@ function FoodFeedback({ food, onChanged }) {
   const submitReview = (e) => {
     e.preventDefault();
     try {
-      addReview(food.id, rating, reviewText);
+      addReview(food.id, rating, reviewText, user?.id);
       setRating(0);
       setReviewText('');
       setError('');
@@ -188,7 +190,7 @@ function FoodFeedback({ food, onChanged }) {
   const submitComplaint = (e) => {
     e.preventDefault();
     try {
-      addComplaint(food.id, complaintText);
+      addComplaint(food.id, complaintText, user?.id);
       setComplaintText('');
       setError('');
       onChanged();

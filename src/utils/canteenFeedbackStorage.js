@@ -70,7 +70,7 @@ export function getReviewSummary(foodId) {
   return { average: roundOne(sum / reviews.length), count: reviews.length };
 }
 
-export function addReview(foodId, rating, comment) {
+export function addReview(foodId, rating, comment, contributorId) {
   const ratingValue = Number(rating);
   if (!(ratingValue >= 1 && ratingValue <= 5)) {
     throw new Error('Please select a rating between 1 and 5 stars.');
@@ -84,7 +84,7 @@ export function addReview(foodId, rating, comment) {
     foodId,
     rating: ratingValue,
     comment: String(comment || '').trim(),
-    contributorId: getContributorId(),
+    contributorId: contributorId || getContributorId(),
     createdAt,
   };
 
@@ -107,7 +107,7 @@ export function getComplaintCount(foodId) {
   return loadList(complaintsKey).filter((c) => c.foodId === foodId).length;
 }
 
-export function addComplaint(foodId, text) {
+export function addComplaint(foodId, text, contributorId) {
   const body = String(text || '').trim();
   if (!body) throw new Error('Please describe your complaint before submitting.');
 
@@ -118,7 +118,7 @@ export function addComplaint(foodId, text) {
       `cmp-${Date.now()}`,
     foodId,
     text: body,
-    contributorId: getContributorId(),
+    contributorId: contributorId || getContributorId(),
     createdAt,
   };
 

@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, Award, BookOpen, CalendarDays, Droplets, Flame, GraduationCap, Mail,
-  Orbit, Phone, Sparkles, UserRound,
+  ArrowLeft, Award, BookOpen, CalendarDays, Coffee, Droplets, FileText, Flame, GraduationCap, Handshake, Mail,
+  MessageSquare, Orbit, Phone, UserRound, Users, Vote,
 } from 'lucide-react';
 import { useStalk } from '../stalk-road/StalkContext';
 import { getAllAccounts, getDisplayRoles, getRoleDisplayName } from '../../utils/authStorage';
 import { getDisplayBatchText } from '../../utils/batchIdentity';
+import { getAlumniEmployment } from '../../utils/alumniEmployment';
 import './MemberProfilePage.css';
 
 /** Local fallback: accounts that exist only on this device (not yet on the
@@ -24,10 +25,13 @@ function findLocalProfile(memberId) {
       name: acc.name || '',
       initials: acc.initials || '',
       avatar: acc.avatar || null,
+      coverPhoto: acc.coverPhoto || null,
+      profileView: acc.profileView || 'classic',
       role: acc.role || 'student',
       roles: Array.isArray(acc.roles) ? acc.roles : (acc.role ? [acc.role] : []),
       email: acc.email || '',
-      phone: acc.phone || '',
+      phone: acc.privacy?.showPhone === false ? '' : (acc.phone || ''),
+      privacy: { showPhone: acc.privacy?.showPhone !== false },
       studentId: '',
       bloodGroup: acc.bloodGroup || '',
       department: acc.department || '',
@@ -39,7 +43,7 @@ function findLocalProfile(memberId) {
       section: acc.section || '',
       labSection: acc.labSection || '',
       designation: acc.designation || '',
-      company: acc.company || '',
+      company: String(acc.company || '').trim() && String(acc.company || '').trim().toLowerCase() === String(acc.designation || '').trim().toLowerCase() ? '' : (acc.company || ''),
       graduationYear: acc.graduationYear || '',
       createdAt: acc.createdAt || null,
       status: 'offline',
@@ -125,57 +129,6 @@ export default function MemberProfilePage() {
     return () => controller.abort();
   }, [memberId, navigate, retryCount]);
 
-  // Role-specific profile: Faculty / Alumni / Student show different fields.
-  // Uses ALL display roles so faculty_* → Faculty and
-  // alumni_with_carry → Alumni even when role is the more specific key.
-  const displayRoles = useMemo(() => (profile ? getDisplayRoles(profile) : []), [profile]);
-  const identity = useMemo(() => {
-    if (!profile) return [];
-    const isFaculty = displayRoles.includes('faculty') || displayRoles.some((r) => r.startsWith('faculty_'));
-    const isAlumni = displayRoles.includes('alumni') || displayRoles.includes('alumni_with_carry');
-    const batchValue = getDisplayBatchText(profile) || profile.batch || '';
-    const sectionValue = profile.section && profile.labSection ? `${profile.section} · Lab ${profile.labSection}` : profile.section || profile.labSection;
-    const common = [
-      { label: 'AUSTWise ID', value: profile.awid, icon: UserRound },
-      { label: 'Email', value: profile.email, icon: Mail, kind: 'email' },
-      { label: 'Phone', value: profile.phone, icon: Phone },
-      { label: 'Blood group', value: profile.bloodGroup, icon: Droplets },
-      { label: 'Department', value: profile.department, icon: BookOpen },
-    ];
-    if (isFaculty) {
-      return [
-        ...common,
-        { label: 'Designation', value: profile.designation, icon: Award },
-        { label: 'Company', value: profile.company, icon: Orbit },
-      ].filter((item) => item.value !== '' && item.value !== null && item.value !== undefined);
-    }
-    if (isAlumni) {
-      return [
-        common[0],
-        { label: 'Student ID', value: profile.studentId, icon: GraduationCap },
-        ...common.slice(1),
-        { label: 'Batch', value: batchValue, icon: CalendarDays },
-        { label: 'Graduation year', value: profile.graduationYear, icon: CalendarDays },
-        { label: 'Designation', value: profile.designation, icon: Award },
-        { label: 'Company', value: profile.company, icon: Orbit },
-      ].filter((item) => item.value !== '' && item.value !== null && item.value !== undefined);
-    }
-    // Student (default)
-    return [
-      common[0],
-      { label: 'Student ID', value: profile.studentId, icon: GraduationCap },
-      ...common.slice(1),
-      { label: 'Batch', value: batchValue, icon: CalendarDays },
-      { label: 'Year · Semester', value: profile.yearSemester || (profile.semester ? `Semester ${profile.semester}` : ''), icon: GraduationCap },
-      { label: 'Section', value: sectionValue, icon: BookOpen },
-      { label: 'Designation', value: profile.designation, icon: Award },
-    ].filter((item) => item.value !== '' && item.value !== null && item.value !== undefined);
-  }, [profile, displayRoles]);
-
-  const joinedDate = profile?.createdAt
-    ? new Date(profile.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
-    : '';
-
   if (loading) {
     return <div className="member-profile-state" role="status" aria-live="polite">Loading profile…</div>;
   }
@@ -194,44 +147,59 @@ export default function MemberProfilePage() {
 
   const activity = profile.activity || {};
   const socialAccounts = Array.isArray(profile.linkedAccounts) ? profile.linkedAccounts : [];
-  const activityInsights = [
-    Number(activity.maxStreak) > 0 && `Your best streak is ${activity.maxStreak} days. AUSTWise is starting to suspect this is your favorite study spot.`,
-    Number(activity.semestersRecorded) > 0 && `${activity.semestersRecorded} semesters on record. Your transcript has officially entered its lore era.`,
-    Number(activity.transcriptCourses) > 0 && `${activity.transcriptCourses} courses recorded. Even your timetable needs a timetable.`,
-  ].filter(Boolean).slice(0, 3);
+  const isFaculty = displayRoles.includes('faculty') || displayRoles.some((role) => role.startsWith('faculty_'));
+  const activityLabels = isFaculty
+    ? { resources: 'Teaching resources' }
+    : { resources: displayRoles.includes('alumni') ? 'Academic resources' : 'Study resources shared' };
   const lastActiveText = profile.status === 'online'
     ? 'Active now'
     : profile.lastSeenAt
       ? `Last active ${new Date(profile.lastSeenAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
-      : 'Activity time unavailable';
+      : '';
 
   return (
-    <main className="member-profile-page">
+    <main className={`member-profile-page profile-view-${['classic', 'compact', 'spotlight'].includes(profile.profileView) ? profile.profileView : 'classic'}`}>
       <button type="button" className="member-profile-back" onClick={() => navigate(-1)}>
         <ArrowLeft size={16} /> Back to members
       </button>
 
       <section className="member-profile-hero glass-card-static">
-        <div className="member-profile-cover" />
+        <div className="member-profile-cover">
+          {profile.coverPhoto && <img src={profile.coverPhoto} alt="" aria-hidden="true" />}
+        </div>
         <div className="member-profile-heading">
-          <div className="member-profile-avatar">
-            {profile.avatar ? <img src={profile.avatar} alt="" /> : profile.initials}
+          <div className="avatar xl member-profile-avatar">
+            {profile.avatar ? <img src={profile.avatar} alt={`${profile.name}'s profile`} referrerPolicy="no-referrer" /> : profile.initials}
           </div>
           <div className="member-profile-name-block">
-            <div className="member-profile-roles">
-              {displayRoles.map((roleKey) => (
-                <span key={roleKey} className="member-profile-role">{getRoleDisplayName(roleKey)}</span>
-              ))}
-            </div>
             <h1>{profile.name}</h1>
             <p>{[
               profile.department,
-              (displayRoles.includes('faculty') || displayRoles.some((r) => r.startsWith('faculty_')))
+              isFacultyProfile
                 ? profile.designation
-                : (profile.yearSemester || (profile.semester ? `Semester ${profile.semester}` : '')),
+                : isAlumniProfile
+                  ? (profile.graduationYear ? `Graduated ${profile.graduationYear}` : '')
+                  : (profile.yearSemester || (profile.semester ? `Semester ${profile.semester}` : '')),
             ].filter(Boolean).join(' · ') || 'AUSTWise member'}</p>
           </div>
-          {joinedDate && <span className="member-profile-joined">Member since {joinedDate}</span>}
+          <div className="member-profile-hero-actions">
+            <button type="button" className="member-profile-orbit" onClick={() => stalk(profile)} aria-label={`Visit ${profile.name}'s Orbit`}>
+              <Orbit size={15} /> Visit Orbit <span aria-hidden="true">↗</span>
+            </button>
+            <span className="member-profile-joined"><CalendarDays size={13} />{joinedDate ? `Member since ${joinedDate}` : 'AUSTWise member'}</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="member-profile-section member-profile-roles-section glass-card-static" aria-labelledby="member-roles-title">
+        <div className="member-profile-section-heading">
+          <span className="member-profile-section-icon is-roles"><Users size={18} /></span>
+          <div><h2 id="member-roles-title">Roles</h2><p>Roles assigned to this profile</p></div>
+        </div>
+        <div className="member-profile-roles" aria-label="Assigned roles">
+          {displayRoles.map((roleKey) => (
+            <span key={roleKey} className="member-profile-role">{getRoleDisplayName(roleKey)}</span>
+          ))}
         </div>
       </section>
 
@@ -269,30 +237,32 @@ export default function MemberProfilePage() {
       <section className="member-profile-section glass-card-static" aria-labelledby="member-activity-title">
         <div className="member-profile-section-heading">
           <span className="member-profile-section-icon is-activity"><Orbit size={18} /></span>
-          <div><h2 id="member-activity-title">AUSTWise activity</h2><p>Personal account data and contributions · {lastActiveText}</p></div>
+          <div><h2 id="member-activity-title">Contributions</h2><p>Verified resources and community activity{lastActiveText ? ` · ${lastActiveText}` : ''}</p></div>
         </div>
         <div className="member-profile-metrics">
           <Metric icon={Flame} label="Max streak (days)" value={activity.maxStreak} tone="is-amber" />
-          <Metric icon={GraduationCap} label="Semesters recorded" value={activity.semestersRecorded} tone="is-blue" />
-          <Metric icon={BookOpen} label="Courses in transcript" value={activity.transcriptCourses} tone="is-purple" />
+          <Metric icon={FileText} label={activityLabels.resources} value={activity.resourcesShared} tone="is-blue" />
+          <Metric icon={Users} label="Community posts" value={activity.communityPosts} tone="is-purple" />
+          <Metric icon={Handshake} label="Mentor / study offers" value={activity.peerOffers} tone="is-rose" />
+          <Metric icon={GraduationCap} label="Course reviews & comments" value={activity.courseReviews} tone="is-cyan" />
+          <Metric icon={Vote} label="Course polls submitted" value={activity.coursePolls} tone="is-purple" />
+          <Metric icon={Coffee} label="Campus feedback" value={activity.campusFeedback} tone="is-emerald" />
+          <Metric icon={MessageSquare} label="Mentor replies" value={activity.mentorReplies} tone="is-rose" />
+          <Metric icon={BookOpen} label="Class routines shared" value={activity.routinesShared} tone="is-blue" />
         </div>
       </section>
 
       <section className="member-profile-fun glass-card-static" aria-labelledby="member-profile-fun-title">
-        <div className="member-profile-fun-heading"><Sparkles size={17} /><h2 id="member-profile-fun-title">AUSTWise noticed…</h2></div>
-        {activityInsights.length > 0 ? (
-          <ul>{activityInsights.map((insight) => <li key={insight}>{insight}</li>)}</ul>
+        <div className="member-profile-fun-heading"><BookOpen size={17} /><h2 id="member-profile-fun-title">Recent contributions</h2></div>
+        {Array.isArray(activity.recentContributions) && activity.recentContributions.length > 0 ? (
+          <ul>{activity.recentContributions.map((item) => (
+            <li key={item.id}><strong>{item.title}</strong><span>{item.type}{item.createdAt ? ` · ${new Date(item.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}` : ''}</span></li>
+          ))}</ul>
         ) : (
-          <p>This profile is still in its quiet era. One saved note or study session will give AUSTWise something to tease you about.</p>
+          <p>No verified contributions yet.</p>
         )}
       </section>
 
-      <div className="member-profile-orbit-wrap">
-        <p>Want to see more of {profile.name.split(' ')[0]}&apos;s world?</p>
-        <button type="button" className="member-profile-orbit" onClick={() => stalk(profile)}>
-          <Orbit size={17} /> Visit Orbit
-        </button>
-      </div>
     </main>
   );
 }

@@ -403,11 +403,12 @@ export async function handleMe(req, res) {
 // Fields a user may edit about themselves. id/email/role/awid/privacy etc.
 // are deliberately excluded so the server stays the source of truth.
 const SELF_EDITABLE_FIELDS = [
-  'name', 'avatar', 'bloodGroup', 'phone',
+  'name', 'avatar', 'coverPhoto', 'bloodGroup', 'phone',
   'department', 'batch', 'batchNo', 'batchName',
   'yearSemester', 'section', 'labSection',
   'designation', 'company', 'graduationYear',
   'personalEmail',
+  'profileView',
   'facebook', 'whatsapp', 'linkedin', 'discord',
   'openForTalk',
   'orbit', // { checkpoints, favoriteColor } — public, shown to anyone visiting the orbit
@@ -443,6 +444,9 @@ async function handleProfileUpdate(req, res) {
     if (key in body) {
       patch[key] = typeof body[key] === 'string' ? body[key].trim() : body[key];
     }
+  }
+  if ('profileView' in patch && !['classic', 'compact', 'spotlight'].includes(patch.profileView)) {
+    delete patch.profileView;
   }
   if ('personalEmail' in patch) {
     const email = String(patch.personalEmail || '').trim().toLowerCase();
@@ -554,6 +558,16 @@ function getBatchLabel(user) {
 /** Return user without sensitive fields */
 function sanitizeUser(user) {
   const { password: _password, ...safe } = user;
+  const roles = [safe.role, ...(Array.isArray(safe.roles) ? safe.roles : [])].filter(Boolean);
+  const isAlumni = roles.includes('alumni') || roles.includes('alumni_with_carry');
+  const legacyDesignation = isAlumni
+    && !String(safe.designation || '').trim()
+    && String(safe.company || '').trim().toLowerCase() === 'software engineer';
+  const designation = legacyDesignation ? safe.company : (safe.designation || '');
+  const company = legacyDesignation
+    || (String(safe.company || '').trim() && String(safe.company || '').trim().toLowerCase() === String(designation || '').trim().toLowerCase())
+    ? ''
+    : (safe.company || '');
   const batchLabel = getBatchLabel(safe);
   // Add helper that matches the expected frontend shape
   const baseRoles = [safe.role];
@@ -569,6 +583,8 @@ function sanitizeUser(user) {
   const mergedRoles = [...new Set([...baseRoles, ...extraRoles, ...metadataRoles])];
   return {
     ...safe,
+    designation,
+    company,
     batchLabel,
     roles: mergedRoles,
     hasRole(roleType) { return mergedRoles.includes(roleType) || safe.role === roleType; },

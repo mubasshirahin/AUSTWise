@@ -321,7 +321,9 @@ export function AuthProvider({ children }) {
     updateAccountProfile(accountId, patch);
     // Persist self-editable profile fields to the server so changes survive a
     // reload. The server whitelists fields, so unsafe keys are ignored.
-    if (accountId !== 'guest') {
+    // Privacy preferences have their own authenticated endpoint; they are not
+    // part of the self-editable profile payload.
+    if (accountId !== 'guest' && Object.keys(patch).some((key) => key !== 'privacy')) {
       try {
         fetch('/api/auth/profile', {
           method: 'PUT',

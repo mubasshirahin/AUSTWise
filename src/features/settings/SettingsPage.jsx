@@ -4,7 +4,7 @@ import QRCode from 'qrcode';
 import { useTheme, getThemeAccent } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useRoutine } from '../../context/RoutineContext';
-import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, ShieldAlert, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, SquareTerminal, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2, Orbit, PawPrint, Palette, Sparkles } from 'lucide-react';
+import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, ShieldAlert, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, SquareTerminal, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2, Orbit, PawPrint, Palette, Sparkles, ExternalLink, CalendarDays, Mail, Phone, Droplets, BookOpen, Flame, FileText, Handshake, Vote, Coffee, MessageSquare } from 'lucide-react';
 import AboutUs from './AboutUs';
 import LinkedAccountsSection from './LinkedAccountsSection';
 import GliderTabs from '../../components/GliderTabs';
@@ -17,12 +17,34 @@ import useWebSocket from '../../hooks/useWebSocket';
 import { OrbitsProvider, useOrbits } from '../orbits/OrbitsContext';
 import OrbitsConfigurationPanel from '../orbits/OrbitsConfigurationPanel';
 import { useStalk } from '../stalk-road/StalkContext';
-import { submitRoleApplication, getApplicationsByUserId, getUserApplicationStatus, getSlotVacancyMap, resignFromRole, withdrawApplication, deleteAccountById, createAwid, syncRoleApplicationsFromServer } from '../../utils/authStorage';
+import { submitRoleApplication, getApplicationsByUserId, getUserApplicationStatus, getSlotVacancyMap, resignFromRole, withdrawApplication, deleteAccountById, createAwid, syncRoleApplicationsFromServer, getDisplayRoles, getRoleDisplayName } from '../../utils/authStorage';
 import { isNativeApp, isAssistiveEnabled, setAssistiveEnabled } from '../../utils/isNativeApp';
 import './SettingsPage.css';
 import '../../components/PageHero.css';
+import '../active-members/MemberProfilePage.css';
 
 const departments = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'];
+async function compressProfileImage(source, maxDimension, maxDataUrlLength = 400_000) {
+  if (typeof source === 'string' && !source.startsWith('data:image/')) return source;
+  const blob = typeof source === 'string' ? await fetch(source).then((response) => response.blob()) : source;
+  const bitmap = await createImageBitmap(blob);
+  let scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+  let quality = 0.82;
+  let result = '';
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    canvas.getContext('2d', { alpha: false }).drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    result = canvas.toDataURL('image/jpeg', quality);
+    if (result.length <= maxDataUrlLength) break;
+    if (quality > 0.56) quality -= 0.12;
+    else { scale *= 0.8; quality = 0.78; }
+  }
+  bitmap.close?.();
+  if (result.length > maxDataUrlLength) throw new Error('Image is too large. Choose a smaller photo.');
+  return result;
+}
 const getYearSemesters = (department) => {
   const maxYear = department === 'ARCH' ? 5 : 4;
   const options = [];
@@ -305,6 +327,7 @@ export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { user, isAuthenticated, updateUser, saveUserProfile, logout, refreshUserFromServer } = useAuth();
   const accountRoles = new Set([user?.role, ...(Array.isArray(user?.roles) ? user.roles : [])].filter(Boolean));
+  const displayRoles = getDisplayRoles(user);
   const isAlumniMember = accountRoles.has('alumni') || accountRoles.has('alumni_with_carry');
   const isFacultyMember = accountRoles.has('faculty') || [...accountRoles].some(role => String(role).startsWith('faculty_'));
   const { routine, weekDays } = useRoutine();
@@ -331,10 +354,34 @@ export default function SettingsPage() {
   useEffect(() => { refreshTelegramHealth(); }, [refreshTelegramHealth]);
   const [isApp] = useState(() => isNativeApp());
   const [assistiveOn, setAssistiveOn] = useState(() => isAssistiveEnabled());
+  const [phonePrivacySaving, setPhonePrivacySaving] = useState(false);
+  const [phonePrivacyMessage, setPhonePrivacyMessage] = useState('');
   const handleAssistiveToggle = () => {
     const next = !assistiveOn;
     setAssistiveOn(next);
     setAssistiveEnabled(next);
+  };
+  const handlePhonePrivacyToggle = async () => {
+    if (!isAuthenticated || phonePrivacySaving) return;
+    const next = user?.privacy?.showPhone === false;
+    setPhonePrivacySaving(true);
+    setPhonePrivacyMessage('');
+    try {
+      const response = await fetch('/api/presence/privacy', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ showPhone: next }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) throw new Error(data.error || 'Could not update phone visibility.');
+      updateUser({ privacy: data.privacy });
+      setPhonePrivacyMessage(next ? 'Phone number is visible on your profile.' : 'Phone number is hidden on your profile.');
+    } catch (error) {
+      setPhonePrivacyMessage(error.message || 'Could not update phone visibility.');
+    } finally {
+      setPhonePrivacySaving(false);
+    }
   };
   const updateChannelPreference = (channel, category, value) => {
     const channels = notifSettings.channels || {};
@@ -427,6 +474,29 @@ export default function SettingsPage() {
     const tab = searchParams.get('tab');
     return ['profile', 'theme', 'notifications', 'about', 'orbits', 'invite'].includes(tab) ? tab : 'profile';
   });
+  const [isPublicProfilePreview, setIsPublicProfilePreview] = useState(false);
+  const [publicProfileSummary, setPublicProfileSummary] = useState(null);
+  const [publicProfileLoading, setPublicProfileLoading] = useState(false);
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id || activeSubTab !== 'profile') {
+      setPublicProfileSummary(null);
+      setPublicProfileLoading(false);
+      return undefined;
+    }
+    const controller = new AbortController();
+    setPublicProfileLoading(true);
+    fetch(`/api/presence/profiles/${encodeURIComponent(user.id)}`, { credentials: 'same-origin', signal: controller.signal })
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) throw new Error(data.error || 'Could not load profile activity.');
+        setPublicProfileSummary(data.profile || null);
+      })
+      .catch((error) => {
+        if (error.name !== 'AbortError') setPublicProfileSummary(null);
+      })
+      .finally(() => { if (!controller.signal.aborted) setPublicProfileLoading(false); });
+    return () => controller.abort();
+  }, [activeSubTab, isAuthenticated, user?.id]);
   const orbitInitials = (user?.name || '?').split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
   // Fall back to themed initials when the avatar image fails to load — the
   // browser's broken-image placeholder would clash with the active theme.
@@ -439,7 +509,26 @@ export default function SettingsPage() {
       () => user.awid || (user.department ? createAwid(user.department, user.role) : ''),
     [user.awid, user.department]
   );
-
+  const memberSinceLabel = user?.createdAt
+    ? new Date(user.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+    : 'Not set';
+  const profileLastActiveText = publicProfileSummary?.status === 'online'
+    ? 'Active now'
+    : publicProfileSummary?.lastSeenAt
+      ? `Last active ${new Date(publicProfileSummary.lastSeenAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
+      : '';
+  const profileActivity = publicProfileSummary?.activity || {};
+  const profileActivityStats = [
+    { icon: Flame, label: 'Max streak (days)', value: profileActivity.maxStreak, tone: 'is-amber' },
+    { icon: FileText, label: isFacultyMember ? 'Teaching resources' : isAlumniMember ? 'Academic resources' : 'Study resources shared', value: profileActivity.resourcesShared, tone: 'is-blue' },
+    { icon: Users, label: 'Community posts', value: profileActivity.communityPosts, tone: 'is-purple' },
+    { icon: Handshake, label: 'Mentor / study offers', value: profileActivity.peerOffers, tone: 'is-rose' },
+    { icon: GraduationCap, label: 'Course reviews & comments', value: profileActivity.courseReviews, tone: 'is-cyan' },
+    { icon: Vote, label: 'Course polls submitted', value: profileActivity.coursePolls, tone: 'is-purple' },
+    { icon: Coffee, label: 'Campus feedback', value: profileActivity.campusFeedback, tone: 'is-emerald' },
+    { icon: MessageSquare, label: 'Mentor replies', value: profileActivity.mentorReplies, tone: 'is-rose' },
+    { icon: BookOpen, label: 'Class routines shared', value: profileActivity.routinesShared, tone: 'is-blue' },
+  ];
   // Persist the generated AWID once so it stays stable for accounts that
   // don't have one yet (localStorage/social auth flows).
   const awidPersistedRef = useRef(false);
@@ -821,7 +910,10 @@ export default function SettingsPage() {
     email: user.email || '',
     phone: user.phone || '',
     avatar: user.avatar || '',
+    coverPhoto: user.coverPhoto || '',
     bloodGroup: user.bloodGroup || '',
+    designation: user.designation || '',
+    company: user.company || '',
   });
   const [quickProfile, setQuickProfile] = useState({
     department: user.department || '',
@@ -832,6 +924,31 @@ export default function SettingsPage() {
     section: user.section || '',
     labSection: user.labSection || '',
   });
+  const previewProfile = publicProfileSummary || user || {};
+  const previewRoles = getDisplayRoles(previewProfile);
+  const previewBatch = previewProfile.batch || [quickProfile.batchName, quickProfile.batchNo].filter(Boolean).join(' ') || 'Not set';
+  const previewSection = [previewProfile.section || quickProfile.section, previewProfile.labSection || quickProfile.labSection ? `Lab ${previewProfile.labSection || quickProfile.labSection}` : ''].filter(Boolean).join(' · ');
+  const previewIdentity = [
+    { label: 'AUSTWise ID', value: previewProfile.awid || displayAwid, icon: User },
+    ...(!isFacultyMember ? [{ label: 'Student ID', value: previewProfile.studentId || profileDetails.id, icon: GraduationCap }] : []),
+    { label: 'Email', value: previewProfile.email || profileDetails.email, icon: Mail },
+    { label: 'Phone', value: previewProfile.privacy?.showPhone === false ? 'Hidden' : previewProfile.phone || profileDetails.phone, icon: Phone },
+    { label: 'Blood group', value: previewProfile.bloodGroup || profileDetails.bloodGroup, icon: Droplets },
+    { label: 'Department', value: previewProfile.department || quickProfile.department, icon: BookOpen },
+    ...(isAlumniMember ? [
+      { label: 'Batch', value: previewBatch, icon: CalendarDays },
+      { label: 'Graduation year', value: previewProfile.graduationYear || user?.graduationYear, icon: CalendarDays },
+      { label: 'Designation', value: previewProfile.designation || profileDetails.designation, icon: GraduationCap },
+      { label: 'Company', value: previewProfile.company || profileDetails.company, icon: Building2 },
+    ] : isFacultyMember ? [
+      { label: 'Designation', value: previewProfile.designation || profileDetails.designation, icon: GraduationCap },
+      { label: 'Company', value: previewProfile.company || profileDetails.company, icon: Building2 },
+    ] : [
+      { label: 'Batch', value: previewBatch, icon: CalendarDays },
+      { label: 'Year · Semester', value: previewProfile.yearSemester || quickProfile.yearSemester, icon: GraduationCap },
+      { label: 'Section', value: previewSection, icon: Users },
+    ]),
+  ];
 
   // Keep the read-only profile and the next edit draft tied to the server
   // account. Do not touch an in-progress draft while the user is editing.
@@ -848,7 +965,10 @@ export default function SettingsPage() {
       email,
       phone: user.phone || '',
       avatar: user.avatar || '',
+      coverPhoto: user.coverPhoto || '',
       bloodGroup: user.bloodGroup || '',
+      designation: user.designation || '',
+      company: user.company || '',
     });
     setQuickProfile({
       department: user.department || '',
@@ -860,7 +980,7 @@ export default function SettingsPage() {
       labSection: user.labSection || '',
     });
     setYearSemTouched(false);
-  }, [isEditingProfile, user.id, user.email, user.phone, user.name, user.avatar, user.bloodGroup, user.department, user.batch, user.batchName, user.batchNo, user.yearSemester, user.section, user.labSection, user.semester]);
+  }, [isEditingProfile, user.id, user.email, user.phone, user.name, user.avatar, user.coverPhoto, user.bloodGroup, user.designation, user.company, user.department, user.batch, user.batchName, user.batchNo, user.yearSemester, user.section, user.labSection, user.semester]);
 
   const resetProfileDrafts = () => {
     const batchParts = getBatchPartsFromUser(user);
@@ -874,7 +994,10 @@ export default function SettingsPage() {
       email: user.email || '',
       phone: user.phone || '',
       avatar: user.avatar || '',
+      coverPhoto: user.coverPhoto || '',
       bloodGroup: user.bloodGroup || '',
+      designation: user.designation || '',
+      company: user.company || '',
 
     });
     setQuickProfile({
@@ -930,7 +1053,7 @@ export default function SettingsPage() {
   );
 
   const profileDetailsReady = Boolean(profileDetails.id.trim() && profileDetails.name.trim() && profileDetails.email.trim());
-  const allChangesReady = profileDetailsReady && quickProfileReady;
+  const allChangesReady = profileDetailsReady && (isAlumniMember || quickProfileReady);
 
 
 
@@ -999,15 +1122,35 @@ export default function SettingsPage() {
     }
   };
 
-  const handleProfileImageUpload = (event) => {
+  const handleProfileImageUpload = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    try {
+      updateProfileDetailsField('avatar', await compressProfileImage(file, 512));
+      setSaveMessage('');
+    } catch (error) {
+      setSaveMessage(error.message || 'Could not process profile photo.');
+    } finally {
+      event.target.value = '';
+    }
+  };
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      updateProfileDetailsField('avatar', reader.result);
-    };
-    reader.readAsDataURL(file);
+  const handleCoverPhotoUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.size > 15 * 1024 * 1024) {
+      setSaveMessage('Cover photo must be 15 MB or smaller.');
+      event.target.value = '';
+      return;
+    }
+    try {
+      updateProfileDetailsField('coverPhoto', await compressProfileImage(file, 1400));
+      setSaveMessage('');
+    } catch (error) {
+      setSaveMessage(error.message || 'Could not process cover photo.');
+    } finally {
+      event.target.value = '';
+    }
   };
 
   const saveAllChanges = async () => {
@@ -1035,19 +1178,30 @@ export default function SettingsPage() {
     setIsProfileSaving(true);
     setSaveMessage('');
     try {
+      const [avatar, coverPhoto] = await Promise.all([
+        compressProfileImage(profileDetails.avatar, 512),
+        compressProfileImage(profileDetails.coverPhoto, 1400),
+      ]);
       await saveUserProfile({
         name: nextName,
         phone: (profileDetails.phone || '').trim(),
-        avatar: profileDetails.avatar,
+        avatar,
+        coverPhoto,
         bloodGroup: profileDetails.bloodGroup,
-        department: quickProfile.department,
-        batch: finalBatchLabel,
-        batchName: finalBatchName || finalBatchNo,
-        batchNo: finalBatchNo,
-        yearSemester: quickProfile.yearSemester,
-        semester: semesterNum,
-        section: quickProfile.section,
-        labSection: quickProfile.labSection,
+        ...(isAlumniMember ? {
+          designation: (profileDetails.designation || '').trim(),
+          company: (profileDetails.company || '').trim(),
+        } : {}),
+        ...(!isAlumniMember ? {
+          department: quickProfile.department,
+          batch: finalBatchLabel,
+          batchName: finalBatchName || finalBatchNo,
+          batchNo: finalBatchNo,
+          yearSemester: quickProfile.yearSemester,
+          semester: semesterNum,
+          section: quickProfile.section,
+          labSection: quickProfile.labSection,
+        } : {}),
       });
       setSaveMessage('Saved');
       setIsEditingProfile(false);
@@ -1230,7 +1384,7 @@ export default function SettingsPage() {
         <FeatureAccessGate featureKey={`feature:settings:${activeSubTab}`}>
         <div className="settings-panel">
           {activeSubTab === 'profile' && (
-            <div className="animate-fadeIn">
+            <div className={`animate-fadeIn identity-settings-page${isPublicProfilePreview ? ' is-public-preview' : ''}`}>
               <div className="profile-panel-header schedule-masthead">
                 <div className="schedule-title-block">
                   <div className="schedule-icon-tile">
@@ -1246,6 +1400,10 @@ export default function SettingsPage() {
                 <div className="schedule-masthead-center" />
 
                 <div className="profile-save-actions">
+                  <div className="identity-view-toggle" role="group" aria-label="Choose Identity display">
+                    <button type="button" aria-pressed={!isPublicProfilePreview} className={!isPublicProfilePreview ? 'is-selected' : ''} onClick={() => setIsPublicProfilePreview(false)}>Current style</button>
+                    <button type="button" aria-pressed={isPublicProfilePreview} className={isPublicProfilePreview ? 'is-selected' : ''} onClick={() => setIsPublicProfilePreview(true)}>Public profile</button>
+                  </div>
                   <div className="profile-completion-circle" title={`${profilePercent}% complete`}>
                     <svg viewBox="0 0 36 36">
                       <path className="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
@@ -1258,41 +1416,87 @@ export default function SettingsPage() {
                       {saveMessage === 'Saved' ? <CheckCircle size={14} /> : <AlertTriangle size={14} />} {saveMessage}
                     </span>
                   )}
-                  <button className="btn btn-secondary btn-sm" onClick={toggleProfileEditing}>
+                  <button className="btn btn-secondary btn-sm" onClick={() => {
+                    if (isPublicProfilePreview) setIsPublicProfilePreview(false);
+                    toggleProfileEditing();
+                  }}>
                     <Pencil size={14} /> {isEditingProfile ? 'Cancel' : 'Edit'}
                   </button>
                 </div>
               </div>
 
-              <div className="schedule-dotted-divider" />
-
-              {isAuthenticated && user?.role === 'student' && (
-                <section className="cfg-section" style={{ margin: '0 0 18px' }}>
-                  <div className="cfg-section-head">
-                    <h3 className="cfg-section-title">Semester Status</h3>
-                    <p className="cfg-section-desc">If you drop your semester, your account will be marked as Re-add so access can be managed for that status.</p>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap', padding: '14px', border: '1px solid var(--border-primary)', borderRadius: '12px', background: 'var(--bg-input)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span className="cfg-row-icon is-blue"><GraduationCap size={18} /></span>
-                      <div>
-                        <strong style={{ display: 'block', color: 'var(--text-primary)' }}>Current status: {user.roles?.includes('readd') ? 'Re-add' : 'Regular Student'}</strong>
-                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>This updates your account role immediately.</span>
+              {isPublicProfilePreview && (
+                <div className="member-profile-page identity-public-preview">
+                  <section className="member-profile-hero glass-card-static">
+                    <div className="member-profile-cover">{previewProfile.coverPhoto && <img src={previewProfile.coverPhoto} alt="" />}</div>
+                    <div className="member-profile-heading">
+                      <div className="member-profile-avatar">
+                        {previewProfile.avatar || profileDetails.avatar
+                          ? <img src={previewProfile.avatar || profileDetails.avatar} alt="" />
+                          : getInitials(previewProfile.name || user?.name)}
+                      </div>
+                      <div className="member-profile-name-block">
+                        <div className="member-profile-roles">{previewRoles.map((role) => <span key={role} className="member-profile-role">{getRoleDisplayName(role)}</span>)}</div>
+                        <h1>{previewProfile.name || user?.name}</h1>
+                        <p>{[
+                          previewProfile.department || quickProfile.department,
+                          isFacultyMember
+                            ? previewProfile.designation || profileDetails.designation
+                            : isAlumniMember
+                              ? (previewProfile.graduationYear || user?.graduationYear ? `Graduated ${previewProfile.graduationYear || user.graduationYear}` : '')
+                              : previewProfile.yearSemester || quickProfile.yearSemester || (previewProfile.semester ? `Semester ${previewProfile.semester}` : ''),
+                        ].filter(Boolean).join(' · ') || 'AUSTWise member'}</p>
+                      </div>
+                      <div className="member-profile-hero-actions">
+                        <button type="button" className="member-profile-orbit" onClick={() => navigate(`/members/${encodeURIComponent(user.id)}`)}>
+                          <Orbit size={15} /> Open full profile <span aria-hidden="true">↗</span>
+                        </button>
+                        <span className="member-profile-joined"><CalendarDays size={13} /> Member since {memberSinceLabel}</span>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      className={user.roles?.includes('readd') ? 'btn btn-secondary' : 'btn btn-primary'}
-                      onClick={() => setSemesterDropped(!user.roles?.includes('readd'))}
-                      disabled={semesterDropSaving}
-                      aria-label={user.roles?.includes('readd') ? 'Cancel semester drop and return to regular student status' : 'Mark semester dropped and add Re-add status'}
-                    >
-                      {semesterDropSaving ? 'Saving…' : user.roles?.includes('readd') ? 'Cancel Semester Drop' : 'I Dropped This Semester'}
-                    </button>
-                  </div>
-                  {semesterDropMessage && <p role="status" style={{ marginTop: '8px', fontSize: '12px', color: semesterDropMessage.startsWith('Could not') ? 'var(--accent-rose)' : 'var(--accent-emerald)' }}>{semesterDropMessage}</p>}
-                </section>
+                  </section>
+
+                  <section className="member-profile-section glass-card-static" aria-labelledby="identity-preview-roles-title">
+                    <div className="member-profile-section-heading"><span className="member-profile-section-icon"><Users size={18} /></span><div><h2 id="identity-preview-roles-title">Roles</h2><p>Roles assigned to your profile</p></div></div>
+                    <div className="member-profile-roles">{previewRoles.map((role) => <span key={role} className="member-profile-role">{getRoleDisplayName(role)}</span>)}</div>
+                  </section>
+
+                  <section className="member-profile-section glass-card-static" aria-labelledby="identity-preview-details-title">
+                    <div className="member-profile-section-heading"><span className="member-profile-section-icon"><User size={18} /></span><div><h2 id="identity-preview-details-title">Identity</h2><p>How other members see your profile details</p></div></div>
+                    <div className="member-profile-identity-grid">
+                      {previewIdentity.map(({ label, value, icon: Icon }) => (
+                        <div className="member-profile-identity-item" key={label}><Icon size={15} aria-hidden="true" /><span>{label}</span><strong>{value === null || value === undefined || value === '' ? 'Not set' : value}</strong></div>
+                      ))}
+                    </div>
+                    {Array.isArray(previewProfile.linkedAccounts) && previewProfile.linkedAccounts.some((account) => account?.providerName || account?.provider) && (
+                      <div className="member-profile-socials"><h3>Linked accounts</h3><div>{previewProfile.linkedAccounts.filter((account) => account?.providerName || account?.provider).map((account) => {
+                        const label = account.providerName || account.provider;
+                        const href = /^https?:\/\//i.test(account.link || '') ? account.link : '';
+                        const content = `${label}: ${account.displayName || account.username || label}`;
+                        return href ? <a key={account.provider} href={href} target="_blank" rel="noreferrer">{content}</a> : <span key={account.provider}>{content}</span>;
+                      })}</div></div>
+                    )}
+                  </section>
+
+                  <section className="member-profile-section glass-card-static" aria-labelledby="identity-preview-activity-title">
+                    <div className="member-profile-section-heading"><span className="member-profile-section-icon is-activity"><Orbit size={18} /></span><div><h2 id="identity-preview-activity-title">Contributions</h2><p>Verified resources and community activity{profileLastActiveText ? ` · ${profileLastActiveText}` : ''}</p></div></div>
+                    <div className="member-profile-metrics">
+                      {profileActivityStats.map(({ icon: Icon, label, value, tone }) => (
+                        <div className={`member-profile-metric ${tone || ''}`} key={label}><span className="member-profile-metric-icon"><Icon size={17} /></span><strong>{Number(value || 0).toLocaleString()}</strong><span>{label}</span></div>
+                      ))}
+                    </div>
+                  </section>
+
+                  <section className="member-profile-fun glass-card-static" aria-labelledby="identity-preview-recent-title">
+                    <div className="member-profile-fun-heading"><BookOpen size={17} /><h2 id="identity-preview-recent-title">Recent contributions</h2></div>
+                    {Array.isArray(profileActivity.recentContributions) && profileActivity.recentContributions.length ? (
+                      <ul>{profileActivity.recentContributions.map((item) => <li key={item.id}><strong>{item.title}</strong><span>{item.type}{item.createdAt ? ` · ${new Date(item.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}` : ''}</span></li>)}</ul>
+                    ) : <p>No verified contributions yet.</p>}
+                  </section>
+                </div>
               )}
+
+              <div className="schedule-dotted-divider" />
 
               {isAuthenticated && isAlumniMember && (
                 <section className="cfg-section" style={{ margin: '0 0 18px' }}>
@@ -1332,6 +1536,17 @@ export default function SettingsPage() {
               )}
 
               <div className="profile-content-stack">
+                <div className="identity-profile-card">
+                <div className={`identity-cover-editor${profileDetails.coverPhoto ? ' has-cover' : ''}`}>
+                  {profileDetails.coverPhoto && <img src={profileDetails.coverPhoto} alt="Profile cover preview" />}
+                  {isEditingProfile && <div className="identity-cover-actions">
+                    <label className="identity-cover-upload">
+                      <input type="file" accept="image/*" aria-label="Upload cover photo" onChange={handleCoverPhotoUpload} />
+                      <Camera size={14} /> {profileDetails.coverPhoto ? 'Change cover' : 'Add cover photo'}
+                    </label>
+                    {profileDetails.coverPhoto && <button type="button" className="identity-cover-remove" onClick={() => updateProfileDetailsField('coverPhoto', '')}>Remove</button>}
+                  </div>}
+                </div>
                 <div className="profile-editor">
                   <label className={`profile-photo-picker ${!isEditingProfile ? 'is-locked' : ''}`}>
                     {isEditingProfile && <input type="file" id="profile-avatar" name="avatar" accept="image/*" onChange={handleProfileImageUpload} />}
@@ -1348,10 +1563,28 @@ export default function SettingsPage() {
                       </span>
                     )}
                   </label>
-                  <div>
-                    <h4 style={{ fontSize: 'var(--fs-lg)', fontWeight: 'bold' }}>{profileDetails.name || user.name}</h4>
-                    <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>AWID: <strong style={{ color: 'var(--accent-purple)' }}>{displayAwid}</strong></p>
+                  <div className="identity-profile-heading-copy">
+                    <div className="identity-profile-role-list">
+                      {displayRoles.map((role) => <span key={role}>{getRoleDisplayName(role)}</span>)}
+                    </div>
+                    <h4>{profileDetails.name || user.name}</h4>
+                    <p>{[
+                      quickProfile.department,
+                      isFacultyMember
+                        ? profileDetails.designation
+                        : isAlumniMember
+                          ? (user?.graduationYear ? `Graduated ${user.graduationYear}` : '')
+                          : quickProfile.yearSemester,
+                    ].filter(Boolean).join(' · ') || 'AUSTWise member'}</p>
+                    <small>AWID: <strong>{displayAwid}</strong></small>
                   </div>
+                  <div className="identity-profile-actions">
+                    <button type="button" className="identity-open-profile" onClick={() => navigate(`/members/${encodeURIComponent(user.id)}`)}>
+                      <Orbit size={15} /> Open public profile <ExternalLink size={13} />
+                    </button>
+                    <span className="identity-member-since"><CalendarDays size={13} /> Member since {memberSinceLabel}</span>
+                  </div>
+                </div>
                 </div>
 
                 {isEditingProfile ? (
@@ -1390,6 +1623,30 @@ export default function SettingsPage() {
                           className="input mt-1"
                         />
                       </label>
+                      {isAlumniMember && (
+                        <div className="profile-details-stack">
+                          <label>
+                            <span>Designation</span>
+                            <input
+                              type="text"
+                              value={profileDetails.designation}
+                              onChange={(event) => updateProfileDetailsField('designation', event.target.value)}
+                              placeholder="e.g. Software Engineer"
+                              className="input mt-1"
+                            />
+                          </label>
+                          <label>
+                            <span>Company</span>
+                            <input
+                              type="text"
+                              value={profileDetails.company}
+                              onChange={(event) => updateProfileDetailsField('company', event.target.value)}
+                              placeholder="Where you work"
+                              className="input mt-1"
+                            />
+                          </label>
+                        </div>
+                      )}
                       <label>
                         <span>Phone Number</span>
                         <input
@@ -1425,15 +1682,11 @@ export default function SettingsPage() {
                   </div>
                 ) : (
                   <div className="profile-read-grid">
-                    <div>
-                      <span>Student ID</span>
-                      <strong>{profileDetails.id || 'Not set'}</strong>
-                      <span className="profile-read-sub-label">Email</span>
-                      <strong>{profileDetails.email || 'Not set'}</strong>
-                      <span className="profile-read-sub-label">Phone</span>
-                      <strong>{profileDetails.phone || 'Not set'}</strong>
-                      <span className="profile-read-sub-label">Blood Group</span>
-                      <strong>{profileDetails.bloodGroup || 'Not set'}</strong>
+                    <div className="identity-contact-details">
+                      {!isFacultyMember && <div><span>Student ID</span><strong>{profileDetails.id || 'Not set'}</strong></div>}
+                      <div><span>Email address</span><strong>{profileDetails.email || 'Not set'}</strong></div>
+                      <div><span>Phone number</span><strong>{profileDetails.phone || 'Not set'}</strong></div>
+                      <div><span>Blood group</span><strong>{profileDetails.bloodGroup || 'Not set'}</strong></div>
                     </div>
                   </div>
                 )}
@@ -1443,7 +1696,7 @@ export default function SettingsPage() {
                     <span>Department</span>
                     <strong>{quickProfile.department || 'Not selected'}</strong>
                   </div>
-                  <div className={`profile-summary-item${isEditingProfile ? ' is-editing' : ''}`}>
+                  {!isFacultyMember && <div className={`profile-summary-item${isEditingProfile ? ' is-editing' : ''}`}>
                     <span>Batch</span>
                     {isEditingProfile ? (
                       <>
@@ -1466,22 +1719,58 @@ export default function SettingsPage() {
                     ) : (
                       <strong>{visibleBatchName}</strong>
                     )}
-                  </div>
-                  <div>
-                    <span>Year-Sem</span>
-                    <strong>{quickProfile.yearSemester ? getYearSemesterShortName(quickProfile.yearSemester) : 'Not selected'}</strong>
-                  </div>
-                  <div>
-                    <span>Section</span>
-                    <strong>{quickProfile.section || 'Not selected'}</strong>
-                  </div>
-                  <div>
-                    <span>Lab Group</span>
-                    <strong>{quickProfile.labSection || 'Not selected'}</strong>
-                  </div>
+                  </div>}
+                  {isAlumniMember ? <>
+                    <div><span>Graduation year</span><strong>{user?.graduationYear || 'Not set'}</strong></div>
+                    <div><span>Designation</span><strong>{profileDetails.designation || 'Not set'}</strong></div>
+                    <div><span>Company</span><strong>{profileDetails.company || 'Not set'}</strong></div>
+                  </> : isFacultyMember ? <>
+                    <div><span>Designation</span><strong>{profileDetails.designation || 'Not set'}</strong></div>
+                    <div><span>Company</span><strong>{profileDetails.company || 'Not set'}</strong></div>
+                  </> : <>
+                    <div><span>Year-Sem</span><strong>{quickProfile.yearSemester ? getYearSemesterShortName(quickProfile.yearSemester) : 'Not selected'}</strong></div>
+                    <div><span>Section</span><strong>{quickProfile.section || 'Not selected'}</strong></div>
+                    <div><span>Lab Group</span><strong>{quickProfile.labSection || 'Not selected'}</strong></div>
+                  </>}
+                  <div><span>Member since</span><strong>{memberSinceLabel}</strong></div>
                 </div>
 
                 <LinkedAccountsSection user={user} updateUser={updateUser} />
+
+                <section className="identity-austwise-activity" aria-labelledby="identity-austwise-activity-title">
+                  <div className="identity-austwise-activity-heading">
+                    <div>
+                      <h3 id="identity-austwise-activity-title">AUSTWise Activity</h3>
+                      <p>The contribution stats shown on your public profile.</p>
+                    </div>
+                    {profileLastActiveText && <span className={`identity-activity-status${publicProfileSummary?.status === 'online' ? '' : ' is-idle'}`}>{profileLastActiveText}</span>}
+                  </div>
+                  {publicProfileLoading ? (
+                    <p className="identity-activity-empty" role="status">Loading your activity…</p>
+                  ) : (
+                    <>
+                      <div className="identity-activity-stats">
+                        {profileActivityStats.map(({ label, value }) => (
+                          <div className="identity-activity-stat" key={label}>
+                            <strong>{Number(value || 0).toLocaleString()}</strong>
+                            <span>{label}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="identity-recent-contributions">
+                        <h4>Recent contributions</h4>
+                        {Array.isArray(profileActivity.recentContributions) && profileActivity.recentContributions.length ? (
+                          <ul>{profileActivity.recentContributions.map((item) => (
+                            <li key={item.id}>
+                              <strong>{item.title}</strong>
+                              <span>{item.type}{item.createdAt ? ` · ${new Date(item.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}` : ''}</span>
+                            </li>
+                          ))}</ul>
+                        ) : <p className="identity-activity-empty">No verified contributions yet.</p>}
+                      </div>
+                    </>
+                  )}
+                </section>
 
                 {isEditingProfile && (
                   <div className="settings-quick-change">
@@ -1659,6 +1948,62 @@ export default function SettingsPage() {
               <div className="schedule-dotted-divider" />
 
               <AccentColorSection />
+
+              {isAuthenticated && (
+                <section className="cfg-section profile-privacy-config">
+                  <div className="cfg-section-head">
+                    <h3 className="cfg-section-title">Profile privacy</h3>
+                    <p className="cfg-section-desc">Choose what other members can see on your profile.</p>
+                  </div>
+                  <div className="cfg-row">
+                    <div className="cfg-row-main">
+                      <span className="cfg-row-icon is-blue"><ShieldCheck size={18} /></span>
+                      <div className="cfg-row-text">
+                        <h4 className="cfg-row-title">Show phone number</h4>
+                        <p className="cfg-row-desc">{user?.privacy?.showPhone === false ? 'Your phone number is hidden from other members.' : 'Your phone number is visible on your profile.'}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={user?.privacy?.showPhone !== false}
+                      aria-label="Show phone number on my profile"
+                      className={`toggle-switch ${user?.privacy?.showPhone !== false ? 'active' : ''}`}
+                      onClick={handlePhonePrivacyToggle}
+                      disabled={phonePrivacySaving}
+                    />
+                  </div>
+                  {phonePrivacyMessage && <p role="status" style={{ marginTop: 8, fontSize: 12, color: phonePrivacyMessage.startsWith('Could not') ? 'var(--accent-rose)' : 'var(--text-secondary)' }}>{phonePrivacyMessage}</p>}
+                </section>
+              )}
+
+              {isAuthenticated && user?.role === 'student' && (
+                <section className="cfg-section" style={{ margin: '0 0 18px' }}>
+                  <div className="cfg-section-head">
+                    <h3 className="cfg-section-title">Semester Status</h3>
+                    <p className="cfg-section-desc">If you drop your semester, your account will be marked as Re-add so access can be managed for that status.</p>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap', padding: '14px', border: '1px solid var(--border-primary)', borderRadius: '12px', background: 'var(--bg-input)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span className="cfg-row-icon is-blue"><GraduationCap size={18} /></span>
+                      <div>
+                        <strong style={{ display: 'block', color: 'var(--text-primary)' }}>Current status: {user.roles?.includes('readd') ? 'Re-add' : 'Regular Student'}</strong>
+                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>This updates your account role immediately.</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className={user.roles?.includes('readd') ? 'btn btn-secondary' : 'btn btn-primary'}
+                      onClick={() => setSemesterDropped(!user.roles?.includes('readd'))}
+                      disabled={semesterDropSaving}
+                      aria-label={user.roles?.includes('readd') ? 'Cancel semester drop and return to regular student status' : 'Mark semester dropped and add Re-add status'}
+                    >
+                      {semesterDropSaving ? 'Saving…' : user.roles?.includes('readd') ? 'Cancel Semester Drop' : 'I Dropped This Semester'}
+                    </button>
+                  </div>
+                  {semesterDropMessage && <p role="status" style={{ marginTop: '8px', fontSize: '12px', color: semesterDropMessage.startsWith('Could not') ? 'var(--accent-rose)' : 'var(--accent-emerald)' }}>{semesterDropMessage}</p>}
+                </section>
+              )}
 
               {!supported && (
                 <div className="cfg-banner cfg-banner--rose">
@@ -2202,7 +2547,7 @@ export default function SettingsPage() {
       </MastheadAccessControl>}
 
       {/* ── 4. CR / SR Leadership (own card, below the content box) ── */}
-{activeSubTab === 'profile' && isAuthenticated && !isEditingProfile && !['vp', 'gs'].includes(user?.role) && (
+{activeSubTab === 'notifications' && isAuthenticated && !['vp', 'gs'].includes(user?.role) && (
             <div className="st-cr-sr-cta" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-5)', boxShadow: 'var(--shadow-lift)' }}>
               <div className="animate-fadeIn">
               {/* One-line status bar */}
@@ -2675,7 +3020,7 @@ export default function SettingsPage() {
           )}
 
       {/* Department Executive applications */}
-      {activeSubTab === 'profile' && isAuthenticated && !isEditingProfile && (
+      {activeSubTab === 'notifications' && isAuthenticated && (
         <section className="glass-card-static" style={{ marginBottom: 'var(--sp-5)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-5)' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
             <span style={{ width: 36, height: 36, display: 'grid', placeItems: 'center', borderRadius: 12, color: 'var(--accent-amber)', background: 'var(--accent-amber-glow)' }}><GraduationCap size={18} /></span>
@@ -2720,7 +3065,7 @@ export default function SettingsPage() {
         </section>
       )}
 
-      {activeSubTab === 'profile' && isAuthenticated && !isEditingProfile && (
+      {activeSubTab === 'notifications' && isAuthenticated && (
         <div className="st-delete-account" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-5)', boxShadow: 'var(--shadow-lift)' }}>
           <div className="animate-fadeIn">
             {!deleteConfirm ? (

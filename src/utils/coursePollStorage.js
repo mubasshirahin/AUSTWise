@@ -48,8 +48,8 @@ function normalizeCode(code) {
 }
 
 /** The current browser's saved ballot, or null. */
-export function getMyBallot() {
-  const id = getContributorId();
+export function getMyBallot(userId) {
+  const id = userId || getContributorId();
   return loadBallots().find((b) => b.contributorId === id) || null;
 }
 
@@ -57,7 +57,7 @@ export function getMyBallot() {
  * Save this browser's ballot. `best` and `worst` are arrays of
  * { code, name }. Overwrites any previous ballot from this contributor.
  */
-export function saveMyBallot(best, worst) {
+export function saveMyBallot(best, worst, userId) {
   const clean = (list) =>
     (list || [])
       .filter((c) => c && String(c.code).trim())
@@ -71,7 +71,7 @@ export function saveMyBallot(best, worst) {
     throw new Error('Pick at least one course before submitting.');
   }
 
-  const id = getContributorId();
+  const id = userId || getContributorId();
   const ballots = loadBallots().filter((b) => b.contributorId !== id);
   ballots.push({
     contributorId: id,

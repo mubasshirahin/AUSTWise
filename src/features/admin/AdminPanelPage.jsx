@@ -1364,7 +1364,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                   </div>
                 )}
 
-                {editFormData.role === 'faculty' && (
+                {(editFormData.role === 'faculty' || editFormData.role === 'alumni' || editFormData.role === 'alumni_with_carry') && (
                   <div>
                     <label className="input-label">Designation</label>
                     <input 
@@ -1372,7 +1372,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                       value={editFormData.designation}
                       onChange={(e) => setEditFormData({ ...editFormData, designation: e.target.value })}
                       className="input"
-                      placeholder="e.g., Professor, Lecturer"
+                      placeholder={editFormData.role.startsWith('alumni') ? 'e.g., Software Engineer' : 'e.g., Professor, Lecturer'}
                     />
                   </div>
                 )}

@@ -144,7 +144,7 @@ export function getCoursesFromTracker() {
   }
 }
 
-export function addCourseReview({ course, name, faculty, rating, difficulty, workload, commentText }) {
+export function addCourseReview({ course, name, faculty, rating, difficulty, workload, commentText, contributorId }) {
   const normalizedCourse = String(course || '').trim();
   const normalizedName = String(name || '').trim();
 
@@ -163,7 +163,7 @@ export function addCourseReview({ course, name, faculty, rating, difficulty, wor
   const createdAt = new Date().toISOString();
   const entry = {
     id: crypto.randomUUID(),
-    contributorId: getContributorId(),
+    contributorId: contributorId || getContributorId(),
     course: normalizedCourse,
     name: normalizedName,
     faculty: String(faculty || '').trim(),
@@ -189,7 +189,7 @@ export function addCourseReview({ course, name, faculty, rating, difficulty, wor
   return courseKey(normalizedCourse, normalizedName, String(faculty || '').trim());
 }
 
-export function addCommentToCourse(courseId, commentText) {
+export function addCommentToCourse(courseId, commentText, contributorId) {
   const text = sanitizeUserInput(String(commentText || '').trim(), MAX_TEXT_LENGTH);
   if (!text) throw new Error('Write a comment before submitting.');
 
@@ -200,7 +200,7 @@ export function addCommentToCourse(courseId, commentText) {
   const createdAt = new Date().toISOString();
   entries.push({
     id: crypto.randomUUID(),
-    contributorId: getContributorId(),
+    contributorId: contributorId || getContributorId(),
     course: sample.course,
     name: sample.name,
     faculty: sample.faculty,

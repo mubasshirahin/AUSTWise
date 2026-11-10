@@ -53,6 +53,7 @@ export default function MentorRequests() {
 
     try {
       addMentorRequest({
+        contributorId: user?.id,
         topic: sanitizeUserInput(form.topic, MAX_TITLE_LENGTH),
         description: sanitizeUserInput(form.description, MAX_SHORT_TEXT_LENGTH),
         requesterName: sanitizeUserInput(form.requesterName, MAX_TITLE_LENGTH),
@@ -101,6 +102,7 @@ export default function MentorRequests() {
     try {
       // Save on the request (shows in the owner's "My Responses" section)
       addMentorResponse(respondTarget.id, {
+        contributorId: user?.id,
         message: msg,
         contact: sanitizeUserInput(respondForm.contact, MAX_TITLE_LENGTH),
         responderName: user?.name || 'Anonymous',

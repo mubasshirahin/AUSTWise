@@ -1020,6 +1020,17 @@ export default function AuthPage() {
             {isAlumni && (
               <>
                 <label className="auth-field">
+                  Designation (optional)
+                  <input
+                    id="signup-designation-alumni"
+                    name="designation"
+                    className="input"
+                    value={signupForm.designation}
+                    onChange={(e) => setSignupForm((c) => ({ ...c, designation: e.target.value }))}
+                    placeholder="e.g. Software Engineer"
+                  />
+                </label>
+                <label className="auth-field">
                   Previous AUST email (optional, for account migration)
                   <input
                     id="signup-previous-email"

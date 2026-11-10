@@ -1,21 +1,53 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, GraduationCap, Users, MessageCircle, Radio } from 'lucide-react';
+import { Search, GraduationCap, MessageCircle, Radio, ChevronDown, Building2 } from 'lucide-react';
 import { getAlumniAccounts, setOpenForTalk } from '../../utils/authStorage';
 import { getCachedMembers, refreshMemberDirectory } from '../../utils/memberDirectory';
 import { useAuth } from '../../context/AuthContext';
+import { getAlumniEmployment } from '../../utils/alumniEmployment';
+
+const DEPARTMENT_EXPANSION_KEY = 'austwise-alumni-department-expansion';
+const DEPARTMENT_FULL_NAMES = {
+  CSE: 'Department of Computer Science and Engineering',
+  EEE: 'Department of Electrical and Electronic Engineering',
+  CE: 'Department of Civil Engineering',
+  ME: 'Department of Mechanical Engineering',
+  IPE: 'Department of Industrial and Production Engineering',
+  TE: 'Department of Textile Engineering',
+  ARCH: 'Department of Architecture',
+  BBA: 'Department of Business Administration',
+};
+
+function getDepartmentLabel(value) {
+  const department = String(value || '').trim();
+  if (!department) return 'Department not specified';
+
+  const nameOrCode = department.replace(/^department\s+of\s+/i, '').trim();
+  return DEPARTMENT_FULL_NAMES[nameOrCode.toUpperCase()] || `Department of ${nameOrCode}`;
+}
 
 export default function AlumniDirectory() {
   const { user, updateUser } = useAuth();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState('All');
+  const [expandedDepartments, setExpandedDepartments] = useState(() => {
+    try {
+      const stored = sessionStorage.getItem(DEPARTMENT_EXPANSION_KEY);
+      return new Set(stored ? JSON.parse(stored) : []);
+    } catch {
+      return new Set();
+    }
+  });
   const [alumni, setAlumni] = useState(() => {
     const cached = getCachedMembers();
     const localById = new Map(getAlumniAccounts().map((account) => [account.id, account]));
     return cached.filter((member) => ['alumni', 'alumni_with_carry'].includes(member.role)
       || member.roles?.some((role) => ['alumni', 'alumni_with_carry'].includes(role)))
-      .map((member) => ({ ...localById.get(member.id), ...member }));
+      .map((member) => {
+        const merged = { ...localById.get(member.id), ...member };
+        return { ...merged, ...getAlumniEmployment(merged) };
+      });
   });
 
   const isAlumniViewer = user?.role === 'alumni' || user?.role === 'alumni_with_carry';
@@ -41,7 +73,7 @@ export default function AlumniDirectory() {
           })
           .map((m) => {
             const local = localById.get(m.id) || {};
-            return {
+            const merged = {
               id: m.id,
               name: m.name,
               email: local.email || '',
@@ -49,13 +81,14 @@ export default function AlumniDirectory() {
               batchNo: String(m.batchNo || local.batchNo || '').trim(),
               batch: m.batch || local.batch || 'N/A',
               batchName: m.batchName || local.batchName || m.batch || local.batch || '',
-              company: m.company || local.company || '',
+              company: typeof m.company === 'string' ? m.company : (local.company || ''),
               designation: m.designation || local.designation || '',
               graduationYear: m.graduationYear || local.graduationYear || '',
               avatar: m.avatar || local.avatar || null,
               initials: m.initials || local.initials || 'AU',
               openForTalk: Boolean(m.openForTalk ?? local.openForTalk),
             };
+            return { ...merged, ...getAlumniEmployment(merged) };
           })
           .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
         if (!cancelled) setAlumni(rows);
@@ -98,23 +131,49 @@ export default function AlumniDirectory() {
     });
   }, [alumni, selectedDept, searchTerm]);
 
-  // Group by batch, then order groups so the OLDEST batch (smallest number) is
-  // on top. Alumni without a batch number sink to the bottom.
-  const batchGroups = useMemo(() => {
-    const groups = new Map(); // batchNo -> { batchNo, label, members }
+  // Group the filtered alumni by department, with unspecified departments last.
+  const departmentGroups = useMemo(() => {
+    const groups = new Map();
     for (const a of filtered) {
-      const key = a.batchNo || 'NA';
+      const department = String(a.department || '').trim();
+      const key = department || '__unspecified__';
       if (!groups.has(key)) {
         groups.set(key, {
-          batchNo: a.batchNo ? Number(a.batchNo) : Infinity,
-          label: a.batchNo ? `Batch ${a.batchNo}` : 'Batch not specified',
+          id: key,
+          department,
+          label: getDepartmentLabel(department),
           members: [],
         });
       }
       groups.get(key).members.push(a);
     }
-    return Array.from(groups.values()).sort((x, y) => x.batchNo - y.batchNo);
+    return Array.from(groups.values()).sort((a, b) => {
+      if (!a.department) return 1;
+      if (!b.department) return -1;
+      return a.department.localeCompare(b.department);
+    });
   }, [filtered]);
+
+  const toggleDepartment = (departmentId) => {
+    setExpandedDepartments((current) => {
+      const next = new Set(current);
+      if (next.has(departmentId)) next.delete(departmentId);
+      else next.add(departmentId);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(DEPARTMENT_EXPANSION_KEY, JSON.stringify([...expandedDepartments]));
+    } catch { /* Keep the current view usable when session storage is unavailable. */ }
+  }, [expandedDepartments]);
+
+  useEffect(() => () => {
+    try {
+      sessionStorage.removeItem(DEPARTMENT_EXPANSION_KEY);
+    } catch { /* Ignore storage cleanup failures. */ }
+  }, []);
 
   const handleMessage = (al) => {
     if (isGuest) {
@@ -212,7 +271,7 @@ export default function AlumniDirectory() {
         <div className="alumni-empty-state">
           <GraduationCap size={40} style={{ opacity: 0.5, color: 'var(--text-tertiary)' }} />
           <h3>No alumni registered yet</h3>
-          <p>Alumni who sign up with an alumni account will appear here, grouped by batch.</p>
+          <p>Alumni who sign up with an alumni account will appear here, grouped by department.</p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="alumni-empty-state" style={{ paddingTop: 'var(--sp-10)' }}>
@@ -221,38 +280,74 @@ export default function AlumniDirectory() {
         </div>
       ) : (
         <div className="alumni-groups">
-          {batchGroups.map((group) => (
-            <div key={group.label}>
-              {/* Batch header */}
-              <div className="alumni-batch-header">
-                <span className="badge badge-amber alumni-batch-badge">
-                  {group.label}
-                </span>
-                <span className="alumni-batch-count">
-                  <Users size={12} /> {group.members.length} alumni
-                </span>
-              </div>
+          {departmentGroups.map((group) => {
+            const expanded = expandedDepartments.has(group.id);
+            const contentId = `alumni-department-${encodeURIComponent(group.id)}`;
+            return (
+              <div key={group.id}>
+                {/* Department header */}
+                <div className="alumni-batch-header">
+                  <button
+                    type="button"
+                    className="alumni-group-toggle"
+                    aria-expanded={expanded}
+                    aria-controls={contentId}
+                    onClick={() => toggleDepartment(group.id)}
+                  >
+                    <Building2 className="alumni-department-icon" size={16} aria-hidden="true" />
+                    <span className="alumni-department-name">{group.label}</span>
+                    <span className="alumni-department-count">{group.members.length}</span>
+                    <ChevronDown className={`alumni-group-chevron${expanded ? ' is-expanded' : ''}`} size={16} aria-hidden="true" />
+                  </button>
+                </div>
 
-              {/* Alumni cards for this batch */}
-              <div className="alumni-grid-inner">
-                {group.members.map((al) => {
+                {/* Alumni cards for this department */}
+                <div id={contentId} className="alumni-grid-inner" hidden={!expanded}>
+                  {group.members.map((al) => {
                   const isMe = al.id === user?.id;
                   const canMessage = al.openForTalk && !isMe && !isGuest;
                   return (
                     <div key={al.id} className="alumni-card">
                       <div className="alumni-card-top">
-                        <button
-                          type="button"
-                          className="avatar"
-                          style={{ width: '40px', height: '40px', flexShrink: 0, padding: 0, border: 'none', cursor: 'pointer' }}
-                          onClick={() => navigate(`/members/${al.id}`)}
-                          title={`View ${al.name}'s profile / ID`}
-                          aria-label={`View ${al.name}'s profile`}
-                        >
-                          {al.avatar ? (
-                            <img src={al.avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-                          ) : al.initials}
-                        </button>
+                        <div className="alumni-avatar-preview">
+                          <button
+                            type="button"
+                            className="avatar"
+                            style={{ width: '40px', height: '40px', flexShrink: 0, padding: 0, border: 'none', cursor: 'pointer' }}
+                            onClick={() => navigate(`/members/${al.id}`)}
+                            title={`View ${al.name}'s profile / ID`}
+                            aria-label={`View ${al.name}'s profile`}
+                            aria-describedby={`alumni-profile-preview-${encodeURIComponent(String(al.id))}`}
+                          >
+                            {al.avatar ? (
+                              <img src={al.avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                            ) : al.initials}
+                          </button>
+                          <div
+                            id={`alumni-profile-preview-${encodeURIComponent(String(al.id))}`}
+                            className="alumni-profile-preview"
+                            role="tooltip"
+                          >
+                            <div className="alumni-profile-preview-head">
+                              <span className="alumni-profile-preview-avatar">
+                                {al.avatar ? (
+                                  <img src={al.avatar} alt="" />
+                                ) : al.initials}
+                              </span>
+                              <span className="alumni-profile-preview-identity">
+                                <strong>{al.name}</strong>
+                                <span>Alumni</span>
+                              </span>
+                            </div>
+                            <div className="alumni-profile-preview-stats">
+                              <div><span>Department</span><strong>{getDepartmentLabel(al.department)}</strong></div>
+                              {(al.batchName || al.batch) && <div><span>Batch</span><strong>{al.batchName || al.batch}</strong></div>}
+                              {al.graduationYear && <div><span>Graduated</span><strong>{al.graduationYear}</strong></div>}
+                              {al.designation && <div><span>Designation</span><strong>{al.designation}</strong></div>}
+                              {al.company && <div><span>Company</span><strong>{al.company}</strong></div>}
+                            </div>
+                          </div>
+                        </div>
                         <div className="alumni-card-info">
                           <h3 className="alumni-card-name">
                             {al.name}
@@ -294,10 +389,11 @@ export default function AlumniDirectory() {
                       </div>
                     </div>
                   );
-                })}
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

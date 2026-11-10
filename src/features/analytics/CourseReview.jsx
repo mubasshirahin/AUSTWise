@@ -3,6 +3,7 @@ import { Star, MessageSquare, ThumbsUp, ArrowUpDown, Send, Plus, X } from 'lucid
 import CourseAutocomplete from '../../components/CourseAutocomplete';
 import { sanitizeUserInput, MAX_TEXT_LENGTH, MAX_TITLE_LENGTH } from '../../utils/sanitize';
 import { useLiveRefresh } from '../../utils/liveStore';
+import { useAuth } from '../../context/AuthContext';
 import {
   addCommentToCourse,
   addCourseReview,
@@ -47,6 +48,7 @@ function StarPicker({ value, onChange, label }) {
 }
 
 export default function CourseReview() {
+  const { user } = useAuth();
   const [reviews, setReviews] = useState(() => buildCourseReviewList());
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCourseId, setSelectedCourseId] = useState(null);
@@ -107,7 +109,7 @@ export default function CourseReview() {
     if (!selectedCourse || !newComment.trim()) return;
 
     try {
-      addCommentToCourse(selectedCourse.id, sanitizeUserInput(newComment, MAX_TEXT_LENGTH));
+      addCommentToCourse(selectedCourse.id, sanitizeUserInput(newComment, MAX_TEXT_LENGTH), user?.id);
       const nextReviews = refreshReviews();
       setNewComment('');
       setFormError('');
@@ -128,6 +130,7 @@ export default function CourseReview() {
     try {
       const courseId = addCourseReview({
         ...reviewForm,
+        contributorId: user?.id,
         course: sanitizeUserInput(reviewForm.course, MAX_TITLE_LENGTH),
         name: sanitizeUserInput(reviewForm.name, MAX_TITLE_LENGTH),
         commentText: sanitizeUserInput(reviewForm.commentText, MAX_TEXT_LENGTH),

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { ThumbsUp, ThumbsDown, Trophy, Users, Send, Award, CheckCircle, AlertTriangle } from 'lucide-react';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
 import { useLiveRefresh } from '../../utils/liveStore';
+import { useAuth } from '../../context/AuthContext';
 import {
   MAX_PICKS,
   saveMyBallot,
@@ -113,6 +114,7 @@ function Leaderboard({ title, icon, accent, rows, totalVoters }) {
 }
 
 export default function CoursePoll() {
+  const { user } = useAuth();
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
@@ -128,13 +130,13 @@ export default function CoursePoll() {
     (picks || []).forEach((p, i) => { if (i < MAX_PICKS) slots[i] = p; });
     return slots;
   };
-  const [voted, setVoted] = useState(() => !!getMyBallot());
+  const [voted, setVoted] = useState(() => !!getMyBallot(user?.id));
   const [best, setBest] = useState(() => {
-    const existing = getMyBallot();
+    const existing = getMyBallot(user?.id);
     return existing ? fillSlots(existing.best) : Array.from({ length: MAX_PICKS }, () => ({ code: '', name: '' }));
   });
   const [worst, setWorst] = useState(() => {
-    const existing = getMyBallot();
+    const existing = getMyBallot(user?.id);
     return existing ? fillSlots(existing.worst) : Array.from({ length: MAX_PICKS }, () => ({ code: '', name: '' }));
   });
 
@@ -169,7 +171,7 @@ export default function CoursePoll() {
     setShowConfirm(false);
     setSubmitting(true);
     try {
-      saveMyBallot(best, worst);
+      saveMyBallot(best, worst, user?.id);
       setError('');
       setVoted(true);
     } catch (err) {

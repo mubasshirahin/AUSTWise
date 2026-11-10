@@ -3902,17 +3902,72 @@ async function handleApiRequest(req, res) {
         sendJson(res, 404, { success: false, error: 'Member not found.' });
         return;
       }
+      const profileRoles = [...new Set([user.role || 'student', ...(Array.isArray(user.roles) ? user.roles : [])].filter(Boolean))];
+      const isAlumniProfile = profileRoles.includes('alumni') || profileRoles.includes('alumni_with_carry');
 
-      const [streakData, semesterResultsValue] = await Promise.all([
+      // Attribute only records whose persisted owner is this account's ID.
+      // Browser generated guest IDs and anonymous activity are excluded.
+      const [streakResult, paperResult, marketplaceResult, cheatsheetResult, routineResult, courseReviewResult, coursePollResult, canteenReviewResult, canteenComplaintResult] = await Promise.allSettled([
         getUserStoreValue(user.id, 'aust-study-streak', null),
-        getUserStoreValue(user.id, 'aust-user-semester-results', null),
+        listQuestionPapers(),
+        getSharedStoreValue('aust-marketplace-v1', null),
+        listCheatsheets(),
+        listSharedRoutines(),
+        getSharedStoreValue('aust-course-reviews-v2', []),
+        getSharedStoreValue('aust-course-poll-ballots-v1', []),
+        getSharedStoreValue('aust-canteen-reviews-v1', []),
+        getSharedStoreValue('aust-canteen-complaints-v1', []),
       ]);
-      const asArray = (value) => Array.isArray(value) ? value : [];
-      const semesters = asArray(semesterResultsValue);
-      const recordedSemesters = semesters.filter((semester) => asArray(semester?.courses).length > 0);
-      const transcriptCourses = recordedSemesters.reduce((total, semester) => total + asArray(semester.courses).length, 0);
-      const currentStudyStreak = Number(streakData?.count ?? streakData?.currentStreak ?? streakData) || 0;
-      const maxStudyStreak = Math.max(currentStudyStreak, Number(streakData?.maxCount ?? streakData?.best) || 0);
+      const streakData = streakResult.status === 'fulfilled' ? streakResult.value : null;
+      const maxStreak = Math.max(
+        Number(streakData?.maxCount ?? streakData?.best) || 0,
+        Number(streakData?.count ?? streakData?.currentStreak ?? streakData) || 0,
+      );
+      const papers = paperResult.status === 'fulfilled' && Array.isArray(paperResult.value) ? paperResult.value : [];
+      const marketplace = marketplaceResult.status === 'fulfilled' && marketplaceResult.value && typeof marketplaceResult.value === 'object'
+        ? marketplaceResult.value : {};
+      const cheatsheets = cheatsheetResult.status === 'fulfilled' && Array.isArray(cheatsheetResult.value) ? cheatsheetResult.value : [];
+      const routines = routineResult.status === 'fulfilled' && Array.isArray(routineResult.value) ? routineResult.value : [];
+      const courseReviews = courseReviewResult.status === 'fulfilled' && Array.isArray(courseReviewResult.value) ? courseReviewResult.value : [];
+      const coursePolls = coursePollResult.status === 'fulfilled' && Array.isArray(coursePollResult.value) ? coursePollResult.value : [];
+      const canteenReviews = canteenReviewResult.status === 'fulfilled' && Array.isArray(canteenReviewResult.value) ? canteenReviewResult.value : [];
+      const canteenComplaints = canteenComplaintResult.status === 'fulfilled' && Array.isArray(canteenComplaintResult.value) ? canteenComplaintResult.value : [];
+      const ownedPapers = papers.filter((item) => item.contributorId === user.id);
+      const ownedCheatsheets = cheatsheets.filter((item) => item.contributorId === user.id);
+      const marketplaceRecords = [
+        ...(Array.isArray(marketplace.exchange) ? marketplace.exchange : []),
+        ...(Array.isArray(marketplace.tolet) ? marketplace.tolet : []),
+        ...(Array.isArray(marketplace.lostFound) ? marketplace.lostFound : []),
+        ...(Array.isArray(marketplace.mentorRequests) ? marketplace.mentorRequests : []),
+      ];
+      const ownedMarketplace = marketplaceRecords.filter((item) => item.contributorId === user.id);
+      const ownedPeerOffers = [
+        ...(Array.isArray(marketplace.partners) ? marketplace.partners : []),
+        ...(Array.isArray(marketplace.mentors) ? marketplace.mentors : []),
+      ].filter((item) => item.contributorId === user.id);
+      const ownedRoutines = routines.filter((item) => item.crId === user.id);
+      const ownedCourseReviews = courseReviews.filter((item) => item.contributorId === user.id && item.rating !== null && item.rating !== undefined);
+      const ownedCourseComments = courseReviews.filter((item) => item.contributorId === user.id && item.comment?.text);
+      const ownedCoursePolls = coursePolls.filter((item) => item.contributorId === user.id);
+      const ownedCanteenReviews = canteenReviews.filter((item) => item.contributorId === user.id);
+      const ownedCanteenComplaints = canteenComplaints.filter((item) => item.contributorId === user.id);
+      const ownedMentorReplies = (Array.isArray(marketplace.mentorRequests) ? marketplace.mentorRequests : [])
+        .flatMap((request) => (Array.isArray(request.responses) ? request.responses : [])
+          .filter((response) => response.contributorId === user.id)
+          .map((response) => ({ response, request })));
+      const recentContributions = [
+        ...ownedPapers.map((item) => ({ id: `paper-${item.id}`, title: item.name || item.course || 'Question paper', type: 'Question paper shared', createdAt: item.uploadedAt || item.createdAt || null })),
+        ...ownedCheatsheets.map((item) => ({ id: `cheatsheet-${item.id}`, title: item.title || item.course || 'Cheatsheet', type: 'Cheatsheet shared', createdAt: item.createdAt || null })),
+        ...ownedMarketplace.map((item) => ({ id: `community-${item.id}`, title: item.title || item.topic || 'Community post', type: 'Community post', createdAt: item.postedAt || item.createdAt || null })),
+        ...ownedPeerOffers.map((item) => ({ id: `peer-offer-${item.id}`, title: item.expertise || item.name || 'Peer support offer', type: 'Mentor or study partner offer', createdAt: item.postedAt || item.createdAt || null })),
+        ...ownedRoutines.map((item) => ({ id: `routine-${item.id}`, title: `${item.department || 'Department'} routine`, type: 'Class routine shared', createdAt: item.updatedAt || item.createdAt || null })),
+        ...ownedCourseReviews.map((item) => ({ id: `course-review-${item.id}`, title: `${item.course || 'Course'} review`, type: 'Course review', createdAt: item.createdAt || null })),
+        ...ownedCourseComments.map((item) => ({ id: `course-comment-${item.comment.id}`, title: `${item.course || 'Course'} discussion`, type: 'Course comment', createdAt: item.comment.createdAt || item.createdAt || null })),
+        ...ownedCoursePolls.map((item) => ({ id: `course-poll-${item.contributorId}`, title: 'Best & Worst course poll', type: 'Course poll submitted', createdAt: item.updatedAt || null })),
+        ...ownedCanteenReviews.map((item) => ({ id: `canteen-review-${item.id}`, title: 'Canteen review', type: 'Campus feedback', createdAt: item.createdAt || null })),
+        ...ownedCanteenComplaints.map((item) => ({ id: `canteen-complaint-${item.id}`, title: 'Canteen feedback', type: 'Campus feedback', createdAt: item.createdAt || null })),
+        ...ownedMentorReplies.map(({ response, request }) => ({ id: `mentor-reply-${response.id}`, title: request.topic || 'Mentor response', type: 'Mentorship reply', createdAt: response.postedAt || null })),
+      ].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 4);
       const presence = getPresenceMap();
       const email = user.email || '';
       const studentId = getStudentId(user);
@@ -3936,22 +3991,28 @@ async function handleApiRequest(req, res) {
           name: user.name || '',
           initials: String(user.name || 'AU').trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'AU',
           avatar: user.avatar || null,
+          coverPhoto: user.coverPhoto || null,
+          profileView: ['classic', 'compact', 'spotlight'].includes(user.profileView) ? user.profileView : 'classic',
           role: user.role || 'student',
-          roles: [...new Set([user.role || 'student', ...(Array.isArray(user.roles) ? user.roles : [])].filter(Boolean))],
+          roles: profileRoles,
           email,
-          phone: user.phone || '',
+          phone: user.privacy?.showPhone === false ? '' : (user.phone || ''),
+          privacy: { showPhone: user.privacy?.showPhone !== false },
           studentId,
           bloodGroup: user.bloodGroup || '',
           department: user.department || '',
           batch: user.batch || user.batchName || user.batchNo || '',
           batchNo: user.batchNo || '',
           batchName: user.batchName || '',
-          semester: user.semester ?? null,
-          yearSemester: user.yearSemester || '',
+          semester: isAlumniProfile ? null : (user.semester ?? null),
+          yearSemester: isAlumniProfile ? '' : (user.yearSemester || ''),
           section: user.section || '',
           labSection: user.labSection || '',
-          designation: user.designation || '',
-          company: user.company || '',
+          designation: isAlumniProfile && !String(user.designation || '').trim() && String(user.company || '').trim().toLowerCase() === 'software engineer'
+            ? user.company : (user.designation || ''),
+          company: isAlumniProfile && !String(user.designation || '').trim() && String(user.company || '').trim().toLowerCase() === 'software engineer'
+            || (String(user.company || '').trim() && String(user.company || '').trim().toLowerCase() === String(user.designation || '').trim().toLowerCase())
+            ? '' : (user.company || ''),
           graduationYear: user.graduationYear || '',
           createdAt: user.createdAt || null,
           status: presence[user.id]?.status || 'offline',
@@ -3959,9 +4020,16 @@ async function handleApiRequest(req, res) {
           orbit: user.orbit || null,
           lastSeenAt: presence[user.id]?.lastSeenAt || (user.lastSeenAt ? new Date(user.lastSeenAt).getTime() : null),
           activity: {
-            maxStreak: maxStudyStreak,
-            semestersRecorded: recordedSemesters.length,
-            transcriptCourses,
+            maxStreak,
+            resourcesShared: ownedPapers.length + ownedCheatsheets.length,
+            communityPosts: ownedMarketplace.length,
+            peerOffers: ownedPeerOffers.length,
+            routinesShared: ownedRoutines.length,
+            courseReviews: ownedCourseReviews.length + ownedCourseComments.length,
+            coursePolls: ownedCoursePolls.length,
+            campusFeedback: ownedCanteenReviews.length + ownedCanteenComplaints.length,
+            mentorReplies: ownedMentorReplies.length,
+            recentContributions,
           },
         },
       });
@@ -3983,6 +4051,8 @@ async function handleApiRequest(req, res) {
         .filter(u => u.id && u.name && u.id !== 'guest')
         .map(u => {
           const p = presence[u.id] || { status: 'offline', lastSeenAt: null };
+          const roles = [...new Set([u.role || 'student', ...(Array.isArray(u.roles) ? u.roles : [])].filter(Boolean))];
+          const isAlumni = roles.includes('alumni') || roles.includes('alumni_with_carry');
           return {
             id: u.id,
             awid: u.awid || '',
@@ -3991,22 +4061,26 @@ async function handleApiRequest(req, res) {
             initials: String(u.name || 'AU').trim().split(/\s+/).slice(0, 2).map(x => x[0]?.toUpperCase()).join('') || 'AU',
             avatar: u.avatar || null,
             role: u.role || 'student',
-            roles: [...new Set([u.role || 'student', ...(Array.isArray(u.roles) ? u.roles : [])].filter(Boolean))],
+            roles,
             department: u.department || '',
             batch: u.batch || u.batchName || u.batchNo || '',
             batchNo: u.batchNo || '',
             batchName: u.batchName || '',
-            semester: u.semester ?? 1,
-            yearSemester: u.yearSemester || '',
+            semester: isAlumni ? null : (u.semester ?? 1),
+            yearSemester: isAlumni ? '' : (u.yearSemester || ''),
             section: u.section || '',
             labSection: u.labSection || '',
-            designation: u.designation || '',
-            company: u.company || '',
+            designation: isAlumni && !String(u.designation || '').trim() && String(u.company || '').trim().toLowerCase() === 'software engineer'
+              ? u.company : (u.designation || ''),
+            company: isAlumni && !String(u.designation || '').trim() && String(u.company || '').trim().toLowerCase() === 'software engineer'
+              || (String(u.company || '').trim() && String(u.company || '').trim().toLowerCase() === String(u.designation || '').trim().toLowerCase())
+              ? '' : (u.company || ''),
             graduationYear: u.graduationYear || '',
             // Alumni "Open for Talk" flag — public by design, same intent as
             // the alumni directory badge.
             openForTalk: Boolean(u.openForTalk),
-            phone: u.phone || '',
+            phone: u.privacy?.showPhone === false ? '' : (u.phone || ''),
+            privacy: { showPhone: u.privacy?.showPhone !== false },
             status: p.status,
             lastSeenAt: p.lastSeenAt || (u.lastSeenAt ? new Date(u.lastSeenAt).getTime() : null),
             // Attendance is always private — never exposed to other members.
@@ -4147,7 +4221,7 @@ async function handleApiRequest(req, res) {
   }
 
   // POST /api/presence/privacy — update the viewer's own privacy toggles
-  // ({ showCgpa, showAttendance }). Stored on the user record in users.json.
+  // (showCgpa, showAttendance, showPhone). Stored on the user record.
   if (req.url === '/api/presence/privacy' && req.method === 'POST') {
     const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
@@ -4162,6 +4236,7 @@ async function handleApiRequest(req, res) {
         ...(user.privacy || {}),
         showCgpa: typeof body.showCgpa === 'boolean' ? body.showCgpa : (user.privacy?.showCgpa !== false),
         showAttendance: typeof body.showAttendance === 'boolean' ? body.showAttendance : (user.privacy?.showAttendance === true),
+        showPhone: typeof body.showPhone === 'boolean' ? body.showPhone : (user.privacy?.showPhone !== false),
       };
       const updated = await updateUserProfile(auth.id, { privacy: next });
       broadcastToAll({ type: 'profile-update', payload: { userId: auth.id, fields: ['privacy'] } });
