@@ -15,6 +15,7 @@ export async function readJson(filename, defaultValue = []) {
       return defaultValue;
     }
     const raw = await readFile(filePath, 'utf-8');
+    if (!raw.trim()) return defaultValue;
     return JSON.parse(raw);
   } catch (error) {
     console.error(`Error reading JSON file ${filename}:`, error.message);

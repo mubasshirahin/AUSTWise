@@ -18,7 +18,6 @@ import { OrbitsProvider, useOrbits } from '../orbits/OrbitsContext';
 import OrbitsConfigurationPanel from '../orbits/OrbitsConfigurationPanel';
 import { useStalk } from '../stalk-road/StalkContext';
 import { submitRoleApplication, getApplicationsByUserId, getUserApplicationStatus, getSlotVacancyMap, resignFromRole, withdrawApplication, deleteAccountById, createAwid, syncRoleApplicationsFromServer, getDisplayRoles, getRoleDisplayName } from '../../utils/authStorage';
-import { isNativeApp, isAssistiveEnabled, setAssistiveEnabled } from '../../utils/isNativeApp';
 import './SettingsPage.css';
 import '../../components/PageHero.css';
 import '../active-members/MemberProfilePage.css';
@@ -352,15 +351,8 @@ export default function SettingsPage() {
     }
   }, [isAuthenticated]);
   useEffect(() => { refreshTelegramHealth(); }, [refreshTelegramHealth]);
-  const [isApp] = useState(() => isNativeApp());
-  const [assistiveOn, setAssistiveOn] = useState(() => isAssistiveEnabled());
   const [phonePrivacySaving, setPhonePrivacySaving] = useState(false);
   const [phonePrivacyMessage, setPhonePrivacyMessage] = useState('');
-  const handleAssistiveToggle = () => {
-    const next = !assistiveOn;
-    setAssistiveOn(next);
-    setAssistiveEnabled(next);
-  };
   const handlePhonePrivacyToggle = async () => {
     if (!isAuthenticated || phonePrivacySaving) return;
     const next = user?.privacy?.showPhone === false;
@@ -1897,47 +1889,6 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                {/* ─── Assistive Touch / Floating Hub (app only — APK / installed PWA) ─── */}
-                {isApp && (
-                <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--border-primary)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-                    <span style={{ width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)', flexShrink: 0 }}>
-                      <Sparkles size={18} />
-                    </span>
-                    <div style={{ flex: '1 1 auto', minWidth: 0 }}>
-                      <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                        Assistive Touch (App only)
-                      </h4>
-                      <p style={{ margin: '3px 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                        Only inside the AUSTWise app (APK). Drag it anywhere, tap for quick jump, theme switcher &amp; expense add.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={assistiveOn}
-                      aria-label="Toggle Assistive Touch"
-                      onClick={handleAssistiveToggle}
-                      style={{
-                        flexShrink: 0,
-                        width: 46, height: 26, borderRadius: 999,
-                        border: '1px solid var(--border-primary)',
-                        background: assistiveOn ? 'var(--accent-amber)' : 'var(--bg-tertiary)',
-                        position: 'relative', cursor: 'pointer', transition: 'background .2s ease',
-                      }}
-                    >
-                      <span style={{
-                        position: 'absolute', top: 2, left: assistiveOn ? 22 : 2,
-                        width: 20, height: 20, borderRadius: '50%', background: '#fff',
-                        boxShadow: '0 1px 4px rgba(0,0,0,.25)', transition: 'left .2s ease',
-                      }} />
-                    </button>
-                  </div>
-                  <p style={{ margin: '6px 0 0 50px', fontSize: '11px', color: 'var(--text-tertiary)' }}>
-                    {assistiveOn ? 'On — floating bubble visible' : 'Off — floating bubble hidden'}
-                  </p>
-                </div>
-                )}
               </div>
             </div>
           )}

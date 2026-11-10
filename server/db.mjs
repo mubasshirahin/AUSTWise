@@ -21,7 +21,9 @@ function poolConfig() {
   if (process.env.DATABASE_URL) {
     return {
       connectionString: process.env.DATABASE_URL,
-      max: 10,
+      // Session poolers cap the total number of clients across app instances.
+      // Keep each process small; deployments can tune this when their DB allows it.
+      max: Number(process.env.PG_POOL_MAX || 5),
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
       ssl: process.env.DATABASE_URL.includes('localhost')
@@ -35,7 +37,7 @@ function poolConfig() {
     database: process.env.PGDATABASE || process.env.DB_DATABASE || 'AUSTWise',
     user: process.env.PGUSER || process.env.DB_USER || 'postgres',
     password: process.env.PGPASSWORD || process.env.DB_PASSWORD || '',
-    max: 10,
+    max: Number(process.env.PG_POOL_MAX || 5),
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
   };

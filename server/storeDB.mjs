@@ -22,15 +22,17 @@ async function readSharedStoreFile() { return (await readJson(SHARED_STORE_FILE,
 async function writeSharedStoreFile(data) { await writeJson(SHARED_STORE_FILE, data); }
 
 let _dbAvailable = null; // null = untested, true/false
+let _dbAvailabilityCheck = null;
 
 async function isDbAvailable() {
   if (_dbAvailable !== null) return _dbAvailable;
-  try {
-    await query('SELECT 1');
-    _dbAvailable = true;
-  } catch {
-    _dbAvailable = false;
+  if (!_dbAvailabilityCheck) {
+    _dbAvailabilityCheck = query('SELECT 1')
+      .then(() => { _dbAvailable = true; })
+      .catch(() => { _dbAvailable = false; })
+      .finally(() => { _dbAvailabilityCheck = null; });
   }
+  await _dbAvailabilityCheck;
   return _dbAvailable;
 }
 
@@ -77,17 +79,24 @@ CREATE TABLE IF NOT EXISTS "SharedStoreDeleted" (
 `;
 
 let _tablesEnsured = false;
+let _tablesEnsurePromise = null;
 
 async function ensureTables() {
   if (_tablesEnsured) return;
-  try {
-    for (const stmt of TABLES_DDL.split(';').map(s => s.trim()).filter(Boolean)) {
-      await query(stmt);
+  if (_tablesEnsurePromise) return _tablesEnsurePromise;
+  _tablesEnsurePromise = (async () => {
+    try {
+      for (const stmt of TABLES_DDL.split(';').map(s => s.trim()).filter(Boolean)) {
+        await query(stmt);
+      }
+      _tablesEnsured = true;
+    } catch (err) {
+      console.warn('⚠️  storeDB: Could not ensure tables:', err.message);
+    } finally {
+      _tablesEnsurePromise = null;
     }
-    _tablesEnsured = true;
-  } catch (err) {
-    console.warn('⚠️  storeDB: Could not ensure tables:', err.message);
-  }
+  })();
+  return _tablesEnsurePromise;
 }
 
 // ── Per-user store ───────────────────────────────────────────────────────────

@@ -33,7 +33,6 @@ const PricingPage = lazy(() => import('./pages/PricingPage'));
 const AboutUsPage = lazy(() => import('./pages/AboutUsPage'));
 const NotificationRunner = lazy(() => import('./components/NotificationRunner'));
 const FloatingBackground = lazy(() => import('./components/FloatingBackground'));
-const AssistiveWidget = lazy(() => import('./components/AssistiveWidget'));
 const ActiveMembersSidebar = lazy(() => import('./features/active-members/ActiveMembersSidebar'));
 const MemberProfilePage = lazy(() => import('./features/active-members/MemberProfilePage'));
 
@@ -499,11 +498,6 @@ function App() {
         <AuthProvider>
           <PomodoroProvider>
             <AppShell />
-            {/* Assistive bubble — app only (APK / installed PWA). Gated inside
-                AssistiveWidget via isNativeApp(); web & desktop never see it. */}
-            <Suspense fallback={null}>
-              <AssistiveWidget />
-            </Suspense>
           </PomodoroProvider>
         </AuthProvider>
       </ThemeProvider>
