@@ -1168,3 +1168,29 @@
     display: none;
   }
 }
+
+/* ─── Layout toggle (Classic ⇄ Studio), sits right of the theme switcher ─── */
+.topbar-icon-btn.layout-toggle-btn {
+  width: auto;
+  min-width: 36px;
+  gap: 6px;
+  padding: 0 12px 0 10px;
+  border-radius: var(--radius-full, 999px);
+  border: 1px solid var(--border-primary);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  transition: color 160ms ease, background 160ms ease, border-color 160ms ease, transform 120ms ease;
+}
+.topbar-icon-btn.layout-toggle-btn:hover { color: var(--text-primary); }
+.topbar-icon-btn.layout-toggle-btn:active { transform: scale(0.95); }
+.topbar-icon-btn.layout-toggle-btn.is-studio {
+  color: var(--accent-blue);
+  background: var(--accent-blue-glow);
+  border-color: color-mix(in srgb, var(--accent-blue) 35%, transparent);
+}
+@media (max-width: 1180px) {
+  .topbar-icon-btn.layout-toggle-btn { padding: 0; width: 36px; justify-content: center; }
+  .layout-toggle-label { display: none; }
+}

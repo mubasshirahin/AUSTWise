@@ -1,0 +1,203 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   RESPONSIVE SHELL  —  applies to EVERY theme
+   ────────────────────────────────────────────────────────────────────────────
+   ≤1024px (mobile + tablet): the desktop sidebar becomes an off-canvas drawer
+   opened by the top-bar hamburger, over a blurred backdrop. Content takes the
+   full width. Imported after all theme files so layout rules win; themes keep
+   their own colours, borders and type.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* Hamburger: hidden on desktop */
+.topbar-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  margin-left: 4px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md, 10px);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, transform 120ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.topbar-menu-btn:hover { background: var(--bg-tertiary); border-color: var(--border-primary); }
+.topbar-menu-btn:active { transform: scale(0.94); }
+
+.sidebar-backdrop { display: none; }
+
+/* Never let the page scroll sideways */
+html, body { overflow-x: clip; }
+.app-layout { overflow-x: clip; }
+img, video { max-width: 100%; }
+
+@media (max-width: 1024px) {
+  :root {
+    --sidebar-width: 0px;
+    --sidebar-collapsed: 0px;
+  }
+
+  .topbar-menu-btn { display: inline-flex; }
+
+  .main-content,
+  .main-content.sidebar-collapsed {
+    margin-left: 0 !important;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* ── Drawer ── */
+  html .sidebar,
+  html .sidebar.collapsed {
+    display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(300px, 86vw);
+    height: 100dvh;
+    max-height: none;
+    z-index: 1200;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    background-color: var(--bg-secondary) !important;
+    border-right: 1px solid var(--border-primary);
+    box-shadow: none;
+    transform: translate3d(-104%, 0, 0);
+    visibility: hidden;
+    transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 320ms, box-shadow 320ms ease;
+  }
+  html .sidebar.drawer-open {
+    transform: none;
+    visibility: visible;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+    transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1), visibility 0s, box-shadow 320ms ease;
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1150;
+    background: rgba(4, 8, 16, 0.55);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 240ms ease;
+  }
+  .sidebar-backdrop.open { opacity: 1; pointer-events: auto; }
+
+  html.nav-drawer-lock,
+  html.nav-drawer-lock body { overflow: hidden; }
+
+  /* Undo the old tablet icon-rail so the drawer shows full rows */
+  html .sidebar .sidebar-header { min-height: 16px; }
+  html .sidebar .sidebar-nav { padding-top: 8px; }
+  html .sidebar .nav-item,
+  html .sidebar .logout-btn {
+    justify-content: flex-start;
+    gap: 12px;
+    min-height: 46px;
+    padding: 10px 16px;
+  }
+  html .sidebar .nav-item-premium,
+  html .sidebar .nav-item-premium.collapsed {
+    margin: 2px 12px;
+    padding: 10px 16px;
+    transform: none;
+  }
+  html .sidebar .nav-label {
+    opacity: 1;
+    width: auto;
+    overflow: visible;
+    pointer-events: auto;
+  }
+  html .sidebar .nav-tooltip,
+  html .sidebar .sidebar-edge-handle,
+  html .sidebar .sidebar-collapse-btn { display: none; }
+  html .sidebar .sidebar-footer { align-items: stretch; padding: 12px; }
+
+  /* Tablet gutter */
+  .page-wrapper { padding: var(--sp-5, 20px); }
+}
+
+@media (max-width: 768px) {
+  .page-wrapper { padding: var(--sp-4, 16px); padding-bottom: var(--sp-4, 16px); }
+  /* Phones navigate with the bottom bar + its "More" sheet: no hamburger,
+     no drawer. The drawer is a tablet-only (769–1024px) affordance. */
+  .topbar-menu-btn,
+  .sidebar-backdrop,
+  html .sidebar,
+  html .sidebar.collapsed,
+  html .sidebar.drawer-open { display: none; }
+}
+@media (max-width: 480px) {
+  .page-wrapper { padding: var(--sp-3, 12px); }
+}
+
+/* ── Touch targets (any theme, touch devices) ── */
+@media (pointer: coarse) {
+  .btn { min-height: 40px; }
+  .btn-icon,
+  .topbar-icon-btn,
+  .theme-menu-item,
+  .profile-dropdown-item,
+  .mobile-nav-item { min-height: 44px; }
+  .btn-icon,
+  .topbar-icon-btn { min-width: 44px; }
+}
+@media (max-width: 768px) and (pointer: coarse) {
+  /* ≥16px stops iOS zooming the page on focus */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea { font-size: max(16px, 1em); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html .sidebar,
+  html .sidebar.drawer-open,
+  .sidebar-backdrop { transition: none; }
+}
+
+/* ── Small-phone content fixes (found by the cross-theme sweep) ── */
+@media (max-width: 640px) {
+  /* Masthead title blocks were wider than the screen and got clipped */
+  .schedule-masthead {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .schedule-title-block,
+  .schedule-title-block > * {
+    min-width: 0;
+  }
+  .schedule-title {
+    overflow-wrap: anywhere;
+  }
+  .schedule-subtitle {
+    white-space: normal;
+    max-width: 100%;
+  }
+  /* Profile hero actions had an 80px indent pushing buttons off-screen */
+  .page-wrapper .member-profile-hero-actions {
+    margin-left: 0;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+  .page-wrapper .member-profile-orbit { min-width: 0; }
+}
+@media (max-width: 640px) {
+  /* Plans comparison table: let columns shrink instead of spilling 5px */
+  .page-wrapper .pro-cmp-row {
+    grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr));
+  }
+  .page-wrapper .pro-cmp-cell {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}

@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
-import { Star, MessageSquare, ThumbsUp, ArrowUpDown, Send, Plus, X } from 'lucide-react';
+import { Star, MessageSquare, ThumbsUp, ArrowUpDown, Send, Plus, X, Search } from 'lucide-react';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
+import './CourseReview.css';
 import { sanitizeUserInput, MAX_TEXT_LENGTH, MAX_TITLE_LENGTH } from '../../utils/sanitize';
 import { useLiveRefresh } from '../../utils/liveStore';
 import { useAuth } from '../../context/AuthContext';
@@ -24,28 +25,30 @@ const defaultReviewForm = {
 
 function StarPicker({ value, onChange, label }) {
   return (
-    <div>
-      <div className="flex justify-between" style={{ fontSize: '11px', marginBottom: '4px' }}>
+    <div className="cr-star-picker">
+      <div className="cr-star-picker-head">
         <span>{label}</span>
-        <span style={{ fontWeight: 'bold' }}>{value} / 5</span>
+        <span className="cr-num">{value} / 5</span>
       </div>
-      <div className="flex gap-1">
+      <div className="cr-star-row">
         {[1, 2, 3, 4, 5].map((star) => (
           <button
             key={star}
             type="button"
-            className="btn-ghost"
+            className={`cr-star-btn${star <= value ? ' is-on' : ''}`}
             onClick={() => onChange(star)}
-            style={{ padding: '2px', color: star <= value ? 'var(--accent-amber)' : 'var(--text-tertiary)' }}
             aria-label={`${label} ${star}`}
           >
-            <Star size={16} fill={star <= value ? 'currentColor' : 'none'} />
+            <Star size={18} fill={star <= value ? "currentColor" : "none"} />
           </button>
         ))}
       </div>
     </div>
   );
 }
+
+const SORT_LABELS = { rating: 'Top rated', difficulty: 'Hardest', workload: 'Heaviest', comments: 'Most discussed' };
+const ratingTone = (rating) => (rating >= 4 ? 'is-high' : rating >= 3 ? 'is-mid' : 'is-low');
 
 export default function CourseReview() {
   const { user } = useAuth();
@@ -156,9 +159,15 @@ export default function CourseReview() {
     setReviewForm((current) => ({ ...current, course: match.code, name: match.name }));
   };
 
+
+  const selectCourse = (id) => {
+    setSelectedCourseId(id);
+    setFormError('');
+  };
+
   return (
-    <>
-      <div className="schedule-masthead">
+    <div className={`cr${selectedCourse ? ' has-selection' : ''}`}>
+      <div className="schedule-masthead cr-masthead">
         <div className="schedule-title-block">
           <div className="schedule-icon-tile">
             <MessageSquare size={20} strokeWidth={2.2} />
@@ -174,19 +183,20 @@ export default function CourseReview() {
 
         <div className="schedule-masthead-center" />
 
-        <div className="schedule-actions">
-          <div className="search-box" style={{ width: '220px' }}>
+        <div className="schedule-actions cr-actions">
+          <div className="search-box cr-search">
+            <Search aria-hidden="true" />
             <input
               type="text"
               placeholder="Search reviews..."
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
-              style={{ padding: '6px 12px 6px 36px' }}
+              aria-label="Search course reviews"
             />
           </div>
           <button
             type="button"
-            className="btn btn-secondary btn-sm"
+            className="btn btn-secondary btn-sm cr-sort-btn"
             onClick={() => {
               setSortMode((mode) => {
                 if (mode === 'rating') return 'difficulty';
@@ -195,12 +205,14 @@ export default function CourseReview() {
                 return 'rating';
               });
             }}
+            title="Change sort order"
           >
             <ArrowUpDown size={14} />
+            <span className="cr-sort-label">{SORT_LABELS[sortMode]}</span>
           </button>
           <button
             type="button"
-            className="btn btn-primary btn-sm"
+            className="btn btn-primary btn-sm cr-add-btn"
             onClick={() => {
               setShowAddForm((open) => !open);
               setFormError('');
@@ -215,26 +227,21 @@ export default function CourseReview() {
 
       <div className="schedule-dotted-divider shadow-repeat-divider" />
 
-      <div className="course-reviews-container animate-fadeInUp">
+      <div className="cr-body animate-fadeInUp">
 
-      {formMessage && (
-        <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent-emerald)', marginBottom: '12px' }}>{formMessage}</p>
-      )}
-      {formError && (
-        <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent-rose)', marginBottom: '12px' }}>{formError}</p>
-      )}
+      {formMessage && <p className="cr-flash is-ok" role="status">{formMessage}</p>}
+      {formError && <p className="cr-flash is-err" role="alert">{formError}</p>}
 
       {showAddForm && (
-        <form
-          onSubmit={submitNewReview}
-          className="glass-card"
-          style={{ padding: '16px', marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}
-        >
-          <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'var(--fw-bold)', margin: 0 }}>Submit a course review</h3>
+        <form onSubmit={submitNewReview} className="cr-form">
+          <div className="cr-form-head">
+            <h3>Submit a course review</h3>
+            <p>Anonymous — only the averages and your comment are shown.</p>
+          </div>
 
           {trackerCourses.length > 0 && (
-            <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Pick from CGPA Calculator (optional)</span>
+            <label className="cr-field">
+              <span>Pick from CGPA Calculator (optional)</span>
               <select id="review-tracker-course" name="trackerCourse" className="input" defaultValue="" onChange={applyTrackerCourse}>
                 <option value="">Select a course...</option>
                 {trackerCourses.map((course) => (
@@ -244,22 +251,22 @@ export default function CourseReview() {
             </label>
           )}
 
-          <div className="grid-2" style={{ gap: '10px' }}>
-            <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              Course code
+          <div className="cr-form-grid">
+            <label className="cr-field">
+              <span>Course code</span>
               <CourseAutocomplete
                 value={reviewForm.course}
-                onCourseSelect={(course) => setReviewForm((current) => ({ 
-                  ...current, 
-                  course: course.code, 
-                  name: course.name 
+                onCourseSelect={(course) => setReviewForm((current) => ({
+                  ...current,
+                  course: course.code,
+                  name: course.name
                 }))}
                 placeholder="CSE 3101"
                 type="code"
               />
             </label>
-            <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              Course title
+            <label className="cr-field">
+              <span>Course title</span>
               <input
                 id="review-course-title"
                 name="courseTitle"
@@ -273,7 +280,7 @@ export default function CourseReview() {
             </label>
           </div>
 
-          <div className="grid-3" style={{ gap: '12px' }}>
+          <div className="cr-star-grid">
             <StarPicker
               label="Overall rating"
               value={reviewForm.rating}
@@ -291,8 +298,8 @@ export default function CourseReview() {
             />
           </div>
 
-          <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            Comment (optional)
+          <label className="cr-field">
+            <span>Comment (optional)</span>
             <textarea
               id="review-comment"
               name="comment"
@@ -305,19 +312,25 @@ export default function CourseReview() {
             />
           </label>
 
-          <button type="submit" className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start' }}>
+          <button type="submit" className="btn btn-primary cr-submit">
             <Send size={14} /> Publish review
           </button>
         </form>
       )}
 
-      <div className="grid-2">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div className="cr-meta">
+        <span><b className="cr-num">{filteredReviews.length}</b> course{filteredReviews.length === 1 ? '' : 's'}</span>
+        <span className="cr-meta-dot" aria-hidden="true" />
+        <span>Sorted by {SORT_LABELS[sortMode].toLowerCase()}</span>
+      </div>
+
+      <div className="cr-layout">
+        <div className="cr-list">
           {filteredReviews.length === 0 ? (
-            <div className="empty-state" style={{ padding: '28px 16px' }}>
+            <div className="empty-state cr-empty">
               <MessageSquare size={36} />
-              <h3 style={{ fontSize: 'var(--fs-md)', marginTop: '8px' }}>No reviews yet</h3>
-              <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
+              <h3>No reviews yet</h3>
+              <p>
                 Be the first to rate a course. Use <strong>Add Review</strong> or import a course from your CGPA Calculator.
               </p>
             </div>
@@ -328,38 +341,45 @@ export default function CourseReview() {
               return (
                 <div
                   key={review.id}
-                  onClick={() => {
-                    setSelectedCourseId(review.id);
-                    setFormError('');
-                  }}
-                  style={{
-                    background: isSelected ? 'var(--accent-amber-glow)' : 'var(--bg-card)',
-                    border: isSelected ? '1px solid color-mix(in srgb, var(--accent-amber) 45%, transparent)' : '1px solid var(--border-primary)',
-                    borderRadius: 'var(--radius-lg)',
-                    padding: '16px',
-                    cursor: 'pointer',
-                    transition: 'all var(--transition-base)',
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={isSelected}
+                  className={`cr-card${isSelected ? ' is-selected' : ''}`}
+                  onClick={() => selectCourse(review.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      selectCourse(review.id);
+                    }
                   }}
                 >
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', fontWeight: 'bold' }}>{review.course}</span>
-                      <h3 style={{ fontSize: '15px', fontWeight: 'var(--fw-bold)' }}>{review.name}</h3>
+                  <div className="cr-card-top">
+                    <div className="cr-card-title">
+                      <span className="cr-code">{review.course}</span>
+                      <h3>{review.name}</h3>
                     </div>
-                    <div className="flex items-center gap-1" style={{ color: 'var(--accent-amber)' }}>
-                      <Star size={16} fill="currentColor" />
-                      <span style={{ fontWeight: 'bold', fontSize: 'var(--fs-sm)' }}>{review.rating.toFixed(1)}</span>
+                    <div className={`cr-score ${ratingTone(review.rating)}`}>
+                      <Star size={14} fill="currentColor" />
+                      <span className="cr-num">{review.rating.toFixed(1)}</span>
                     </div>
                   </div>
 
-                  <div className="flex justify-between items-center mt-4" style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                    <div className="flex gap-4">
-                      <span>Workload: <b>{review.workload.toFixed(1)}/5</b></span>
-                      <span>Difficulty: <b>{review.difficulty.toFixed(1)}/5</b></span>
+                  <div className="cr-mini-meters">
+                    <div className="cr-mini">
+                      <span>Workload</span>
+                      <div className="cr-track"><i className="is-workload" style={{ width: `${review.workload * 20}%` }} /></div>
+                      <b className="cr-num">{review.workload.toFixed(1)}</b>
                     </div>
-                    <span className="flex items-center gap-1">
-                      <MessageSquare size={12} /> {review.comments.length} · {review.reviews} ratings
-                    </span>
+                    <div className="cr-mini">
+                      <span>Difficulty</span>
+                      <div className="cr-track"><i className="is-difficulty" style={{ width: `${review.difficulty * 20}%` }} /></div>
+                      <b className="cr-num">{review.difficulty.toFixed(1)}</b>
+                    </div>
+                  </div>
+
+                  <div className="cr-card-foot">
+                    <span><MessageSquare size={12} /> <b className="cr-num">{review.comments.length}</b> comments</span>
+                    <span><b className="cr-num">{review.reviews}</b> ratings</span>
                   </div>
                 </div>
               );
@@ -367,50 +387,48 @@ export default function CourseReview() {
           )}
         </div>
 
-        <div
-          className="glass-card-static"
-          style={{
-            minHeight: '300px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: selectedCourse ? 'flex-start' : 'center',
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border-primary)',
-          }}
-        >
+        <aside className={`cr-detail${selectedCourse ? '' : ' is-empty'}`} aria-live="polite">
           {selectedCourse ? (
-            <div className="animate-fadeIn">
-              <div style={{ borderBottom: '1px solid var(--border-primary)', paddingBottom: '12px', marginBottom: '16px' }}>
-                <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', fontWeight: 'bold' }}>{selectedCourse.course}</span>
-                <h3 style={{ fontSize: 'var(--fs-lg)', fontWeight: 'var(--fw-bold)' }}>{selectedCourse.name}</h3>
-                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                  {selectedCourse.reviews} student rating{selectedCourse.reviews === 1 ? '' : 's'}
-                </p>
+            <div className="cr-detail-inner animate-fadeIn" key={selectedCourse.id}>
+              <div className="cr-detail-head">
+                <div className="cr-detail-title">
+                  <span className="cr-code">{selectedCourse.course}</span>
+                  <h3>{selectedCourse.name}</h3>
+                  <p>{selectedCourse.reviews} student rating{selectedCourse.reviews === 1 ? '' : 's'}</p>
+                </div>
+                <div className={`cr-big-score ${ratingTone(selectedCourse.rating)}`}>
+                  <span className="cr-num">{selectedCourse.rating.toFixed(1)}</span>
+                  <small>/ 5</small>
+                </div>
+                <button
+                  type="button"
+                  className="cr-detail-close"
+                  onClick={() => setSelectedCourseId(null)}
+                  aria-label="Close course details"
+                >
+                  <X size={16} />
+                </button>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
-                <div>
-                  <div className="flex justify-between" style={{ fontSize: '11px', marginBottom: '2px' }}>
-                    <span>Course Difficulty</span>
-                    <span style={{ fontWeight: 'bold' }}>{selectedCourse.difficulty.toFixed(1)} / 5.0</span>
+              <div className="cr-meters">
+                <div className="cr-meter">
+                  <div className="cr-meter-head">
+                    <span>Course difficulty</span>
+                    <b className="cr-num">{selectedCourse.difficulty.toFixed(1)} / 5.0</b>
                   </div>
-                  <div className="progress-bar">
-                    <div className="progress-bar-fill" style={{ width: `${selectedCourse.difficulty * 20}%`, background: 'var(--accent-rose)' }} />
-                  </div>
+                  <div className="cr-track is-lg"><i className="is-difficulty" style={{ width: `${selectedCourse.difficulty * 20}%` }} /></div>
                 </div>
-                <div>
-                  <div className="flex justify-between" style={{ fontSize: '11px', marginBottom: '2px' }}>
-                    <span>Workload Intensity</span>
-                    <span style={{ fontWeight: 'bold' }}>{selectedCourse.workload.toFixed(1)} / 5.0</span>
+                <div className="cr-meter">
+                  <div className="cr-meter-head">
+                    <span>Workload intensity</span>
+                    <b className="cr-num">{selectedCourse.workload.toFixed(1)} / 5.0</b>
                   </div>
-                  <div className="progress-bar">
-                    <div className="progress-bar-fill" style={{ width: `${selectedCourse.workload * 20}%`, background: 'var(--accent-amber)' }} />
-                  </div>
+                  <div className="cr-track is-lg"><i className="is-workload" style={{ width: `${selectedCourse.workload * 20}%` }} /></div>
                 </div>
               </div>
 
-              <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '10px' }}>Student Feedbacks</h4>
-              <form onSubmit={submitComment} className="flex gap-2 mb-4">
+              <h4 className="cr-section-label">Student feedback</h4>
+              <form onSubmit={submitComment} className="cr-comment-form">
                 <input
                   id="review-quick-comment"
                   name="quickComment"
@@ -419,46 +437,33 @@ export default function CourseReview() {
                   onChange={(event) => setNewComment(event.target.value)}
                   maxLength={MAX_TEXT_LENGTH}
                   placeholder="Write a quick review..."
-                  style={{ fontSize: 'var(--fs-xs)' }}
                 />
-                <button className="btn btn-primary btn-sm" type="submit" aria-label="Submit review">
-                  <Send size={13} />
+                <button className="btn btn-primary cr-send" type="submit" aria-label="Submit review">
+                  <Send size={15} />
                 </button>
               </form>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '200px', overflowY: 'auto' }}>
+              <div className="cr-comments">
                 {selectedCourse.comments.length === 0 ? (
-                  <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>No comments yet. Be the first to share feedback.</p>
+                  <p className="cr-comments-empty">No comments yet. Be the first to share feedback.</p>
                 ) : (
                   selectedCourse.comments.map((comment) => {
                     const voted = hasUpvotedComment(comment.id);
                     return (
-                      <div
-                        key={comment.id}
-                        style={{
-                          background: 'var(--bg-tertiary)',
-                          border: '1px solid var(--border-primary)',
-                          borderRadius: 'var(--radius-md)',
-                          padding: '10px 12px',
-                        }}
-                      >
-                        <p style={{ fontSize: '12px', color: 'var(--text-primary)', lineHeight: '1.4' }}>&ldquo;{comment.text}&rdquo;</p>
-                        <div className="flex justify-between items-center mt-2" style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>
+                      <div key={comment.id} className="cr-comment">
+                        <p>&ldquo;{comment.text}&rdquo;</p>
+                        <div className="cr-comment-foot">
                           <span>
-                            <b style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", color: 'var(--accent-purple, #a855f7)' }}>{comment.author || 'Anonymous'}</b>
+                            <b className="cr-author">{comment.author || 'Anonymous'}</b>
                             {' · '}Posted {comment.date}
                           </span>
                           <button
                             type="button"
-                            className="flex items-center gap-1 btn-ghost"
+                            className={`cr-upvote${voted ? ' is-voted' : ''}`}
                             onClick={(event) => handleUpvote(comment.id, event)}
                             disabled={voted}
-                            style={{
-                              padding: '2px 4px',
-                              borderRadius: '4px',
-                              opacity: voted ? 0.55 : 1,
-                            }}
+                            aria-label={`Upvote comment (${comment.upvotes})`}
                           >
-                            <ThumbsUp size={10} /> {comment.upvotes}
+                            <ThumbsUp size={12} /> <span className="cr-num">{comment.upvotes}</span>
                           </button>
                         </div>
                       </div>
@@ -468,14 +473,14 @@ export default function CourseReview() {
               </div>
             </div>
           ) : (
-            <div className="empty-state">
+            <div className="empty-state cr-detail-empty">
               <MessageSquare size={36} />
-              <p style={{ fontSize: 'var(--fs-sm)' }}>Select a course review from the list to see detailed comments and ratings.</p>
+              <p>Select a course review from the list to see detailed comments and ratings.</p>
             </div>
           )}
-        </div>
+        </aside>
       </div>
     </div>
-    </>
+    </div>
   );
 }

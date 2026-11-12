@@ -80,7 +80,9 @@ function RoleAwareNavItem({ item, collapsed, unread }) {
   );
 }
 
-export default function Sidebar({ collapsed, onToggle }) {
+export default function Sidebar({ collapsed: collapsedProp, onToggle, drawerOpen = false, onDrawerClose }) {
+  // The drawer always shows full labels, whatever the desktop collapse state.
+  const collapsed = collapsedProp && !drawerOpen;
   const { user, isAuthenticated, hasRole } = useAuth();
   const navigate = useNavigate();
   const [unread, setUnread] = useState(() => (user?.id ? getUnreadCount(user.id) : 0));
@@ -138,7 +140,13 @@ export default function Sidebar({ collapsed, onToggle }) {
   );
 
   return (
-    <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
+    <>
+    <div
+      className={`sidebar-backdrop${drawerOpen ? ' open' : ''}`}
+      onClick={onDrawerClose}
+      aria-hidden="true"
+    />
+    <aside id="app-sidebar" className={`sidebar ${collapsed ? 'collapsed' : ''}${drawerOpen ? ' drawer-open' : ''}`}>
       <div className="sidebar-header" />
 
       <nav className="sidebar-nav">
@@ -176,5 +184,6 @@ export default function Sidebar({ collapsed, onToggle }) {
         )}
       </div>
     </aside>
+    </>
   );
 }

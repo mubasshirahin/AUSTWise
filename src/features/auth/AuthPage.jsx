@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { GraduationCap, Briefcase, BookOpen, Moon, Sun, Newspaper, Terminal, SquareTerminal, Gauge, MoonStar, Pen, PenTool, Building2, Check, Eye, EyeOff, Zap, Type, Grid2x2, Cpu, ArrowLeft, Orbit } from 'lucide-react';
+import { GraduationCap, Briefcase, BookOpen, Moon, Sun, Newspaper, Terminal, SquareTerminal, Gauge, MoonStar, Pen, PenTool, Building2, Check, Eye, EyeOff, Zap, Type, Grid2x2, Cpu, ArrowLeft, Orbit, DraftingCompass } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { getYearSemOptions } from '../../utils/semester';
@@ -30,6 +30,7 @@ const darkThemeOptions = [
   { id: 'poster',                label: 'Bold Type',  icon: Type       },
   { id: 'bitcoindefi',           label: 'Bitcoin Defi', icon: Zap      },
   { id: 'meshtopo',              label: 'Mesh Topology', icon: Orbit   },
+  { id: 'blueprint',             label: 'Blueprint',  icon: DraftingCompass },
 ];
 
 const lightThemeOptions = [
