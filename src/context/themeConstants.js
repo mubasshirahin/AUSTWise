@@ -17,9 +17,14 @@ export const THEME_ACCENTS = {
   nexus: '#10B981',
   cyberpunk: '#00ff88',
   meshtopo: '#10B981',
+  blueprint: '#7CC8FF',
 };
 
 export const ACCENT_KEY = 'aust-accent';
+
+// Page layout, independent of the colour theme.
+export const LAYOUT_KEY = 'aust-layout';
+export const LAYOUTS = ['classic', 'studio'];
 
 function hexToRgb(hex) {
   const int = parseInt(hex.replace('#', ''), 16);

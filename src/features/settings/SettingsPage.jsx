@@ -4,7 +4,7 @@ import QRCode from 'qrcode';
 import { useTheme, getThemeAccent } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useRoutine } from '../../context/RoutineContext';
-import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, ShieldAlert, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, SquareTerminal, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2, Orbit, PawPrint, Palette, Sparkles, ExternalLink, CalendarDays, Mail, Phone, Droplets, BookOpen, Flame, FileText, Handshake, Vote, Coffee, MessageSquare } from 'lucide-react';
+import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, ShieldAlert, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, SquareTerminal, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2, Orbit, DraftingCompass, PawPrint, Palette, Sparkles, ExternalLink, CalendarDays, Mail, Phone, Droplets, BookOpen, Flame, FileText, Handshake, Vote, Coffee, MessageSquare } from 'lucide-react';
 import AboutUs from './AboutUs';
 import LinkedAccountsSection from './LinkedAccountsSection';
 import GliderTabs from '../../components/GliderTabs';
@@ -161,6 +161,7 @@ const darkThemes = [
   { id: 'poster', label: 'Bold Type', desc: 'Typography-first poster design', icon: Type },
   { id: 'bitcoindefi', label: 'Bitcoin Defi', desc: 'Bitcoin orange / crypto dark', icon: Zap },
   { id: 'meshtopo', label: 'Mesh Topology', desc: 'Emerald mesh / neon-neo grid', icon: Orbit },
+  { id: 'blueprint', label: 'Blueprint', desc: 'Drafting sheet / engineering linework', icon: DraftingCompass },
 ];
 
 const lightThemes = [

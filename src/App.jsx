@@ -148,6 +148,8 @@ function AppContent() {
   const isAdmin = hasRole ? hasRole('admin') || hasRole('moderator') : false;
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  // Mobile/tablet (<=1024px) slide-over nav drawer — pure UI state.
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(() => {
     try { return localStorage.getItem('aust-members-open-v1') === 'true'; }
     catch { return false; }
@@ -181,7 +183,17 @@ function AppContent() {
   // instead of inheriting the previous page's scroll position.
   useEffect(() => {
     window.scrollTo(0, 0);
+    setDrawerOpen(false);
   }, [location.pathname]);
+
+  // Lock page scroll + close on Escape while the nav drawer is open.
+  useEffect(() => {
+    document.documentElement.classList.toggle("nav-drawer-lock", drawerOpen);
+    if (!drawerOpen) return undefined;
+    const onKey = (e) => { if (e.key === "Escape") setDrawerOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [drawerOpen]);
 
   // Warm the route chunks while the browser is idle so the first click on a nav
   // item doesn't wait for a network round-trip. prefetchRoutesIdle staggers them
@@ -239,10 +251,16 @@ function AppContent() {
           <Sidebar
             collapsed={sidebarCollapsed}
             onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+            drawerOpen={drawerOpen}
+            onDrawerClose={() => setDrawerOpen(false)}
           />
           <div className={`main-content ${sidebarCollapsed ? 'sidebar-collapsed' : ''}${membersOpen && isDesktop ? ' members-open' : ''}`}>
             <TopNavbar
-              onMenuClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              onMenuClick={() => {
+                if (window.matchMedia("(max-width: 1024px)").matches) setDrawerOpen((o) => !o);
+                else setSidebarCollapsed(!sidebarCollapsed);
+              }}
+              drawerOpen={drawerOpen}
               onSearchOpen={setIsSearchOpen}
               membersOpen={membersOpen}
               onMembersToggle={() => setMembersOpen((o) => !o)}

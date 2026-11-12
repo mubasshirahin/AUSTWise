@@ -7,7 +7,7 @@ import {
   Search, Bell, BellRing, Sun, Moon, Newspaper, Terminal, SquareTerminal, Check, User,
   Clock, Hourglass, AlertTriangle, CalendarCheck, Info, CheckCheck, Trash2,
   Settings, LogOut, Gauge, MoonStar, Pen, PenTool, Zap,
-  Building2, Type, Grid2x2, Cpu, Users, Orbit,
+  Building2, Type, Grid2x2, Cpu, Users, Orbit, DraftingCompass, Menu, X, LayoutGrid, PanelsTopLeft,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -55,6 +55,7 @@ const darkThemeOptions = [
   { id: 'art-deco', label: 'Art Deco', icon: Building2 },
   { id: 'poster', label: 'Bold Type', icon: Type },
   { id: 'meshtopo', label: 'Mesh Topology', icon: Orbit },
+  { id: 'blueprint', label: 'Blueprint', icon: DraftingCompass },
 ];
 
 const lightThemeOptions = [
@@ -66,8 +67,8 @@ const lightThemeOptions = [
   { id: 'minimalist-monochrome', label: 'Monochrome', icon: Pen },
 ];
 
-export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMembersToggle }) {
-  const { theme, setTheme } = useTheme();
+export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMembersToggle, drawerOpen = false }) {
+  const { theme, setTheme, layout, toggleLayout } = useTheme();
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
@@ -133,6 +134,16 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
   return (
     <header className="topbar">
       <div className="topbar-left">
+        <button
+          type="button"
+          className="topbar-menu-btn"
+          onClick={onMenuClick}
+          aria-label={drawerOpen ? "Close navigation" : "Open navigation"}
+          aria-expanded={drawerOpen}
+          aria-controls="app-sidebar"
+        >
+          {drawerOpen ? <X size={22} /> : <Menu size={22} />}
+        </button>
         <div className="topbar-logo">
           <img
             src={wordmarkSrc}
@@ -246,6 +257,17 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
             })}
           </div>
         </div>
+        <button
+          type="button"
+          className={`topbar-icon-btn layout-toggle-btn${layout === 'studio' ? ' is-studio' : ''}`}
+          onClick={toggleLayout}
+          aria-pressed={layout === 'studio'}
+          aria-label={`Layout: ${layout === 'studio' ? 'Studio' : 'Classic'}. Switch to ${layout === 'studio' ? 'Classic' : 'Studio'} layout`}
+          title={`Layout: ${layout === 'studio' ? 'Studio' : 'Classic'} — click to switch`}
+        >
+          {layout === 'studio' ? <PanelsTopLeft size={18} /> : <LayoutGrid size={18} />}
+          <span className="layout-toggle-label">{layout === 'studio' ? 'Studio' : 'Classic'}</span>
+        </button>
       </div>
 
       <div className="topbar-right">

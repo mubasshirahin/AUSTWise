@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Moon, MoonStar, Cpu, Terminal, SquareTerminal, Zap, Building2,
-  Type, Orbit, Grid2x2, Newspaper, PenTool, Gauge, Pen, Sun, Check, ArrowRight,
+  Type, Orbit, DraftingCompass, Grid2x2, Newspaper, PenTool, Gauge, Pen, Sun, Check, ArrowRight,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import brandMark from '../../assets/austwise-icon-final.svg';
@@ -18,6 +18,7 @@ const darkThemeOptions = [
   { id: 'art-deco', label: 'Art Deco', icon: Building2 },
   { id: 'poster', label: 'Bold Type', icon: Type },
   { id: 'meshtopo', label: 'Mesh Topology', icon: Orbit },
+  { id: 'blueprint', label: 'Blueprint', icon: DraftingCompass },
 ];
 
 const lightThemeOptions = [

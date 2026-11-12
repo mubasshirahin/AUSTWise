@@ -12,6 +12,9 @@ import './themes/poster.css'
 import './themes/dark-enhanced.css'
 import './themes/nexus.css'
 import './themes/meshtopo.css'
+import './themes/blueprint.css'
+import './layout/StudioLayout.css'
+import './layout/ResponsiveShell.css'
 import App from './App.jsx'
 
 createRoot(document.getElementById('root')).render(
