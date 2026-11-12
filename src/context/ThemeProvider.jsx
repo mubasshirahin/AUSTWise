@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ThemeContext, THEMES } from './ThemeContext';
-import { THEME_ACCENTS, ACCENT_KEY, applyAccentOverrides, clearAccentOverrides } from './themeConstants';
+import { THEME_ACCENTS, ACCENT_KEY, LAYOUT_KEY, LAYOUTS, applyAccentOverrides, clearAccentOverrides } from './themeConstants';
 
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(() => {
     const saved = localStorage.getItem('aust-theme');
     if (saved && THEMES.includes(saved)) return saved;
-    return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    return 'blueprint';
   });
 
   // Per-theme custom accents: { theme: '#hex' }. Keys present = user override
@@ -19,6 +19,22 @@ export function ThemeProvider({ children }) {
     } catch { /* malformed storage — start fresh */ }
     return {};
   });
+
+  // Layout is independent of theme: "classic" (original boxed pages) or
+  // "studio" (open heroes, pill tab dock, unboxed content) — any theme, either
+  // layout. With nothing saved, Blueprint starts in studio (as it shipped).
+  const [layout, setLayout] = useState(() => {
+    const saved = localStorage.getItem(LAYOUT_KEY);
+    if (LAYOUTS.includes(saved)) return saved;
+    return theme === 'blueprint' ? 'studio' : 'classic';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-layout', layout);
+    localStorage.setItem(LAYOUT_KEY, layout);
+  }, [layout]);
+
+  const toggleLayout = useCallback(() => setLayout((prev) => (prev === 'studio' ? 'classic' : 'studio')), []);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -61,7 +77,7 @@ export function ThemeProvider({ children }) {
   });
 
   return (
-    <ThemeContext.Provider value={{ theme, themes: THEMES, setTheme, toggleTheme, cycleTheme, accent, accentOverridden, setAccent }}>
+    <ThemeContext.Provider value={{ theme, themes: THEMES, setTheme, toggleTheme, cycleTheme, accent, accentOverridden, setAccent, layout, setLayout, toggleLayout }}>
       {children}
     </ThemeContext.Provider>
   );

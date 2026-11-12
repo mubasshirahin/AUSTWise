@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Moon, MoonStar, Cpu, Terminal, SquareTerminal, Zap, Building2,
-  Type, Orbit, Grid2x2, Newspaper, PenTool, Gauge, Pen, Sun, Check, ArrowRight,
-} from 'lucide-react';
+  Type, Orbit, DraftingCompass, Grid2x2, Newspaper, PenTool, Gauge, Pen, Sun, Check, ArrowRight, Gem, WandSparkles, Coffee, Gamepad2, Cloud, Smile, Flower2 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import brandMark from '../../assets/austwise-icon-final.svg';
 import './LandingPage.css';
@@ -18,6 +17,11 @@ const darkThemeOptions = [
   { id: 'art-deco', label: 'Art Deco', icon: Building2 },
   { id: 'poster', label: 'Bold Type', icon: Type },
   { id: 'meshtopo', label: 'Mesh Topology', icon: Orbit },
+  { id: 'blueprint', label: 'Blueprint', icon: DraftingCompass },
+  { id: 'obsidian', label: 'Obsidian', icon: Gem },
+  { id: 'prism', label: 'Prism', icon: WandSparkles },
+  { id: 'lofi', label: 'Lo-fi', icon: Coffee },
+  { id: 'arcade', label: 'Arcade', icon: Gamepad2 },
 ];
 
 const lightThemeOptions = [
@@ -27,6 +31,9 @@ const lightThemeOptions = [
   { id: 'sketchbook', label: 'Sketchbook', icon: PenTool },
   { id: 'industrial', label: 'Industrial', icon: Gauge },
   { id: 'minimalist-monochrome', label: 'Monochrome', icon: Pen },
+  { id: 'pastel', label: 'Pastel', icon: Cloud },
+  { id: 'toon', label: 'Toon', icon: Smile },
+  { id: 'sakura', label: 'Sakura', icon: Flower2 },
 ];
 
 const allThemeOptions = [...darkThemeOptions, ...lightThemeOptions];

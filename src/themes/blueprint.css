@@ -1,0 +1,388 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   BLUEPRINT  —  "engineering drafting sheet" theme
+   ────────────────────────────────────────────────────────────────────────────
+   AUSTWise is a campus companion for a science & technology university, so
+   this theme reads like a drafting sheet: Prussian-ink canvas, a fine dual
+   scale grid, cyan-white linework, crop-mark ticks on every card and a single
+   redline coral reserved for emphasis. Flat, precise, no glass blur.
+
+   Same architecture as nexus.css / meshtopo.css: a token remap on the shared
+   custom-property contract, then a personality layer scoped entirely to
+   [data-theme="blueprint"]. No component or DOM changes.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Token remap ─── */
+[data-theme="blueprint"] {
+  color-scheme: dark;
+
+  /* Typography — geometric display, neutral UI body, mono annotations */
+  --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  --font-code: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  --font-label: 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* Elevation ladder: canvas → surface → elevated (opaque, no blur) */
+  --bg-primary: #05070B;          /* canvas — the sheet */
+  --bg-secondary: #0A0D13;        /* surface */
+  --bg-tertiary: #121722;         /* elevated / wells */
+  --bg-card: #0B0F16;
+  --bg-card-hover: #0F141D;
+  --bg-glass: rgba(11, 15, 22, 0.88);
+  --bg-glass-heavy: rgba(5, 7, 11, 0.96);
+  --bg-input: #080B11;
+
+  /* Ink — all AA or better on canvas and surface */
+  --text-primary: #EAF2FB;        /* 15.6:1 on canvas */
+  --text-secondary: #A9BCD3;      /* 9.1:1 */
+  --text-tertiary: #8399B4;       /* 6.0:1 canvas / 5.4:1 surface */
+  --text-inverse: #06121F;        /* ink on the sky accent, 9.9:1 */
+
+  /* Hairlines — cyan-white linework */
+  --border-primary: rgba(170, 200, 240, 0.12);
+  --border-secondary: rgba(170, 200, 240, 0.07);
+  --border-focus: rgba(124, 200, 255, 0.6);
+
+  /* Accents — drafting-line sky is PRIMARY; redline coral is the one warm note */
+  --accent-blue: #7CC8FF;
+  --accent-blue-glow: rgba(124, 200, 255, 0.14);
+  --accent-purple: #FF8A65;       /* secondary slot — redline coral */
+  --accent-purple-glow: rgba(255, 138, 101, 0.14);
+  --accent-amber: #7CC8FF;
+  --accent-amber-glow: rgba(124, 200, 255, 0.14);
+  --accent-emerald: #5FD6A4;
+  --accent-emerald-glow: rgba(95, 214, 164, 0.14);
+  --accent-rose: #FF7F8E;
+  --accent-rose-glow: rgba(255, 127, 142, 0.14);
+  --accent-cyan: #6FE0E6;
+  --accent-cyan-glow: rgba(111, 224, 230, 0.13);
+  --accent-orange: #7CC8FF;
+  --accent-orange-glow: rgba(124, 200, 255, 0.14);
+
+  /* Gradients — near-flat; a sheet is not a sunset */
+  --gradient-primary: linear-gradient(135deg, #7CC8FF 0%, #A9DCFF 100%);
+  --gradient-secondary: linear-gradient(180deg, #121722 0%, #0B0F16 100%);
+  --gradient-accent: linear-gradient(135deg, #7CC8FF 0%, #A9DCFF 100%);
+  --gradient-warm: linear-gradient(135deg, #FF8A65 0%, #FF7F8E 100%);
+  --gradient-success: linear-gradient(135deg, #5FD6A4 0%, #6FE0E6 100%);
+  --gradient-glass: linear-gradient(180deg, rgba(160, 205, 255, 0.05) 0%, rgba(160, 205, 255, 0) 100%);
+
+  /* Radius — machined, not bubbly */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-full: 9999px;
+
+  /* Shadows — tinted with the canvas ink so they read on dark blue */
+  --shadow-sm: 0 1px 2px rgba(2, 8, 16, 0.5);
+  --shadow-md: 0 1px 0 rgba(160, 205, 255, 0.05) inset, 0 6px 16px rgba(2, 8, 16, 0.4);
+  --shadow-lg: 0 1px 0 rgba(160, 205, 255, 0.07) inset, 0 14px 32px rgba(2, 8, 16, 0.5);
+  --shadow-xl: 0 1px 0 rgba(160, 205, 255, 0.08) inset, 0 24px 56px rgba(2, 8, 16, 0.6);
+  --shadow-popper: 0 12px 32px rgba(2, 8, 16, 0.6);
+  --shadow-glow-blue: 0 0 0 1px rgba(124, 200, 255, 0.3), 0 0 18px rgba(124, 200, 255, 0.16);
+  --shadow-glow-purple: 0 0 14px rgba(255, 138, 101, 0.2);
+  --shadow-glow-amber: 0 0 14px rgba(124, 200, 255, 0.18);
+
+  /* Blueprint-only primitives */
+  --bp-line: rgba(160, 205, 255, 0.34);
+  --bp-grid-minor: rgba(160, 205, 255, 0.035);
+  --bp-grid-major: rgba(160, 205, 255, 0.07);
+  --bp-redline: #FF8A65;
+  --bp-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* crop-mark ticks, drawn as background layers so no pseudo-element is used */
+  --bp-ticks: linear-gradient(180deg, rgba(160, 205, 255, 0.055), rgba(160, 205, 255, 0) 140px) no-repeat;
+
+  --scrollbar-track: #05070B;
+  --scrollbar-thumb: #1E2633;
+  --scrollbar-thumb-hover: #2C3747;
+
+  --status-online: #5FD6A4;
+  --status-away: #F2C66D;
+  --status-offline: #5B6F89;
+  --status-busy: #FF7F8E;
+
+  --danger: #FF7F8E;
+  --warning: #F2C66D;
+  --success: #5FD6A4;
+  --info: #7CC8FF;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   PERSONALITY LAYER  —  scoped to [data-theme="blueprint"]
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Canvas: calm tonal surface, one soft ambient glow at the top ─── */
+[data-theme="blueprint"] body {
+  background-color: var(--bg-primary);
+  background-image:
+    radial-gradient(70% 50% at 60% -10%, rgba(124, 200, 255, 0.05) 0%, transparent 70%),
+    radial-gradient(50% 40% at 100% 0%, rgba(255, 138, 101, 0.03) 0%, transparent 70%);
+  background-attachment: fixed;
+}
+[data-theme="blueprint"] .floating-bg { display: none; }
+
+[data-theme="blueprint"] ::selection {
+  background: rgba(124, 200, 255, 0.3);
+  color: #FFFFFF;
+}
+
+/* ─── Typography ─── */
+[data-theme="blueprint"] .page-title,
+[data-theme="blueprint"] .section-title,
+[data-theme="blueprint"] h1,
+[data-theme="blueprint"] h2,
+[data-theme="blueprint"] h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+[data-theme="blueprint"] .stat-value,
+[data-theme="blueprint"] .countdown-value,
+[data-theme="blueprint"] .score-number {
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+[data-theme="blueprint"] table,
+[data-theme="blueprint"] time {
+  font-variant-numeric: tabular-nums;
+}
+[data-theme="blueprint"] .stat-label,
+[data-theme="blueprint"] .countdown-label,
+[data-theme="blueprint"] .badge,
+[data-theme="blueprint"] .section-eyebrow {
+  font-family: var(--font-label);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ─── Cards: opaque surface, hairline, crop-mark ticks ─── */
+[data-theme="blueprint"] .glass-card,
+[data-theme="blueprint"] .glass-card-static,
+[data-theme="blueprint"] .card-list-item {
+  background: var(--bp-ticks), var(--bg-card);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+[data-theme="blueprint"] .glass-card,
+[data-theme="blueprint"] .card-list-item {
+  transition: transform 180ms var(--bp-ease), border-color 180ms var(--bp-ease),
+              box-shadow 180ms var(--bp-ease);
+}
+[data-theme="blueprint"] .glass-card:hover,
+[data-theme="blueprint"] .card-list-item:hover {
+  background: var(--bp-ticks), var(--bg-card-hover);
+  border-color: rgba(124, 200, 255, 0.38);
+  box-shadow: var(--shadow-lg);
+}
+
+[data-theme="blueprint"] .hero-panel,
+[data-theme="blueprint"] .page-hero {
+  background: var(--bp-ticks), var(--gradient-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+}
+
+/* ─── Shell: sidebar + top bar sit one step above the canvas ─── */
+[data-theme="blueprint"] .sidebar,
+[data-theme="blueprint"] .topbar {
+  background: var(--bg-glass-heavy);
+  border-color: var(--border-primary);
+}
+[data-theme="blueprint"] .nav-item {
+  border-radius: var(--radius-md);
+  transition: background 160ms var(--bp-ease), color 160ms var(--bp-ease);
+}
+[data-theme="blueprint"] .nav-item:hover {
+  background: rgba(160, 205, 255, 0.07);
+  color: var(--text-primary);
+}
+[data-theme="blueprint"] .nav-item.active {
+  background: var(--accent-blue-glow);
+  color: var(--accent-blue);
+  box-shadow: inset 2px 0 0 var(--accent-blue);
+}
+[data-theme="blueprint"] .theme-menu,
+[data-theme="blueprint"] .profile-dropdown,
+[data-theme="blueprint"] .notif-dropdown {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-popper);
+}
+
+/* ─── Buttons ─── */
+[data-theme="blueprint"] .btn {
+  font-family: var(--font-body);
+  font-weight: var(--fw-semibold);
+  letter-spacing: -0.005em;
+  border-radius: var(--radius-md);
+  transition: background 160ms var(--bp-ease), border-color 160ms var(--bp-ease),
+              box-shadow 160ms var(--bp-ease), transform 120ms var(--bp-ease);
+}
+[data-theme="blueprint"] .btn:hover { transform: translate3d(0, -1px, 0); }
+[data-theme="blueprint"] .btn:active { transform: translate3d(0, 0, 0) scale(0.98); }
+
+[data-theme="blueprint"] .btn-primary {
+  background: var(--accent-blue);
+  color: var(--text-inverse);
+  border: 1px solid transparent;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35) inset, var(--shadow-sm);
+}
+[data-theme="blueprint"] .btn-primary:hover {
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35) inset, var(--shadow-glow-blue);
+}
+[data-theme="blueprint"] .btn-secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+}
+[data-theme="blueprint"] .btn-secondary:hover {
+  border-color: rgba(124, 200, 255, 0.45);
+  color: var(--accent-blue);
+}
+[data-theme="blueprint"] .btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+[data-theme="blueprint"] .btn-ghost:hover {
+  background: rgba(160, 205, 255, 0.07);
+  color: var(--text-primary);
+}
+[data-theme="blueprint"] .btn-danger {
+  background: var(--danger);
+  color: #1A0509;
+}
+[data-theme="blueprint"] .btn-danger:hover {
+  box-shadow: 0 0 16px rgba(255, 127, 142, 0.3);
+}
+
+/* ─── Inputs: recessed wells ─── */
+[data-theme="blueprint"] .input,
+[data-theme="blueprint"] .search-box input {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  box-shadow: inset 0 1px 2px rgba(2, 8, 16, 0.45);
+  transition: border-color 160ms var(--bp-ease), box-shadow 160ms var(--bp-ease);
+}
+[data-theme="blueprint"] .input:hover,
+[data-theme="blueprint"] .search-box input:hover {
+  border-color: rgba(160, 205, 255, 0.28);
+}
+[data-theme="blueprint"] .input:focus,
+[data-theme="blueprint"] .search-box input:focus {
+  border-color: var(--accent-blue);
+  box-shadow: inset 0 1px 2px rgba(2, 8, 16, 0.45), 0 0 0 3px rgba(124, 200, 255, 0.2);
+}
+[data-theme="blueprint"] .input::placeholder,
+[data-theme="blueprint"] .search-box input::placeholder { color: var(--text-tertiary); }
+
+/* ─── Tabs ─── */
+[data-theme="blueprint"] .tabs {
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+}
+[data-theme="blueprint"] .tab {
+  color: var(--text-secondary);
+  border-radius: var(--radius-md);
+}
+[data-theme="blueprint"] .tab:hover { background: rgba(160, 205, 255, 0.07); color: var(--text-primary); }
+[data-theme="blueprint"] .tab.active {
+  background: var(--bg-tertiary);
+  color: var(--accent-blue);
+  box-shadow: 0 0 0 1px rgba(124, 200, 255, 0.3), var(--shadow-sm);
+}
+
+/* ─── Tags / badges ─── */
+[data-theme="blueprint"] .tag {
+  background: rgba(160, 205, 255, 0.06);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+}
+[data-theme="blueprint"] .tag:hover,
+[data-theme="blueprint"] .tag.active {
+  background: var(--accent-blue-glow);
+  border-color: rgba(124, 200, 255, 0.4);
+  color: var(--accent-blue);
+}
+
+/* ─── Progress: a measured line with ruler ticks in the track ─── */
+[data-theme="blueprint"] .progress-bar {
+  background:
+    repeating-linear-gradient(90deg, transparent 0 9px, rgba(160, 205, 255, 0.14) 9px 10px),
+    rgba(160, 205, 255, 0.06);
+  border-radius: var(--radius-sm);
+}
+[data-theme="blueprint"] .progress-bar-fill {
+  background: var(--accent-blue);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 10px rgba(124, 200, 255, 0.35);
+}
+
+/* ─── Toggle ─── */
+[data-theme="blueprint"] .toggle-switch {
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+}
+[data-theme="blueprint"] .toggle-switch.active {
+  background: var(--accent-blue);
+  border-color: transparent;
+}
+[data-theme="blueprint"] .toggle-switch::after { background: #EAF2FB; }
+[data-theme="blueprint"] .toggle-switch.active::after { background: #06121F; }
+
+/* ─── Modal ─── */
+[data-theme="blueprint"] .modal {
+  background: var(--bp-ticks), var(--bg-tertiary);
+  border: 1px solid rgba(160, 205, 255, 0.22);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+}
+
+/* ─── Banner: redline margin note ─── */
+[data-theme="blueprint"] .info-banner {
+  background: rgba(160, 205, 255, 0.05);
+  border-left: 2px solid currentColor;
+  border-radius: var(--radius-sm);
+}
+
+/* ─── Focus ring ─── */
+[data-theme="blueprint"] :focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
+/* ─── Scrollbar ─── */
+[data-theme="blueprint"] ::-webkit-scrollbar { width: 8px; height: 8px; }
+[data-theme="blueprint"] ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+[data-theme="blueprint"] ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: var(--radius-full); }
+[data-theme="blueprint"] ::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
+
+/* ─── Reduced motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="blueprint"] .glass-card,
+  [data-theme="blueprint"] .card-list-item,
+  [data-theme="blueprint"] .btn,
+  [data-theme="blueprint"] .nav-item,
+  [data-theme="blueprint"] .input {
+    transition: none;
+  }
+  [data-theme="blueprint"] .glass-card:hover,
+  [data-theme="blueprint"] .card-list-item:hover,
+  [data-theme="blueprint"] .btn:hover,
+  [data-theme="blueprint"] .btn:active {
+    transform: none;
+  }
+}

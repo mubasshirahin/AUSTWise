@@ -4,7 +4,7 @@ import QRCode from 'qrcode';
 import { useTheme, getThemeAccent } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useRoutine } from '../../context/RoutineContext';
-import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, ShieldAlert, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, SquareTerminal, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2, Orbit, PawPrint, Palette, Sparkles, ExternalLink, CalendarDays, Mail, Phone, Droplets, BookOpen, Flame, FileText, Handshake, Vote, Coffee, MessageSquare } from 'lucide-react';
+import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, ShieldAlert, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, SquareTerminal, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2, Orbit, DraftingCompass, PawPrint, Palette, Sparkles, ExternalLink, CalendarDays, Mail, Phone, Droplets, BookOpen, Flame, FileText, Handshake, Vote, Coffee, MessageSquare, Gem, WandSparkles, Gamepad2, Cloud, Smile, Flower2 } from 'lucide-react';
 import AboutUs from './AboutUs';
 import LinkedAccountsSection from './LinkedAccountsSection';
 import GliderTabs from '../../components/GliderTabs';
@@ -161,6 +161,11 @@ const darkThemes = [
   { id: 'poster', label: 'Bold Type', desc: 'Typography-first poster design', icon: Type },
   { id: 'bitcoindefi', label: 'Bitcoin Defi', desc: 'Bitcoin orange / crypto dark', icon: Zap },
   { id: 'meshtopo', label: 'Mesh Topology', desc: 'Emerald mesh / neon-neo grid', icon: Orbit },
+  { id: 'blueprint', label: 'Blueprint', desc: 'Drafting sheet / engineering linework', icon: DraftingCompass },
+  { id: 'obsidian', label: 'Obsidian', desc: 'Premium · black and champagne gold', icon: Gem },
+  { id: 'prism', label: 'Prism', desc: 'Animated · coral, teal and sun', icon: WandSparkles },
+  { id: 'lofi', label: 'Lo-fi', desc: 'Study vibe · warm walnut and lamp amber', icon: Coffee },
+  { id: 'arcade', label: 'Arcade', desc: 'Gamer · void black, cyan and red', icon: Gamepad2 },
 ];
 
 const lightThemes = [
@@ -170,6 +175,9 @@ const lightThemes = [
   { id: 'sketchbook', label: 'Sketchbook', desc: 'Rough sketch aesthetic', icon: PenTool },
   { id: 'minimalist-monochrome', label: 'Monochrome', desc: 'Editorial stark minimalism', icon: Pen },
   { id: 'industrial', label: 'Industrial', desc: 'Neumorphic machine realism', icon: Gauge },
+  { id: 'pastel', label: 'Pastel', desc: 'Aesthetic · lilac, peach and mint', icon: Cloud },
+  { id: 'toon', label: 'Toon', desc: 'Cartoon · cream paper, bold ink', icon: Smile },
+  { id: 'sakura', label: 'Sakura', desc: 'Anime · cherry blossom and indigo', icon: Flower2 },
 ];
 
 const themeOptions = [...darkThemes, ...lightThemes];

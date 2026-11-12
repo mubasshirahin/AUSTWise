@@ -17,9 +17,23 @@ export const THEME_ACCENTS = {
   nexus: '#10B981',
   cyberpunk: '#00ff88',
   meshtopo: '#10B981',
+  blueprint: '#7CC8FF',
+  obsidian: '#CDAE72',
+  pastel: '#7356A6',
+  prism: '#F2785A',
+  toon: '#D43F3A',
+  lofi: '#D9A05B',
+  sakura: '#BE3A66',
+  arcade: '#36D3F2',
 };
 
 export const ACCENT_KEY = 'aust-accent';
+
+// Page layout, independent of the colour theme.
+export const LAYOUT_KEY = 'aust-layout';
+export const LAYOUTS = ['classic', 'studio', 'bento', 'compact', 'aurora', 'zen', 'luxe', 'soft', 'motion', 'comic', 'desk', 'manga', 'hud'];
+// Layouts intended for the paid plan (shown with a PRO tag in the picker).
+export const PRO_LAYOUTS = LAYOUTS.filter((id) => id !== 'classic' && id !== 'studio');
 
 function hexToRgb(hex) {
   const int = parseInt(hex.replace('#', ''), 16);
