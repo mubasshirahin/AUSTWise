@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { GraduationCap, Briefcase, BookOpen, Moon, Sun, Newspaper, Terminal, SquareTerminal, Gauge, MoonStar, Pen, PenTool, Building2, Check, Eye, EyeOff, Zap, Type, Grid2x2, Cpu, ArrowLeft, Orbit, DraftingCompass } from 'lucide-react';
+import { GraduationCap, Briefcase, BookOpen, Moon, Sun, Newspaper, Terminal, SquareTerminal, Gauge, MoonStar, Pen, PenTool, Building2, Check, Eye, EyeOff, Zap, Type, Grid2x2, Cpu, ArrowLeft, Orbit, DraftingCompass, Gem, WandSparkles, Coffee, Gamepad2, Cloud, Smile, Flower2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { getYearSemOptions } from '../../utils/semester';
@@ -31,6 +31,10 @@ const darkThemeOptions = [
   { id: 'bitcoindefi',           label: 'Bitcoin Defi', icon: Zap      },
   { id: 'meshtopo',              label: 'Mesh Topology', icon: Orbit   },
   { id: 'blueprint',             label: 'Blueprint',  icon: DraftingCompass },
+  { id: 'obsidian', label: 'Obsidian', icon: Gem },
+  { id: 'prism', label: 'Prism', icon: WandSparkles },
+  { id: 'lofi', label: 'Lo-fi', icon: Coffee },
+  { id: 'arcade', label: 'Arcade', icon: Gamepad2 },
 ];
 
 const lightThemeOptions = [
@@ -40,6 +44,9 @@ const lightThemeOptions = [
   { id: 'sketchbook',            label: 'Sketchbook', icon: PenTool    },
   { id: 'minimalist-monochrome', label: 'Monochrome', icon: Pen        },
   { id: 'industrial',            label: 'Industrial', icon: Gauge      },
+  { id: 'pastel', label: 'Pastel', icon: Cloud },
+  { id: 'toon', label: 'Toon', icon: Smile },
+  { id: 'sakura', label: 'Sakura', icon: Flower2 },
 ];
 
 const themeOptions = [...darkThemeOptions, ...lightThemeOptions];

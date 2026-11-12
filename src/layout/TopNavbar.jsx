@@ -7,10 +7,11 @@ import {
   Search, Bell, BellRing, Sun, Moon, Newspaper, Terminal, SquareTerminal, Check, User,
   Clock, Hourglass, AlertTriangle, CalendarCheck, Info, CheckCheck, Trash2,
   Settings, LogOut, Gauge, MoonStar, Pen, PenTool, Zap,
-  Building2, Type, Grid2x2, Cpu, Users, Orbit, DraftingCompass, Menu, X, LayoutGrid, PanelsTopLeft,
-} from 'lucide-react';
+  Building2, Type, Grid2x2, Cpu, Users, Orbit, DraftingCompass, Menu, X, LayoutGrid, PanelsTopLeft, LayoutDashboard as BentoIcon,
+  Rows3, Sparkles, Leaf, Crown, NotebookPen, Gem, WandSparkles, Coffee, Gamepad2, Cloud, Smile, Flower2 } from 'lucide-react';
+import { PRO_LAYOUTS } from '../context/themeConstants';
 import { useNavigate } from 'react-router-dom';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
 import { useInAppNotifications } from '../hooks/useInAppNotifications';
 // import logoSilver from '../assets/logo-silver.png';
 // import logoRed from '../assets/logo-red.png';
@@ -56,6 +57,27 @@ const darkThemeOptions = [
   { id: 'poster', label: 'Bold Type', icon: Type },
   { id: 'meshtopo', label: 'Mesh Topology', icon: Orbit },
   { id: 'blueprint', label: 'Blueprint', icon: DraftingCompass },
+  { id: 'obsidian', label: 'Obsidian', icon: Gem },
+  { id: 'prism', label: 'Prism', icon: WandSparkles },
+  { id: 'lofi', label: 'Lo-fi', icon: Coffee },
+  { id: 'arcade', label: 'Arcade', icon: Gamepad2 },
+];
+
+// Page layouts — independent of the colour theme (see src/layout/*Layout*.css).
+const layoutOptions = [
+  { id: 'classic', label: 'Classic', desc: 'Original boxed pages', icon: LayoutGrid, group: 'Essentials' },
+  { id: 'studio', label: 'Studio', desc: 'Open heroes, floating tab dock', icon: PanelsTopLeft, group: 'Essentials' },
+  { id: 'bento', label: 'Bento', desc: 'Rounded tiles, tab grid', icon: BentoIcon, group: 'Pro' },
+  { id: 'compact', label: 'Compact', desc: 'Dense, data-first workspace', icon: Rows3, group: 'Pro' },
+  { id: 'aurora', label: 'Aurora', desc: 'Floating glass over ambient light', icon: Sparkles, group: 'Pro' },
+  { id: 'zen', label: 'Zen', desc: 'Calm, borderless, airy', icon: Leaf, group: 'Pro' },
+  { id: 'luxe', label: 'Luxe', desc: 'Premium · serif, gold hairlines', icon: Gem, group: 'Vibes' },
+  { id: 'soft', label: 'Soft', desc: 'Aesthetic · pillowy pastel cards', icon: Cloud, group: 'Vibes' },
+  { id: 'motion', label: 'Motion', desc: 'Animated · living gradients', icon: WandSparkles, group: 'Vibes' },
+  { id: 'comic', label: 'Comic', desc: 'Cartoon · ink, bubbles, bounce', icon: Smile, group: 'Vibes' },
+  { id: 'desk', label: 'Desk', desc: 'Study vibe · notebook paper', icon: NotebookPen, group: 'Vibes' },
+  { id: 'manga', label: 'Manga', desc: 'Anime · speed lines, panels', icon: Flower2, group: 'Vibes' },
+  { id: 'hud', label: 'HUD', desc: 'Gamer · brackets, scanlines', icon: Gamepad2, group: 'Vibes' },
 ];
 
 const lightThemeOptions = [
@@ -65,10 +87,15 @@ const lightThemeOptions = [
   { id: 'sketchbook', label: 'Sketchbook', icon: PenTool },
   { id: 'industrial', label: 'Industrial', icon: Gauge },
   { id: 'minimalist-monochrome', label: 'Monochrome', icon: Pen },
+  { id: 'pastel', label: 'Pastel', icon: Cloud },
+  { id: 'toon', label: 'Toon', icon: Smile },
+  { id: 'sakura', label: 'Sakura', icon: Flower2 },
 ];
 
 export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMembersToggle, drawerOpen = false }) {
-  const { theme, setTheme, layout, toggleLayout } = useTheme();
+  const { theme, setTheme, layout, setLayout } = useTheme();
+  const [layoutMenuOpen, setLayoutMenuOpen] = useState(false);
+  const layoutSwitcherRef = useRef(null);
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
@@ -94,6 +121,8 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
   const allThemeOptions = [...darkThemeOptions, ...lightThemeOptions];
   const activeTheme = allThemeOptions.find((t) => t.id === theme) || allThemeOptions[0];
   const ThemeIcon = activeTheme.icon;
+  const activeLayout = layoutOptions.find((l) => l.id === layout) || layoutOptions[0];
+  const ActiveLayoutIcon = activeLayout.icon;
   const wordmarkSrc = brandMark;
 
 
@@ -106,6 +135,7 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
       }
       if (e.key === 'Escape') {
         setThemeMenuOpen(false);
+        setLayoutMenuOpen(false);
         setNotifOpen(false);
         setProfileMenuOpen(false);
       }
@@ -119,6 +149,9 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
     const handleClick = (e) => {
       if (themeSwitcherRef.current && !themeSwitcherRef.current.contains(e.target)) {
         setThemeMenuOpen(false);
+      }
+      if (layoutSwitcherRef.current && !layoutSwitcherRef.current.contains(e.target)) {
+        setLayoutMenuOpen(false);
       }
       if (notifRef.current && !notifRef.current.contains(e.target)) {
         setNotifOpen(false);
@@ -257,17 +290,54 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
             })}
           </div>
         </div>
-        <button
-          type="button"
-          className={`topbar-icon-btn layout-toggle-btn${layout === 'studio' ? ' is-studio' : ''}`}
-          onClick={toggleLayout}
-          aria-pressed={layout === 'studio'}
-          aria-label={`Layout: ${layout === 'studio' ? 'Studio' : 'Classic'}. Switch to ${layout === 'studio' ? 'Classic' : 'Studio'} layout`}
-          title={`Layout: ${layout === 'studio' ? 'Studio' : 'Classic'} — click to switch`}
+        <div
+          className={`theme-switcher layout-switcher ${layoutMenuOpen ? 'open' : ''}`}
+          ref={layoutSwitcherRef}
+          onMouseLeave={() => setLayoutMenuOpen(false)}
         >
-          {layout === 'studio' ? <PanelsTopLeft size={18} /> : <LayoutGrid size={18} />}
-          <span className="layout-toggle-label">{layout === 'studio' ? 'Studio' : 'Classic'}</span>
-        </button>
+          <button
+            type="button"
+            className={`topbar-icon-btn layout-toggle-btn${layout !== 'classic' ? ' is-studio' : ''}`}
+            aria-haspopup="menu"
+            aria-expanded={layoutMenuOpen}
+            aria-label={`Layout: ${activeLayout.label}. Choose a layout`}
+            title={`Layout: ${activeLayout.label}`}
+            onClick={() => setLayoutMenuOpen((open) => !open)}
+          >
+            <ActiveLayoutIcon size={18} />
+            <span className="layout-toggle-label">{activeLayout.label}</span>
+          </button>
+
+          <div className="theme-menu layout-menu" role="menu" aria-label="Select layout">
+            {layoutOptions.map(({ id, label, desc, icon: Icon, group }, index) => {
+              const isActive = layout === id;
+              const startsGroup = index === 0 || layoutOptions[index - 1].group !== group;
+              return (
+                <Fragment key={id}>
+                {startsGroup && index > 0 && <div className="theme-menu-divider" />}
+                {startsGroup && <span className="theme-menu-heading">{group === 'Essentials' ? 'Layout' : group}</span>}
+                <button
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={isActive}
+                  className={`theme-menu-item layout-menu-item ${isActive ? 'active' : ''}`}
+                  onClick={() => { setLayout(id); setLayoutMenuOpen(false); }}
+                >
+                  <Icon size={16} />
+                  <span className="layout-menu-text">
+                    <span className="layout-menu-name">
+                      {label}
+                      {PRO_LAYOUTS.includes(id) && <span className="layout-pro-tag"><Crown size={9} /> PRO</span>}
+                    </span>
+                    <span className="layout-menu-desc">{desc}</span>
+                  </span>
+                  {isActive && <Check size={14} className="theme-menu-check" />}
+                </button>
+                </Fragment>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       <div className="topbar-right">
