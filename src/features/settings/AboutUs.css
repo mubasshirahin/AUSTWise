@@ -246,7 +246,7 @@
 }
 
 /* ─── Mobile pill ─── */
-.cred-mobile-pill {
+.cred-mobile-nav {
   display: none;
 }
 
@@ -643,36 +643,71 @@
 
 /* ─── Mobile ─── */
 @media (max-width: 860px) {
-  .cred-root { max-height: none; }
+  .cred-root { height: auto; max-height: none; min-height: 0; overflow: visible; }
   .cred-sidebar { display: none; }
-  .cred-main { margin-left: 0; padding: 20px 14px 32px; max-width: none; }
+  .cred-main { width: 100%; max-width: none; margin-left: 0; padding: 20px 14px 32px; }
   .proj-grid { grid-template-columns: 1fr; }
-  .cred-mobile-pill {
+  .cred-mobile-nav {
     position: sticky;
     top: 0;
     z-index: 15;
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin: 0 14px;
-    padding: 8px 14px;
-    border: 1px solid var(--c-border);
-    border-radius: 9999px;
-    background: transparent;
-    backdrop-filter: blur(8px);
-    font-size: 12px;
-    color: var(--c-dim);
+    gap: 7px;
+    margin: 0 10px;
+    padding: 8px 2px;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--c-border);
+    background: color-mix(in srgb, var(--c-bg) 90%, transparent);
+    backdrop-filter: blur(10px);
+    scrollbar-width: none;
   }
-  .cred-mobile-dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--c-gold);
-    box-shadow: 0 0 8px var(--c-gold);
-  }
-  .cred-mobile-label {
-    text-transform: uppercase;
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    color: var(--c-faint);
-  }
-  .cred-mobile-pill b { color: var(--c-text); font-weight: 500; }
+  .cred-mobile-nav::-webkit-scrollbar { display: none; }
+  .cred-mobile-nav a { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; flex: 0 0 auto; padding: 0 11px; border: 1px solid var(--c-border); border-radius: 999px; color: var(--c-dim); font-size: 11px; text-decoration: none; white-space: nowrap; }
+  .cred-mobile-nav a.is-active { border-color: var(--c-gold); background: var(--accent-amber-glow); color: var(--c-text); }
+}
+
+@media (max-width: 600px) {
+  .cred-root { border-radius: 10px; font-size: 13px; }
+  .cred-bg { display: none; }
+  .cred-main { padding: 16px 10px 24px; }
+  .cred-section { margin-bottom: 20px; scroll-margin-top: 60px; }
+  .cred-file-head { gap: 7px; font-size: 10px; letter-spacing: .08em; }
+  .term-window { transform: none !important; }
+  .term-bar { padding: 10px 12px; }
+  .term-body { padding: 15px 12px 18px; font-size: 12px; line-height: 1.65; }
+  .json-window, .yml-window, .log-window, .cfg-window, .sh-window { padding-top: 12px; padding-bottom: 14px; }
+  .json-line { flex-wrap: wrap; gap: 6px; padding: 4px 10px; font-size: 11px; }
+  .json-ln { width: 18px; }
+  .edu-card { gap: 10px; padding: 12px; }
+  .edu-degree { min-width: 0; font-size: 13px; overflow-wrap: anywhere; }
+  .edu-meta { font-size: 11px; overflow-wrap: anywhere; }
+  .edu-detail { font-size: 12px; }
+  .proj-grid { gap: 10px; padding: 10px; }
+  .proj-card { min-width: 0; padding: 13px; }
+  .proj-name { min-width: 0; font-size: 13px; overflow-wrap: anywhere; }
+  .proj-desc { font-size: 12px; }
+  .proj-meta { flex-wrap: wrap; gap: 8px; font-size: 11px; }
+  .proj-link { min-width: 0; margin-left: 0; overflow-wrap: anywhere; }
+  .md-window { padding: 18px 14px 20px; }
+  .md-h { font-size: 21px; }
+  .md-p { font-size: 13px; }
+  .log-line { gap: 8px; padding: 6px 10px; font-size: 11px; }
+  .log-msg { min-width: 0; overflow-wrap: anywhere; }
+  .cfg-title, .cfg-line { padding-right: 10px; padding-left: 10px; font-size: 12px; overflow-wrap: anywhere; }
+  .sh-head, .sh-line { padding-right: 10px; padding-left: 10px; font-size: 11px; }
+  .sh-value { min-width: 0; overflow-wrap: anywhere; }
+  .exe-window { padding: 22px 14px; }
+  .exe-prompt { font-size: 12px; }
+  .exe-btn { width: 100%; max-width: 320px; justify-content: center; padding: 13px 16px; font-size: 13px; }
+  .cred-footer { padding: 14px; font-size: 12px; }
+  .cred-footer-cmd { gap: 7px; overflow-wrap: anywhere; }
+}
+
+@media (max-width: 380px) {
+  .cred-mobile-nav { margin-inline: 6px; }
+  .cred-mobile-nav a { padding-inline: 9px; font-size: 10px; }
+  .cred-main { padding-inline: 8px; }
+  .json-line { column-gap: 4px; }
+  .json-key { overflow-wrap: anywhere; }
 }

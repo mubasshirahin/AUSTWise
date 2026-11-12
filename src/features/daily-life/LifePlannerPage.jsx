@@ -17,10 +17,11 @@ import GoalsView from './GoalsView';
 import TimelineView from './TimelineView';
 import MindmapView from './MindmapView';
 import CoursesView from './CoursesView';
+import AutomateView from './AutomateView';
 import { exportLifePlannerPDF } from './lifePlannerPDF';
 
 const LP_VIEW_KEY = 'aust-life-planner-view';
-const LP_VALID_VIEWS = ['dashboard', 'goals', 'courses', 'mindmap', 'timeline'];
+const LP_VALID_VIEWS = ['dashboard', 'goals', 'courses', 'mindmap', 'timeline', 'automate'];
 
 function readInitialView() {
   try {
@@ -704,6 +705,7 @@ export default function LifePlannerPage() {
 
       {view === 'courses' && <CoursesView />}
       {view === 'timeline' && <TimelineView doc={doc} onOpenGoal={openTimelineEntry} />}
+      {view === 'automate' && <AutomateView doc={doc} update={update} />}
       {view === 'mindmap' && (
         <MindmapView
           doc={doc}

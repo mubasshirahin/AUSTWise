@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Target, CalendarDays, LayoutDashboard, BookOpen, Network, CalendarRange } from 'lucide-react';
+import { Target, CalendarDays, LayoutDashboard, BookOpen, Network, CalendarRange, Sparkles } from 'lucide-react';
 
 // ── Date input — always shows dd/mm/yy, stores ISO (yyyy-mm-dd) ──────────────
 
@@ -109,6 +109,7 @@ export function LpSubnav({ view, onChange }) {
     { id: 'courses',   label: 'Courses',   icon: BookOpen },
     { id: 'mindmap',   label: 'Mindmap',   icon: Network },
     { id: 'timeline',  label: 'Timeline',  icon: CalendarRange },
+    { id: 'automate',  label: 'Automate',  icon: Sparkles },
   ];
   return (
     <div className="lp-subnav" role="tablist" aria-label="Life Planner sections">

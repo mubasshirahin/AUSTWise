@@ -250,18 +250,37 @@ export default function AboutUs() {
   // ─── Scroll spy + panel reveal ───
   useEffect(() => {
     if (!booted) return;
-    const sections = rootRef.current?.querySelectorAll('.cred-section');
+    const el = rootRef.current;
+    const sections = el?.querySelectorAll('.cred-section');
     if (!sections) return;
-    const obs = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('is-visible');
-          setActiveFile(entry.target.dataset.file);
-        }
+    if (!('IntersectionObserver' in window)) {
+      sections.forEach((section) => section.classList.add('is-visible'));
+      return;
+    }
+    const viewportQuery = window.matchMedia('(max-width: 860px)');
+    let observer;
+    const attachObserver = () => {
+      observer?.disconnect();
+      observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            setActiveFile(entry.target.dataset.file);
+          }
+        });
+      }, {
+        root: viewportQuery.matches ? null : el,
+        rootMargin: viewportQuery.matches ? '0px 0px -12% 0px' : '-30% 0px -55% 0px',
+        threshold: 0,
       });
-    }, { root: rootRef.current, rootMargin: '-30% 0px -55% 0px', threshold: 0 });
-    sections.forEach((s) => obs.observe(s));
-    return () => obs.disconnect();
+      sections.forEach((section) => observer.observe(section));
+    };
+    attachObserver();
+    viewportQuery.addEventListener('change', attachObserver);
+    return () => {
+      observer?.disconnect();
+      viewportQuery.removeEventListener('change', attachObserver);
+    };
   }, [booted]);
 
   // ─── Top progress bar — tracks this panel's own scroll ───
@@ -269,12 +288,24 @@ export default function AboutUs() {
     const el = rootRef.current;
     if (!el) return;
     const onScroll = () => {
-      const h = el.scrollHeight - el.clientHeight;
-      setScrollPct(h > 0 ? Math.min(100, (el.scrollTop / h) * 100) : 0);
+      if (window.matchMedia('(max-width: 860px)').matches) {
+        const range = Math.max(1, el.scrollHeight - window.innerHeight);
+        const current = Math.max(0, Math.min(range, -el.getBoundingClientRect().top));
+        setScrollPct((current / range) * 100);
+        return;
+      }
+      const range = el.scrollHeight - el.clientHeight;
+      setScrollPct(range > 0 ? Math.min(100, (el.scrollTop / range) * 100) : 0);
     };
     el.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
     onScroll();
-    return () => el.removeEventListener('scroll', onScroll);
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
   }, []);
 
   // ─── 3D tilt on the terminal window ───
@@ -307,7 +338,6 @@ export default function AboutUs() {
   const resetCollab = (e) => { e.currentTarget.style.transform = ''; };
 
   const activeIdx = FILES.findIndex((f) => f.id === activeFile);
-  const activeMeta = FILES[activeIdx] || FILES[0];
 
   return (
     <div className={`cred-root ${booted ? 'is-booted' : 'is-booting'}`} ref={rootRef}>
@@ -373,12 +403,13 @@ export default function AboutUs() {
         <div className="cred-side-foot">~/workspace · nothing to see here</div>
       </aside>
 
-      {/* ─── Mobile "currently viewing" pill ─── */}
-      <div className="cred-mobile-pill">
-        <span className="cred-mobile-dot" />
-        <span className="cred-mobile-label">viewing</span>
-        <b>{activeMeta.file}</b>
-      </div>
+      {/* ─── Mobile section navigation ─── */}
+      <nav className="cred-mobile-nav" aria-label="Credits sections">
+        {FILES.map((file) => {
+          const Icon = file.icon;
+          return <a key={file.id} href={`#${file.id}`} className={activeFile === file.id ? 'is-active' : ''}><Icon size={13} aria-hidden="true" /><span>{file.file}</span></a>;
+        })}
+      </nav>
 
       {/* ─── Main content ─── */}
       <main className="cred-main">

@@ -403,6 +403,41 @@
 }
 
 /* ── Two-box layout — Box 1 filler, Box 2 content ── */
+.lp-automate { display: grid; gap: 14px; min-width: 0; }
+.lp-automate-intro { display: flex; align-items: flex-start; gap: 12px; }
+.lp-automate-icon { display: grid; place-items: center; width: 36px; height: 36px; flex: 0 0 36px; border-radius: 10px; background: var(--accent-amber-glow); color: var(--accent-amber); }
+.lp-automate-intro h2 { margin: 0; color: var(--text-primary); font-size: 16px; }
+.lp-automate-intro p, .lp-automate-heading p { margin: 4px 0 0; color: var(--text-secondary); font-size: 12px; line-height: 1.55; }
+.lp-automate-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.lp-automate-panel { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.lp-automate-heading { display: flex; gap: 10px; align-items: flex-start; }
+.lp-automate-step { display: grid; place-items: center; width: 24px; height: 24px; flex: 0 0 24px; border-radius: 50%; background: var(--accent-amber-glow); color: var(--accent-amber); font-size: 11px; font-weight: 800; }
+.lp-automate-heading h3 { margin: 0; color: var(--text-primary); font-size: 13px; }
+.lp-automate-prompt, .lp-automate-json { display: block; width: 100%; min-width: 0; resize: vertical; padding: 12px; border: 1px solid var(--border-primary); border-radius: 10px; background: var(--bg-input); color: var(--text-secondary); font: 11px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace; }
+.lp-automate-prompt { height: 330px; }
+.lp-automate-json { height: 330px; color: var(--text-primary); }
+.lp-automate-prompt:focus-visible, .lp-automate-json:focus-visible { outline: 2px solid var(--accent-amber); outline-offset: 2px; }
+.lp-automate-copy { align-self: flex-start; display: inline-flex; align-items: center; gap: 7px; }
+.lp-automate-hint { margin: -4px 0 0; color: var(--text-tertiary); font-size: 11px; line-height: 1.5; }
+.lp-automate-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.lp-automate-actions .btn { display: inline-flex; align-items: center; gap: 6px; }
+.lp-automate-clear { display: inline-flex; align-items: center; gap: 5px; border: 0; background: transparent; color: var(--text-tertiary); cursor: pointer; font: inherit; font-size: 11px; }
+.lp-automate-clear:hover { color: var(--text-primary); }
+.lp-automate-message { display: flex; align-items: flex-start; gap: 7px; margin: 0; font-size: 11px; line-height: 1.45; }
+.lp-automate-message svg { flex: 0 0 auto; margin-top: 1px; }
+.lp-automate-message.is-error { color: var(--accent-rose); }
+.lp-automate-message.is-success { color: var(--accent-emerald); }
+.lp-automate-preview { display: grid; gap: 6px; padding: 12px; border: 1px solid color-mix(in srgb, var(--accent-emerald) 28%, var(--border-primary)); border-radius: 10px; background: color-mix(in srgb, var(--accent-emerald) 5%, var(--bg-card)); color: var(--text-secondary); font-size: 11px; }
+.lp-automate-preview strong { color: var(--text-primary); font-size: 12px; }
+.lp-automate-preview p { margin: 0; }
+.lp-automate-preview > ul { display: grid; gap: 5px; max-height: 180px; overflow: auto; margin: 0; padding-left: 18px; }
+.lp-automate-preview ul ul { display: grid; gap: 2px; margin: 3px 0 0; padding-left: 18px; }
+.lp-automate-preview > span { color: var(--text-tertiary); line-height: 1.45; }
+@media (max-width: 850px) {
+  .lp-automate-grid { grid-template-columns: 1fr; }
+  .lp-automate-prompt, .lp-automate-json { height: 260px; }
+}
+
 .lp-two-box {
   display: grid;
   grid-template-columns: 360px 1fr;

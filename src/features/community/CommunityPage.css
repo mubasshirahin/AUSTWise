@@ -2559,11 +2559,70 @@
 }
 
 /* Card body — padded grid inside each department section */
-.faculty-dir-dept-body {
-  padding: var(--sp-4);
-}
+.faculty-dir-dept-body { padding: 0; }
 
-/* Faculty role chip on each card */
+/* Directory list rows share the Alumni Directory visual language. */
+.community-page .student-dir-content.alumni-groups { gap: var(--sp-6); }
+.community-page .student-dir .alumni-dept-group { overflow: visible; background: transparent; border: 0; border-radius: 0; box-shadow: none; }
+.community-page .student-dir .alumni-batch-header { margin-bottom: var(--sp-3); }
+.community-page .student-dir .student-dir-dept-header { min-height: 0; gap: var(--sp-2); padding: 2px 0; border: 0; background: transparent; text-align: left; }
+.community-page .student-dir .student-dir-dept-header:hover { background: transparent; }
+.community-page .student-dir .student-dir-dept-chevron { width: 16px; height: 16px; color: var(--text-tertiary); }
+.community-page .student-dir .student-dir-dept-icon { width: 16px; height: 16px; flex: 0 0 16px; border-radius: 0; background: transparent; color: var(--accent-amber); }
+.community-page .student-dir .student-dir-dept-info { display: flex; flex-direction: column; }
+.community-page .student-dir .student-dir-dept-name { margin: 0; color: var(--text-secondary); font-size: 13px; font-weight: var(--fw-bold); letter-spacing: -0.01em; line-height: 1.4; }
+.community-page .student-dir .student-dir-dept-meta { margin-top: 1px; color: var(--text-tertiary); font-size: 10px; line-height: 1.4; }
+.community-page .student-dir .student-dir-dept-count { min-width: 2ch; height: auto; padding: 2px 7px; border: 1px solid color-mix(in srgb, var(--accent-amber) 24%, var(--border-primary)); border-radius: var(--radius-full); background: var(--accent-amber-glow); color: var(--accent-amber); font-size: 10px; }
+
+.community-page .faculty-dir .alumni-grid-inner { grid-template-columns: 1fr; gap: 8px; }
+.community-page .faculty-dir .alumni-card,
+.community-page .student-dir:not(.faculty-dir) .student-dir-exec-slot,
+.community-page .student-dir:not(.faculty-dir) .student-dir-slot-card { position: relative; gap: 0; padding: 8px 10px; background: transparent; border: 1px solid color-mix(in srgb, var(--border-primary) 65%, transparent); border-radius: var(--radius-sm); box-shadow: none; }
+.community-page .faculty-dir .alumni-card:hover,
+.community-page .student-dir:not(.faculty-dir) .student-dir-exec-slot:hover,
+.community-page .student-dir:not(.faculty-dir) .student-dir-slot-card:hover { border-color: color-mix(in srgb, var(--accent-amber) 35%, var(--border-primary)); transform: none; box-shadow: none; }
+.community-page .faculty-dir .alumni-card-top { gap: 8px; align-items: center; }
+.community-page .faculty-dir .alumni-card .avatar { width: 28px !important; height: 28px !important; font-size: 10px !important; }
+.community-page .faculty-dir .alumni-card-name { font-size: 12px; line-height: 1.25; }
+.community-page .faculty-dir .alumni-card-details { display: flex; flex-direction: row; gap: 12px; margin: 2px 0 0 36px; font-size: 10px; }
+.community-page .faculty-dir .alumni-card-detail { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.community-page .faculty-dir .alumni-card-footer { position: absolute; top: 50%; right: 10px; padding: 0; transform: translateY(-50%); }
+.community-page .faculty-dir .alumni-card-info { padding-right: 70px; }
+.community-page .faculty-dir .alumni-card .btn-sm { width: 24px; height: 24px; padding: 4px; font-size: 0; }
+.community-page .faculty-dir .alumni-card .btn-sm svg { width: 14px; height: 14px; }
+.community-page .faculty-dir .faculty-card-linkedin { width: 24px; height: 24px; }
+
+.community-page .student-dir:not(.faculty-dir) .student-dir-sem-list { gap: 8px; padding: 8px 10px; }
+.community-page .student-dir:not(.faculty-dir) .student-dir-sem-card { overflow: hidden; border: 1px solid color-mix(in srgb, var(--border-primary) 65%, transparent); border-radius: var(--radius-sm); }
+.community-page .student-dir:not(.faculty-dir) .student-dir-sem-header { min-height: 40px; padding: 8px 10px; }
+.community-page .student-dir:not(.faculty-dir) .student-dir-exec-section { margin: 8px 10px; }
+.community-page .student-dir:not(.faculty-dir) .student-dir-exec-slot,
+.community-page .student-dir:not(.faculty-dir) .student-dir-slot-card { min-width: 0; }
+.community-page .student-dir:not(.faculty-dir) .student-dir-table-wrapper { overflow: visible; border: 0; border-radius: 0; background: transparent; }
+.community-page .student-dir:not(.faculty-dir) .student-dir-table { display: block; }
+.community-page .student-dir:not(.faculty-dir) .student-dir-table thead { display: none; }
+.community-page .student-dir:not(.faculty-dir) .student-dir-table tbody { display: grid; gap: 8px; }
+.community-page .student-dir:not(.faculty-dir) .student-dir-table-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 8px 10px;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--border-primary) 65%, transparent);
+  border-radius: var(--radius-sm);
+}
+.community-page .student-dir:not(.faculty-dir) .student-dir-table-row:hover {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--accent-amber) 35%, var(--border-primary));
+}
+.community-page .student-dir:not(.faculty-dir) .student-dir-table td { min-width: 0; padding: 0; border: 0; }
+.community-page .student-dir:not(.faculty-dir) .student-dir-table td:not(.stu-td-name) { display: none; }
+.community-page .student-dir:not(.faculty-dir) .student-dir-table .stu-td-name { display: flex; flex: 1; gap: 8px; }
+.community-page .student-dir:not(.faculty-dir) .student-dir-table .alumni-card-info { display: flex; flex-direction: column; gap: 2px; }
+.community-page .student-dir:not(.faculty-dir) .student-dir-student-avatar { width: 28px !important; height: 28px !important; }
+.community-page .student-dir:not(.faculty-dir) .student-dir-table-stu-name { font-size: 12px; }
+.community-page .student-dir:not(.faculty-dir) .student-dir-list-meta { overflow: hidden; color: var(--text-tertiary); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.community-page .student-dir:not(.faculty-dir) .student-dir-regular-list > .student-dir-role-label { display: none; }
 .faculty-chip {
   display: inline-flex;
   align-items: center;
@@ -3463,4 +3522,10 @@
   .community-page .alumni-page .alumni-card-details {
     font-size: 9.5px;
   }
+}
+
+@media (max-width: 600px) {
+  .community-page .student-dir:not(.faculty-dir) .student-dir-table tbody { display: grid; }
+  .community-page .student-dir:not(.faculty-dir) .student-dir-table-row { margin: 0; }
+  .community-page .student-dir:not(.faculty-dir) .student-dir-list-meta { max-width: calc(100vw - 120px); }
 }

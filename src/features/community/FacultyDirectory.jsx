@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  School, Search, Mail, ExternalLink, MessageCircle, Phone,
-  ChevronDown, ChevronRight,
+  School, Search, Mail, ExternalLink, MessageCircle, Phone, Building2,
+  ChevronDown,
 } from 'lucide-react';
 import { getAllAccounts, getInitials } from '../../utils/authStorage';
 import { getCachedMembers, refreshMemberDirectory } from '../../utils/memberDirectory';
@@ -235,7 +235,7 @@ export default function FacultyDirectory() {
           <h3>No faculty match your filters</h3>
         </div>
       ) : (
-        <div className="student-dir-content">
+        <div className="student-dir-content alumni-groups">
           {deptGroups.map(({ dept, members }) => {
             // Searching or picking one department auto-reveals the matching
             // group, so results never hide behind a collapsed header.
@@ -244,29 +244,23 @@ export default function FacultyDirectory() {
               || activeDept !== 'all';
 
             return (
-              <div key={dept} className="student-dir-dept-section faculty-dept">
+              <div key={dept} className="student-dir-dept-section faculty-dept alumni-dept-group">
+                <div className="alumni-batch-header">
                 <button
                   type="button"
-                  className="student-dir-dept-header"
+                  className="student-dir-dept-header alumni-group-toggle"
                   onClick={() => toggleDept(dept)}
                   aria-expanded={isOpen}
                 >
-                  {isOpen
-                    ? <ChevronDown size={16} className="student-dir-dept-chevron" />
-                    : <ChevronRight size={16} className="student-dir-dept-chevron" />}
-                  <span className="student-dir-dept-icon">
-                    <School size={18} />
-                  </span>
+                    <ChevronDown size={16} className={`student-dir-dept-chevron alumni-group-chevron${isOpen ? ' is-expanded' : ''}`} />
+                  <Building2 size={16} className="student-dir-dept-icon alumni-department-icon" />
                   <span className="student-dir-dept-info">
-                    <span className="student-dir-dept-name" role="heading" aria-level="3">
-                      Department of {DEPT_FULL_NAMES[dept] || dept}
-                    </span>
-                    <span className="student-dir-dept-meta">
-                      {members.length} faculty member{members.length !== 1 ? 's' : ''}
+                    <span className="student-dir-dept-name alumni-department-name" role="heading" aria-level="3">
+                      {dept}
                     </span>
                   </span>
-                  <span className="student-dir-dept-count">{members.length}</span>
                 </button>
+                </div>
 
                 {isOpen && (
                   <div className="faculty-dir-dept-body">

@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Users, Search, ChevronDown, ChevronRight,
-  GraduationCap, BookOpen, Layers,
+  GraduationCap, Building2, Layers,
   BadgeCheck, Star, Download, FileDown, Loader2,
   Crown, Briefcase,
 } from 'lucide-react';
@@ -483,33 +483,29 @@ export default function StudentDirectory() {
             : "No student accounts are registered in the directory yet. When classmates sign up, they'll appear here grouped by department and semester."}</p>
         </div>
       ) : (
-        <div className="student-dir-content">
+        <div className="student-dir-content alumni-groups">
           {displayDepts.map(dept => {
             // Higher semesters first — highest semester on top, lower below.
             const sems = Object.keys(grouped[dept]).sort((a, b) => Number(b) - Number(a));
 
             return (
-              <div key={dept} className="student-dir-dept-section">
+              <div key={dept} className="student-dir-dept-section alumni-dept-group">
+                <div className="alumni-batch-header">
                 <button
                   type="button"
-                  className="student-dir-dept-header"
+                  className="student-dir-dept-header alumni-group-toggle"
                   onClick={() => toggleDept(dept)}
                   aria-expanded={Boolean(expandedDepts[dept])}
                 >
-                  {expandedDepts[dept] ? <ChevronDown size={16} className="student-dir-dept-chevron" /> : <ChevronRight size={16} className="student-dir-dept-chevron" />}
-                  <span className="student-dir-dept-icon">
-                    <BookOpen size={18} />
-                  </span>
+                  <ChevronDown size={16} className={`student-dir-dept-chevron alumni-group-chevron${expandedDepts[dept] ? ' is-expanded' : ''}`} />
+                  <Building2 size={16} className="student-dir-dept-icon alumni-department-icon" />
                   <span className="student-dir-dept-info">
-                    <span className="student-dir-dept-name" role="heading" aria-level="3">
-                      Department of {DEPT_FULL_NAMES[dept] || dept}
-                    </span>
-                    <span className="student-dir-dept-meta">
-                      {deptStats[dept]?.total || 0} students · {deptStats[dept]?.semesters || 0} of {deptStats[dept]?.totalSemesters || 0} semesters
+                    <span className="student-dir-dept-name alumni-department-name" role="heading" aria-level="3">
+                      {dept}
                     </span>
                   </span>
-                  <span className="student-dir-dept-count">{deptStats[dept]?.total || 0}</span>
                 </button>
+                </div>
 
                 {expandedDepts[dept] && <div className="student-dir-dept-body">
                 {/* ═══ Department Executive Slots (VP · GS) ═══ */}
@@ -596,14 +592,6 @@ export default function StudentDirectory() {
                               <Layers size={16} />
                               <span className="student-dir-sem-label">
                                 Year {formatSemesterLabel(Number(sem))} (Semester {sem})
-                              </span>
-                            </div>
-                            <div className="student-dir-sem-header-right">
-                              <span
-                                className={`student-dir-sem-count${totalInSem >= 3 ? ' hot' : ''}`}
-                                title={`${totalInSem} student${totalInSem !== 1 ? 's' : ''}`}
-                              >
-                                {totalInSem}
                               </span>
                             </div>
                           </button>
@@ -736,10 +724,10 @@ export default function StudentDirectory() {
 
                             {/* ═══ Student Table ═══ */}
                             {regulars.length > 0 && (
-                              <div className="student-dir-role-section">
+                              <div className="student-dir-role-section student-dir-regular-list">
                                 <div className="student-dir-role-label">
                                   <Users size={14} />
-                                  <span>Students ({regulars.length})</span>
+                                  <span>Students</span>
                                 </div>
                                 <div className="student-dir-table-wrapper">
                                   <table className="student-dir-table">
@@ -760,7 +748,7 @@ export default function StudentDirectory() {
                                           key={student.id}
                                           className={`student-dir-table-row${student.id === user?.id ? ' is-me' : ''}`}
                                         >
-                                          <td className="stu-td-name" data-label="Student">
+                                          <td className="stu-td-name alumni-card-top" data-label="Student">
                                             <button
                                               type="button"
                                               className="student-dir-student-avatar"
@@ -786,6 +774,7 @@ export default function StudentDirectory() {
                                                 student.initials || student.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'
                                               )}
                                             </button>
+                                            <span className="alumni-card-info">
                                             <span className="student-dir-table-stu-name">{student.name}</span>
                                             {student.role === 'vp' && (
                                               <span className="student-dir-role-badge is-vp">VP</span>
@@ -802,6 +791,10 @@ export default function StudentDirectory() {
                                             {student.id === user?.id && (
                                               <span className="student-dir-you-badge">You</span>
                                             )}
+                                            <span className="student-dir-list-meta">
+                                              {[`ID ${extractStudentId(student)}`, student.awid || createAwid(student.department), student.email, student.labSection || student.section, student.bloodGroup, student.batch || student.batchName || student.batchNo].filter(Boolean).join(' · ')}
+                                            </span>
+                                            </span>
                                           </td>
                                           <td className="stu-td-id" data-label="AUST ID">
                                             <code className="student-dir-id-code">{extractStudentId(student)}</code>
