@@ -72,6 +72,28 @@ function dhakaNow() {
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+// ── Attendance record helpers ────────────────────────────────────────────────
+// Postgres rows come back as { CourseCode, RecordDate } while the JSON fallback
+// uses { courseCode, recordDate }. Reading only the camelCase keys made every
+// SQL record invisible, so the midnight sweep treated answered classes as
+// "missed" and overwrote the student's Present with Absent.
+// Course codes are compared the same way the Telegram buttons encode them
+// (alphanumerics only, upper-case: "CSE 3101" → "CSE3101").
+function attendanceCourseKey(code) {
+  return String(code || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 24).toUpperCase();
+}
+function recordCourseKey(r) {
+  return attendanceCourseKey(r?.CourseCode ?? r?.courseCode);
+}
+function recordDayKey(r) {
+  const raw = r?.RecordDate ?? r?.recordDate;
+  if (!raw) return '';
+  const str = typeof raw === 'string' ? raw : '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  const d = new Date(raw);
+  return Number.isNaN(d.getTime()) ? '' : dhakaParts(d).key;
+}
+
 // ── Persistent send log (idempotency across restarts) ────────────────────────
 const LOG_FILE = '.tg_schedule_log.json';
 
@@ -436,9 +458,9 @@ async function processUser(user, now) {
       try {
         if (!recordsCache) {
           const all = await getUserAttendanceRecords(chatId);
-          recordsCache = new Set((all || []).map(r => `${String(r.courseCode || '').toUpperCase()}|${dhakaParts(new Date(r.recordDate)).key}`));
+          recordsCache = new Set((all || []).map(r => `${recordCourseKey(r)}|${recordDayKey(r)}`));
         }
-        if (recordsCache.has(`${String(cls.course).toUpperCase()}|${todayKey}`)) continue;
+        if (recordsCache.has(`${attendanceCourseKey(cls.course)}|${todayKey}`)) continue;
       } catch { /* fall through and send */ }
       const { text, keyboard } = buildAfterClassAttendance(cls, i, todayClasses.length);
       await sendTelegramMessageWithKeyboard(botToken, chatId, text, keyboard, 'HTML');
@@ -456,10 +478,10 @@ async function processUser(user, now) {
         const all = await getUserAttendanceRecords(chatId);
         const todaySet = new Set(
           (all || [])
-            .filter(r => dhakaParts(new Date(r.recordDate)).key === todayKey)
-            .map(r => String(r.courseCode || '').toUpperCase())
+            .filter(r => recordDayKey(r) === todayKey)
+            .map(recordCourseKey)
         );
-        todayClasses.forEach((cls, i) => { answeredMap[i] = todaySet.has(String(cls.course).toUpperCase()); });
+        todayClasses.forEach((cls, i) => { answeredMap[i] = todaySet.has(attendanceCourseKey(cls.course)); });
       } catch { /* default: treat all as unanswered */ }
       const { text, keyboard } = buildEveningAttendance(todayClasses, answeredMap);
       const unansweredCount = keyboard.length;
@@ -483,13 +505,17 @@ async function processUser(user, now) {
           const all = await getUserAttendanceRecords(chatId);
           const answered = new Set(
             (all || [])
-              .filter(r => dhakaParts(new Date(r.recordDate)).key === yKey)
-              .map(r => String(r.courseCode || '').toUpperCase())
+              .filter(r => recordDayKey(r) === yKey)
+              .map(recordCourseKey)
           );
           let marked = 0;
           for (const cls of yClasses) {
-            if (answered.has(String(cls.course || '').toUpperCase())) continue;
-            await saveAttendanceRecordForDate(chatId, cls.course, false, yKey);
+            const courseKey = attendanceCourseKey(cls.course);
+            if (!courseKey || answered.has(courseKey)) continue;
+            // Store under the same key the Telegram buttons use, so a later
+            // tap on Present updates this row instead of creating a twin.
+            await saveAttendanceRecordForDate(chatId, courseKey, false, yKey);
+            answered.add(courseKey);
             marked++;
           }
           if (marked > 0 && notifyAttendance) {

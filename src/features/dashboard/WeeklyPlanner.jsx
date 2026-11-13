@@ -800,14 +800,17 @@ export default function WeeklyPlanner() {
        <div className="schedule-dotted-divider" />
 
         {loadedSharedRoutine && (
-          <div role="status" style={{
-            display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap',
+          <div role="status" className="loaded-routine-banner" style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
             padding: '9px 12px', margin: '0 0 10px', borderRadius: '10px',
             color: 'var(--text-secondary)', background: 'var(--accent-blue-glow)',
             border: '1px solid var(--border-primary)', fontSize: 'var(--fs-xs)',
           }}>
             <Share2 size={14} style={{ color: 'var(--accent-blue)', flexShrink: 0 }} />
-            <span>
+            <span
+              className="loaded-routine-text"
+              title={`Loaded routine shared by ${loadedSharedRoutine.crName || 'CR'} · ${loadedSharedRoutine.department} ${loadedSharedRoutine.yearSemester} · Section ${loadedSharedRoutine.section} · Lab ${loadedSharedRoutine.labSection}`}
+            >
               Loaded routine shared by <strong style={{ color: 'var(--text-primary)' }}>{loadedSharedRoutine.crName || 'CR'}</strong>
               {' · '}{loadedSharedRoutine.department} {loadedSharedRoutine.yearSemester}
               {' · Section '}{loadedSharedRoutine.section} · Lab {loadedSharedRoutine.labSection}

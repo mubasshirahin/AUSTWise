@@ -27,6 +27,10 @@ function toISODate(d) {
   return `${y}-${m}-${dd}`;
 }
 
+function attendanceCourseKey(value) {
+  return String(value || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+}
+
 function startOfToday() {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
@@ -77,8 +81,29 @@ export default function RoutineAttendanceTracker() {
   // shared key). Falls back to the legacy local value / today inside courseStats.
   const [sharedSemStart] = useLiveValue('shared', 'semester-start-date', null);
 
-  const [telegramChatId]       = useState(loadTelegramChatId);
-  const [isTelegramRegistered] = useState(loadIsTelegramRegistered);
+  const [telegramChatId,       setTelegramChatId]       = useState(loadTelegramChatId);
+  const [isTelegramRegistered, setIsTelegramRegistered] = useState(loadIsTelegramRegistered);
+
+  // The Telegram link lives on the server (per account). localStorage only had
+  // it on browsers where Settings was opened, so on any other device the bot's
+  // marks were never fetched. Ask the server, like Settings does.
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/telegram/connection', { credentials: 'same-origin' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((result) => {
+        if (cancelled || !result?.success) return;
+        const chatId = result.registered ? String(result.chatId || '') : '';
+        setTelegramChatId(chatId);
+        setIsTelegramRegistered(Boolean(result.registered));
+        try {
+          localStorage.setItem('telegram_chat_id', chatId);
+          localStorage.setItem('telegram_is_registered', String(Boolean(result.registered)));
+        } catch { /* storage unavailable */ }
+      })
+      .catch(() => { /* offline — keep the cached link */ });
+    return () => { cancelled = true; };
+  }, []);
   const [telegramRecords,      setTelegramRecords]     = useState([]);
   const [expandedCourseKey,    setExpandedCourseKey]   = useState(null);
   const [editMode,             setEditMode]            = useState(false); // view by default
@@ -220,11 +245,11 @@ export default function RoutineAttendanceTracker() {
     const idByDate = {};
     Object.values(courseStats).forEach(stat => {
       // Use base course (without part) for Telegram match — bot stores CSE101 not CSE101-A
-      const base = String(stat.course || stat.fullKey).split('-')[0].toUpperCase();
+      const base = attendanceCourseKey(String(stat.course || stat.fullKey).split('-')[0]);
       stat.instances.forEach(inst => {
         idByDate[`${base}|${toISODate(inst.date)}`] = inst.id;
         // Also map fullKey for exact match
-        idByDate[`${String(stat.fullKey).toUpperCase()}|${toISODate(inst.date)}`] = inst.id;
+        idByDate[`${attendanceCourseKey(stat.fullKey)}|${toISODate(inst.date)}`] = inst.id;
       });
     });
     const marks = {};
@@ -233,8 +258,8 @@ export default function RoutineAttendanceTracker() {
       const dateStr   = String(rec.RecordDate || rec.recordDate || '').split('T')[0];
       const attended  = rec.Attended !== undefined ? rec.Attended : rec.attended;
       if (!courseKey || !dateStr) return;
-      const baseKey = String(courseKey).split('-')[0].toUpperCase();
-      const id = idByDate[`${baseKey}|${dateStr}`] || idByDate[`${String(courseKey).toUpperCase()}|${dateStr}`];
+      const baseKey = attendanceCourseKey(String(courseKey).split('-')[0]);
+      const id = idByDate[`${baseKey}|${dateStr}`] || idByDate[`${attendanceCourseKey(courseKey)}|${dateStr}`];
       if (id) marks[id] = attended ? 'present' : 'absent';
     });
     return marks;

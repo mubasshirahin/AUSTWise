@@ -238,8 +238,7 @@ export default function NoticeBoard() {
               className="schedule-day-card notice-row"
               onClick={() => toggleExpand(notice.id)}
               style={{
-                borderLeft: `2px solid ${accent}`,
-                cursor: 'pointer',
+                '--notice-accent': accent,
                 animationDelay: `${idx * 60}ms`,
               }}
             >
