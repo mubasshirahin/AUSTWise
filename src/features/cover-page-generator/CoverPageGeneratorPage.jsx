@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect, forwardRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   NotebookPen, FileText, Image,
   Check, FileDown, Sparkles, User, X, UserPlus, MoreVertical, RotateCcw,
@@ -75,9 +76,12 @@ export default function CoverPageGeneratorPage() {
   const cloneRef = useRef(null);
   const frameRef = useRef(null);
   const menuRef = useRef(null);
+  const menuPortalRef = useRef(null);
+  const menuButtonRef = useRef(null);
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const [logoSrc] = useState(austLogo);
   const coverScale = useCoverScale(frameRef);
   const [coverStats, setCoverStats] = useState({ uniqueUsers: 0, totalPdf: 0, totalPng: 0, lastMonthUsers: 0, todaysNewUsers: 0, avg6Months: 0 });
@@ -150,11 +154,12 @@ export default function CoverPageGeneratorPage() {
     } catch {}
   };
 
-  /* Close ⋮ dropdown on outside click — mobile fix: handle both mouse and touch, and click */
+  /* Close the portaled ⋮ menu on outside click, including mobile touch. */
   useEffect(() => {
     if (!menuOpen) return;
     function handleOutside(e) {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+      if (menuRef.current?.contains(e.target) || menuPortalRef.current?.contains(e.target)) return;
+      setMenuOpen(false);
     }
     document.addEventListener('mousedown', handleOutside);
     document.addEventListener('touchstart', handleOutside, { passive: true });
@@ -165,6 +170,25 @@ export default function CoverPageGeneratorPage() {
       document.removeEventListener('click', handleOutside);
     };
   }, [menuOpen]);
+
+  const toggleExportMenu = () => {
+    if (menuOpen) {
+      setMenuOpen(false);
+      return;
+    }
+    const rect = menuButtonRef.current?.getBoundingClientRect();
+    if (rect) {
+      const menuWidth = Math.min(180, window.innerWidth - 24);
+      const menuHeight = 128;
+      const left = Math.max(12, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 12));
+      const below = rect.bottom + 6;
+      const top = below + menuHeight <= window.innerHeight - 8
+        ? below
+        : Math.max(8, rect.top - menuHeight - 6);
+      setMenuPosition({ top, left });
+    }
+    setMenuOpen(true);
+  };
 
   // ─── Form state (persisted to localStorage) ───
   const [savedForm] = useState(() => loadCoverForm());
@@ -434,16 +458,25 @@ export default function CoverPageGeneratorPage() {
           {!isAdmin && (
             <div className="export-dropdown" ref={menuRef}>
               <button
+                ref={menuButtonRef}
                 className="schedule-nav-btn"
-                onClick={() => setMenuOpen((o) => !o)}
+                onClick={toggleExportMenu}
                 title="Options"
+                aria-label="Cover page options"
                 aria-haspopup="true"
                 aria-expanded={menuOpen}
+                aria-controls="cpgen-export-menu"
               >
                 <MoreVertical size={18} />
               </button>
-              {menuOpen && (
-                <div className="export-menu" role="menu">
+              {menuOpen && createPortal(
+                <div
+                  ref={menuPortalRef}
+                  id="cpgen-export-menu"
+                  className="export-menu cpgen-export-menu"
+                  role="menu"
+                  style={{ position: 'fixed', top: menuPosition.top, left: menuPosition.left, right: 'auto' }}
+                >
                   <button
                     className="export-menu-item"
                     onClick={() => { setMenuOpen(false); generateCover('pdf'); }}
@@ -468,7 +501,8 @@ export default function CoverPageGeneratorPage() {
                   >
                     <RotateCcw size={14} /> Reset Form
                   </button>
-                </div>
+                </div>,
+                document.body
               )}
             </div>
           )}

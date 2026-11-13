@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Banknote, MapPin, Search, X, TrainFront, BusFront, CarTaxiFront, Car, Bike, Motorbike,
-  Footprints, Info, Clock, Lightbulb, ExternalLink, BadgeCheck, Calculator, CircleHelp,
+  Footprints, Info, Lightbulb, ExternalLink, BadgeCheck, Calculator, CircleHelp,
   ListOrdered, ChevronRight, PencilLine,
 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../../context/AuthContext';
-import { ORIGINS, ZONES, SOURCES, LAST_VERIFIED, DESTINATION } from './bhara-koto/fareData';
-import { buildOptions, cheapest, formatTaka } from './bhara-koto/fareEngine';
+import { ORIGINS, ZONES, SOURCES, LAST_VERIFIED } from './bhara-koto/fareData';
+import routeCostData from '../../data/dhakaRouteCosts.json';
+import { buildOptions, formatTaka } from './bhara-koto/fareEngine';
 import '../campus/SemesterViewWidget.css';
 import './DhakaRoutes.css';
 import './bhara-koto/BharaKoto.css';
@@ -30,6 +31,29 @@ const VERIFIED_LABEL = new Date(`${LAST_VERIFIED}T00:00:00`).toLocaleDateString(
 });
 
 const normalize = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const ALL_ORIGINS = routeCostData.rows.map((row, index) => {
+  const curated = ORIGINS.find((origin) => normalize(origin.name) === normalize(row.source));
+  return {
+    ...(curated || {}),
+    id: curated?.id || `legacy-area-${index}`,
+    name: row.source,
+    zone: curated?.zone || 'Other areas',
+    km: curated?.km ?? row.distance_km,
+    aliases: curated?.aliases || [],
+    bus: curated ? curated.bus : {
+      kind: 'satrasta',
+      board: `${row.source} bus stop`,
+      side: 'toward Satrasta / Tejgaon',
+      km: row.distance_km,
+      routesNote: 'Check the bus route board and confirm it goes toward Satrasta / Tejgaon before boarding.',
+    },
+    metro: curated?.metro || (row.metro_station && row.metro_station !== 'Farmgate' ? {
+      station: row.metro_station === 'Secretariat' ? 'Bangladesh Secretariat' : row.metro_station,
+      accessKm: 0.7,
+      access: `Take a local ride from ${row.source} to ${row.metro_station} station, then ride MRT-6 to Farmgate.`,
+    } : undefined),
+  };
+});
 const fmtTime = ([a, b]) => (b >= 90 ? `${Math.round(a / 6) / 10}–${Math.round(b / 6) / 10} h` : `${a}–${b} min`);
 const fareText = (fare) => (fare[1] === 0 ? 'Free' : formatTaka(fare));
 
@@ -212,10 +236,9 @@ export default function DhakaRoutes() {
 
   const [query, setQuery] = useState('');
   const [zone, setZone] = useState('All');
-  const [originId, setOriginId] = useState('mirpur-10');
+  const [originId, setOriginId] = useState(() => ALL_ORIGINS.find((o) => o.id === 'mirpur-10')?.id || ALL_ORIGINS[0]?.id);
   const [activeKey, setActiveKey] = useState(null);
   const [fareDetails, setFareDetails] = useState({});
-  const detailRef = useRef(null);
   const closePanel = useCallback(() => setActiveKey(null), []);
 
   // Admin-written notes per "<area>__<fareKey>" (same API as before).
@@ -230,27 +253,23 @@ export default function DhakaRoutes() {
 
   const filtered = useMemo(() => {
     const q = normalize(query);
-    return ORIGINS.filter((o) => (zone === 'All' || o.zone === zone) && matchesQuery(o, q));
+    return ALL_ORIGINS.filter((o) => (zone === 'All' || o.zone === zone) && matchesQuery(o, q));
   }, [query, zone]);
 
-  const origin = ORIGINS.find((o) => o.id === originId) || ORIGINS[0];
+  const origin = ALL_ORIGINS.find((o) => o.id === originId) || ALL_ORIGINS[0];
   const options = useMemo(() => buildOptions(origin), [origin]);
-  const best = cheapest(options);
   const activeOption = options.find((o) => o.key === activeKey) || null;
   const noteKey = activeOption?.legacyKey ? `${origin.name}__${activeOption.legacyKey}` : null;
 
-  const cheapestById = useMemo(() => {
+  const routeOptionsById = useMemo(() => {
     const map = {};
-    for (const o of ORIGINS) map[o.id] = cheapest(buildOptions(o));
+    for (const o of filtered) map[o.id] = buildOptions(o);
     return map;
-  }, []);
+  }, [filtered]);
 
-  const pickOrigin = (id) => {
-    setOriginId(id);
-    setActiveKey(null);
-    if (window.matchMedia?.('(max-width: 899px)').matches) {
-      requestAnimationFrame(() => detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-    }
+  const openFare = (area, option) => {
+    setOriginId(area.id);
+    setActiveKey(option.key);
   };
 
   const saveNote = async (text) => {
@@ -266,8 +285,6 @@ export default function DhakaRoutes() {
     setFareDetails(data.details || {});
   };
 
-  const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(`${origin.name}, Dhaka`)}&destination=${encodeURIComponent(`${DESTINATION.lat},${DESTINATION.lon}`)}&travelmode=transit`;
-
   return (
     <div className="glass-card-static schedule-widget sv-widget dr-widget bk-widget animate-fadeInUp">
       {/* ── Masthead ── */}
@@ -279,13 +296,13 @@ export default function DhakaRoutes() {
           <div>
             <span className="schedule-overline">Daily Life</span>
             <div className="schedule-title">Bhara Koto</div>
-            <span className="schedule-subtitle">Fares &amp; step-by-step routes from {ORIGINS.length} Dhaka areas to AUST</span>
+            <span className="schedule-subtitle">Fares &amp; step-by-step routes from {ALL_ORIGINS.length} Dhaka areas to AUST</span>
           </div>
         </div>
         <div className="schedule-masthead-center">
           <div className="schedule-stats">
             <div className="schedule-stat">
-              <span className="schedule-stat-value dr-stat-accent">{ORIGINS.length}</span>
+              <span className="schedule-stat-value dr-stat-accent">{ALL_ORIGINS.length}</span>
               <span className="schedule-stat-label">Areas</span>
             </div>
             <div className="schedule-stat">
@@ -304,15 +321,6 @@ export default function DhakaRoutes() {
       <div className="schedule-dotted-divider" />
 
       {/* ── How to read the numbers ── */}
-      <div className="bk-notice" role="note">
-        <Info size={15} className="bk-notice-icon" />
-        <p>
-          Fares in BDT, checked {VERIFIED_LABEL}. <StatusBadge status="official" /> = published chart (MRT),{' '}
-          <StatusBadge status="computed" /> = BRTA per-km rate × road distance,{' '}
-          <StatusBadge status="estimate" /> = no official fare (rickshaw, CNG asking price, Pathao/Uber). Tap any fare for directions.
-        </p>
-      </div>
-
       {/* ── Search + zone filter ── */}
       <div className="bk-toolbar">
         <div className="dr-search bk-search">
@@ -346,105 +354,55 @@ export default function DhakaRoutes() {
         </div>
       </div>
 
-      <div className="bk-layout">
-        {/* ── Origin list ── */}
-        <nav className="bk-origins" aria-label="Starting area">
-          {filtered.length === 0 ? (
-            <p className="bk-empty">
-              No match for “{query.trim()}”. Pick the nearest bigger area — e.g. a bus stop or market you pass on the way.
-            </p>
-          ) : (
-            <ul>
-              {filtered.map((o) => {
-                const c = cheapestById[o.id];
-                const selected = o.id === origin.id;
-                return (
-                  <li key={o.id}>
-                    <button
-                      type="button"
-                      className={`bk-origin${selected ? ' active' : ''}`}
-                      aria-current={selected ? 'true' : undefined}
-                      onClick={() => pickOrigin(o.id)}
-                    >
-                      <MapPin size={13} className="bk-origin-pin" />
-                      <span className="bk-origin-main">
-                        <span className="bk-origin-name">{o.name}</span>
-                        <span className="bk-origin-meta">{o.km.toFixed(1)} km · {o.zone}</span>
-                      </span>
-                      {c && <span className="bk-origin-fare">from ৳{c.fare[0]}</span>}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </nav>
-
-        {/* ── Selected origin ── */}
-        <section className="bk-detail" ref={detailRef} aria-live="polite">
-          <div className="bk-detail-head">
-            <div>
-              <span className="bk-detail-over">From</span>
-              <h3 className="bk-detail-title">{origin.name} <span>→ AUST, Love Road</span></h3>
-              <span className="bk-detail-meta">≈ {origin.km.toFixed(1)} km by road · {origin.zone}</span>
-            </div>
-            <a className="btn btn-ghost btn-sm bk-maps" href={mapsUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLink size={13} /> Google Maps
-            </a>
-          </div>
-
-          {origin.note && <p className="bk-origin-note"><Lightbulb size={13} /> {origin.note}</p>}
-
-          <div className="bk-cards">
-            {options.map((opt) => {
-              const Icon = MODE_ICON[opt.key] || BusFront;
-              const isBest = best && opt.key === best.key;
+      <section className="bk-route-table-wrap" aria-label="Fares by starting area">
+        <table className="bk-route-table">
+          <thead>
+            <tr>
+              <th scope="col">Starting area</th>
+              <th scope="col">Destination</th>
+              {[
+                ['walk', 'Walk'], ['rickshaw', 'Rickshaw'], ['bus', 'Bus'], ['metro', 'Metro'],
+                ['cng', 'CNG'], ['bike', 'Ride-share bike'], ['car', 'Ride-share car'],
+              ].map(([key, label]) => <th scope="col" key={key}>{label}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr><td className="bk-empty-cell" colSpan={9}>No areas match “{query.trim()}”.</td></tr>
+            ) : filtered.map((area) => {
+              const areaOptions = routeOptionsById[area.id] || [];
+              const selected = area.id === origin.id;
               return (
-                <button
-                  key={opt.key}
-                  type="button"
-                  className={`bk-card${isBest ? ' bk-card-best' : ''}`}
-                  onClick={() => setActiveKey(opt.key)}
-                  aria-haspopup="dialog"
-                >
-                  <span className={`bk-mode-icon bk-mode-${opt.key}`}><Icon size={16} /></span>
-                  <span className="bk-card-body">
-                    <span className="bk-card-label">
-                      {opt.label}
-                      {isBest && <span className="bk-best-tag">Cheapest</span>}
-                    </span>
-                    <span className="bk-card-fare">{fareText(opt.fare)}</span>
-                    <span className="bk-card-foot">
-                      <span className="bk-card-time"><Clock size={11} /> {fmtTime(opt.time)}</span>
-                      <StatusBadge status={opt.status} />
-                    </span>
-                  </span>
-                  <ChevronRight size={15} className="bk-card-chevron" />
-                </button>
+                <tr key={area.id} className={selected ? 'bk-route-row active' : 'bk-route-row'}>
+                  <th scope="row" className="bk-route-area">
+                    <MapPin size={13} aria-hidden="true" />
+                    <span>{area.name}<small>{area.km.toFixed(1)} km · {area.zone}</small></span>
+                  </th>
+                  <td className="bk-route-destination">AUST · Love Road</td>
+                  {['walk', 'rickshaw', 'bus', 'metro', 'cng', 'bike', 'car'].map((key) => {
+                    const option = areaOptions.find((item) => item.key === key);
+                    return (
+                      <td key={key}>
+                        {option ? (
+                          <button
+                            type="button"
+                            className={`bk-fare-button${key === 'walk' ? ' bk-fare-free' : ''}`}
+                            onClick={() => openFare(area, option)}
+                            aria-label={`${area.name} to AUST by ${option.label}: ${fareText(option.fare)}. Show route details`}
+                            aria-haspopup="dialog"
+                          >
+                            {fareText(option.fare)}
+                          </button>
+                        ) : <span className="bk-fare-unavailable" aria-label="Not available">—</span>}
+                      </td>
+                    );
+                  })}
+                </tr>
               );
             })}
-          </div>
-          <p className="bk-detail-foot">
-            Times are door-to-door ranges; Dhaka peak hours (8–10 am, 5–8 pm) sit at the top of each range or above.
-          </p>
-        </section>
-      </div>
-
-      {/* ── All sources ── */}
-      <details className="bk-sources">
-        <summary>Sources &amp; method (verified {VERIFIED_LABEL})</summary>
-        <ul className="bk-source-list">
-          {Object.entries(SOURCES).map(([id, s]) => (
-            <li key={id}>
-              <a href={s.url} target="_blank" rel="noopener noreferrer">{s.label} <ExternalLink size={11} /></a>
-            </li>
-          ))}
-        </ul>
-        <p className="bk-reason">
-          Leguna / human-hauler routes are not listed: their routes and fares change often and could not be confirmed from a public source.
-          Bus operator names may change under the 2026 route rationalisation — always read the route board.
-        </p>
-      </details>
+          </tbody>
+        </table>
+      </section>
 
       {activeOption && (
         <RoutePanel

@@ -106,11 +106,11 @@
 
 /* ── 3. Main content box ── */
 .dl-content-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-primary);
+  background: transparent;
+  border: 0;
   border-radius: var(--radius-lg);
-  padding: var(--sp-5);
-  box-shadow: var(--shadow-lift);
+  padding: 0;
+  box-shadow: none;
 }
 
 .dl-content-card .daily-life-tab-content {
@@ -148,7 +148,40 @@
   .dl-hero-content {
     padding: var(--sp-4) var(--sp-3);
   }
+  .dl-tabs-card {
+    min-width: 0;
+  }
+  .dl-tabs-card .glider-tabs-wrap {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent-amber) var(--bg-tertiary);
+    -webkit-overflow-scrolling: touch;
+  }
+  html[data-layout] .dl-tabs-card .glider-tabs-wrap::-webkit-scrollbar {
+    display: block;
+    height: 4px;
+  }
+  html[data-layout] .dl-tabs-card .glider-tabs-wrap::-webkit-scrollbar-track {
+    background: var(--bg-tertiary);
+    border-radius: 999px;
+  }
+  html[data-layout] .dl-tabs-card .glider-tabs-wrap::-webkit-scrollbar-thumb {
+    background: var(--accent-amber);
+    border-radius: 999px;
+  }
+  html[data-layout] .dl-tabs-card .glider-tabs-track {
+    width: max-content;
+    min-width: max-content;
+    max-width: none;
+  }
+  html[data-layout] .dl-tabs-card .glider-tab {
+    flex: 0 0 auto;
+    min-width: 76px;
+  }
   .dl-content-card {
-    padding: var(--sp-4);
+    padding: 0;
   }
 }

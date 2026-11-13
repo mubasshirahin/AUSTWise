@@ -19,7 +19,7 @@ import { getPasswordGrade } from '../../utils/passwordStrength';
 
 const masked = (len) => '•'.repeat(Math.max(6, Math.min(len, 22)));
 
-const PLATFORM_SUGGESTIONS = ['Facebook', 'Instagram', 'Twitter / X', 'LinkedIn', 'GitHub', 'Google', 'YouTube', 'Discord', 'WhatsApp', 'Telegram', 'Snapchat', 'TikTok', 'Reddit', 'Pinterest', 'Netflix', 'Spotify', 'Amazon', 'Daraz', 'Pathao', 'bKash', 'Nagad', 'Rocket', 'Outlook', 'Gmail', 'AUST'];
+const PLATFORM_SUGGESTIONS = ['Facebook', 'Instagram', 'Twitter / X', 'LinkedIn', 'GitHub', 'Google', 'YouTube', 'Discord', 'Clash of Clans', 'Clash Royale', 'PUBG', 'eFootball', 'VALORANT', 'Steam', 'Epic Games Store', 'WhatsApp', 'Telegram', 'Snapchat', 'TikTok', 'Reddit', 'Pinterest', 'Netflix', 'Spotify', 'Amazon', 'Daraz', 'Pathao', 'bKash', 'Nagad', 'Rocket', 'Outlook', 'Gmail', 'AUST'];
 
 // Cryptographically-strong random password — no ambiguous chars.
 function generatePassword(len = 16) {
@@ -42,6 +42,9 @@ const BRAND_STYLES = {
   netflix: ['#e50914', 'N'], spotify: ['#1db954', '●'], amazon: ['#ff9900', 'a'], gmail: ['#ea4335', 'M'],
   outlook: ['#0078d4', 'O'], bkash: ['#e2136e', 'b'], nagad: ['#f15a24', 'n'], pathao: ['#00b56a', 'P'],
   daraz: ['#f85606', 'd'], rocket: ['#8b3393', 'R'], aust: ['#168141', 'A'],
+  'clash of clans': ['#d89b36', 'C'], 'clash royale': ['#2875c7', 'C'], pubg: ['#f2a900', 'P'],
+  efootball: ['#0876c9', 'e'], valorant: ['#fa4454', 'V'], steam: ['#171a21', 'S'],
+  'epic games store': ['#313131', 'E'], 'epic games': ['#313131', 'E'],
 };
 
 const BRAND_ASSETS = {
@@ -50,7 +53,9 @@ const BRAND_ASSETS = {
   whatsapp: 'whatsapp.svg', telegram: 'telegram.svg', snapchat: 'snapchat.svg', tiktok: 'tiktok.svg', reddit: 'reddit.svg',
   pinterest: 'pinterest.svg', netflix: 'netflix.svg', spotify: 'spotify.svg', amazon: 'amazon.svg', daraz: 'daraz.png',
   pathao: 'pathao.png', bkash: 'bkash.png', nagad: 'nagad.png', rocket: 'rocket.svg', outlook: 'outlook.svg',
-  gmail: 'gmail.svg', aust: 'aust.png',
+  gmail: 'gmail.svg', aust: 'aust.png', 'clash of clans': 'clash-of-clans.png',
+  'clash royale': 'clash-royale.png', pubg: 'pubg.svg', efootball: 'efootball.png', valorant: 'valorant.svg',
+  steam: 'steam.svg', 'epic games store': 'epic-games.svg', 'epic games': 'epic-games.svg',
 };
 
 // Renders the real brand logo on a light chip so dark marks (GitHub, X, TikTok,
@@ -69,6 +74,7 @@ function PlatformMark({ platform }) {
       {logoUrl && (
         <img
           className="pm-brand-logo"
+          data-brand={key}
           src={logoUrl}
           alt=""
           loading="lazy"
@@ -111,6 +117,7 @@ export default function PasswordManagerPage() {
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState('');
   const [revealedId, setRevealedId] = useState(null);
+  const [swipeState, setSwipeState] = useState(null);
   const [platformDropdownOpen, setPlatformDropdownOpen] = useState(false);
   const [addFormOpen, setAddFormOpen] = useState(false);
 
@@ -128,6 +135,26 @@ export default function PasswordManagerPage() {
   const clipboardTimer = useRef(null);
   // Auto-hide password after 5s
   const showPassTimer = useRef(null);
+  const credentialSwipeStart = useRef(null);
+
+  const handleCredentialTouchStart = (event, id) => {
+    const touch = event.touches[0];
+    if (!touch) return;
+    credentialSwipeStart.current = { id, x: touch.clientX, y: touch.clientY };
+    if (swipeState?.id !== id) setSwipeState(null);
+  };
+
+  const handleCredentialTouchEnd = (event, id) => {
+    const start = credentialSwipeStart.current;
+    credentialSwipeStart.current = null;
+    if (!start || start.id !== id) return;
+    const touch = event.changedTouches[0];
+    if (!touch) return;
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    if (Math.abs(dx) < 42 || Math.abs(dx) < Math.abs(dy) * 1.25) return;
+    setSwipeState({ id, direction: dx < 0 ? 'left' : 'right' });
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -400,7 +427,7 @@ export default function PasswordManagerPage() {
                         setPlatformDropdownOpen(false);
                       }
                     }}
-                    placeholder="e.g. Facebook, GitHub, bKash…"
+                    placeholder="e.g. Facebook, Steam, bKash…"
                     autoComplete="off"
                     required
                   />
@@ -428,7 +455,6 @@ export default function PasswordManagerPage() {
 
             {(() => {
               const row = rows[0];
-              const rowStrength = getPasswordGrade(row.password);
               return (
                 <>
                   <label className="pm-field" htmlFor="pm-add-email-0">
@@ -488,22 +514,16 @@ export default function PasswordManagerPage() {
                         >
                           {row.showPass ? <EyeOff size={15} /> : <Eye size={15} />}
                         </button>
+                        <button
+                          type="button"
+                          className="pm-icon-btn pm-gen-inside"
+                          onClick={() => setRows([{ ...row, password: generatePassword(genLen) }])}
+                          aria-label="Generate password"
+                          title="Generate strong password"
+                        >
+                          <RefreshCw size={13} strokeWidth={2.3} />
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        className="pm-gen-pill"
-                        onClick={() => setRows([{ ...row, password: generatePassword(genLen) }])}
-                        aria-label="Generate password"
-                        title="Generate strong password"
-                      >
-                        <RefreshCw size={14} strokeWidth={2.4} />
-                      </button>
-                      <StrengthRing
-                        variant="live"
-                        pct={rowStrength.pct}
-                        tone={rowStrength.tone}
-                        grade={rowStrength.grade}
-                      />
                     </div>
                   </label>
                 </>
@@ -597,26 +617,69 @@ export default function PasswordManagerPage() {
                             const revealed = revealedId === rec.id;
                             const strength = getPasswordGrade(rec.password || '');
                             return (
-                              <tr key={rec.id}>
-                                <td className="pm-td-email">{rec.email}</td>
-                                <td className="pm-td-username">{rec.username ? `@${rec.username.replace(/^@/, '')}` : <span className="pm-td-empty">—</span>}</td>
+                              <tr
+                                key={rec.id}
+                                className={swipeState?.id === rec.id ? `pm-swipe-active-${swipeState.direction}` : ''}
+                                onTouchStart={(event) => handleCredentialTouchStart(event, rec.id)}
+                                onTouchEnd={(event) => handleCredentialTouchEnd(event, rec.id)}
+                                onTouchCancel={() => { credentialSwipeStart.current = null; }}
+                              >
+                                <td className="pm-swipe-action pm-swipe-delete">
+                                  <button
+                                    type="button"
+                                    className="pm-swipe-action-btn is-delete"
+                                    aria-label={`Delete ${rec.platform} account`}
+                                    onClick={() => { setSwipeState(null); handleDelete(rec); }}
+                                  >
+                                    <Trash2 size={17} />
+                                    <span>Delete</span>
+                                  </button>
+                                </td>
+                                <td className="pm-td-email"><span className="pm-mobile-label" aria-hidden="true">Email / Phone</span><span className="pm-cell-value">{rec.email}</span></td>
+                                <td className="pm-td-username"><span className="pm-mobile-label" aria-hidden="true">Username</span><span className="pm-cell-value">{rec.username ? `@${rec.username.replace(/^@/, '')}` : <span className="pm-td-empty">—</span>}</span></td>
                                 <td className="pm-td-pass">
-                                  <span className="pm-pass-text">
-                                    {!rec.password
-                                      ? <span className="pm-td-empty">—</span>
-                                      : revealed
-                                        ? rec.password
-                                        : masked(rec.password.length)}
+                                  <span className="pm-mobile-label" aria-hidden="true">Password</span>
+                                  <span className="pm-password-inline">
+                                    <span className="pm-pass-text">
+                                      {!rec.password
+                                        ? <span className="pm-td-empty">—</span>
+                                        : revealed
+                                          ? rec.password
+                                          : masked(rec.password.length)}
+                                    </span>
+                                    <button
+                                      className="pm-icon-btn pm-reveal-password-inline"
+                                      onClick={() => setRevealedId(revealed ? null : rec.id)}
+                                      aria-label={revealed ? 'Hide password' : 'View password'}
+                                      title={revealed ? 'Hide password' : 'View password'}
+                                    >
+                                      {revealed ? <EyeOff size={12} /> : <Eye size={12} />}
+                                    </button>
+                                    <button className="pm-icon-btn pm-copy-password-inline" onClick={() => copyPassword(rec)} aria-label="Copy password" title="Copy password">
+                                      <Copy size={10} />
+                                    </button>
                                   </span>
                                 </td>
                                 <td className="pm-td-strength">
+                                  <span className="pm-mobile-label" aria-hidden="true">Strength</span>
                                   <StrengthRing pct={strength.pct} tone={strength.tone} grade={strength.grade} />
                                 </td>
                                 <td className="pm-td-actions">
-                                  <button className="pm-icon-btn" onClick={() => openEdit(rec)} aria-label="Edit" title="Edit"><Pencil size={14} /></button>
-                                  <button className="pm-icon-btn" onClick={() => setRevealedId(revealed ? null : rec.id)} aria-label={revealed ? 'Hide' : 'Reveal'} title={revealed ? 'Hide' : 'Reveal'}>{revealed ? <EyeOff size={14} /> : <Eye size={14} />}</button>
-                                  <button className="pm-icon-btn" onClick={() => copyPassword(rec)} aria-label="Copy" title="Copy"><Copy size={14} /></button>
+                                  <button className="pm-icon-btn pm-edit-action" onClick={() => openEdit(rec)} aria-label="Edit" title="Edit"><Pencil size={14} /></button>
+                                  <button className="pm-icon-btn pm-reveal-action" onClick={() => setRevealedId(revealed ? null : rec.id)} aria-label={revealed ? 'Hide' : 'Reveal'} title={revealed ? 'Hide' : 'Reveal'}>{revealed ? <EyeOff size={14} /> : <Eye size={14} />}</button>
+                                  <button className="pm-icon-btn pm-copy-action" onClick={() => copyPassword(rec)} aria-label="Copy" title="Copy"><Copy size={14} /></button>
                                   <button className="pm-icon-btn pm-icon-danger" onClick={() => handleDelete(rec)} aria-label="Delete" title="Delete"><Trash2 size={14} /></button>
+                                </td>
+                                <td className="pm-swipe-action pm-swipe-edit">
+                                  <button
+                                    type="button"
+                                    className="pm-swipe-action-btn is-edit"
+                                    aria-label={`Edit ${rec.platform} account`}
+                                    onClick={() => { setSwipeState(null); openEdit(rec); }}
+                                  >
+                                    <Pencil size={17} />
+                                    <span>Edit</span>
+                                  </button>
                                 </td>
                               </tr>
                             );
