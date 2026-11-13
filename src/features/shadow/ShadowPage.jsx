@@ -315,7 +315,24 @@ export default function ShadowPage() {
         </div>
       </header>}
 
-      {/* ── Stats Row ── */}
+      {/* ── 2. Glider tabs bar (own card) ── */}
+      {isAdmin && <SidebarPageAccessPanel pageKey="/shadow" part="parent" />}
+      <div className="glass-card-static sh-tabs-card">
+        <GliderTabs
+          tabs={[
+            { id: 'reviews', label: 'Course Reviews',   desc: 'Anonymous feedback', accessKey: 'feature:shadow:reviews',     color: 'amber',  icon: Star          },
+            { id: 'chat',    label: 'Shadow Chat',      desc: '10-min anonymous match', accessKey: 'feature:shadow:chat', color: 'amber',  icon: MessageSquare },
+            { id: 'buzz',    label: 'Buzz',             desc: 'AUST forum', accessKey: 'feature:shadow:buzz',             color: 'amber',  icon: Zap           },
+            { id: 'roast-cv', label: 'Roast CV',        desc: 'CV feedback', accessKey: 'feature:shadow:roast-cv',            color: 'amber',  icon: Flame         },
+          ]}
+          activeTab={activeTab}
+          onChange={handleShadowTabChange}
+          variant="dashboard"
+          compact
+        />
+      </div>
+
+      {/* ── Stats Row (below the tabs) ── */}
       {!isAdmin && totalReviews > 0 && (
         <div className="shadow-stats-row">
           {stats.map((stat, i) => {
@@ -340,23 +357,6 @@ export default function ShadowPage() {
           })}
         </div>
       )}
-
-      {/* ── 2. Glider tabs bar (own card) ── */}
-      {isAdmin && <SidebarPageAccessPanel pageKey="/shadow" part="parent" />}
-      <div className="glass-card-static sh-tabs-card">
-        <GliderTabs
-          tabs={[
-            { id: 'reviews', label: 'Course Reviews',   desc: 'Anonymous feedback', accessKey: 'feature:shadow:reviews',     color: 'amber',  icon: Star          },
-            { id: 'chat',    label: 'Shadow Chat',      desc: '10-min anonymous match', accessKey: 'feature:shadow:chat', color: 'amber',  icon: MessageSquare },
-            { id: 'buzz',    label: 'Buzz',             desc: 'AUST forum', accessKey: 'feature:shadow:buzz',             color: 'amber',  icon: Zap           },
-            { id: 'roast-cv', label: 'Roast CV',        desc: 'CV feedback', accessKey: 'feature:shadow:roast-cv',            color: 'amber',  icon: Flame         },
-          ]}
-          activeTab={activeTab}
-          onChange={handleShadowTabChange}
-          variant="dashboard"
-          compact
-        />
-      </div>
 
       {/* ── 3. Main content box (own card, gated by per-subtab featureHidden) ── */}
       {isAdmin ? <SidebarPageAccessPanel pageKey="/shadow" featureKey={`feature:shadow:${activeTab}`} part="child" /> : <MastheadAccessControl>

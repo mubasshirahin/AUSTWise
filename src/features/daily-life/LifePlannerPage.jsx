@@ -6,12 +6,13 @@ import {
 } from 'lucide-react';
 import './LifePlannerPage.css';
 import './LifePlannerRedesign.css';
+import './LifePlannerBody.css';
 import {
   useLifePlanner, EMPTY_DOC, overallProgress, milestoneProgress, goalsOfMilestone, byId, tasksOfGoal, stepsOfTask, WEEKDAYS,
   buildTimeline, fmtDate, todayKey, daysBetween,
   goalProgress, taskProgress, goalDisplayNumber, goalAutoDeadline, createGoal, updateGoal, deleteGoal, addTask, addStep, purgeOrphans, stripExampleContent, normalizePlanner,
 } from './lifePlannerStorage';
-import { LpSubnav, LpBar, LpStat, LpEmpty, LpModal, LpConfirm, LpDateInput, useConfirmState } from './LifePlannerUI';
+import { LpSubnav, LpBar, LpRing, LpStat, LpEmpty, LpModal, LpConfirm, LpDateInput, useConfirmState } from './LifePlannerUI';
 import GoalFormModal from './GoalFormModal';
 import GoalsView from './GoalsView';
 import TimelineView from './TimelineView';
@@ -96,7 +97,15 @@ export default function LifePlannerPage() {
     if (activeMilestoneId && !doc.goals.some((g) => g.id === activeMilestoneId && (g.types || []).includes('milestone'))) setActiveMilestoneId(null);
   }, [doc.goals, activeMilestoneId]);
   useEffect(() => {
-    if (activeTaskId && !doc.tasks.some((t) => t.id === activeTaskId)) setActiveTaskId(null);
+    // A deleted / reset goal can linger in the URL or localStorage — drop it so the
+    // Milestones view doesn't open an empty "Goal" panel with an Add Task button.
+    if (activeGoalId && !doc.goals.some((g) => g.id === activeGoalId && !(g.types || []).includes('milestone'))) {
+      setActiveGoalId(null);
+      setActiveTaskId(null);
+    }
+  }, [doc.goals, activeGoalId]);
+  useEffect(() => {
+    if (activeTaskId &&!doc.tasks.some((t) => t.id === activeTaskId)) setActiveTaskId(null);
   }, [doc.tasks, activeTaskId]);
   useEffect(() => {
     if (activeGoalId && activeTaskId) {
@@ -261,6 +270,8 @@ export default function LifePlannerPage() {
   const nextDeadline = upcoming.next[0] || null;
   const daysLeft = nextDeadline ? daysBetween(new Date(), nextDeadline.date) : null;
 
+  // Milestones live in doc.goals too (type 'milestone'); goal counts must exclude them.
+  const realGoals = doc.goals.filter((g) => !(g.types || []).includes('milestone'));
   const hasAnything = doc.goals.length > 0;
   const hasGoals = doc.goals.length > 0;
 
@@ -343,187 +354,215 @@ export default function LifePlannerPage() {
     onConfirm: setConfirmState,
   };
 
+  const milestoneCount = doc.goals.filter((g) => (g.types || []).includes('milestone')).length;
+  const resetTaskComposer = () => {
+    setShowTaskTopInput(false); setTaskTopInput(''); setTaskTopStartDate(''); setTaskTopDueDate('');
+    setTaskIsRecurring(false); setTaskRecurringWeekdays([]); setTaskRecurringEndDate(''); setTaskRecurringStartDate('');
+  };
+  const taskAddDisabled = !taskTopInput.trim() || (!taskIsRecurring
+    ? !taskTopDueDate
+    : (taskRecurringWeekdays.length === 0 || !taskRecurringStartDate || !taskRecurringEndDate));
+
+  // Contextual primary action for the Goals view (Milestone → Goal → Task → Step)
+  const goalsAction = view !== 'goals' ? null
+    : !activeMilestoneId ? { icon: Flag, label: 'Add Milestone', toggle: () => setShowMilestoneInput((v) => !v) }
+    : !activeGoalId ? { icon: Target, label: 'Add Goal', toggle: () => setShowGoalTopInput((v) => !v) }
+    : !activeTaskId ? { icon: ListChecks, label: 'Add Task', toggle: () => setShowTaskTopInput((v) => !v) }
+    : { icon: ListChecks, label: 'Add Step', toggle: () => setShowStepTopInput((v) => !v) };
+  const GoalsActionIcon = goalsAction?.icon;
+
   return (
     <div className="glass-card-static schedule-widget lp-widget animate-fadeInUp">
 
-      {/* ── Masthead — shared box, same as TakaGeloKoi / Bhara Koto ── */}
-      <div className="schedule-masthead">
-        <div className="schedule-title-block">
-          <div className="schedule-icon-tile lp-icon-tile">
-            <CalendarDays size={20} strokeWidth={2.2} />
+      {/* ── Masthead ── */}
+      <header className="lp-head">
+        <div className="lp-head-title">
+          <div className="lp-head-tile" aria-hidden="true">
+            <CalendarDays size={20} strokeWidth={2.1} />
           </div>
-          <div>
-            <span className="schedule-overline">Daily Life</span>
-            <p className="schedule-title">Life Planner</p>
-            <span className="schedule-subtitle">Milestones, goals &amp; week plan</span>
-          </div>
-        </div>
-
-        <div className="schedule-masthead-center">
-          <div className="schedule-stats">
-            <div className="schedule-stat">
-              <span className="schedule-stat-value">{doc.goals.length}</span>
-              <span className="schedule-stat-label">Goals</span>
-            </div>
-            <div className="schedule-stat">
-              <span className="schedule-stat-value">{doc.goals.filter((g) => (g.types || []).includes('milestone')).length}</span>
-              <span className="schedule-stat-label">Milestones</span>
-            </div>
-            <div className="schedule-stat">
-              <span className="schedule-stat-value">{timeline.length}</span>
-              <span className="schedule-stat-label">Timeline</span>
-            </div>
-            {upcoming.overdue.length > 0 && (
-              <div className="schedule-stat">
-                <span className="schedule-stat-value" style={{ color: 'var(--accent-rose)' }}>{upcoming.overdue.length}</span>
-                <span className="schedule-stat-label">Overdue</span>
-              </div>
-            )}
+          <div className="lp-head-text">
+            <span className="lp-overline">Daily Life</span>
+            <h2 className="lp-title">Life Planner</h2>
+            <span className="lp-subtitle">Milestones, goals &amp; week plan</span>
           </div>
         </div>
 
-        <div className="schedule-actions">
-          <span className="lp-badge lp-badge-amber" role="img" aria-label={`Overall progress ${progress}%`}>
-            <TrendingUp size={10} /> {progress}% complete
-          </span>
-          <div className="export-dropdown" ref={menuBtnRef}>
+        <dl className="lp-head-stats">
+          <div className="lp-head-stat">
+            <dt>Goals</dt>
+            <dd>{realGoals.length}</dd>
+          </div>
+          <div className="lp-head-stat">
+            <dt>Milestones</dt>
+            <dd>{milestoneCount}</dd>
+          </div>
+          <div className="lp-head-stat">
+            <dt>Timeline</dt>
+            <dd>{timeline.length}</dd>
+          </div>
+          {upcoming.overdue.length > 0 && (
+            <div className="lp-head-stat is-alert">
+              <dt>Overdue</dt>
+              <dd>{upcoming.overdue.length}</dd>
+            </div>
+          )}
+        </dl>
+
+        <div className="lp-head-actions">
+          <div className="lp-head-progress" role="img" aria-label={`Overall progress ${progress}%`}>
+            <span className="lp-mini-ring" style={{ '--pct': progress }} aria-hidden="true" />
+            <span className="lp-head-progress-text">
+              <strong>{progress}%</strong>
+              <span>complete</span>
+            </span>
+          </div>
+          <div className="lp-menu" ref={menuBtnRef}>
             <button
               type="button"
-              className="schedule-nav-btn"
+              className="lp-menu-btn"
               onClick={openMenu}
               title="Options"
+              aria-label="Planner options"
               aria-haspopup="true"
               aria-expanded={showMenu}
             >
-              <MoreVertical size={18} />
+              <MoreVertical size={17} />
             </button>
             {showMenu && (
-              <div className="export-menu" role="menu">
-                <button type="button" className="export-menu-item" role="menuitem" onClick={handleExportPDF} disabled={exporting}>
+              <div className="lp-menu-list" role="menu">
+                <button type="button" className="lp-menu-item" role="menuitem" onClick={handleExportPDF} disabled={exporting}>
                   <FileDown size={14} /> {exporting ? 'Rendering…' : 'Export PDF'}
                 </button>
-                <div className="export-menu-sep" />
-                <button type="button" className="export-menu-item" role="menuitem" style={{ color: 'var(--accent-rose)' }} onClick={handleReset}>
+                <div className="lp-menu-sep" />
+                <button type="button" className="lp-menu-item is-danger" role="menuitem" onClick={handleReset}>
                   <RotateCcw size={14} /> Reset planner
                 </button>
               </div>
             )}
           </div>
         </div>
-      </div>
-      <div className="schedule-dotted-divider" />
+      </header>
 
-      {/* ── Sub-navigation + Add Milestone/Goal (Phase removed) ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <LpSubnav view={view} onChange={(v) => setView(v)} />
-        </div>
-        {view === 'goals' && !activeMilestoneId && (
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowMilestoneInput((v) => !v)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-            <Flag size={14} /> Add Milestone
-          </button>
-        )}
-        {view === 'goals' && activeMilestoneId && !activeGoalId && (
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowGoalTopInput((v) => !v)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-            <Target size={14} /> Add Goal
-          </button>
-        )}
-        {view === 'goals' && activeGoalId && !activeTaskId && (
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowTaskTopInput((v) => !v)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-            <ListChecks size={14} /> Add Task
-          </button>
-        )}
-        {view === 'goals' && activeTaskId && (
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowStepTopInput((v) => !v)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-            <ListChecks size={14} /> Add Step
+      {/* ── Toolbar: sub-navigation + contextual add action ── */}
+      <div className="lp-toolbar">
+        <LpSubnav view={view} onChange={(v) => setView(v)} />
+        {goalsAction && (
+          <button type="button" className="btn btn-primary btn-sm lp-toolbar-action" onClick={goalsAction.toggle}>
+            <GoalsActionIcon size={14} /> {goalsAction.label}
           </button>
         )}
       </div>
+
+      {/* ── Composers ── */}
       {view === 'goals' && !activeMilestoneId && showMilestoneInput && (
-        <div className="lp-panel" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12, padding: '12px 14px' }}>
-          <Flag size={14} style={{ color: 'var(--accent-purple)', flexShrink: 0 }} />
-          <input
-            className="input"
-            value={milestoneInput}
-            onChange={(e) => setMilestoneInput(e.target.value)}
-            placeholder="Milestone name"
-            style={{ flex: '1 1 160px', height: 36 }}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleAddMilestoneTop(); }}
-            autoFocus
-          />
-          <LpDateInput value={milestoneDeadline} onChange={setMilestoneDeadline} title="Deadline" style={{ height: 36 }} />
-          <button type="button" className="btn btn-primary btn-sm" onClick={handleAddMilestoneTop} style={{ height: 36, padding: '0 14px' }}>Add</button>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setShowMilestoneInput(false); setMilestoneInput(''); setMilestoneDeadline(''); }} style={{ height: 36 }}>Cancel</button>
+        <div className="lp-composer" style={{ '--tone': 'var(--accent-purple)' }}>
+          <div className="lp-composer-row">
+            <span className="lp-composer-icon"><Flag size={14} /></span>
+            <input
+              className="input lp-composer-input"
+              value={milestoneInput}
+              onChange={(e) => setMilestoneInput(e.target.value)}
+              placeholder="Milestone name"
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAddMilestoneTop(); }}
+              autoFocus
+            />
+            <LpDateInput value={milestoneDeadline} onChange={setMilestoneDeadline} title="Deadline" />
+            <div className="lp-composer-btns">
+              <button type="button" className="btn btn-primary btn-sm" onClick={handleAddMilestoneTop}>Add</button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setShowMilestoneInput(false); setMilestoneInput(''); setMilestoneDeadline(''); }}>Cancel</button>
+            </div>
+          </div>
         </div>
       )}
       {view === 'goals' && activeMilestoneId && !activeGoalId && showGoalTopInput && (
-        <div className="lp-panel" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12, padding: '12px 14px' }}>
-          <Target size={14} style={{ color: 'var(--accent-amber)', flexShrink: 0 }} />
-          <input
-            className="input"
-            value={goalTopInput}
-            onChange={(e) => setGoalTopInput(e.target.value)}
-            placeholder="Goal title"
-            style={{ flex: '1 1 240px', height: 36 }}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleAddGoalTop(); }}
-            autoFocus
-          />
-          <button type="button" className="btn btn-primary btn-sm" onClick={handleAddGoalTop} style={{ height: 36, padding: '0 14px' }}>Add</button>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setShowGoalTopInput(false); setGoalTopInput(''); }} style={{ height: 36 }}>Cancel</button>
+        <div className="lp-composer" style={{ '--tone': 'var(--accent-amber)' }}>
+          <div className="lp-composer-row">
+            <span className="lp-composer-icon"><Target size={14} /></span>
+            <input
+              className="input lp-composer-input"
+              value={goalTopInput}
+              onChange={(e) => setGoalTopInput(e.target.value)}
+              placeholder="Goal title"
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAddGoalTop(); }}
+              autoFocus
+            />
+            <div className="lp-composer-btns">
+              <button type="button" className="btn btn-primary btn-sm" onClick={handleAddGoalTop}>Add</button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setShowGoalTopInput(false); setGoalTopInput(''); }}>Cancel</button>
+            </div>
+          </div>
         </div>
       )}
       {view === 'goals' && activeGoalId && !activeTaskId && showTaskTopInput && (
-        <div className="lp-panel" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12, padding: '12px 14px' }}>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <ListChecks size={14} style={{ color: 'var(--accent-amber)', flexShrink: 0 }} />
+        <div className="lp-composer" style={{ '--tone': 'var(--accent-amber)' }}>
+          <div className="lp-composer-row">
+            <span className="lp-composer-icon"><ListChecks size={14} /></span>
             <input
-              className="input"
+              className="input lp-composer-input"
               value={taskTopInput}
               onChange={(e) => setTaskTopInput(e.target.value)}
               placeholder="Task title"
-              style={{ flex: '1 1 180px', height: 36 }}
               onKeyDown={(e) => { if (e.key === 'Enter') handleAddTaskTop(); }}
               autoFocus
             />
-            <button type="button" className="btn btn-primary btn-sm" onClick={handleAddTaskTop} style={{ height: 36, padding: '0 14px' }} disabled={!taskTopInput.trim() || (!taskIsRecurring ? !taskTopDueDate : (taskRecurringWeekdays.length===0 || !taskRecurringStartDate || !taskRecurringEndDate))}>Add</button>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setShowTaskTopInput(false); setTaskTopInput(''); setTaskTopStartDate(''); setTaskTopDueDate(''); setTaskIsRecurring(false); setTaskRecurringWeekdays([]); setTaskRecurringEndDate(''); setTaskRecurringStartDate(''); }} style={{ height: 36 }}>Cancel</button>
+            <div className="lp-composer-btns">
+              <button type="button" className="btn btn-primary btn-sm" onClick={handleAddTaskTop} disabled={taskAddDisabled}>Add</button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={resetTaskComposer}>Cancel</button>
+            </div>
           </div>
+
           {!taskIsRecurring && (
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-              <div style={{ flex: '1 1 200px' }}>
-                <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>End date</label>
-                <LpDateInput value={taskTopDueDate} onChange={setTaskTopDueDate} required style={{ height: 36, width: '100%' }} />
+            <div className="lp-composer-fields">
+              <div className="lp-field">
+                <label className="lp-field-label">End date</label>
+                <LpDateInput value={taskTopDueDate} onChange={setTaskTopDueDate} required />
               </div>
             </div>
           )}
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
-            <input type="checkbox" className="lp-check recurring" checked={taskIsRecurring} onChange={(e) => { setTaskIsRecurring(e.target.checked); if (!e.target.checked) { setTaskRecurringWeekdays([]); setTaskRecurringEndDate(''); setTaskRecurringStartDate(''); } }} aria-label="Recurring task" />
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Recurring</span>
-            {taskIsRecurring && <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>week e koidin → kon kon din select koro</span>}
+
+          <label className="lp-switch-row">
+            <input
+              type="checkbox"
+              className="lp-check recurring"
+              checked={taskIsRecurring}
+              onChange={(e) => { setTaskIsRecurring(e.target.checked); if (!e.target.checked) { setTaskRecurringWeekdays([]); setTaskRecurringEndDate(''); setTaskRecurringStartDate(''); } }}
+              aria-label="Recurring task"
+            />
+            <span className="lp-switch-label"><Repeat size={12} /> Recurring</span>
+            {taskIsRecurring && <span className="lp-hint">week e koidin → kon kon din select koro</span>}
           </label>
+
           {taskIsRecurring && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <div className="lp-composer-recurring">
+              <div className="lp-weekdays">
                 {WEEKDAYS.map((w) => {
                   const on = taskRecurringWeekdays.includes(w.key);
                   return (
-                    <button key={w.key} type="button" className={`lp-badge ${on ? 'lp-badge-amber' : 'lp-badge-muted'}`} style={{ cursor: 'pointer', borderStyle: on ? 'solid' : 'dashed' }} onClick={() => setTaskRecurringWeekdays((prev) => on ? prev.filter((x) => x !== w.key) : [...prev, w.key])}>
+                    <button
+                      key={w.key}
+                      type="button"
+                      className={`lp-day-chip${on ? ' is-on' : ''}`}
+                      aria-pressed={on}
+                      onClick={() => setTaskRecurringWeekdays((prev) => on ? prev.filter((x) => x !== w.key) : [...prev, w.key])}
+                    >
                       {w.label}
                     </button>
                   );
                 })}
               </div>
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                <div style={{ flex: '1 1 140px' }}>
-                  <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}><Clock size={10} style={{ verticalAlign: '-1px' }} /> Start date</label>
-                  <LpDateInput value={taskRecurringStartDate} onChange={setTaskRecurringStartDate} style={{ height: 34, width: '100%' }} required />
+              <div className="lp-composer-fields">
+                <div className="lp-field">
+                  <label className="lp-field-label"><Clock size={10} /> Start date</label>
+                  <LpDateInput value={taskRecurringStartDate} onChange={setTaskRecurringStartDate} required />
                 </div>
-                <div style={{ flex: '1 1 140px' }}>
-                  <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>End date</label>
-                  <LpDateInput value={taskRecurringEndDate} onChange={setTaskRecurringEndDate} style={{ height: 34, width: '100%' }} required />
+                <div className="lp-field">
+                  <label className="lp-field-label">End date</label>
+                  <LpDateInput value={taskRecurringEndDate} onChange={setTaskRecurringEndDate} required />
                 </div>
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{taskRecurringWeekdays.length === 0 ? 'Select at least one day' : `${taskRecurringWeekdays.length} days • ${taskRecurringWeekdays.join(', ')}`} {taskRecurringEndDate ? `• until ${fmtDate(taskRecurringEndDate)}` : '• set an end date'} — the task and steps will repeat automatically</div>
+              <div className="lp-hint">
+                {taskRecurringWeekdays.length === 0 ? 'Select at least one day' : `${taskRecurringWeekdays.length} days • ${taskRecurringWeekdays.join(', ')}`} {taskRecurringEndDate ? `• until ${fmtDate(taskRecurringEndDate)}` : '• set an end date'} — the task and steps will repeat automatically
+              </div>
             </div>
           )}
         </div>
@@ -532,29 +571,33 @@ export default function LifePlannerPage() {
         const parentTask = doc.tasks.find((x) => x.id === activeTaskId);
         const parentIsRecurring = !!parentTask?.isRecurring;
         return (
-        <div className="lp-panel" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12, padding: '12px 14px' }}>
-          <ListChecks size={14} style={{ color: parentIsRecurring ? 'var(--accent-amber)' : 'var(--accent-emerald)', flexShrink: 0 }} />
-          <input
-            className="input"
-            value={stepTopInput}
-            onChange={(e) => setStepTopInput(e.target.value)}
-            placeholder="Step title"
-            style={{ flex: '1 1 160px', height: 36 }}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleAddStepTop(); }}
-            autoFocus
-          />
-          {parentIsRecurring ? (
-            <span className="lp-badge lp-badge-amber" style={{ gap: 4 }}><Repeat size={10} /> Auto recurring • {(parentTask.recurringWeekdays||[]).join(', ')}</span>
-          ) : (
-            <LpDateInput value={stepTopDueDate} onChange={setStepTopDueDate} title="Deadline" style={{ height: 36 }} />
-          )}
-          <button type="button" className="btn btn-primary btn-sm" onClick={handleAddStepTop} style={{ height: 36, padding: '0 14px' }}>Add</button>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setShowStepTopInput(false); setStepTopInput(''); setStepTopDueDate(''); }} style={{ height: 36 }}>Cancel</button>
-        </div>
+          <div className="lp-composer" style={{ '--tone': parentIsRecurring ? 'var(--accent-amber)' : 'var(--accent-emerald)' }}>
+            <div className="lp-composer-row">
+              <span className="lp-composer-icon"><ListChecks size={14} /></span>
+              <input
+                className="input lp-composer-input"
+                value={stepTopInput}
+                onChange={(e) => setStepTopInput(e.target.value)}
+                placeholder="Step title"
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAddStepTop(); }}
+                autoFocus
+              />
+              {parentIsRecurring ? (
+                <span className="lp-badge lp-badge-amber"><Repeat size={10} /> Auto recurring • {(parentTask.recurringWeekdays || []).join(', ')}</span>
+              ) : (
+                <LpDateInput value={stepTopDueDate} onChange={setStepTopDueDate} title="Deadline" />
+              )}
+              <div className="lp-composer-btns">
+                <button type="button" className="btn btn-primary btn-sm" onClick={handleAddStepTop}>Add</button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setShowStepTopInput(false); setStepTopInput(''); setStepTopDueDate(''); }}>Cancel</button>
+              </div>
+            </div>
+          </div>
         );
       })()}
 
       {/* ── Views ── */}
+      <div className="lp-view" key={view}>
       {view === 'dashboard' && (
         <DashboardView
           doc={doc}
@@ -570,7 +613,7 @@ export default function LifePlannerPage() {
         />
       )}
 
-      {view === 'goals' && !activeMilestoneId && (
+      {view === 'goals' && (
         <GoalsView
           {...goalFlow}
           activeMilestoneId={activeMilestoneId}
@@ -580,127 +623,6 @@ export default function LifePlannerPage() {
           activeTaskId={activeTaskId}
           setActiveTaskId={setActiveTaskId}
         />
-      )}
-      {view === 'goals' && activeMilestoneId && (
-        <>
-          {/* Breadcrumb outside box, above it */}
-          {(() => {
-            const milestonesBc = doc.goals.filter((g) => (g.types || []).includes('milestone')).sort((a,b)=>(a.order||0)-(b.order||0));
-            const activeMilestoneBc = milestonesBc.find((m) => m.id === activeMilestoneId) || null;
-            const activeGoalBc = activeGoalId ? byId(doc.goals, activeGoalId) : null;
-            const activeTaskBc = activeTaskId ? doc.tasks.find((t) => t.id === activeTaskId) : null;
-            return (
-              <div className="lp-breadcrumb" style={{ marginBottom: 12 }}>
-                <button type="button" className="lp-breadcrumb-item" onClick={() => { setActiveMilestoneId(null); setActiveGoalId(null); setActiveTaskId(null); }} style={{ cursor: 'pointer' }}><Flag size={10} /> Milestones</button>
-                {activeMilestoneBc && (
-                  <>
-                    <ChevronRight size={12} className="lp-breadcrumb-sep" />
-                    <button type="button" className="lp-breadcrumb-item purple active" onClick={() => { setActiveGoalId(null); setActiveTaskId(null); }} style={{ cursor: 'pointer', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${activeMilestoneBc.title} — click to see goals`}><Flag size={10} /> Milestone {milestonesBc.findIndex((m) => m.id === activeMilestoneBc.id) + 1}</button>
-                  </>
-                )}
-                {activeGoalBc && (
-                  <>
-                    <ChevronRight size={12} className="lp-breadcrumb-sep" />
-                    <button type="button" className="lp-breadcrumb-item active" onClick={() => setActiveTaskId(null)} style={{ cursor: 'pointer', background: 'var(--accent-amber-glow)', borderColor: 'var(--accent-amber)', color: 'var(--accent-amber)', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${activeGoalBc.title} — click to see tasks`}><Target size={10} /> Goal {goalDisplayNumber(doc, activeGoalBc)}</button>
-                  </>
-                )}
-                {activeTaskBc && (
-                  <>
-                    <ChevronRight size={12} className="lp-breadcrumb-sep" />
-                    <span className="lp-breadcrumb-item active" style={{ cursor: 'default', background: 'var(--accent-emerald-glow)', borderColor: 'var(--accent-emerald)', color: 'var(--accent-emerald)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={activeTaskBc.name}><ListChecks size={10} /> {activeTaskBc.name}</span>
-                  </>
-                )}
-              </div>
-            );
-          })()}
-          <div className="lp-two-box" style={{ paddingTop: 4, alignItems: 'flex-start' }}>
-           <div className="lp-box lp-box-filler">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {(() => {
-                  const m = doc.goals.find((g) => g.id === activeMilestoneId);
-                  if (!m) return null;
-                  const milestonesSorted = [...doc.goals].filter((g) => (g.types || []).includes('milestone')).sort((a,b)=> (a.order||0)-(b.order||0));
-                  const idx = milestonesSorted.findIndex((x)=>x.id===m.id);
-                  const displayNum = idx >=0 ? idx+1 : m.number;
-                  const pct = milestoneProgress(doc, m.id);
-                  const overdue = m.timingDate && m.timingDate < todayKey() && pct < 100;
-                  return (
-                    <div className="lp-hierarchy-card" style={{ padding: '12px 14px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                        <Flag size={12} style={{ color: 'var(--accent-purple)' }} />
-                        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--accent-purple)' }}>Milestone</span>
-                        <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 800, color: 'var(--accent-purple)' }}>{pct}%</span>
-                      </div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6, wordBreak: 'break-word' }}>Milestone {displayNum} : {m.title}</div>
-                      <LpBar pct={pct} color="var(--accent-purple)" />
-                      {m.timingDate && <span className={`lp-badge ${overdue ? 'lp-badge-rose' : 'lp-badge-cyan'}`} style={{ marginTop: 8, display: 'inline-flex' }}><Clock size={10} /> {fmtDate(m.timingDate)}</span>}
-                    </div>
-                  );
-                })()}
-                {activeGoalId && (() => {
-                  const g = byId(doc.goals, activeGoalId);
-                  if (!g) return null;
-                  const pct = goalProgress(doc, g.id);
-                  const autoDl = goalAutoDeadline(doc, g.id);
-                  const overdue = autoDl && autoDl < todayKey() && pct < 100;
-                  return (
-                    <div className="lp-hierarchy-card" style={{ padding: '12px 14px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                        <Target size={12} style={{ color: 'var(--accent-amber)' }} />
-                        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--accent-amber)' }}>Goal G{goalDisplayNumber(doc,g)}</span>
-                        <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 800, color: 'var(--accent-amber)' }}>{pct}%</span>
-                      </div>
-                       <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6, wordBreak: 'break-word' }}>{g.title}</div>
-                      <LpBar pct={pct} color="var(--accent-amber)" />
-                      {autoDl ? (
-                        <span className={`lp-badge ${overdue ? 'lp-badge-rose' : 'lp-badge-cyan'}`} style={{ marginTop: 8, display: 'inline-flex' }} title="Auto from tasks’ last end date"><Clock size={10} /> {fmtDate(autoDl)}</span>
-                      ) : (
-                        <span className="lp-badge lp-badge-muted" style={{ marginTop: 8, display: 'inline-flex', borderStyle: 'dashed' }}><CalendarDays size={10} /> No deadline</span>
-                      )}
-                    </div>
-                  );
-                })()}
-                {activeTaskId && (() => {
-                  const t = doc.tasks.find((x) => x.id === activeTaskId);
-                  if (!t) return null;
-                  const steps = stepsOfTask(doc, t.id);
-                  const done = steps.filter((s) => s.isDone).length;
-                  const pct = taskProgress(doc, t.id);
-                  const overdue = t.dueDate && t.dueDate < todayKey() && pct < 100;
-                  return (
-                    <div className="lp-hierarchy-card" style={{ padding: '12px 14px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                        <ListChecks size={12} style={{ color: 'var(--accent-amber)' }} />
-                        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--accent-amber)' }}>Task</span>
-                        <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 800, color: 'var(--accent-amber)' }}>{pct}%</span>
-                      </div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6, wordBreak: 'break-word' }}>{t.name}</div>
-                      <LpBar pct={pct} color="var(--accent-amber)" />
-                      <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4 }}>{steps.length ? `${done}/${steps.length} steps done` : (t.manualDone ? 'Completed' : 'No steps — tick to complete')}</div>
-                      {t.isRecurring ? (
-                        <span className="lp-badge lp-badge-amber" style={{ marginTop: 6, display: 'inline-flex', gap:4 }}><Repeat size={10}/> {(t.recurringWeekdays||[]).join(', ')} {t.startDate || t.recurringStartDate ? `${fmtDate(t.startDate || t.recurringStartDate)} → ` : ''}{t.recurringEndDate ? fmtDate(t.recurringEndDate) : 'No end'}</span>
-                      ) : (t.startDate || t.dueDate) ? (
-                        <span className={`lp-badge ${overdue ? 'lp-badge-rose' : 'lp-badge-cyan'}`} style={{ marginTop: 6, display: 'inline-flex', gap:4 }}><Clock size={10} /> {t.startDate && t.dueDate && t.startDate !== t.dueDate ? `${fmtDate(t.startDate)} → ${fmtDate(t.dueDate)}` : fmtDate(t.dueDate || t.startDate)}</span>
-                      ) : null}
-                    </div>
-                  );
-                })()}
-              </div>
-          </div>
-          <div className="lp-box lp-box-content" style={{ marginTop: 12, transform: 'translateY(-4px)' }}>
-            <GoalsView
-              {...goalFlow}
-              activeMilestoneId={activeMilestoneId}
-              setActiveMilestoneId={setActiveMilestoneId}
-              activeGoalId={activeGoalId}
-              setActiveGoalId={setActiveGoalId}
-              activeTaskId={activeTaskId}
-              setActiveTaskId={setActiveTaskId}
-              hideBreadcrumb
-            />
-          </div>
-        </div>
-        </>
       )}
 
       {view === 'courses' && <CoursesView />}
@@ -715,8 +637,9 @@ export default function LifePlannerPage() {
           onViewTimeline={() => setView('timeline')}
         />
       )}
+      </div>
 
-      {/* ── Add / Edit Goal modal — Phase removed, direct milestoneId ── */}
+      {/* ── Add / Edit Goal modal ── */}
       {showGoalForm && (
         <GoalFormModal
           doc={doc}
@@ -745,134 +668,154 @@ export default function LifePlannerPage() {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// DASHBOARD VIEW — progress ring, phase bars, today panel, quick stats
+// DASHBOARD VIEW — progress hero + KPIs, milestone list, up-next agenda
 // ═════════════════════════════════════════════════════════════════════════════
 
 function DashboardView({
   doc, progress, upcoming, nextDeadline, daysLeft,
-  hasAnything, hasGoals, onPhaseClick, onViewTimeline,
-  onOpenGoal,
+  hasAnything, onPhaseClick, onViewTimeline, onOpenGoal,
 }) {
-  const doneGoals = doc.goals.filter((g) => goalProgress(doc, g.id) === 100).length;
+  const realGoals = doc.goals.filter((g) => !(g.types || []).includes('milestone'));
+  const doneGoals = realGoals.filter((g) => goalProgress(doc, g.id) === 100).length;
+  const milestones = doc.goals
+    .filter((g) => (g.types || []).includes('milestone'))
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
 
   if (!hasAnything) {
     return (
       <LpEmpty
         icon={Target}
         title="No plan yet"
-        hint="Your dashboard is empty. Create goals or timeline entries from their tabs to see insights here."
+        hint="Your dashboard is empty. Create a milestone from the Milestones tab to start seeing insights here."
       />
     );
   }
 
+  const overdueCount = upcoming.overdue.length;
+  const agenda = [
+    ...upcoming.overdue.slice(0, 3).map((e) => ({ e, overdue: true })),
+    ...upcoming.list.map((e) => ({ e, overdue: false })),
+  ];
+
   return (
-    <div>
-      <div className="lp-stats">
-        <LpStat icon={<Target size={17} />} value={`${doneGoals}/${doc.goals.length}`} label="Goals done" />
-        <LpStat icon={<Flag size={17} />} tone="purple" value={String(doc.goals.filter((g) => (g.types || []).includes('milestone')).length)} label="Milestones" />
-        {nextDeadline && (
-          <LpStat icon={<Clock size={17} />} tone="cyan" value={daysLeft === 0 ? 'Today' : `${daysLeft}d`} label={`Next: ${nextDeadline.label.slice(0, 22)}`} />
-        )}
-        <LpStat
-          icon={<AlertTriangle size={17} />}
-          tone={upcoming.overdue.length > 0 ? 'rose' : 'green'}
-          value={String(upcoming.overdue.length)}
-          label="Overdue items"
-        />
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
-        <div className="lp-panel">
-          <div className="lp-panel-head">
-            <h4 className="lp-panel-title"><TrendingUp size={15} /> Overall progress</h4>
-            <span className="lp-panel-head-value">{progress}%</span>
-          </div>
-          <div className="lp-overall-bar"><LpBar pct={progress} /></div>
-          {hasGoals ? (() => {
-            const milestones = doc.goals.filter((g) => (g.types || []).includes('milestone'));
-            const unMilestoned = doc.goals.filter((g) => !(g.types || []).includes('milestone') && !g.milestoneId && !g.phaseId);
-            return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {milestones.map((m, idx) => (
-                <button key={m.id} type="button" className="lp-phase-row" onClick={onPhaseClick}>
-                  <span className="lp-phase-dot" style={{ background: 'var(--accent-purple)' }} />
-                  <span className="lp-phase-name">Milestone {idx + 1}: {m.title}</span>
-                  <span className="lp-phase-track"><LpBar pct={milestoneProgress(doc, m.id)} color="var(--accent-purple)" /></span>
-                  <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{milestoneProgress(doc, m.id)}%</span>
-                </button>
-              ))}
-              {unMilestoned.length > 0 && (
-                <div className="lp-phase-row" style={{ cursor: 'default' }}>
-                  <span className="lp-phase-dot" style={{ background: 'var(--text-tertiary)' }} />
-                  <span className="lp-phase-name">Unassigned goals</span>
-                  <span className="lp-phase-track">
-                    <LpBar
-                      pct={Math.round(
-                        unMilestoned.reduce((s, g) => s + goalProgress(doc, g.id), 0)
-                        / Math.max(1, unMilestoned.length)
-                      )}
-                    />
-                  </span>
-                </div>
-              )}
-              {milestones.length === 0 && unMilestoned.length === 0 && (
-                <div className="lp-phase-row" style={{ cursor: 'default' }}>
-                  <span className="lp-phase-name" style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>All goals are assigned to milestones</span>
-                </div>
-              )}
-            </div>
-            );
-          })() : (
-            <LpEmpty icon={Target} title="No goals yet" hint="Create your first milestone & goal to start tracking progress." />
-          )}
+    <div className="pb-stack">
+      {/* ── Hero: overall progress + KPIs ── */}
+      <section className="pb-card pb-hero">
+        <div className="pb-hero-main">
+          <span className="pb-label">Overall progress</span>
+          <div className="pb-hero-value">{progress}<span>%</span></div>
+          <p className="pb-hero-sub">
+            {doneGoals} of {realGoals.length} goal{realGoals.length === 1 ? '' : 's'} complete
+            {' · '}{milestones.length} milestone{milestones.length === 1 ? '' : 's'}
+          </p>
         </div>
 
-        <div className="lp-panel">
-          <div className="lp-panel-head">
-            <h4 className="lp-panel-title" style={{ margin: 0 }}><Clock size={15} /> Upcoming</h4>
-            <span className="lp-panel-head-value" style={{ fontSize: 11 }}>{upcoming.usingFallback ? 'next 5 tasks' : 'next 5 days'}</span>
+        <dl className="pb-kpis">
+          <div className="pb-kpi">
+            <dt>Goals done</dt>
+            <dd>{doneGoals}<small>/{realGoals.length}</small></dd>
           </div>
-          {upcoming.overdue.length === 0 && upcoming.list.length === 0 ? (
-            <LpEmpty icon={Clock} title="Nothing upcoming" hint="No tasks or steps due ahead. Items with due dates will show up here." />
+          <div className="pb-kpi">
+            <dt>Milestones</dt>
+            <dd>{milestones.length}</dd>
+          </div>
+          <div className="pb-kpi">
+            <dt>Next deadline</dt>
+            <dd>{nextDeadline ? (daysLeft === 0 ? 'Today' : `${daysLeft}d`) : '—'}</dd>
+            {nextDeadline && <span className="pb-kpi-note" title={nextDeadline.label}>{nextDeadline.label}</span>}
+          </div>
+          <div className={`pb-kpi${overdueCount ? ' is-alert' : ''}`}>
+            <dt>Overdue</dt>
+            <dd>{overdueCount}</dd>
+          </div>
+        </dl>
+
+        <div className="pb-hero-bar" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} aria-label="Overall progress">
+          <span style={{ width: `${Math.max(0, Math.min(100, progress))}%` }} />
+        </div>
+      </section>
+
+      <div className="pb-grid-2">
+        {/* ── Milestones ── */}
+        <section className="pb-card">
+          <header className="pb-head">
+            <h3 className="pb-title">Milestones</h3>
+            <span className="pb-count">{milestones.length}</span>
+            <button type="button" className="pb-link" onClick={onPhaseClick}>Open <ChevronRight size={13} /></button>
+          </header>
+          {milestones.length === 0 ? (
+            <p className="pb-empty-line">No milestones yet.</p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 340, overflowY: 'auto', paddingRight: 2 }}>
-              {upcoming.overdue.slice(0, 3).map((e, i) => (
-                <TimelineRow key={`od-${i}`} entry={e} overdue onOpenGoal={onOpenGoal} />
-              ))}
-              {upcoming.list.map((e, i) => (
-                <TimelineRow key={`nx-${i}`} entry={e} onOpenGoal={onOpenGoal} />
+            <div className="pb-list">
+              {milestones.map((m, idx) => {
+                const pct = milestoneProgress(doc, m.id);
+                const goals = goalsOfMilestone(doc, m.id).length;
+                return (
+                  <button key={m.id} type="button" className="pb-mrow" onClick={onPhaseClick}>
+                    <span className="pb-index">{String(idx + 1).padStart(2, '0')}</span>
+                    <span className="pb-mrow-body">
+                      <span className="pb-mrow-title" title={m.title}>{m.title}</span>
+                      <span className="pb-mrow-meta">
+                        <span className="pb-bar"><span style={{ width: `${pct}%` }} /></span>
+                        <span>{goals} goal{goals === 1 ? '' : 's'}</span>
+                      </span>
+                    </span>
+                    <span className="pb-pct">{pct}%</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* ── Up next ── */}
+        <section className="pb-card">
+          <header className="pb-head">
+            <h3 className="pb-title">Up next</h3>
+            <span className="pb-meta">{upcoming.usingFallback ? 'Next 5 tasks' : 'Next 5 days'}</span>
+            <button type="button" className="pb-link" onClick={onViewTimeline}>Timeline <ChevronRight size={13} /></button>
+          </header>
+          {agenda.length === 0 ? (
+            <p className="pb-empty-line">Nothing due ahead. Items with dates will show up here.</p>
+          ) : (
+            <div className="pb-list pb-list-scroll">
+              {agenda.map(({ e, overdue }, i) => (
+                <AgendaRow key={`${overdue ? 'od' : 'nx'}-${i}`} entry={e} overdue={overdue} onOpenGoal={onOpenGoal} />
               ))}
             </div>
           )}
-        </div>
+        </section>
       </div>
     </div>
   );
 }
 
-function TimelineRow({ entry, overdue = false, onOpenGoal }) {
+function AgendaRow({ entry, overdue = false, onOpenGoal }) {
+  const d = new Date(`${entry.date}T00:00:00`);
+  const valid = !Number.isNaN(d.getTime());
   return (
     <button
       type="button"
       onClick={() => entry.goal && onOpenGoal(entry.goal.id, { taskId: entry.task?.id || null, stepId: entry.step?.id || null, milestoneId: entry.milestone?.id || null })}
-      className="lp-phase-row"
-      style={{ alignItems: 'flex-start' }}
+      className={`pb-arow${overdue ? ' is-overdue' : ''}`}
       disabled={!entry.goal}
     >
-      <span
-        className="lp-badge"
-        style={{
-          background: overdue ? 'var(--accent-rose-glow)' : 'var(--bg-tertiary)',
-          color: overdue ? 'var(--accent-rose)' : 'var(--text-secondary)',
-        }}
-      >
-        {overdue ? 'Overdue' : fmtDate(entry.date)}
+      <span className="pb-date" aria-label={fmtDate(entry.date)}>
+        {valid ? (
+          <>
+            <strong>{d.getDate()}</strong>
+            <span>{d.toLocaleString('en-GB', { month: 'short' })}</span>
+          </>
+        ) : <span>{fmtDate(entry.date)}</span>}
       </span>
-      <span className="lp-phase-name" style={{ whiteSpace: 'normal', lineHeight: 1.4 }}>
-        {entry.label}
-        {entry.goal && <span style={{ color: 'var(--text-tertiary)' }}> · {entry.goal.title}</span>}
+      <span className="pb-arow-body">
+        <span className="pb-arow-title">{entry.label}</span>
+        <span className="pb-arow-meta">
+          {overdue && <em>Overdue</em>}
+          {entry.goal ? entry.goal.title : (entry.kind === 'step' ? 'Step' : 'Task')}
+        </span>
       </span>
-      <ChevronRight size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0, marginTop: 2 }} />
+      <ChevronRight size={14} className="pb-chev" aria-hidden="true" />
     </button>
   );
 }

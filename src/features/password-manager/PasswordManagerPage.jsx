@@ -334,6 +334,7 @@ export default function PasswordManagerPage() {
     const reused = records.length - new Set(records.map((rec) => rec.password).filter(Boolean)).size;
     return { total: records.length, strong, weak: records.length - strong, reused };
   }, [records]);
+  const vaultHealth = vaultStats.total ? Math.round((vaultStats.strong / vaultStats.total) * 100) : 0;
   const matchingPlatforms = PLATFORM_SUGGESTIONS.filter((item) =>
     !platform.trim() || item.toLowerCase().includes(platform.trim().toLowerCase())
   );
@@ -345,41 +346,33 @@ export default function PasswordManagerPage() {
     <div className="glass-card-static schedule-widget pm-widget animate-fadeInUp">
 
       {/* ── Masthead ── */}
-      <div className="schedule-masthead">
-        <div className="schedule-title-block">
-          <div className="schedule-icon-tile pm-icon-tile">
-            <KeyRound size={20} strokeWidth={2.2} />
+      <header className="pm-head">
+        <div className="pm-head-title">
+          <div className="pm-head-tile" aria-hidden="true">
+            <KeyRound size={20} strokeWidth={2.1} />
           </div>
-          <div>
-            <span className="schedule-overline">Daily Life</span>
-            <p className="schedule-title">Password Manager</p>
-            <span className="schedule-subtitle">Secure login vault · AES-256 encrypted</span>
+          <div className="pm-head-text">
+            <span className="pm-head-overline">Daily Life</span>
+            <h2 className="pm-head-name">Password Manager</h2>
+            <span className="pm-head-subtitle">Secure login vault · AES-256 encrypted</span>
           </div>
         </div>
 
-        <div className="schedule-masthead-center">
-          <span className="pm-badge">
-            <span className="pm-badge-dot" aria-hidden="true" /> AES-256-GCM encrypted
-          </span>
-        </div>
-
-      </div>
-
-      <div className="schedule-dotted-divider" />
-
-      <section className="pm-overview" aria-label="Vault overview">
-        <div className="pm-overview-intro">
-          <span className="pm-overview-kicker">YOUR DIGITAL LIFE, IN ONE PLACE</span>
-          <h2>Your vault, at a glance</h2>
-          <p>Keep every login organized and your accounts protected.</p>
-        </div>
-        <div className="pm-stat-card"><span className="pm-stat-icon"><KeyRound size={16} /></span><strong>{vaultStats.total}</strong><span>Saved accounts</span><small>Across your services</small></div>
-        <div className="pm-stat-card pm-stat-secure"><span className="pm-stat-icon"><Lock size={16} /></span><strong>{vaultStats.strong}<small>/{vaultStats.total}</small></strong><span>Strong passwords</span><small>{vaultStats.total ? Math.round((vaultStats.strong / vaultStats.total) * 100) : 0}% of your vault</small></div>
-        <div className="pm-health-card">
-          <div className="pm-health-copy"><span>Vault health</span><strong>{vaultStats.total ? Math.round((vaultStats.strong / vaultStats.total) * 100) : 0}<small>%</small></strong><em>{vaultStats.total ? (vaultStats.weak ? `${vaultStats.weak} to review` : 'Looking good') : 'Add your first login'}</em></div>
-          <div className="pm-health-ring" style={{ '--health': `${vaultStats.total ? (vaultStats.strong / vaultStats.total) * 100 : 0}%` }} role="img" aria-label={`${vaultStats.total ? Math.round((vaultStats.strong / vaultStats.total) * 100) : 0}% strong passwords`}><span><Lock size={18} /></span></div>
-        </div>
-      </section>
+        <dl className="pm-head-stats">
+          <div className="pm-head-stat">
+            <dt>Accounts</dt>
+            <dd>{vaultStats.total}</dd>
+          </div>
+          <div className="pm-head-stat">
+            <dt>Strong</dt>
+            <dd>{vaultStats.strong}</dd>
+          </div>
+          <div className="pm-head-stat">
+            <dt>Vault health</dt>
+            <dd>{vaultHealth}%</dd>
+          </div>
+        </dl>
+      </header>
 
       {/* ── Notices / errors ── */}
       {notice && <div className="pm-notice pm-notice-ok">{notice}</div>}

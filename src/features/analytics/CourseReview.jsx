@@ -170,7 +170,7 @@ export default function CourseReview() {
       <div className="schedule-masthead cr-masthead">
         <div className="schedule-title-block">
           <div className="schedule-icon-tile">
-            <MessageSquare size={20} strokeWidth={2.2} />
+            <Star size={20} strokeWidth={2.2} />
           </div>
           <div>
             <span className="schedule-overline">Shadow</span>

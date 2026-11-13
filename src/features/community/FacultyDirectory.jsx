@@ -1,12 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  School, Search, Mail, ExternalLink, MessageCircle, Phone, Building2,
-  ChevronDown,
-} from 'lucide-react';
+import { School, Search, ExternalLink, MessageCircle } from 'lucide-react';
 import { getAllAccounts, getInitials } from '../../utils/authStorage';
 import { getCachedMembers, refreshMemberDirectory } from '../../utils/memberDirectory';
 import { useAuth } from '../../context/AuthContext';
+import { DirectoryDepartmentHeader, DirectoryMemberCard } from './DirectoryShared';
+import { getDepartmentLabel } from './directoryUtils';
 
 // Canonical AUST department order — every department renders even when empty.
 const DEPARTMENTS = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'];
@@ -24,8 +23,6 @@ const DEPT_FULL_NAMES = {
 
 // Canonical designation order — anything else sorts alphabetically after.
 const DESIGNATION_ORDER = ['Professor', 'Associate Professor', 'Assistant Professor', 'Lecturer'];
-
-const AVATAR_IMG_STYLE = { width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' };
 
 /**
  * Faculty list = localStorage accounts ∪ server member list (deduped by id).
@@ -166,7 +163,7 @@ export default function FacultyDirectory() {
   };
 
   return (
-    <div className="student-dir faculty-dir">
+    <div className="student-dir faculty-dir member-directory">
       {/* Masthead */}
       <div className="schedule-masthead">
         <div className="schedule-title-block">
@@ -235,124 +232,75 @@ export default function FacultyDirectory() {
           <h3>No faculty match your filters</h3>
         </div>
       ) : (
-        <div className="student-dir-content alumni-groups">
+        <div className="alumni-groups">
           {deptGroups.map(({ dept, members }) => {
             // Searching or picking one department auto-reveals the matching
             // group, so results never hide behind a collapsed header.
             const isOpen = Boolean(openDepts[dept])
               || Boolean(searchTerm.trim())
               || activeDept !== 'all';
+            const contentId = `faculty-department-${encodeURIComponent(dept)}`;
 
             return (
-              <div key={dept} className="student-dir-dept-section faculty-dept alumni-dept-group">
-                <div className="alumni-batch-header">
-                <button
-                  type="button"
-                  className="student-dir-dept-header alumni-group-toggle"
-                  onClick={() => toggleDept(dept)}
-                  aria-expanded={isOpen}
-                >
-                    <ChevronDown size={16} className={`student-dir-dept-chevron alumni-group-chevron${isOpen ? ' is-expanded' : ''}`} />
-                  <Building2 size={16} className="student-dir-dept-icon alumni-department-icon" />
-                  <span className="student-dir-dept-info">
-                    <span className="student-dir-dept-name alumni-department-name" role="heading" aria-level="3">
-                      {dept}
-                    </span>
-                  </span>
-                </button>
-                </div>
+              <div key={dept}>
+                <DirectoryDepartmentHeader
+                  label={getDepartmentLabel(dept)}
+                  count={members.length}
+                  expanded={isOpen}
+                  onToggle={() => toggleDept(dept)}
+                  contentId={contentId}
+                />
 
-                {isOpen && (
-                  <div className="faculty-dir-dept-body">
-                    <div className="alumni-grid-inner">
-                      {members.map((f) => {
-                        const isMe = f.id === user?.id;
-                        return (
-                          <div key={f.id} className="alumni-card">
-                            <div className="alumni-card-top">
+                <div id={contentId} className="alumni-grid-inner" hidden={!isOpen}>
+                  {members.map((f) => {
+                    const isMe = f.id === user?.id;
+                    return (
+                      <DirectoryMemberCard
+                        key={f.id}
+                        member={f}
+                        roleLabel={f.designation || 'Faculty'}
+                        isMe={isMe}
+                        onOpenProfile={() => navigate(`/members/${f.id}`)}
+                        deptLine={[f.designation, f.department].filter(Boolean).join(' · ')}
+                        metaItems={[f.phone]}
+                        email={f.email}
+                        previewStats={[
+                          ['Department', getDepartmentLabel(f.department)],
+                          ['Designation', f.designation],
+                          ['Email', f.email],
+                          ['Phone', f.phone],
+                        ]}
+                        actions={(
+                          <>
+                            {f.linkedin && (
+                              <a
+                                href={f.linkedin}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="alumni-card-msg"
+                                title={`${f.name} on LinkedIn`}
+                                aria-label={`${f.name} on LinkedIn`}
+                              >
+                                <ExternalLink size={14} />
+                              </a>
+                            )}
+                            {!isMe && !isGuest && (
                               <button
                                 type="button"
-                                className="avatar"
-                                style={{
-                                  width: '32px',
-                                  height: '32px',
-                                  flexShrink: 0,
-                                  background: 'var(--accent-amber-glow)',
-                                  color: 'var(--accent-amber)',
-                                  fontSize: '11px',
-                                  fontWeight: 700,
-                                  overflow: 'hidden',
-                                  padding: 0,
-                                  border: 'none',
-                                  cursor: 'pointer',
-                                }}
-                                onClick={() => navigate(`/members/${f.id}`)}
-                                title={`View ${f.name}'s profile / ID`}
-                                aria-label={`View ${f.name}'s profile`}
+                                className="alumni-card-msg"
+                                onClick={() => handleMessage(f)}
+                                title={`Message ${f.name}`}
+                                aria-label={`Message ${f.name}`}
                               >
-                                {f.avatar ? (
-                                  <img src={f.avatar} alt="" style={AVATAR_IMG_STYLE} />
-                                ) : f.initials}
+                                <MessageCircle size={14} />
                               </button>
-                              <div className="alumni-card-info">
-                                <h3 className="alumni-card-name">
-                                  {f.name}
-                                  {isMe && (
-                                    <span className="badge badge-amber" style={{ fontSize: '9px', marginLeft: '6px', padding: '1px 6px' }}>
-                                      You
-                                    </span>
-                                  )}
-                                </h3>
-                                {f.designation && (
-                                  <p className="alumni-card-dept" style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                                    <School size={11} /> {f.designation}
-                                  </p>
-                                )}
-                                <p className="alumni-card-dept">{DEPT_FULL_NAMES[dept] || dept}</p>
-                              </div>
-                            </div>
-
-                            <div className="alumni-card-details">
-                              <span className="alumni-card-detail">
-                                <Mail size={12} /> {f.email || ''}
-                              </span>
-                              <span className="alumni-card-detail">
-                                <Phone size={12} /> {f.phone || ''}
-                              </span>
-                            </div>
-
-                            <div className="alumni-card-footer">
-                              {f.linkedin ? (
-                                <a
-                                  href={f.linkedin}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="faculty-card-linkedin"
-                                  title={`${f.name} on LinkedIn`}
-                                >
-                                  <ExternalLink size={13} />
-                                </a>
-                              ) : (
-                                <span />
-                              )}
-                              {isMe ? (
-                                <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>Your profile</span>
-                              ) : (
-                                <button
-                                  type="button"
-                                  className="btn btn-secondary btn-sm"
-                                  onClick={() => handleMessage(f)}
-                                >
-                                  <MessageCircle size={13} /> Message
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                            )}
+                          </>
+                        )}
+                      />
+                    );
+                  })}
+                </div>
               </div>
             );
           })}

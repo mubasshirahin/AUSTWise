@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Crosshair, Flag, Target, ListChecks, CalendarDays, List } from 'lucide-react';
-import { buildTimelineRange, fmtDate, todayKey, goalDisplayNumber, byId } from './lifePlannerStorage';
+import { ChevronLeft, ChevronRight, Crosshair, CalendarDays, List, Check } from 'lucide-react';
+import { buildTimelineRange, fmtDate, todayKey, goalDisplayNumber } from './lifePlannerStorage';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const MONTHS_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -41,21 +41,10 @@ export default function TimelineView({ doc, onOpenGoal }) {
     }
   }, [decadeStart, selectedYear]);
 
-  const decadeYears = useMemo(() => Array.from({ length: 10 }, (_, i) => decadeStart + i), [decadeStart]);
   const decadeFrom = `${decadeStart}-01-01`;
   const decadeTo = `${decadeStart + 9}-12-31`;
 
   const allEntries = useMemo(() => buildTimelineRange(doc, decadeFrom, decadeTo), [doc, decadeFrom, decadeTo]);
-
-  // Counts per year for badge
-  const countByYear = useMemo(() => {
-    const m = {};
-    for (const e of allEntries) {
-      const y = Number(e.date.slice(0,4));
-      m[y] = (m[y]||0)+1;
-    }
-    return m;
-  }, [allEntries]);
 
   const countByMonth = useMemo(() => {
     const m = {};
@@ -139,8 +128,10 @@ export default function TimelineView({ doc, onOpenGoal }) {
   const [showTodayFab, setShowTodayFab] = useState(false);
 
   const scrollToToday = useCallback((behavior = 'smooth') => {
-    const el = timelineRef.current?.querySelector(`[data-date="${today}"]`);
-    if (el) el.scrollIntoView({ behavior, block: 'center', inline: 'nearest' });
+    // Scroll only the inner agenda box — never the page.
+    const sc = timelineRef.current;
+    const el = sc?.querySelector(`[data-date="${today}"]`);
+    if (el) sc.scrollTo({ top: Math.max(0, el.offsetTop - sc.clientHeight / 2 + el.offsetHeight / 2), behavior });
   }, [today]);
 
   const jumpToToday = useCallback(() => {
@@ -180,128 +171,123 @@ export default function TimelineView({ doc, onOpenGoal }) {
   }, [allDateKeys, today]);
 
   // ── Shared entry row (list view + calendar day panel) ──
+  const KIND_LABEL = { task: 'Task', step: 'Step', goal: 'Goal deadline', milestone: 'Milestone deadline' };
   const renderEntry = (e, i) => {
     const milestone = e.milestone || null;
     const goal = e.goal || null;
     const task = e.task || null;
     const msIdx = milestone ? msList.findIndex((x) => x.id === milestone.id) : -1;
     const open = () => goal && onOpenGoal(goal.id, { taskId: task?.id || null, stepId: e.step?.id || null, milestoneId: milestone?.id || null });
+    const late = e.date < today && !e.done;
     return (
-      <div key={`${e.date}-${e.kind}-${i}`} className="lp-tl-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 0 }}>
-        <div className="lp-tl-label" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          {e.recurring && <span className="lp-badge lp-badge-amber" style={{ fontSize: 9 }}>Recurring</span>}
-          {e.kind === 'goal' && <span className="lp-badge lp-badge-purple" style={{ fontSize: 9 }}>Goal deadline</span>}
-          {e.kind === 'milestone' && <span className="lp-badge lp-badge-purple" style={{ fontSize: 9 }}>Milestone deadline</span>}
-          {e.kind === 'task' && !e.recurring && <span className="lp-badge lp-badge-amber" style={{ fontSize: 9 }}>Task</span>}
-          {e.kind === 'step' && !e.recurring && <span className="lp-badge lp-badge-emerald" style={{ fontSize: 9 }}>Step</span>}
-          <span
-            role={goal ? 'button' : undefined}
-            tabIndex={goal ? 0 : undefined}
-            title={goal ? 'Open in Goals' : undefined}
-            style={{ cursor: goal ? 'pointer' : 'default', textDecoration: goal ? 'underline dotted' : 'none', textUnderlineOffset: 3, fontSize: 13 }}
-            onClick={open}
-            onKeyDown={(ev) => { if ((ev.key === 'Enter' || ev.key === ' ') && goal) { ev.preventDefault(); open(); } }}
-          >
-            {e.kind === 'task' ? <strong>{e.label}</strong> : e.label}
+      <button
+        key={`${e.date}-${e.kind}-${i}`}
+        type="button"
+        className={`pb-entry kind-${e.kind}${e.done ? ' is-done' : ''}${late ? ' is-late' : ''}`}
+        onClick={open}
+        disabled={!goal}
+        title={goal ? 'Open in Milestones' : undefined}
+      >
+        <span className="pb-entry-mark" aria-hidden="true">{e.done ? <Check size={11} /> : null}</span>
+        <span className="pb-entry-body">
+          <span className="pb-entry-top">
+            <span className="pb-entry-kind">{e.recurring ? 'Recurring task' : KIND_LABEL[e.kind] || e.kind}</span>
+            {e.done && <span className="pb-entry-flag is-done">Done</span>}
+            {late && <span className="pb-entry-flag is-late">Overdue</span>}
           </span>
-          {e.done && <span className="lp-badge lp-badge-emerald" style={{ fontSize: 9 }}>Done</span>}
-        </div>
-        <div className="lp-tl-entry-footer">
-          {milestone && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--accent-purple)', fontWeight: 600 }}>
-              <Flag size={10} /> Milestone {msIdx >= 0 ? msIdx + 1 : '?'}: {milestone.title}
+          <span className="pb-entry-title">{e.label}</span>
+          {(milestone || goal) && (
+            <span className="pb-entry-path">
+              {milestone && <span>M{msIdx >= 0 ? msIdx + 1 : '?'} · {milestone.title}</span>}
+              {goal && <><ChevronRight size={10} aria-hidden="true" /><span>G{goalDisplayNumber(doc, goal)} · {goal.title}</span></>}
+              {e.kind === 'step' && task && <><ChevronRight size={10} aria-hidden="true" /><span>{task.name}</span></>}
             </span>
           )}
-          {goal && (
-            <>
-              {milestone && <span style={{ opacity: 0.4 }}>›</span>}
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--accent-amber)', fontWeight: 600 }}>
-                <Target size={10} /> Goal G{goalDisplayNumber(doc, goal)}: {goal.title}
-              </span>
-            </>
-          )}
-          {e.kind === 'step' && task && (
-            <>
-              <span style={{ opacity: 0.4 }}>›</span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--accent-cyan)', fontWeight: 600 }}>
-                <ListChecks size={10} /> {task.name}
-              </span>
-            </>
-          )}
-          {e.kind === 'step' && <span style={{ color: 'var(--accent-emerald)', fontWeight: 600, fontSize: 10 }}>› Step</span>}
-        </div>
-      </div>
+        </span>
+        {goal && <ChevronRight size={14} className="pb-chev" aria-hidden="true" />}
+      </button>
     );
   };
 
-  const shiftDecade = (dir) => {
-    setDecadeStart(s => s + dir * 10);
-  };
   const shiftYear = (dir) => {
     const ny = selectedYear + dir;
-    // auto-shift decade if year exits window
-    if (ny < decadeStart) setDecadeStart(d => d - 10);
-    else if (ny > decadeStart + 9) setDecadeStart(d => d + 10);
+    if (ny < decadeStart) setDecadeStart((d) => d - 10);
+    else if (ny > decadeStart + 9) setDecadeStart((d) => d + 10);
     setSelectedYear(ny);
   };
-  const shiftMonth = (dir) => {
-    let ny = selectedYear;
-    let nm = selectedMonth + dir;
-    if (nm < 0) { nm = 11; ny -= 1; }
-    if (nm > 11) { nm = 0; ny += 1; }
-    if (ny < decadeStart) setDecadeStart(d => d - 10);
-    else if (ny > decadeStart + 9) setDecadeStart(d => d + 10);
-    setSelectedYear(ny);
-    setSelectedMonth(nm);
-  };
+
+  const isCurrentMonth = selectedYear === currentYear && selectedMonth === currentMonth;
+  const overdueCount = filtered.filter((e) => e.date < today && !e.done).length;
+  const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
-    <div>
-      <DecadeControls
-        mode={mode} setMode={setMode}
-        decadeStart={decadeStart} decadeYears={decadeYears}
-        selectedYear={selectedYear} setSelectedYear={setSelectedYear}
-        selectedMonth={selectedMonth} setSelectedMonth={setSelectedMonth}
-        countByYear={countByYear} countByMonth={countByMonth}
-        currentYear={currentYear} currentMonth={currentMonth}
-        onShiftDecade={shiftDecade} onShiftYear={shiftYear} onShiftMonth={shiftMonth}
-        onJumpToday={jumpToToday}
-      />
+    <div className="pb-stack">
+      {/* ── Controls ── */}
+      <section className="pb-card pb-tl-controls">
+        <div className="pb-tl-bar">
+          <div className="pb-stepper" role="group" aria-label="Year">
+            <button type="button" className="pb-icon" onClick={() => shiftYear(-1)} aria-label="Previous year"><ChevronLeft size={16} /></button>
+            <span className="pb-stepper-value">{selectedYear}</span>
+            <button type="button" className="pb-icon" onClick={() => shiftYear(1)} aria-label="Next year"><ChevronRight size={16} /></button>
+          </div>
 
-      {/* Filter summary bar + List/Calendar toggle */}
-      <div className="lp-tl-summary" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <span className="lp-badge lp-badge-cyan" style={{fontSize:11}}>
-          {mode === 'year' ? `${selectedYear} • ${filtered.length} items` : `${MONTHS_FULL[selectedMonth]} ${selectedYear} • ${filtered.length} items`}
-        </span>
-        {selectedYear===currentYear && mode==='month' && selectedMonth===currentMonth && (
-          <span style={{fontSize:11, color:'var(--text-tertiary)'}}>• Today in view</span>
-        )}
-        {filtered.some(e=>e.date < today) && <span className="lp-badge lp-badge-rose" style={{fontSize:10}}>Has overdue</span>}
-        <div className="lp-tl-view-toggle" style={{ marginLeft: 'auto' }} role="tablist" aria-label="Timeline view">
-          <button type="button" role="tab" aria-selected={calView === 'list'} className={calView === 'list' ? 'active' : ''} onClick={() => setCalView('list')}>
-            <List size={13} /> List
-          </button>
-          <button type="button" role="tab" aria-selected={calView === 'calendar'} className={calView === 'calendar' ? 'active' : ''} onClick={() => { setMode('month'); setCalView('calendar'); }}>
-            <CalendarDays size={13} /> Calendar
+          <div className="pb-seg" role="tablist" aria-label="Timeline view">
+            <button type="button" role="tab" aria-selected={calView === 'list'} className={calView === 'list' ? 'is-on' : ''} onClick={() => setCalView('list')}>
+              <List size={13} /> List
+            </button>
+            <button type="button" role="tab" aria-selected={calView === 'calendar'} className={calView === 'calendar' ? 'is-on' : ''} onClick={() => { setMode('month'); setCalView('calendar'); }}>
+              <CalendarDays size={13} /> Calendar
+            </button>
+          </div>
+
+          <button type="button" className="pb-btn-soft" onClick={jumpToToday} disabled={isCurrentMonth && calView === 'calendar'}>
+            <Crosshair size={13} /> Today
           </button>
         </div>
-      </div>
 
-      {/* ── Calendar grid view ── */}
+        <div className="pb-months" role="tablist" aria-label={`Months of ${selectedYear}`}>
+          {MONTHS.map((m, idx) => {
+            const isSel = idx === selectedMonth;
+            const isNow = selectedYear === currentYear && idx === currentMonth;
+            const cnt = countByMonth[idx] || 0;
+            return (
+              <button
+                key={m}
+                type="button"
+                role="tab"
+                aria-selected={isSel}
+                onClick={() => setSelectedMonth(idx)}
+                className={`pb-month${isSel ? ' is-on' : ''}${isNow ? ' is-now' : ''}`}
+                title={`${MONTHS_FULL[idx]} ${selectedYear} — ${cnt} item${cnt === 1 ? '' : 's'}`}
+              >
+                <span>{m}</span>
+                <i className={cnt > 0 ? 'has' : ''} aria-hidden="true" />
+              </button>
+            );
+          })}
+        </div>
+
+        <p className="pb-tl-summary">
+          <strong>{mode === 'year' ? selectedYear : `${MONTHS_FULL[selectedMonth]} ${selectedYear}`}</strong>
+          <span className="pb-dot" aria-hidden="true" />
+          {filtered.length} item{filtered.length === 1 ? '' : 's'}
+          {overdueCount > 0 && <><span className="pb-dot" aria-hidden="true" /><span className="is-alert">{overdueCount} overdue</span></>}
+        </p>
+      </section>
+
+      {/* ── Calendar grid ── */}
       {calView === 'calendar' && (
-        <div className="lp-cal-wrap">
-          <div className="lp-cal-head" aria-hidden="true">
+        <section className="pb-card pb-cal">
+          <div className="pb-cal-head" aria-hidden="true">
             {['Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu'].map((d) => <span key={d}>{d}</span>)}
           </div>
-          <div className="lp-cal-grid" role="grid" aria-label={`${MONTHS_FULL[selectedMonth]} ${selectedYear} calendar`}>
+          <div className="pb-cal-grid" role="grid" aria-label={`${MONTHS_FULL[selectedMonth]} ${selectedYear} calendar`}>
             {calCells.map((dateKey, i) => {
-              if (!dateKey) return <div key={`empty-${i}`} className="lp-cal-cell is-empty" />;
+              if (!dateKey) return <div key={`empty-${i}`} className="pb-cal-cell is-blank" />;
               const dayEntries = byDate.get(dateKey) || [];
-              const dayNum = Number(dateKey.slice(8, 10));
               const isToday = dateKey === today;
               const isSel = dateKey === selectedDate;
               const isOverdue = dateKey < today && dayEntries.some((e) => !e.done);
-              const dots = dayEntries.slice(0, 3);
               return (
                 <button
                   key={dateKey}
@@ -309,127 +295,87 @@ export default function TimelineView({ doc, onOpenGoal }) {
                   role="gridcell"
                   aria-selected={isSel}
                   aria-label={`${fmtDate(dateKey)} — ${dayEntries.length} item${dayEntries.length === 1 ? '' : 's'}`}
-                  className={`lp-cal-cell${isToday ? ' is-today' : ''}${isSel ? ' is-selected' : ''}${isOverdue ? ' is-overdue' : ''}${dayEntries.length ? ' has-items' : ''}`}
+                  className={`pb-cal-cell${isToday ? ' is-today' : ''}${isSel ? ' is-sel' : ''}${isOverdue ? ' is-late' : ''}${dayEntries.length ? ' has-items' : ''}`}
                   onClick={() => setSelectedDate(dateKey)}
                 >
-                  <span className="lp-cal-day">{dayNum}</span>
+                  <span className="pb-cal-day">{Number(dateKey.slice(8, 10))}</span>
                   {dayEntries.length > 0 && (
-                    <span className="lp-cal-dots">
-                      {dots.map((e, di) => <i key={di} className={`lp-cal-dot kind-${e.kind}`} />)}
-                      {dayEntries.length > 3 && <span className="lp-cal-more">+{dayEntries.length - 3}</span>}
+                    <span className="pb-cal-dots">
+                      {dayEntries.slice(0, 3).map((e, di) => <i key={di} className={`kind-${e.kind}${e.done ? ' is-done' : ''}`} />)}
+                      {dayEntries.length > 3 && <em>+{dayEntries.length - 3}</em>}
                     </span>
                   )}
                 </button>
               );
             })}
           </div>
-          <div className="lp-cal-legend" aria-hidden="true">
-            <span><i className="lp-cal-dot kind-task" /> Task</span>
-            <span><i className="lp-cal-dot kind-step" /> Step</span>
-            <span><i className="lp-cal-dot kind-goal" /> Goal</span>
+          <div className="pb-cal-legend" aria-hidden="true">
+            <span><i className="kind-task" /> Task</span>
+            <span><i className="kind-step" /> Step</span>
+            <span><i className="kind-goal" /> Deadline</span>
+            <span><i className="kind-task is-done" /> Done</span>
           </div>
-          <div className="lp-cal-day-panel">
-            <div className="lp-cal-day-title">
-              <CalendarDays size={14} /> {fmtDate(selectedDate)}
-              {selectedDate === today && <span className="lp-badge lp-badge-amber" style={{ marginLeft: 6, fontSize: 9 }}>Today</span>}
-              <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-tertiary)' }}>{selectedEntries.length} item{selectedEntries.length === 1 ? '' : 's'}</span>
-            </div>
+
+          <div className="pb-cal-day-panel">
+            <header className="pb-head">
+              <h3 className="pb-title">{fmtDate(selectedDate)}</h3>
+              {selectedDate === today && <span className="pb-chip is-accent">Today</span>}
+              <span className="pb-meta pb-head-end">{selectedEntries.length} item{selectedEntries.length === 1 ? '' : 's'}</span>
+            </header>
             {selectedEntries.length === 0 ? (
-              <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontStyle: 'italic', padding: '6px 2px' }}>No tasks/steps — empty</div>
+              <p className="pb-empty-line">Nothing scheduled for this day.</p>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {selectedEntries.map((e, i) => renderEntry(e, i))}
-              </div>
+              <div className="pb-entries">{selectedEntries.map((e, i) => renderEntry(e, i))}</div>
             )}
           </div>
-        </div>
+        </section>
       )}
 
-      {/* Entries — separate scrollable section, only inner scrolls; today centered + Today FAB */}
+      {/* ── Agenda list — inner scroll, today centred, floating Today ── */}
       {calView === 'list' && (
-      <div style={{ position: 'relative' }}>
-        <div ref={timelineRef} className="lp-timeline-scroll">
-          <div className="lp-timeline">
+        <section className="pb-card pb-agenda-wrap">
+          <div ref={timelineRef} className="pb-agenda">
             {allDateKeys.map((dateKey) => {
               const entries = groups.get(dateKey) || [];
+              const d = new Date(`${dateKey}T00:00:00`);
               const isToday = dateKey === today;
-              const isOverdue = dateKey < today;
+              const isPast = dateKey < today;
               const isEmpty = entries.length === 0;
               return (
-                <div key={dateKey} data-date={dateKey}>
-                  <div className={`lp-tl-item ${isToday ? '' : isOverdue ? 'overdue' : 'past'}${isEmpty ? ' lp-tl-item--empty' : ''}`}>
-                    <div className="lp-tl-date" style={isToday ? {color:'var(--accent-amber)', fontWeight:800} : undefined}>
-                      {fmtDate(dateKey)} {isToday && <span className="lp-badge lp-badge-amber" style={{marginLeft:6, fontSize:9, verticalAlign:'middle'}}>Today</span>} {isOverdue && !isEmpty && <span className="lp-badge lp-badge-rose" style={{marginLeft:6, fontSize:9}}>Overdue</span>}
-                    </div>
-                    {isEmpty ? (
-                      <div className="lp-tl-row">
-                        <div className="lp-tl-label" style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap', opacity:0.55 }}>
-                          <span style={{fontSize:12, color:'var(--text-tertiary)', fontStyle:'italic'}}>No tasks/steps — empty</span>
-                        </div>
-                      </div>
-                    ) : entries.map((e, i) => renderEntry(e, i))}
+                <div
+                  key={dateKey}
+                  data-date={dateKey}
+                  className={`pb-day-row${isToday ? ' is-today' : ''}${isPast ? ' is-past' : ''}${isEmpty ? ' is-empty' : ''}`}
+                >
+                  <div className="pb-day-gutter">
+                    <span className="pb-day-num">{d.getDate()}</span>
+                    <span className="pb-day-wd">{isToday ? 'Today' : WEEKDAY_SHORT[d.getDay()]}</span>
+                  </div>
+                  <div className="pb-day-body">
+                    {isEmpty ? <span className="pb-day-empty">—</span> : (
+                      <div className="pb-entries">{entries.map((e, i) => renderEntry(e, i))}</div>
+                    )}
                   </div>
                 </div>
               );
             })}
           </div>
-        </div>
-        {/* Floating Today — works from any year/month, jumps to today if needed */}
-        {showTodayFab && (
-          <button type="button" className="lp-tl-today-fab" onClick={() => {
-            const el = timelineRef.current?.querySelector(`[data-date="${today}"]`);
-            if (el) scrollToToday('smooth');
-            else jumpToToday();
-          }} aria-label="Scroll to today">
-            <Crosshair size={14} /> Today
-          </button>
-        )}
-      </div>
+          {showTodayFab && (
+            <button
+              type="button"
+              className="pb-fab"
+              onClick={() => {
+                const el = timelineRef.current?.querySelector(`[data-date="${today}"]`);
+                if (el) scrollToToday('smooth');
+                else jumpToToday();
+              }}
+              aria-label="Scroll to today"
+            >
+              <Crosshair size={14} /> Today
+            </button>
+          )}
+        </section>
       )}
-    </div>
-  );
-}
-
-function DecadeControls({
-  mode, setMode,
-  decadeStart, decadeYears,
-  selectedYear, setSelectedYear,
-  selectedMonth, setSelectedMonth,
-  countByYear, countByMonth,
-  currentYear, currentMonth,
-  onShiftDecade, onShiftYear, onShiftMonth, onJumpToday
-}) {
-  return (
-    <div className="lp-tl-decade-wrap">
-      {/* Month strip */}
-      <div className="lp-tl-month-strip">
-          <button type="button" className="lp-tl-arrow sm" onClick={()=>onShiftYear(-1)} aria-label="Previous year">
-            <ChevronLeft size={14}/>
-          </button>
-          <span className="lp-tl-month-year-label">{selectedYear}</span>
-          <div className="lp-tl-months">
-            {MONTHS.map((m, idx) => {
-              const isSel = idx===selectedMonth;
-              const isNow = selectedYear===currentYear && idx===currentMonth;
-              const cnt = countByMonth[idx]||0;
-              return (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={()=>setSelectedMonth(idx)}
-                  className={`lp-tl-month-pill ${isSel ? 'selected' : ''} ${isNow ? 'today' : ''}`}
-                  title={`${MONTHS_FULL[idx]} ${selectedYear} — ${cnt} items`}
-                >
-                  {m}
-                  {cnt>0 && <i className="dot" />}
-                </button>
-              );
-            })}
-          </div>
-          <button type="button" className="lp-tl-arrow sm" onClick={()=>onShiftYear(1)} aria-label="Next year">
-            <ChevronRight size={14}/>
-          </button>
-        </div>
     </div>
   );
 }

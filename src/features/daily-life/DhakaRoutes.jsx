@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Banknote, MapPin, Search, X, TrainFront, BusFront, CarTaxiFront, Car, Bike, Motorbike,
-  Footprints, Info, Lightbulb, ExternalLink, BadgeCheck, Calculator, CircleHelp,
-  ListOrdered, ChevronRight, PencilLine,
+  Footprints, Info, ExternalLink, BadgeCheck, Calculator, CircleHelp,
+  ChevronRight, Clock,
 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../../context/AuthContext';
-import { ORIGINS, ZONES, SOURCES, LAST_VERIFIED } from './bhara-koto/fareData';
+import { ORIGINS, SOURCES, LAST_VERIFIED } from './bhara-koto/fareData';
 import routeCostData from '../../data/dhakaRouteCosts.json';
 import { buildOptions, formatTaka } from './bhara-koto/fareEngine';
 import '../campus/SemesterViewWidget.css';
 import './DhakaRoutes.css';
 import './bhara-koto/BharaKoto.css';
+import './DailyMasthead.css';
 
 // ─── Presentation helpers ───────────────────────────────────────
 
@@ -54,7 +55,11 @@ const ALL_ORIGINS = routeCostData.rows.map((row, index) => {
     } : undefined),
   };
 });
-const fmtTime = ([a, b]) => (b >= 90 ? `${Math.round(a / 6) / 10}–${Math.round(b / 6) / 10} h` : `${a}–${b} min`);
+const TABLE_MODES = [
+  ['walk', 'Walk'], ['rickshaw', 'Rickshaw'], ['bus', 'Bus'], ['metro', 'Metro'],
+  ['cng', 'CNG'], ['bike', 'Ride-share bike'], ['car', 'Ride-share car'],
+];
+const fmtTime =([a, b]) => (b >= 90 ? `${Math.round(a / 6) / 10}–${Math.round(b / 6) / 10} h` : `${a}–${b} min`);
 const fareText = (fare) => (fare[1] === 0 ? 'Free' : formatTaka(fare));
 
 function StatusBadge({ status, compact = false }) {
@@ -89,7 +94,13 @@ function RoutePanel({ origin, option, onClose, isAdmin, note, onSaveNote }) {
     closeRef.current?.focus();
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    // Keep the page behind the sheet from scrolling.
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
   }, [onClose]);
 
   const save = async () => {
@@ -107,52 +118,54 @@ function RoutePanel({ origin, option, onClose, isAdmin, note, onSaveNote }) {
   return createPortal(
     <div className="bk-overlay" onClick={onClose}>
       <div
-        className="bk-panel animate-fadeInUp"
+        className="bk-panel"
         role="dialog"
         aria-modal="true"
         aria-labelledby="bk-panel-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="bk-panel-head">
+        <span className="bk-grabber" aria-hidden="true" />
+        <header className="bk-panel-head">
           <span className={`bk-mode-icon bk-mode-${option.key}`}><Icon size={18} /></span>
           <div className="bk-panel-titles">
             <span className="bk-panel-over">{origin.name} → AUST</span>
             <h3 id="bk-panel-title" className="bk-panel-title">{option.label}</h3>
           </div>
           <button ref={closeRef} type="button" className="bk-close" onClick={onClose} aria-label="Close route details">
-            <X size={14} />
+            <X size={16} />
           </button>
-        </div>
+        </header>
 
-        <div className="bk-panel-summary">
-          <div>
+        <div className="bk-panel-body">
+        <div className="bk-hero">
+          <div className="bk-hero-fare">
             <span className="bk-sum-label">Fare</span>
-            <span className="bk-sum-value">{fareText(option.fare)}</span>
+            <span className="bk-hero-value">{fareText(option.fare)}</span>
           </div>
-          <div>
-            <span className="bk-sum-label">Time</span>
-            <span className="bk-sum-value">{fmtTime(option.time)}</span>
-          </div>
-          <div>
-            <span className="bk-sum-label">Data</span>
+          <div className="bk-hero-meta">
+            <span className="bk-hero-time"><Clock size={13} aria-hidden="true" /> {fmtTime(option.time)}</span>
             <StatusBadge status={option.status} />
           </div>
         </div>
 
-        {option.metroFare && (
-          <p className="bk-panel-official">
-            <BadgeCheck size={13} /> Train fare is official: ৳{option.metroFare.single} single ticket · ৳{option.metroFare.card} with MRT/Rapid Pass.
-          </p>
-        )}
-        {option.meter != null && (
-          <p className="bk-panel-official">
-            <Calculator size={13} /> Official meter fare ≈ ৳{option.meter} (+ ৳2/min waiting) — real asking price is higher.
-          </p>
+        {(option.metroFare || option.meter != null) && (
+          <div className="bk-official-notes">
+            {option.metroFare && (
+              <p className="bk-panel-official">
+                <BadgeCheck size={13} /> Official train fare: ৳{option.metroFare.single} single · ৳{option.metroFare.card} with MRT/Rapid Pass
+              </p>
+            )}
+            {option.meter != null && (
+              <p className="bk-panel-official">
+                <Calculator size={13} /> Official meter ≈ ৳{option.meter} (+ ৳2/min waiting) — asking price is usually higher
+              </p>
+            )}
+          </div>
         )}
 
         {option.legs?.length > 1 && (
           <section className="bk-section">
-            <h4 className="bk-section-title"><ChevronRight size={13} /> Fare breakdown</h4>
+            <h4 className="bk-section-title">Fare breakdown</h4>
             <ul className="bk-legs">
               {option.legs.map((leg, i) => (
                 <li key={i}>
@@ -165,7 +178,7 @@ function RoutePanel({ origin, option, onClose, isAdmin, note, onSaveNote }) {
         )}
 
         <section className="bk-section">
-          <h4 className="bk-section-title"><ListOrdered size={13} /> How to get there</h4>
+          <h4 className="bk-section-title">How to get there</h4>
           <ol className="bk-steps">
             {option.steps.map((s, i) => <li key={i}>{s}</li>)}
           </ol>
@@ -173,7 +186,7 @@ function RoutePanel({ origin, option, onClose, isAdmin, note, onSaveNote }) {
 
         {option.tips?.length > 0 && (
           <section className="bk-section">
-            <h4 className="bk-section-title"><Lightbulb size={13} /> Tips</h4>
+            <h4 className="bk-section-title">Tips</h4>
             <ul className="bk-tips">
               {option.tips.map((t, i) => <li key={i}>{t}</li>)}
             </ul>
@@ -182,7 +195,7 @@ function RoutePanel({ origin, option, onClose, isAdmin, note, onSaveNote }) {
 
         {(isAdmin || (note || '').trim()) && (
           <section className="bk-section">
-            <h4 className="bk-section-title"><PencilLine size={13} /> Notes from AUSTWise team</h4>
+            <h4 className="bk-section-title">Notes from AUSTWise team</h4>
             {isAdmin ? (
               <>
                 <textarea
@@ -208,8 +221,13 @@ function RoutePanel({ origin, option, onClose, isAdmin, note, onSaveNote }) {
           </section>
         )}
 
-        <section className="bk-section bk-section-muted">
-          <h4 className="bk-section-title"><Info size={13} /> Where this number comes from</h4>
+        <details className="bk-section bk-sources-fold">
+          <summary>
+            <Info size={13} aria-hidden="true" />
+            <span>Where this number comes from</span>
+            <span className="bk-verified">Verified {VERIFIED_LABEL}</span>
+            <ChevronRight size={14} className="bk-fold-chevron" aria-hidden="true" />
+          </summary>
           {option.reason && <p className="bk-reason">{option.reason}</p>}
           <ul className="bk-source-list">
             {option.sources.map((id) => SOURCES[id] && (
@@ -220,8 +238,8 @@ function RoutePanel({ origin, option, onClose, isAdmin, note, onSaveNote }) {
               </li>
             ))}
           </ul>
-          <p className="bk-verified">Last verified {VERIFIED_LABEL}</p>
-        </section>
+        </details>
+        </div>
       </div>
     </div>,
     document.body,
@@ -235,7 +253,6 @@ export default function DhakaRoutes() {
   const isAdmin = hasRole?.('admin') || hasRole?.('moderator');
 
   const [query, setQuery] = useState('');
-  const [zone, setZone] = useState('All');
   const [originId, setOriginId] = useState(() => ALL_ORIGINS.find((o) => o.id === 'mirpur-10')?.id || ALL_ORIGINS[0]?.id);
   const [activeKey, setActiveKey] = useState(null);
   const [fareDetails, setFareDetails] = useState({});
@@ -253,8 +270,8 @@ export default function DhakaRoutes() {
 
   const filtered = useMemo(() => {
     const q = normalize(query);
-    return ALL_ORIGINS.filter((o) => (zone === 'All' || o.zone === zone) && matchesQuery(o, q));
-  }, [query, zone]);
+    return ALL_ORIGINS.filter((o) => matchesQuery(o, q));
+  }, [query]);
 
   const origin = ALL_ORIGINS.find((o) => o.id === originId) || ALL_ORIGINS[0];
   const options = useMemo(() => buildOptions(origin), [origin]);
@@ -288,37 +305,24 @@ export default function DhakaRoutes() {
   return (
     <div className="glass-card-static schedule-widget sv-widget dr-widget bk-widget animate-fadeInUp">
       {/* ── Masthead ── */}
-      <div className="schedule-masthead">
-        <div className="schedule-title-block">
-          <div className="schedule-icon-tile dr-icon-tile">
-            <Banknote size={20} strokeWidth={2.2} />
+      <header className="dl-head">
+        <div className="dl-head-title">
+          <div className="dl-head-tile" aria-hidden="true">
+            <Banknote size={20} strokeWidth={2.1} />
           </div>
-          <div>
-            <span className="schedule-overline">Daily Life</span>
-            <div className="schedule-title">Bhara Koto</div>
-            <span className="schedule-subtitle">Fares &amp; step-by-step routes from {ALL_ORIGINS.length} Dhaka areas to AUST</span>
-          </div>
-        </div>
-        <div className="schedule-masthead-center">
-          <div className="schedule-stats">
-            <div className="schedule-stat">
-              <span className="schedule-stat-value dr-stat-accent">{ALL_ORIGINS.length}</span>
-              <span className="schedule-stat-label">Areas</span>
-            </div>
-            <div className="schedule-stat">
-              <span className="schedule-stat-value">7</span>
-              <span className="schedule-stat-label">Modes</span>
-            </div>
-            <div className="schedule-stat">
-              <span className="schedule-stat-value bk-stat-date">{VERIFIED_LABEL}</span>
-              <span className="schedule-stat-label">Verified</span>
-            </div>
+          <div className="dl-head-text">
+            <span className="dl-head-overline">Daily Life</span>
+            <h2 className="dl-head-name">Bhara Koto</h2>
+            <span className="dl-head-subtitle">Fares &amp; step-by-step routes from {ALL_ORIGINS.length} Dhaka areas to AUST</span>
           </div>
         </div>
-        <div className="schedule-actions" />
-      </div>
 
-      <div className="schedule-dotted-divider" />
+        <dl className="dl-head-stats">
+          <div className="dl-head-stat"><dt>Areas</dt><dd>{ALL_ORIGINS.length}</dd></div>
+          <div className="dl-head-stat"><dt>Modes</dt><dd>7</dd></div>
+          <div className="dl-head-stat"><dt>Verified</dt><dd className="is-small">{VERIFIED_LABEL}</dd></div>
+        </dl>
+      </header>
 
       {/* ── How to read the numbers ── */}
       {/* ── Search + zone filter ── */}
@@ -329,7 +333,7 @@ export default function DhakaRoutes() {
             type="text"
             className="dr-search-input"
             aria-label="Search your area"
-            placeholder="Where are you coming from? e.g. Mirpur, Uttara, Jatrabari…"
+            placeholder="Search area, e.g. Mirpur"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -339,19 +343,6 @@ export default function DhakaRoutes() {
             </button>
           )}
         </div>
-        <div className="bk-zones" role="group" aria-label="Filter by zone">
-          {['All', ...ZONES].map((z) => (
-            <button
-              key={z}
-              type="button"
-              className={`bk-zone${zone === z ? ' active' : ''}`}
-              aria-pressed={zone === z}
-              onClick={() => setZone(z)}
-            >
-              {z}
-            </button>
-          ))}
-        </div>
       </div>
 
       <section className="bk-route-table-wrap" aria-label="Fares by starting area">
@@ -360,10 +351,7 @@ export default function DhakaRoutes() {
             <tr>
               <th scope="col">Starting area</th>
               <th scope="col">Destination</th>
-              {[
-                ['walk', 'Walk'], ['rickshaw', 'Rickshaw'], ['bus', 'Bus'], ['metro', 'Metro'],
-                ['cng', 'CNG'], ['bike', 'Ride-share bike'], ['car', 'Ride-share car'],
-              ].map(([key, label]) => <th scope="col" key={key}>{label}</th>)}
+              {TABLE_MODES.map(([key, label]) => <th scope="col" key={key}>{label}</th>)}
             </tr>
           </thead>
           <tbody>
@@ -379,7 +367,7 @@ export default function DhakaRoutes() {
                     <span>{area.name}<small>{area.km.toFixed(1)} km · {area.zone}</small></span>
                   </th>
                   <td className="bk-route-destination">AUST · Love Road</td>
-                  {['walk', 'rickshaw', 'bus', 'metro', 'cng', 'bike', 'car'].map((key) => {
+                  {TABLE_MODES.map(([key]) => {
                     const option = areaOptions.find((item) => item.key === key);
                     return (
                       <td key={key}>

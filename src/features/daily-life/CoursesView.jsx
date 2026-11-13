@@ -168,56 +168,56 @@ export default function CoursesView() {
     <LpModal title={editing ? 'Edit Course' : 'Add Course'} onClose={() => setShowForm(false)} wide>
       <div className="cs-course-form">
         <div>
-          <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>Course Title *</label>
+          <label className="pb-form-label">Course Title *</label>
           <input className="input" value={draft.title} onChange={(e) => setDraft((p) => ({ ...p, title: e.target.value }))} placeholder="e.g. Complete React Bootcamp" autoFocus />
         </div>
         <div className="cs-form-grid">
           <div>
-            <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>Company / Channel / Brand *</label>
+            <label className="pb-form-label">Company / Channel / Brand *</label>
             <input className="input" value={draft.provider} onChange={(e) => setDraft((p) => ({ ...p, provider: e.target.value }))} placeholder="Udemy, YouTube..." />
           </div>
           <div>
-            <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>Instructor</label>
+            <label className="pb-form-label">Instructor</label>
             <input className="input" value={draft.instructor} onChange={(e) => setDraft((p) => ({ ...p, instructor: e.target.value }))} placeholder="e.g. Jonas Schmedtmann" />
           </div>
         </div>
         <div className="cs-form-grid">
           <div>
-            <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>Duration</label>
+            <label className="pb-form-label">Duration</label>
             <input className="input" value={draft.duration} onChange={(e) => setDraft((p) => ({ ...p, duration: e.target.value }))} placeholder="e.g. 40 hours" />
           </div>
           <div>
-            <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>Category</label>
+            <label className="pb-form-label">Category</label>
             <input className="input" value={draft.category} onChange={(e) => setDraft((p) => ({ ...p, category: e.target.value }))} placeholder="Development, Design..." />
           </div>
         </div>
         <div className="cs-form-grid">
           <div>
-            <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>Level</label>
+            <label className="pb-form-label">Level</label>
             <input className="input" value={draft.level} onChange={(e) => setDraft((p) => ({ ...p, level: e.target.value }))} placeholder="Beginner, Intermediate..." />
           </div>
           <div>
-            <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>Language</label>
+            <label className="pb-form-label">Language</label>
             <input className="input" value={draft.language} onChange={(e) => setDraft((p) => ({ ...p, language: e.target.value }))} placeholder="English, Bengali..." />
           </div>
         </div>
         <div>
-          <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>Course Link</label>
+          <label className="pb-form-label">Course Link</label>
           <input className="input" value={draft.link} onChange={(e) => setDraft((p) => ({ ...p, link: e.target.value }))} placeholder="https://..." />
         </div>
         <div className="cs-form-grid">
           <div>
-            <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>Description</label>
+            <label className="pb-form-label">Description</label>
             <textarea className="input" value={draft.description} onChange={(e) => setDraft((p) => ({ ...p, description: e.target.value }))} placeholder="What this course covers..." rows={1} style={{ resize: 'vertical' }} />
           </div>
           <div>
-            <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>Notes</label>
+            <label className="pb-form-label">Notes</label>
             <textarea className="input" value={draft.notes} onChange={(e) => setDraft((p) => ({ ...p, notes: e.target.value }))} placeholder="Key takeaways..." rows={1} style={{ resize: 'vertical' }} />
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', marginTop: 2 }}>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowForm(false)} style={{ height: 28, padding: '0 10px' }}>Cancel</button>
-          <button type="button" className="btn btn-primary btn-sm" onClick={handleSave} disabled={!draft.title.trim() || !draft.provider.trim()} style={{ height: 28, padding: '0 10px' }}> {editing ? 'Save' : 'Add'} </button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowForm(false)}>Cancel</button>
+          <button type="button" className="btn btn-primary btn-sm" onClick={handleSave} disabled={!draft.title.trim() || !draft.provider.trim()}> {editing ? 'Save' : 'Add'} </button>
         </div>
       </div>
     </LpModal>
@@ -242,144 +242,97 @@ export default function CoursesView() {
   }
 
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)' }}>
-            <GraduationCap size={18} />
-          </div>
-          <div>
-            <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: 'var(--text-primary)' }}>Courses</h4>
-            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{courses.length} extra-curricular course{courses.length === 1 ? '' : 's'} • tap card to build structure</span>
-          </div>
-        </div>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => { setAiPanel(null); openAdd(); }} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <Plus size={14} /> Add Course
-          </button>
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            onClick={handleCopyPrompt}
-            title="Copy the AI master prompt"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              border: '1px solid var(--border-primary)',
-              ...(aiCopied
-                ? { borderColor: 'var(--accent-emerald)', background: 'color-mix(in srgb, var(--accent-emerald) 12%, transparent)', color: 'var(--accent-emerald)' }
-                : {}),
-            }}
-          >
-            {aiCopied ? <Check size={13} /> : <Copy size={13} />} {aiCopied ? 'Copied ✓' : 'Copy Prompt'}
-          </button>
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            onClick={handlePasteBtn}
-            aria-expanded={aiPanel === 'paste'}
-            aria-controls="course-ai-paste-panel"
-            title="Paste the AI output (JSON) — opens the paste/import option below"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              border: '1px solid var(--border-primary)',
-              ...(aiPanel === 'paste'
-                ? { borderColor: 'var(--accent-cyan)', background: 'color-mix(in srgb, var(--accent-cyan) 12%, transparent)', color: 'var(--accent-cyan)' }
-                : {}),
-            }}
-          >
-            <Upload size={13} /> Paste AI JSON
-          </button>
-        </div>
-      </div>
-
-      {/* ── AI: Paste JSON — minimal: paste box + Import only ── */}
-      {aiPanel === 'paste' && (
-      <div id="course-ai-paste-panel" className="lp-panel" style={{ marginBottom: 14, padding: '12px' }}>
-        <textarea
-          className="input"
-          value={aiJson}
-          autoFocus
-          onChange={(e) => setAiJson(e.target.value)}
-          placeholder="Paste AI JSON here…"
-          rows={4}
-          style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 11, resize: 'vertical' }}
-        />
-        {aiImportMsg && aiImportMsg.type === 'error' && (
-          <div style={{ marginTop: 8, fontSize: 11, color: 'var(--accent-rose)' }}>{aiImportMsg.text}</div>
-        )}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-          <button type="button" className="btn btn-primary btn-sm" onClick={handleAiImport} disabled={!aiJson.trim() || (aiValidation && !aiValidation.valid)} style={{ gap: 6 }}>
-            <ExternalLink size={12} /> Import
-          </button>
-        </div>
-      </div>
-      )}
-
-      {courses.length === 0 ? (
-        <LpEmpty
-          icon={BookOpen}
-          title="No courses yet"
-          hint="Add external courses — YouTube, Udemy, Coursera, brand workshops. Each card is clickable to build its hierarchy."
-          action={<button type="button" className="btn btn-primary btn-sm" onClick={openAdd}><Plus size={14} /> Add Course</button>}
-        />
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
-          {courses.map((c) => {
-            const nodeCount = countCourseNodes(nodes, c.id);
-            return (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => setActiveCourseId(c.id)}
-              className="lp-hierarchy-card cs-course-card-plain"
-              style={{ padding: '14px 14px 12px', borderLeft: `3px solid ${c.color}`, display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'left', cursor: 'pointer', width: '100%' }}
-            >
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, width: '100%' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
-                  <span style={{ width: 28, height: 28, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${c.color}18`, color: c.color, flexShrink: 0 }}>
-                    <BookOpen size={14} />
-                  </span>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2, wordBreak: 'break-word' }}>{c.title}</span>
-                </div>
-                <div style={{ display: 'flex', gap: 4, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
-                  <button type="button" className="lp-icon-btn" onClick={() => openEdit(c)} title="Edit" aria-label={`Edit ${c.title}`} style={{ width: 28, height: 28 }}>
-                    <Pencil size={13} />
-                  </button>
-                  <button type="button" className="lp-icon-btn" onClick={() => requestDeleteCourse(c)} title="Delete" aria-label={`Delete ${c.title}`} style={{ width: 28, height: 28 }}>
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-                <span className="lp-badge" style={{ background: `${c.color}18`, color: c.color, borderColor: `${c.color}30`, fontSize: 10, gap: 4 }}>
-                  <Building2 size={10} /> {c.provider || c.code || '—'}
-                </span>
-                {c.category && <span className="lp-badge lp-badge-muted" style={{ fontSize: 9, gap: 4 }}><Tag size={10} />{c.category}</span>}
-                {c.level && <span className="lp-badge lp-badge-muted" style={{ fontSize: 9, gap: 4 }}><GraduationCap size={10} />{c.level}</span>}
-                {c.language && <span className="lp-badge lp-badge-muted" style={{ fontSize: 9, gap: 4 }}><MessageSquare size={10} />{c.language}</span>}
-                <span className="lp-badge lp-badge-muted" style={{ fontSize: 9, gap: 4 }}><Layers size={10} /> {nodeCount} items</span>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, color: 'var(--text-secondary)' }}>
-                {c.instructor && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><User size={11} style={{ opacity: 0.7 }} /> {c.instructor}</span>}
-                {c.duration && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Clock size={11} style={{ opacity: 0.7 }} /> {c.duration}</span>}
-                {c.link && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--accent-amber)', fontWeight: 600, wordBreak: 'break-all' }} onClick={(e) => e.stopPropagation()}>
-                    <Link2 size={11} /> {c.link.length > 28 ? c.link.slice(0, 28) + '…' : c.link}
-                  </span>
-                )}
-                {c.description && <span style={{ display: 'flex', gap: 5, fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.4, background: 'var(--bg-tertiary)', borderRadius: 8, padding: '6px 8px', marginTop: 2 }}><FileText size={11} style={{ marginTop: 2, flexShrink: 0 }} /> <span style={{ wordBreak: 'break-word' }}>{c.description.length > 80 ? c.description.slice(0, 80) + '…' : c.description}</span></span>}
-                {c.notes && <span style={{ display: 'flex', gap: 5, fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.4, background: 'var(--bg-tertiary)', borderRadius: 8, padding: '6px 8px', marginTop: 2 }}><StickyNote size={11} style={{ marginTop: 2, flexShrink: 0 }} /> <span style={{ wordBreak: 'break-word' }}>{c.notes.length > 80 ? c.notes.slice(0, 80) + '…' : c.notes}</span></span>}
-              </div>
-
-              <span style={{ fontSize: 10, color: 'var(--accent-amber)', fontWeight: 700, marginTop: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                Build structure <ChevronRight size={12} />
-              </span>
+    <div className="pb-stack">
+      <section className="pb-card">
+        <header className="pb-head pb-head-wrap">
+          <h3 className="pb-title">Courses</h3>
+          <span className="pb-count">{courses.length}</span>
+          <span className="pb-meta pb-head-hint">Extra-curricular learning — open a course to build its structure</span>
+          <div className="pb-head-actions">
+            <button type="button" className={`pb-btn-soft${aiCopied ? ' is-ok' : ''}`} onClick={handleCopyPrompt} title="Copy the AI master prompt">
+              {aiCopied ? <Check size={13} /> : <Copy size={13} />} {aiCopied ? 'Copied' : 'Copy prompt'}
             </button>
-          );})}
-        </div>
-      )}
+            <button
+              type="button"
+              className={`pb-btn-soft${aiPanel === 'paste' ? ' is-on' : ''}`}
+              onClick={handlePasteBtn}
+              aria-expanded={aiPanel === 'paste'}
+              aria-controls="course-ai-paste-panel"
+              title="Paste the AI output (JSON)"
+            >
+              <Upload size={13} /> Paste AI JSON
+            </button>
+            <button type="button" className="btn btn-primary btn-sm pb-btn" onClick={() => { setAiPanel(null); openAdd(); }}>
+              <Plus size={14} /> Add course
+            </button>
+          </div>
+        </header>
+
+        {aiPanel === 'paste' && (
+          <div id="course-ai-paste-panel" className="pb-paste">
+            <textarea
+              className="input pb-mono"
+              value={aiJson}
+              autoFocus
+              onChange={(e) => setAiJson(e.target.value)}
+              placeholder="Paste AI JSON here…"
+              rows={4}
+            />
+            <div className="pb-paste-foot">
+              {aiImportMsg && aiImportMsg.type === 'error' ? <span className="pb-note-text is-alert">{aiImportMsg.text}</span> : <span />}
+              <button type="button" className="btn btn-primary btn-sm pb-btn" onClick={handleAiImport} disabled={!aiJson.trim() || (aiValidation && !aiValidation.valid)}>
+                <ExternalLink size={12} /> Import
+              </button>
+            </div>
+          </div>
+        )}
+        {aiImportMsg && aiImportMsg.type === 'success' && <p className="pb-note-text is-ok">{aiImportMsg.text}</p>}
+
+        {courses.length === 0 ? (
+          <LpEmpty
+            icon={BookOpen}
+            title="No courses yet"
+            hint="Add external courses — YouTube, Udemy, Coursera, workshops — then open one to map its chapters and lessons."
+            action={<button type="button" className="btn btn-primary btn-sm pb-btn" onClick={openAdd}><Plus size={14} /> Add course</button>}
+          />
+        ) : (
+          <div className="pb-course-grid">
+            {courses.map((c) => {
+              const nodeCount = countCourseNodes(nodes, c.id);
+              const cNodes = nodes.filter((n) => n.courseId === c.id);
+              const leaves = cNodes.filter((n) => !cNodes.some((o) => o.parentId === n.id));
+              const pct = leaves.length ? Math.round((leaves.filter((n) => n.isDone).length / leaves.length) * 100) : 0;
+              const meta = [c.instructor, c.duration, c.level, c.language].filter(Boolean);
+              return (
+                <article key={c.id} className="pb-course">
+                  <button type="button" className="pb-course-open" onClick={() => setActiveCourseId(c.id)} aria-label={`Open ${c.title}`} />
+                  <div className="pb-course-top">
+                    <span className="pb-course-icon"><BookOpen size={15} /></span>
+                    <span className="pb-label">{c.provider || c.code || 'Course'}</span>
+                    <span className="pb-course-actions">
+                      <button type="button" className="pb-icon is-sm" onClick={() => openEdit(c)} title="Edit" aria-label={`Edit ${c.title}`}><Pencil size={13} /></button>
+                      <button type="button" className="pb-icon is-sm is-danger" onClick={() => requestDeleteCourse(c)} title="Delete" aria-label={`Delete ${c.title}`}><Trash2 size={13} /></button>
+                    </span>
+                  </div>
+                  <h4 className="pb-course-title">{c.title}</h4>
+                  {meta.length > 0 && <p className="pb-course-meta">{meta.join(' · ')}</p>}
+                  {c.description && <p className="pb-course-desc">{c.description}</p>}
+                  <div className="pb-course-tags">
+                    {c.category && <span className="pb-tag"><Tag size={10} /> {c.category}</span>}
+                    {c.link && <span className="pb-tag"><Link2 size={10} /> Link</span>}
+                    {c.notes && <span className="pb-tag" title={c.notes}><StickyNote size={10} /> Notes</span>}
+                  </div>
+                  <div className="pb-course-foot">
+                    <span className="pb-bar"><span style={{ width: `${pct}%` }} /></span>
+                    <span className="pb-meta">{nodeCount ? `${pct}% · ${nodeCount} items` : 'No structure yet'}</span>
+                    <ChevronRight size={15} className="pb-chev" aria-hidden="true" />
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       {courseFormModal}
       {courseDeleteModal}
@@ -460,76 +413,60 @@ function CourseDetailView({ course, nodes, updateNodes, onBack, onEditCourse }) 
     setDeletingNode(null);
   };
 
+  const metaBits = [
+    course.provider && { icon: Building2, text: course.provider },
+    course.instructor && { icon: User, text: course.instructor },
+    course.duration && { icon: Clock, text: course.duration },
+    course.level && { icon: GraduationCap, text: course.level },
+    course.language && { icon: MessageSquare, text: course.language },
+  ].filter(Boolean);
+
   return (
-    <div>
-      <button type="button" onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: 600, marginBottom: 12 }}>
-        <ChevronRight size={14} style={{ transform: 'rotate(180deg)' }} /> Back to Courses
-      </button>
+    <div className="pb-stack">
+      <nav className="pb-crumbs" aria-label="Course path">
+        <button type="button" className="pb-crumb" onClick={onBack}>Courses</button>
+        <ChevronRight size={13} className="pb-crumb-sep" aria-hidden="true" />
+        <span className="pb-crumb is-current is-static" title={course.title}>{course.title}</span>
+      </nav>
 
-      <div className="cs-course-head" style={{ '--cs-course-color': course.color }}>
-        <div style={{ width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${course.color}18`, color: course.color }}>
-          <BookOpen size={18} />
+      <section className="pb-card pb-context">
+        <div className="pb-context-top">
+          <span className="pb-label"><BookOpen size={11} /> Course</span>
+          <button type="button" className="pb-btn-soft" onClick={onEditCourse}><Pencil size={12} /> Edit</button>
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)', wordBreak: 'break-word' }}>{course.title}</div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4, fontSize: 11, color: 'var(--text-tertiary)' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Building2 size={11} /> {course.provider}</span>
-            {course.instructor && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><User size={11} /> {course.instructor}</span>}
-            {course.duration && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Clock size={11} /> {course.duration}</span>}
-            {course.level && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><GraduationCap size={11} /> {course.level}</span>}
-            {course.language && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><MessageSquare size={11} /> {course.language}</span>}
-          </div>
-          {course.description && <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, wordBreak: 'break-word' }}>{course.description}</div>}
-        </div>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={onEditCourse} style={{ gap: 4 }}><Pencil size={12} /> Edit Course</button>
-      </div>
-
-      <div className="lp-panel">
-        <div className="cs-structure-head">
-          <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 800, color: 'var(--text-primary)' }}>
-            <Layers size={14} style={{ color: 'var(--accent-amber)' }} /> Structure
-            <span style={{ fontSize: 10, fontWeight: 700, background: 'var(--bg-tertiary)', border: '1px solid var(--border-primary)', borderRadius: 999, padding: '2px 8px', color: 'var(--text-tertiary)' }}>
-              {courseNodes.length} items
+        <h2 className="pb-context-title">{course.title}</h2>
+        {metaBits.length > 0 && (
+          <p className="pb-course-meta is-row">
+            {metaBits.map(({ icon: Icon, text }) => <span key={text}><Icon size={12} /> {text}</span>)}
+          </p>
+        )}
+        {course.description && <p className="pb-context-desc">{course.description}</p>}
+        {courseNodes.length > 0 && (
+          <div className="pb-context-progress">
+            <span className="pb-bar" role="progressbar" aria-valuenow={progressPct} aria-valuemin={0} aria-valuemax={100} aria-label={`Course progress ${progressPct}%`}>
+              <span style={{ width: `${progressPct}%` }} />
             </span>
-          </h4>
-          {courseNodes.length > 0 && (
-            <div className="cs-progress">
-              <div className="cs-progress-top">
-                <span className="cs-progress-pct">{progressPct}%</span>
-                <span className="cs-progress-cap">{doneLeafCount}/{leafNodes.length} lessons done</span>
-              </div>
-              <div className="cs-progress-bar" role="progressbar" aria-valuenow={progressPct} aria-valuemin={0} aria-valuemax={100} aria-label={`Course progress ${progressPct}%`}>
-                <span className="cs-progress-fill" style={{ width: `${progressPct}%` }} />
-              </div>
-            </div>
-          )}
-          <div style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
+            <strong>{progressPct}%</strong>
+            <span className="pb-meta">{doneLeafCount}/{leafNodes.length} lessons done</span>
+          </div>
+        )}
+      </section>
+
+      <section className="pb-card">
+        <header className="pb-head pb-head-wrap">
+          <h3 className="pb-title">Structure</h3>
+          <span className="pb-count">{courseNodes.length}</span>
+          <div className="pb-head-actions">
             {courseNodes.length > 0 && (
               <>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setAllCollapsed(false)} style={{ gap: 4 }}><ChevronDown size={12} /> Expand all</button>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setAllCollapsed(true)} style={{ gap: 4 }}><ChevronRight size={12} /> Collapse all</button>
+                <button type="button" className="pb-btn-soft" onClick={() => setAllCollapsed(false)}><ChevronDown size={13} /> Expand</button>
+                <button type="button" className="pb-btn-soft" onClick={() => setAllCollapsed(true)}><ChevronRight size={13} /> Collapse</button>
               </>
             )}
-            <button type="button" className="btn btn-primary btn-sm" onClick={() => startAdd('__root__')} style={{ gap: 6 }}><Plus size={12} /> Add Top-Level Item</button>
+            <button type="button" className="btn btn-primary btn-sm pb-btn" onClick={() => startAdd('__root__')}><Plus size={13} /> Add item</button>
           </div>
-        </div>
-
-        <div className="cs-hint">
-          <Sparkles size={12} style={{ color: 'var(--accent-amber)' }} />
-          <span>Manually build any hierarchy — <strong>Chapter → Module → Lesson</strong> or <strong>Part → Topic → Subtopic</strong>, totally flexible. Click <em>Add Child</em> on any item to nest deeper.</span>
-        </div>
-        <div className="cs-legend">
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span className="cs-legend-dot" style={{ background: 'var(--accent-amber)' }} /> Level 0</span>
-          <span style={{ opacity: 0.3 }}>→</span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span className="cs-legend-dot" style={{ background: 'var(--accent-purple)' }} /> Level 1</span>
-          <span style={{ opacity: 0.3 }}>→</span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span className="cs-legend-dot" style={{ background: 'var(--accent-orange)' }} /> Level 2</span>
-          <span style={{ opacity: 0.3 }}>→</span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span className="cs-legend-dot" style={{ background: 'var(--accent-cyan)' }} /> Level 3</span>
-          <span style={{ opacity: 0.3 }}>→</span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span className="cs-legend-dot" style={{ background: 'var(--accent-rose)' }} /> Level 4+</span>
-          <span style={{ marginLeft: 'auto', fontSize: 9, opacity: 0.7 }}>color = depth • left border = parent</span>
-        </div>
+        </header>
+        <p className="pb-hint"><Sparkles size={12} /> Build any hierarchy — <strong>Chapter → Module → Lesson</strong> or your own. Use <strong>+</strong> on an item to nest deeper.</p>
 
         {addingParentId === '__root__' && (
           <div className="cs-add-form">
@@ -537,19 +474,16 @@ function CourseDetailView({ course, nodes, updateNodes, onBack, onEditCourse }) 
               value={addDraft.type}
               onChange={(e) => setAddDraft((p) => ({ ...p, type: e.target.value }))}
               placeholder="Type (e.g. Chapter) — manual"
-              className="input"
-              style={{ height: 34, maxWidth: 150 }}
+              className="input cs-type-input"
             />
-            <input className="input" value={addDraft.title} onChange={(e) => setAddDraft((p) => ({ ...p, title: e.target.value }))} placeholder="Title (e.g. Chapter 1 - Basics)" style={{ flex: '1 1 160px', height: 34 }} autoFocus onKeyDown={(e) => e.key === 'Enter' && handleAdd('__root__')} />
-            <button type="button" className="btn btn-primary btn-sm" onClick={() => handleAdd('__root__')} disabled={!addDraft.title.trim()} style={{ height: 34 }}>Add</button>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setAddingParentId(null)} style={{ height: 34 }}><X size={14} /></button>
+            <input className="input cs-title-input" value={addDraft.title} onChange={(e) => setAddDraft((p) => ({ ...p, title: e.target.value }))} placeholder="Title (e.g. Chapter 1 - Basics)" autoFocus onKeyDown={(e) => e.key === 'Enter' && handleAdd('__root__')} />
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => handleAdd('__root__')} disabled={!addDraft.title.trim()}>Add</button>
+            <button type="button" className="pb-icon" onClick={() => setAddingParentId(null)} aria-label="Cancel"><X size={14} /></button>
           </div>
         )}
 
         {topNodes.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '18px 12px', border: '1px dashed var(--border-primary)', borderRadius: 12, color: 'var(--text-tertiary)', fontSize: 12 }}>
-            No structure yet. Add a top-level item to start — e.g. <strong>Chapter</strong>, <strong>Module</strong> or any custom section.
-          </div>
+          <p className="pb-empty-line is-boxed">No structure yet. Add a top-level item — e.g. <strong>Chapter</strong> or <strong>Module</strong>.</p>
         ) : (
           <div className="cs-tree">
             {topNodes.map((node, idx) => (
@@ -581,7 +515,7 @@ function CourseDetailView({ course, nodes, updateNodes, onBack, onEditCourse }) 
             ))}
           </div>
         )}
-      </div>
+      </section>
 
       {/* ── Delete warning — lists everything under the item ── */}
       {deletingNode && (
@@ -619,8 +553,9 @@ function CourseDetailView({ course, nodes, updateNodes, onBack, onEditCourse }) 
 
 // Theme-matching warm palette (amber family) — no green, so depth
 // highlights sit with the app's gold theme. Orange is a theme token.
-const DEPTH_COLORS = ['var(--accent-amber)', 'var(--accent-purple)', 'var(--accent-orange)', 'var(--accent-cyan)', 'var(--accent-rose)'];
-const DEPTH_GLOWS = ['var(--accent-amber-glow)', 'var(--accent-purple-glow)', 'var(--accent-orange-glow)', 'var(--accent-cyan-glow)', 'var(--accent-rose-glow)'];
+// One theme accent for every depth — hierarchy reads from indentation + guide lines.
+const DEPTH_COLORS = ['var(--accent-amber)'];
+const DEPTH_GLOWS = ['var(--accent-amber-glow)'];
 
 const TYPE_ICONS = {
   chapter: BookOpen,
@@ -698,15 +633,15 @@ function CourseNodeRow({
         {node.notes && <span className="cs-pill notes" title={node.notes}>{node.notes}</span>}
 
         <div className="cs-node-actions">
-          <button type="button" className="lp-icon-btn" onClick={() => setOpenCommentId(isCommentOpen ? null : node.id)} title={hasComment ? 'Edit comment' : 'Add comment'} style={{ width: 24, height: 24, background: isCommentOpen || hasComment ? depthGlow : undefined, color: isCommentOpen || hasComment ? depthColor : undefined, border: isCommentOpen ? `1px solid ${depthColor}` : undefined, position: 'relative' }}>
+          <button type="button" className="lp-icon-btn" onClick={() => setOpenCommentId(isCommentOpen ? null : node.id)} title={hasComment ? 'Edit comment' : 'Add comment'} data-on={isCommentOpen || hasComment || undefined}>
             <MessageSquare size={11} />
-            {hasComment && !isCommentOpen && <span style={{ position: 'absolute', top: -2, right: -2, width: 7, height: 7, borderRadius: 999, background: 'var(--accent-amber)', border: '1px solid var(--bg-card)' }} />}
+            {hasComment && !isCommentOpen && <span className="cs-comment-dot" />}
           </button>
-          <button type="button" className="lp-icon-btn" disabled={index === 0} onClick={() => updateNodes((prev) => moveCourseNode(prev, node.id, 'up'))} title="Move up" style={{ width: 24, height: 24 }}><ArrowUp size={11} /></button>
-          <button type="button" className="lp-icon-btn" disabled={index === sibCount - 1} onClick={() => updateNodes((prev) => moveCourseNode(prev, node.id, 'down'))} title="Move down" style={{ width: 24, height: 24 }}><ArrowDown size={11} /></button>
-          <button type="button" className="lp-icon-btn" onClick={() => { setAddDraft({ title: '', type: '' }); setEditingNodeId(null); setAddingParentId(node.id); }} title="Add child" aria-label={`Add child to ${node.title}`} style={{ width: 24, height: 24 }}><Plus size={11} /></button>
-          <button type="button" className="lp-icon-btn" onClick={() => startEdit(node)} title="Edit" aria-label={`Edit ${node.title}`} style={{ width: 24, height: 24 }}><Pencil size={11} /></button>
-          <button type="button" className="lp-icon-btn" onClick={() => onDeleteRequest(node)} title="Delete" aria-label={`Delete ${node.title}`} style={{ width: 24, height: 24 }}><Trash2 size={11} /></button>
+          <button type="button" className="lp-icon-btn" disabled={index === 0} onClick={() => updateNodes((prev) => moveCourseNode(prev, node.id, 'up'))} title="Move up"><ArrowUp size={11} /></button>
+          <button type="button" className="lp-icon-btn" disabled={index === sibCount - 1} onClick={() => updateNodes((prev) => moveCourseNode(prev, node.id, 'down'))} title="Move down"><ArrowDown size={11} /></button>
+          <button type="button" className="lp-icon-btn" onClick={() => { setAddDraft({ title: '', type: '' }); setEditingNodeId(null); setAddingParentId(node.id); }} title="Add child" aria-label={`Add child to ${node.title}`}><Plus size={11} /></button>
+          <button type="button" className="lp-icon-btn" onClick={() => startEdit(node)} title="Edit" aria-label={`Edit ${node.title}`}><Pencil size={11} /></button>
+          <button type="button" className="lp-icon-btn" onClick={() => onDeleteRequest(node)} title="Delete" aria-label={`Delete ${node.title}`}><Trash2 size={11} /></button>
         </div>
       </div>
 
@@ -754,7 +689,7 @@ function CourseNodeRow({
       {isCommentOpen && (
         <div className="cs-pop-panel">
           <div>
-            <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: depthColor, display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
+            <label className="pb-form-label is-accent">
               <MessageSquare size={11} /> What did you learn? — comment
             </label>
             <textarea

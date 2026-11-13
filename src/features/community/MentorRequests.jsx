@@ -15,6 +15,34 @@ import { sendMessage } from '../../utils/messageStorage';
 import { sanitizeUserInput, MAX_TITLE_LENGTH, MAX_SHORT_TEXT_LENGTH } from '../../utils/sanitize';
 import ConfirmDialog from '../marketplace/ConfirmDialog';
 
+function AvatarImage({ src, name }) {
+  const [failed, setFailed] = useState(false);
+  if (src && !failed) return <img src={src} alt="" onError={() => setFailed(true)} />;
+  return <span>{getUserInitials(name)}</span>;
+}
+
+function ResponseList({ responses, emptyText }) {
+  if (!responses?.length) {
+    return emptyText ? <p className="mentor-card-empty">{emptyText}</p> : null;
+  }
+  return (
+    <div className="mentor-card-responses">
+      {responses.map((res) => (
+        <div key={res.id} className="mentor-card-response">
+          <div className="mentor-card-response-head">
+            <span className="mentor-card-response-name">
+              {res.responderName} <span>· Batch {res.responderBatch}</span>
+            </span>
+            <span className="mentor-card-response-date">{formatPostedDate(res.postedAt)}</span>
+          </div>
+          <p>{res.message}</p>
+          {res.contact && <p className="mentor-card-response-contact">Contact: {res.contact}</p>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const defaultForm = {
   topic: '',
   description: '',
@@ -230,37 +258,20 @@ export default function MentorRequests() {
         ) : (
           <div className="mentor-request-grid">
             {myRequests.map((req) => (
-              <div key={req.id} className="community-cell mentor-req-card">
-                <div className="mentor-req-topic" style={{ display: 'inline-flex' }}>
-                  <UserCheck size={12} /> {req.topic}
+              <article key={req.id} className="community-cell mentor-req-card">
+                <div className="mentor-card-body">
+                  <span className="mentor-req-topic"><UserCheck size={12} /> {req.topic}</span>
+                  {req.description && <p className="mentor-card-desc">{req.description}</p>}
                 </div>
-                {req.description && (
-                  <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: '8px' }}>{req.description}</p>
-                )}
-                <p style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '6px' }}>
-                  Posted {formatPostedDate(req.postedAt)} · {req.responses?.length || 0} response{req.responses?.length === 1 ? '' : 's'}
-                </p>
-                {req.responses?.length > 0 ? (
-                  <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--border-secondary)', paddingTop: '10px' }}>
-                    {req.responses.map((res) => (
-                      <div key={res.id} style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', padding: '10px 12px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                        <div className="flex justify-between items-center flex-wrap gap-2">
-                          <span style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>
-                            {res.responderName} <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', fontWeight: 'normal' }}>• Batch {res.responderBatch}</span>
-                          </span>
-                          <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>{formatPostedDate(res.postedAt)}</span>
-                        </div>
-                        <p style={{ marginTop: '4px' }}>{res.message}</p>
-                        {res.contact && (
-                          <p style={{ fontSize: '10px', color: 'var(--accent-amber)', marginTop: '4px', fontWeight: 'bold' }}>Contact: {res.contact}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontStyle: 'italic', marginTop: '10px' }}>No responses yet — mentors will see your post in the Feed.</p>
-                )}
-              </div>
+                <ResponseList
+                  responses={req.responses}
+                  emptyText="No responses yet — mentors will see your post in the Feed."
+                />
+                <footer className="mentor-card-foot">
+                  <span className="mentor-card-count">Posted {formatPostedDate(req.postedAt)}</span>
+                  <span className="mentor-card-count">{req.responses?.length || 0} response{req.responses?.length === 1 ? '' : 's'}</span>
+                </footer>
+              </article>
             ))}
           </div>
         )
@@ -275,105 +286,65 @@ export default function MentorRequests() {
       ) : (
         <div className="mentor-request-grid">
           {sortedRequests.map((req) => {
-            // Density by mentor response count — 0 → emerald · 1 → cyan · 2 → amber · 3+ → rose
             const responseCount = (req.responses || []).length;
-            const densityClass = responseCount >= 3 ? 'is-rose' : responseCount === 2 ? 'is-amber' : responseCount === 1 ? 'is-cyan' : 'is-emerald';
+            const canDelete = user?.role === 'admin' || req.contributorId === user?.id;
+            const isResponding = respondTarget?.id === req.id;
             return (
-            <div key={req.id} className={`community-cell mentor-req-card ${densityClass}`}>
-                <div className="flex justify-between items-start flex-wrap gap-3">
-                  <div className="flex gap-3 items-start">
-                    <button
-                      type="button"
-                      className="avatar sm"
-                      style={{ width: '36px', height: '36px', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', flexShrink: 0 }}
-                      onClick={() => navigate(`/members/${req.contributorId}`)}
-                      title={`View ${req.requesterName}'s profile / ID`}
-                      aria-label={`View ${req.requesterName}'s profile`}
-                    >
-                      {req.avatar ? <img src={req.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} /> : getUserInitials(req.requesterName)}
-                    </button>
-                    <div>
-                      <h3 style={{ fontSize: '14px', fontWeight: 'bold' }}>
-                        {req.requesterName}{' '}
-                        <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 'normal' }}>
-                          • Batch {req.batch} • {req.department}
-                        </span>
-                      </h3>
-                      <p style={{ display: 'inline-block', fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.5, padding: '4px 10px', border: '1px dotted var(--border-primary)', borderRadius: '8px' }}>
-                        <strong style={{ color: 'var(--text-primary)' }}>Topics:</strong> {req.topic}
-                      </p>
-                      {req.description && (
-                        <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: '8px', maxWidth: '600px', lineHeight: 1.5 }}>
-                          {req.description}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="mentor-req-head-right">
-                    {(user?.role === 'admin' || req.contributorId === user?.id) && (
-                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => handleDelete(req)} style={{ color: 'var(--accent-rose)', padding: '4px 8px' }}>
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <p style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
-                  <span>Posted {formatPostedDate(req.postedAt)}</span>
-                  <span style={{ fontSize: '9px', letterSpacing: '0.04em' }}>{responseCount} {responseCount === 1 ? 'response' : 'responses'}</span>
-                </p>
-
-              {req.responses && req.responses.length > 0 && (
-                <div style={{ marginTop: '12px', marginLeft: '48px', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--border-secondary)', paddingTop: '10px' }}>
-                  <p style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Responses ({req.responses.length})
-                  </p>
-                  {req.responses.map((res) => (
-                    <div key={res.id} style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', padding: '10px 12px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                      <div className="flex justify-between items-center flex-wrap gap-2">
-                        <span style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>
-                          {res.responderName} <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', fontWeight: 'normal' }}>• Batch {res.responderBatch}</span>
-                        </span>
-                        <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>{formatPostedDate(res.postedAt)}</span>
-                      </div>
-                      <p style={{ marginTop: '4px' }}>{res.message}</p>
-                      {res.contact && (
-                        <p style={{ fontSize: '10px', color: 'var(--accent-amber)', marginTop: '4px', fontWeight: 'bold' }}>
-                          Contact: {res.contact}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {req.contributorId !== user?.id && (
+            <article key={req.id} className="community-cell mentor-req-card">
+              <header className="mentor-card-head">
                 <button
                   type="button"
-                  className="btn btn-secondary btn-sm"
-                  style={{ marginTop: '10px', marginLeft: '48px', fontSize: '10px' }}
-                  onClick={() => handleRespondAsMentor(req)}
+                  className="mentor-card-avatar"
+                  onClick={() => navigate(`/members/${req.contributorId}`)}
+                  title={`View ${req.requesterName}'s profile / ID`}
+                  aria-label={`View ${req.requesterName}'s profile`}
                 >
-                  <Mail size={12} /> Respond as Mentor
+                  <AvatarImage src={req.avatar} name={req.requesterName} />
                 </button>
-              )}
-              {respondTarget?.id === req.id && (
-                <form onSubmit={handleRespondSubmit} style={{ marginTop: '10px', marginLeft: '48px', display: 'flex', flexDirection: 'column', gap: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-md)', padding: '12px' }}>
-                  <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div className="mentor-card-who">
+                  <h3 className="mentor-card-name">{req.requesterName}</h3>
+                  <p className="mentor-card-meta">Batch {req.batch} · {req.department} · {formatPostedDate(req.postedAt)}</p>
+                </div>
+                {canDelete && (
+                  <button type="button" className="mentor-card-icon-btn" onClick={() => handleDelete(req)} title="Delete request" aria-label="Delete request">
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </header>
+
+              <div className="mentor-card-body">
+                <span className="mentor-req-topic"><UserCheck size={12} /> {req.topic}</span>
+                {req.description && <p className="mentor-card-desc">{req.description}</p>}
+              </div>
+
+              <ResponseList responses={req.responses} />
+
+              <footer className="mentor-card-foot">
+                <span className="mentor-card-count">{responseCount} {responseCount === 1 ? 'response' : 'responses'}</span>
+                {req.contributorId !== user?.id && !isResponding && (
+                  <button type="button" className="mentor-card-respond" onClick={() => handleRespondAsMentor(req)}>
+                    <Mail size={12} /> Respond as Mentor
+                  </button>
+                )}
+              </footer>
+
+              {isResponding && (
+                <form onSubmit={handleRespondSubmit} className="mentor-card-form">
+                  <label>
                     Your response *
                     <textarea className="input" value={respondForm.message} onChange={(e) => setRespondForm((c) => ({ ...c, message: e.target.value }))} placeholder="How can you help? (also sent as a DM)" rows={2} required autoFocus />
                   </label>
-                  <label style={{ fontSize: 'var(--fs-xs)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label>
                     Contact (optional)
                     <input className="input" value={respondForm.contact} onChange={(e) => setRespondForm((c) => ({ ...c, contact: e.target.value }))} placeholder="Phone / Telegram / Email" />
                   </label>
-                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <div className="mentor-card-form-actions">
                     <button type="button" className="btn btn-ghost btn-sm" onClick={() => setRespondTarget(null)}>Cancel</button>
                     <button type="submit" className="btn btn-primary btn-sm"><Mail size={12} /> Send Response</button>
                   </div>
                 </form>
               )}
-            </div>
+            </article>
             );
           })}
         </div>
