@@ -2123,13 +2123,8 @@ async function handleApiRequest(req, res) {
     }
     try {
       // per-page check for cover
-      let cfg = { statsAllowed: ['admin', 'moderator'] };
-      try {
-        const p = path.join(path.dirname(fileURLToPath(import.meta.url)), 'roleAccess.json');
-        const raw = await readFile(p, 'utf-8');
-        const all = JSON.parse(raw);
-        cfg = (all && all['cover']) || all['default'] || cfg;
-      } catch {}
+      const all = await readRoleAccess();
+      const cfg = (all && all['cover']) || all['default'] || { statsAllowed: ['admin', 'moderator'] };
       if (!cfg.statsAllowed.includes(payload.role)) {
         res.writeHead(403, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: false, error: `Forbidden: ${cfg.statsAllowed.join(' or ')} role required.` }));
@@ -2152,13 +2147,9 @@ async function handleApiRequest(req, res) {
       res.end(JSON.stringify({ success: false, error: 'Authentication required.' }));
       return;
     }
-    let cfg = { statsAllowed: ['admin', 'moderator'] };
-    try {
-      const p = path.join(path.dirname(fileURLToPath(import.meta.url)), 'roleAccess.json');
-      const raw = await readFile(p, 'utf-8');
-      const all = JSON.parse(raw);
-      cfg = (all && all['cover']) || all['default'] || cfg;
-    } catch {}
+    let all = {};
+    try { all = await readRoleAccess(); } catch {}
+    const cfg = (all && all['cover']) || all['default'] || { statsAllowed: ['admin', 'moderator'] };
     if (!cfg.statsAllowed.includes(payload.role)) {
       res.writeHead(403, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: false, error: `Forbidden: ${cfg.statsAllowed.join(' or ')} role required.` }));
@@ -2177,17 +2168,25 @@ async function handleApiRequest(req, res) {
   }
 
   // ── Role Access per-page config (real enforcement) ──
+  const ROLE_ACCESS_STORE_KEY = 'system:role-access-config';
   async function readRoleAccess() {
+    const stored = await getSharedStoreValue(ROLE_ACCESS_STORE_KEY, null);
+    if (stored && typeof stored === 'object' && !Array.isArray(stored)) return stored;
+
+    // Migrate the existing checked-in/runtime JSON map once. After this seed,
+    // reads and writes use SharedStore so deploys and server restarts retain
+    // admin changes instead of reverting to the repository defaults.
     try {
       const p = path.join(path.dirname(fileURLToPath(import.meta.url)), 'roleAccess.json');
       const raw = await readFile(p, 'utf-8');
       const parsed = JSON.parse(raw);
-      return parsed && typeof parsed === 'object' ? parsed : {};
+      const initial = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+      await setSharedStoreValue(ROLE_ACCESS_STORE_KEY, initial, 'role-access-migration');
+      return initial;
     } catch { return {}; }
   }
-  async function writeRoleAccess(data) {
-    const p = path.join(path.dirname(fileURLToPath(import.meta.url)), 'roleAccess.json');
-    await writeFile(p, JSON.stringify(data, null, 2));
+  async function writeRoleAccess(data, updatedBy = 'admin') {
+    await setSharedStoreValue(ROLE_ACCESS_STORE_KEY, data, updatedBy);
   }
   function getRoleAccessForKey(all, key) {
     const base = (all && all['default']) || {};
@@ -2236,7 +2235,7 @@ async function handleApiRequest(req, res) {
       }
       const all = await readRoleAccess();
       all[pageKey] = { ...(all[pageKey] || {}), enabled: body.enabled };
-      await writeRoleAccess(all);
+      await writeRoleAccess(all, auth.id);
       try { broadcastToAll({ type: 'page-availability', payload: { pageKey, enabled: body.enabled } }); } catch {}
       sendJson(res, 200, { success: true, pageKey, enabled: body.enabled });
     } catch (e) {
@@ -2285,9 +2284,9 @@ async function handleApiRequest(req, res) {
       if (!featureHidden || !statsAllowed) { sendJson(res, 400, { success: false, error: 'featureHidden and statsAllowed arrays required' }); return; }
       const all = await readRoleAccess();
       // Merge so we do not clobber the page "enabled" flag managed by the
-      // Page publishing panel (they share roleAccess.json).
+      // Page publishing panel (they share the same durable config map).
       all[pageKey] = { ...(all[pageKey] || {}), featureHidden, statsAllowed, enabled: typeof body.enabled === 'boolean' ? body.enabled : all[pageKey]?.enabled !== false };
-      await writeRoleAccess(all);
+      await writeRoleAccess(all, auth.id);
       try { broadcastToAll({ type: 'role-access', payload: { pageKey, featureHidden, statsAllowed, enabled: all[pageKey].enabled } }); } catch {}
       sendJson(res, 200, { success: true, pageKey, featureHidden, statsAllowed, enabled: all[pageKey].enabled });
     } catch (e) {

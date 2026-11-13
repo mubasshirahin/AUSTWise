@@ -2,6 +2,54 @@ import { useState, useEffect, useCallback } from 'react';
 import { ThemeContext, THEMES } from './ThemeContext';
 import { THEME_ACCENTS, ACCENT_KEY, LAYOUT_KEY, LAYOUTS, applyAccentOverrides, clearAccentOverrides } from './themeConstants';
 
+// Theme and layout styles are separate CSS chunks. Loading every visual system
+// in main.jsx made even the Quick Stats route download and parse styles it
+// could never use during that visit.
+const themeStyles = {
+  dark: () => import('../themes/dark-enhanced.css'),
+  midnight: () => import('../themes/minimalist-dark.css'),
+  industrial: () => import('../themes/industrial.css'),
+  swiss: () => import('../themes/swiss.css'),
+  terminal: () => import('../themes/terminal.css'),
+  'art-deco': () => import('../themes/artdeco.css'),
+  bitcoindefi: () => import('../themes/bitcoindefi.css'),
+  poster: () => import('../themes/poster.css'),
+  nexus: () => import('../themes/nexus.css'),
+  meshtopo: () => import('../themes/meshtopo.css'),
+  blueprint: () => import('../themes/blueprint.css'),
+  obsidian: () => import('../themes/vibes.css'),
+  pastel: () => import('../themes/vibes.css'),
+  prism: () => import('../themes/vibes.css'),
+  toon: () => import('../themes/vibes.css'),
+  lofi: () => import('../themes/vibes.css'),
+  sakura: () => import('../themes/vibes.css'),
+  arcade: () => import('../themes/vibes.css'),
+};
+
+const layoutStyles = {
+  bento: () => import('../layout/ProLayouts.css'),
+  compact: () => import('../layout/ProLayouts.css'),
+  aurora: () => import('../layout/ProLayouts.css'),
+  zen: () => import('../layout/ProLayouts.css'),
+  luxe: () => import('../layout/VibeLayouts.css'),
+  soft: () => import('../layout/VibeLayouts.css'),
+  motion: () => import('../layout/VibeLayouts.css'),
+  comic: () => import('../layout/VibeLayouts.css'),
+  desk: () => import('../layout/VibeLayouts.css'),
+  manga: () => import('../layout/VibeLayouts.css'),
+  hud: () => import('../layout/VibeLayouts.css'),
+};
+
+// Start fetching the saved appearance before React mounts so its stylesheet is
+// ready with the app's first useful render. Later picker changes use the same
+// cached module imports.
+try {
+  const savedTheme = localStorage.getItem('aust-theme') || 'blueprint';
+  const savedLayout = localStorage.getItem(LAYOUT_KEY);
+  themeStyles[savedTheme]?.();
+  layoutStyles[savedLayout || (savedTheme === 'blueprint' ? 'studio' : 'classic')]?.();
+} catch { /* storage can be unavailable in private or sandboxed contexts */ }
+
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(() => {
     const saved = localStorage.getItem('aust-theme');
@@ -39,7 +87,12 @@ export function ThemeProvider({ children }) {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('aust-theme', theme);
+    themeStyles[theme]?.().catch(() => {});
   }, [theme]);
+
+  useEffect(() => {
+    layoutStyles[layout]?.().catch(() => {});
+  }, [layout]);
 
   // The active theme's accent = its stored override, else its native color.
   const accentOverridden = !!(accentMap[theme] && /^#[0-9a-fA-F]{6}$/.test(accentMap[theme]));

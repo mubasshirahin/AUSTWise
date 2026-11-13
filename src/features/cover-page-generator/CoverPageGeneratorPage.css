@@ -6,7 +6,7 @@
 @supports not (color: color-mix(in srgb, red 50%, blue)) {
   .cpgen-profile-card { background: var(--bg-card) !important; border: 1px solid var(--border-primary) !important; }
   .cpgen-success-badge { background: var(--bg-card) !important; border: 1px solid var(--border-primary) !important; }
-  .cpgen-add-member { background: var(--bg-card) !important; border: 1px dashed var(--border-primary) !important; }
+  .cpgen-add-member { color: var(--accent-blue) !important; background: var(--accent-blue-glow) !important; border: 1px dashed var(--accent-blue) !important; }
   .cpgen-preview-frame { background: var(--bg-tertiary) !important; }
 }
 
@@ -95,7 +95,8 @@
 .cpgen-widget .schedule-masthead .schedule-actions {
   z-index: 50;
 }
-.cpgen-widget .export-menu {
+.cpgen-widget .export-menu,
+.cpgen-export-menu {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
@@ -112,12 +113,14 @@
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
-[data-theme="light"] .cpgen-widget .export-menu {
+[data-theme="light"] .cpgen-widget .export-menu,
+[data-theme="light"] .cpgen-export-menu {
   background: #ffffff !important;
   background-color: #ffffff !important;
   border-color: #e4e4e7 !important;
 }
-.cpgen-widget .export-menu-item {
+.cpgen-widget .export-menu-item,
+.cpgen-export-menu .export-menu-item {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
@@ -132,17 +135,25 @@
   text-align: left;
   transition: background 0.15s ease;
 }
-.cpgen-widget .export-menu-item:hover {
+.cpgen-widget .export-menu-item:hover,
+.cpgen-export-menu .export-menu-item:hover {
   background: var(--bg-input);
 }
-.cpgen-widget .export-menu-item:disabled {
+.cpgen-widget .export-menu-item:disabled,
+.cpgen-export-menu .export-menu-item:disabled {
   opacity: 0.6;
   cursor: default;
 }
-.cpgen-widget .export-menu-sep {
+.cpgen-widget .export-menu-sep,
+.cpgen-export-menu .export-menu-sep {
   height: 1px;
   background: var(--border-primary);
   margin: 4px 8px;
+}
+.cpgen-export-menu {
+  position: fixed;
+  min-width: min(180px, calc(100vw - 24px));
+  z-index: 1000000;
 }
 
 /* Masthead status badges (generating / generated) */
@@ -518,8 +529,8 @@
   height: 28px;
   border: none;
   border-radius: var(--radius-sm);
-  background: var(--accent-rose-glow);
-  color: var(--accent-rose);
+  background: var(--accent-blue-glow);
+  color: var(--accent-blue);
   cursor: pointer;
   transition: all var(--transition-fast);
   flex: none;
@@ -531,7 +542,7 @@
 }
 
 .cpgen-member-remove:not(:disabled):hover {
-  background: var(--accent-rose);
+  background: var(--accent-blue);
   color: #fff;
 }
 
@@ -543,9 +554,9 @@
   padding: 7px 12px;
   font-size: var(--fs-xs);
   font-weight: var(--fw-semibold);
-  color: var(--accent-emerald);
-  background: var(--accent-emerald-glow);
-  border: 1px dashed color-mix(in srgb, var(--accent-emerald) 40%, transparent);
+  color: var(--accent-blue);
+  background: var(--accent-blue-glow);
+  border: 1px dashed color-mix(in srgb, var(--accent-blue) 40%, transparent);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -553,7 +564,7 @@
 }
 
 .cpgen-add-member:hover {
-  background: color-mix(in srgb, var(--accent-emerald) 18%, transparent);
+  background: color-mix(in srgb, var(--accent-blue) 18%, transparent);
 }
 
 /* ─── Actions ─── */

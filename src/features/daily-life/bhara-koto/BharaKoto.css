@@ -86,49 +86,76 @@
   gap: var(--sp-3);
   min-width: 0;
 }
-@media (min-width: 900px) {
-  .bk-layout { grid-template-columns: minmax(230px, 300px) minmax(0, 1fr); align-items: start; }
-}
 
-/* ── Origin list ── */
-.bk-origins {
+/* ── Fare table ── */
+.bk-route-table-wrap {
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
   background: var(--bg-card);
-  max-height: 280px;
-  overflow-y: auto;
   min-width: 0;
+  overflow-x: auto;
 }
-@media (min-width: 900px) {
-  .bk-origins { max-height: 620px; position: sticky; top: 12px; }
-}
-.bk-origins ul { list-style: none; margin: 0; padding: 4px; }
-.bk-origin {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.bk-route-table {
   width: 100%;
+  min-width: 1050px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--fs-xs);
+}
+.bk-route-table th,
+.bk-route-table td {
   padding: 8px 10px;
+  border-bottom: 1px solid var(--border-primary);
+  text-align: left;
+  white-space: nowrap;
+}
+.bk-route-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg-card);
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.bk-route-table tbody tr:hover { background: var(--bg-card-hover); }
+.bk-route-table tbody tr:last-child > * { border-bottom: 0; }
+.bk-route-area {
+  min-width: 185px;
+  color: var(--text-primary);
+  font-weight: var(--fw-semibold);
+}
+.bk-route-area > svg { display: inline-block; margin-right: 6px; color: var(--accent-amber); vertical-align: -2px; }
+.bk-route-area small { display: block; margin: 2px 0 0 20px; color: var(--text-tertiary); font-size: 10px; font-weight: var(--fw-normal); }
+.bk-route-destination { min-width: 145px; color: var(--text-secondary); }
+.bk-fare-button {
+  min-width: 72px;
+  min-height: 42px;
+  padding: 7px 9px;
   border: 1px solid transparent;
   border-radius: var(--radius-md);
   background: transparent;
-  color: var(--text-primary);
+  color: var(--accent-emerald);
   font: inherit;
-  text-align: left;
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
-.bk-origin:hover { background: var(--bg-card-hover); }
-.bk-origin.active {
-  background: color-mix(in srgb, var(--accent-blue) 12%, transparent);
-  border-color: color-mix(in srgb, var(--accent-blue) 35%, transparent);
+.bk-fare-button:hover,
+.bk-fare-button:focus-visible { border-color: var(--accent-amber); background: var(--accent-amber-glow); color: var(--text-primary); }
+.bk-fare-button:focus-visible { outline: 2px solid var(--accent-amber); outline-offset: 1px; }
+.bk-fare-free { color: var(--text-secondary); }
+.bk-fare-unavailable { color: var(--text-tertiary); padding-left: 12px; }
+.bk-empty-cell { padding: 18px !important; color: var(--text-tertiary); text-align: center !important; }
+.bk-route-row.active { background: color-mix(in srgb, var(--accent-amber) 7%, transparent); }
+
+@media (max-width: 640px) {
+  .bk-route-table { min-width: 1030px; }
+  .bk-route-table th, .bk-route-table td { padding: 6px 8px; }
+  .bk-fare-button { min-height: 44px; }
 }
-.bk-origin-pin { flex-shrink: 0; color: var(--text-tertiary); }
-.bk-origin.active .bk-origin-pin { color: var(--accent-blue); }
-.bk-origin-main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-.bk-origin-name { font-size: var(--fs-sm); font-weight: var(--fw-semibold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bk-origin-meta { font-size: 11px; color: var(--text-tertiary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bk-origin-fare { flex-shrink: 0; font-size: 11px; font-weight: var(--fw-semibold); color: var(--accent-emerald); }
-.bk-empty { margin: 0; padding: 14px; font-size: var(--fs-xs); color: var(--text-tertiary); line-height: 1.6; }
 
 /* ── Detail ── */
 .bk-detail {
@@ -328,6 +355,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bk-card, .bk-zone { transition: none; }
-  .bk-card:hover { transform: none; }
+  .bk-zone { transition: none; }
 }
