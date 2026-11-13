@@ -403,6 +403,9 @@ html[data-layout="desk"] { --radius-sm: 4px; --radius-md: 6px; --radius-lg: 8px;
     height: 100%;
     overflow-x: auto;
     scrollbar-width: none;
+    /* fade the right edge so overflowing links read as scrollable */
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent);
+    mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent);
   }
   html[data-layout="desk"] .sidebar .sidebar-nav::-webkit-scrollbar { display: none; }
   html[data-layout="desk"] .sidebar .nav-item {
@@ -466,7 +469,7 @@ html[data-layout="desk"] .glider-tab { color: var(--text-secondary); }
 html[data-layout="desk"] .glider-tab:hover,
 html[data-layout="desk"] .glider-tab.active { color: var(--text-primary); }
 html[data-layout="desk"] .glider-tab-icon { background: none !important; color: inherit !important; width: 24px; height: 24px; }
-html[data-layout="desk"] .glider-tab.active .glider-tab-icon { color: var(--accent-blue) !important; }
+html[data-layout="desk"] .glider-tab.active .glider-tab-icon { color: var(--accent-blue) !important; background: none !important; }
 @media (max-width: 1024px) {
   html[data-layout="desk"] .glider-tabs-wrap { border-bottom: 1px solid var(--border-primary); }
   html[data-layout="desk"] .glider-tabs-glider { top: auto; bottom: -1px; left: 0; height: 2px; border-radius: 2px; background: var(--accent-blue); box-shadow: none; }

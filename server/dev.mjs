@@ -2484,6 +2484,20 @@ async function handleApiRequest(req, res) {
             if (user) {
               await saveAttendanceRecord(chatId, courseCode, isAttended);
               console.log(`✅ Attendance saved for user ${chatId}: ${courseCode} = ${isAttended ? 'Present' : 'Absent'}`);
+              // Push the change to that student's open website tabs so the
+              // attendance tracker refreshes without a reload.
+              try {
+                const awid = user.Awid ?? user.awid;
+                const account = awid ? await getUserByIdOrAwid(awid) : null;
+                if (account?.id) {
+                  broadcastToUser(account.id, {
+                    type: 'attendance-sync',
+                    payload: { courseId: courseCode, attended: isAttended, timestamp: new Date().toISOString() },
+                  });
+                }
+              } catch (broadcastError) {
+                console.warn('⚠️  attendance-sync broadcast failed:', broadcastError.message);
+              }
             }
 
             // Answer the callback query with confirmation

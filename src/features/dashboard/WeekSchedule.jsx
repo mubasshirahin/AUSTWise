@@ -405,6 +405,30 @@ export default function WeekSchedule() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  // Keep the portalled ⋮ menu pinned directly under its button while the
+  // page scrolls or resizes (it is position:fixed, so it would otherwise
+  // stay where it opened and drift away from the button).
+  useEffect(() => {
+    if (!showExportMenu) return undefined;
+    let frame = 0;
+    const place = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const btn = menuBtnRef.current;
+        if (!btn) return;
+        const rect = btn.getBoundingClientRect();
+        setMenuPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
+      });
+    };
+    window.addEventListener('scroll', place, { passive: true, capture: true });
+    window.addEventListener('resize', place);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', place, { capture: true });
+      window.removeEventListener('resize', place);
+    };
+  }, [showExportMenu]);
+
   const scheduleRef = useRef(null);
 
   const downloadSchedulePDF = useCallback(async () => {
@@ -646,7 +670,16 @@ export default function WeekSchedule() {
               <MoreVertical size={18} />
             </button>
             {showExportMenu && createPortal(
-              <div ref={menuRef} className="export-menu routine-more-menu" style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 99999 }}>
+              <div ref={menuRef} className="export-menu routine-more-menu" style={{
+                position: 'fixed',
+                top: menuPos.top,
+                right: menuPos.right,
+                zIndex: 99999,
+                // Fits the space below the button (above the mobile bottom nav);
+                // longer menus scroll inside instead of sliding off-screen.
+                maxHeight: `max(160px, calc(100dvh - ${Math.round(menuPos.top)}px - 96px))`,
+                overflowY: 'auto',
+              }}>
                 <button
                   className={`export-menu-item${viewMode === 'daily' ? ' menu-active' : ''}`}
                   onClick={() => { setCurrentDate(new Date()); changeViewMode('daily'); setShowExportMenu(false); }}

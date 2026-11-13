@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   DollarSign, Plus, Trash2, Home, Wallet,
   CalendarDays, Calendar, CalendarRange,
@@ -295,7 +296,7 @@ export default function MoneyTrackerPage() {
   };
 
   return (
-    <div className="tgk-widget glass-card-static animate-fadeInUp" style={{ padding: 'var(--sp-5)' }}>
+    <div className="tgk-widget glass-card-static animate-fadeInUp">
 
       {/* ════════════════════════════════════════
           MASTHEAD
@@ -467,7 +468,7 @@ export default function MoneyTrackerPage() {
         {/* ── Calendar ── */}
         <div className="tgk-card tgk-cal-panel">
           <div className="tgk-cal-header">
-            <h4 className="tgk-card-title" style={{ margin: 0 }}>
+            <h4 className="tgk-card-title">
               <CalendarDays size={14} /> Daily spending
             </h4>
             <div className="tgk-view-pills">
@@ -584,9 +585,11 @@ export default function MoneyTrackerPage() {
             </div>
           )}
 
-          <p className="tgk-cal-hint">
-            Click a day to add an expense. Over budget shows red, today shows an amber border.
-          </p>
+          <div className="tgk-cal-legend">
+            <span className="tgk-cal-legend-item"><i className="tgk-cal-legend-swatch" /> Today</span>
+            <span className="tgk-cal-legend-item"><i className="tgk-cal-legend-swatch is-over" /> Over daily limit</span>
+            <span className="tgk-cal-legend-note">Select a day to add or review expenses.</span>
+          </div>
         </div>
 
         {/* ── Side rail ── */}
@@ -596,7 +599,10 @@ export default function MoneyTrackerPage() {
           <div className="tgk-card">
             <h4 className="tgk-card-title"><Layers size={14} /> Category breakdown</h4>
             {cats.length === 0 ? (
-              <p className="tgk-empty-hint">No expenses yet — categories will show up here.</p>
+              <div className="tgk-empty">
+                <span className="tgk-empty-icon"><Layers size={16} /></span>
+                <p className="tgk-empty-hint">No expenses yet — categories will show up here.</p>
+              </div>
             ) : (
               <>
                 <CategoryPieChart cats={cats} activeId={hoveredCatId} onHover={setHoveredCatId} />
@@ -629,7 +635,10 @@ export default function MoneyTrackerPage() {
           <div className="tgk-card">
             <h4 className="tgk-card-title"><History size={14} /> Recent activity</h4>
             {recent.length === 0 ? (
-              <p className="tgk-empty-hint">No daily expenses recorded yet.</p>
+              <div className="tgk-empty">
+                <span className="tgk-empty-icon"><History size={16} /></span>
+                <p className="tgk-empty-hint">No daily expenses recorded yet.</p>
+              </div>
             ) : (
               <div className="tgk-recent-list">
                 {recent.map(r => {
@@ -676,7 +685,13 @@ export default function MoneyTrackerPage() {
             </div>
 
             {doc.fixed.length === 0 ? (
-              <p className="tgk-empty-hint">No fixed expenses yet — click + to add rent, wifi, subscriptions…</p>
+              <div className="tgk-empty">
+                <span className="tgk-empty-icon"><Home size={16} /></span>
+                <p className="tgk-empty-hint">No fixed expenses yet — add rent, wifi, subscriptions…</p>
+                <button type="button" className="tgk-empty-action" onClick={openFixedModal}>
+                  <Plus size={13} /> Add fixed expense
+                </button>
+              </div>
             ) : (
               <div className="tgk-expense-list">
                 {doc.fixed.map(f => (
@@ -713,7 +728,7 @@ export default function MoneyTrackerPage() {
       {/* ════════════════════════════════════════
           DAY EXPENSE MODAL
           ════════════════════════════════════════ */}
-      {dayModal && (
+      {dayModal && createPortal(
         <div className="modal-overlay" onClick={() => setDayModal(null)}>
           <div className="modal tgk-modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`Expenses on ${dayModal}`}>
 
@@ -824,13 +839,14 @@ export default function MoneyTrackerPage() {
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ════════════════════════════════════════
           FIXED EXPENSE MODAL
           ════════════════════════════════════════ */}
-      {fixedModal && (
+      {fixedModal && createPortal(
         <div className="modal-overlay" onClick={() => setFixedModal(false)}>
           <div className="modal tgk-modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Add fixed expense">
             <div className="tgk-modal-head">
@@ -896,7 +912,8 @@ export default function MoneyTrackerPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -242,17 +242,27 @@ export async function isRegistered(chatId) {
   return list.some(u => String(u.chatId) === String(chatId));
 }
 
+// Attendance belongs to the student's calendar day in Bangladesh. CURRENT_DATE
+// and toISOString() both use the DB/host timezone (usually UTC), which files a
+// mark answered between 00:00–06:00 Dhaka time under the previous day.
+function dhakaDateKey(date = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Dhaka', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(date);
+}
+
 export async function saveAttendanceRecord(chatId, courseCode, attended) {
+  const recordDate = dhakaDateKey();
   if (!useJsonFallback) {
     try {
       const r = await query(`
         INSERT INTO "AttendanceRecords" ("ChatId", "CourseCode", "Attended", "RecordDate", "Timestamp")
-        VALUES (@chatId, @course, @attended, CURRENT_DATE, NOW())
+        VALUES (@chatId, @course, @attended, @recordDate::date, NOW())
         ON CONFLICT ("ChatId", "CourseCode", "RecordDate") DO UPDATE SET
           "Attended" = EXCLUDED."Attended",
           "Timestamp" = NOW()
         RETURNING *;
-      `, { chatId: { value: String(chatId) }, course: { value: courseCode }, attended: { type: sql.Bit, value: attended } });
+      `, { chatId: { value: String(chatId) }, course: { value: courseCode }, attended: { type: sql.Bit, value: attended }, recordDate: { value: recordDate } });
       return r.recordset[0] || null;
     } catch (err) {
       console.warn('⚠️  SQL Server saveAttendanceRecord failed, using JSON database fallback:', err.message);
@@ -262,8 +272,7 @@ export async function saveAttendanceRecord(chatId, courseCode, attended) {
   }
 
   // JSON Fallback
-  const today = new Date().toISOString().split('T')[0];
-  return saveAttendanceRecordForDate(chatId, courseCode, attended, today);
+  return saveAttendanceRecordForDate(chatId, courseCode, attended, recordDate);
 }
 
 export async function saveAttendanceRecordForDate(chatId, courseCode, attended, recordDate) {
@@ -312,9 +321,10 @@ export async function saveAttendanceRecordForDate(chatId, courseCode, attended, 
 }
 
 export async function getTodayAttendanceRecord(chatId, courseCode) {
+  const today = dhakaDateKey();
   if (!useJsonFallback) {
     try {
-      const r = await query("SELECT * FROM \"AttendanceRecords\" WHERE \"ChatId\" = @chatId AND \"CourseCode\" = @course AND \"RecordDate\" = CURRENT_DATE", { chatId: { value: String(chatId) }, course: { value: courseCode } });
+      const r = await query("SELECT * FROM \"AttendanceRecords\" WHERE \"ChatId\" = @chatId AND \"CourseCode\" = @course AND \"RecordDate\" = @today::date", { chatId: { value: String(chatId) }, course: { value: courseCode }, today: { value: today } });
       return r.recordset[0] || null;
     } catch (err) {
       console.warn('⚠️  SQL Server getTodayAttendanceRecord failed, using JSON database fallback:', err.message);
@@ -325,14 +335,22 @@ export async function getTodayAttendanceRecord(chatId, courseCode) {
 
   // JSON Fallback
   const list = await readJson('attendance.json');
-  const today = new Date().toISOString().split('T')[0];
   return list.find(r => String(r.chatId) === String(chatId) && r.courseCode.toUpperCase() === courseCode.toUpperCase() && r.recordDate === today) || null;
 }
 
 export async function getUserAttendanceRecords(chatId) {
   if (!useJsonFallback) {
     try {
-      const r = await query('SELECT * FROM "AttendanceRecords" WHERE "ChatId" = @chatId ORDER BY "RecordDate" DESC, "Timestamp" DESC', { chatId: { value: String(chatId) } });
+      // RecordDate is returned as a plain 'YYYY-MM-DD' string. node-pg turns a
+      // DATE into a JS Date at the server's local midnight, which serialises to
+      // the previous day on any host east of UTC — the website then matched the
+      // mark to the wrong class day and showed nothing.
+      const r = await query(`
+        SELECT "Id", "ChatId", "CourseCode", "Attended",
+               to_char("RecordDate", 'YYYY-MM-DD') AS "RecordDate", "Timestamp"
+          FROM "AttendanceRecords"
+         WHERE "ChatId" = @chatId
+         ORDER BY "AttendanceRecords"."RecordDate" DESC, "Timestamp" DESC`, { chatId: { value: String(chatId) } });
       return r.recordset;
     } catch (err) {
       console.warn('⚠️  SQL Server getUserAttendanceRecords failed, using JSON database fallback:', err.message);
