@@ -7,6 +7,8 @@ import {
 import './LifePlannerPage.css';
 import './LifePlannerRedesign.css';
 import './LifePlannerBody.css';
+import './DailyMasthead.css';
+import './LifePlannerHouse.css';
 import {
   useLifePlanner, EMPTY_DOC, overallProgress, milestoneProgress, goalsOfMilestone, byId, tasksOfGoal, stepsOfTask, WEEKDAYS,
   buildTimeline, fmtDate, todayKey, daysBetween,
@@ -375,47 +377,40 @@ export default function LifePlannerPage() {
     <div className="glass-card-static schedule-widget lp-widget animate-fadeInUp">
 
       {/* ── Masthead ── */}
-      <header className="lp-head">
-        <div className="lp-head-title">
-          <div className="lp-head-tile" aria-hidden="true">
+      <header className="dl-head has-actions">
+        <div className="dl-head-title">
+          <div className="dl-head-tile" aria-hidden="true">
             <CalendarDays size={20} strokeWidth={2.1} />
           </div>
-          <div className="lp-head-text">
-            <span className="lp-overline">Daily Life</span>
-            <h2 className="lp-title">Life Planner</h2>
-            <span className="lp-subtitle">Milestones, goals &amp; week plan</span>
+          <div className="dl-head-text">
+            <span className="dl-head-overline">Daily Life</span>
+            <h2 className="dl-head-name">Life Planner</h2>
+            <span className="dl-head-subtitle">Milestones, goals &amp; week plan</span>
           </div>
         </div>
 
-        <dl className="lp-head-stats">
-          <div className="lp-head-stat">
+        <dl className="dl-head-stats">
+          <div className="dl-head-stat">
             <dt>Goals</dt>
             <dd>{realGoals.length}</dd>
           </div>
-          <div className="lp-head-stat">
+          <div className="dl-head-stat">
             <dt>Milestones</dt>
             <dd>{milestoneCount}</dd>
           </div>
-          <div className="lp-head-stat">
-            <dt>Timeline</dt>
-            <dd>{timeline.length}</dd>
+          <div className="dl-head-stat">
+            <dt>Progress</dt>
+            <dd>{progress}%</dd>
           </div>
           {upcoming.overdue.length > 0 && (
-            <div className="lp-head-stat is-alert">
+            <div className="dl-head-stat is-alert">
               <dt>Overdue</dt>
               <dd>{upcoming.overdue.length}</dd>
             </div>
           )}
         </dl>
 
-        <div className="lp-head-actions">
-          <div className="lp-head-progress" role="img" aria-label={`Overall progress ${progress}%`}>
-            <span className="lp-mini-ring" style={{ '--pct': progress }} aria-hidden="true" />
-            <span className="lp-head-progress-text">
-              <strong>{progress}%</strong>
-              <span>complete</span>
-            </span>
-          </div>
+        <div className="dl-head-actions">
           <div className="lp-menu" ref={menuBtnRef}>
             <button
               type="button"

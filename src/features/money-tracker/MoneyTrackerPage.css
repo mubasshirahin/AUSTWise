@@ -110,17 +110,10 @@
    ════════════════════════════════════════════════════════════════ */
 .tgk-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   margin-bottom: 16px;
   align-items: stretch;
-}
-
-.tgk-hero-side {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-width: 0;
 }
 
 .tgk-hero-budget {
@@ -150,7 +143,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 6px 20px color-mix(in srgb, var(--ring) 22%, transparent);
+  box-shadow: none;
+}
+.tgk-ring::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--border-primary);
+  border-radius: inherit;
+  pointer-events: none;
 }
 
 .tgk-ring-hole {
@@ -163,7 +164,7 @@
   align-items: center;
   justify-content: center;
   gap: 0;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border-primary) 60%, transparent);
+  box-shadow: none;
 }
 
 .tgk-ring-pct {
@@ -198,6 +199,23 @@
   letter-spacing: 0.09em;
   color: var(--text-tertiary);
 }
+.tgk-hero-overline-row { display: flex; align-items: center; gap: 4px; }
+.tgk-budget-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent-amber);
+  cursor: pointer;
+}
+.tgk-budget-edit:hover,
+.tgk-budget-edit:focus-visible { background: var(--accent-amber-glow); color: var(--text-primary); }
+.tgk-budget-edit:focus-visible { outline: 2px solid var(--accent-amber); outline-offset: 1px; }
 
 .tgk-hero-num {
   font-size: 30px;
@@ -205,6 +223,15 @@
   color: var(--text-primary);
   line-height: 1.05;
   letter-spacing: -0.02em;
+}
+.tgk-budget-inline-input {
+  width: min(100%, 220px);
+  height: 44px;
+  padding: 4px 8px;
+  color: var(--text-primary);
+  font-size: 24px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
 .tgk-hero-split {
@@ -343,6 +370,94 @@
   height: 100%;
   border-radius: var(--radius-full);
   transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Full-width strip on wide screens */
+@media (min-width: 721px) {
+  .tgk-safespend {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: 24px;
+    row-gap: 10px;
+    padding: 16px 20px;
+  }
+
+  .tgk-safespend-head { grid-area: 1 / 1; }
+  .tgk-safespend-value { grid-area: 2 / 1; margin-top: 0; font-size: 30px; }
+  .tgk-safespend-meta { grid-area: 1 / 2; margin-top: 0; justify-content: flex-end; }
+  .tgk-safespend-bar { grid-area: 2 / 2; margin-top: 0; }
+}
+
+/* ── Masthead budget — click to edit ── */
+.tgk-head-budget dd {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tgk-head-budget-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: -3px -6px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font-family: var(--font-display, inherit);
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background-color 0.18s ease;
+}
+
+.tgk-head-budget-btn svg {
+  color: var(--text-tertiary);
+  opacity: 0.65;
+  transition: color 0.18s ease, opacity 0.18s ease;
+}
+
+.tgk-head-budget-btn:hover,
+.tgk-head-budget-btn:focus-visible { background: var(--accent-amber-glow); }
+
+.tgk-head-budget-btn:hover svg,
+.tgk-head-budget-btn:focus-visible svg { color: var(--accent-amber); opacity: 1; }
+
+.tgk-head-budget-btn:focus-visible {
+  outline: 2px solid var(--accent-amber);
+  outline-offset: 1px;
+}
+
+.tgk-head-budget-btn.is-empty { color: var(--accent-amber); font-size: 0.95rem; }
+.tgk-head-budget-btn.is-empty svg { color: var(--accent-amber); opacity: 0.9; }
+
+.tgk-head-budget-input {
+  width: 104px;
+  height: 30px;
+  padding: 0 6px;
+  border: 1px solid var(--accent-amber);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input, var(--bg-tertiary));
+  color: var(--text-primary);
+  font-family: var(--font-display, inherit);
+  font-size: 1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.tgk-head-budget-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-amber-glow);
+}
+
+@media (max-width: 640px) {
+  .tgk-head-budget-btn { font-size: 1rem; }
+  .tgk-head-budget-input { width: 84px; height: 26px; font-size: 0.95rem; }
 }
 
 /* ── Select + amount field ── */
@@ -699,7 +814,13 @@
   border-radius: var(--radius-lg);
 }
 
-.tgk-day-large .tgk-day-top { justify-content: flex-start; gap: 10px; margin-bottom: 10px; }
+.tgk-day-large .tgk-day-top {
+  justify-content: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding-bottom: 9px;
+  border-bottom: 1px dotted color-mix(in srgb, var(--text-tertiary) 55%, transparent);
+}
 .tgk-day-large .tgk-day-num { font-size: 28px; }
 .tgk-day-large .tgk-day-date {
   font-size: 11px;
@@ -1377,7 +1498,8 @@
   .tgk-rail {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
+    /* Side-by-side cards always share the same height */
+    align-items: stretch;
   }
   .tgk-rail > .tgk-form-panel { grid-column: 1 / -1; }
 }
@@ -1399,58 +1521,114 @@
 /* ── Phone ── */
 @container tgk (max-width: 560px) {
 
-  .tgk-card { padding: 14px; }
+  /* Type scale: one clear step below desktop */
+  .tgk-card { padding: 12px; border-radius: 14px; }
+  .tgk-card-title { font-size: 12.5px; gap: 7px; margin-bottom: 10px; }
+  .tgk-card-title svg { width: 13px; height: 13px; }
 
-  .tgk-hero-ring-wrap { gap: 16px; }
-  .tgk-ring { width: 92px; height: 92px; min-width: 92px; }
-  .tgk-ring-hole { width: 70px; height: 70px; }
-  .tgk-ring-pct { font-size: 17px; }
-  .tgk-hero-num { font-size: 24px; }
-  .tgk-hero-cta { align-self: stretch; justify-content: center; }
+  .tgk-hero { gap: 8px; margin-bottom: 8px; }
+  .tgk-main-grid,
+  .tgk-rail { gap: 8px; }
 
-  /* KPIs: headline metric full width, the rest in pairs */
-  .tgk-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .tgk-kpi,
-  .tgk-kpi:nth-child(n+4) { grid-column: auto; padding: 12px; gap: 10px; }
-  .tgk-kpi:first-child { grid-column: 1 / -1; }
-  .tgk-kpi-value { font-size: 15px; }
-  .tgk-kpi-icon { width: 34px; height: 34px; min-width: 34px; }
+  /* Masthead — scoped to this widget, does not touch Bhara Koto */
+  .tgk-widget .dl-head-name { font-size: 0.95rem; }
+  .tgk-widget .dl-head-stats .dl-head-stat dt { font-size: 8.5px; letter-spacing: 0.04em; }
+  .tgk-widget .dl-head-stats .dl-head-stat dd:not(.is-small) { font-size: 0.95rem; }
+  .tgk-head-budget-btn { font-size: 0.95rem; gap: 4px; }
+  .tgk-head-budget-btn.is-empty { font-size: 0.8rem; }
+  .tgk-head-budget-btn svg { width: 10px; height: 10px; }
+
+  /* Safe to spend */
+  .tgk-safespend-head { font-size: 9.5px; gap: 5px; }
+  .tgk-safespend-head svg { width: 12px; height: 12px; }
+  .tgk-safespend-value { font-size: 21px; margin-top: 4px; }
+  .tgk-safespend-meta { font-size: 10px; gap: 6px; margin-top: 3px; }
+  .tgk-safespend-bar { height: 5px; margin-top: 9px; }
 
   /* Calendar header: title, then a full-width segmented control */
-  .tgk-cal-header { flex-direction: column; align-items: stretch; }
-  .tgk-view-pills { flex-wrap: nowrap; }
-  .tgk-view-pill { flex: 1; justify-content: center; }
-  .tgk-cal-nav { justify-content: space-between; }
-  .tgk-cal-period { min-width: 0; flex: 1; }
+  .tgk-cal-header { flex-direction: column; align-items: stretch; gap: 8px; margin-bottom: 10px; }
+  .tgk-view-pills { flex-wrap: nowrap; padding: 2px; }
+  .tgk-view-pill { flex: 1; justify-content: center; min-height: 26px; padding: 0 8px; font-size: 9px; gap: 4px; }
+  .tgk-view-pill svg { width: 10px; height: 10px; }
+  .tgk-cal-nav { justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+  .tgk-cal-period { min-width: 0; flex: 1; padding: 5px 10px; font-size: 11px; }
 
   /* A true 7-column month grid — compact cells instead of reflowing
      into fewer columns (which broke the weekday alignment). */
   .tgk-cal,
   .tgk-day-labels { gap: 4px; }
-  .tgk-day-label { font-size: 9px; letter-spacing: 0.02em; }
+  .tgk-day-label { font-size: 8.5px; letter-spacing: 0.02em; padding: 3px 0; }
   .tgk-day:not(.tgk-day-large) {
-    min-height: 58px;
-    padding: 6px 3px 5px;
+    min-height: 52px;
+    padding: 5px 3px 4px;
     gap: 2px;
     align-items: center;
     text-align: center;
     border-radius: var(--radius-sm);
   }
   .tgk-day:not(.tgk-day-large) .tgk-day-top { justify-content: center; }
-  .tgk-day:not(.tgk-day-large) .tgk-day-num { font-size: 13px; }
+  .tgk-day:not(.tgk-day-large) .tgk-day-num { font-size: 12.5px; }
   .tgk-day:not(.tgk-day-large) .tgk-day-date,
   .tgk-day:not(.tgk-day-large) .tgk-day-count { display: none; }
   .tgk-day:not(.tgk-day-large) .tgk-day-spent {
-    font-size: 9px;
+    font-size: 8.5px;
     letter-spacing: -0.02em;
     max-width: 100%;
     overflow: hidden;
     white-space: nowrap;
   }
   .tgk-day:not(.tgk-day-large) .tgk-day-track { width: 100%; height: 3px; }
-  .tgk-day-pad { min-height: 58px; border-radius: var(--radius-sm); }
+  .tgk-day-pad { min-height: 52px; border-radius: var(--radius-sm); }
 
-  .tgk-day-large { padding: 16px; min-height: 140px; }
+  /* Large day card */
+  .tgk-day-large { padding: 12px; min-height: 116px; }
+  .tgk-day-large .tgk-day-top { gap: 8px; margin-bottom: 8px; padding-bottom: 7px; }
+  .tgk-day-large .tgk-day-num { font-size: 22px; }
+  .tgk-day-large .tgk-day-date { font-size: 10px; }
+  .tgk-day-spent-big { font-size: 18px; }
+  .tgk-day-limit-label { font-size: 10.5px; }
+  .tgk-day-cats-label { font-size: 9px; }
+  .tgk-day-large .tgk-day-add { font-size: 10px; }
+
+  .tgk-cal-legend { font-size: 10px; gap: 5px 10px; margin-top: 10px; padding-top: 9px; }
+  .tgk-cal-legend-swatch { width: 9px; height: 9px; }
+
+  /* Category breakdown */
+  .tgk-pie-wrap { padding: 2px 0 10px; margin-bottom: 10px; }
+  .tgk-pie-chart { width: 104px; height: 104px; }
+  .tgk-pie-center-val { font-size: 11.5px; }
+  .tgk-pie-center-lbl { font-size: 8px; max-width: 62px; }
+  .tgk-cat-list { gap: 9px; }
+  .tgk-cat-row-top { gap: 6px; margin-bottom: 4px; }
+  .tgk-cat-name { font-size: 11px; gap: 6px; }
+  .tgk-cat-amt { font-size: 11px; }
+  .tgk-cat-pct { font-size: 9px; margin-left: 5px; }
+  .tgk-cat-track { height: 6px; }
+
+  /* Recent activity */
+  .tgk-recent-list { gap: 5px; }
+  .tgk-recent-row { gap: 8px; padding: 6px 8px; }
+  .tgk-recent-date { min-width: 32px; padding: 3px 0; font-size: 8px; }
+  .tgk-recent-date strong { font-size: 12px; }
+  .tgk-recent-title { font-size: 11.5px; }
+  .tgk-recent-cat { font-size: 9px; gap: 4px; }
+  .tgk-recent-amt { font-size: 11.5px; }
+  :is(.tgk-widget, .tgk-modal) .lp-icon-btn { width: 28px; height: 28px; }
+
+  /* Fixed expenses */
+  .tgk-expense-row { gap: 7px; padding: 7px 9px; }
+  .tgk-expense-title,
+  .tgk-expense-amt { font-size: 11.5px; }
+  .tgk-expense-note { font-size: 9.5px; }
+  .tgk-fixed-total-label { font-size: 9.5px; }
+  .tgk-add-icon-btn { width: 30px; height: 30px; }
+
+  /* Empty states */
+  .tgk-empty { padding: 14px 10px; gap: 6px; }
+  .tgk-empty-icon { width: 30px; height: 30px; }
+  .tgk-empty-icon svg { width: 14px; height: 14px; }
+  .tgk-empty .tgk-empty-hint { font-size: 11px; max-width: 240px; }
+  .tgk-empty-action { min-height: 30px; padding: 0 12px; font-size: 11px; }
 }
 
 /* ── Touch devices: 40px minimum hit areas, no iOS input zoom ── */
@@ -1458,8 +1636,9 @@
   .tgk-view-pill,
   .tgk-hero-cta,
   .tgk-empty-action,
-  .dl-head-stat-btn { min-height: 40px; }
+  .tgk-budget-edit { min-height: 40px; }
 
+  .tgk-budget-edit { min-width: 40px; }
   .tgk-add-icon-btn,
   .tgk-modal-close,
   .tgk-widget .schedule-nav-btn,
@@ -1473,8 +1652,7 @@
   .tgk-select { height: 44px; }
 
   .tgk-modal .input,
-  .tgk-select,
-  .dl-head-stat-edit .input { font-size: 16px !important; }
+  .tgk-select { font-size: 16px !important; }
 
   .tgk-day-add { opacity: 1; }
 }
@@ -1484,6 +1662,249 @@
   .tgk-modal { padding: 16px; }
   .tgk-form-row > .input,
   .tgk-form-row > .tgk-select { flex: 1 1 100% !important; }
+
+  .modal-overlay.tgk-day-overlay { padding: 10px; }
+  .modal.tgk-day-modal {
+    width: 100%;
+    max-height: calc(100dvh - 20px);
+    padding: 12px;
+    border-radius: 14px;
+    overflow-y: auto;
+  }
+  .tgk-day-modal .tgk-modal-head { gap: 6px; margin-bottom: 8px; }
+  .tgk-day-modal .tgk-modal-title { gap: 6px; font-size: 13px; }
+  .tgk-day-modal .tgk-modal-close { width: 30px; height: 30px; }
+  .tgk-day-modal .tgk-modal-summary { gap: 5px; margin-bottom: 9px; }
+  .tgk-day-modal .lp-badge { padding: 4px 7px; font-size: 10px; }
+  .tgk-day-modal .tgk-form-row { gap: 6px; margin-bottom: 6px; }
+  .tgk-day-modal .tgk-form-row .input,
+  .tgk-day-modal .tgk-select { height: 40px; }
+  .tgk-day-modal .tgk-form-row .input::placeholder,
+  .tgk-day-modal .tgk-form-row textarea::placeholder {
+    font-size: 12px;
+    text-align: left;
+  }
+  .tgk-day-modal .tgk-day-title-row > .input:first-child { flex: 2 1 120px !important; }
+  .tgk-day-modal .tgk-day-title-row > .input:nth-child(2) { flex: 1 1 86px !important; }
+  .tgk-day-modal .tgk-day-actions .btn { min-height: 0; }
+  .tgk-day-modal .tgk-modal-entries { margin-top: 10px; padding-top: 10px; }
+}
+
+/* ── Day modal: compact Add / Close actions ── */
+.tgk-day-modal .tgk-day-actions {
+  gap: 6px;
+  margin-bottom: 0;
+  justify-content: flex-start;
+}
+
+.tgk-day-modal .tgk-day-actions .btn {
+  height: 30px;
+  min-height: 0;
+  padding: 0 13px;
+  font-size: 12px;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.tgk-day-modal .tgk-day-actions .btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+.tgk-day-modal .tgk-day-actions .tgk-day-close-btn {
+  padding: 0 10px;
+  color: var(--text-secondary);
+}
+
+/* ── Phone density pass ──
+   Sits after the touch rule so the compact sizes win: the 40px touch
+   minimum made every pill, nav button and empty-state box feel oversized. */
+@container tgk (max-width: 560px) {
+  .tgk-card { padding: 10px; border-radius: 12px; }
+  .tgk-card-title { margin-bottom: 8px; }
+  .tgk-hero { gap: 6px; margin-bottom: 6px; }
+  .tgk-main-grid,
+  .tgk-rail { gap: 6px; }
+
+  /* Safe to spend */
+  .tgk-safespend-value { font-size: 19px; margin-top: 2px; }
+  .tgk-safespend-bar { height: 4px; margin-top: 7px; }
+
+  /* Calendar header
+     Row 1: title + date navigator side by side.
+     Row 2: full-width Daily/Weekly/Monthly switcher.
+     The header wrapper is flattened so its children join the panel grid. */
+  .tgk-cal-panel {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: 8px;
+  }
+  .tgk-cal-panel > * { grid-column: 1 / -1; }
+  .tgk-cal-panel > .tgk-cal-header { display: contents; }
+  .tgk-cal-header .tgk-card-title {
+    grid-column: 1;
+    grid-row: 1;
+    margin: 0 0 8px;
+    white-space: nowrap;
+  }
+  .tgk-cal-panel > .tgk-cal-nav {
+    grid-column: 2;
+    grid-row: 1;
+    justify-content: flex-end;
+    gap: 0;
+    margin-bottom: 8px;
+  }
+  .tgk-cal-nav .tgk-cal-period {
+    flex: 0 1 auto;
+    min-width: 0;
+    padding: 0 2px;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    color: var(--text-primary);
+    font-size: 10.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .tgk-cal-panel .tgk-cal-nav .schedule-nav-btn {
+    width: 22px; height: 22px; min-width: 22px; min-height: 22px;
+    padding: 0;
+    flex-shrink: 0;
+    background: none;
+    border: 0;
+    box-shadow: none;
+    color: var(--text-secondary);
+  }
+  .tgk-cal-panel .tgk-cal-nav .schedule-nav-btn svg { width: 13px; height: 13px; }
+  .tgk-cal-panel .tgk-cal-nav .schedule-nav-btn:hover {
+    background: none;
+    border: 0;
+    color: var(--text-primary);
+  }
+  .tgk-cal-header .tgk-view-pills { grid-column: 1 / -1; grid-row: 2; margin-bottom: 8px; }
+  .tgk-view-pill { min-height: 28px; }
+
+  /* Month grid */
+  .tgk-cal,
+  .tgk-day-labels { gap: 3px; }
+  .tgk-day:not(.tgk-day-large) { min-height: 40px; padding: 4px 2px 3px; gap: 1px; }
+  .tgk-day:not(.tgk-day-large) .tgk-day-num { font-size: 12px; }
+  .tgk-day-pad { min-height: 40px; }
+  .tgk-cal-legend { margin-top: 8px; padding-top: 7px; }
+
+  /* Empty states + small buttons */
+  .tgk-empty { padding: 10px; gap: 4px; }
+  .tgk-empty-icon { width: 24px; height: 24px; }
+  .tgk-empty-icon svg { width: 12px; height: 12px; }
+  .tgk-empty-action { min-height: 28px; }
+  .tgk-add-icon-btn,
+  :is(.tgk-widget, .tgk-modal) .lp-icon-btn { width: 28px; height: 28px; min-width: 28px; min-height: 28px; }
+  /* Daily spending card: a little breathing room between rows */
+  .tgk-card.tgk-cal-panel { padding: 12px; }
+  .tgk-cal-header .tgk-card-title,
+  .tgk-cal-panel > .tgk-cal-nav { margin-bottom: 12px; }
+  .tgk-cal-header .tgk-view-pills { margin-bottom: 12px; }
+  .tgk-cal-panel .tgk-day-labels { margin-bottom: 6px; }
+  .tgk-cal-panel .tgk-cal,
+  .tgk-cal-panel .tgk-day-labels { gap: 5px; }
+  .tgk-cal-panel .tgk-cal-legend { margin-top: 12px; padding-top: 10px; }
+
+  /* Weekly row on phones: only 7 cells, so they can be taller */
+  .tgk-cal-7 .tgk-day:not(.tgk-day-large) {
+    min-height: 70px;
+    padding: 9px 3px 6px;
+    gap: 4px;
+  }
+  .tgk-cal-7 .tgk-day:not(.tgk-day-large) .tgk-day-num { font-size: 14.5px; }
+  .tgk-cal-7 .tgk-day:not(.tgk-day-large) .tgk-day-spent { font-size: 9.5px; }
+  .tgk-cal-7 .tgk-day:not(.tgk-day-large) .tgk-day-track { margin-top: auto; }
+}
+
+
+/* Divider between the calendar header and the grid (desktop only) */
+.tgk-cal-divider {
+  height: 0;
+  margin: 0 0 14px;
+  border-top: 1px dotted var(--border-primary);
+}
+@container tgk (max-width: 560px) {
+  .tgk-cal-divider { display: none; }
+}
+
+/* ── Desktop calendar header ──
+   One row: title (left) · Daily/Weekly/Monthly (centre) · date navigator (right).
+   The header wrapper is flattened so title and pills join the panel grid. */
+@container tgk (min-width: 561px) {
+  .tgk-cal-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: 12px;
+  }
+  .tgk-cal-panel > * { grid-column: 1 / -1; }
+  .tgk-cal-panel > .tgk-cal-header { display: contents; }
+  .tgk-cal-header .tgk-card-title {
+    grid-column: 1;
+    grid-row: 1;
+    margin: 0 0 14px;
+    white-space: nowrap;
+  }
+  .tgk-cal-header .tgk-view-pills {
+    grid-column: 2;
+    grid-row: 1;
+    margin-bottom: 14px;
+  }
+  .tgk-cal-panel > .tgk-cal-nav {
+    grid-column: 3;
+    grid-row: 1;
+    justify-content: flex-end;
+    gap: 2px;
+    margin-bottom: 14px;
+  }
+
+  /* Date reads as plain text, arrows are bare icons — same as phones */
+  .tgk-cal-nav .tgk-cal-period {
+    min-width: 0;
+    padding: 0 4px;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    color: var(--text-primary);
+    font-size: 12.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .tgk-cal-panel .tgk-cal-nav .schedule-nav-btn {
+    width: 26px; height: 26px; min-width: 26px; min-height: 26px;
+    padding: 0;
+    flex-shrink: 0;
+    background: none;
+    border: 0;
+    box-shadow: none;
+    color: var(--text-secondary);
+  }
+  .tgk-cal-panel .tgk-cal-nav .schedule-nav-btn:hover {
+    background: none;
+    border: 0;
+    color: var(--text-primary);
+  }
+
+  /* Weekly cells: a bit taller, with amount + bar anchored to the bottom */
+  .tgk-cal-7 .tgk-day {
+    min-height: 112px;
+    padding: 12px 11px;
+  }
+  .tgk-cal-7 .tgk-day .tgk-day-spent { margin-top: auto; }
+}
+
+/* Narrow phones (≈320px): drop the title icon so the date keeps its room */
+@container tgk (max-width: 340px) {
+  .tgk-cal-header .tgk-card-title svg { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

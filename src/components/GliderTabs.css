@@ -59,7 +59,7 @@
 .glider-tabs-glider {
   position: absolute;
   top: 6px;
-  left: 6px;
+  left: 0;
   height: calc(100% - 12px);
   width: var(--glider-w);
   transform: translateX(var(--glider-x));
@@ -243,7 +243,7 @@
   }
   .glider-tabs-glider {
     top: 5px;
-    left: 5px;
+    left: 0;
     height: calc(100% - 10px);
     border-radius: 10px;
   }
@@ -264,7 +264,7 @@
   }
   .glider-tabs-glider {
     top: 4px;
-    left: 4px;
+    left: 0;
     height: calc(100% - 8px);
     border-radius: 10px;
   }
@@ -274,7 +274,7 @@
     justify-content: center;
     align-items: center;
     gap: 3px;
-    flex: 1 1 0;
+    flex: 1 0 auto;
     min-width: 0;
     scroll-snap-align: center;
   }
