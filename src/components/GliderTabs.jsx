@@ -37,10 +37,11 @@ export default function GliderTabs({
     if (!track || !active) return;
 
     const place = () => {
-      const trackRect = track.getBoundingClientRect();
-      const activeRect = active.getBoundingClientRect();
-      track.style.setProperty('--glider-x', `${activeRect.left - trackRect.left}px`);
-      track.style.setProperty('--glider-w', `${activeRect.width}px`);
+      // offsetLeft/offsetWidth are relative to the track (position: relative)
+      // and ignore transforms (e.g. :active scale), so the glider lands exactly
+      // on the active tab.
+      track.style.setProperty('--glider-x', `${active.offsetLeft}px`);
+      track.style.setProperty('--glider-w', `${active.offsetWidth}px`);
     };
     place();
     // Keep the active tab visible inside the strip only (no page jump)

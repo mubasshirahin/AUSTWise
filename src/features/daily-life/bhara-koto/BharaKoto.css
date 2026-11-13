@@ -173,7 +173,7 @@
   border: 1px solid transparent;
   border-radius: var(--radius-md);
   background: transparent;
-  color: var(--accent-emerald);
+  color: var(--accent-amber);
   font: inherit;
   font-weight: var(--fw-semibold);
   font-variant-numeric: tabular-nums;
@@ -229,7 +229,13 @@
 
 /* ── Mobile: same table grid as desktop, just tighter; area column stays pinned ── */
 @media (max-width: 640px) {
-  .bk-search .dr-search-input { height: 46px; font-size: 16px; } /* 16px stops iOS zoom-on-focus */
+  .bk-search .dr-search-input {
+    height: 34px;
+    padding: 0 30px 0 36px;
+  }
+  .bk-widget .bk-search input.dr-search-input { font-size: 13px !important; }
+  .bk-search .dr-search-icon { left: 5px; width: 22px; height: 22px; padding: 6px; }
+  .bk-search .dr-search-clear { right: 5px; width: 20px; height: 20px; }
   .bk-route-table-wrap { max-height: 65vh; border-radius: var(--radius-md); }
   .bk-route-table { min-width: 600px; font-size: 11px; }
   .bk-route-table th, .bk-route-table td { padding: 4px 5px; }
@@ -240,7 +246,6 @@
   .bk-fare-button { min-width: 56px; min-height: 40px; padding: 5px 4px; }
   .bk-fare-unavailable { padding-left: 8px; }
 }
-
 
 /* ── Detail ── */
 .bk-detail {

@@ -186,11 +186,11 @@ export default function GoalFormModal({ doc, goal, onClose, onSave }) {
           {error && <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent-rose)' }}>{error}</span>}
         </div>
 
-        <div style={{ display: 'flex', gap: 8, paddingTop: 10, borderTop: '1px solid var(--border-secondary)' }}>
-          <button type="button" className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn btn-primary btn-sm" style={{ flex: 1 }}>
+        <div className="lp-modal-actions is-footer">
+          <button type="submit" className="btn btn-primary btn-sm">
             {editing ? 'Save changes' : 'Create Goal'}
           </button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
         </div>
       </form>
     </LpModal>

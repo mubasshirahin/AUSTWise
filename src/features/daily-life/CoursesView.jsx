@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import {
   GraduationCap, Plus, Trash2, Pencil, BookOpen,
   Building2, User, Clock, Link2, Tag, StickyNote, ExternalLink,
-  ChevronRight, ChevronDown, ArrowUp, ArrowDown, Layers, Sparkles, X,
+  ChevronRight, ChevronDown, ArrowUp, ArrowDown, Layers, Sparkles,
   Copy, Check, Upload, MessageSquare, FileText, Video, Dumbbell,
   Settings, CheckSquare, Play, ListChecks
 } from 'lucide-react';
@@ -215,9 +215,9 @@ export default function CoursesView() {
             <textarea className="input" value={draft.notes} onChange={(e) => setDraft((p) => ({ ...p, notes: e.target.value }))} placeholder="Key takeaways..." rows={1} style={{ resize: 'vertical' }} />
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', marginTop: 2 }}>
+        <div className="lp-modal-actions">
+          <button type="button" className="btn btn-primary btn-sm" onClick={handleSave} disabled={!draft.title.trim() || !draft.provider.trim()}>{editing ? 'Save' : 'Add'}</button>
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowForm(false)}>Cancel</button>
-          <button type="button" className="btn btn-primary btn-sm" onClick={handleSave} disabled={!draft.title.trim() || !draft.provider.trim()}> {editing ? 'Save' : 'Add'} </button>
         </div>
       </div>
     </LpModal>
@@ -466,19 +466,30 @@ function CourseDetailView({ course, nodes, updateNodes, onBack, onEditCourse }) 
             <button type="button" className="btn btn-primary btn-sm pb-btn" onClick={() => startAdd('__root__')}><Plus size={13} /> Add item</button>
           </div>
         </header>
-        <p className="pb-hint"><Sparkles size={12} /> Build any hierarchy — <strong>Chapter → Module → Lesson</strong> or your own. Use <strong>+</strong> on an item to nest deeper.</p>
 
         {addingParentId === '__root__' && (
-          <div className="cs-add-form">
-            <input
-              value={addDraft.type}
-              onChange={(e) => setAddDraft((p) => ({ ...p, type: e.target.value }))}
-              placeholder="Type (e.g. Chapter) — manual"
-              className="input cs-type-input"
-            />
-            <input className="input cs-title-input" value={addDraft.title} onChange={(e) => setAddDraft((p) => ({ ...p, title: e.target.value }))} placeholder="Title (e.g. Chapter 1 - Basics)" autoFocus onKeyDown={(e) => e.key === 'Enter' && handleAdd('__root__')} />
-            <button type="button" className="btn btn-primary btn-sm" onClick={() => handleAdd('__root__')} disabled={!addDraft.title.trim()}>Add</button>
-            <button type="button" className="pb-icon" onClick={() => setAddingParentId(null)} aria-label="Cancel"><X size={14} /></button>
+          <div className="cs-pop-panel as-add-form is-root" role="group" aria-label="Add top-level item">
+            <span className="cs-pop-title"><Plus size={11} /> Add top-level item</span>
+            <div className="cs-pop-row">
+              <input
+                className="input cs-pop-input is-type"
+                value={addDraft.type}
+                onChange={(e) => setAddDraft((p) => ({ ...p, type: e.target.value }))}
+                placeholder="Type (Chapter…)"
+              />
+              <input
+                className="input cs-pop-input is-title"
+                value={addDraft.title}
+                onChange={(e) => setAddDraft((p) => ({ ...p, title: e.target.value }))}
+                placeholder="Title (e.g. Chapter 1)"
+                autoFocus
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAdd('__root__'); if (e.key === 'Escape') setAddingParentId(null); }}
+              />
+            </div>
+            <div className="cs-pop-actions">
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => handleAdd('__root__')} disabled={!addDraft.title.trim()}>Add</button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setAddingParentId(null)}>Cancel</button>
+            </div>
           </div>
         )}
 
@@ -539,11 +550,11 @@ function CourseDetailView({ course, nodes, updateNodes, onBack, onEditCourse }) 
               )}
             </div>
           )}
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button type="button" className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => setDeletingNode(null)}>Cancel</button>
-            <button type="button" className="btn btn-danger btn-sm" style={{ flex: 1 }} onClick={confirmDeleteNode}>
+          <div className="lp-modal-actions">
+            <button type="button" className="btn btn-danger btn-sm" onClick={confirmDeleteNode}>
               Delete{deletingDescendants.length ? ` (${deletingDescendants.length + 1})` : ''}
             </button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setDeletingNode(null)}>Cancel</button>
           </div>
         </LpModal>
       )}
@@ -639,87 +650,93 @@ function CourseNodeRow({
           </button>
           <button type="button" className="lp-icon-btn" disabled={index === 0} onClick={() => updateNodes((prev) => moveCourseNode(prev, node.id, 'up'))} title="Move up"><ArrowUp size={11} /></button>
           <button type="button" className="lp-icon-btn" disabled={index === sibCount - 1} onClick={() => updateNodes((prev) => moveCourseNode(prev, node.id, 'down'))} title="Move down"><ArrowDown size={11} /></button>
-          <button type="button" className="lp-icon-btn" onClick={() => { setAddDraft({ title: '', type: '' }); setEditingNodeId(null); setAddingParentId(node.id); }} title="Add child" aria-label={`Add child to ${node.title}`}><Plus size={11} /></button>
-          <button type="button" className="lp-icon-btn" onClick={() => startEdit(node)} title="Edit" aria-label={`Edit ${node.title}`}><Pencil size={11} /></button>
+          <button type="button" className="lp-icon-btn" onClick={() => { setAddDraft({ title: '', type: '' }); setEditingNodeId(null); setAddingParentId(node.id); }} title="Add child" aria-label={`Add child to ${node.title}`} data-on={isAddingChild || undefined}><Plus size={11} /></button>
+          <button type="button" className="lp-icon-btn" onClick={() => startEdit(node)} title="Edit" aria-label={`Edit ${node.title}`} data-on={isEditing || undefined}><Pencil size={11} /></button>
           <button type="button" className="lp-icon-btn" onClick={() => onDeleteRequest(node)} title="Delete" aria-label={`Delete ${node.title}`}><Trash2 size={11} /></button>
         </div>
       </div>
 
       {/* ── Edit panel — 2 rows, right below the clicked box ── */}
       {isEditing && (
-        <div className="cs-pop-panel as-edit-form">
-          <div className="cs-edit-row">
+        <div className="cs-pop-panel as-edit-form" role="group" aria-label={`Edit ${node.title}`}>
+          <span className="cs-pop-title"><Pencil size={11} /> Edit item</span>
+          <input
+            className="input cs-pop-input cs-edit-input-title"
+            value={editDraft.title}
+            onChange={(e) => setEditDraft((p) => ({ ...p, title: e.target.value }))}
+            placeholder="Title *"
+            autoFocus
+            onKeyDown={(e) => { if (e.key === 'Enter') onEditSave(node.id); if (e.key === 'Escape') setEditingNodeId(null); }}
+          />
+          <div className="cs-pop-row">
             <input
-              className="input cs-edit-input-title"
-              value={editDraft.title}
-              onChange={(e) => setEditDraft((p) => ({ ...p, title: e.target.value }))}
-              placeholder="Title *"
-              autoFocus
-              onKeyDown={(e) => { if (e.key === 'Enter') onEditSave(node.id); }}
-            />
-            <button type="button" className="btn btn-primary btn-sm" onClick={() => onEditSave(node.id)} disabled={!editDraft.title.trim()} style={{ height: 36 }}>Save</button>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingNodeId(null)} style={{ height: 36 }}><X size={13} /></button>
-          </div>
-          <div className="cs-edit-row">
-            <input
+              className="input cs-pop-input is-type"
               value={editDraft.type}
               onChange={(e) => setEditDraft((p) => ({ ...p, type: e.target.value }))}
-              placeholder="Type (Chapter/Module/Lesson)"
-              className="input"
-              style={{ height: 34 }}
+              placeholder="Type (Chapter…)"
             />
             <input
-              className="input"
+              className="input cs-pop-input is-duration"
               value={editDraft.duration}
               onChange={(e) => setEditDraft((p) => ({ ...p, duration: e.target.value }))}
-              placeholder="Duration (12:30)"
-              style={{ height: 34 }}
+              placeholder="Duration"
             />
             <input
-              className="input"
+              className="input cs-pop-input is-notes"
               value={editDraft.notes}
               onChange={(e) => setEditDraft((p) => ({ ...p, notes: e.target.value }))}
               placeholder="Notes"
-              style={{ height: 34, flex: '1 1 140px' }}
             />
+          </div>
+          <div className="cs-pop-actions">
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => onEditSave(node.id)} disabled={!editDraft.title.trim()}>Save</button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingNodeId(null)}>Cancel</button>
           </div>
         </div>
       )}
 
       {isCommentOpen && (
-        <div className="cs-pop-panel">
-          <div>
-            <label className="pb-form-label is-accent">
-              <MessageSquare size={11} /> What did you learn? — comment
-            </label>
-            <textarea
-              className="input"
-              value={node.comment || ''}
-              onChange={(e) => updateNodes((prev) => updateCourseNodeComment(prev, node.id, e.target.value))}
-              placeholder="Write what you learned, key takeaways, mistakes to avoid..."
-              rows={3}
-              style={{ resize: 'vertical', fontSize: 12 }}
-            />
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOpenCommentId(null)} style={{ height: 30 }}>Close</button>
+        <div className="cs-pop-panel as-comment" role="group" aria-label={`Comment on ${node.title}`}>
+          <span className="cs-pop-title"><MessageSquare size={11} /> What did you learn?</span>
+          <textarea
+            className="input cs-pop-textarea"
+            value={node.comment || ''}
+            onChange={(e) => updateNodes((prev) => updateCourseNodeComment(prev, node.id, e.target.value))}
+            placeholder="Key takeaways, mistakes to avoid…"
+            rows={3}
+            autoFocus
+            onKeyDown={(e) => { if (e.key === 'Escape') setOpenCommentId(null); }}
+          />
+          <div className="cs-pop-actions">
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOpenCommentId(null)}>Done</button>
+            <span className="cs-pop-note">Saves as you type</span>
           </div>
         </div>
       )}
 
       {isAddingChild && (
-        <div className="cs-pop-panel as-add-form">
-          <input
-            value={addDraft.type}
-            onChange={(e) => setAddDraft((p) => ({ ...p, type: e.target.value }))}
-            placeholder="Type — manual"
-            className="input"
-            style={{ height: 30, maxWidth: 130 }}
-          />
-          <input className="input" value={addDraft.title} onChange={(e) => setAddDraft((p) => ({ ...p, title: e.target.value }))} placeholder="Child title (e.g. Lesson 1)" style={{ flex: '1 1 140px', height: 30 }} autoFocus onKeyDown={(e) => e.key === 'Enter' && onAdd(node.id)} />
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => onAdd(node.id)} disabled={!addDraft.title.trim()} style={{ height: 30 }}>Add</button>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setAddingParentId(null)} style={{ height: 30 }}><X size={12} /></button>
+        <div className="cs-pop-panel as-add-form" role="group" aria-label={`Add item inside ${node.title}`}>
+          <span className="cs-pop-title"><Plus size={11} /> Add inside “{node.title}”</span>
+          <div className="cs-pop-row">
+            <input
+              className="input cs-pop-input is-type"
+              value={addDraft.type}
+              onChange={(e) => setAddDraft((p) => ({ ...p, type: e.target.value }))}
+              placeholder="Type (Lesson…)"
+            />
+            <input
+              className="input cs-pop-input is-title"
+              value={addDraft.title}
+              onChange={(e) => setAddDraft((p) => ({ ...p, title: e.target.value }))}
+              placeholder="Title (e.g. Lesson 1)"
+              autoFocus
+              onKeyDown={(e) => { if (e.key === 'Enter') onAdd(node.id); if (e.key === 'Escape') setAddingParentId(null); }}
+            />
+          </div>
+          <div className="cs-pop-actions">
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => onAdd(node.id)} disabled={!addDraft.title.trim()}>Add</button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setAddingParentId(null)}>Cancel</button>
+          </div>
         </div>
       )}
 

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { Target, Flag, CalendarDays, LayoutDashboard, BookOpen, Network, CalendarRange, Sparkles } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Target, Flag, CalendarDays, LayoutDashboard, BookOpen, Network, CalendarRange, Sparkles, X } from 'lucide-react';
 
 // ── Date input — always shows dd/mm/yy, stores ISO (yyyy-mm-dd) ──────────────
 
@@ -201,23 +202,29 @@ export function LpEmpty({ icon: Icon = Target, title, hint, action }) {
 // ── Small modal shell ────────────────────────────────────────────────────────
 
 export function LpModal({ title, onClose, children, wide = false }) {
-  return (
-    <div className="modal-overlay" onClick={onClose}>
+  // Portalled to <body> so the overlay covers the whole viewport instead of the
+  // (transformed) page; the .lp-widget wrapper keeps the planner's scoped styles.
+  return createPortal(
+    <div className="lp-widget lp-modal-portal">
+    <div className="modal-overlay lp-modal-overlay" onClick={onClose}>
       <div
-        className="modal glass-card-static"
+        className={`modal lp-modal${wide ? ' is-wide' : ''}`}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        style={{ maxWidth: wide ? '640px' : '420px', width: '92%', padding: 'var(--sp-5)', margin: 0 }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <h3 style={{ margin: 0, fontSize: 'var(--fs-md)', fontWeight: 'bold' }}>{title}</h3>
-          <button type="button" className="btn btn-ghost btn-icon" onClick={onClose} aria-label="Close">✕</button>
+        <div className="lp-modal-head">
+          <h3 className="lp-modal-title">{title}</h3>
+          <button type="button" className="lp-modal-close" onClick={onClose} aria-label="Close">
+            <X size={12} />
+          </button>
         </div>
         {children}
       </div>
     </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -226,12 +233,10 @@ export function LpModal({ title, onClose, children, wide = false }) {
 export function LpConfirm({ title, message, confirmLabel = 'Delete', onConfirm, onCancel }) {
   return (
     <LpModal title={title} onClose={onCancel}>
-      <p style={{ margin: '0 0 14px', fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-        {message}
-      </p>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button type="button" className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={onCancel}>Cancel</button>
-        <button type="button" className="btn btn-danger btn-sm" style={{ flex: 1 }} onClick={onConfirm}>{confirmLabel}</button>
+      <p className="lp-modal-text">{message}</p>
+      <div className="lp-modal-actions">
+        <button type="button" className="btn btn-danger btn-sm" onClick={onConfirm}>{confirmLabel}</button>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onCancel}>Cancel</button>
       </div>
     </LpModal>
   );

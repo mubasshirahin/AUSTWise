@@ -583,16 +583,16 @@ export default function AuthPage() {
         <div key={`${theme}-orb-3`} className="auth-page-orb auth-page-orb-3" />
         <div className="auth-page-noise" aria-hidden="true" />
       </div>
-      <button
-        type="button"
-        className="auth-back-home-btn"
-        onClick={() => navigate('/')}
-        aria-label="Back to home"
-      >
-        <ArrowLeft size={16} />
-        <span>Back to Home</span>
-      </button>
       <div className={`auth-shell ${sending ? 'is-sending' : ''}`}>
+        <button
+          type="button"
+          className="auth-back-home-btn"
+          onClick={() => navigate('/')}
+          aria-label="Back to home"
+        >
+          <ArrowLeft size={16} />
+          <span>Back to Home</span>
+        </button>
         <div className="auth-brand-outside">
           <div className="topbar-logo auth-topbar-logo">
             <img src={brandMark} alt="AUSTWise" className="topbar-wordmark-img" />

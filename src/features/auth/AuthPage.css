@@ -15,7 +15,9 @@
      into view instead of being clipped with no way to reach them. */
   align-items: safe center;
   justify-content: center;
-  padding: 32px 24px;
+  padding: clamp(16px, 4vh, 32px) clamp(14px, 4vw, 24px);
+  /* Keep the bottom safe-area inset clear on notched phones. */
+  padding-bottom: max(clamp(16px, 4vh, 32px), env(safe-area-inset-bottom, 0px));
   background: var(--bg-primary);
   position: relative;
   overflow-x: hidden;
@@ -106,7 +108,8 @@
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 400px;
+  max-width: min(400px, 100%);
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -119,7 +122,7 @@
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   font-size: 0.76rem;
   font-weight: var(--fw-medium);
   color: var(--text-secondary);
@@ -131,6 +134,9 @@
   font-family: inherit;
   white-space: nowrap;
   align-self: flex-start;
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
 }
 
 .auth-back-home-btn:hover {
@@ -1026,21 +1032,6 @@
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
-}
-
-/* ─── Responsive ─── */
-@media (max-width: 480px) {
-  .auth-card {
-    padding: 28px 20px;
-  }
-
-  .auth-role-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .auth-brand h1 {
-    font-size: var(--fs-xl);
-  }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -2370,4 +2361,157 @@
 /* 4 · Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .auth-shell::before { display: none; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   RESPONSIVE — kept last so it overrides the base rules
+   declared further down the file (impact strip, card, …).
+   ═══════════════════════════════════════════════════════ */
+
+/* Tablets / small laptops — the 8 department chips no longer fit one row. */
+@media (max-width: 640px) {
+  .auth-btn-grid-8 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Phones */
+@media (max-width: 480px) {
+  .auth-shell {
+    max-width: 100%;
+  }
+
+  .auth-card {
+    padding: 30px 18px 18px;
+    border-radius: var(--radius-lg);
+  }
+
+  .auth-brand-outside {
+    margin-bottom: 12px;
+  }
+
+  .auth-impact {
+    gap: 12px;
+    padding: 9px 16px;
+    margin-bottom: 14px;
+  }
+
+  .auth-impact-item strong {
+    font-size: 0.9rem;
+  }
+
+  .auth-impact-item span {
+    font-size: 0.55rem;
+    letter-spacing: 0.14em;
+  }
+
+  .auth-impact-sep {
+    height: 22px;
+  }
+
+  .auth-theme-switcher {
+    top: 24px;
+    right: 12px;
+  }
+
+  .auth-theme-btn {
+    width: 34px;
+    height: 34px;
+  }
+
+  .auth-tabs {
+    margin-bottom: 18px;
+  }
+
+  .auth-tab {
+    padding: 10px 12px;
+  }
+
+  /* Let the card grow with its content instead of reserving tall blank space. */
+  .auth-form {
+    min-height: 0;
+  }
+
+  /* Keep the three roles on one row — stacked icon + label stays tappable. */
+  .auth-role-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .auth-role-card {
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 4px;
+  }
+
+  .auth-field .input {
+    min-height: 44px;
+  }
+
+  .auth-input-eye .input {
+    padding-right: 42px;
+  }
+
+  .auth-eye-btn {
+    width: 32px;
+    height: 32px;
+    right: 4px;
+    justify-content: center;
+  }
+
+  .auth-btn-option {
+    padding: 7px 4px;
+  }
+
+  .auth-step-nav {
+    gap: 8px;
+  }
+
+  .auth-back-btn {
+    padding: 11px 14px;
+  }
+}
+
+/* Small phones */
+@media (max-width: 340px) {
+  .auth-card {
+    padding: 26px 14px 16px;
+  }
+
+  .auth-brand-outside .topbar-brand-name {
+    font-size: 14px;
+  }
+
+  .auth-submit {
+    font-size: 0.8rem;
+  }
+
+  .auth-back-btn {
+    padding: 11px 10px;
+    font-size: 0.78rem;
+  }
+}
+
+/* Short viewports (landscape phones, small laptop windows) */
+@media (max-height: 760px) {
+  .auth-form {
+    min-height: 0;
+  }
+
+  .auth-brand-outside {
+    margin-bottom: 10px;
+  }
+}
+
+/* Touch devices: give the password eye a proper hit area. */
+@media (hover: none) and (pointer: coarse) {
+  .auth-eye-btn {
+    width: 34px;
+    height: 34px;
+    right: 4px;
+    justify-content: center;
+  }
+
+  .auth-input-eye .input {
+    padding-right: 44px;
+  }
 }

@@ -1,4 +1,4 @@
-/* Shared Daily Life masthead — follows .claude/skills/masthead-skill.
+/* Shared Daily Life masthead — follows .claude/skills/skill-style (§2).
    Used by Bhara Koto, TakaGeloKoi and Life Planner. */
 .dl-head {
   position: relative;
@@ -75,18 +75,6 @@
 }
 [data-theme='terminal'] .dl-head-name { text-transform: uppercase; }
 
-/* Budget value that opens an inline editor (TakaGeloKoi) */
-.dl-head-stat-btn {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 0; border: 0; background: none; cursor: pointer;
-  font: inherit; color: inherit;
-}
-.dl-head-stat-btn svg { color: var(--text-tertiary); }
-.dl-head-stat-btn:hover svg { color: var(--dl-head-accent, var(--accent-amber)); }
-.dl-head-stat-btn:focus-visible { outline: 2px solid var(--border-focus, var(--accent-amber)); outline-offset: 3px; border-radius: 4px; }
-.dl-head-stat-edit { display: inline-flex; align-items: center; gap: 6px; }
-.dl-head-stat-edit .input { width: 110px; height: 30px; padding: 0 8px; font-size: 13px; }
-
 /* Menu slot (Life Planner ⋮) sits right of the stats */
 .dl-head-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
 .dl-head.has-actions { grid-template-columns: minmax(0, 1fr) auto auto; }
@@ -96,3 +84,50 @@
 
 /* Text-valued stat (e.g. a date) */
 .dl-head-stat dd.is-small { font-size: 0.95rem; white-space: nowrap; }
+@media (max-width: 640px) {
+  .dl-head-stat dd.is-small { font-size: 13px; letter-spacing: -0.02em; }
+}
+@media (max-width: 400px) {
+  .dl-head-stat dd.is-small { font-size: 12px; }
+}
+
+@media (max-width: 640px) {
+  :is(.bk-widget, .tgk-widget, .lp-widget) .dl-head {
+    gap: 8px;
+    padding: 9px 10px;
+    margin-bottom: 10px;
+  }
+  :is(.bk-widget, .tgk-widget, .lp-widget) .dl-head-title { gap: 8px; }
+  :is(.bk-widget, .tgk-widget, .lp-widget) .dl-head-tile { width: 34px; height: 34px; }
+  :is(.bk-widget, .tgk-widget, .lp-widget) .dl-head-name { margin: 2px 0 0; font-size: 1rem; }
+  :is(.bk-widget, .tgk-widget, .lp-widget) .dl-head-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+    width: 100%;
+    padding-top: 8px;
+  }
+  :is(.bk-widget, .tgk-widget, .lp-widget) .dl-head-stat {
+    position: relative;
+    justify-content: center;
+    gap: 3px;
+    padding: 2px 4px;
+    border-left: 0;
+  }
+  :is(.bk-widget, .tgk-widget, .lp-widget) .dl-head-stat + .dl-head-stat { border-left: 0; }
+  :is(.bk-widget, .tgk-widget, .lp-widget) .dl-head-stat:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 0;
+    width: 1px;
+    height: 30px;
+    transform: translateY(-50%);
+    background: var(--border-primary);
+  }
+  :is(.bk-widget, .tgk-widget, .lp-widget) .dl-head-stat dd:not(.is-small) { font-size: 1rem; }
+}
+@media (max-width: 400px) {
+  :is(.bk-widget, .tgk-widget, .lp-widget) .dl-head { padding: 8px; gap: 7px; }
+  :is(.bk-widget, .tgk-widget, .lp-widget) .dl-head-tile { width: 32px; height: 32px; }
+}

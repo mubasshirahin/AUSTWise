@@ -145,8 +145,26 @@
 
 /* ── Responsive ── */
 @media (max-width: 640px) {
+  .daily-life-page { gap: 12px; }
+  .daily-life-tabs { margin-bottom: 0; }
   .dl-hero-content {
-    padding: var(--sp-4) var(--sp-3);
+    padding: 12px var(--sp-3);
+  }
+  .dl-hero-eyebrow {
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+  .dl-hero-period-icon {
+    width: 26px;
+    height: 26px;
+  }
+  .dl-hero-title {
+    font-size: 1.45rem;
+    line-height: 1.12;
+  }
+  .dl-hero-subtitle {
+    font-size: 12px;
+    line-height: 1.4;
   }
   .dl-tabs-card {
     min-width: 0;
@@ -157,7 +175,7 @@
     overflow-x: auto;
     overflow-y: hidden;
     scrollbar-width: thin;
-    scrollbar-color: var(--accent-amber) var(--bg-tertiary);
+    scrollbar-color: var(--text-tertiary) var(--bg-tertiary);
     -webkit-overflow-scrolling: touch;
   }
   html[data-layout] .dl-tabs-card .glider-tabs-wrap::-webkit-scrollbar {
@@ -169,7 +187,7 @@
     border-radius: 999px;
   }
   html[data-layout] .dl-tabs-card .glider-tabs-wrap::-webkit-scrollbar-thumb {
-    background: var(--accent-amber);
+    background: var(--text-tertiary);
     border-radius: 999px;
   }
   html[data-layout] .dl-tabs-card .glider-tabs-track {
@@ -184,4 +202,10 @@
   .dl-content-card {
     padding: 0;
   }
+}
+
+@media (max-width: 380px) {
+  .dl-hero-content { padding: 10px 12px; }
+  .dl-hero-title { font-size: 1.3rem; }
+  .dl-hero-subtitle { font-size: 11px; }
 }

@@ -1,10 +1,10 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  DollarSign, Plus, Trash2, Home, Wallet,
+  DollarSign, Plus, Trash2, Home,
   CalendarDays, Calendar, CalendarRange,
-  ChevronLeft, ChevronRight, TrendingUp, TrendingDown,
-  AlertTriangle, X, PencilLine, BarChart2,
+  ChevronLeft, ChevronRight,
+  AlertTriangle, X, PencilLine,
   Target, Layers, History,
 } from 'lucide-react';
 import './MoneyTrackerPage.css';
@@ -184,17 +184,6 @@ export default function MoneyTrackerPage() {
   const todayPct = Math.min(100, Math.round((todaySpent / Math.max(1, limitToday)) * 100));
   const todayExceeds = todaySpent > limitToday;
   const safeToday = Math.max(0, limitToday - todaySpent);
-  const daysElapsed = Math.max(1, todayIdx + 1);
-  const avgPerDay = Math.round(totalSpent / daysElapsed);
-
-  const budgetUsed = doc.budget > 0 ? Math.min(100, Math.round((totalSpent / doc.budget) * 100)) : 0;
-  const ringColor = doc.budget <= 0
-    ? 'var(--border-primary)'
-    : isOverBudget
-      ? 'var(--accent-rose)'
-      : budgetUsed >= 85
-        ? 'var(--accent-rose)'
-        : 'var(--accent-amber)';
 
   const cats = useMemo(() => catTotals(doc), [doc]);
   const recent = useMemo(() => recentDaily(doc, 6), [doc]);
@@ -212,6 +201,11 @@ export default function MoneyTrackerPage() {
   const commitBudget = () => {
     const v = Number(budgetInput) || 0;
     update(d => updateBudget(d, v));
+    setBudgetEditing(false);
+  };
+
+  const cancelBudgetEdit = () => {
+    setBudgetInput(String(doc.budget || ''));
     setBudgetEditing(false);
   };
 
@@ -315,30 +309,34 @@ export default function MoneyTrackerPage() {
         </div>
 
         <dl className="dl-head-stats">
-          <div className="dl-head-stat">
+          <div className="dl-head-stat tgk-head-budget">
             <dt>Budget</dt>
             <dd>
               {budgetEditing ? (
-                <span className="dl-head-stat-edit">
-                  <input
-                    className="input"
-                    type="number"
-                    aria-label="Monthly budget"
-                    value={budgetInput}
-                    onChange={e => setBudgetInput(e.target.value)}
-                    onBlur={commitBudget}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') commitBudget();
-                      if (e.key === 'Escape') setBudgetEditing(false);
-                    }}
-                    autoFocus
-                    placeholder="e.g. 20000"
-                  />
-                </span>
+                <input
+                  className="tgk-head-budget-input"
+                  type="number"
+                  aria-label="Monthly budget"
+                  value={budgetInput}
+                  onChange={e => setBudgetInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') { e.preventDefault(); commitBudget(); }
+                    if (e.key === 'Escape') { e.preventDefault(); cancelBudgetEdit(); }
+                  }}
+                  onBlur={commitBudget}
+                  autoFocus
+                  placeholder="0"
+                />
               ) : (
-                <button type="button" className="dl-head-stat-btn" onClick={startBudgetEdit} title="Edit budget">
-                  {doc.budget ? fmtMoney(doc.budget) : 'Set'}
-                  <PencilLine size={12} aria-hidden="true" />
+                <button
+                  type="button"
+                  className={`tgk-head-budget-btn${doc.budget > 0 ? '' : ' is-empty'}`}
+                  onClick={startBudgetEdit}
+                  title="Click to edit monthly budget"
+                  aria-label="Edit monthly budget"
+                >
+                  <span>{doc.budget ? fmtMoney(doc.budget) : 'Set'}</span>
+                  <PencilLine size={11} aria-hidden="true" />
                 </button>
               )}
             </dd>
@@ -352,120 +350,31 @@ export default function MoneyTrackerPage() {
       </header>
 
       {/* ════════════════════════════════════════
-          HERO — budget ring + safe-to-spend + quick add
+          HERO — safe to spend today
           ════════════════════════════════════════ */}
       <div className="tgk-hero">
-
-        {/* Budget ring card */}
-        <div className="tgk-card tgk-hero-budget">
-          <div className="tgk-hero-ring-wrap">
-            <div className="tgk-ring" style={{ '--pct': budgetUsed, '--ring': ringColor }}>
-              <div className="tgk-ring-hole">
-                <span className="tgk-ring-pct">{doc.budget > 0 ? `${budgetUsed}%` : '—'}</span>
-                <span className="tgk-ring-cap">used</span>
-              </div>
-            </div>
-            <div className="tgk-hero-copy">
-              <span className="tgk-hero-overline">Monthly budget</span>
-              <span className="tgk-hero-num">{doc.budget > 0 ? fmtMoney(doc.budget) : 'Not set yet'}</span>
-              <div className="tgk-hero-split">
-                <div className="tgk-hero-split-item">
-                  <span className="tgk-hero-split-label"><TrendingDown size={11} /> Spent</span>
-                  <span className="tgk-hero-split-value">{fmtMoney(totalSpent)}</span>
-                </div>
-                <div className="tgk-hero-split-item">
-                  <span className="tgk-hero-split-label"><TrendingUp size={11} /> Left</span>
-                  <span className={`tgk-hero-split-value ${isOverBudget ? 'is-over' : 'is-ok'}`}>{fmtMoney(rem)}</span>
-                </div>
-              </div>
-            </div>
+        <div className="tgk-card tgk-safespend">
+          <div className="tgk-safespend-head"><Target size={13} /> Safe to spend today</div>
+          <div className={`tgk-safespend-value${safeToday <= 0 ? ' is-over' : ''}`}>{fmtMoney(safeToday)}</div>
+          <div className="tgk-safespend-meta">
+            <span>{daysLeft} day{daysLeft > 1 ? 's' : ''} left</span>
+            <span className="tgk-dot-sep" />
+            <span>today {fmtMoney(todaySpent)} / {fmtMoney(limitToday)}</span>
           </div>
-          <div className="tgk-hero-bar">
+          <div className="tgk-safespend-bar">
             <span
-              className="tgk-hero-bar-fill"
               style={{
-                width: `${budgetUsed}%`,
-                background: isOverBudget
-                  ? 'var(--accent-rose)'
-                  : budgetUsed >= 80
-                    ? 'linear-gradient(90deg, var(--accent-amber), var(--accent-rose))'
-                    : 'var(--accent-amber)',
+                width: `${todayPct}%`,
+                background: todayExceeds ? 'var(--accent-rose)' : 'var(--accent-amber)',
               }}
             />
           </div>
-          {doc.budget <= 0 && (
-            <button type="button" className="tgk-hero-cta" onClick={startBudgetEdit}>
-              <Wallet size={12} /> Set your monthly budget to unlock insights
-            </button>
-          )}
-        </div>
-
-        {/* Side column */}
-        <div className="tgk-hero-side">
-
-          {/* Safe to spend */}
-          <div className="tgk-card tgk-safespend">
-            <div className="tgk-safespend-head"><Target size={13} /> Safe to spend today</div>
-            <div className={`tgk-safespend-value${safeToday <= 0 ? ' is-over' : ''}`}>{fmtMoney(safeToday)}</div>
-            <div className="tgk-safespend-meta">
-              <span>{daysLeft} day{daysLeft > 1 ? 's' : ''} left</span>
-              <span className="tgk-dot-sep" />
-              <span>today {fmtMoney(todaySpent)} / {fmtMoney(limitToday)}</span>
-            </div>
-            <div className="tgk-safespend-bar">
-              <span
-                style={{
-                  width: `${todayPct}%`,
-                  background: todayExceeds ? 'var(--accent-rose)' : 'var(--accent-amber)',
-                }}
-              />
-            </div>
-          </div>
-
         </div>
       </div>
 
       {/* ════════════════════════════════════════
           KPI STRIP
           ════════════════════════════════════════ */}
-      <div className="tgk-kpis">
-        <div className="tgk-kpi">
-          <div className={`tgk-kpi-icon ${isOverBudget ? 'rose' : 'amber'}`}><Wallet size={15} /></div>
-          <div className="tgk-kpi-body">
-            <span className={`tgk-kpi-value${isOverBudget ? ' is-over' : ' is-ok'}`}>{fmtMoney(rem)}</span>
-            <span className="tgk-kpi-label">Remaining</span>
-          </div>
-        </div>
-        <div className="tgk-kpi">
-          <div className="tgk-kpi-icon rose"><Home size={15} /></div>
-          <div className="tgk-kpi-body">
-            <span className="tgk-kpi-value">{fmtMoney(totalFixed)}</span>
-            <span className="tgk-kpi-label">Fixed</span>
-          </div>
-        </div>
-        <div className="tgk-kpi">
-          <div className="tgk-kpi-icon cyan"><CalendarDays size={15} /></div>
-          <div className="tgk-kpi-body">
-            <span className="tgk-kpi-value">{fmtMoney(totalDaily)}</span>
-            <span className="tgk-kpi-label">Daily spent</span>
-          </div>
-        </div>
-        <div className="tgk-kpi">
-          <div className="tgk-kpi-icon amber"><DollarSign size={15} /></div>
-          <div className="tgk-kpi-body">
-            <span className="tgk-kpi-value">{fmtMoney(todaySpent)}</span>
-            <span className="tgk-kpi-label">Today</span>
-          </div>
-        </div>
-        <div className="tgk-kpi">
-          <div className={`tgk-kpi-icon ${isOverBudget ? 'rose' : 'amber'}`}><BarChart2 size={15} /></div>
-          <div className="tgk-kpi-body">
-            <span className="tgk-kpi-value">{fmtMoney(avgPerDay)}</span>
-            <span className="tgk-kpi-label">Avg / day</span>
-          </div>
-        </div>
-      </div>
-
       {/* ════════════════════════════════════════
           MAIN GRID — calendar + side rail
           ════════════════════════════════════════ */}
@@ -518,6 +427,8 @@ export default function MoneyTrackerPage() {
               <ChevronRight size={16} />
             </button>
           </div>
+
+          <div className="tgk-cal-divider" aria-hidden="true" />
 
           {/* Day labels (Fri-start) */}
           {viewMode !== 'daily' && (
@@ -594,48 +505,11 @@ export default function MoneyTrackerPage() {
           <div className="tgk-cal-legend">
             <span className="tgk-cal-legend-item"><i className="tgk-cal-legend-swatch" /> Today</span>
             <span className="tgk-cal-legend-item"><i className="tgk-cal-legend-swatch is-over" /> Over daily limit</span>
-            <span className="tgk-cal-legend-note">Select a day to add or review expenses.</span>
           </div>
         </div>
 
         {/* ── Side rail ── */}
         <div className="tgk-rail">
-
-          {/* Category breakdown */}
-          <div className="tgk-card">
-            <h4 className="tgk-card-title"><Layers size={14} /> Category breakdown</h4>
-            {cats.length === 0 ? (
-              <div className="tgk-empty">
-                <span className="tgk-empty-icon"><Layers size={16} /></span>
-                <p className="tgk-empty-hint">No expenses yet — categories will show up here.</p>
-              </div>
-            ) : (
-              <>
-                <CategoryPieChart cats={cats} activeId={hoveredCatId} onHover={setHoveredCatId} />
-                <div className="tgk-cat-list">
-                  {cats.map(c => (
-                    <div
-                      key={c.id}
-                      className={`tgk-cat-row${hoveredCatId === c.id ? ' is-hovered' : ''}`}
-                      onMouseEnter={() => setHoveredCatId(c.id)}
-                      onMouseLeave={() => setHoveredCatId(null)}
-                    >
-                      <div className="tgk-cat-row-top">
-                        <span className="tgk-cat-name"><CatDot id={c.id} /> {c.label}</span>
-                        <span className="tgk-cat-amt">
-                          {fmtMoney(c.total)}
-                          <em className="tgk-cat-pct">{c.pct}%</em>
-                        </span>
-                      </div>
-                      <div className="tgk-cat-track">
-                        <span style={{ width: `${c.pct}%`, background: c.color }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
 
           {/* Recent activity */}
           <div className="tgk-card">
@@ -672,6 +546,42 @@ export default function MoneyTrackerPage() {
                   );
                 })}
               </div>
+            )}
+          </div>
+
+          {/* Category breakdown */}
+          <div className="tgk-card">
+            <h4 className="tgk-card-title"><Layers size={14} /> Category breakdown</h4>
+            {cats.length === 0 ? (
+              <div className="tgk-empty">
+                <span className="tgk-empty-icon"><Layers size={16} /></span>
+                <p className="tgk-empty-hint">No expenses yet — categories will show up here.</p>
+              </div>
+            ) : (
+              <>
+                <CategoryPieChart cats={cats} activeId={hoveredCatId} onHover={setHoveredCatId} />
+                <div className="tgk-cat-list">
+                  {cats.map(c => (
+                    <div
+                      key={c.id}
+                      className={`tgk-cat-row${hoveredCatId === c.id ? ' is-hovered' : ''}`}
+                      onMouseEnter={() => setHoveredCatId(c.id)}
+                      onMouseLeave={() => setHoveredCatId(null)}
+                    >
+                      <div className="tgk-cat-row-top">
+                        <span className="tgk-cat-name"><CatDot id={c.id} /> {c.label}</span>
+                        <span className="tgk-cat-amt">
+                          {fmtMoney(c.total)}
+                          <em className="tgk-cat-pct">{c.pct}%</em>
+                        </span>
+                      </div>
+                      <div className="tgk-cat-track">
+                        <span style={{ width: `${c.pct}%`, background: c.color }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
 
@@ -735,8 +645,8 @@ export default function MoneyTrackerPage() {
           DAY EXPENSE MODAL
           ════════════════════════════════════════ */}
       {dayModal && createPortal(
-        <div className="modal-overlay" onClick={() => setDayModal(null)}>
-          <div className="modal tgk-modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`Expenses on ${dayModal}`}>
+        <div className="modal-overlay tgk-day-overlay" onClick={() => setDayModal(null)}>
+          <div className="modal tgk-modal tgk-day-modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`Expenses on ${dayModal}`}>
 
             {/* Header */}
             <div className="tgk-modal-head">
@@ -767,7 +677,7 @@ export default function MoneyTrackerPage() {
             </div>
 
             {/* Add expense form */}
-            <div className="tgk-form-row">
+            <div className="tgk-form-row tgk-day-title-row">
               <input
                 className="input"
                 value={dayTitle}
@@ -786,7 +696,7 @@ export default function MoneyTrackerPage() {
                 style={{ flex: '1 1 90px' }}
               />
             </div>
-            <div className="tgk-form-row">
+            <div className="tgk-form-row tgk-day-meta-row">
               <CatSelect value={dayCat} onChange={setDayCat} className="tgk-select-grow" />
               <input
                 className="input"
@@ -796,21 +706,19 @@ export default function MoneyTrackerPage() {
                 style={{ flex: '2 1 130px' }}
               />
             </div>
-            <div className="tgk-form-row">
+            <div className="tgk-form-row tgk-day-actions">
               <button
                 type="button"
-                className="btn btn-primary btn-sm"
+                className="btn btn-primary btn-sm tgk-day-add-btn"
                 onClick={handleAddDay}
                 disabled={!dayTitle.trim() || !dayAmt}
-                style={{ flex: 1 }}
               >
                 <Plus size={13} /> Add
               </button>
               <button
                 type="button"
-                className="btn btn-ghost btn-sm"
+                className="btn btn-ghost btn-sm tgk-day-close-btn"
                 onClick={() => setDayModal(null)}
-                style={{ flex: 1 }}
               >
                 Close
               </button>
@@ -853,8 +761,8 @@ export default function MoneyTrackerPage() {
           FIXED EXPENSE MODAL
           ════════════════════════════════════════ */}
       {fixedModal && createPortal(
-        <div className="modal-overlay" onClick={() => setFixedModal(false)}>
-          <div className="modal tgk-modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Add fixed expense">
+        <div className="modal-overlay tgk-day-overlay" onClick={() => setFixedModal(false)}>
+          <div className="modal tgk-modal tgk-day-modal tgk-fixed-modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Add fixed expense">
             <div className="tgk-modal-head">
               <span className="tgk-modal-title">
                 <Home size={13} /> Add fixed expense
@@ -869,13 +777,23 @@ export default function MoneyTrackerPage() {
               </button>
             </div>
 
-            <div className="tgk-form-row">
+            {/* Summary */}
+            <div className="tgk-modal-summary">
+              <span className="lp-badge lp-badge-muted">
+                Items: <strong style={{ color: 'var(--text-primary)' }}>{doc.fixed.length}</strong>
+              </span>
+              <span className="lp-badge lp-badge-amber">
+                Total: {fmtMoney(totalFixed)}
+              </span>
+            </div>
+
+            <div className="tgk-form-row tgk-day-title-row">
               <input
                 className="input"
                 value={fixedName}
                 onChange={e => setFixedName(e.target.value)}
                 placeholder="Title — e.g. Home Rent"
-                style={{ flex: '2 1 140px' }}
+                style={{ flex: '2 1 130px' }}
                 autoFocus
               />
               <input
@@ -888,7 +806,7 @@ export default function MoneyTrackerPage() {
                 style={{ flex: '1 1 90px' }}
               />
             </div>
-            <div className="tgk-form-row">
+            <div className="tgk-form-row tgk-day-meta-row">
               <CatSelect value={fixedCat} onChange={setFixedCat} className="tgk-select-grow" />
               <input
                 className="input"
@@ -898,21 +816,19 @@ export default function MoneyTrackerPage() {
                 style={{ flex: '2 1 130px' }}
               />
             </div>
-            <div className="tgk-form-row">
+            <div className="tgk-form-row tgk-day-actions">
               <button
                 type="button"
-                className="btn btn-primary btn-sm"
+                className="btn btn-primary btn-sm tgk-day-add-btn"
                 onClick={handleAddFixed}
                 disabled={!fixedName.trim() || !fixedAmt}
-                style={{ flex: 1 }}
               >
                 <Plus size={13} /> Add
               </button>
               <button
                 type="button"
-                className="btn btn-ghost btn-sm"
+                className="btn btn-ghost btn-sm tgk-day-close-btn"
                 onClick={() => setFixedModal(false)}
-                style={{ flex: 1 }}
               >
                 Close
               </button>

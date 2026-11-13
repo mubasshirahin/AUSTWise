@@ -1,17 +1,17 @@
 {
   "aust-usage-v1": {
     "STU-MT0NFCWXOQBJ": {
-      "totalMs": 251592909,
-      "visits": 248,
+      "totalMs": 208459700,
+      "visits": 279,
       "firstSeen": 1794011048047,
-      "lastSeen": 1794543468384,
+      "lastSeen": 1794561481675,
       "byFeature": {
         "question-bank": {
           "ms": 9885715,
           "visits": 0
         },
         "community": {
-          "ms": 9002745,
+          "ms": 9118449,
           "visits": 0
         },
         "connectbox": {
@@ -19,19 +19,19 @@
           "visits": 0
         },
         "resource-vault": {
-          "ms": 82790,
+          "ms": 96206,
           "visits": 0
         },
         "dashboard": {
-          "ms": 108361378,
+          "ms": 60301015,
           "visits": 0
         },
         "settings": {
-          "ms": 6701007,
+          "ms": 6684881,
           "visits": 0
         },
         "gradelab": {
-          "ms": 96599461,
+          "ms": 96590359,
           "visits": 0
         },
         "other": {
@@ -39,7 +39,7 @@
           "visits": 0
         },
         "daily-life": {
-          "ms": 13765287,
+          "ms": 18255627,
           "visits": 0
         },
         "productivity": {
@@ -55,7 +55,7 @@
           "visits": 0
         },
         "shadow": {
-          "ms": 1534501,
+          "ms": 1867423,
           "visits": 0
         },
         "campus": {
@@ -75,26 +75,26 @@
         "question-bank|7": 3595755,
         "question-bank|8": 3599779,
         "question-bank|9": 1024450,
-        "dashboard|3": 4041149,
+        "dashboard|3": 441297,
         "settings|3": 20052,
         "gradelab|3": 7568360,
         "other|3": 8965,
-        "dashboard|8": 6193497,
-        "dashboard|9": 3704272,
+        "dashboard|8": 5059310,
+        "dashboard|9": 2012846,
         "dashboard|12": 91233,
         "dashboard|16": 2856693,
         "dashboard|17": 6734909,
         "dashboard|18": 5453421,
-        "dashboard|19": 7131639,
-        "dashboard|20": 7343935,
-        "dashboard|21": 7194568,
-        "dashboard|22": 7197370,
-        "dashboard|23": 7195306,
-        "dashboard|0": 7215663,
-        "dashboard|1": 7196260,
-        "dashboard|2": 4653639,
+        "dashboard|19": 6051656,
+        "dashboard|20": 3743991,
+        "dashboard|21": 3594620,
+        "dashboard|22": 3597480,
+        "dashboard|23": 3595391,
+        "dashboard|0": 3615724,
+        "dashboard|1": 3596312,
+        "dashboard|2": 1144304,
         "gradelab|2": 3850242,
-        "gradelab|8": 4304539,
+        "gradelab|8": 4290751,
         "gradelab|4": 7191444,
         "gradelab|5": 5332641,
         "gradelab|6": 3595865,
@@ -103,7 +103,7 @@
         "gradelab|10": 3595670,
         "gradelab|11": 3595509,
         "gradelab|12": 3595433,
-        "gradelab|13": 3594450,
+        "gradelab|13": 3599136,
         "gradelab|14": 3594824,
         "gradelab|15": 3474795,
         "gradelab|16": 3471112,
@@ -148,11 +148,11 @@
         "community|20": 2278,
         "daily-life|0": 2354136,
         "daily-life|1": 3600029,
-        "daily-life|2": 2740313,
+        "daily-life|2": 2846689,
         "daily-life|3": 139721,
-        "dashboard|6": 5222757,
-        "dashboard|7": 7193110,
-        "daily-life|9": 2080186,
+        "dashboard|6": 1622813,
+        "dashboard|7": 3593215,
+        "daily-life|9": 121407,
         "campus|9": 35509,
         "resource-vault|9": 2292,
         "community|9": 2078730,
@@ -165,38 +165,41 @@
         "question-bank|17": 1450,
         "downtime|17": 2849,
         "shadow|18": 1516876,
-        "dashboard|4": 3599937,
-        "dashboard|5": 3599947,
-        "daily-life|8": 2380905,
-        "settings|8": 16126,
-        "shadow|8": 11355,
-        "dashboard|10": 1075987
+        "daily-life|12": 1239402,
+        "daily-life|13": 3083928,
+        "community|13": 115704,
+        "resource-vault|13": 13416,
+        "shadow|13": 344277,
+        "dashboard|13": 10819,
+        "daily-life|14": 3261755,
+        "dashboard|14": 18895,
+        "daily-life|15": 1138563
       }
     },
     "ADM-MSOP6VG6BVL4": {
-      "totalMs": 91392722,
-      "visits": 17,
+      "totalMs": 161124132,
+      "visits": 67,
       "firstSeen": 1794388929613,
-      "lastSeen": 1794480548571,
+      "lastSeen": 1794561481676,
       "byFeature": {
         "dashboard": {
-          "ms": 489,
+          "ms": 18432,
           "visits": 0
         },
         "other": {
-          "ms": 31,
+          "ms": 378,
           "visits": 0
         },
         "daily-life": {
-          "ms": 82536,
+          "ms": 10029975,
           "visits": 0
         },
         "gradelab": {
-          "ms": 4473,
+          "ms": 7619,
           "visits": 0
         },
         "campus": {
-          "ms": 19958,
+          "ms": 3484363,
           "visits": 0
         },
         "question-bank": {
@@ -204,7 +207,7 @@
           "visits": 0
         },
         "community": {
-          "ms": 91269482,
+          "ms": 147567612,
           "visits": 0
         }
       },
@@ -219,26 +222,77 @@
         "community|10": 6541881,
         "community|11": 3592791,
         "community|12": 3591307,
-        "community|13": 3592271,
-        "community|14": 3591187,
-        "community|15": 3587769,
-        "community|16": 3595330,
-        "community|17": 3590978,
-        "community|18": 3592140,
-        "community|19": 3593819,
-        "community|20": 3593279,
-        "community|21": 3593494,
-        "community|22": 3592837,
-        "community|23": 3592388,
-        "community|0": 3595021,
-        "community|1": 3591893,
-        "community|2": 3593859,
-        "community|3": 3534234,
-        "community|4": 3595068,
-        "community|5": 3593766,
+        "community|13": 4610588,
+        "community|14": 7186300,
+        "community|15": 7183591,
+        "community|16": 7192278,
+        "community|17": 7128193,
+        "community|18": 7189860,
+        "community|19": 7191226,
+        "community|20": 7190869,
+        "community|21": 7189257,
+        "community|22": 7188340,
+        "community|23": 7189858,
+        "community|0": 7193296,
+        "community|1": 7187279,
+        "community|2": 7185016,
+        "community|3": 7170257,
+        "community|4": 7071556,
+        "community|5": 5069699,
         "community|6": 3595634,
         "community|7": 3592820,
-        "community|8": 3595811
+        "community|8": 3595811,
+        "daily-life|5": 51365,
+        "dashboard|5": 3805,
+        "gradelab|5": 3146,
+        "campus|5": 2031776,
+        "campus|6": 1432629,
+        "daily-life|6": 946854,
+        "dashboard|6": 13622,
+        "other|12": 347,
+        "dashboard|12": 516,
+        "daily-life|12": 889635,
+        "daily-life|13": 3319840,
+        "daily-life|14": 3599813,
+        "daily-life|15": 1139932
+      }
+    },
+    "DEV-CSE-S1-BB2-02": {
+      "totalMs": 4287799,
+      "visits": 333,
+      "firstSeen": 1794555213870,
+      "lastSeen": 1794559501707,
+      "byFeature": {
+        "daily-life": {
+          "ms": 3670977,
+          "visits": 0
+        },
+        "community": {
+          "ms": 243318,
+          "visits": 0
+        },
+        "gradelab": {
+          "ms": 362153,
+          "visits": 0
+        },
+        "other": {
+          "ms": 11227,
+          "visits": 0
+        },
+        "dashboard": {
+          "ms": 124,
+          "visits": 0
+        }
+      },
+      "byHour": {
+        "daily-life|13": 1230791,
+        "community|13": 236180,
+        "gradelab|13": 113358,
+        "gradelab|14": 248795,
+        "community|14": 7138,
+        "daily-life|14": 2440186,
+        "other|14": 11227,
+        "dashboard|14": 124
       }
     }
   }
