@@ -10,9 +10,9 @@ import './MobileNav.css';
 
 // Primary items shown in the fixed bottom bar (most-used campus tools)
 const primaryItems = [
-  { path: '/dashboard/quickstats', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/dashboard/quickstats', label: 'Dashboard', short: 'Home', icon: LayoutDashboard },
   { path: '/gradelab', label: 'GradeLab', icon: BarChart3 },
-  { path: '/resource-vault', label: 'Resource Vault', icon: BookOpen },
+  { path: '/resource-vault', label: 'Resource Vault', short: 'Vault', icon: BookOpen },
   { path: '/community', label: 'Social', icon: Users },
   { path: '/connectbox', label: 'Chat', icon: MessageSquare },
 ];
@@ -56,7 +56,7 @@ function PrimaryMobileLink({ item, onClick }) {
       onFocus={() => prefetchRoute(item.path)}
     >
       <span className="mobile-nav-icon"><item.icon size={20} /></span>
-      <span>{item.label}</span>
+      <span>{item.short || item.label}</span>
     </NavLink>
   );
 }

@@ -8,6 +8,7 @@ import {
   Target, Layers, History,
 } from 'lucide-react';
 import './MoneyTrackerPage.css';
+import '../daily-life/DailyMasthead.css';
 import {
   useTakaGeloKoi, sumFixed, sumDaily, remaining,
   dailyLimit, dailySpent, todayKey30,
@@ -301,49 +302,54 @@ export default function MoneyTrackerPage() {
       {/* ════════════════════════════════════════
           MASTHEAD
           ════════════════════════════════════════ */}
-      <div className="schedule-masthead">
-        <div className="schedule-title-block">
-          <div className="schedule-icon-tile tgk-icon-tile">
-            <DollarSign size={20} strokeWidth={2.2} />
+      <header className="dl-head">
+        <div className="dl-head-title">
+          <div className="dl-head-tile" aria-hidden="true">
+            <DollarSign size={20} strokeWidth={2.1} />
           </div>
-          <div>
-            <span className="schedule-overline">Daily Life</span>
-            <p className="schedule-title">TakaGeloKoi</p>
-            <span className="schedule-subtitle">Monthly budget &amp; daily spending tracker</span>
+          <div className="dl-head-text">
+            <span className="dl-head-overline">Daily Life</span>
+            <h2 className="dl-head-name">TakaGeloKoi</h2>
+            <span className="dl-head-subtitle">Monthly budget &amp; daily spending tracker</span>
           </div>
         </div>
-        <div className="schedule-actions">
-          {budgetEditing ? (
-            <div className="tgk-budget-inline">
-              <input
-                className="input tgk-budget-input-top"
-                type="number"
-                value={budgetInput}
-                onChange={e => setBudgetInput(e.target.value)}
-                onBlur={commitBudget}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') commitBudget();
-                  if (e.key === 'Escape') setBudgetEditing(false);
-                }}
-                autoFocus
-                placeholder="e.g. 20000"
-              />
-              <button type="button" className="btn btn-primary btn-sm tgk-save-btn" onClick={commitBudget}>Save</button>
-            </div>
-          ) : (
-            <button type="button" className="tgk-budget-badge" onClick={startBudgetEdit} title="Click to edit budget">
-              <Wallet size={11} />
-              {doc.budget ? fmtMoney(doc.budget) : 'Set budget'}
-              <PencilLine size={10} className="tgk-budget-badge-edit" />
-            </button>
-          )}
-          <span className={`lp-badge ${isOverBudget ? 'lp-badge-rose' : 'lp-badge-amber'}`}>
-            {isOverBudget ? <AlertTriangle size={10} /> : <TrendingUp size={10} />}
-            {fmtMoney(rem)} remaining
-          </span>
-        </div>
-      </div>
-      <div className="schedule-dotted-divider" />
+
+        <dl className="dl-head-stats">
+          <div className="dl-head-stat">
+            <dt>Budget</dt>
+            <dd>
+              {budgetEditing ? (
+                <span className="dl-head-stat-edit">
+                  <input
+                    className="input"
+                    type="number"
+                    aria-label="Monthly budget"
+                    value={budgetInput}
+                    onChange={e => setBudgetInput(e.target.value)}
+                    onBlur={commitBudget}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') commitBudget();
+                      if (e.key === 'Escape') setBudgetEditing(false);
+                    }}
+                    autoFocus
+                    placeholder="e.g. 20000"
+                  />
+                </span>
+              ) : (
+                <button type="button" className="dl-head-stat-btn" onClick={startBudgetEdit} title="Edit budget">
+                  {doc.budget ? fmtMoney(doc.budget) : 'Set'}
+                  <PencilLine size={12} aria-hidden="true" />
+                </button>
+              )}
+            </dd>
+          </div>
+          <div className="dl-head-stat"><dt>Spent</dt><dd>{fmtMoney(totalSpent)}</dd></div>
+          <div className={`dl-head-stat${isOverBudget ? ' is-alert' : ''}`}>
+            <dt>{isOverBudget ? 'Over' : 'Remaining'}</dt>
+            <dd>{fmtMoney(rem)}</dd>
+          </div>
+        </dl>
+      </header>
 
       {/* ════════════════════════════════════════
           HERO — budget ring + safe-to-spend + quick add

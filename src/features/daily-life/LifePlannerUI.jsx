@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Target, CalendarDays, LayoutDashboard, BookOpen, Network, CalendarRange, Sparkles } from 'lucide-react';
+import { Target, Flag, CalendarDays, LayoutDashboard, BookOpen, Network, CalendarRange, Sparkles } from 'lucide-react';
 
 // ── Date input — always shows dd/mm/yy, stores ISO (yyyy-mm-dd) ──────────────
 
@@ -105,7 +105,7 @@ export function LpDateInput({
 export function LpSubnav({ view, onChange }) {
   const views = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'goals',     label: 'Goals',     icon: Target },
+    { id: 'goals',     label: 'Milestones', icon: Flag },
     { id: 'courses',   label: 'Courses',   icon: BookOpen },
     { id: 'mindmap',   label: 'Mindmap',   icon: Network },
     { id: 'timeline',  label: 'Timeline',  icon: CalendarRange },

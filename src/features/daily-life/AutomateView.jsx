@@ -204,64 +204,72 @@ export default function AutomateView({ update }) {
   };
 
   return (
-    <div className="lp-automate">
-      <div className="lp-automate-intro lp-panel">
-        <span className="lp-automate-icon"><MessageSquareText size={18} /></span>
+    <div className="pb-stack">
+      <section className="pb-card pb-auto-intro">
+        <span className="pb-auto-icon"><MessageSquareText size={18} /></span>
         <div>
-          <h2>Plan your life with AI</h2>
-          <p>Copy the interview prompt, use it in ChatGPT, Claude, Gemini, or DeepSeek, then bring the confirmed JSON plan back here.</p>
+          <h3 className="pb-title">Plan your life with AI</h3>
+          <p className="pb-meta">Copy the interview prompt into ChatGPT, Claude, Gemini or DeepSeek, then bring the confirmed JSON plan back here.</p>
         </div>
-      </div>
+      </section>
 
-      <div className="lp-automate-grid">
-        <section className="lp-panel lp-automate-panel">
-          <div className="lp-automate-heading">
-            <span className="lp-automate-step">1</span>
-            <div><h3>Copy the interview prompt</h3><p>The AI will ask questions, summarize your answers, and wait for your confirmation.</p></div>
+      <div className="pb-grid-2 pb-auto-grid">
+        <section className="pb-card pb-auto-step">
+          <header className="pb-auto-head">
+            <span className="pb-step-num">1</span>
+            <div>
+              <h3 className="pb-title">Copy the interview prompt</h3>
+              <p className="pb-meta">The AI asks questions, summarises your answers and waits for your confirmation.</p>
+            </div>
+          </header>
+          <textarea className="pb-code" value={INTERVIEW_PROMPT} readOnly aria-label="AI life planning interview prompt" />
+          <div className="pb-auto-actions">
+            <button type="button" className="btn btn-primary btn-sm pb-btn" onClick={copyPrompt}>
+              {copied ? <Check size={14} /> : <Clipboard size={14} />}
+              {copied ? 'Copied' : 'Copy prompt'}
+            </button>
+            <span className="pb-meta">Answer its questions and confirm the summary before asking for the JSON.</span>
           </div>
-          <textarea className="lp-automate-prompt" value={INTERVIEW_PROMPT} readOnly aria-label="AI life planning interview prompt" />
-          <button type="button" className="btn btn-primary btn-sm lp-automate-copy" onClick={copyPrompt}>
-            {copied ? <Check size={14} /> : <Clipboard size={14} />}
-            {copied ? 'Copied' : 'Copy prompt'}
-          </button>
-          <p className="lp-automate-hint">Paste it into any AI chat. Answer its questions and confirm the final summary before asking it to create the JSON.</p>
         </section>
 
-        <section className="lp-panel lp-automate-panel">
-          <div className="lp-automate-heading">
-            <span className="lp-automate-step">2</span>
-            <div><h3>Review and import your plan</h3><p>Paste the AI’s final JSON. We’ll check it and show you what will be added.</p></div>
-          </div>
+        <section className="pb-card pb-auto-step">
+          <header className="pb-auto-head">
+            <span className="pb-step-num">2</span>
+            <div>
+              <h3 className="pb-title">Review and import</h3>
+              <p className="pb-meta">Paste the AI’s final JSON. We check it and show exactly what will be added.</p>
+            </div>
+          </header>
           <textarea
-            className="lp-automate-json"
+            className="pb-code is-editable"
             value={jsonText}
             onChange={(event) => { setJsonText(event.target.value); setPreview(null); setError(''); setStatus(''); }}
             placeholder={'Paste the confirmed JSON here…\n\n{ "schemaVersion": 1, "planTitle": "…", "milestones": [...] }'}
             aria-label="Paste confirmed AI plan JSON"
             spellCheck="false"
           />
-          <div className="lp-automate-actions">
-            <button type="button" className="btn btn-secondary btn-sm" onClick={reviewJson} disabled={!jsonText.trim()}>
+          <div className="pb-auto-actions">
+            <button type="button" className="pb-btn-soft" onClick={reviewJson} disabled={!jsonText.trim()}>
               <FileJson size={14} /> Review JSON
             </button>
             {preview && (
-              <button type="button" className="btn btn-primary btn-sm" onClick={addPlan}>
+              <button type="button" className="btn btn-primary btn-sm pb-btn" onClick={addPlan}>
                 <Plus size={14} /> Add {preview.milestones.length} milestone{preview.milestones.length === 1 ? '' : 's'}
               </button>
             )}
             {jsonText && !preview && (
-              <button type="button" className="lp-automate-clear" onClick={() => { setJsonText(''); setError(''); setStatus(''); }}>
+              <button type="button" className="pb-btn-ghost" onClick={() => { setJsonText(''); setError(''); setStatus(''); }}>
                 <RotateCcw size={13} /> Clear
               </button>
             )}
           </div>
-          {error && <p className="lp-automate-message is-error" role="alert"><AlertCircle size={14} />{error}</p>}
-          {status && <p className="lp-automate-message is-success" role="status"><Check size={14} />{status}</p>}
+          {error && <p className="pb-note is-alert" role="alert"><AlertCircle size={14} />{error}</p>}
+          {status && <p className="pb-note is-ok" role="status"><Check size={14} />{status}</p>}
           {preview && (
-            <div className="lp-automate-preview" role="status">
+            <div className="pb-auto-preview" role="status">
               <strong>Review before adding{preview.planTitle ? `: ${preview.planTitle}` : ''}</strong>
-              <p>{preview.milestones.length} milestones · {preview.goalCount} goals · {preview.taskCount} tasks · {preview.stepCount} steps</p>
-              <ul className="lp-automate-tree">
+              <p className="pb-meta">{preview.milestones.length} milestones · {preview.goalCount} goals · {preview.taskCount} tasks · {preview.stepCount} steps</p>
+              <ul className="pb-auto-tree">
                 {preview.milestones.map((milestone, index) => (
                   <li key={`${milestone.title}-${index}`}>
                     <strong>{milestone.title}</strong>
@@ -274,7 +282,7 @@ export default function AutomateView({ update }) {
                   </li>
                 ))}
               </ul>
-              <span>Nothing is added until you choose “Add milestones.” Existing planner data stays in place.</span>
+              <span className="pb-meta">Nothing is added until you choose “Add milestones.” Existing planner data stays in place.</span>
             </div>
           )}
         </section>

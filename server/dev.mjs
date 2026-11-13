@@ -2599,11 +2599,16 @@ async function handleApiRequest(req, res) {
 
   // Get attendance records for a user
   if (req.url.startsWith('/api/telegram/attendance') && req.method === 'GET') {
+    // Attendance is personal data: only a signed-in user may read it, and only
+    // for the Telegram chat linked to their own account (admins/moderators may
+    // read any). Previously anyone who knew a chat ID could read its records.
+    const auth = requireAuth(req, res);
+    if (!auth) return;
     try {
       const url = new URL(req.url, `http://${req.headers.host}`);
       const chatId = url.searchParams.get('chatId');
       const courseCode = url.searchParams.get('course');
-      
+
       if (!chatId) {
         sendJson(res, 400, {
           success: false,
@@ -2611,7 +2616,19 @@ async function handleApiRequest(req, res) {
         });
         return;
       }
-      
+
+      if (!['admin', 'moderator'].includes(auth.role)) {
+        const account = await getUserById(auth.id);
+        const linked = account?.awid ? await getUserByAwid(account.awid) : null;
+        const ownChatId = String(
+          linked?.chatId ?? linked?.ChatId ?? account?.settings?.telegram?.chatId ?? ''
+        );
+        if (!ownChatId || ownChatId !== String(chatId)) {
+          sendJson(res, 403, { success: false, error: 'You can only view attendance for your own Telegram connection.' });
+          return;
+        }
+      }
+
       if (courseCode) {
         // Get summary for specific course
         const summary = await getAttendanceSummary(chatId, courseCode);

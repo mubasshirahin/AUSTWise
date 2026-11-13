@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Users, Search, ChevronDown, ChevronRight,
-  GraduationCap, Building2, Layers,
+  GraduationCap, Layers,
   BadgeCheck, Star, Download, FileDown, Loader2,
   Crown, Briefcase,
 } from 'lucide-react';
@@ -11,6 +11,16 @@ import { getAllAccounts, createAwid } from '../../utils/authStorage';
 import { getCachedMembers, refreshMemberDirectory } from '../../utils/memberDirectory';
 import { useAuth } from '../../context/AuthContext';
 import { formatSemesterLabel, getSemesterCountForDepartment } from '../../utils/semester';
+import { DirectoryDepartmentHeader, DirectoryMemberCard } from './DirectoryShared';
+import { getDepartmentLabel } from './directoryUtils';
+
+// Role pill shown next to a student's name (and their label in the hover card).
+const ROLE_TAGS = {
+  vp: { short: 'VP', label: 'Vice President' },
+  gs: { short: 'GS', label: 'General Secretary' },
+  sr: { short: 'SR', label: 'Student Representative' },
+  cr: { short: 'CR', label: 'Class Representative' },
+};
 
 // Extract student ID from @aust.edu email the same way the profile does
 function extractStudentId(student) {
@@ -424,7 +434,7 @@ export default function StudentDirectory() {
   };
 
   return (
-    <div className="student-dir">
+    <div className="student-dir member-directory">
       {/* Masthead */}
       <div className="schedule-masthead">
         <div className="schedule-title-block">
@@ -483,31 +493,22 @@ export default function StudentDirectory() {
             : "No student accounts are registered in the directory yet. When classmates sign up, they'll appear here grouped by department and semester."}</p>
         </div>
       ) : (
-        <div className="student-dir-content alumni-groups">
+        <div className="alumni-groups">
           {displayDepts.map(dept => {
             // Higher semesters first — highest semester on top, lower below.
             const sems = Object.keys(grouped[dept]).sort((a, b) => Number(b) - Number(a));
 
             return (
-              <div key={dept} className="student-dir-dept-section alumni-dept-group">
-                <div className="alumni-batch-header">
-                <button
-                  type="button"
-                  className="student-dir-dept-header alumni-group-toggle"
-                  onClick={() => toggleDept(dept)}
-                  aria-expanded={Boolean(expandedDepts[dept])}
-                >
-                  <ChevronDown size={16} className={`student-dir-dept-chevron alumni-group-chevron${expandedDepts[dept] ? ' is-expanded' : ''}`} />
-                  <Building2 size={16} className="student-dir-dept-icon alumni-department-icon" />
-                  <span className="student-dir-dept-info">
-                    <span className="student-dir-dept-name alumni-department-name" role="heading" aria-level="3">
-                      {dept}
-                    </span>
-                  </span>
-                </button>
-                </div>
+              <div key={dept}>
+                <DirectoryDepartmentHeader
+                  label={getDepartmentLabel(dept)}
+                  count={deptStats[dept]?.total || 0}
+                  expanded={Boolean(expandedDepts[dept])}
+                  onToggle={() => toggleDept(dept)}
+                  contentId={`student-department-${dept}`}
+                />
 
-                {expandedDepts[dept] && <div className="student-dir-dept-body">
+                {expandedDepts[dept] && <div id={`student-department-${dept}`} className="student-dir-dept-body">
                 {/* ═══ Department Executive Slots (VP · GS) ═══ */}
                 <div className="student-dir-exec-section">
                   <div className="student-dir-exec-label">
@@ -722,100 +723,46 @@ export default function StudentDirectory() {
                               </div>
                             </div>
 
-                            {/* ═══ Student Table ═══ */}
+                            {/* ═══ Students — same card rows as the Alumni Directory ═══ */}
                             {regulars.length > 0 && (
                               <div className="student-dir-role-section student-dir-regular-list">
                                 <div className="student-dir-role-label">
                                   <Users size={14} />
                                   <span>Students</span>
                                 </div>
-                                <div className="student-dir-table-wrapper">
-                                  <table className="student-dir-table">
-                                    <thead>
-                                      <tr>
-                                        <th className="stu-th-name">Name</th>
-                                        <th className="stu-th-id">AUST ID</th>
-                                        <th className="stu-th-awid">AWID</th>
-                                        <th className="stu-th-email">Email</th>
-                                        <th className="stu-th-lab">Lab</th>
-                                        <th className="stu-th-blood">Blood</th>
-                                        <th className="stu-th-batch">Batch</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {regulars.map(student => (
-                                        <tr
-                                          key={student.id}
-                                          className={`student-dir-table-row${student.id === user?.id ? ' is-me' : ''}`}
-                                        >
-                                          <td className="stu-td-name alumni-card-top" data-label="Student">
-                                            <button
-                                              type="button"
-                                              className="student-dir-student-avatar"
-                                              style={{
-                                                background: student.avatar ? 'transparent' : 'var(--accent-amber-glow)',
-                                                color: 'var(--accent-amber)',
-                                                width: '28px',
-                                                height: '28px',
-                                                fontSize: '9px',
-                                                overflow: 'hidden',
-                                                padding: 0,
-                                                border: 'none',
-                                                cursor: 'pointer',
-                                                flexShrink: 0,
-                                              }}
-                                              onClick={() => navigate(`/members/${student.id}`)}
-                                              title={`View ${student.name}'s profile / ID`}
-                                              aria-label={`View ${student.name}'s profile`}
-                                            >
-                                              {student.avatar ? (
-                                                <img src={student.avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-                                              ) : (
-                                                student.initials || student.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'
-                                              )}
-                                            </button>
-                                            <span className="alumni-card-info">
-                                            <span className="student-dir-table-stu-name">{student.name}</span>
-                                            {student.role === 'vp' && (
-                                              <span className="student-dir-role-badge is-vp">VP</span>
-                                            )}
-                                            {student.role === 'gs' && (
-                                              <span className="student-dir-role-badge is-gs">GS</span>
-                                            )}
-                                            {student.role === 'sr' && (
-                                              <span className="student-dir-role-badge is-sr">SR</span>
-                                            )}
-                                            {student.role === 'cr' && (
-                                              <span className="student-dir-role-badge is-cr">CR</span>
-                                            )}
-                                            {student.id === user?.id && (
-                                              <span className="student-dir-you-badge">You</span>
-                                            )}
-                                            <span className="student-dir-list-meta">
-                                              {[`ID ${extractStudentId(student)}`, student.awid || createAwid(student.department), student.email, student.labSection || student.section, student.bloodGroup, student.batch || student.batchName || student.batchNo].filter(Boolean).join(' · ')}
-                                            </span>
-                                            </span>
-                                          </td>
-                                          <td className="stu-td-id" data-label="AUST ID">
-                                            <code className="student-dir-id-code">{extractStudentId(student)}</code>
-                                          </td>
-                                          <td className="stu-td-awid" data-label="AWID">
-                                            <code className="student-dir-id-code" style={{ fontSize: '9px' }}>{student.awid || createAwid(student.department) || '—'}</code>
-                                          </td>
-                                          <td className="stu-td-email" data-label="Email">
-                                            <span className="student-dir-email">{student.email || '—'}</span>
-                                          </td>
-                                          <td className="stu-td-lab" data-label="Lab">{student.labSection || student.section || '—'}</td>
-                                          <td className="stu-td-blood" data-label="Blood">
-                                            <span className={`student-dir-blood ${student.bloodGroup ? 'has-blood' : ''}`}>
-                                              {student.bloodGroup || '—'}
-                                            </span>
-                                          </td>
-                                          <td className="stu-td-batch" data-label="Batch">{student.batch || student.batchName || student.batchNo || '—'}</td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
+                                <div className="alumni-grid-inner">
+                                  {regulars.map((student) => {
+                                    const isMe = student.id === user?.id;
+                                    const austId = extractStudentId(student);
+                                    const awid = student.awid || createAwid(student.department);
+                                    const lab = student.labSection || student.section;
+                                    const batch = student.batch || student.batchName || student.batchNo;
+                                    const roleTag = ROLE_TAGS[student.role];
+                                    return (
+                                      <DirectoryMemberCard
+                                        key={student.id}
+                                        member={student}
+                                        roleLabel={roleTag?.label || 'Student'}
+                                        isMe={isMe}
+                                        badges={roleTag && (
+                                          <span className={`alumni-card-you alumni-card-role is-${student.role}`}>{roleTag.short}</span>
+                                        )}
+                                        onOpenProfile={() => navigate(`/members/${student.id}`)}
+                                        deptLine={[student.department, batch, lab && `Lab ${lab}`].filter(Boolean).join(' · ')}
+                                        metaItems={[austId && `ID ${austId}`, awid, student.bloodGroup]}
+                                        email={student.email}
+                                        previewStats={[
+                                          ['Department', getDepartmentLabel(student.department)],
+                                          ['AUST ID', austId],
+                                          ['AWID', awid],
+                                          ['Semester', `Year ${formatSemesterLabel(Number(sem))} (Semester ${sem})`],
+                                          ['Lab', lab],
+                                          ['Batch', batch],
+                                          ['Blood', student.bloodGroup],
+                                        ]}
+                                      />
+                                    );
+                                  })}
                                 </div>
                               </div>
                             )}

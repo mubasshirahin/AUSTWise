@@ -692,9 +692,27 @@
 
 /* ═══════════════ Responsive ═══════════════ */
 @media (max-width: 768px) {
+  /* Keep the 3 stats side by side on mobile — stack icon over text */
   .shadow-stats-row {
-    grid-template-columns: 1fr;
-    gap: var(--sp-3);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--sp-2);
+  }
+  .shadow-quick-stat-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-2);
+    padding: var(--sp-3);
+  }
+  .shadow-quick-stat-icon {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+  }
+  .shadow-quick-stat-value {
+    font-size: var(--fs-lg);
+  }
+  .shadow-quick-stat-body {
+    width: 100%;
   }
   .shadow-chat-header {
     padding: var(--sp-4);
@@ -725,4 +743,49 @@
   .spin {
     animation: none !important;
   }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   SHADOW — LAYOUT FIXES (flat: no gradients, glows or highlight stripes)
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Course Reviews header box (was a heavy 2px amber outline) ─── */
+.shadow-page .cr .cr-masthead {
+  border: 1px solid var(--border-primary);
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+  padding: var(--sp-4) var(--sp-5);
+  margin-bottom: var(--sp-4);
+}
+.shadow-page .cr .cr-masthead::after { display: none; }
+.shadow-page .cr .cr-masthead .schedule-subtitle {
+  white-space: normal;
+  max-width: 340px;
+  line-height: 1.45;
+}
+.shadow-page .cr > .shadow-repeat-divider { display: none; }
+
+/* ─── One accent (amber) instead of blue/purple ─── */
+.shadow-page .cr-card.is-selected {
+  border-color: var(--accent-amber);
+  box-shadow: none;
+}
+.shadow-page .cr-card:focus-visible { border-color: var(--accent-amber); box-shadow: none; }
+.shadow-page .cr-author { color: var(--accent-amber); }
+.shadow-page .cr-upvote:hover:not(:disabled),
+.shadow-page .cr-upvote.is-voted { color: var(--accent-amber); background: transparent; }
+
+/* ─── Phone: less nested padding ─── */
+@media (max-width: 640px) {
+  .shadow-page { gap: var(--sp-3); }
+  .shadow-page .sh-content-card {
+    padding: var(--sp-3);
+    min-height: 0;
+  }
+  .shadow-page .cr .cr-masthead { padding: var(--sp-4); gap: var(--sp-3); }
+  .shadow-page .cr .cr-masthead .schedule-subtitle { max-width: 100%; }
+  .shadow-page .cr .cr-masthead .schedule-masthead-center { display: none; }
+  .shadow-page .cr-detail { padding: var(--sp-4); }
+  .shadow-page .shadow-quick-stat-label { white-space: normal; line-height: 1.3; }
 }

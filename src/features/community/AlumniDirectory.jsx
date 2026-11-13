@@ -1,30 +1,14 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, GraduationCap, MessageCircle, Radio, ChevronDown, Building2 } from 'lucide-react';
+import { Search, GraduationCap, MessageCircle, Radio } from 'lucide-react';
 import { getAlumniAccounts, setOpenForTalk } from '../../utils/authStorage';
 import { getCachedMembers, refreshMemberDirectory } from '../../utils/memberDirectory';
 import { useAuth } from '../../context/AuthContext';
 import { getAlumniEmployment } from '../../utils/alumniEmployment';
+import { DirectoryDepartmentHeader, DirectoryMemberCard } from './DirectoryShared';
+import { getDepartmentLabel } from './directoryUtils';
 
 const DEPARTMENT_EXPANSION_KEY = 'austwise-alumni-department-expansion';
-const DEPARTMENT_FULL_NAMES = {
-  CSE: 'Department of Computer Science and Engineering',
-  EEE: 'Department of Electrical and Electronic Engineering',
-  CE: 'Department of Civil Engineering',
-  ME: 'Department of Mechanical Engineering',
-  IPE: 'Department of Industrial and Production Engineering',
-  TE: 'Department of Textile Engineering',
-  ARCH: 'Department of Architecture',
-  BBA: 'Department of Business Administration',
-};
-
-function getDepartmentLabel(value) {
-  const department = String(value || '').trim();
-  if (!department) return 'Department not specified';
-
-  const nameOrCode = department.replace(/^department\s+of\s+/i, '').trim();
-  return DEPARTMENT_FULL_NAMES[nameOrCode.toUpperCase()] || `Department of ${nameOrCode}`;
-}
 
 export default function AlumniDirectory() {
   const { user, updateUser } = useAuth();
@@ -184,7 +168,7 @@ export default function AlumniDirectory() {
   };
 
   return (
-    <div className="alumni-page">
+    <div className="alumni-page member-directory">
       {/* Header section */}
       <div className="schedule-masthead">
         <div className="schedule-title-block">
@@ -285,110 +269,48 @@ export default function AlumniDirectory() {
             const contentId = `alumni-department-${encodeURIComponent(group.id)}`;
             return (
               <div key={group.id}>
-                {/* Department header */}
-                <div className="alumni-batch-header">
-                  <button
-                    type="button"
-                    className="alumni-group-toggle"
-                    aria-expanded={expanded}
-                    aria-controls={contentId}
-                    onClick={() => toggleDepartment(group.id)}
-                  >
-                    <Building2 className="alumni-department-icon" size={16} aria-hidden="true" />
-                    <span className="alumni-department-name">{group.label}</span>
-                    <span className="alumni-department-count">{group.members.length}</span>
-                    <ChevronDown className={`alumni-group-chevron${expanded ? ' is-expanded' : ''}`} size={16} aria-hidden="true" />
-                  </button>
-                </div>
+                <DirectoryDepartmentHeader
+                  label={group.label}
+                  count={group.members.length}
+                  expanded={expanded}
+                  onToggle={() => toggleDepartment(group.id)}
+                  contentId={contentId}
+                />
 
-                {/* Alumni cards for this department */}
                 <div id={contentId} className="alumni-grid-inner" hidden={!expanded}>
                   {group.members.map((al) => {
-                  const isMe = al.id === user?.id;
-                  const canMessage = al.openForTalk && !isMe && !isGuest;
-                  return (
-                    <div key={al.id} className="alumni-card">
-                      <div className="alumni-card-top">
-                        <div className="alumni-avatar-preview">
+                    const isMe = al.id === user?.id;
+                    const canMessage = al.openForTalk && !isMe && !isGuest;
+                    return (
+                      <DirectoryMemberCard
+                        key={al.id}
+                        member={al}
+                        roleLabel="Alumni"
+                        isMe={isMe}
+                        onOpenProfile={() => navigate(`/members/${al.id}`)}
+                        deptLine={[al.department, al.batchName, al.graduationYear].filter(Boolean).join(' · ')}
+                        metaItems={[al.designation, al.company]}
+                        email={al.email}
+                        previewStats={[
+                          ['Department', getDepartmentLabel(al.department)],
+                          ['Batch', al.batchName || al.batch],
+                          ['Graduated', al.graduationYear],
+                          ['Designation', al.designation],
+                          ['Company', al.company],
+                        ]}
+                        actions={canMessage && (
                           <button
                             type="button"
-                            className="avatar"
-                            style={{ width: '40px', height: '40px', flexShrink: 0, padding: 0, border: 'none', cursor: 'pointer' }}
-                            onClick={() => navigate(`/members/${al.id}`)}
-                            title={`View ${al.name}'s profile / ID`}
-                            aria-label={`View ${al.name}'s profile`}
-                            aria-describedby={`alumni-profile-preview-${encodeURIComponent(String(al.id))}`}
+                            className="alumni-card-msg"
+                            onClick={() => handleMessage(al)}
+                            title={`Message ${al.name}`}
+                            aria-label={`Message ${al.name}`}
                           >
-                            {al.avatar ? (
-                              <img src={al.avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-                            ) : al.initials}
+                            <MessageCircle size={14} />
                           </button>
-                          <div
-                            id={`alumni-profile-preview-${encodeURIComponent(String(al.id))}`}
-                            className="alumni-profile-preview"
-                            role="tooltip"
-                          >
-                            <div className="alumni-profile-preview-head">
-                              <span className="alumni-profile-preview-avatar">
-                                {al.avatar ? (
-                                  <img src={al.avatar} alt="" />
-                                ) : al.initials}
-                              </span>
-                              <span className="alumni-profile-preview-identity">
-                                <strong>{al.name}</strong>
-                                <span>Alumni</span>
-                              </span>
-                            </div>
-                            <div className="alumni-profile-preview-stats">
-                              <div><span>Department</span><strong>{getDepartmentLabel(al.department)}</strong></div>
-                              {(al.batchName || al.batch) && <div><span>Batch</span><strong>{al.batchName || al.batch}</strong></div>}
-                              {al.graduationYear && <div><span>Graduated</span><strong>{al.graduationYear}</strong></div>}
-                              {al.designation && <div><span>Designation</span><strong>{al.designation}</strong></div>}
-                              {al.company && <div><span>Company</span><strong>{al.company}</strong></div>}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="alumni-card-info">
-                          <h3 className="alumni-card-name">
-                            {al.name}
-                            {isMe && <span className="alumni-card-you">you</span>}
-                          </h3>
-                          <p className="alumni-card-dept">
-                            {al.department}
-                            {al.batchName ? ` · ${al.batchName}` : ''}
-                            {al.graduationYear ? ` · ${al.graduationYear}` : ''}
-                          </p>
-                          {(al.designation || al.company || al.email) && (
-                            <p className="alumni-card-meta">
-                              {[al.designation, al.company].filter(Boolean).join(' · ')}
-                              {al.email && (
-                                <>
-                                  {(al.designation || al.company) && ' · '}
-                                  <a href={`mailto:${al.email}`} className="alumni-card-email" title={al.email}>
-                                    {al.email}
-                                  </a>
-                                </>
-                              )}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="alumni-card-actions">
-                          {canMessage && (
-                            <button
-                              type="button"
-                              className="alumni-card-msg"
-                              onClick={() => handleMessage(al)}
-                              title={`Message ${al.name}`}
-                              aria-label={`Message ${al.name}`}
-                            >
-                              <MessageCircle size={14} />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
+                        )}
+                      />
+                    );
                   })}
                 </div>
               </div>

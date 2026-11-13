@@ -239,41 +239,30 @@ export default function MindmapView({ doc, onOpenMilestone, onOpenGoal, onOpenTa
 
   return (
     <div className={`lp-mm ${isFullscreen ? 'lp-mm-fullscreen' : ''}`}>
-      <div className="lp-mm-toolbar">
-        <span className="lp-mm-hint">
-          <Workflow size={13} />
-          <span>
-            <strong>Click</strong> a node to open it in Goals · chevron to expand / collapse ·
-            <strong> Scroll</strong> to zoom ·
-            <strong> Drag</strong> canvas to pan
-          </span>
-        </span>
-        <div className="lp-mm-actions">
-          <button type="button" className="btn btn-secondary btn-sm" onClick={expandAll}><Maximize2 size={12} /> Expand all</button>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={collapseAll}><Minimize2 size={12} /> Collapse all</button>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={onViewTimeline}><CalendarClock size={12} /> View timeline</button>
+      <div className="pb-card pb-mm-bar">
+        <div className="pb-mm-group">
+          <button type="button" className="pb-btn-soft" onClick={expandAll}><Maximize2 size={13} /> <span>Expand all</span></button>
+          <button type="button" className="pb-btn-soft" onClick={collapseAll}><Minimize2 size={13} /> <span>Collapse all</span></button>
+          <button type="button" className="pb-btn-soft" onClick={onViewTimeline}><CalendarClock size={13} /> <span>Timeline</span></button>
         </div>
-        <div className="lp-mm-actions lp-mm-zoom-actions">
-          <button type="button" className="btn btn-secondary btn-sm" onClick={zoomOut} disabled={scale <= MIN_ZOOM} aria-label="Zoom out"><ZoomOut size={14} /></button>
-          <span className={`lp-mm-zoom-label${isZooming ? ' is-zooming' : ''}`}>{Math.round(scale * 100)}%</span>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={zoomIn} disabled={scale >= MAX_ZOOM} aria-label="Zoom in"><ZoomIn size={14} /></button>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={zoomReset} aria-label="Reset view"><RotateCcw size={12} /></button>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setFullscreen((v) => !v)} aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
+        <div className="pb-mm-legend" aria-hidden="true">
+          <span><i className="lv-m" /> Milestone</span>
+          <span><i className="lv-g" /> Goal</span>
+          <span><i className="lv-t" /> Task</span>
+          <span><i className="lv-s" /> Step</span>
+        </div>
+        <div className="pb-zoom" role="group" aria-label="Zoom">
+          <button type="button" className="pb-icon" onClick={zoomOut} disabled={scale <= MIN_ZOOM} aria-label="Zoom out"><ZoomOut size={15} /></button>
+          <span className={`pb-zoom-value${isZooming ? ' is-zooming' : ''}`}>{Math.round(scale * 100)}%</span>
+          <button type="button" className="pb-icon" onClick={zoomIn} disabled={scale >= MAX_ZOOM} aria-label="Zoom in"><ZoomIn size={15} /></button>
+          <span className="pb-zoom-sep" aria-hidden="true" />
+          <button type="button" className="pb-icon" onClick={zoomReset} aria-label="Reset view" title="Reset view"><RotateCcw size={14} /></button>
+          <button type="button" className="pb-icon" onClick={() => setFullscreen((v) => !v)} aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'} title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
             {isFullscreen ? <Shrink size={14} /> : <Expand size={14} />}
           </button>
         </div>
       </div>
-
-      <div className="lp-mm-legend">
-        {[
-          ['Milestone', 'var(--accent-purple)'],
-          ['Goal', 'var(--accent-amber)'],
-          ['Task', 'var(--accent-cyan)'],
-          ['Step', 'var(--accent-emerald)'],
-        ].map(([label, color]) => (
-          <span key={label} className="lp-mm-legend-item"><i style={{ background: color }} /> {label}</span>
-        ))}
-      </div>
+      <p className="pb-mm-hint"><Workflow size={12} /> Click a node to open it · chevron to expand · scroll or pinch to zoom · drag to pan</p>
 
       <div
         className={`lp-mm-canvas ${isPanning ? 'is-panning' : ''}`}
@@ -373,10 +362,10 @@ function MilestoneBranch({ doc, m, idx, expanded, toggle, onOpenMilestone, onOpe
   const isExpanded = expanded.has(m.id);
   const overdue = m.timingDate && m.timingDate < todayKey() && pct < 100;
   return (
-    <li className="lp-mm-branch" style={{ '--mm': 'var(--accent-purple)' }}>
+    <li className="lp-mm-branch" style={{ '--mm': 'var(--mm-m)' }}>
       <div className="lp-mm-branch-main">
         <MmNodeCard
-          color="var(--accent-purple)"
+          color="var(--mm-m)"
           icon={Flag}
           kicker={`Milestone ${idx + 1}`}
           title={m.title}
@@ -391,7 +380,7 @@ function MilestoneBranch({ doc, m, idx, expanded, toggle, onOpenMilestone, onOpe
           onClick={() => onOpenMilestone?.(m)}
         />
         {isExpanded && goals.length > 0 && (
-          <span className="lp-mm-edge-connector" style={{ '--mm': 'var(--accent-purple)' }} />
+          <span className="lp-mm-edge-connector" style={{ '--mm': 'var(--mm-m)' }} />
         )}
       </div>
       {isExpanded && goals.length > 0 && (
@@ -424,10 +413,10 @@ function GoalBranch({ doc, g, expanded, toggle, onOpenGoal, onOpenTask }) {
     .map((d) => byId(doc.goals, d.dependsOnGoalId)?.title)
     .filter(Boolean);
   return (
-    <li className="lp-mm-branch" style={{ '--mm': 'var(--accent-amber)' }}>
+    <li className="lp-mm-branch" style={{ '--mm': 'var(--mm-g)' }}>
       <div className="lp-mm-branch-main">
         <MmNodeCard
-          color="var(--accent-amber)"
+          color="var(--mm-g)"
           icon={Target}
           kicker={`Goal G${goalDisplayNumber(doc, g)}`}
           title={g.title}
@@ -444,7 +433,7 @@ function GoalBranch({ doc, g, expanded, toggle, onOpenGoal, onOpenTask }) {
           onClick={() => onOpenGoal?.(g)}
         />
         {isExpanded && tasks.length > 0 && (
-          <span className="lp-mm-edge-connector" style={{ '--mm': 'var(--accent-amber)' }} />
+          <span className="lp-mm-edge-connector" style={{ '--mm': 'var(--mm-g)' }} />
         )}
       </div>
       {isExpanded && tasks.length > 0 && (
@@ -473,10 +462,10 @@ function TaskBranch({ doc, t, expanded, toggle, onOpenTask }) {
   const autoEnd = t.isRecurring ? (t.recurringEndDate || t.recurringUntil || null) : (t.dueDate || null);
   const overdue = autoEnd && autoEnd < todayKey() && pct < 100;
   return (
-    <li className="lp-mm-branch" style={{ '--mm': 'var(--accent-cyan)' }}>
+    <li className="lp-mm-branch" style={{ '--mm': 'var(--mm-t)' }}>
       <div className="lp-mm-branch-main">
         <MmNodeCard
-          color="var(--accent-cyan)"
+          color="var(--mm-t)"
           icon={ListChecks}
           title={t.name}
           sub={steps.length ? `${done}/${steps.length} step${steps.length === 1 ? '' : 's'} done` : (t.manualDone ? 'Completed' : 'No steps')}
@@ -492,15 +481,15 @@ function TaskBranch({ doc, t, expanded, toggle, onOpenTask }) {
           onClick={() => onOpenTask?.(t)}
         />
         {isExpanded && steps.length > 0 && (
-          <span className="lp-mm-edge-connector" style={{ '--mm': 'var(--accent-cyan)' }} />
+          <span className="lp-mm-edge-connector" style={{ '--mm': 'var(--mm-t)' }} />
         )}
       </div>
       {isExpanded && steps.length > 0 && (
         <ul className="lp-mm-children">
           {steps.map((s) => (
-            <li key={s.id} className="lp-mm-branch lp-mm-leaf" style={{ '--mm': 'var(--accent-emerald)' }}>
+            <li key={s.id} className="lp-mm-branch lp-mm-leaf" style={{ '--mm': 'var(--mm-s)' }}>
               <MmNodeCard
-                color="var(--accent-emerald)"
+                color="var(--mm-s)"
                 icon={s.isDone ? CheckCircle2 : Circle}
                 title={s.text}
                 done={s.isDone}
