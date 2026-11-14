@@ -167,6 +167,13 @@ export default function WeekSchedule() {
     }
     setCurrentDate(date);
   };
+  // Phone month cells are too small to list tasks (number + count only),
+  // so tapping one opens that day's Day View. Desktop cells keep their tasks.
+  const openDayFromMonthOnPhone = (date) => {
+    if (!window.matchMedia('(max-width: 640px)').matches) return;
+    setCurrentDate(new Date(date));
+    changeViewMode('daily');
+  };
 
   // Forward scroll stops at the 17-week semester window, but never earlier
   // than the real current week. During the post-semester break "now" sits past
@@ -241,7 +248,7 @@ export default function WeekSchedule() {
 
   // Shared day-cell renderer — used identically by Day, Week and Month views.
   const renderDayCard = (date, opts = {}) => {
-    const { limit } = opts;
+    const { limit, onOpen } = opts;
     if (isInitialLoading) {
       return (
         <div key={formatDateKey(date)} className="schedule-day-card skeleton-row">
@@ -261,7 +268,8 @@ export default function WeekSchedule() {
       );
     }
     return (
-      <div key={formatDateKey(date)} className={`schedule-day-card${isToday(date) ? ' today' : ''}`}>
+      <div key={formatDateKey(date)} className={`schedule-day-card${isToday(date) ? ' today' : ''}${dayTasks.length > 0 ? ' has-tasks' : ''}`}
+        onClick={onOpen ? () => onOpen(date) : undefined}>
         <div className="schedule-day-top">
           <div className="schedule-day-num-wrap">
             <div className={`schedule-day-num${isToday(date) ? ' today' : ''}`}>{getDayNumber(date)} <span className="schedule-day-month">{getMonthName(date)}</span></div>
@@ -796,7 +804,7 @@ export default function WeekSchedule() {
           <div className="schedule-month-grid">
             {monthDates.map((date, idx) => {
               if (!date) return <div key={`pad-${idx}`} />;
-              return renderDayCard(date, { limit: 5 });
+              return renderDayCard(date, { limit: 5, onOpen: openDayFromMonthOnPhone });
             })}
           </div>
         </>
