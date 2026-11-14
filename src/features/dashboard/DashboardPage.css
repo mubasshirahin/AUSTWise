@@ -454,9 +454,10 @@
   display: block;
 }
 
-.dash-hero:hover .dash-hero-period-icon {
-  transform: rotate(-6deg) scale(1.08);
-  margin-top: 0;
+@media (hover: hover) {
+  .dash-hero:hover .dash-hero-period-icon {
+    transform: scale(1.08);
+  }
 }
 
 .dash-hero-date-label {
@@ -538,6 +539,13 @@
   flex-shrink: 0;
   transform: translateY(16px);
 }
+/* Tablet / phone: the hero is shorter, so the 16px push left the streak
+   hanging by the subtitle — sit it level with the greeting instead. */
+@media (max-width: 1024px) {
+  .dash-hero-widgets {
+    transform: none;
+  }
+}
 
 /* ─── Section header bars (used in WeeklyPlanner, WeekSchedule) ─── */
 .dash-header-three {
@@ -586,6 +594,13 @@
     opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1),
     transform 0.45s cubic-bezier(0.4, 0, 0.2, 1),
     filter 0.45s ease;
+}
+
+/* A gated/dismissed widget (e.g. NotificationBanner returning null) leaves an
+   empty wrapper that still eats a flex gap — drop it so spacing stays even. */
+.dash-section:empty,
+.dash-section-group:has(> .dash-section:empty) {
+  display: none;
 }
 
 /* Animated entrance for conditionally-rendered sections */
@@ -863,7 +878,7 @@
   }
   .quick-stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--sp-2);
+    gap: 6px;
   }
   .quick-stats-widget .quick-stat-cell {
     padding: 10px;
@@ -1019,6 +1034,21 @@
   height: var(--daily-flow-height, 560px);
   overflow: hidden;
 }
+/* Mobile: stacked layout — size to content instead of matching Daily Flow,
+   so one deadline doesn't leave an empty gap; grows as deadlines are added. */
+@media (max-width: 640px) {
+  .deadline-widget {
+    height: auto;
+  }
+  .deadline-widget .deadline-list {
+    flex: 0 0 auto;
+    overflow: visible;
+    padding-right: 0;
+  }
+  .deadline-widget .deadline-list > .schedule-empty {
+    padding: 12px 0 !important;
+  }
+}
 .deadline-widget .schedule-masthead,
 .deadline-widget .schedule-dotted-divider {
   flex: 0 0 auto;
@@ -1159,7 +1189,7 @@
 }
 .notice-widget .notice-list {
   max-height: 600px;
-  min-height: 220px;
+  min-height: 0; /* fit the notices; only the empty state keeps a min height */
   overflow-y: auto;
   overscroll-behavior: contain;
   padding-right: 4px;
@@ -1174,6 +1204,48 @@
 .notice-row {
   cursor: pointer;
 }
+
+/* ── Notice swipe (own notices, touch): left → Edit, right → Delete ──
+   The entrance animation lives on the wrapper so the card's inline
+   translateX isn't overridden by the animation's held transform. */
+.notice-widget .notice-swipe {
+  position: relative;
+  animation: fadeInUp 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.notice-widget .notice-list .notice-swipe > .schedule-day-card {
+  animation: none;
+  position: relative;
+  z-index: 1;
+}
+.notice-widget .notice-swipe.is-swipeable > .notice-row {
+  touch-action: pan-y;
+}
+.notice-widget .notice-row.is-dragging {
+  transition: none;
+}
+.notice-swipe-bg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--sp-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-primary);
+  background: var(--bg-tertiary);
+  overflow: hidden;
+}
+.notice-swipe-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-tertiary);
+  transition: color var(--transition-fast), opacity var(--transition-fast);
+}
+.notice-swipe-action.is-delete.is-armed { color: var(--accent-rose); }
+.notice-swipe-action.is-edit.is-armed { color: var(--accent-blue); }
 
 /* Notice rows follow the user's active theme + layout shell.
    No coloured side rail: the row keeps the plain card border, and the
@@ -2975,6 +3047,54 @@ tr.day-row-active {
   }
 }
 
+/* ─── Notification banner ─── */
+.notif-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  background: color-mix(in srgb, var(--accent-blue) 6%, var(--bg-card));
+  border: 1px solid color-mix(in srgb, var(--accent-blue) 20%, var(--border-primary));
+  border-radius: var(--radius-xl);
+  margin-bottom: 4px;
+  transition: border-color 0.25s ease;
+}
+.notif-banner-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent-blue-glow);
+  color: var(--accent-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.notif-banner-text { flex: 1; min-width: 0; }
+.notif-banner-title {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+}
+.notif-banner-helper {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+.notif-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.notif-banner-actions .btn-primary { font-size: 12px; white-space: nowrap; }
+.notif-banner-actions .btn-secondary { font-size: 11px; padding: 6px 8px; }
+.notif-banner-close {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  flex-shrink: 0;
+}
+
 /* ─── Dashboard card (.dash-section > div) — mobile compactness ─── */
 @media (max-width: 560px) {
   .dash-section > div {
@@ -2995,22 +3115,33 @@ tr.day-row-active {
     left: 16px;
     right: 16px;
   }
-  /* Notification banner: minimal single-pile on phones — helper text hidden,
-     compact controls */
-  .notif-banner-helper {
-    display: none;
+  /* Notification banner on phones: one slim row —
+     bell · one-line title · Enable · ✕ (Settings lives in the app menu). */
+  .dashboard-page .notif-banner {
+    gap: 8px;
+    padding: 8px 8px 8px 10px;
+    border-radius: var(--radius-md);
   }
-  .notif-banner {
-    padding: 10px 12px !important;
-    gap: 8px !important;
+  .notif-banner-icon { width: 24px; height: 24px; }
+  .notif-banner-icon svg { width: 13px; height: 13px; }
+  .notif-banner-helper { display: none; }
+  .notif-banner-title {
+    font-size: 12px;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
   }
-  .notif-banner > div:nth-child(3) {
-    gap: 6px !important;
-  }
-  .notif-banner .btn-sm {
+  .notif-banner-actions { gap: 4px; }
+  .notif-banner-actions .btn-secondary { display: none; }
+  .notif-banner-actions .btn-primary {
     font-size: 11px;
-    padding: 5px 8px;
+    padding: 4px 10px;
+    min-height: 26px;
   }
+  .notif-banner-close { width: 24px; height: 24px; }
 }
 
 @media (max-width: 900px) {
@@ -3033,7 +3164,7 @@ tr.day-row-active {
   .dash-hero-widgets {
     display: flex;
     align-self: flex-start;
-    margin-top: -15px;
+    margin-top: 0;
   }
   .dash-hero-orb-3 { display: none; }
 }
@@ -3052,6 +3183,7 @@ tr.day-row-active {
   }
   .quick-stats-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: var(--sp-1);
   }
   .quick-stats-widget .quick-stat-cell {
     padding: 10px 10px;
@@ -4490,7 +4622,9 @@ tr.day-row-active {
     font-size: var(--fs-xs);
   }
   .routine-widget .schedule-masthead {
-    grid-template-columns: 1fr;
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
     padding: var(--sp-3);
     gap: var(--sp-2);
   }
@@ -4498,10 +4632,16 @@ tr.day-row-active {
     grid-column: 1;
     justify-content: center;
   }
+  .routine-widget .schedule-masthead .schedule-title-block {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
   .routine-widget .schedule-actions {
-    position: absolute;
-    top: var(--sp-3);
-    right: var(--sp-3);
+    position: static !important;
+    margin-left: auto !important;
+    /* 44px tap target, 16px icon: offset the 14px inner gap so the chevron sits at the edge */
+    margin-right: -14px !important;
+    flex: 0 0 auto;
   }
   /* MOBILE: Daily Flow week-nav 2px upore — exact selector from user */
   .dashboard-grid .dashboard-main-col section:nth-child(1) .schedule-masthead .schedule-actions > div {
@@ -4657,7 +4797,7 @@ tr.day-row-active {
   .notice-widget .notice-list {
     gap: 8px;
     max-height: 460px;
-    min-height: 140px;
+    min-height: 0;
     padding-right: 2px;
   }
   .notice-widget .notice-list > .schedule-empty {
@@ -4669,6 +4809,10 @@ tr.day-row-active {
     padding: 6px 8px;
     gap: 3px;
     border-radius: var(--radius-sm);
+  }
+  .notice-swipe-bg {
+    border-radius: var(--radius-sm);
+    padding: 0 var(--sp-3);
   }
   .notice-widget .schedule-day-card:hover {
     transform: none;

@@ -1,29 +1,29 @@
 {
   "aust-usage-v1": {
     "STU-MT0NFCWXOQBJ": {
-      "totalMs": 208459700,
-      "visits": 279,
+      "totalMs": 214457110,
+      "visits": 399,
       "firstSeen": 1794011048047,
-      "lastSeen": 1794561481675,
+      "lastSeen": 1794578761310,
       "byFeature": {
         "question-bank": {
           "ms": 9885715,
           "visits": 0
         },
         "community": {
-          "ms": 9118449,
+          "ms": 9129081,
           "visits": 0
         },
         "connectbox": {
-          "ms": 405421,
+          "ms": 434352,
           "visits": 0
         },
         "resource-vault": {
-          "ms": 96206,
+          "ms": 97259,
           "visits": 0
         },
         "dashboard": {
-          "ms": 60301015,
+          "ms": 62473642,
           "visits": 0
         },
         "settings": {
@@ -31,15 +31,15 @@
           "visits": 0
         },
         "gradelab": {
-          "ms": 96590359,
+          "ms": 96623267,
           "visits": 0
         },
         "other": {
-          "ms": 147009,
+          "ms": 297618,
           "visits": 0
         },
         "daily-life": {
-          "ms": 18255627,
+          "ms": 21848598,
           "visits": 0
         },
         "productivity": {
@@ -55,7 +55,7 @@
           "visits": 0
         },
         "shadow": {
-          "ms": 1867423,
+          "ms": 1875102,
           "visits": 0
         },
         "campus": {
@@ -80,8 +80,8 @@
         "gradelab|3": 7568360,
         "other|3": 8965,
         "dashboard|8": 5059310,
-        "dashboard|9": 2012846,
-        "dashboard|12": 91233,
+        "dashboard|9": 2048993,
+        "dashboard|12": 1251856,
         "dashboard|16": 2856693,
         "dashboard|17": 6734909,
         "dashboard|18": 5453421,
@@ -99,8 +99,8 @@
         "gradelab|5": 5332641,
         "gradelab|6": 3595865,
         "gradelab|7": 3596444,
-        "gradelab|9": 3618869,
-        "gradelab|10": 3595670,
+        "gradelab|9": 3651674,
+        "gradelab|10": 3595773,
         "gradelab|11": 3595509,
         "gradelab|12": 3595433,
         "gradelab|13": 3599136,
@@ -140,9 +140,9 @@
         "dashboard|15": 3466086,
         "settings|15": 9667,
         "resource-vault|19": 15983,
-        "daily-life|19": 3778,
+        "daily-life|19": 2919289,
         "other|20": 18044,
-        "daily-life|20": 421303,
+        "daily-life|20": 841280,
         "question-bank|20": 5266,
         "resource-vault|20": 2678,
         "community|20": 2278,
@@ -152,10 +152,10 @@
         "daily-life|3": 139721,
         "dashboard|6": 1622813,
         "dashboard|7": 3593215,
-        "daily-life|9": 121407,
+        "daily-life|9": 439024,
         "campus|9": 35509,
-        "resource-vault|9": 2292,
-        "community|9": 2078730,
+        "resource-vault|9": 3345,
+        "community|9": 2089362,
         "community|10": 3594328,
         "community|11": 1316760,
         "marketplace|17": 33448,
@@ -170,20 +170,28 @@
         "community|13": 115704,
         "resource-vault|13": 13416,
         "shadow|13": 344277,
-        "dashboard|13": 10819,
+        "dashboard|13": 91334,
         "daily-life|14": 3261755,
         "dashboard|14": 18895,
-        "daily-life|15": 1138563
+        "daily-life|15": 359987,
+        "other|9": 90609,
+        "shadow|9": 7679,
+        "connectbox|9": 10015,
+        "dashboard|10": 65399,
+        "other|11": 60000,
+        "dashboard|11": 829943,
+        "connectbox|11": 18916,
+        "daily-life|11": 718442
       }
     },
     "ADM-MSOP6VG6BVL4": {
-      "totalMs": 161124132,
-      "visits": 67,
+      "totalMs": 163682429,
+      "visits": 68,
       "firstSeen": 1794388929613,
-      "lastSeen": 1794561481676,
+      "lastSeen": 1794578761313,
       "byFeature": {
         "dashboard": {
-          "ms": 18432,
+          "ms": 3356678,
           "visits": 0
         },
         "other": {
@@ -191,7 +199,7 @@
           "visits": 0
         },
         "daily-life": {
-          "ms": 10029975,
+          "ms": 9250026,
           "visits": 0
         },
         "gradelab": {
@@ -254,17 +262,19 @@
         "daily-life|12": 889635,
         "daily-life|13": 3319840,
         "daily-life|14": 3599813,
-        "daily-life|15": 1139932
+        "daily-life|15": 359983,
+        "dashboard|19": 2918268,
+        "dashboard|20": 419978
       }
     },
     "DEV-CSE-S1-BB2-02": {
-      "totalMs": 4287799,
-      "visits": 333,
+      "totalMs": 7614085,
+      "visits": 364,
       "firstSeen": 1794555213870,
-      "lastSeen": 1794559501707,
+      "lastSeen": 1794578761310,
       "byFeature": {
         "daily-life": {
-          "ms": 3670977,
+          "ms": 6997263,
           "visits": 0
         },
         "community": {
@@ -292,7 +302,9 @@
         "community|14": 7138,
         "daily-life|14": 2440186,
         "other|14": 11227,
-        "dashboard|14": 124
+        "dashboard|14": 124,
+        "daily-life|19": 2906309,
+        "daily-life|20": 419977
       }
     }
   }

@@ -42,6 +42,30 @@ function formatNotifTime(ts) {
   return `${d.getDate()}/${d.getMonth() + 1}`;
 }
 
+// Poster's photo for a notification; falls back to their initial if the
+// image is missing or fails to load.
+function NotifAvatar({ src, name }) {
+  const [failed, setFailed] = useState(false);
+  const initial = (String(name || '').trim().charAt(0) || '?').toUpperCase();
+  return (
+    <div className="notif-item-avatar" title={name || undefined}>
+      {src && !failed
+        ? <img src={src} alt="" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
+        : <span aria-hidden="true">{initial}</span>}
+    </div>
+  );
+}
+
+// Day bucket for grouping the notification list.
+function notifGroupLabel(ts) {
+  if (!ts) return 'Earlier';
+  const start = new Date(); start.setHours(0, 0, 0, 0);
+  const t = start.getTime();
+  if (ts >= t) return 'Today';
+  if (ts >= t - 86400000) return 'Yesterday';
+  return 'Earlier';
+}
+
 // ─── Constants ───
 
 
@@ -100,6 +124,7 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
   const navigate = useNavigate();
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [notifFilter, setNotifFilter] = useState('all'); // 'all' | 'unread'
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
   const handleAvatarError = useCallback(() => setAvatarError(true), []);
@@ -359,79 +384,130 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
             aria-label={`Notifications${unread ? ` (${unread} unread)` : ''}`}
             onClick={() => setNotifOpen((o) => !o)}
           >
-            {unread > 0 ? <BellRing size={18} /> : <Bell size={18} />}
-            {unread > 0 && <span className="notification-badge">{unread > 99 ? '99+' : unread}</span>}
+            <span className="notif-bell-icon">
+              {unread > 0 ? <BellRing size={18} /> : <Bell size={18} />}
+              {unread > 0 && <span className="notification-badge">{unread > 99 ? '99+' : unread}</span>}
+            </span>
           </button>
 
-          {notifOpen && (
+          {notifOpen && (() => {
+            const ordered = [...notifications].reverse();
+            const filtered = notifFilter === 'unread' ? ordered.filter((n) => !n.read) : ordered;
+            const shown = filtered.slice(0, 50);
+            const groups = [];
+            shown.forEach((n) => {
+              const label = notifGroupLabel(n.timestamp);
+              const last = groups[groups.length - 1];
+              if (last && last.label === label) last.items.push(n);
+              else groups.push({ label, items: [n] });
+            });
+            return (
             <div className="notif-dropdown" role="menu" aria-label="Notifications">
               <div className="notif-header">
-                <span className="notif-header-title">
-                  <BellRing size={14} />
-                  Notifications
-                </span>
+                <div className="notif-header-title">
+                  <span className="notif-header-tile" aria-hidden="true"><BellRing size={15} /></span>
+                  <span className="notif-header-text">
+                    <span className="notif-header-name">Notifications</span>
+                    <span className="notif-header-sub">
+                      {unread > 0 ? `${unread} unread` : 'All caught up'}
+                    </span>
+                  </span>
+                </div>
                 <div className="notif-header-actions">
                   {unread > 0 && (
                     <button className="notif-action-btn" onClick={markAllAsRead} title="Mark all as read">
                       <CheckCheck size={14} />
-                      Mark all read
+                      <span>Mark all read</span>
                     </button>
                   )}
                   {notifications.length > 0 && (
-                    <button className="notif-action-btn notif-action-danger" onClick={clearAll} title="Clear all">
+                    <button className="notif-action-btn notif-action-danger" onClick={clearAll} title="Clear all" aria-label="Clear all">
                       <Trash2 size={14} />
                     </button>
                   )}
                 </div>
               </div>
 
+              {notifications.length > 0 && (
+                <div className="notif-filter" role="tablist" aria-label="Filter notifications">
+                  <button
+                    role="tab"
+                    aria-selected={notifFilter === 'all'}
+                    className={`notif-filter-pill${notifFilter === 'all' ? ' is-active' : ''}`}
+                    onClick={() => setNotifFilter('all')}
+                  >
+                    All <span className="notif-filter-count">{notifications.length}</span>
+                  </button>
+                  <button
+                    role="tab"
+                    aria-selected={notifFilter === 'unread'}
+                    className={`notif-filter-pill${notifFilter === 'unread' ? ' is-active' : ''}`}
+                    onClick={() => setNotifFilter('unread')}
+                  >
+                    Unread <span className="notif-filter-count">{unread}</span>
+                  </button>
+                </div>
+              )}
+
               <div className="notif-list">
-                {notifications.length === 0 ? (
+                {shown.length === 0 ? (
                   <div className="notif-empty">
-                    <Bell size={24} />
-                    <p>No notifications yet</p>
+                    <span className="notif-empty-icon"><Bell size={16} /></span>
+                    <p className="notif-empty-hint">
+                      {notifications.length === 0
+                        ? 'No notifications yet — notices, deadlines and updates will show up here.'
+                        : 'You’re all caught up — no unread notifications.'}
+                    </p>
                   </div>
-                ) : (
-                  [...notifications].reverse().slice(0, 50).map((n) => {
-                    const Icon = getNotifIcon(n.icon || n.type);
-                    return (
-                      <div
-                        key={n.id}
-                        className={`notif-item ${n.read ? 'read' : 'unread'} notif-${n.type || 'info'}`}
-                        onClick={() => {
-                          markAsRead(n.id);
-                          setNotifOpen(false);
-                          if (n.path) navigate(n.path);
-                        }}
-                        role="menuitem"
-                      >
-                        <div className="notif-item-icon">
-                          <Icon size={16} />
-                        </div>
-                        <div className="notif-item-body">
-                          <span className="notif-item-title">{n.title}</span>
-                          {n.body && <span className="notif-item-body-text">{n.body}</span>}
-                          <span className="notif-item-time">
-                            {formatNotifTime(n.timestamp)}
+                ) : groups.map((g) => (
+                  <div className="notif-group" key={g.label}>
+                    <div className="notif-group-label">{g.label}</div>
+                    {g.items.map((n) => {
+                      const Icon = getNotifIcon(n.icon || n.type);
+                      return (
+                        <div
+                          key={n.id}
+                          className={`notif-item ${n.read ? 'read' : 'unread'} notif-${n.type || 'info'}`}
+                          onClick={() => {
+                            markAsRead(n.id);
+                            setNotifOpen(false);
+                            if (n.path) navigate(n.path);
+                          }}
+                          role="menuitem"
+                        >
+                          {n.avatar || n.actorName ? (
+                            <NotifAvatar src={n.avatar} name={n.actorName} />
+                          ) : (
+                            <div className="notif-item-icon">
+                              <Icon size={15} />
+                            </div>
+                          )}
+                          <div className="notif-item-body">
+                            <div className="notif-item-top">
+                              <span className="notif-item-title">{n.title}</span>
+                              <span className="notif-item-time">{formatNotifTime(n.timestamp)}</span>
+                            </div>
+                            {n.body && <span className="notif-item-body-text">{n.body}</span>}
                             {n.priority === 'high' && (
-                              <span className="notif-priority-dot" />
+                              <span className="notif-item-flag">Important</span>
                             )}
-                          </span>
+                          </div>
+                          {!n.read && <span className="notif-unread-dot" aria-label="Unread" />}
                         </div>
-                        {!n.read && <span className="notif-unread-dot" />}
-                      </div>
-                    );
-                  })
-                )}
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
 
-              {notifications.length > 50 && (
+              {filtered.length > 50 && (
                 <div className="notif-footer">
-                  <span>+{notifications.length - 50} older notifications</span>
+                  <span>+{filtered.length - 50} older notifications</span>
                 </div>
               )}
             </div>
-          )}
+            );
+          })()}
         </div>
 
         {/* User profile */}
