@@ -6074,3 +6074,80 @@ tr.day-row-active {
     gap: 5px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   14-Weeks View — Month view on phone (skill-style §5)
+   The weekday row and the grid were two separate sideways scrollers
+   (630px min-width), so the weekday row got clipped and the right-hand
+   days were off screen. Fit all 7 columns to the width instead: compact
+   cells with the day number and a task-count badge; tapping a day that
+   has tasks opens its Day View.
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  .week-schedule-widget .schedule-scroll-body .schedule-month-grid {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    min-width: 0;
+    width: 100%;
+    gap: 4px;
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+  .week-schedule-widget .schedule-scroll-body .schedule-month-grid.schedule-days-row {
+    margin-bottom: 4px !important;
+  }
+  .week-schedule-widget .schedule-scroll-body .schedule-month-header {
+    padding: 4px 0 6px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .week-schedule-widget .schedule-scroll-body .schedule-month-grid:not(.schedule-days-row) {
+    grid-auto-rows: auto;
+    align-items: stretch !important;
+  }
+  .week-schedule-widget .schedule-month-grid .schedule-day-card {
+    min-width: 0;
+    min-height: 44px;
+    height: auto;
+    padding: 5px 2px;
+    gap: 3px;
+    align-items: center;
+    justify-content: flex-start;
+    border-radius: var(--radius-sm);
+    background: var(--bg-tertiary);
+    scroll-snap-align: none;
+  }
+  .week-schedule-widget .schedule-month-grid .schedule-day-card.has-tasks { background: var(--bg-card); cursor: pointer; }
+  .week-schedule-widget .schedule-month-grid .schedule-day-card:hover { transform: none; box-shadow: none; }
+  .week-schedule-widget .schedule-month-grid .schedule-day-card.today {
+    border-color: var(--accent-amber);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-amber) 20%, transparent);
+  }
+  .week-schedule-widget .schedule-month-grid .schedule-day-top {
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 3px;
+  }
+  .week-schedule-widget .schedule-month-grid .schedule-day-num {
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+  }
+  .week-schedule-widget .schedule-month-grid .schedule-day-month,
+  .week-schedule-widget .schedule-month-grid .schedule-task-list { display: none; }
+  .week-schedule-widget .schedule-month-grid .schedule-day-count {
+    min-width: 14px;
+    height: 14px;
+    padding: 0 3px;
+    font-size: 8.5px;
+  }
+  .week-schedule-widget .schedule-month-grid .schedule-day-card.before-semester {
+    justify-content: center;
+  }
+  .week-schedule-widget .schedule-month-grid .schedule-day-card.before-semester .schedule-empty {
+    padding: 0;
+    font-size: 12px;
+  }
+}
