@@ -13,7 +13,7 @@ import { getBatchLabel, getBatchRole } from '../utils/batchIdentity';
 
 const AuthContext = createContext();
 const userStorageKey = 'aust-user-profile';
-const MOCKABLE_ROLES = new Set(['student', 'faculty', 'alumni', 'alumni_with_carry', 'readd', 'admin', 'moderator', 'guest', 'cr', 'sr', 'vp', 'gs', 'bus_coordinator', 'clubs_representative', 'help_desk', 'banned']);
+const MOCKABLE_ROLES = new Set(['student', 'faculty', 'alumni', 'alumni_with_carry', 'readd', 'admin', 'moderator', 'guest', 'cr', 'sr', 'vp', 'gs', 'bus_coordinator', 'clubs_representative', 'gaming_mod', 'help_desk', 'banned']);
 
 function readMockRole(search) {
   if (!import.meta.env.DEV) return '';

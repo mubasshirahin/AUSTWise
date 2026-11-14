@@ -45,7 +45,7 @@ const normalizeAdminAccounts = (list) => {
     return true;
   });
 };
-const studentChildRoles = ['cr', 'sr', 'readd', 'gs', 'vp', 'bus_coordinator', 'clubs_representative'];
+const studentChildRoles = ['cr', 'sr', 'readd', 'gs', 'vp', 'bus_coordinator', 'clubs_representative', 'gaming_mod'];
 const exclusiveStudentRoles = ['readd', 'cr', 'sr', 'vp', 'gs'];
 const facultyDepartments = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'];
 const facultyDepartmentRole = (department) => `faculty_${String(department || '').trim().toLowerCase()}`;
@@ -1298,10 +1298,11 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                             </label>
                           );})}
                         </div>
-                        <span>Optional student roles <small>Bus Coordinator and Clubs Representative may be combined with any primary student role.</small></span>
+                        <span>Optional student roles <small>Bus Coordinator, Clubs Representative and Gaming Mod may be combined with any primary student role.</small></span>
                         <div className="admin-student-addon-roles">
                           {[
                             ['bus_coordinator', 'Bus Coordinator'], ['clubs_representative', 'Clubs Representative'],
+                            ['gaming_mod', 'Gaming Mod'],
                           ].map(([studentRole, label]) => (
                             <label key={studentRole}>
                               <input type="checkbox" checked={(editFormData.studentRoles || []).includes(studentRole)} onChange={(event) => setEditFormData(current => {
@@ -1508,7 +1509,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                   {[
                     ['regular', 'Regular'], ['readd', 'Re-add'], ['cr', 'CR'], ['sr', 'SR'],
                     ['vp', 'VP'], ['gs', 'GS'], ['bus_coordinator', 'Bus Coordinator'],
-                    ['clubs_representative', 'Clubs Representative'],
+                    ['clubs_representative', 'Clubs Representative'], ['gaming_mod', 'Gaming Mod'],
                   ].map(([role, label]) => (
                     <button key={role} className={roleFilter === role ? 'is-filtered' : ''} onClick={() => setRoleFilter(roleFilter === role ? 'all' : role)}>
                       <span>{label}</span><b>{role === 'regular' ? getRegularStudentCount() : getRoleCount(role)}</b>
@@ -1576,7 +1577,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                     <optgroup label="Student">
                       <option value="student">All students</option><option value="regular">Regular</option>
                       <option value="readd">Re-add</option><option value="cr">CR</option><option value="sr">SR</option>
-                      <option value="vp">VP</option><option value="gs">GS</option><option value="bus_coordinator">Bus Coordinator</option>
+                      <option value="vp">VP</option><option value="gs">GS</option><option value="bus_coordinator">Bus Coordinator</option><option value="gaming_mod">Gaming Mod</option>
                       <option value="clubs_representative">Clubs Representative</option>
                     </optgroup>
                     <optgroup label="Alumni"><option value="alumni">All alumni</option><option value="alumni_only">Alumni</option><option value="alumni_with_carry">Alumni with Carry</option></optgroup>

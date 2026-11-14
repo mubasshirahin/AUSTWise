@@ -55,6 +55,7 @@ import { handleCleanerRequest } from './googleCleaner.mjs';
 import { handleAuthRoute, readTokenCookie, handleDevSwitchUser, handleDevSeedUsers, handleDevUsers, issueAuthCookie, refreshAuthState, invalidateAuthState, issueWsTicket } from './auth.mjs';
 import { requireRole, requireAuth } from './middleware.mjs';
 import { hasAnyRole, isStaff, isProtectedSharedKey, canManageAccount, canAssignRoles } from './roleGuards.mjs';
+import { ensureGamingSeed } from './gaming/gameCatalog.mjs';
 import { rateLimit, extractRoutineRateLimiter } from './rateLimiter.mjs';
 import { getUserById, getUserByEmail, getAllUsersSafe, getUserByIdOrAwid, updateUserProfile, setUserPasswordHash, deleteUserById, countUsers, createUser, hashPassword, ADMIN_ASSIGNABLE_ROLES, FACULTY_DEPARTMENTS, facultyDepartmentRole } from './userStore.mjs';
 import {
@@ -967,6 +968,11 @@ async function ensurePrismaPush() {
   } catch (err) {
     console.warn('⚠️  prisma tables bootstrap failed:', err.message);
   }
+  try {
+    await ensureGamingSeed(query);
+  } catch (err) {
+    console.warn('⚠️  gaming catalog seed failed:', err.message);
+  }
 }
 
 // Auto-create database & tables on startup.
@@ -1679,8 +1685,8 @@ async function handleApiRequest(req, res) {
         return;
       }
       const facultyRoleDepartments = new Map(FACULTY_DEPARTMENTS.map((department) => [facultyDepartmentRole(department), department]));
-      const studentSubroles = ['cr', 'sr', 'vp', 'gs', 'readd', 'bus_coordinator', 'clubs_representative'];
-      const studentAddons = ['bus_coordinator', 'clubs_representative'];
+      const studentSubroles = ['cr', 'sr', 'vp', 'gs', 'readd', 'bus_coordinator', 'clubs_representative', 'gaming_mod'];
+      const studentAddons = ['bus_coordinator', 'clubs_representative', 'gaming_mod'];
       const isCurrentStudent = currentRoles.has('student') || ['cr', 'sr', 'vp', 'gs', 'readd'].some((studentRole) => currentRoles.has(studentRole));
       if (studentAddons.includes(role) && !isCurrentStudent) {
         sendJson(res, 409, { success: false, error: 'Bus Coordinator and Clubs Representative roles are available to students only.' });
@@ -1690,8 +1696,8 @@ async function handleApiRequest(req, res) {
       let roles = [role];
       let facultyDepartment = '';
       if (studentSubroles.includes(role)) {
-        const preservedAddons = ['bus_coordinator', 'clubs_representative'].filter((addon) => currentRoles.has(addon));
-        if (['bus_coordinator', 'clubs_representative'].includes(role)) {
+        const preservedAddons = ['bus_coordinator', 'clubs_representative', 'gaming_mod'].filter((addon) => currentRoles.has(addon));
+        if (['bus_coordinator', 'clubs_representative', 'gaming_mod'].includes(role)) {
           const currentLeadershipRole = leadershipRoles.find((existingRole) => currentRoles.has(existingRole));
           primaryRole = currentLeadershipRole || 'student';
           roles = [...new Set(['student', ...(currentLeadershipRole ? [currentLeadershipRole] : []), ...preservedAddons, role])];
@@ -1784,8 +1790,8 @@ async function handleApiRequest(req, res) {
       delete patch.roles;
       if (!body.role) delete patch.role;
       if (body.role) {
-        const studentRoles = ['student', 'cr', 'sr', 'readd', 'gs', 'vp', 'bus_coordinator', 'clubs_representative'];
-        const studentAddons = ['bus_coordinator', 'clubs_representative'];
+        const studentRoles = ['student', 'cr', 'sr', 'readd', 'gs', 'vp', 'bus_coordinator', 'clubs_representative', 'gaming_mod'];
+        const studentAddons = ['bus_coordinator', 'clubs_representative', 'gaming_mod'];
         const exclusiveStudentRoles = ['readd', 'cr', 'sr', 'vp', 'gs'];
         if (studentRoles.includes(body.role)) {
           const currentRoles = new Set([...(Array.isArray(existing.roles) ? existing.roles : []), existing.role]);
@@ -6001,7 +6007,7 @@ async function handleApiRequest(req, res) {
         sendJson(res, 409, { success: false, error: 'You already have this role.' });
         return;
       }
-      const studentMembershipRoles = ['cr', 'sr', 'gs', 'vp', 'readd', 'bus_coordinator', 'clubs_representative'];
+      const studentMembershipRoles = ['cr', 'sr', 'gs', 'vp', 'readd', 'bus_coordinator', 'clubs_representative', 'gaming_mod'];
       if (appliedRole !== 'faculty' && !currentRoles.has('student') && !studentMembershipRoles.some((role) => currentRoles.has(role))) {
         sendJson(res, 403, { success: false, error: 'Only current students can apply for student roles.' });
         return;
@@ -6208,7 +6214,7 @@ async function handleApiRequest(req, res) {
         }
         const applicantRoles = new Set([...(Array.isArray(applicant.roles) ? applicant.roles : []), applicant.role]);
         const isFacultyApplication = existingApp.appliedRole === 'faculty';
-        const studentMembershipRoles = ['cr', 'sr', 'gs', 'vp', 'readd', 'bus_coordinator', 'clubs_representative'];
+        const studentMembershipRoles = ['cr', 'sr', 'gs', 'vp', 'readd', 'bus_coordinator', 'clubs_representative', 'gaming_mod'];
         if (isFacultyApplication ? (!applicantRoles.has('alumni') && !applicantRoles.has('alumni_with_carry')) : (!applicantRoles.has('student') && !studentMembershipRoles.some((role) => applicantRoles.has(role)))) {
           sendJson(res, 409, { success: false, error: isFacultyApplication ? 'Only AUST alumni can hold the alumni Faculty role.' : 'Only current students can hold student roles.' });
           return;
@@ -6247,7 +6253,7 @@ async function handleApiRequest(req, res) {
           const roles = app.appliedRole === 'faculty'
             ? [...new Set(['faculty', facultyDepartmentRole(applicant.department || ''), 'alumni'])]
             : leadershipRoles.includes(app.appliedRole)
-            ? [...new Set(['student', ...['bus_coordinator', 'clubs_representative'].filter((role) => currentRoles.has(role)), app.appliedRole])]
+            ? [...new Set(['student', ...['bus_coordinator', 'clubs_representative', 'gaming_mod'].filter((role) => currentRoles.has(role)), app.appliedRole])]
             : [app.appliedRole];
           await updateUserProfile(app.userId, { role: app.appliedRole, roles }, { allowRole: true });
         }

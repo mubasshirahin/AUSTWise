@@ -493,3 +493,204 @@ model SharedStore {
 
   @@unique([key])
 }
+
+// ─── Gaming Zone ─────────────────────────────────────────────────────────────
+// Coordination rooms for games played outside AUSTWise (Valorant, CS2, FIFA…).
+// User ids refer to AuthUsers.id (accounts live there, not in "User"), so these
+// tables carry plain userId strings with no foreign key to User.
+// List-like fields stay String (JSON) / String[] to match the rest of the file.
+
+model Game {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  name      String
+  genre     String   @default("")
+  platforms String[] @default([])
+  iconKey   String   @default("gamepad")
+  maxSquad  Int      @default(5)
+  ranks     String[] @default([]) // ordered low → high, e.g. Iron … Radiant
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  rooms  GameRoom[]
+  events GameEvent[]
+
+  @@index([active, sortOrder])
+}
+
+model GameRoom {
+  id             String    @id @default(uuid())
+  gameId         String
+  type           String    @default("squad") // lounge | squad | event
+  title          String
+  description    String    @default("")
+  ownerId        String? // null for permanent lounges
+  capacity       Int       @default(5)
+  visibility     String    @default("public") // public | private
+  inviteCode     String?   @unique // private rooms only
+  rankMin        String?
+  rankMax        String?
+  region         String    @default("")
+  platform       String    @default("")
+  lobbyCode      String    @default("") // shown to members only
+  status         String    @default("open") // open | full | in_game | closed
+  slowModeSec    Int       @default(0)
+  lastActivityAt DateTime  @default(now())
+  expiresAt      DateTime?
+  closedAt       DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  game     Game              @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  members  GameRoomMember[]
+  messages GameRoomMessage[]
+
+  @@index([gameId, status])
+  @@index([type, status])
+  @@index([ownerId])
+}
+
+model GameRoomMember {
+  id         String    @id @default(uuid())
+  roomId     String
+  userId     String
+  roomRole   String    @default("member") // owner | cohost | member
+  ready      Boolean   @default(false)
+  mutedUntil DateTime?
+  joinedAt   DateTime  @default(now())
+
+  room GameRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+  @@index([userId])
+}
+
+model GameRoomMessage {
+  id        String    @id @default(uuid())
+  roomId    String
+  fromId    String
+  text      String
+  kind      String    @default("text") // text | system | lobby | ping
+  replyToId String?
+  deleted   Boolean   @default(false)
+  editedAt  DateTime?
+  createdAt DateTime  @default(now())
+
+  room GameRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, createdAt])
+}
+
+model GamerProfile {
+  userId          String   @id
+  games           String   @default("[]") // JSON [{ gameId, ign, rank, position }]
+  platforms       String[] @default([])
+  availability    String   @default("{}") // JSON { fri: ["20:00-23:00"], … }
+  lookingForSquad Boolean  @default(false)
+  lfgGameIds      String[] @default([])
+  bio             String   @default("")
+  reputation      Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([lookingForSquad])
+}
+
+model GameEvent {
+  id          String    @id @default(uuid())
+  gameId      String
+  roomId      String?
+  title       String
+  description String    @default("")
+  kind        String    @default("game_night") // game_night | tournament
+  startsAt    DateTime
+  endsAt      DateTime?
+  capacity    Int       @default(16)
+  teamSize    Int       @default(1)
+  format      String    @default("") // single_elim (tournaments)
+  status      String    @default("scheduled") // scheduled | live | finished | cancelled
+  createdBy   String
+  clubId      String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  game    Game              @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  entries EventEntry[]
+  matches TournamentMatch[]
+
+  @@index([startsAt])
+  @@index([gameId, startsAt])
+}
+
+model EventEntry {
+  id          String   @id @default(uuid())
+  eventId     String
+  userId      String // captain / registrant
+  teamName    String   @default("")
+  teamMembers String[] @default([])
+  checkedIn   Boolean  @default(false)
+  seed        Int?
+  createdAt   DateTime @default(now())
+
+  event GameEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+}
+
+model TournamentMatch {
+  id            String    @id @default(uuid())
+  eventId       String
+  round         Int
+  slot          Int
+  entryAId      String?
+  entryBId      String?
+  scoreA        Int?
+  scoreB        Int?
+  winnerEntryId String?
+  status        String    @default("pending") // pending | reported | confirmed | disputed
+  reportedBy    String?
+  reportedAt    DateTime?
+  confirmedBy   String?
+  confirmedAt   DateTime?
+  screenshotUrl String    @default("")
+
+  event GameEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, round, slot])
+}
+
+model GamingReport {
+  id           String    @id @default(uuid())
+  reporterId   String
+  targetUserId String
+  roomId       String?
+  messageId    String?
+  reason       String
+  details      String    @default("")
+  status       String    @default("open") // open | actioned | dismissed
+  handledBy    String?
+  handledAt    DateTime?
+  resolution   String    @default("")
+  createdAt    DateTime  @default(now())
+
+  @@index([status, createdAt])
+  @@index([targetUserId])
+}
+
+model GamingSanction {
+  id        String    @id @default(uuid())
+  userId    String
+  type      String // mute | room_ban | zone_ban
+  roomId    String?
+  until     DateTime? // null = permanent
+  reason    String
+  issuedBy  String
+  revokedBy String?
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, type])
+}

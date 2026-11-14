@@ -15,6 +15,7 @@ const ALL_ROLES = [
   { id: 'bus_coordinator', label: 'Bus Coordinator' },
   { id: 'guest', label: 'Guest' },
   { id: 'clubs_representative', label: 'Clubs Representative' },
+  { id: 'gaming_mod', label: 'Gaming Mod' },
   { id: 'help_desk', label: 'Help Desk' },
   { id: 'banned', label: 'Banned' },
   { id: 'moderator', label: 'Moderator' },

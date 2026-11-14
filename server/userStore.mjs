@@ -79,7 +79,7 @@ function fromUserRow(row) {
 export const FACULTY_DEPARTMENTS = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'];
 export const facultyDepartmentRole = (department) => `faculty_${String(department || '').trim().toLowerCase()}`;
 const facultyDepartmentRoles = FACULTY_DEPARTMENTS.map(facultyDepartmentRole);
-export const VALID_ROLES = ['student', 'faculty', 'alumni', 'alumni_with_carry', 'admin', 'cr', 'sr', 'moderator', 'vp', 'gs', 'readd', 'bus_coordinator', 'guest', 'clubs_representative', 'help_desk', 'banned', ...facultyDepartmentRoles];
+export const VALID_ROLES = ['student', 'faculty', 'alumni', 'alumni_with_carry', 'admin', 'cr', 'sr', 'moderator', 'vp', 'gs', 'readd', 'bus_coordinator', 'guest', 'clubs_representative', 'gaming_mod', 'help_desk', 'banned', ...facultyDepartmentRoles];
 /**
  * Legacy `senior` values from before the role was removed. They read as
  * plain students (their semester already marks them as 3.1+).
@@ -100,7 +100,7 @@ export function normalizeLegacySenior(user) {
   };
 }
 /** Roles an admin may assign to another user via the admin panel / approvals. */
-export const ADMIN_ASSIGNABLE_ROLES = ['student', 'cr', 'sr', 'vp', 'gs', 'readd', 'faculty', ...facultyDepartmentRoles, 'alumni', 'alumni_with_carry', 'moderator', 'bus_coordinator', 'guest', 'clubs_representative', 'help_desk', 'banned'];
+export const ADMIN_ASSIGNABLE_ROLES = ['student', 'cr', 'sr', 'vp', 'gs', 'readd', 'faculty', ...facultyDepartmentRoles, 'alumni', 'alumni_with_carry', 'moderator', 'bus_coordinator', 'guest', 'clubs_representative', 'gaming_mod', 'help_desk', 'banned'];
 const DEV_PASSWORD = 'Dev@123456';
 
 const DEPARTMENTS = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'];

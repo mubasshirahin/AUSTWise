@@ -165,7 +165,7 @@ export function resetAllLocalData() {
   }
 }
 
-export const AUTH_ROLES = ['student', 'faculty', 'alumni', 'alumni_with_carry', 'admin', 'cr', 'sr', 'moderator', 'vp', 'gs', 'readd', 'bus_coordinator', 'guest', 'clubs_representative', 'help_desk', 'banned', ...['cse', 'eee', 'ce', 'me', 'ipe', 'te', 'arch', 'bba'].map(department => `faculty_${department}`)];
+export const AUTH_ROLES = ['student', 'faculty', 'alumni', 'alumni_with_carry', 'admin', 'cr', 'sr', 'moderator', 'vp', 'gs', 'readd', 'bus_coordinator', 'guest', 'clubs_representative', 'gaming_mod', 'help_desk', 'banned', ...['cse', 'eee', 'ce', 'me', 'ipe', 'te', 'arch', 'bba'].map(department => `faculty_${department}`)];
 export const ALLOWED_EMAIL_DOMAINS = ['aust.edu', 'www.aust.edu'];
 
 export const guestUser = {
@@ -685,6 +685,7 @@ export function getRoleDisplayName(role) {
   if (key === 'senior') return 'Student';
   if (key === 'bus_coordinator') return 'Bus Coordinator';
   if (key === 'clubs_representative') return 'Clubs Representative';
+  if (key === 'gaming_mod') return 'Gaming Mod';
   if (key === 'help_desk') return 'Help Desk';
   if (key === 'banned') return 'Banned';
   if (key === 'student') return 'Student';
@@ -706,7 +707,7 @@ export function getRoleLabel(role) {
 // students with a duty; Re-add is a student status flag — see accessRole.js).
 const STUDENT_SUB_ROLES = new Set([
   'cr', 'sr', 'vp', 'gs', 'readd',
-  'bus_coordinator', 'clubs_representative', 'help_desk',
+  'bus_coordinator', 'clubs_representative', 'gaming_mod', 'help_desk',
 ]);
 // Primary account types — if one of these is present, Student is NOT added.
 const PRIMARY_ROLES = new Set(['student', 'faculty', 'alumni', 'alumni_with_carry', 'admin', 'moderator', 'guest']);
@@ -715,7 +716,7 @@ const PRIMARY_ROLES = new Set(['student', 'faculty', 'alumni', 'alumni_with_carr
 const ROLE_ORDER = [
   'admin', 'moderator', 'faculty', 'alumni', 'alumni_with_carry',
   'student', 'cr', 'sr', 'vp', 'gs', 'readd',
-  'bus_coordinator', 'clubs_representative', 'help_desk', 'banned', 'guest',
+  'bus_coordinator', 'clubs_representative', 'gaming_mod', 'help_desk', 'banned', 'guest',
 ];
 
 function isDisplayRoleKey(key) {
@@ -777,6 +778,7 @@ export function getRoleBadgeClass(role) {
     case 'bus_coordinator': return 'badge-cyan';
     case 'guest': return 'badge-blue';
     case 'clubs_representative': return 'badge-amber';
+    case 'gaming_mod': return 'badge-emerald';
     case 'help_desk': return 'badge-emerald';
     case 'banned': return 'badge-rose';
     default: return 'badge-blue';

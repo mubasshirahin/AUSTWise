@@ -110,7 +110,7 @@ export async function advanceAllStudents({ semesterStartDate } = {}) {
     const max = String(user.maxSemester || (user.department === 'ARCH' ? '5.2' : '4.2'));
     if (!semester) { outcomes.push({ id: user.id, outcome: 'SKIPPED_INVALID_SEMESTER' }); continue; }
     if (semester === max) {
-      const studentOnlyRoles = new Set(['student', 'cr', 'sr', 'vp', 'gs', 'readd', 'bus_coordinator', 'clubs_representative']);
+      const studentOnlyRoles = new Set(['student', 'cr', 'sr', 'vp', 'gs', 'readd', 'bus_coordinator', 'clubs_representative', 'gaming_mod']);
       const roles = [...new Set([...(user.roles || []), user.role].filter(role => role && !studentOnlyRoles.has(role)).concat('alumni'))];
       const personalEmail = String(user.personalEmail || '').trim().toLowerCase();
       const emailAvailable = /^[^\s@]+@gmail\.com$/i.test(personalEmail) &&

@@ -591,3 +591,205 @@ DO $$ BEGIN
   END IF;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
+-- ─── Gaming Zone ─────────────────────────────────────────────────────────────
+-- Mirrors the Gaming Zone models in prisma/schema.prisma. userId columns hold
+-- AuthUsers ids, so there is no foreign key to "User".
+CREATE TABLE IF NOT EXISTS "Game" (
+    "id" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "genre" TEXT NOT NULL DEFAULT '',
+    "platforms" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "iconKey" TEXT NOT NULL DEFAULT 'gamepad',
+    "maxSquad" INTEGER NOT NULL DEFAULT 5,
+    "ranks" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdBy" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "Game_pkey" PRIMARY KEY ("id")
+);
+CREATE TABLE IF NOT EXISTS "GameRoom" (
+    "id" TEXT NOT NULL,
+    "gameId" TEXT NOT NULL,
+    "type" TEXT NOT NULL DEFAULT 'squad',
+    "title" TEXT NOT NULL,
+    "description" TEXT NOT NULL DEFAULT '',
+    "ownerId" TEXT,
+    "capacity" INTEGER NOT NULL DEFAULT 5,
+    "visibility" TEXT NOT NULL DEFAULT 'public',
+    "inviteCode" TEXT,
+    "rankMin" TEXT,
+    "rankMax" TEXT,
+    "region" TEXT NOT NULL DEFAULT '',
+    "platform" TEXT NOT NULL DEFAULT '',
+    "lobbyCode" TEXT NOT NULL DEFAULT '',
+    "status" TEXT NOT NULL DEFAULT 'open',
+    "slowModeSec" INTEGER NOT NULL DEFAULT 0,
+    "lastActivityAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "expiresAt" TIMESTAMP(3),
+    "closedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "GameRoom_pkey" PRIMARY KEY ("id")
+);
+CREATE TABLE IF NOT EXISTS "GameRoomMember" (
+    "id" TEXT NOT NULL,
+    "roomId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "roomRole" TEXT NOT NULL DEFAULT 'member',
+    "ready" BOOLEAN NOT NULL DEFAULT false,
+    "mutedUntil" TIMESTAMP(3),
+    "joinedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "GameRoomMember_pkey" PRIMARY KEY ("id")
+);
+CREATE TABLE IF NOT EXISTS "GameRoomMessage" (
+    "id" TEXT NOT NULL,
+    "roomId" TEXT NOT NULL,
+    "fromId" TEXT NOT NULL,
+    "text" TEXT NOT NULL,
+    "kind" TEXT NOT NULL DEFAULT 'text',
+    "replyToId" TEXT,
+    "deleted" BOOLEAN NOT NULL DEFAULT false,
+    "editedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "GameRoomMessage_pkey" PRIMARY KEY ("id")
+);
+CREATE TABLE IF NOT EXISTS "GamerProfile" (
+    "userId" TEXT NOT NULL,
+    "games" TEXT NOT NULL DEFAULT '[]',
+    "platforms" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "availability" TEXT NOT NULL DEFAULT '{}',
+    "lookingForSquad" BOOLEAN NOT NULL DEFAULT false,
+    "lfgGameIds" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "bio" TEXT NOT NULL DEFAULT '',
+    "reputation" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "GamerProfile_pkey" PRIMARY KEY ("userId")
+);
+CREATE TABLE IF NOT EXISTS "GameEvent" (
+    "id" TEXT NOT NULL,
+    "gameId" TEXT NOT NULL,
+    "roomId" TEXT,
+    "title" TEXT NOT NULL,
+    "description" TEXT NOT NULL DEFAULT '',
+    "kind" TEXT NOT NULL DEFAULT 'game_night',
+    "startsAt" TIMESTAMP(3) NOT NULL,
+    "endsAt" TIMESTAMP(3),
+    "capacity" INTEGER NOT NULL DEFAULT 16,
+    "teamSize" INTEGER NOT NULL DEFAULT 1,
+    "format" TEXT NOT NULL DEFAULT '',
+    "status" TEXT NOT NULL DEFAULT 'scheduled',
+    "createdBy" TEXT NOT NULL,
+    "clubId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "GameEvent_pkey" PRIMARY KEY ("id")
+);
+CREATE TABLE IF NOT EXISTS "EventEntry" (
+    "id" TEXT NOT NULL,
+    "eventId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "teamName" TEXT NOT NULL DEFAULT '',
+    "teamMembers" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "checkedIn" BOOLEAN NOT NULL DEFAULT false,
+    "seed" INTEGER,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "EventEntry_pkey" PRIMARY KEY ("id")
+);
+CREATE TABLE IF NOT EXISTS "TournamentMatch" (
+    "id" TEXT NOT NULL,
+    "eventId" TEXT NOT NULL,
+    "round" INTEGER NOT NULL,
+    "slot" INTEGER NOT NULL,
+    "entryAId" TEXT,
+    "entryBId" TEXT,
+    "scoreA" INTEGER,
+    "scoreB" INTEGER,
+    "winnerEntryId" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "reportedBy" TEXT,
+    "reportedAt" TIMESTAMP(3),
+    "confirmedBy" TEXT,
+    "confirmedAt" TIMESTAMP(3),
+    "screenshotUrl" TEXT NOT NULL DEFAULT '',
+    CONSTRAINT "TournamentMatch_pkey" PRIMARY KEY ("id")
+);
+CREATE TABLE IF NOT EXISTS "GamingReport" (
+    "id" TEXT NOT NULL,
+    "reporterId" TEXT NOT NULL,
+    "targetUserId" TEXT NOT NULL,
+    "roomId" TEXT,
+    "messageId" TEXT,
+    "reason" TEXT NOT NULL,
+    "details" TEXT NOT NULL DEFAULT '',
+    "status" TEXT NOT NULL DEFAULT 'open',
+    "handledBy" TEXT,
+    "handledAt" TIMESTAMP(3),
+    "resolution" TEXT NOT NULL DEFAULT '',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "GamingReport_pkey" PRIMARY KEY ("id")
+);
+CREATE TABLE IF NOT EXISTS "GamingSanction" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "roomId" TEXT,
+    "until" TIMESTAMP(3),
+    "reason" TEXT NOT NULL,
+    "issuedBy" TEXT NOT NULL,
+    "revokedBy" TEXT,
+    "revokedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "GamingSanction_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "Game_slug_key" ON "Game"("slug");
+CREATE INDEX IF NOT EXISTS "Game_active_sortOrder_idx" ON "Game"("active", "sortOrder");
+CREATE UNIQUE INDEX IF NOT EXISTS "GameRoom_inviteCode_key" ON "GameRoom"("inviteCode");
+CREATE INDEX IF NOT EXISTS "GameRoom_gameId_status_idx" ON "GameRoom"("gameId", "status");
+CREATE INDEX IF NOT EXISTS "GameRoom_type_status_idx" ON "GameRoom"("type", "status");
+CREATE INDEX IF NOT EXISTS "GameRoom_ownerId_idx" ON "GameRoom"("ownerId");
+CREATE UNIQUE INDEX IF NOT EXISTS "GameRoomMember_roomId_userId_key" ON "GameRoomMember"("roomId", "userId");
+CREATE INDEX IF NOT EXISTS "GameRoomMember_userId_idx" ON "GameRoomMember"("userId");
+CREATE INDEX IF NOT EXISTS "GameRoomMessage_roomId_createdAt_idx" ON "GameRoomMessage"("roomId", "createdAt");
+CREATE INDEX IF NOT EXISTS "GamerProfile_lookingForSquad_idx" ON "GamerProfile"("lookingForSquad");
+CREATE INDEX IF NOT EXISTS "GameEvent_startsAt_idx" ON "GameEvent"("startsAt");
+CREATE INDEX IF NOT EXISTS "GameEvent_gameId_startsAt_idx" ON "GameEvent"("gameId", "startsAt");
+CREATE UNIQUE INDEX IF NOT EXISTS "EventEntry_eventId_userId_key" ON "EventEntry"("eventId", "userId");
+CREATE UNIQUE INDEX IF NOT EXISTS "TournamentMatch_eventId_round_slot_key" ON "TournamentMatch"("eventId", "round", "slot");
+CREATE INDEX IF NOT EXISTS "GamingReport_status_createdAt_idx" ON "GamingReport"("status", "createdAt");
+CREATE INDEX IF NOT EXISTS "GamingReport_targetUserId_idx" ON "GamingReport"("targetUserId");
+CREATE INDEX IF NOT EXISTS "GamingSanction_userId_type_idx" ON "GamingSanction"("userId", "type");
+
+DO $$ BEGIN
+  ALTER TABLE "GameRoom" ADD CONSTRAINT "GameRoom_gameId_fkey" FOREIGN KEY ("gameId") REFERENCES "Game"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "GameRoomMember" ADD CONSTRAINT "GameRoomMember_roomId_fkey" FOREIGN KEY ("roomId") REFERENCES "GameRoom"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "GameRoomMessage" ADD CONSTRAINT "GameRoomMessage_roomId_fkey" FOREIGN KEY ("roomId") REFERENCES "GameRoom"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "GameEvent" ADD CONSTRAINT "GameEvent_gameId_fkey" FOREIGN KEY ("gameId") REFERENCES "Game"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "EventEntry" ADD CONSTRAINT "EventEntry_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "GameEvent"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "TournamentMatch" ADD CONSTRAINT "TournamentMatch_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "GameEvent"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
