@@ -6150,4 +6150,12 @@ tr.day-row-active {
     padding: 0;
     font-size: 12px;
   }
+
+  /* Footer (Filter row): an old ≤560px rule meant for the semester box
+     (`> div:nth-of-type(3)`) now matches the footer and set padding 2px 0,
+     so the filter row sat flush against the calendar. Give it room again. */
+  .week-schedule-widget > div.schedule-footer {
+    padding-top: 14px;
+    padding-bottom: 2px;
+  }
 }
