@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { query, sql } from './db.mjs';
+import { isBannedAccount } from './roleGuards.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DB_PATH = path.join(__dirname, 'users.json');
@@ -940,6 +941,12 @@ export async function createUser(payload, { invitationAuthorized = false, passwo
   return user;
 }
 
+/** Message shown to a banned account on login / session refresh. */
+export function bannedMessage(user) {
+  const reason = String(user?.bannedReason || '').trim();
+  return reason ? `This account is suspended: ${reason}` : 'This account is suspended. Contact an admin.';
+}
+
 /** Validate credentials and return user (without password) if valid */
 export async function validateLogin(email, password) {
   const normalized = String(email || '').trim().toLowerCase();
@@ -957,6 +964,8 @@ export async function validateLogin(email, password) {
   }
   const valid = await comparePassword(password, user.password);
   if (!valid) throw new Error('Invalid email or password.');
+  // Checked after the password so a ban is not revealed to someone guessing.
+  if (isBannedAccount(user)) throw new Error(bannedMessage(user));
   const { password: _, ...safe } = user;
   return safe;
 }
@@ -1149,9 +1158,10 @@ export function updateUserProfile(id, patch, opts = {}) {
     const current = await readRawUser(id);
     if (!current) return null;
     const next = { ...patch };
-    if (next.role !== undefined && !opts.allowRole) {
-      // Defense-in-depth: only admin-role paths may change a user's role.
+    if (!opts.allowRole) {
+      // Defense-in-depth: only admin-role paths may change a user's role(s).
       delete next.role;
+      delete next.roles;
     }
     const academicSlotChanged = ['department', 'yearSemester', 'section']
       .some((field) => field in next && String(next[field] || '') !== String(current[field] || ''));

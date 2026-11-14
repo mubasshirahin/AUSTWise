@@ -416,12 +416,40 @@ export function getLiveStoreStatus() {
   return { connected: state === 'live', state };
 }
 
+// The server takes the socket's identity from the session, never from the
+// `userId` we send. In production the socket goes straight to the backend
+// origin, where the session cookie isn't sent, so first fetch a short-lived
+// ticket through the same-origin /api proxy and pass it on the socket URL.
+let connectGeneration = 0;
+
+async function fetchWsTicket() {
+  try {
+    const res = await fetch('/api/ws-ticket', { credentials: 'same-origin' });
+    if (!res.ok) return '';
+    const data = await res.json();
+    return typeof data?.ticket === 'string' ? data.ticket : '';
+  } catch {
+    return '';
+  }
+}
+
 function connect() {
   if (stopped) return;
+  const generation = ++connectGeneration;
+  fetchWsTicket().then((ticket) => {
+    if (stopped || generation !== connectGeneration) return;
+    openSocket(ticket);
+  });
+}
+
+function openSocket(ticket) {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   // Production: connect directly to the backend origin (VITE_WS_URL).
   // Dev: same-origin /api/ws hits the local server.
-  const wsUrl = (import.meta.env.VITE_WS_URL || `${protocol}//${window.location.host}/api/ws`);
+  const baseUrl = (import.meta.env.VITE_WS_URL || `${protocol}//${window.location.host}/api/ws`);
+  const wsUrl = ticket
+    ? `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}ticket=${encodeURIComponent(ticket)}`
+    : baseUrl;
 
   // Neutralize any previous socket before replacing it. A stale socket's
   // onclose firing later would schedule a duplicate reconnect that overwrites

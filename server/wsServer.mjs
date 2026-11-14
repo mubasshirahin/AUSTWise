@@ -12,7 +12,7 @@
  */
 
 import { WebSocketServer } from 'ws';
-import { readTokenCookie } from './auth.mjs';
+import { readTokenCookie, resolveSocketUser, hasValidWsTicket } from './auth.mjs';
 
 // Allowed cross-origin WS origins (same-origin + dev localhost are always OK).
 const ALLOWED_WS_ORIGINS = (process.env.ALLOWED_ORIGIN || '')
@@ -52,7 +52,7 @@ function isAllowedWsUpgrade(request) {
     return false;
   }
   // No Origin header (non-browser client): require a valid session cookie.
-  return !!readTokenCookie(request);
+  return !!readTokenCookie(request) || hasValidWsTicket(request);
 }
 
 // Map: userId -> Set<WebSocket>
@@ -200,7 +200,7 @@ export function createWSServer(httpServer) {
   // The wss.on('connection', ...) handler below is already registered
   // synchronously by this point, so re-emitting 'connection' routes
   // the upgraded socket back into the existing handler.
-  httpServer.on('upgrade', (request, socket, head) => {
+  httpServer.on('upgrade', async (request, socket, head) => {
     try {
       if (request.headers['sec-websocket-protocol'] === 'vite-hmr') {
         return; // Vite handles its own HMR upgrades
@@ -210,6 +210,14 @@ export function createWSServer(httpServer) {
         socket.destroy();
         return;
       }
+      // Identity comes from the session cookie, never from client payloads.
+      const auth = await resolveSocketUser(request);
+      if (auth?.banned) {
+        socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+        socket.destroy();
+        return;
+      }
+      request.authUserId = auth?.id || null;
       wss.handleUpgrade(request, socket, head, (ws) => {
         wss.emit('connection', ws, request);
       });
@@ -219,8 +227,10 @@ export function createWSServer(httpServer) {
     }
   });
 
-  wss.on('connection', (ws, _req) => {
+  wss.on('connection', (ws, req) => {
     let currentUserId = null;
+    // The signed-in user for this socket (null for anonymous sockets).
+    const authUserId = req?.authUserId || null;
     let shadowId = null;
 
     // Start the idle-sweep loop on first connection (shared, idempotent)
@@ -457,11 +467,11 @@ export function createWSServer(httpServer) {
     /* ─── Message Handlers ─── */
 
     function handleSubscribe(payload) {
-      const { userId, conversationId } = payload;
-      const targetUserId = userId || currentUserId;
+      const { conversationId } = payload;
+      const targetUserId = authUserId;
 
       if (!targetUserId) {
-        sendTo(ws, { type: 'error', payload: { message: 'userId is required for subscribe' } });
+        sendTo(ws, { type: 'error', payload: { message: 'Sign in to subscribe.' } });
         return;
       }
 
@@ -476,8 +486,8 @@ export function createWSServer(httpServer) {
         userClients.get(targetUserId).add(ws);
       }
 
-      // Subscribe to conversation if provided
-      if (conversationId) {
+      // Subscribe to conversation if provided (only your own DM threads).
+      if (conversationId && String(conversationId).split('|').includes(targetUserId)) {
         if (!conversationSubscribers.has(conversationId)) {
           conversationSubscribers.set(conversationId, new Set());
         }
@@ -510,7 +520,8 @@ export function createWSServer(httpServer) {
     }
 
     function handleMessage(payload) {
-      const { fromId, toId, text, id, timestamp } = payload;
+      const { toId, text, id, timestamp } = payload;
+      const fromId = currentUserId;
 
       if (!fromId || !toId || !text || !id) {
         sendTo(ws, { type: 'error', payload: { message: 'fromId, toId, text, and id are required' } });
@@ -553,10 +564,12 @@ export function createWSServer(httpServer) {
     }
 
     function handleReaction(payload) {
-      const { messageId, emoji, userId, conversationId } = payload;
+      const { messageId, emoji, conversationId } = payload;
+      const userId = currentUserId;
       if (!messageId || !emoji || !userId || !conversationId) return;
 
       // Forward reaction to all other participants in the conversation
+      if (!String(conversationId).split('|').includes(userId)) return;
       const [userA, userB] = conversationId.split('|');
       const peerId = userA === userId ? userB : userA;
 
@@ -567,9 +580,11 @@ export function createWSServer(httpServer) {
     }
 
     function handleDelete(payload) {
-      const { messageId, userId, conversationId } = payload;
+      const { messageId, conversationId } = payload;
+      const userId = currentUserId;
       if (!messageId || !userId || !conversationId) return;
 
+      if (!String(conversationId).split('|').includes(userId)) return;
       const [userA, userB] = conversationId.split('|');
       const peerId = userA === userId ? userB : userA;
 
@@ -580,9 +595,11 @@ export function createWSServer(httpServer) {
     }
 
     function handleEdit(payload) {
-      const { messageId, text, userId, conversationId } = payload;
+      const { messageId, text, conversationId } = payload;
+      const userId = currentUserId;
       if (!messageId || !text || !userId || !conversationId) return;
 
+      if (!String(conversationId).split('|').includes(userId)) return;
       const [userA, userB] = conversationId.split('|');
       const peerId = userA === userId ? userB : userA;
 
