@@ -14,6 +14,7 @@ import {
   Download,
   RefreshCw,
 } from 'lucide-react';
+import '../daily-life/DailyMasthead.css';
 import './PasswordManagerPage.css';
 import { getPasswordGrade } from '../../utils/passwordStrength';
 
@@ -346,28 +347,28 @@ export default function PasswordManagerPage() {
     <div className="glass-card-static schedule-widget pm-widget animate-fadeInUp">
 
       {/* ── Masthead ── */}
-      <header className="pm-head">
-        <div className="pm-head-title">
-          <div className="pm-head-tile" aria-hidden="true">
+      <header className="dl-head">
+        <div className="dl-head-title">
+          <div className="dl-head-tile" aria-hidden="true">
             <KeyRound size={20} strokeWidth={2.1} />
           </div>
-          <div className="pm-head-text">
-            <span className="pm-head-overline">Daily Life</span>
-            <h2 className="pm-head-name">Password Manager</h2>
-            <span className="pm-head-subtitle">Secure login vault · AES-256 encrypted</span>
+          <div className="dl-head-text">
+            <span className="dl-head-overline">Daily Life</span>
+            <h2 className="dl-head-name">Password Manager</h2>
+            <span className="dl-head-subtitle">Secure login vault · AES-256 encrypted</span>
           </div>
         </div>
 
-        <dl className="pm-head-stats">
-          <div className="pm-head-stat">
+        <dl className="dl-head-stats">
+          <div className="dl-head-stat">
             <dt>Accounts</dt>
             <dd>{vaultStats.total}</dd>
           </div>
-          <div className="pm-head-stat">
+          <div className="dl-head-stat">
             <dt>Strong</dt>
             <dd>{vaultStats.strong}</dd>
           </div>
-          <div className="pm-head-stat">
+          <div className="dl-head-stat">
             <dt>Vault health</dt>
             <dd>{vaultHealth}%</dd>
           </div>

@@ -11,6 +11,7 @@ import MastheadAccessControl from '../../components/MastheadAccessControl';
 import FeatureAccessGate from '../admin/FeatureAccessGate';
 import SidebarPageAccessPanel from '../admin/SidebarPageAccessPanel';
 import useAdminMode from '../../hooks/useAdminMode';
+import '../daily-life/DailyMasthead.css';
 import './AnalyticsPage.css';
 import './analytics-tokens.css';
 
@@ -105,6 +106,7 @@ export default function AnalyticsPage() {
           activeTab={activeTab}
           onChange={handleTabChange}
           variant="dashboard"
+          compact
         />
       </div>
 

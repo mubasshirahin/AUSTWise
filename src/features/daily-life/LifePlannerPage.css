@@ -12,9 +12,6 @@
 
 .lp-widget {
   overflow: visible;
-  background: transparent;
-  border: none;
-  box-shadow: none;
 }
 
 /* ── LpDateInput — dd/mm/yy text field + calendar button (replaces native mm/dd/yyyy) ── */

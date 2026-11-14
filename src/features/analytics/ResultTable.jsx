@@ -762,25 +762,24 @@ export default function ResultTable({ onResultsChange }) {
 
   return (
     <div className="cgpa-transcript">
-      {/* Section head — title + ⋮ menu (matches CGPA Calculator masthead) */}
-      <div className="schedule-masthead">
-        <div className="schedule-title-block">
-          <div className="schedule-icon-tile">
-            <FileSpreadsheet size={20} strokeWidth={2.2} />
+      {/* Masthead (shared dl-head, skill-masthead) — title + ⋮ menu */}
+      <header className="dl-head has-actions">
+        <div className="dl-head-title">
+          <div className="dl-head-tile" aria-hidden="true">
+            <FileSpreadsheet size={20} strokeWidth={2.1} />
           </div>
-          <div>
-            <span className="schedule-overline">GradeLab</span>
-            <p className="schedule-title">Semester Breakdown</p>
-            <span className="schedule-subtitle">Detailed semester-wise grade sheet breakdown</span>
+          <div className="dl-head-text">
+            <span className="dl-head-overline">GradeLab</span>
+            <h2 className="dl-head-name">Semester Breakdown</h2>
+            <span className="dl-head-subtitle">Detailed semester-wise grade sheet breakdown</span>
           </div>
         </div>
-        <div className="schedule-masthead-center" />
-        <div className="cgpa-transcript-actions">
+        <div className="dl-head-actions cgpa-transcript-actions">
           <button className="schedule-nav-btn cgpa-load-template-btn cgpa-load-desktop" onClick={() => setShowDeptModal(true)}>
             <Layers size={15} /> Load Template
           </button>
           <div className="export-dropdown" ref={menuRef}>
-          <button type="button" className="schedule-nav-btn cgpa-more-btn" onClick={() => setShowMenu((v) => !v)} aria-label="More options" aria-haspopup="true">
+          <button type="button" className="dl-head-menu-btn cgpa-more-btn" onClick={() => setShowMenu((v) => !v)} aria-label="More options" aria-haspopup="true">
             <MoreVertical size={18} />
           </button>
           {showMenu && (
@@ -809,9 +808,7 @@ export default function ResultTable({ onResultsChange }) {
           )}
           </div>
         </div>
-      </div>
-
-      <div className="schedule-dotted-divider" />
+      </header>
 
       {/* Semester cells */}
       <div className="cgpa-sem-list">

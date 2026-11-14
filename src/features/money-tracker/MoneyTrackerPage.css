@@ -1530,11 +1530,7 @@
   .tgk-main-grid,
   .tgk-rail { gap: 8px; }
 
-  /* Masthead — scoped to this widget, does not touch Bhara Koto */
-  .tgk-widget .dl-head-name { font-size: 0.95rem; }
-  .tgk-widget .dl-head-stats .dl-head-stat dt { font-size: 8.5px; letter-spacing: 0.04em; }
-  .tgk-widget .dl-head-stats .dl-head-stat dd:not(.is-small) { font-size: 0.95rem; }
-  .tgk-head-budget-btn { font-size: 0.95rem; gap: 4px; }
+  .tgk-head-budget-btn { gap: 4px; }
   .tgk-head-budget-btn.is-empty { font-size: 0.8rem; }
   .tgk-head-budget-btn svg { width: 10px; height: 10px; }
 

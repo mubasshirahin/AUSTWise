@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Crosshair, CalendarDays, List, Check, Repeat } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, List, Check, Repeat } from 'lucide-react';
 import { buildTimelineRange, fmtDate, todayKey, goalDisplayNumber } from './lifePlannerStorage';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -12,6 +12,21 @@ function monthDateKeys(year, monthIdx) {
   for (let d = 1; d <= days; d++) out.push(`${year}-${pad2(monthIdx + 1)}-${pad2(d)}`);
   return out;
 }
+const POS_KEY = 'aust-lp-timeline-pos';
+function readSavedPosition() {
+  try {
+    const p = JSON.parse(sessionStorage.getItem(POS_KEY) || 'null');
+    if (!p || !Number.isInteger(p.year) || !Number.isInteger(p.month) || !Number.isInteger(p.decadeStart)) return null;
+    return p;
+  } catch { return null; }
+}
+function writeSavedPosition(patch) {
+  try {
+    const prev = JSON.parse(sessionStorage.getItem(POS_KEY) || '{}') || {};
+    sessionStorage.setItem(POS_KEY, JSON.stringify({ ...prev, ...patch }));
+  } catch {}
+}
+
 function yearDateKeys(year) {
   const out = [];
   for (let m = 0; m < 12; m++) out.push(...monthDateKeys(year, m));
@@ -24,14 +39,18 @@ export default function TimelineView({ doc, onOpenGoal }) {
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth(); // 0-11
 
+  // Position survives a page refresh (sessionStorage) but is dropped when the
+  // user leaves the timeline (unmount), so coming back always opens on today.
+  const [restored] = useState(readSavedPosition);
+  const restoreScrollRef = useRef(restored);
+
   // 10-year window: currentYear -5 .. currentYear +4 (10 slots, current centered at index 5)
-  const initialDecadeStart = currentYear - 5;
-  const [decadeStart, setDecadeStart] = useState(initialDecadeStart);
-  const [selectedYear, setSelectedYear] = useState(currentYear);
-  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const [decadeStart, setDecadeStart] = useState(restored?.decadeStart ?? currentYear - 5);
+  const [selectedYear, setSelectedYear] = useState(restored?.year ?? currentYear);
+  const [selectedMonth, setSelectedMonth] = useState(restored?.month ?? currentMonth);
   const [mode, setMode] = useState('month'); // 'year' | 'month'
-  const [calView, setCalView] = useState('list'); // 'list' | 'calendar'
-  const [selectedDate, setSelectedDate] = useState(today);
+  const [calView, setCalView] = useState(restored?.calView ?? 'list'); // 'list' | 'calendar'
+  const [selectedDate, setSelectedDate] = useState(restored?.selectedDate ?? today);
 
   // Keep selectedYear inside decade window when decade shifts via arrows
   useEffect(() => {
@@ -125,7 +144,6 @@ export default function TimelineView({ doc, onOpenGoal }) {
 
   // ── Scrollable timeline — only inner scrolls, today centered ──
   const timelineRef = useRef(null);
-  const [showTodayFab, setShowTodayFab] = useState(false);
 
   const scrollToToday = useCallback((behavior = 'smooth') => {
     // Scroll only the inner agenda box — never the page.
@@ -134,41 +152,40 @@ export default function TimelineView({ doc, onOpenGoal }) {
     if (el) sc.scrollTo({ top: Math.max(0, el.offsetTop - sc.clientHeight / 2 + el.offsetHeight / 2), behavior });
   }, [today]);
 
-  const jumpToToday = useCallback(() => {
-    setDecadeStart(currentYear - 5);
-    setSelectedYear(currentYear);
-    setSelectedMonth(currentMonth);
-    setMode('month');
-    // after state flush, center today
-    requestAnimationFrame(() => setTimeout(() => scrollToToday('smooth'), 80));
-  }, [currentYear, currentMonth, scrollToToday]);
-
-  // Auto-center today on mount + refresh and whenever period changes
+  // On mount: restore the refreshed scroll spot once; otherwise (and on every
+  // period change) centre today.
   useEffect(() => {
-    const t = setTimeout(() => scrollToToday('auto'), 120);
+    const t = setTimeout(() => {
+      const r = restoreScrollRef.current;
+      restoreScrollRef.current = null;
+      const sc = timelineRef.current;
+      if (r && sc && Number.isFinite(r.scrollTop) && r.year === selectedYear && r.month === selectedMonth) {
+        sc.scrollTop = r.scrollTop;
+      } else {
+        scrollToToday('auto');
+      }
+    }, 120);
     return () => clearTimeout(t);
-  }, [allDateKeys, scrollToToday]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allDateKeys, calView, scrollToToday]);
 
-  // Show floating Today button when today row is off-screen inside the scroll box
+  // Remember position for a refresh; forget it once the user leaves this view.
   useEffect(() => {
-    const sc = timelineRef.current;
-    if (!sc) return undefined;
-    const check = () => {
-      const el = sc.querySelector(`[data-date="${today}"]`);
-      if (!el) { setShowTodayFab(true); return; }
-      const r = el.getBoundingClientRect();
-      const cr = sc.getBoundingClientRect();
-      const visible = r.top >= cr.top - 8 && r.bottom <= cr.bottom + 8;
-      setShowTodayFab(!visible);
+    writeSavedPosition({ decadeStart, year: selectedYear, month: selectedMonth, calView, selectedDate });
+  }, [decadeStart, selectedYear, selectedMonth, calView, selectedDate]);
+  useEffect(() => {
+    const sc = timelineRef.current;    if (!sc) return undefined;
+    let t = 0;
+    const onScroll = () => {
+      clearTimeout(t);
+      t = setTimeout(() => writeSavedPosition({ scrollTop: Math.round(sc.scrollTop) }), 100);
     };
-    sc.addEventListener('scroll', check, { passive: true });
-    // also re-check on resize / content change
-    const ro = new ResizeObserver(check);
-    ro.observe(sc);
-    check();
-    const id = setInterval(check, 600);
-    return () => { sc.removeEventListener('scroll', check); ro.disconnect(); clearInterval(id); };
-  }, [allDateKeys, today]);
+    sc.addEventListener('scroll', onScroll, { passive: true });
+    return () => { sc.removeEventListener('scroll', onScroll); clearTimeout(t); };
+  }, [calView]);
+  useEffect(() => () => {
+    try { sessionStorage.removeItem(POS_KEY); } catch {}
+  }, []);
 
   // ── Shared entry row (list view + calendar day panel) ──
   const KIND_LABEL = { task: 'Task', step: 'Step', goal: 'Goal deadline', milestone: 'Milestone deadline' };
@@ -216,7 +233,6 @@ export default function TimelineView({ doc, onOpenGoal }) {
     setSelectedYear(ny);
   };
 
-  const isCurrentMonth = selectedYear === currentYear && selectedMonth === currentMonth;
   const overdueCount = filtered.filter((e) => e.date < today && !e.done).length;
   const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -239,10 +255,6 @@ export default function TimelineView({ doc, onOpenGoal }) {
               <CalendarDays size={13} /> Calendar
             </button>
           </div>
-
-          <button type="button" className="pb-btn-soft" onClick={jumpToToday} disabled={isCurrentMonth && calView === 'calendar'}>
-            <Crosshair size={13} /> Today
-          </button>
         </div>
 
         <div className="pb-months" role="tablist" aria-label={`Months of ${selectedYear}`}>
@@ -271,8 +283,7 @@ export default function TimelineView({ doc, onOpenGoal }) {
           <strong>{mode === 'year' ? selectedYear : `${MONTHS_FULL[selectedMonth]} ${selectedYear}`}</strong>
           <span className="pb-dot" aria-hidden="true" />
           {filtered.length} item{filtered.length === 1 ? '' : 's'}
-          {overdueCount > 0 && <><span className="pb-dot" aria-hidden="true" /><span className="is-alert">{overdueCount} overdue</span></>}
-        </p>
+          {overdueCount > 0 && <><span className="pb-dot" aria-hidden="true" /><span className="is-alert">{overdueCount} overdue</span></>}        </p>
       </section>
 
       {/* ── Calendar grid ── */}
@@ -363,20 +374,6 @@ export default function TimelineView({ doc, onOpenGoal }) {
               );
             })}
           </div>
-          {showTodayFab && (
-            <button
-              type="button"
-              className="pb-fab"
-              onClick={() => {
-                const el = timelineRef.current?.querySelector(`[data-date="${today}"]`);
-                if (el) scrollToToday('smooth');
-                else jumpToToday();
-              }}
-              aria-label="Scroll to today"
-            >
-              <Crosshair size={14} /> Today
-            </button>
-          )}
         </section>
       )}
     </div>

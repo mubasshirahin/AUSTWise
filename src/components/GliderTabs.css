@@ -319,3 +319,50 @@
     box-shadow: none !important;
   }
 }
+
+/* ── Phone: one identical section tab bar on every page ──────────────
+   Applies to the page-level bars (Home, Daily Life, GradeLab, Campus,
+   Community, …: `.XX-tabs-card`) in every layout. Equal tabs (≥76px)
+   share the row; when they don't fit, the row scrolls sideways.
+   Selectors carry `html` + attribute + 2 classes so they win over the
+   per-layout dock rules (e.g. html[data-layout="studio"] .glider-tab). */
+@media (max-width: 640px) {
+  html [class*="-tabs-card"] .glider-tabs-wrap {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+  html [class*="-tabs-card"] .glider-tabs-wrap .glider-tabs-track {
+    flex-direction: row;
+    width: max-content;
+    min-width: 100%;
+    max-width: none;
+  }
+  html [class*="-tabs-card"] .glider-tabs-wrap .glider-tab {
+    flex: 1 0 76px;
+    width: auto;
+    min-width: 76px;
+    padding: 6px;
+    gap: 3px;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+  html [class*="-tabs-card"] .glider-tabs-wrap .glider-tab-icon {
+    width: 22px;
+    height: 22px;
+  }
+  html [class*="-tabs-card"] .glider-tabs-wrap .glider-tab-icon svg {
+    width: 14px;
+    height: 14px;
+    transform: none;
+  }
+  html [class*="-tabs-card"] .glider-tabs-wrap .glider-tab-label {
+    font-size: 9px;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+  html [class*="-tabs-card"] .glider-tabs-wrap .glider-tabs-glider { display: block; }
+}

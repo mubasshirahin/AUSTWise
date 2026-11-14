@@ -692,18 +692,7 @@
   .marketplace-hero-title {
     font-size: var(--fs-xl);
   }
-  /* Marketplace tabs only — must NOT leak to other pages' glider tabs */
-  .marketplace-page .glider-tabs-dashboard .glider-tabs-track {
-    flex-direction: column;
-    border-radius: 12px;
-  }
-  .marketplace-page .glider-tabs-dashboard .glider-tab {
-    width: 100%;
-    justify-content: flex-start;
-  }
-  .marketplace-page .glider-tabs-dashboard .glider-tabs-glider {
-    display: none;
-  }
+  /* Tab bar phone sizing is shared: src/components/GliderTabs.css */
 }
 
 /* ════════════════════════════════════════════════════════════════════════════

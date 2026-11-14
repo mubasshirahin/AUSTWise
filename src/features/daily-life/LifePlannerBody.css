@@ -693,6 +693,9 @@ button.pb-chip:hover { border-color: color-mix(in srgb, var(--pb-accent) 50%, va
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 4px;
+  padding-block: 10px;
+  border-top: 2px dotted color-mix(in srgb, var(--pb-ink-3) 45%, transparent);
+  border-bottom: 2px dotted color-mix(in srgb, var(--pb-ink-3) 45%, transparent);
 }
 .pb-month {
   position: relative;
@@ -718,7 +721,7 @@ button.pb-chip:hover { border-color: color-mix(in srgb, var(--pb-accent) 50%, va
 .pb-month.is-on { background: var(--pb-accent); color: var(--text-inverse); }
 .pb-month.is-on i.has { background: var(--text-inverse); }
 .pb-month.is-on.is-now::after { background: var(--text-inverse); }
-.pb-tl-summary { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0; padding-top: 12px; border-top: 1px solid var(--pb-line-soft); font-size: 12.5px; color: var(--pb-ink-3); }
+.pb-tl-summary { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0; font-size: 12.5px; color: var(--pb-ink-3); }
 .pb-tl-summary strong { color: var(--pb-ink); font-weight: 650; }
 .pb-tl-summary .is-alert { color: var(--pb-alert); font-weight: 600; }
 
@@ -804,28 +807,6 @@ button.pb-chip:hover { border-color: color-mix(in srgb, var(--pb-accent) 50%, va
 .pb-entry-path svg { opacity: 0.6; }
 .pb-entry .pb-chev { margin-top: 3px; opacity: 0; }
 .pb-entry:hover .pb-chev { opacity: 0.8; }
-
-.pb-fab {
-  position: absolute;
-  right: 16px;
-  bottom: 16px;
-  z-index: 5;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 34px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--pb-accent);
-  color: var(--text-inverse);
-  font: inherit;
-  font-size: 12.5px;
-  font-weight: 700;
-  box-shadow: var(--shadow-lg, 0 10px 24px rgba(0, 0, 0, 0.3));
-  cursor: pointer;
-  animation: pb-pop 0.18s var(--pb-ease);
-}
 
 /* Calendar */
 .pb-cal-head, .pb-cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
@@ -1106,9 +1087,7 @@ button.pb-chip:hover { border-color: color-mix(in srgb, var(--pb-accent) 50%, va
   .pb-steps { margin-left: 18px; }
   .pb-step .pb-icon { opacity: 1; }
 
-  .pb-tl-bar .pb-seg { margin-left: 0; }
-  .pb-tl-bar .pb-btn-soft { margin-left: auto; }
-  .pb-months { grid-template-columns: repeat(12, 52px); overflow-x: auto; scrollbar-width: none; margin: 0 -14px; padding: 0 14px; }
+  .pb-months { grid-template-columns: repeat(12, 52px); overflow-x: auto; scrollbar-width: none; margin-inline: -14px; padding-inline: 14px; }
   .pb-months::-webkit-scrollbar { display: none; }
   .pb-day-gutter { width: 52px; }
   .pb-day-body { padding: 6px 8px; }

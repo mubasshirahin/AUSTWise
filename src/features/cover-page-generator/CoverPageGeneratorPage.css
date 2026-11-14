@@ -14,15 +14,13 @@
   gap: 16px;
   max-width: 1440px;
   margin: 0 auto;
-  padding: 0;
   background: transparent;
   border: none;
   box-shadow: none;
   overflow: visible;
   min-width: 0;
 }
-/* Breathing room on all four sides of the masthead */
-.cpgen-widget .dl-head { margin: 8px; }
+.cpgen-widget .dl-head { margin: 0; }
 
 /* Status / type stat values: text, kept on one line */
 .cpgen-widget .dl-head-stat dd.cpgen-stat-text {
@@ -687,53 +685,14 @@
   .cpgen-preview-meta { display: none; }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   RESPONSIVE — masthead compaction (skill §2), mirrors the compact
-   Daily Life widgets in DailyMasthead.css
-   ═══════════════════════════════════════════════════════════════════════ */
+/* Masthead compaction lives in DailyMasthead.css (shared with Bhara Koto) */
 @media (max-width: 640px) {
   .cpgen-widget { gap: 10px; }
-  .cpgen-widget .dl-head {
-    gap: 8px;
-    padding: 9px 10px;
-  }
-  .cpgen-widget .dl-head-title { gap: 8px; }
-  .cpgen-widget .dl-head-tile { width: 34px; height: 34px; }
-  .cpgen-widget .dl-head-name { margin: 2px 0 0; font-size: 1rem; }
-  .cpgen-widget .dl-head-stats {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    align-items: stretch;
-    width: 100%;
-    padding-top: 8px;
-  }
-  .cpgen-widget .dl-head-stat {
-    position: relative;
-    justify-content: center;
-    gap: 3px;
-    padding: 2px 4px;
-    border-left: 0;
-  }
-  .cpgen-widget .dl-head-stat + .dl-head-stat { border-left: 0; }
-  .cpgen-widget .dl-head-stat:not(:last-child)::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    right: 0;
-    width: 1px;
-    height: 30px;
-    transform: translateY(-50%);
-    background: var(--border-primary);
-  }
-  .cpgen-widget .dl-head-stat dd:not(.is-small) { font-size: 1rem; }
+  .cpgen-widget .dl-head { margin: 0; }
   .cpgen-widget .dl-head-stat dd.cpgen-stat-text { max-width: 100%; }
   .cpgen-menu-btn {
     width: 30px; height: 30px; min-width: 30px; min-height: 30px;
   }
-}
-@media (max-width: 400px) {
-  .cpgen-widget .dl-head { padding: 8px; gap: 7px; }
-  .cpgen-widget .dl-head-tile { width: 32px; height: 32px; }
 }
 
 /* Touch: 40px fields everywhere */

@@ -2391,8 +2391,10 @@
    ultra-compact mode. Everything stays readable and scrollable. -- */
 @media (max-width: 640px) {
   .analytics-page { padding-bottom: var(--sp-6); }
-  .gl-tabs-card { padding: var(--sp-2); }
   .gl-content-card { padding: 0; }
+
+  /* Tab bar phone sizing is shared: src/components/GliderTabs.css */
+  .gl-tabs-card { min-width: 0; }
 
   /* CGPA Calculator: chart stays legible instead of shrinking to a stamp. */
   .cgpa-chart-card { border-radius: var(--radius-md); }

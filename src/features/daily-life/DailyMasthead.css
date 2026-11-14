@@ -1,5 +1,5 @@
 /* Shared Daily Life masthead — follows .claude/skills/skill-style (§2).
-   Used by Bhara Koto, TakaGeloKoi and Life Planner. */
+   Used by Bhara Koto, TakaGeloKoi, Life Planner, Cover Page and Password Manager. */
 .dl-head {
   position: relative;
   display: grid;
@@ -82,6 +82,61 @@
   .dl-head.has-actions { grid-template-columns: minmax(0, 1fr) auto; }
 }
 
+/* ⋮ menu button — bare icon, 34px hit area (30px phone), no box (skill-style §2) */
+.dl-head .dl-head-menu-btn {
+  display: inline-grid; place-items: center;
+  width: 34px; height: 34px; min-width: 34px; min-height: 34px;
+  padding: 0; border: 0; border-radius: var(--radius-md);
+  background: transparent; box-shadow: none;
+  color: var(--text-secondary); cursor: pointer;
+}
+.dl-head .dl-head-menu-btn:hover,
+.dl-head .dl-head-menu-btn[aria-expanded='true'] {
+  border: 0; background: transparent; color: var(--text-primary);
+}
+.dl-head .dl-head-menu-btn svg { width: 17px; height: 17px; }
+@media (max-width: 640px) {
+  .dl-head .dl-head-menu-btn { width: 30px; height: 30px; min-width: 30px; min-height: 30px; }
+}
+
+/* Navigator in the actions slot (‹ value ›: semester, zoom) — skill-style §4:
+   bare arrows, value as plain text, no pill or boxes. */
+.dl-head .dl-head-nav { display: inline-flex; align-items: center; gap: 4px; }
+.dl-head .dl-head-nav > button {
+  display: inline-grid; place-items: center;
+  width: 26px; height: 26px; min-width: 26px; min-height: 26px;
+  padding: 0; border: 0; border-radius: var(--radius-sm);
+  background: transparent; box-shadow: none;
+  color: var(--text-secondary); cursor: pointer;
+}
+.dl-head .dl-head-nav > button:hover:not(:disabled) { background: transparent; color: var(--text-primary); }
+.dl-head .dl-head-nav > button:disabled { opacity: 0.35; cursor: default; }
+.dl-head .dl-head-nav > button svg { width: 16px; height: 16px; }
+.dl-head .dl-head-nav > :not(button) {
+  display: flex; justify-content: center; align-items: center; flex: 1 1 auto;
+  min-width: 44px; height: auto; padding: 0 2px; margin: 0;
+  border: 0; background: transparent; box-shadow: none;
+  text-align: center; white-space: nowrap;
+}
+.dl-head .dl-head-nav > :not(button),
+.dl-head .dl-head-nav > :not(button) * {
+  font-size: 12.5px; font-weight: 600; color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Phone: navigator stays in row 1, compact, just left of the ⋮ menu
+   (title · ‹ 3.1 › · ⋮), stats on the row below. */
+@media (max-width: 640px) {
+  .dl-head .dl-head-actions:has(.dl-head-nav) { gap: 2px; }
+  .dl-head .dl-head-nav { gap: 0; }
+  .dl-head .dl-head-nav > :not(button) { flex: none; min-width: 26px; padding: 0 1px; }
+  .dl-head .dl-head-nav > :not(button),
+  .dl-head .dl-head-nav > :not(button) * { font-size: 11px; }
+  .dl-head .dl-head-nav > button { width: 22px; height: 22px; min-width: 22px; min-height: 22px; }
+  .dl-head .dl-head-nav > button svg { width: 15px; height: 15px; }
+  .dl-head:has(.dl-head-nav) .dl-head-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+
 /* Text-valued stat (e.g. a date) */
 .dl-head-stat dd.is-small { font-size: 0.95rem; white-space: nowrap; }
 @media (max-width: 640px) {
@@ -92,30 +147,33 @@
 }
 
 @media (max-width: 640px) {
-  :is(.bk-widget, .tgk-widget, .lp-widget) .dl-head {
+  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card) .dl-head {
     gap: 8px;
     padding: 9px 10px;
     margin-bottom: 10px;
   }
-  :is(.bk-widget, .tgk-widget, .lp-widget) .dl-head-title { gap: 8px; }
-  :is(.bk-widget, .tgk-widget, .lp-widget) .dl-head-tile { width: 34px; height: 34px; }
-  :is(.bk-widget, .tgk-widget, .lp-widget) .dl-head-name { margin: 2px 0 0; font-size: 1rem; }
-  :is(.bk-widget, .tgk-widget, .lp-widget) .dl-head-stats {
+  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card) .dl-head-title { gap: 8px; }
+  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card) .dl-head-tile { width: 34px; height: 34px; }
+  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card) .dl-head-name { margin: 2px 0 0; font-size: 1rem; }
+  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card) .dl-head-stats {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    /* one equal column per stat, so 2 stats sit centred, 3–4 share evenly */
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
     align-items: stretch;
     width: 100%;
     padding-top: 8px;
   }
-  :is(.bk-widget, .tgk-widget, .lp-widget) .dl-head-stat {
+  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card) .dl-head-stat {
     position: relative;
     justify-content: center;
     gap: 3px;
     padding: 2px 4px;
     border-left: 0;
   }
-  :is(.bk-widget, .tgk-widget, .lp-widget) .dl-head-stat + .dl-head-stat { border-left: 0; }
-  :is(.bk-widget, .tgk-widget, .lp-widget) .dl-head-stat:not(:last-child)::after {
+  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card) .dl-head-stat + .dl-head-stat { border-left: 0; }
+  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card) .dl-head-stat:not(:last-child)::after {
     content: '';
     position: absolute;
     top: 50%;
@@ -125,9 +183,9 @@
     transform: translateY(-50%);
     background: var(--border-primary);
   }
-  :is(.bk-widget, .tgk-widget, .lp-widget) .dl-head-stat dd:not(.is-small) { font-size: 1rem; }
+  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card) .dl-head-stat dd:not(.is-small) { font-size: 1rem; }
 }
 @media (max-width: 400px) {
-  :is(.bk-widget, .tgk-widget, .lp-widget) .dl-head { padding: 8px; gap: 7px; }
-  :is(.bk-widget, .tgk-widget, .lp-widget) .dl-head-tile { width: 32px; height: 32px; }
+  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card) .dl-head { padding: 8px; gap: 7px; }
+  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card) .dl-head-tile { width: 32px; height: 32px; }
 }

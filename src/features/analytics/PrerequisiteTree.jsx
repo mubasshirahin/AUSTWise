@@ -666,35 +666,26 @@ export default function PrerequisiteTree() {
       ref={containerRef}
       className={`prerequisite-tree glass-card-static schedule-widget st-widget prereq-widget animate-fadeInUp ${fullscreen ? 'prereq-fullscreen' : ''}`}
     >
-      <div className="schedule-masthead">
-        <div className="schedule-title-block">
-          <div className="schedule-icon-tile">
-            <GitBranch size={20} strokeWidth={2.2} />
+      <header className="dl-head has-actions">
+        <div className="dl-head-title">
+          <div className="dl-head-tile" aria-hidden="true">
+            <GitBranch size={20} strokeWidth={2.1} />
           </div>
-          <div className="schedule-title-text">
-            <span className="schedule-overline">Grade Lab</span>
-            <h2 className="schedule-title">Prerequisites</h2>
-            <span className="schedule-subtitle">CSE undergraduate course flow</span>
-          </div>
-        </div>
-
-        <div className="schedule-masthead-center schedule-stats">
-          <div className="schedule-stat">
-            <span className="schedule-stat-value">{statsCourses}</span>
-            <span className="schedule-stat-label">Courses</span>
-          </div>
-          <div className="schedule-stat">
-            <span className="schedule-stat-value">{statsBranches}</span>
-            <span className="schedule-stat-label">Branches</span>
-          </div>
-          <div className="schedule-stat">
-            <span className="schedule-stat-value">{dept}</span>
-            <span className="schedule-stat-label">Department</span>
+          <div className="dl-head-text">
+            <span className="dl-head-overline">GradeLab</span>
+            <h2 className="dl-head-name">Prerequisites</h2>
+            <span className="dl-head-subtitle">CSE undergraduate course flow</span>
           </div>
         </div>
 
-        <div className="schedule-actions">
-          <div className="schedule-week-nav">
+        <dl className="dl-head-stats">
+          <div className="dl-head-stat"><dt>Courses</dt><dd>{statsCourses}</dd></div>
+          <div className="dl-head-stat"><dt>Branches</dt><dd>{statsBranches}</dd></div>
+          <div className="dl-head-stat"><dt>Dept</dt><dd>{dept}</dd></div>
+        </dl>
+
+        <div className="dl-head-actions">
+          <div className="schedule-week-nav dl-head-nav">
             <button className="schedule-nav-btn" onClick={zoomOut} disabled={scale <= MIN_ZOOM} title="Zoom out (⌘-)">
               <ZoomOut size={16} />
             </button>
@@ -706,9 +697,7 @@ export default function PrerequisiteTree() {
             </button>
           </div>
         </div>
-      </div>
-
-      <div className="schedule-dotted-divider" />
+      </header>
 
       {/* Dept dropdown — 8 options below box (portal-fixed, no ancestor clip) */}
       <div className="prereq-dept-dropdown" ref={deptDropdownRef}>

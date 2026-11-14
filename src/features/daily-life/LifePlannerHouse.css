@@ -9,14 +9,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── 1. Shell: transparent, the cards do the framing ── */
-.daily-life-page .lp-widget.glass-card-static.schedule-widget,
-.lp-widget.glass-card-static {
-  padding: 0;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-}
+/* Framed like Bhara Koto: the shared glass card supplies border, fill and padding */
 .lp-widget { gap: 16px; }
 .lp-widget .dl-head { margin-bottom: 0; }
 
@@ -693,7 +686,7 @@
   .lp-widget .pb-stepper-value { font-size: 13px; }
   .lp-widget .pb-month { padding: 6px 0; font-size: 11px; }
   .lp-widget .pb-months { grid-template-columns: repeat(12, 44px); }
-  .lp-widget .pb-tl-summary { font-size: 11px; padding-top: 10px; }
+  .lp-widget .pb-tl-summary { font-size: 11px; }
   .lp-widget .pb-day-gutter { width: 44px; padding: 6px 0; }
   .lp-widget .pb-day-num { font-size: 13px; }
   .lp-widget .pb-day-body { padding: 4px 8px; }

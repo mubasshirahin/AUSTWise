@@ -183,35 +183,22 @@ export default function CoursePoll() {
 
   return (
     <div className="glass-card-static schedule-widget st-widget poll-widget animate-fadeInUp">
-      <div className="schedule-masthead">
-        <div className="schedule-title-block">
-          <div className="schedule-icon-tile">
-            <Trophy size={20} strokeWidth={2.2} />
+      <header className="dl-head">
+        <div className="dl-head-title">
+          <div className="dl-head-tile" aria-hidden="true">
+            <Trophy size={20} strokeWidth={2.1} />
           </div>
-          <div className="schedule-title-text">
-            <span className="schedule-overline">Grade Lab</span>
-            <h2 className="schedule-title">Best &amp; Worst</h2>
-            <span className="schedule-subtitle">Course poll · one vote per person</span>
-          </div>
-        </div>
-
-        <div className="schedule-masthead-center schedule-stats">
-          <div className="schedule-stat">
-            <span className="schedule-stat-value">{totalVoters}</span>
-            <span className="schedule-stat-label">Voters</span>
+          <div className="dl-head-text">
+            <span className="dl-head-overline">GradeLab</span>
+            <h2 className="dl-head-name">Best &amp; Worst</h2>
+            <span className="dl-head-subtitle">Course poll · one vote per person</span>
           </div>
         </div>
-
-        <div className="schedule-actions">
-          {voted && (
-            <span className="poll-recorded">
-              <CheckCircle size={15} /> Recorded
-            </span>
-          )}
-        </div>
-      </div>
-
-      <div className="schedule-dotted-divider" />
+        <dl className="dl-head-stats">
+          <div className="dl-head-stat"><dt>Voters</dt><dd>{totalVoters}</dd></div>
+          <div className="dl-head-stat"><dt>Your vote</dt><dd className="is-small">{voted ? 'Recorded' : 'Pending'}</dd></div>
+        </dl>
+      </header>
 
       {!voted && (
         <form

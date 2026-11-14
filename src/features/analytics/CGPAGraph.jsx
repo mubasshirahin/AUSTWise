@@ -225,45 +225,30 @@ export default function CGPAGraph() {
     <>
       {/* ─── Box 1: CGPA Calculator (masthead + chart) ─── */}
       <div className="glass-card-static schedule-widget cgpa-bol-widget animate-fadeInUp">
-        {/* ─── Masthead: 3-col grid (title | stats | actions) ─── */}
-        <div className="schedule-masthead">
-          <div className="schedule-title-block">
-            <div className="schedule-icon-tile">
-              <TrendingUp size={20} strokeWidth={2.2} />
+        {/* ─── Masthead (shared dl-head, skill-masthead) ─── */}
+        <header className="dl-head">
+          <div className="dl-head-title">
+            <div className="dl-head-tile" aria-hidden="true">
+              <TrendingUp size={20} strokeWidth={2.1} />
             </div>
-            <div>
-              <span className="schedule-overline">GradeLab</span>
-              <p className="schedule-title">CGPA Calculator</p>
-              <span className="schedule-subtitle">
+            <div className="dl-head-text">
+              <span className="dl-head-overline">GradeLab</span>
+              <h2 className="dl-head-name">CGPA Calculator</h2>
+              <span className="dl-head-subtitle">
                 {user?.department
                   ? `${user.department}${user?.yearSemester ? ` · ${user.yearSemester}` : ''}`
                   : 'Semester-wise grade breakdown'}
               </span>
             </div>
           </div>
-
-          <div className="schedule-masthead-center">
-            {hasData && (
-              <div className="schedule-stats">
-                <div className="schedule-stat">
-                  <span className="schedule-stat-value" style={{ color: 'var(--accent-amber)' }}>{currentCgpa?.toFixed(2) ?? '—'}</span>
-                  <span className="schedule-stat-label">Current CGPA</span>
-                </div>
-                <div className="schedule-stat">
-                  <span className="schedule-stat-value" style={{ color: 'var(--accent-blue)' }}>{bestSem.gpa ?? '—'}</span>
-                  <span className="schedule-stat-label">Best Sem</span>
-                </div>
-                <div className="schedule-stat">
-                  <span className="schedule-stat-value" style={{ color: 'var(--accent-emerald)' }}>{creditsCompleted.toFixed(2)}</span>
-                  <span className="schedule-stat-label">Credits Done</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-      </div>
-
-      <div className="schedule-dotted-divider" />
+          {hasData && (
+            <dl className="dl-head-stats">
+              <div className="dl-head-stat"><dt>CGPA</dt><dd>{currentCgpa?.toFixed(2) ?? '—'}</dd></div>
+              <div className="dl-head-stat"><dt>Best Sem</dt><dd>{bestSem.gpa ?? '—'}</dd></div>
+              <div className="dl-head-stat"><dt>Credits</dt><dd>{creditsCompleted.toFixed(2)}</dd></div>
+            </dl>
+          )}
+        </header>
 
         {/* ─── Empty state ─── */}
         {!hasData && (

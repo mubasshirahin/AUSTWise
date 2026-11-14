@@ -675,16 +675,16 @@ export default function SemesterTracker() {
   return (
     <div className="glass-card-static schedule-widget st-widget animate-fadeInUp">
 
-      {/* ── Masthead (matches dashboard Semester View) ── */}
-      <div className="schedule-masthead">
-        <div className="schedule-title-block">
-          <div className="schedule-icon-tile">
-            <Layers size={20} strokeWidth={2.2} />
+      {/* ── Masthead (shared dl-head, skill-masthead) ── */}
+      <header className="dl-head has-actions">
+        <div className="dl-head-title">
+          <div className="dl-head-tile" aria-hidden="true">
+            <Layers size={20} strokeWidth={2.1} />
           </div>
-          <div>
-            <span className="schedule-overline">Grade Lab</span>
-            <p className="schedule-title">Semester Wise</p>
-            <span className="schedule-subtitle">
+          <div className="dl-head-text">
+            <span className="dl-head-overline">GradeLab</span>
+            <h2 className="dl-head-name">Semester Wise</h2>
+            <span className="dl-head-subtitle">
               {user?.department
                 ? `${user.department} · ${formatSemesterLabel(selectedSemester)}`
                 : 'Theory & lab mark sheet'}
@@ -692,21 +692,13 @@ export default function SemesterTracker() {
           </div>
         </div>
 
-        <div className="schedule-masthead-center">
-          <div className="schedule-stats">
-            <div className="schedule-stat">
-              <span className="schedule-stat-value">{theoryCourses.length}</span>
-              <span className="schedule-stat-label">Theory</span>
-            </div>
-            <div className="schedule-stat">
-              <span className="schedule-stat-value">{labCourses.length}</span>
-              <span className="schedule-stat-label">Lab</span>
-            </div>
-          </div>
-        </div>
+        <dl className="dl-head-stats">
+          <div className="dl-head-stat"><dt>Theory</dt><dd>{theoryCourses.length}</dd></div>
+          <div className="dl-head-stat"><dt>Lab</dt><dd>{labCourses.length}</dd></div>
+        </dl>
 
-        <div className="schedule-actions">
-          <div className="schedule-week-nav">
+        <div className="dl-head-actions">
+          <div className="schedule-week-nav dl-head-nav">
             <button className="schedule-nav-btn" onClick={goPrevSem} title="Previous semester">
               <ChevronLeft size={20} />
             </button>
@@ -718,7 +710,7 @@ export default function SemesterTracker() {
             </button>
           </div>
           <div className="export-dropdown" ref={stMenuRef}>
-            <button className="schedule-nav-btn" ref={stMenuBtnRef} onClick={() => {
+            <button className="dl-head-menu-btn" ref={stMenuBtnRef} onClick={() => {
               if (!stMenuOpen && stMenuBtnRef.current) {
                 const rect = stMenuBtnRef.current.getBoundingClientRect();
                 setStMenuPos({ top: rect.bottom + 6, right: Math.max(8, window.innerWidth - rect.right) });
@@ -752,9 +744,7 @@ export default function SemesterTracker() {
             )}
           </div>
         </div>
-      </div>
-
-      <div className="schedule-dotted-divider" />
+      </header>
 
       {/* ══════════════════════════════
           THEORY SECTION

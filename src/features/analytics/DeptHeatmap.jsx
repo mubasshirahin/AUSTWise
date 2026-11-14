@@ -122,24 +122,22 @@ export default function DeptHeatmap() {
 
   return (
     <div className="glass-card-static schedule-widget st-widget heatmap-widget animate-fadeInUp">
-      <div className="schedule-masthead" style={{ gridTemplateColumns: '1fr auto' }}>
-        <div className="schedule-title-block">
-          <div className="schedule-icon-tile">
-            <Grid3x3 size={20} strokeWidth={2.2} />
+      <header className="dl-head has-actions">
+        <div className="dl-head-title">
+          <div className="dl-head-tile" aria-hidden="true">
+            <Grid3x3 size={20} strokeWidth={2.1} />
           </div>
-          <div className="schedule-title-text">
-            <span className="schedule-overline">Grade Lab</span>
-            <h2 className="schedule-title">Dept. Heatmap</h2>
-            <span className="schedule-subtitle">
-              Avg SGPA · {heatmapView.totalSubmissions} students · {totalBatches} batches
-            </span>
+          <div className="dl-head-text">
+            <span className="dl-head-overline">GradeLab</span>
+            <h2 className="dl-head-name">Dept. Heatmap</h2>
+            <span className="dl-head-subtitle">Avg SGPA · {heatmapView.totalSubmissions} students · {totalBatches} batches</span>
           </div>
         </div>
 
-        <div className="schedule-actions">
+        <div className="dl-head-actions">
           <div className="export-dropdown" ref={menuRef}>
             <button
-              className="schedule-nav-btn"
+              className="dl-head-menu-btn"
               onClick={() => setMenuOpen((open) => !open)}
               aria-label="Heatmap options"
               aria-expanded={menuOpen}
@@ -166,9 +164,7 @@ export default function DeptHeatmap() {
             )}
           </div>
         </div>
-      </div>
-
-      <div className="schedule-dotted-divider" />
+      </header>
 
       {heatmapView.visibleBatches.length > 0 && (
         <section className="hm-chart-card" aria-label={`${selectedDepartment} semester average graph`}>
