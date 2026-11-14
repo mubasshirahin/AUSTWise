@@ -296,3 +296,101 @@
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Zero Hour — phone (≤640px), skill-style §2/§3/§11
+   Compact masthead; course cards with the six exam slots in a 2-column
+   grid (slot name + status on top, date below) so each course is about
+   half as tall.
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  .exam-widget .schedule-masthead {
+    padding: 9px 10px !important;
+    margin-bottom: 10px;
+    column-gap: 10px;
+    border: 1px solid var(--accent-amber);
+    background: linear-gradient(125deg, color-mix(in srgb, var(--accent-amber) 7%, transparent), transparent 55%), var(--bg-card);
+    box-shadow: none;
+  }
+  .exam-widget .schedule-masthead::after { display: none; }
+  .exam-widget .schedule-title-block { gap: 8px; }
+  .exam-widget .schedule-icon-tile {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    border-radius: var(--radius-sm);
+  }
+  .exam-widget .schedule-icon-tile svg { width: 18px; height: 18px; filter: none; }
+  .exam-widget .schedule-icon-tile:hover { transform: none; }
+  .exam-widget .schedule-masthead .schedule-overline { font-size: 9px; }
+  .exam-widget .schedule-masthead .schedule-title { font-size: 1rem; line-height: 1.2; margin-top: 1px; }
+  .exam-widget .schedule-masthead .schedule-subtitle {
+    font-size: 10.5px;
+    margin-top: 1px;
+    white-space: nowrap;
+  }
+  .exam-widget .schedule-masthead .schedule-stats { gap: 12px; }
+  .exam-widget .schedule-masthead .schedule-stat {
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+  }
+  .exam-widget .schedule-masthead .schedule-stat-value { font-size: 15px; font-weight: 800; }
+  .exam-widget .schedule-masthead .schedule-stat-label { font-size: 8.5px; letter-spacing: 0.06em; margin: 0; }
+  .exam-widget > .schedule-dotted-divider { display: none; }
+
+  .exam-widget .exam-grid { gap: 8px; }
+  .exam-widget .exam-cell {
+    min-height: 0;
+    height: auto;
+    padding: 10px;
+    gap: 4px;
+  }
+  .exam-widget .exam-cell:hover { transform: none; box-shadow: none; }
+  .exam-widget .exam-cell.today {
+    border-color: var(--accent-amber);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-amber) 20%, transparent);
+  }
+  .exam-widget .exam-cell .exam-cell-code { font-size: 14px; }
+  .exam-widget .exam-cell .exam-cell-name { font-size: 11px; }
+  .exam-widget .exam-cell .schedule-day-count {
+    min-width: 16px;
+    height: 16px;
+    font-size: 8.5px;
+  }
+
+  /* Six slots → 2 × 3 grid */
+  .exam-widget .exam-cell .schedule-task-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px;
+  }
+  .exam-widget .exam-cell .schedule-task-list > .schedule-empty { grid-column: 1 / -1; padding: 2px 0 0; }
+  .exam-widget .schedule-task-item.exam-slot-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "name state" "date date";
+    align-items: center;
+    row-gap: 2px;
+    column-gap: 6px;
+    min-width: 0;
+    padding: 6px 8px;
+  }
+  .exam-widget .schedule-task-item.exam-slot-item:hover { transform: none; }
+  .exam-widget .exam-slot-item .exam-slot-name { grid-area: name; font-size: 9.5px; min-width: 0; }
+  .exam-widget .exam-slot-item .exam-slot-state { grid-area: state; justify-self: end; font-size: 9px; }
+  .exam-widget .exam-slot-item .exam-slot-state::before { width: 5px; height: 5px; }
+  .exam-widget .exam-slot-item .exam-slot-date {
+    grid-area: date;
+    margin: 0;
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Narrow phones */
+@media (max-width: 400px) {
+  .exam-widget .schedule-masthead { padding: 8px 9px !important; }
+  .exam-widget .schedule-icon-tile { width: 32px; height: 32px; min-width: 32px; }
+  .exam-widget .schedule-masthead .schedule-stats { gap: 10px; }
+}
