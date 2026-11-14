@@ -16,7 +16,7 @@ const isGeneratedRoutineFixture = (routine) => String(routine?.id || '').startsW
 
 export default function WeeklyPlanner() {
   const { user } = useAuth();
-  const { routine, weekDays, isLoading, updateRoutineClass, addRoutineClass, deleteRoutineClass, replaceRoutine } = useRoutine();
+  const { routine, weekDays, isLoading, loadedSharedCrId, updateRoutineClass, addRoutineClass, deleteRoutineClass, replaceRoutine, markSharedRoutineLoaded, clearSharedRoutineSource } = useRoutine();
   const [editing, setEditing] = useState(null);
   const [showLoadModal, setShowLoadModal] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -460,7 +460,7 @@ export default function WeeklyPlanner() {
         if (!latest) throw new Error('This routine is no longer shared. Refresh the list and try again.');
         await replaceRoutine(latest.routine, latest.weekDays);
         if (latest.crId && user?.id) {
-          const saved = await userStore.set(`aust-loaded-shared-routine:${user.id}`, latest.crId);
+          const saved = await markSharedRoutineLoaded(latest.crId);
           if (!saved) throw new Error('Routine loaded, but its live sync could not be saved to your account.');
         }
         setLoadedSharedRoutine(latest);
@@ -477,7 +477,7 @@ export default function WeeklyPlanner() {
     const sourceKey = `aust-loaded-shared-routine:${user.id}`;
     if (await userStore.get(sourceKey) !== crId) return;
     if (action === 'delete') {
-      await userStore.del(sourceKey);
+      await clearSharedRoutineSource();
       setLoadedSharedRoutine((current) => current?.crId === crId ? null : current);
       return;
     }
@@ -485,11 +485,11 @@ export default function WeeklyPlanner() {
       const data = await sharedApi('/api/routines/shared');
       const latest = (data.routines || []).find(item => item.crId === crId);
       if (!latest) {
-        await userStore.del(sourceKey);
+        await clearSharedRoutineSource();
         setLoadedSharedRoutine((current) => current?.crId === crId ? null : current);
         return;
       }
-      await replaceRoutine(latest.routine, latest.weekDays);
+      await replaceRoutine(latest.routine, latest.weekDays, { keepSharedSource: true });
       setLoadedSharedRoutine(latest);
       window.dispatchEvent(new Event('routine-updated'));
     } catch (error) {
@@ -662,7 +662,7 @@ export default function WeeklyPlanner() {
 
        <div className="schedule-dotted-divider" />
 
-        {loadedSharedRoutine && (
+        {loadedSharedRoutine && loadedSharedCrId && (
           <div role="status" className="loaded-routine-banner" style={{
             display: 'flex', alignItems: 'center', gap: '8px',
             padding: '9px 12px', margin: '0 0 10px', borderRadius: '10px',

@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, FileDown, MoreVertical, Check } from 'lucide-react';
+import { Calendar, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, FileDown, MoreVertical, Check, LayoutGrid, List, Loader2, Image as ImageIcon } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useLiveValue } from '../../utils/liveStore';
@@ -38,6 +38,14 @@ export default function WeekSchedule() {
     viewWasChangedByUserRef.current = true;
     setViewMode(nextView);
   };
+  // Week/Month layout: 'box' (calendar grid) or 'list' (one row per day).
+  // Remembered per device.
+  const [layout, setLayout] = useState(() => {
+    try { return localStorage.getItem('aust-semester-layout') === 'list' ? 'list' : 'box'; } catch { return 'box'; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('aust-semester-layout', layout); } catch {}
+  }, [layout]);
   const [semesterStart, setSemesterStart] = useLiveValue(
     'shared', 'semester-start-date', new Date().toISOString().split('T')[0]
   );
@@ -167,6 +175,14 @@ export default function WeekSchedule() {
     }
     setCurrentDate(date);
   };
+  // Phone month cells are too small to list tasks (number + count only),
+  // so tapping a day that has tasks opens its Day View (empty days do nothing).
+  // Desktop cells keep their tasks.
+  const openDayFromMonthOnPhone = (date) => {
+    if (!window.matchMedia('(max-width: 640px)').matches) return;
+    setCurrentDate(new Date(date));
+    changeViewMode('daily');
+  };
 
   // Forward scroll stops at the 17-week semester window, but never earlier
   // than the real current week. During the post-semester break "now" sits past
@@ -241,7 +257,7 @@ export default function WeekSchedule() {
 
   // Shared day-cell renderer — used identically by Day, Week and Month views.
   const renderDayCard = (date, opts = {}) => {
-    const { limit } = opts;
+    const { limit, onOpen } = opts;
     if (isInitialLoading) {
       return (
         <div key={formatDateKey(date)} className="schedule-day-card skeleton-row">
@@ -261,7 +277,8 @@ export default function WeekSchedule() {
       );
     }
     return (
-      <div key={formatDateKey(date)} className={`schedule-day-card${isToday(date) ? ' today' : ''}`}>
+      <div key={formatDateKey(date)} className={`schedule-day-card${isToday(date) ? ' today' : ''}${dayTasks.length > 0 ? ' has-tasks' : ''}`}
+        onClick={onOpen && dayTasks.length > 0 ? () => onOpen(date) : undefined}>
         <div className="schedule-day-top">
           <div className="schedule-day-num-wrap">
             <div className={`schedule-day-num${isToday(date) ? ' today' : ''}`}>{getDayNumber(date)} <span className="schedule-day-month">{getMonthName(date)}</span></div>
@@ -292,6 +309,48 @@ export default function WeekSchedule() {
             </div>
           )}
         </div>
+      </div>
+    );
+  };
+
+  // List layout — one row per day (every day of the week / month):
+  // date block · that day's tasks, or "Clear".
+  const renderDayList = (dates) => {
+    const rows = dates
+      .filter(Boolean)
+      .map(date => ({ date, dayTasks: isInitialLoading ? [] : getTasksForDate(date) }));
+    return (
+      <div className="schedule-list" role="list">
+        {rows.map(({ date, dayTasks }) => {
+          const before = isBeforeSemesterStart(date);
+          const today = isToday(date);
+          return (
+            <div key={formatDateKey(date)} role="listitem"
+              className={`schedule-list-row${today ? ' today' : ''}${before ? ' before-semester' : ''}${dayTasks.length === 0 ? ' is-empty' : ''}`}>
+              <div className="schedule-list-date">
+                <span className="schedule-list-dow">{date.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+                <span className="schedule-list-num">{getDayNumber(date)}</span>
+                <span className="schedule-list-mon">{getMonthName(date)}</span>
+              </div>
+              <div className="schedule-list-body">
+                {isInitialLoading ? (
+                  <div className="skeleton-line skeleton-line--full" style={{ height: '14px' }} />
+                ) : dayTasks.length === 0 ? (
+                  <span className="schedule-list-clear">{before ? 'Before semester' : 'Clear'}</span>
+                ) : dayTasks.map(task => (
+                  <button key={task.id} type="button" className="schedule-list-task"
+                    onClick={(e) => { e.stopPropagation(); setSelectedTask(task); }}>
+                    {task.courseCode && <span className="schedule-list-code">{task.courseCode}</span>}
+                    <span className="schedule-list-title">{task.title}</span>
+                    {task.batchGroup && <span className="schedule-list-batch">{task.batchGroup}</span>}
+                    {task.time && <span className="schedule-list-time">{task.time}</span>}
+                  </button>
+                ))}
+              </div>
+              {today && <span className="schedule-list-today">Today</span>}
+            </div>
+          );
+        })}
       </div>
     );
   };
@@ -405,20 +464,41 @@ export default function WeekSchedule() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  // Keep the portalled ⋮ menu pinned directly under its button while the
-  // page scrolls or resizes (it is position:fixed, so it would otherwise
-  // stay where it opened and drift away from the button).
+  // Place the portalled ⋮ menu so it is fully visible: under its button when
+  // it fits, otherwise opening upward, otherwise shifted up so its bottom
+  // sits just above the mobile bottom nav. Only a menu taller than the whole
+  // screen scrolls inside.
+  const placeMenu = useCallback(() => {
+    const btn = menuBtnRef.current;
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const nav = document.querySelector('nav.mobile-nav');
+    const navRect = nav && getComputedStyle(nav).display !== 'none' ? nav.getBoundingClientRect() : null;
+    const limitBottom = (navRect && navRect.height ? Math.min(navRect.top, window.innerHeight) : window.innerHeight) - 8;
+    const limitTop = 8;
+    const el = menuRef.current;
+    // Full height incl. borders, even while a max-height is clipping it.
+    const menuH = el ? el.scrollHeight + (el.offsetHeight - el.clientHeight) : 0;
+    let top = rect.bottom + 6;
+    if (menuH && top + menuH > limitBottom) {
+      top = rect.top - 6 - menuH >= limitTop
+        ? rect.top - 6 - menuH
+        : Math.max(limitTop, limitBottom - menuH);
+    }
+    setMenuPos({ top, right: window.innerWidth - rect.right, maxH: Math.max(120, limitBottom - top) });
+  }, []);
+  useLayoutEffect(() => {
+    if (showExportMenu) placeMenu();
+  }, [showExportMenu, placeMenu]);
+
+  // Keep it placed while the page scrolls or resizes (it is position:fixed,
+  // so it would otherwise stay where it opened and drift from the button).
   useEffect(() => {
     if (!showExportMenu) return undefined;
     let frame = 0;
     const place = () => {
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const btn = menuBtnRef.current;
-        if (!btn) return;
-        const rect = btn.getBoundingClientRect();
-        setMenuPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
-      });
+      frame = requestAnimationFrame(placeMenu);
     };
     window.addEventListener('scroll', place, { passive: true, capture: true });
     window.addEventListener('resize', place);
@@ -427,177 +507,47 @@ export default function WeekSchedule() {
       window.removeEventListener('scroll', place, { capture: true });
       window.removeEventListener('resize', place);
     };
-  }, [showExportMenu]);
+  }, [showExportMenu, placeMenu]);
 
-  const scheduleRef = useRef(null);
-
-  const downloadSchedulePDF = useCallback(async () => {
-    const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
-      import('html2canvas-pro'), import('jspdf')
-    ]);
-    const el = scheduleRef.current;
-    if (!el) return;
-
-    const root = document.documentElement;
-    const cs = (n) => getComputedStyle(root).getPropertyValue(n).trim();
-    const bg = cs('--bg-primary');
-    const textPri = cs('--text-primary');
-    const textSec = cs('--text-secondary');
-    const textTer = cs('--text-tertiary');
-    const logoUrl = brandMark;
-
-    const container = document.createElement('div');
-    container.style.cssText = `
-      position: fixed; left: -9999px; top: 0; width: fit-content; max-width: 1200px;
-      background: ${bg};
-      font-family: system-ui, -apple-system, sans-serif;
-      padding-bottom: 10px;
-    `;
-
-    const ord = (n) => n + ({1:'st',2:'nd',3:'rd'}[n]||'th');
-    const fmtSem = (s) => {
-      const m = (s||'').match(/Year\s*(\d+)\s*-\s*Semester\s*(\d+)/i);
-      return m ? `${ord(+m[1])} Year, ${+m[2]}${['th','st','nd','rd'][+m[2]]||'th'} Sem` : s;
-    };
-    const semStr = user?.yearSemester || user?.semester || '';
-    const deptStr = user?.department || '';
-
-    const brandBar = document.createElement('div');
-    brandBar.style.cssText = 'padding: 4px 8px;';
-    brandBar.innerHTML = `
-      <div style="display: flex; align-items: center; justify-content: space-between;">
-        <div style="display: flex; align-items: center; gap: 6px;">
-          <img src="${logoUrl}" alt="AUSTWise" style="width: 28px; height: 28px; object-fit: contain; flex-shrink: 0;" />
-          <div style="display: flex; flex-direction: column; justify-content: center; margin-top: -14px;">
-            <div style="font-size: 16px; font-weight: 800; color: ${textPri}; letter-spacing: -0.01em; line-height: 1.1;">AUSTWise</div>
-            <div style="font-size: 8px; color: ${textTer}; letter-spacing: 0.06em; text-transform: uppercase;">Your Academic Companion</div>
-          </div>
-        </div>
-        ${(deptStr || semStr) ? `<div style="font-size: 12px; color: ${textSec}; font-weight: 600; text-align: center; line-height: 1.5;">
-          ${deptStr ? `<div>${deptStr}</div>` : ''}
-          ${semStr ? `<div>${fmtSem(semStr)}</div>` : ''}
-        </div>` : ''}
-        <div style="text-align: right;">
-          <div style="font-size: 8px; color: ${textTer}; text-transform: uppercase; letter-spacing: 0.06em;">Generated</div>
-          <div style="font-size: 11px; color: ${textPri}; font-weight: 700; margin-top: 1px;">
-            ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-          </div>
-        </div>
-      </div>
-    `;
-    container.appendChild(brandBar);
-
-    const isMonthly = viewMode === 'monthly';
-    const clone = el.cloneNode(true);
-    clone.style.cssText = `overflow: visible; border-radius: ${isMonthly ? 0 : 8}px; padding: 0;`;
-    clone.style.margin = '6px 8px 0';
-    container.appendChild(clone);
-
-    document.body.appendChild(container);
-
+  // ── Export: drawn from task data (see semesterExport.js), same approach
+  // and house style as the Routine Grid export. Exports the open view
+  // (Day / Week / Month) with the current batch filter.
+  const [exporting, setExporting] = useState(null); // 'pdf' | 'jpg' | null
+  const runExport = async (kind) => {
+    if (exporting) return;
+    setExporting(kind);
     try {
-      const canvas = await html2canvas(container, {
-        scale: isMonthly ? 3 : 2.5, useCORS: true, backgroundColor: bg || '#ffffff',
-        logging: false, width: container.scrollWidth, height: container.scrollHeight,
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      const imgW = isMonthly ? canvas.width * 0.2646 : 290;
-      const imgH = isMonthly ? canvas.height * 0.2646 : (canvas.height * imgW) / canvas.width;
-      const pageW = imgW + 8;
-      const pageH = imgH + 4;
-
-      const pdf = new jsPDF({ orientation: 'l', unit: 'mm', format: [pageW, pageH] });
-      const hex = bg.replace('#', '');
-      if (hex.length >= 6) {
-        pdf.setFillColor(parseInt(hex.substring(0,2),16), parseInt(hex.substring(2,4),16), parseInt(hex.substring(4,6),16));
-        pdf.rect(0, 0, pageW, pageH, 'F');
-      }
-      pdf.addImage(imgData, 'PNG', 4, 2, imgW, imgH);
-      pdf.save('AUST-14Week-Schedule.pdf');
+      const { exportSemesterPDF, exportSemesterJPG } = await import('./semesterExport');
+      const dates = viewMode === 'daily' ? [currentDate] : viewMode === 'monthly' ? monthDates : weekDates;
+      const cells = dates.map((date) => (date ? {
+        date,
+        tasks: getTasksForDate(date),
+        today: isToday(date),
+        before: isBeforeSemesterStart(date),
+      } : null));
+      const short = (d) => d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+      const periodLabel = viewMode === 'daily'
+        ? currentDate.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })
+        : viewMode === 'monthly'
+          ? currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+          : `${getWeekLabel()} · ${short(weekDates[0])} – ${short(weekDates[6])}`;
+      const opts = {
+        viewMode,
+        layout,
+        cells,
+        periodLabel,
+        filterLabel: batchFilter !== 'all' ? `${batchFilter} only` : '',
+        meta: { dept: user?.department || '', sem: user?.yearSemester || user?.semester || '' },
+        logoUrl: brandMark,
+      };
+      await (kind === 'pdf' ? exportSemesterPDF(opts) : exportSemesterJPG(opts));
+    } catch (error) {
+      console.error('Semester View export failed', error);
+      window.alert('Export failed — please try again.');
     } finally {
-      document.body.removeChild(container);
+      setExporting(null);
     }
-  }, [user, viewMode]);
-
-  const downloadScheduleImage = useCallback(async () => {
-    const { default: html2canvas } = await import('html2canvas-pro');
-    const el = scheduleRef.current;
-    if (!el) return;
-
-    const root = document.documentElement;
-    const cs = (n) => getComputedStyle(root).getPropertyValue(n).trim();
-    const bg = cs('--bg-primary');
-    const textPri = cs('--text-primary');
-    const textSec = cs('--text-secondary');
-    const textTer = cs('--text-tertiary');
-    const logoUrl = brandMark;
-
-    const container = document.createElement('div');
-    container.style.cssText = `
-      position: fixed; left: -9999px; top: 0; width: fit-content; max-width: 1200px;
-      background: ${bg};
-      font-family: system-ui, -apple-system, sans-serif;
-      padding-bottom: 10px;
-    `;
-
-    const ord = (n) => n + ({1:'st',2:'nd',3:'rd'}[n]||'th');
-    const fmtSem = (s) => {
-      const m = (s||'').match(/Year\s*(\d+)\s*-\s*Semester\s*(\d+)/i);
-      return m ? `${ord(+m[1])} Year, ${+m[2]}${['th','st','nd','rd'][+m[2]]||'th'} Sem` : s;
-    };
-    const semStr = user?.yearSemester || user?.semester || '';
-    const deptStr = user?.department || '';
-
-    const brandBar = document.createElement('div');
-    brandBar.style.cssText = 'padding: 4px 8px;';
-    brandBar.innerHTML = `
-      <div style="display: flex; align-items: center; justify-content: space-between;">
-        <div style="display: flex; align-items: center; gap: 6px;">
-          <img src="${logoUrl}" alt="AUSTWise" style="width: 28px; height: 28px; object-fit: contain; flex-shrink: 0;" />
-          <div style="display: flex; flex-direction: column; justify-content: center; margin-top: -14px;">
-            <div style="font-size: 16px; font-weight: 800; color: ${textPri}; letter-spacing: -0.01em; line-height: 1.1;">AUSTWise</div>
-            <div style="font-size: 8px; color: ${textTer}; letter-spacing: 0.06em; text-transform: uppercase;">Your Academic Companion</div>
-          </div>
-        </div>
-        ${(deptStr || semStr) ? `<div style="font-size: 12px; color: ${textSec}; font-weight: 600; text-align: center; line-height: 1.5;">
-          ${deptStr ? `<div>${deptStr}</div>` : ''}
-          ${semStr ? `<div>${fmtSem(semStr)}</div>` : ''}
-        </div>` : ''}
-        <div style="text-align: right;">
-          <div style="font-size: 8px; color: ${textTer}; text-transform: uppercase; letter-spacing: 0.06em;">Generated</div>
-          <div style="font-size: 11px; color: ${textPri}; font-weight: 700; margin-top: 1px;">
-            ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-          </div>
-        </div>
-      </div>
-    `;
-    container.appendChild(brandBar);
-
-    const isMonthly = viewMode === 'monthly';
-    const clone = el.cloneNode(true);
-    clone.style.cssText = `overflow: visible; border-radius: ${isMonthly ? 0 : 8}px; padding: 0;`;
-    clone.style.margin = '6px 8px 0';
-    container.appendChild(clone);
-
-    document.body.appendChild(container);
-
-    try {
-      const canvas = await html2canvas(container, {
-        scale: isMonthly ? 3 : 2.5, useCORS: true, backgroundColor: bg || '#ffffff',
-        logging: false, width: container.scrollWidth, height: container.scrollHeight,
-      });
-
-      const link = document.createElement('a');
-      link.download = 'AUST-14Week-Schedule.png';
-      link.href = canvas.toDataURL('image/png');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } finally {
-      document.body.removeChild(container);
-    }
-  }, [user, viewMode]);
+  };
 
   return (
     <div className="glass-card-static schedule-widget week-schedule-widget animate-fadeInUp" style={{ minHeight: '680px' }}>
@@ -670,14 +620,14 @@ export default function WeekSchedule() {
               <MoreVertical size={18} />
             </button>
             {showExportMenu && createPortal(
-              <div ref={menuRef} className="export-menu routine-more-menu" style={{
+              <div ref={menuRef} className="export-menu routine-more-menu week-schedule-menu" style={{
                 position: 'fixed',
                 top: menuPos.top,
                 right: menuPos.right,
                 zIndex: 99999,
-                // Fits the space below the button (above the mobile bottom nav);
-                // longer menus scroll inside instead of sliding off-screen.
-                maxHeight: `max(160px, calc(100dvh - ${Math.round(menuPos.top)}px - 96px))`,
+                // placeMenu() keeps it on screen; only a menu taller than the
+                // whole screen scrolls inside.
+                maxHeight: menuPos.maxH ? `${Math.round(menuPos.maxH)}px` : undefined,
                 overflowY: 'auto',
               }}>
                 <button
@@ -705,11 +655,24 @@ export default function WeekSchedule() {
                   <Calendar size={14} /> Month View {viewMode === 'monthly' && <Check size={14} className="menu-check" />}
                 </button>
                 <div className="export-menu-sep" />
-                <button className="export-menu-item" onClick={() => { downloadSchedulePDF(); setShowExportMenu(false); }}>
-                  <FileDown size={14} /> Export as PDF
+                <button
+                  className={`export-menu-item${layout === 'box' ? ' menu-active' : ''}`}
+                  onClick={() => { setLayout('box'); setShowExportMenu(false); }}
+                >
+                  <LayoutGrid size={14} /> Box Layout {layout === 'box' && <Check size={14} className="menu-check" />}
                 </button>
-                <button className="export-menu-item" onClick={() => { downloadScheduleImage(); setShowExportMenu(false); }}>
-                  <FileDown size={14} /> Export as Image
+                <button
+                  className={`export-menu-item${layout === 'list' ? ' menu-active' : ''}`}
+                  onClick={() => { setLayout('list'); setShowExportMenu(false); }}
+                >
+                  <List size={14} /> List Layout {layout === 'list' && <Check size={14} className="menu-check" />}
+                </button>
+                <div className="export-menu-sep" />
+                <button className="export-menu-item" disabled={!!exporting} onClick={() => { runExport('pdf'); setShowExportMenu(false); }}>
+                  {exporting === 'pdf' ? <Loader2 size={14} className="spin" /> : <FileDown size={14} />} Export as PDF
+                </button>
+                <button className="export-menu-item" disabled={!!exporting} onClick={() => { runExport('jpg'); setShowExportMenu(false); }}>
+                  {exporting === 'jpg' ? <Loader2 size={14} className="spin" /> : <ImageIcon size={14} />} Export as JPG
                 </button>
               </div>,
               document.body
@@ -758,7 +721,7 @@ export default function WeekSchedule() {
       </div>
       </div>{/* end schedule-fixed-header */}
 
-      <div className="schedule-scroll-body" ref={scheduleRef}>
+      <div className="schedule-scroll-body">
       {viewMode === 'daily' ? (() => {
         const date = currentDate;
         return (
@@ -786,7 +749,9 @@ export default function WeekSchedule() {
             )}
           </div>
         );
-      })() : viewMode === 'monthly' ? (
+      })() : layout === 'list' ? (
+        renderDayList(viewMode === 'monthly' ? monthDates : weekDates)
+      ) : viewMode === 'monthly' ? (
         <>
           <div className="schedule-month-grid schedule-days-row" style={{ marginBottom: '12px' }}>
             {['Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu'].map((day, i) => (
@@ -796,7 +761,7 @@ export default function WeekSchedule() {
           <div className="schedule-month-grid">
             {monthDates.map((date, idx) => {
               if (!date) return <div key={`pad-${idx}`} />;
-              return renderDayCard(date, { limit: 5 });
+              return renderDayCard(date, { limit: 5, onOpen: openDayFromMonthOnPhone });
             })}
           </div>
         </>

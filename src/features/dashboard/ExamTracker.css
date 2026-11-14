@@ -4,128 +4,6 @@
    classes from DashboardPage.css. Only exam-specific pieces live here.
    ════════════════════════════════════════════════════════════════ */
 
-/* ─── Course grid ─── */
-.exam-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: var(--sp-3);
-  align-items: start;
-}
-
-/* ─── Course cell ───
-   Reuses .schedule-day-card: flat var(--bg-card) fill, --radius-md,
-   ~100px min-height, no background tinting of the whole cell. */
-.exam-cell-code {
-  font-size: var(--fs-base);
-  font-weight: var(--fw-bold);
-  letter-spacing: -0.02em;
-  white-space: nowrap;
-  color: var(--accent-blue);
-}
-
-.exam-cell-name {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* ─── Slot items ───
-   Load/density is a 2px left border plus the slot label in the same
-   color; the item background stays a flat neutral, never a color tint. */
-.schedule-task-item.exam-slot-item {
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-  background: var(--bg-input);
-  border-left-width: 1px;
-  border-radius: 6px;
-  padding: 5px 8px;
-}
-
-.exam-slot-name {
-  font-size: 10px;
-  font-weight: var(--fw-bold);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  flex-shrink: 0;
-}
-
-.exam-slot-date {
-  font-size: 10px;
-  color: var(--text-secondary);
-  margin-left: auto;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.exam-slot-state {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 9px;
-  font-weight: var(--fw-bold);
-  color: var(--text-tertiary);
-  white-space: nowrap;
-}
-.exam-slot-state::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-}
-.exam-slot-state.passed { color: var(--text-tertiary); }
-.exam-slot-state.today { color: var(--accent-rose); }
-.exam-slot-state.urgent { color: var(--accent-amber); }
-.exam-slot-state.soon { color: var(--accent-blue); }
-.exam-slot-state.normal { color: var(--accent-emerald); }
-.exam-slot-state.neutral { color: var(--text-tertiary); }
-
-/* ─── Empty State ─── */
-.exam-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 200px;
-  padding: 40px 0;
-  color: var(--text-tertiary);
-}
-.exam-empty p {
-  font-weight: var(--fw-medium);
-  margin: 0;
-  color: var(--text-secondary);
-}
-.exam-empty span {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
-
-/* ─── Access badge (masthead) ─── */
-.exam-access-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 6px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: var(--fw-bold);
-  letter-spacing: 0.03em;
-}
-.exam-access-badge.editor {
-  color: var(--accent-emerald);
-  background: var(--accent-emerald-glow);
-}
-.exam-access-badge.viewer {
-  color: var(--text-secondary);
-  background: var(--bg-input);
-}
-
 /* ─── Last-updated traceability line ─── */
 .exam-updated-meta {
   margin: 0 0 var(--sp-3);
@@ -240,50 +118,501 @@
   letter-spacing: 0.04em;
 }
 
-/* ─── Source badges (personal vs CR) ─── */
+/* ════════════════════════════════════════════════════════════════
+   ZERO HOUR — house style (skill-style, modelled on TakaGeloKoi)
+   ════════════════════════════════════════════════════════════════ */
+.exam-widget { container: zh / inline-size; }
+
+/* ─── §2 Masthead: 1px accent border + 7% inner shade, no glow ─── */
+.exam-widget.schedule-widget .schedule-masthead {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  grid-template-areas: "title stats" !important;
+  column-gap: 16px;
+  padding: 18px 20px !important;
+  margin-bottom: 16px;
+  border: 1px solid var(--accent-amber);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(125deg, color-mix(in srgb, var(--accent-amber) 7%, transparent), transparent 55%), var(--bg-card);
+  box-shadow: none;
+}
+.exam-widget.schedule-widget .schedule-masthead::after { display: none; }
+.exam-widget.schedule-widget .schedule-title-block { gap: 12px; }
+.exam-widget.schedule-widget .schedule-icon-tile {
+  width: 46px;
+  height: 46px;
+  min-width: 46px;
+  border-radius: var(--radius-md);
+}
+.exam-widget.schedule-widget .schedule-icon-tile svg { width: 21px; height: 21px; filter: none; }
+.exam-widget.schedule-widget .schedule-icon-tile:hover { transform: none; }
+.exam-widget.schedule-widget .schedule-masthead .schedule-overline {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+.exam-widget.schedule-widget .schedule-masthead .schedule-title {
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+.exam-widget.schedule-widget .schedule-masthead .schedule-subtitle { font-size: 11.5px; margin-top: 3px; }
+/* CR editor note: plain text, no pill in the masthead */
+.exam-widget.schedule-widget .exam-access-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 0;
+  background: transparent;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--accent-amber);
+}
+.exam-widget.schedule-widget .schedule-masthead > .schedule-masthead-center { justify-content: flex-end !important; }
+.exam-widget.schedule-widget .schedule-masthead .schedule-stats { gap: 0 !important; }
+.exam-widget.schedule-widget .schedule-masthead .schedule-stat {
+  flex-direction: column-reverse;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 18px;
+  min-width: 72px;
+}
+.exam-widget.schedule-widget .schedule-masthead .schedule-stat + .schedule-stat { border-left: 1px solid var(--border-primary); }
+.exam-widget.schedule-widget .schedule-masthead .schedule-stat:last-child { padding-right: 0; }
+.exam-widget.schedule-widget .schedule-masthead .schedule-stat-label {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.exam-widget.schedule-widget .schedule-masthead .schedule-stat-value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.exam-widget.schedule-widget .schedule-masthead .schedule-stat.is-alert .schedule-stat-value { color: var(--accent-rose); }
+.exam-widget.schedule-widget > .schedule-dotted-divider { display: none; }
+
+/* ─── Last updated / notice ─── */
+.exam-widget.schedule-widget .exam-updated-meta { margin: 0 0 12px; font-size: 11px; }
+.exam-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.exam-notice strong { color: var(--text-primary); }
+.exam-notice a { color: var(--accent-amber); font-weight: 700; text-decoration: none; }
+.exam-notice a:hover { text-decoration: underline; }
+.exam-notice-icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--accent-amber);
+}
+
+/* ─── §3 Course cards ─── */
+.exam-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+.exam-cell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.exam-cell:hover {
+  border-color: color-mix(in srgb, var(--accent-amber) 20%, var(--border-primary));
+  box-shadow: var(--shadow-md);
+}
+.exam-cell.today {
+  border-color: var(--accent-amber);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-amber) 20%, transparent);
+}
+/* Card header rule: the body is a list */
+.exam-cell-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 10px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--border-primary);
+  min-width: 0;
+}
+.exam-cell-titles { min-width: 0; flex: 1 1 auto; }
+.exam-cell-code-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.exam-cell-code {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--accent-amber);
+  white-space: nowrap;
+}
+.exam-cell-name {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.exam-cell-count {
+  flex: none;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.exam-cell-count span { font-weight: 600; color: var(--text-tertiary); }
+
 .exam-source-badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
+  max-width: 100%;
   padding: 2px 7px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   font-size: 9px;
-  font-weight: var(--fw-bold);
-  letter-spacing: 0.04em;
+  font-weight: 700;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
 }
-.exam-source-badge.personal {
-  color: var(--accent-blue);
-  background: var(--accent-blue-glow);
+.exam-source-badge.cr { color: var(--accent-amber); background: var(--accent-amber-glow); }
+
+/* Exam rows: a list with solid hairlines between rows */
+.exam-slot-list { display: flex; flex-direction: column; }
+.exam-widget.schedule-widget .exam-slot-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 58px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-base);
 }
-.exam-source-badge.cr {
+.exam-widget.schedule-widget .exam-slot-list > * + * { border-top: 1px solid var(--border-primary); }
+.exam-widget.schedule-widget .exam-slot-item:hover { background: var(--bg-tertiary); }
+.exam-widget.schedule-widget .exam-slot-item:focus-visible { outline: 1px solid var(--accent-amber); outline-offset: -1px; }
+.exam-slot-name {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.exam-slot-date {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.exam-slot-item.is-empty .exam-slot-date { color: var(--text-tertiary); font-weight: 400; }
+.exam-slot-state {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--text-tertiary);
+}
+.exam-slot-state:empty { visibility: hidden; }
+.exam-slot-state::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.exam-slot-state.passed { color: var(--text-tertiary); }
+.exam-slot-state.today { color: var(--accent-rose); }
+.exam-slot-state.urgent { color: var(--accent-amber); }
+.exam-slot-state.soon,
+.exam-slot-state.normal { color: var(--text-secondary); }
+
+/* ─── §6 Empty state ─── */
+.exam-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px 12px;
+  border: 1px dashed var(--border-primary);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-tertiary) 45%, transparent);
+  text-align: center;
+  color: var(--text-tertiary);
+}
+.exam-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
   color: var(--accent-amber);
-  background: var(--accent-amber-glow);
+}
+.exam-empty p { margin: 0; font-size: 13px; font-weight: 700; color: var(--text-secondary); }
+.exam-empty span:not(.exam-empty-icon) { font-size: 12px; max-width: 260px; text-wrap: balance; }
+
+/* ─── §7 Detail overlay (portalled to <body>) — day-modal layout ─── */
+.modal-overlay > .modal.exam-detail-modal {
+  width: min(460px, 100%);
+  max-width: 460px;
+  max-height: 88vh;
+  overflow-y: auto;
+  margin: 0;
+  padding: 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.exam-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.exam-modal-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.exam-modal-title svg { flex: none; color: var(--accent-amber); }
+.exam-modal-close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  min-height: 26px;
+  padding: 0;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.exam-modal-close:hover { color: var(--text-primary); }
+.exam-modal-course { margin: 4px 0 0; font-size: 12.5px; color: var(--text-secondary); }
+.exam-modal-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed var(--border-primary);
+}
+.exam-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.exam-badge.is-muted { color: var(--text-secondary); background: var(--bg-tertiary); }
+.exam-badge.is-accent { color: var(--accent-amber); background: var(--accent-amber-glow); }
+.exam-badge.is-alert { color: var(--accent-rose); background: var(--accent-rose-glow); }
+.exam-modal-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.exam-modal-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.exam-modal-syllabus {
+  padding: 10px 12px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+}
+.exam-modal-empty {
+  padding: 12px;
+  border: 1px dashed var(--border-primary);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-tertiary) 45%, transparent);
+  font-size: 12px;
+  text-align: center;
+  color: var(--text-tertiary);
+}
+.modal.exam-detail-modal .exam-modal-input {
+  flex: none;
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+}
+.modal.exam-detail-modal .exam-modal-input:focus { border-color: var(--accent-amber); box-shadow: none; }
+.modal.exam-detail-modal .exam-modal-textarea {
+  height: auto;
+  min-height: 96px;
+  padding: 8px 10px;
+  line-height: 1.55;
+  resize: vertical;
+  font-family: inherit;
+}
+.exam-modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+.exam-modal-actions .btn {
+  flex: 0 0 auto;
+  height: 30px;
+  min-height: 30px;
+  min-width: 0;
+  padding: 0 13px;
+  font-size: 12px;
+}
+.exam-modal-note {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
 }
 
-/* ─── Zero Hour masthead + grid: small-phone polish ─── */
+/* ─── §8 Phone (container ≤560px): step type down, 1-column grid ─── */
+@container zh (max-width: 560px) {
+  .exam-grid { grid-template-columns: 1fr; gap: 8px; }
+  .exam-cell { padding: 12px; }
+  .exam-cell-code { font-size: 14px; }
+  .exam-cell-name { font-size: 11.5px; }
+  .exam-widget.schedule-widget .exam-slot-item { padding: 7px 2px; grid-template-columns: minmax(0, 1fr) auto 52px; gap: 8px; }
+  .exam-slot-name { font-size: 10px; }
+  .exam-slot-date { font-size: 11.5px; }
+  .exam-slot-state { font-size: 9.5px; }
+  .exam-empty { padding: 10px; }
+  .exam-empty-icon { width: 24px; height: 24px; }
+  .exam-notice { font-size: 11.5px; padding: 9px 10px; }
+}
+
+/* ─── §2 Masthead on phone ─── */
 @media (max-width: 640px) {
-  /* Reuses the shared compact masthead rules from DashboardPage.css; add the
-     bits that are exam-specific. */
-  .exam-widget .exam-access-badge,
-  .exam-widget .schedule-title-block > div:last-child > .exam-access-badge {
-    display: none;
+  .exam-widget.schedule-widget .schedule-masthead {
+    padding: 9px 10px !important;
+    margin-bottom: 10px;
+    column-gap: 10px;
   }
-  .exam-widget .schedule-stats {
-    gap: 12px;
+  .exam-widget.schedule-widget .schedule-title-block { gap: 8px; }
+  .exam-widget.schedule-widget .schedule-icon-tile { width: 34px; height: 34px; min-width: 34px; border-radius: var(--radius-sm); }
+  .exam-widget.schedule-widget .schedule-icon-tile svg { width: 18px; height: 18px; }
+  .exam-widget.schedule-widget .schedule-masthead .schedule-overline { font-size: 9px; }
+  .exam-widget.schedule-widget .schedule-masthead .schedule-title { font-size: 1rem; }
+  .exam-widget.schedule-widget .schedule-masthead .schedule-subtitle { font-size: 10.5px; margin-top: 1px; white-space: nowrap; }
+  .exam-widget.schedule-widget .exam-access-badge { display: none; }
+  /* Stats drop to their own full-width row: 3 equal columns under a
+     dashed rule, split by hairlines (skill-style §2 phone masthead). */
+  .exam-widget.schedule-widget .schedule-masthead {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-areas: "title" "stats" !important;
+    row-gap: 0;
   }
-  .exam-widget .schedule-stat-value {
-    font-size: 13px;
+  .exam-widget.schedule-widget .schedule-masthead > .schedule-masthead-center {
+    justify-content: stretch !important;
+    margin: 8px 0 0 !important;
+    padding-top: 8px;
+    border-top: 1px dashed var(--border-primary);
   }
-  .exam-widget .schedule-day-header,
-  .exam-widget .schedule-stat-label {
-    font-size: 8px;
+  .exam-widget.schedule-widget .schedule-masthead .schedule-stats {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
   }
-  /* Course grid: 1 column on small phones so cells aren't squished */
-  .exam-grid {
-    grid-template-columns: 1fr;
+  .exam-widget.schedule-widget .schedule-masthead .schedule-stat {
+    padding: 0 6px;
+    min-width: 0;
+    align-items: center;
   }
-  .exam-updated-meta {
-    font-size: 9px;
+  .exam-widget.schedule-widget .schedule-masthead .schedule-stat:last-child { padding-right: 6px; }
+  .exam-widget.schedule-widget .schedule-masthead .schedule-stat-label { font-size: 9px; letter-spacing: 0.07em; }
+  .exam-widget.schedule-widget .schedule-masthead .schedule-stat-value { font-size: 15px; }
+  .exam-widget.schedule-widget .exam-updated-meta { font-size: 10px; margin-bottom: 8px; }
+}
+@media (max-width: 400px) {
+  .exam-widget.schedule-widget .schedule-masthead { padding: 8px !important; }
+  .exam-widget.schedule-widget .schedule-icon-tile { width: 32px; height: 32px; min-width: 32px; }
+  .exam-widget.schedule-widget .schedule-masthead .schedule-subtitle { display: none; }
+}
+
+/* ─── §7 Overlay on phone ─── */
+@media (max-width: 480px) {
+  .modal-overlay.exam-detail-overlay { padding: 10px; }
+  .modal-overlay > .modal.exam-detail-modal {
+    padding: 12px;
+    border-radius: 14px;
+    max-height: calc(100dvh - 20px);
   }
+  .modal.exam-detail-modal .exam-modal-input { height: 40px; font-size: 13px !important; }
+  .modal.exam-detail-modal .exam-modal-textarea { height: auto; }
+  .exam-modal-note { display: none; }
 }
