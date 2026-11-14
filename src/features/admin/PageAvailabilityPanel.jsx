@@ -21,6 +21,7 @@ export const MANAGED_PAGES = [
   { key: '/question-bank-analyzer', label: 'Question Bank Analyzer' },
   { key: '/cover-page-generator', label: 'Cover Page Generator' },
   { key: '/chill-zone', label: 'DownTime' },
+  { key: '/gaming', label: 'Gaming Zone' },
   { key: '/roast-cv', label: 'Roast CV' },
   { key: '/certificate', label: 'Certificate' },
   { key: '/auto-alarm', label: 'Auto Alarm' },

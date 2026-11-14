@@ -15,6 +15,7 @@ export const ADMIN_PAGE_CONFIG = {
   '/productivity': { label: 'Productivity', featurePage: 'productivity' },
   '/marketplace': { label: 'Marketplace', featurePage: 'marketplace' },
   '/chill-zone': { label: 'DownTime', featurePage: 'chill zone' },
+  '/gaming': { label: 'Gaming Zone', featurePage: 'gaming' },
   '/shadow': { label: 'Shadow', featurePage: 'shadow' },
   '/settings': { label: 'Settings', featurePage: 'settings' },
   '/question-bank-analyzer': { label: 'Question Bank Analyzer', featurePage: 'question bank analyzer' },
