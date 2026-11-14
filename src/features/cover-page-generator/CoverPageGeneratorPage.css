@@ -1,660 +1,448 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   Cover Page Generator
+   Cover Page Generator — follows .claude/skills/skill-style (house style
+   from TakaGeloKoi). Prefix: cpgen-. Masthead = shared DailyMasthead.css.
+   Flat surfaces, theme tokens only. Layout breakpoints are container
+   queries on .cpgen-widget so the page fits standalone and inside the
+   Daily Life "Cover Page" tab.
    ═══════════════════════════════════════════════════════════════════════ */
 
-/* Cross-browser fallback: Safari 14-15 without color-mix — solid fallbacks */
-@supports not (color: color-mix(in srgb, red 50%, blue)) {
-  .cpgen-profile-card { background: var(--bg-card) !important; border: 1px solid var(--border-primary) !important; }
-  .cpgen-success-badge { background: var(--bg-card) !important; border: 1px solid var(--border-primary) !important; }
-  .cpgen-add-member { color: var(--accent-blue) !important; background: var(--accent-blue-glow) !important; border: 1px dashed var(--accent-blue) !important; }
-  .cpgen-preview-frame { background: var(--bg-tertiary) !important; }
-}
-
+/* ── Widget shell — transparent; the cards do the framing ── */
 .cpgen-widget {
+  container: cpgen / inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   max-width: 1440px;
   margin: 0 auto;
-  padding-bottom: var(--sp-10);
-  overflow: visible;
+  padding: 0;
   background: transparent;
+  border: none;
+  box-shadow: none;
+  overflow: visible;
+  min-width: 0;
+}
+/* Breathing room on all four sides of the masthead */
+.cpgen-widget .dl-head { margin: 8px; }
+
+/* Status / type stat values: text, kept on one line */
+.cpgen-widget .dl-head-stat dd.cpgen-stat-text {
+  max-width: 14ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cpgen-widget .dl-head-stat dd.cpgen-stat-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.cpgen-widget .dl-head-stat dd.cpgen-stat-status svg { color: var(--accent-amber); }
+
+/* ── Masthead ⋮ button — bare icon, 34px hit area (skill §2) ── */
+.cpgen-menu { position: relative; display: flex; }
+.cpgen-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.cpgen-menu-btn:hover,
+.cpgen-menu-btn[aria-expanded='true'] {
+  color: var(--text-primary);
+  background: transparent;
+}
+
+/* ── ⋮ dropdown — portaled to <body>, positioned from JS ── */
+.cpgen-menu-list {
+  position: fixed;
+  z-index: 1000000;
+  width: min(180px, calc(100vw - 24px));
+  padding: 6px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  box-shadow: var(--shadow-md);
+  box-sizing: border-box;
+}
+.cpgen-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 0;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+.cpgen-menu-item svg { color: var(--text-tertiary); flex: none; }
+.cpgen-menu-item:hover:not(:disabled) { background: var(--bg-tertiary); }
+.cpgen-menu-item:disabled { opacity: 0.55; cursor: default; }
+.cpgen-menu-item.is-danger,
+.cpgen-menu-item.is-danger svg { color: var(--accent-rose); }
+.cpgen-menu-item.is-danger:hover { background: var(--accent-rose-glow); }
+.cpgen-menu-sep { height: 1px; margin: 5px 4px; background: var(--border-primary); }
+
+/* ── Cards (skill §3) ── */
+.cpgen-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  box-shadow: var(--shadow-sm);
+  min-width: 0;
+  box-sizing: border-box;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.cpgen-card:hover {
+  border-color: color-mix(in srgb, var(--accent-amber) 20%, var(--border-primary));
+  box-shadow: var(--shadow-md);
+}
+.cpgen-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  min-width: 0;
+}
+.cpgen-card-title svg { color: var(--accent-amber); flex: none; }
+.cpgen-card-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+/* Header rule — solid hairline under the card header */
+.cpgen-card-title--ruled {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-primary);
+  margin-bottom: 4px;
+}
+
+/* ── Buttons ── */
+.cpgen-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  height: 30px;
+  min-height: 0;
+  padding: 0 13px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-full);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.cpgen-btn-danger { color: var(--accent-rose); }
+.cpgen-btn-danger:hover { border-color: var(--accent-rose); }
+
+/* ── Admin stats ── */
+.cpgen-admin-card { display: flex; flex-direction: column; gap: 14px; }
+.cpgen-admin-card .cpgen-card-head-row {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-primary);
+}
+.cpgen-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.cpgen-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+}
+.cpgen-kpi-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cpgen-kpi-value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--accent-amber);
+  font-variant-numeric: tabular-nums;
+}
+.cpgen-kpi-note { font-size: 11px; color: var(--text-tertiary); }
+
+/* ── Main grid: form | preview ── */
+.cpgen-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+/* ── Form card ── */
+.cpgen-form-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.cpgen-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.cpgen-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.cpgen-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.cpgen-required { color: var(--accent-rose); }
+
+.cpgen-form-panel .input {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  font-size: 13px;
+}
+.cpgen-form-panel .input:focus {
+  border-color: var(--accent-amber);
+  box-shadow: none;
+  outline: none;
+}
+.cpgen-form-panel .course-autocomplete-wrapper,
+.cpgen-form-panel .course-autocomplete-input-wrapper {
+  width: 100%;
   min-width: 0;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   MASTHEAD — inherits the global .schedule-masthead grid layout
-   (1fr auto 1fr) from index.css / DashboardPage.css, matching
-   the same pattern used by Routine, WeekSchedule, SemesterTracker, etc.
-   ═══════════════════════════════════════════════════════════════════════ */
-.cpgen-widget .schedule-masthead {
-  grid-template-columns: 1fr auto 1fr;
-  overflow: visible;
-  position: relative;
-  z-index: 40;
-  isolation: isolate;
-}
-
-.cpgen-widget .schedule-masthead-center {
-  display: flex;
+/* Add member / teacher — small accent pill in the label row */
+.cpgen-add-btn {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 20px;
-}
-
-/* Icon tile: amber accent to match cover-page-generator identity */
-.cpgen-widget .schedule-icon-tile {
+  gap: 5px;
+  flex: 0 0 auto;
+  height: 26px;
+  min-height: 0;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-full);
   background: var(--accent-amber-glow);
   color: var(--accent-amber);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
 }
-.cpgen-widget .schedule-icon-tile svg {
-  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent-amber) 35%, transparent));
-}
-.cpgen-widget .schedule-icon-tile:hover {
-  transform: scale(1.08) rotate(-3deg);
-}
-
-.cpgen-widget .schedule-dotted-divider {
-  border-top: 1px dashed var(--border-primary);
-  margin: 14px 0 20px;
+.cpgen-add-btn:hover {
+  background: color-mix(in srgb, var(--accent-amber) 22%, transparent);
 }
 
-/* Nav button — scoped so this page works even when DashboardPage.css isn't loaded */
-.cpgen-widget .schedule-nav-btn {
+/* Member / teacher rows */
+.cpgen-members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.cpgen-member-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+.cpgen-member-row.is-teacher { grid-template-columns: minmax(0, 1fr) auto; }
+
+.cpgen-member-remove {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 32px;
   height: 32px;
-  border: 1px solid var(--border-primary);
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
   border-radius: var(--radius-md);
-  background: var(--bg-card);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all var(--transition-base);
-}
-.cpgen-widget .schedule-nav-btn:hover {
-  border-color: var(--border-focus);
-  color: var(--text-primary);
-}
-
-
-
-/* ── ⋮ dropdown menu — solid bg ekdom, transparent na — mobile fix: must stay on top and not clipped ── */
-.cpgen-widget .schedule-actions {
-  position: relative;
-  z-index: 2;
-  overflow: visible;
-}
-.cpgen-widget .export-dropdown {
-  position: relative;
-  z-index: 50;
-  overflow: visible;
-}
-.cpgen-widget .schedule-masthead > * {
-  position: relative;
-  z-index: 1;
-}
-.cpgen-widget .schedule-masthead .schedule-actions {
-  z-index: 50;
-}
-.cpgen-widget .export-menu,
-.cpgen-export-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  min-width: 180px;
-  background: #1a1a24 !important;
-  background-color: #1a1a24 !important;
-  border: 1px solid #2a2a36 !important;
-  border-radius: var(--radius-md);
-  box-shadow: 0 12px 32px rgba(0,0,0,0.45) !important;
-  z-index: 99999;
-  overflow: hidden;
-  padding: 4px 0;
-  opacity: 1 !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-[data-theme="light"] .cpgen-widget .export-menu,
-[data-theme="light"] .cpgen-export-menu {
-  background: #ffffff !important;
-  background-color: #ffffff !important;
-  border-color: #e4e4e7 !important;
-}
-.cpgen-widget .export-menu-item,
-.cpgen-export-menu .export-menu-item {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  width: 100%;
-  padding: 10px 14px;
   background: transparent;
-  border: none;
-  color: var(--text-primary);
-  font-size: var(--fs-sm);
-  font-family: inherit;
+  color: var(--text-tertiary);
   cursor: pointer;
-  text-align: left;
-  transition: background 0.15s ease;
+  transition: color 0.15s ease, background 0.15s ease;
 }
-.cpgen-widget .export-menu-item:hover,
-.cpgen-export-menu .export-menu-item:hover {
-  background: var(--bg-input);
-}
-.cpgen-widget .export-menu-item:disabled,
-.cpgen-export-menu .export-menu-item:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-.cpgen-widget .export-menu-sep,
-.cpgen-export-menu .export-menu-sep {
-  height: 1px;
-  background: var(--border-primary);
-  margin: 4px 8px;
-}
-.cpgen-export-menu {
-  position: fixed;
-  min-width: min(180px, calc(100vw - 24px));
-  z-index: 1000000;
-}
-
-/* Masthead status badges (generating / generated) */
-.cpgen-status-badge,
-.cpgen-success-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-semibold);
-  border-radius: var(--radius-md);
-  white-space: nowrap;
-  animation: cpgenFadeIn 0.3s ease;
-}
-.cpgen-status-badge {
-  color: var(--text-secondary);
-  background: var(--bg-card);
-  border: 1px solid var(--border-primary);
-}
-.cpgen-success-badge {
-  color: var(--accent-emerald);
-  background: var(--accent-emerald-glow);
-  border: 1px solid color-mix(in srgb, var(--accent-emerald) 25%, transparent);
-}
-
-/* ─── Layout ─── */
-.cpgen-layout {
-  display: grid;
-  grid-template-columns: 380px 1fr;
-  gap: var(--sp-6);
-  align-items: stretch;
-}
-
-@media (max-width: 900px) {
-  .cpgen-layout {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* ── Mobile: masthead — matches dashboard compact pattern + dropdown not clipped + a11y 44px touch target ── */
-@media (max-width: 640px) {
-  .cpgen-widget {
-    overflow: visible;
-  }
-  .cpgen-widget .schedule-masthead {
-    grid-template-columns: 1fr auto;
-    padding: var(--sp-3);
-    gap: var(--sp-2);
-    border-width: 1px;
-    overflow: visible;
-  }
-  .cpgen-widget .schedule-nav-btn {
-    width: 44px !important;
-    height: 44px !important;
-    min-width: 44px;
-    min-height: 44px;
-  }
-  .cpgen-widget .schedule-masthead-center {
-    display: none;
-  }
-  .cpgen-widget .schedule-title-block {
-    gap: 10px;
-    min-width: 0;
-  }
-  .cpgen-widget .schedule-title {
-    font-size: var(--fs-sm);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .cpgen-widget .schedule-subtitle {
-    font-size: 9px;
-    max-width: 100%;
-  }
-  .cpgen-widget .schedule-actions {
-    justify-content: flex-end;
-    overflow: visible;
-  }
-  /* Mobile dropdown must stay inside viewport and on top */
-  .cpgen-widget .export-menu {
-    right: 0;
-    left: auto;
-    min-width: 160px;
-    max-width: calc(100vw - 24px);
-  }
-}
-
-/* ── Mobile: form panel ── */
-@media (max-width: 640px) {
-  .cpgen-form-panel {
-    padding: var(--sp-3);
-    gap: var(--sp-3);
-  }
-  .cpgen-type-tabs {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-  .cpgen-type-tabs::-webkit-scrollbar {
-    display: none;
-  }
-  .cpgen-type-tab {
-    flex: 0 0 auto;
-    padding: 6px 14px;
-  }
-}
-
-/* ── Mobile: member rows stack vertically — Course Teacher size e (640px) ── */
-@media (max-width: 640px) {
-  .cpgen-member-row {
-    grid-template-columns: 1fr auto;
-  }
-  .cpgen-member-row .input:nth-child(2) {
-    grid-column: 1;
-    grid-row: 2;
-  }
-  .cpgen-member-remove {
-    grid-column: 2;
-    grid-row: 1 / 3;
-    align-self: center;
-  }
-  /* Exact selector from user — Group Members box = Course Teacher size on mobile (both 7 & 8 cover reorder) */
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-layout > div.cpgen-form-panel > div:nth-child(7) > div > div:nth-child(1) > input:nth-child(1),
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-layout > div.cpgen-form-panel > div:nth-child(7) > div > div:nth-child(1) > input:nth-child(2),
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-layout > div.cpgen-form-panel > div:nth-child(8) > div > div:nth-child(1) > input:nth-child(1),
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-layout > div.cpgen-form-panel > div:nth-child(8) > div > div:nth-child(1) > input:nth-child(2) {
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-  }
-  /* Exact container — 4 boxes full screen width like other boxes */
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-layout > div.cpgen-form-panel > div:nth-child(7),
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-layout > div.cpgen-form-panel > div:nth-child(8),
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-layout > div.cpgen-form-panel > div:nth-child(7) > div,
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-layout > div.cpgen-form-panel > div:nth-child(8) > div {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    box-sizing: border-box !important;
-    display: flex !important;
-    flex-direction: column !important;
-  }
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-layout > div.cpgen-form-panel > div:nth-child(7) > div > div,
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-layout > div.cpgen-form-panel > div:nth-child(8) > div > div {
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-  }
-  /* Force each of the 4 member rows full width like other inputs */
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-layout > div.cpgen-form-panel > div:nth-child(7) > div > div:nth-child(n),
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-layout > div.cpgen-form-panel > div:nth-child(8) > div > div:nth-child(n) {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-  }
-}
-
-/* ── Mobile: preview panel ── */
-@media (max-width: 640px) {
-  .cpgen-preview-panel {
-    border-radius: var(--radius-md);
-  }
-  .cpgen-preview-frame {
-    min-height: 380px;
-    padding: 6px;
-  }
-  .cpgen-preview-placeholder {
-    max-width: 240px;
-  }
-  .cpgen-preview-placeholder p {
-    font-size: var(--fs-xs);
-  }
-}
-
-/* ── Mobile: profile card ── */
-@media (max-width: 480px) {
-  .cpgen-profile-card {
-    padding: var(--sp-3);
-  }
-  .cpgen-profile-grid {
-    gap: 4px 10px;
-  }
-}
-
-/* ── Tablet: masthead collapse ── */
-@media (max-width: 1000px) {
-  .cpgen-widget .schedule-masthead {
-    grid-template-columns: 1fr auto;
-  }
-  .cpgen-widget .schedule-masthead-center {
-    grid-column: 1 / -1;
-    order: 3;
-  }
-  .cpgen-widget .schedule-actions {
-    justify-content: flex-end;
-  }
-}
-
-/* ═══════════════════════════════════════════════════════════════════════
-   FORM PANEL
-   ═══════════════════════════════════════════════════════════════════════ */
-
-.cpgen-form-panel {
-  background: var(--bg-card);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md);
-  padding: var(--sp-5);
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-4);
-  box-shadow: var(--shadow-sm);
-  min-width: 0;
-  overflow: hidden;
-}
-
-.cpgen-form-header {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  font-size: var(--fs-md);
-  font-weight: var(--fw-semibold);
-  color: var(--text-primary);
-  padding-bottom: var(--sp-3);
-  border-bottom: 1px solid var(--border-primary);
-}
-
-.cpgen-field {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.cpgen-label {
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-semibold);
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.cpgen-required {
+.cpgen-member-remove:hover {
   color: var(--accent-rose);
+  background: var(--bg-tertiary);
 }
 
-/* ─── Type tabs ─── */
-.cpgen-type-tabs {
-  display: flex;
-  gap: 4px;
-  padding: 3px;
-  background: var(--bg-input);
-  border-radius: var(--radius-md);
-}
-
-.cpgen-type-tab {
-  flex: 1;
-  padding: 6px 10px;
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-medium);
-  border-radius: var(--radius-sm);
-  border: none;
-  background: transparent;
-  color: var(--text-tertiary);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  font-family: inherit;
-  white-space: nowrap;
-}
-
-.cpgen-type-tab:hover {
-  color: var(--text-primary);
-  background: var(--bg-card);
-}
-
-.cpgen-type-tab.active {
-  background: var(--bg-card);
-  color: var(--accent-blue);
-  font-weight: var(--fw-semibold);
-  box-shadow: var(--shadow-sm);
-}
-
-/* ─── Profile card ─── */
-.cpgen-profile-card {
-  background: var(--accent-blue-glow);
-  border: 1px solid color-mix(in srgb, var(--accent-blue) 15%, var(--border-primary));
-  border-radius: var(--radius-lg);
-  padding: var(--sp-3) var(--sp-4);
-  margin-top: 20px;
-}
-
-.cpgen-profile-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-semibold);
-  color: var(--accent-blue);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: var(--sp-2);
-  padding-bottom: var(--sp-2);
-  border-bottom: 1px solid color-mix(in srgb, var(--accent-blue) 12%, transparent);
-}
-
-.cpgen-profile-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px 12px;
-}
-
-.cpgen-profile-item {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-/* Wide item — fills the last row so the 4-col grid stays balanced */
-.cpgen-profile-item--wide {
-  grid-column: span 2;
-}
-
-@media (max-width: 1100px) {
-  .cpgen-profile-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 640px) {
-  .cpgen-profile-grid {
-    grid-template-columns: 1fr;
-  }
-  .cpgen-profile-item--wide {
-    grid-column: 1;
-  }
-}
-
-.cpgen-profile-label {
-  font-size: 10px;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.cpgen-profile-value {
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-medium);
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* ─── Group members form ─── */
-.cpgen-members-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.cpgen-member-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  gap: 6px;
-  align-items: center;
-}
-
-.cpgen-member-remove {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: var(--accent-blue-glow);
-  color: var(--accent-blue);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  flex: none;
-}
-
-.cpgen-member-remove:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.cpgen-member-remove:not(:disabled):hover {
-  background: var(--accent-blue);
-  color: #fff;
-}
-
-.cpgen-add-member {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 7px 12px;
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-semibold);
-  color: var(--accent-blue);
-  background: var(--accent-blue-glow);
-  border: 1px dashed color-mix(in srgb, var(--accent-blue) 40%, transparent);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  font-family: inherit;
-}
-
-.cpgen-add-member:hover {
-  background: color-mix(in srgb, var(--accent-blue) 18%, transparent);
-}
-
-/* ─── Actions ─── */
+/* ── Spinner (masthead status while exporting) ── */
 .cpgen-spinner {
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
   border: 2px solid var(--border-primary);
-  border-top-color: var(--accent-blue);
+  border-top-color: var(--accent-amber);
   border-radius: 50%;
   animation: cpgenSpin 0.6s linear infinite;
   flex-shrink: 0;
 }
+@keyframes cpgenSpin { to { transform: rotate(360deg); } }
 
-@keyframes cpgenSpin {
-  to { transform: rotate(360deg); }
-}
-
-@keyframes cpgenFadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* ═══════════════════════════════════════════════════════════════════════
-   PREVIEW PANEL
-   ═══════════════════════════════════════════════════════════════════════ */
-
+/* ── Preview card ── */
 .cpgen-preview-panel {
-  background: var(--bg-card);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
-}
-
-.cpgen-preview-header {
   display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  padding: var(--sp-3) var(--sp-4);
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold);
-  color: var(--text-secondary);
-  border-bottom: 1px solid var(--border-primary);
-  background: var(--bg-secondary);
+  flex-direction: column;
+  gap: 14px;
 }
-
-.cpgen-preview-header svg {
-  color: var(--accent-amber);
+.cpgen-preview-meta {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  white-space: nowrap;
 }
-
+/* Frame width drives the cover scale in JS: (clientWidth − 20) / 794,
+   so horizontal padding must stay ≤ 10px per side. */
 .cpgen-preview-frame {
   position: relative;
-  min-height: 560px;
-  height: auto;
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 520px;
   padding: 10px;
-  background:
-    repeating-conic-gradient(var(--bg-tertiary) 0% 25%, transparent 0% 50%) 0 0 / 20px 20px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
   overflow: hidden;
+  box-sizing: border-box;
 }
-
+/* With a cover inside, the frame hugs the scaled sheet */
+.cpgen-preview-frame:has(.cpgen-cover-viewport) { min-height: 0; }
 .cpgen-cover-viewport {
   position: relative;
   flex: none;
   line-height: 0;
 }
 
-.cpgen-preview-placeholder {
-  position: absolute;
-  inset: 0;
+/* Empty state (skill §6) */
+.cpgen-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: var(--sp-3);
-  color: var(--text-tertiary);
+  gap: 10px;
+  max-width: 300px;
+  padding: 20px 12px;
   text-align: center;
-  max-width: 320px;
-  margin: 0 auto;
-  background: color-mix(in srgb, var(--bg-card) 92%, transparent);
-  backdrop-filter: blur(2px);
-  z-index: 2;
+  border: 1px dashed var(--border-primary);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-card) 55%, transparent);
+}
+.cpgen-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
+}
+.cpgen-empty-hint {
+  margin: 0;
+  max-width: 260px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  text-wrap: balance;
+}
+.cpgen-empty-hint strong { color: var(--text-primary); font-weight: 600; }
+
+/* ── Profile card (read-only) ── */
+.cpgen-profile-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cpgen-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 16px;
+  margin: 0;
+}
+.cpgen-profile-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.cpgen-profile-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.cpgen-profile-value {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
-.cpgen-preview-placeholder p {
-  font-size: var(--fs-sm);
-  line-height: 1.5;
+/* Safari 14–15 without color-mix — solid fallbacks */
+@supports not (color: color-mix(in srgb, red 50%, blue)) {
+  .cpgen-card:hover { border-color: var(--border-primary); }
+  .cpgen-add-btn:hover { background: var(--accent-amber-glow); }
+  .cpgen-empty { background: var(--bg-card); }
 }
+
 
 /* ═══════════════════════════════════════════════════════════════════════
    COVER PAGE TEMPLATE (the actual printable cover, A4 @ 96dpi)
@@ -673,7 +461,7 @@
 /* Show in preview mode (scaled by the JS letterbox wrapper) */
 .cpgen-preview-frame .cpgen-cover {
   display: flex;
-  box-shadow: 0 8px 32px rgba(28, 42, 74, 0.18);
+  box-shadow: var(--shadow-sm);
 }
 
 
@@ -809,13 +597,13 @@
   font-weight: 400;
 }
 
-/* ─── Footer logo — small, bottom-right ─── */
+/* ─── Footer logo — small, bottom-right, flush with the border's right edge ─── */
 .cpgen-min-footer {
   position: absolute !important;
   bottom: 8px !important;
-  left: 50% !important;
-  right: auto !important;
-  transform: translateX(-50%) !important;
+  left: auto !important;
+  right: 38px !important; /* = .cpgen-min-border right inset */
+  transform: none !important;
   display: flex;
   align-items: center;
   gap: 5px;
@@ -839,136 +627,131 @@
   white-space: nowrap;
 }
 
-/* ── MOBILE: Profile card — ultra minimal, choto (user request exact selector) ── */
+/* ═══════════════════════════════════════════════════════════════════════
+   RESPONSIVE — page layout (container queries on .cpgen-widget)
+   Separate blocks; never nest a new block inside an existing one.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Tablet: form and preview share the width equally */
+@container cpgen (max-width: 1000px) {
+  .cpgen-layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .cpgen-profile-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@container cpgen (max-width: 700px) {
+  .cpgen-profile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cpgen-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Phone: one column — form first, preview under it */
+@container cpgen (max-width: 640px) {
+  .cpgen-layout { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .cpgen-card { padding: 12px; }
+  .cpgen-card-title { font-size: 12.5px; gap: 8px; }
+  .cpgen-card-title--ruled { padding-bottom: 10px; margin-bottom: 2px; }
+  .cpgen-form-panel { gap: 12px; }
+  .cpgen-preview-panel { gap: 10px; }
+  .cpgen-profile-card { gap: 8px; }
+
+  /* Comfortable touch targets, full-width fields */
+  .cpgen-form-panel .input { height: 40px; }
+  .cpgen-add-btn { height: 30px; padding: 0 11px; }
+  .cpgen-member-remove {
+    width: 40px; height: 40px; min-width: 40px; min-height: 40px;
+  }
+
+  /* Member row: name + ✕ on top, Student ID full width under the name */
+  .cpgen-member-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 6px;
+  }
+  .cpgen-member-row .cpgen-member-name { grid-column: 1; grid-row: 1; }
+  .cpgen-member-row .cpgen-member-id { grid-column: 1; grid-row: 2; }
+  .cpgen-member-row .cpgen-member-remove { grid-column: 2; grid-row: 1; }
+  .cpgen-members-list { gap: 10px; }
+
+  /* Preview scales to the card width; padding stays ≤ 10px per side */
+  .cpgen-preview-frame { min-height: 220px; padding: 6px; }
+  .cpgen-empty { padding: 10px; gap: 8px; }
+  .cpgen-empty-icon { width: 24px; height: 24px; }
+  .cpgen-empty-icon svg { width: 13px; height: 13px; }
+
+  .cpgen-profile-grid { gap: 10px 12px; }
+  .cpgen-profile-value { font-size: 12.5px; }
+  .cpgen-kpi { padding: 10px; }
+  .cpgen-kpi-value { font-size: 1.1rem; }
+}
+
+@container cpgen (max-width: 340px) {
+  .cpgen-card-title svg { display: none; }
+  .cpgen-preview-meta { display: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   RESPONSIVE — masthead compaction (skill §2), mirrors the compact
+   Daily Life widgets in DailyMasthead.css
+   ═══════════════════════════════════════════════════════════════════════ */
 @media (max-width: 640px) {
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-profile-card,
-  .cpgen-profile-card {
-    padding: 8px 10px !important;
-    margin-top: 10px !important;
-    border-radius: 10px !important;
-    gap: 0 !important;
+  .cpgen-widget { gap: 10px; }
+  .cpgen-widget .dl-head {
+    gap: 8px;
+    padding: 9px 10px;
   }
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card .cpgen-profile-header,
-  .cpgen-profile-header {
-    gap: 4px !important;
-    font-size: 9px !important;
-    letter-spacing: 0.03em !important;
-    margin-bottom: 6px !important;
-    padding-bottom: 5px !important;
+  .cpgen-widget .dl-head-title { gap: 8px; }
+  .cpgen-widget .dl-head-tile { width: 34px; height: 34px; }
+  .cpgen-widget .dl-head-name { margin: 2px 0 0; font-size: 1rem; }
+  .cpgen-widget .dl-head-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+    width: 100%;
+    padding-top: 8px;
   }
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card .cpgen-profile-header svg,
-  .cpgen-profile-header svg {
-    width: 10px !important;
-    height: 10px !important;
+  .cpgen-widget .dl-head-stat {
+    position: relative;
+    justify-content: center;
+    gap: 3px;
+    padding: 2px 4px;
+    border-left: 0;
   }
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card .cpgen-profile-grid,
-  .cpgen-profile-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 4px 8px !important;
+  .cpgen-widget .dl-head-stat + .dl-head-stat { border-left: 0; }
+  .cpgen-widget .dl-head-stat:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 0;
+    width: 1px;
+    height: 30px;
+    transform: translateY(-50%);
+    background: var(--border-primary);
   }
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card .cpgen-profile-item--wide,
-  .cpgen-profile-item--wide {
-    grid-column: span 2 !important;
-  }
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card .cpgen-profile-label,
-  .cpgen-profile-label {
-    font-size: 7px !important;
-    letter-spacing: 0.03em !important;
-  }
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card .cpgen-profile-value,
-  .cpgen-profile-value {
-    font-size: 10px !important;
-    line-height: 1.25 !important;
-  }
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card .cpgen-profile-item,
-  .cpgen-profile-item {
-    gap: 0 !important;
+  .cpgen-widget .dl-head-stat dd:not(.is-small) { font-size: 1rem; }
+  .cpgen-widget .dl-head-stat dd.cpgen-stat-text { max-width: 100%; }
+  .cpgen-menu-btn {
+    width: 30px; height: 30px; min-width: 30px; min-height: 30px;
   }
 }
-@media (max-width: 380px) {
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-profile-card,
-  .cpgen-profile-card {
-    padding: 6px 8px !important;
-  }
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card .cpgen-profile-grid,
-  .cpgen-profile-grid {
-    gap: 3px 6px !important;
+@media (max-width: 400px) {
+  .cpgen-widget .dl-head { padding: 8px; gap: 7px; }
+  .cpgen-widget .dl-head-tile { width: 32px; height: 32px; }
+}
+
+/* Touch: 40px fields everywhere */
+@media (pointer: coarse) {
+  .cpgen-form-panel .input { height: 40px; }
+  .cpgen-menu-item { padding: 11px 10px; }
+}
+/* Phone density — after the touch rule so the ⋮ button stays compact */
+@media (pointer: coarse) and (max-width: 640px) {
+  .cpgen-menu-btn {
+    width: 30px; height: 30px; min-width: 30px; min-height: 30px;
   }
 }
 
-/* ── MOBILE: Form panel — ultra minimal, choto (exact selector user requested) ── */
-@media (max-width: 640px) {
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-layout > div.cpgen-form-panel,
-  .cpgen-form-panel {
-    padding: 8px 10px !important;
-    gap: 8px !important;
-    border-radius: 10px !important;
-  }
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-layout > div.cpgen-form-panel .cpgen-form-header,
-  .cpgen-form-panel .cpgen-form-header {
-    padding-bottom: 6px !important;
-    margin-bottom: 0 !important;
-    gap: 6px !important;
-    font-size: 11px !important;
-  }
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-layout > div.cpgen-form-panel .cpgen-form-header svg,
-  .cpgen-form-panel .cpgen-form-header svg { width: 14px !important; height: 14px !important; }
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-layout > div.cpgen-form-panel .cpgen-field,
-  .cpgen-form-panel .cpgen-field { gap: 3px !important; }
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-layout > div.cpgen-form-panel .cpgen-label,
-  .cpgen-form-panel .cpgen-label { font-size: 8px !important; letter-spacing: 0.03em !important; }
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-layout > div.cpgen-form-panel .input,
-  .cpgen-form-panel .input {
-    padding: 6px 8px !important;
-    font-size: 12px !important;
-    height: 32px !important;
-    border-radius: 8px !important;
-  }
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-layout > div.cpgen-form-panel .cpgen-members-list,
-  .cpgen-form-panel .cpgen-members-list { gap: 4px !important; }
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-layout > div.cpgen-form-panel .cpgen-add-member,
-  .cpgen-form-panel .cpgen-add-member { padding: 5px 8px !important; font-size: 10px !important; gap: 4px !important; }
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-layout > div.cpgen-form-panel .cpgen-member-remove,
-  .cpgen-form-panel .cpgen-member-remove { width: 24px !important; height: 24px !important; }
+/* Compact field text on every device (phone, tablet, desktop).
+   !important beats the global ≥16px touch rule in ResponsiveShell.css
+   (user prefers compact text over the iOS focus-zoom guard).
+   Tightly scoped to this form. */
+.cpgen-widget .cpgen-form-panel .input {
+  font-size: 13px !important;
 }
-@media (max-width: 380px) {
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-layout > div.cpgen-form-panel,
-  .cpgen-form-panel { padding: 6px 8px !important; gap: 6px !important; }
-}
-
-/* MOBILE: Group Members 4 boxes full width like other inputs — image fix */
-@media (max-width: 640px) {
-  .cpgen-form-panel,
-  .cpgen-form-panel > div,
-  .cpgen-form-panel .cpgen-members-list {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    box-sizing: border-box !important;
-  }
-  .cpgen-form-panel .cpgen-member-row {
-    width: 100% !important;
-    max-width: 100% !important;
-    display: grid !important;
-    grid-template-columns: 1fr auto !important;
-    gap: 8px !important;
-    box-sizing: border-box !important;
-  }
-  .cpgen-form-panel .cpgen-member-row .input {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    box-sizing: border-box !important;
-    display: block !important;
-  }
-  /* Exact 4 boxes from image — GROUP MEMBERS */
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-layout > div.cpgen-form-panel > div:nth-child(7) > div > div,
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-layout > div.cpgen-form-panel > div:nth-child(8) > div > div {
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-layout > div.cpgen-form-panel > div:nth-child(7) > div > div > input,
-  #root > div.app-layout > div.main-content > div > div > div.dl-content-card > div > div > div.cpgen-layout > div.cpgen-form-panel > div:nth-child(8) > div > div > input {
-    width: 100% !important;
-  }
-}

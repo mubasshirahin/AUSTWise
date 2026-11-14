@@ -10,6 +10,7 @@ import austwiseLogo from '../../assets/austwise-icon-final.svg';
 import austLogo from '../../assets/aust-logo.jpg';
 import { useRoleAccess } from '../../hooks/useRoleAccess';
 import { getAccessRole } from '../../utils/accessRole';
+import '../daily-life/DailyMasthead.css';
 import './CoverPageGeneratorPage.css';
 
 function formatDate(date) {
@@ -29,16 +30,65 @@ function capitalizeWords(str) {
   return (str || '').replace(/(\S+)/g, (w) => w[0].toUpperCase() + w.slice(1).toLowerCase());
 }
 
-// ─── Cover form persistence (survives page refresh) ───
-const COVER_FORM_KEY = 'aust-cover-form-v1';
+// ─── html2canvas-pro leaves SVG <img>s blank (the AUSTWise footer logo
+//     vanished from exports). Swap each SVG image in the capture clone for a
+//     PNG drawn by the browser itself, at 6× its CSS size so it stays sharp
+//     at the 3× export scale. ───
+async function rasterizeSvgImages(root) {
+  const imgs = [...root.querySelectorAll('img')].filter((img) => /\.svg(\?|#|$)|^data:image\/svg/i.test(img.src));
+  await Promise.all(imgs.map(async (img) => {
+    try {
+      // window.Image: the lucide `Image` icon import shadows the global here.
+      const probe = new window.Image();
+      probe.src = img.src;
+      await probe.decode();
+      const cssW = parseFloat(img.style.width) || img.width || 64;
+      const ratio = (probe.naturalHeight || 1) / (probe.naturalWidth || 1);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.ceil(cssW * 6);
+      canvas.height = Math.ceil(cssW * 6 * ratio);
+      canvas.getContext('2d').drawImage(probe, 0, 0, canvas.width, canvas.height);
+      // Wait on `load` (not decode(): it can hang for off-screen images),
+      // capped so an export never stalls on the logo.
+      await new Promise((resolve) => {
+        const done = () => { clearTimeout(t); resolve(); };
+        const t = setTimeout(resolve, 1500);
+        img.addEventListener('load', done, { once: true });
+        img.addEventListener('error', done, { once: true });
+        img.src = canvas.toDataURL('image/png');
+      });
+    } catch { /* keep the original image if rasterizing fails */ }
+  }));
+}
 
-function loadCoverForm() {
-  try {
-    const raw = localStorage.getItem(COVER_FORM_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
+// ─── Real (numeric) AUST student ID from the profile, never the AWID.
+//     Returns '' when the profile has none, so the field stays empty
+//     instead of showing someone else's ID. ───
+function getRealStudentId(u) {
+  for (const v of [u?.studentId, u?.id, u?.awid]) {
+    const s = String(v || '');
+    if (/^\d{8,}$/.test(s)) return s;
   }
+  const m = String(u?.email || '').match(/(\d{8,})/);
+  return m ? m[1] : '';
+}
+
+const sameName = (a, b) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
+
+// ─── Cover form persistence (survives page refresh) — one entry per
+//     account, so a shared browser never shows another user's members ───
+const LEGACY_COVER_FORM_KEY = 'aust-cover-form-v1';
+const coverFormKey = (u) => `aust-cover-form-v2:${u?.id || u?.email || 'guest'}`;
+
+function loadCoverForm(u) {
+  try {
+    const raw = localStorage.getItem(coverFormKey(u));
+    if (raw) return JSON.parse(raw);
+    // Old shared key: adopt it only if it was this account's own form.
+    const legacy = JSON.parse(localStorage.getItem(LEGACY_COVER_FORM_KEY) || 'null');
+    if (legacy && sameName(legacy.members?.[0]?.name, u?.name)) return legacy;
+  } catch { /* corrupt / unavailable storage — start fresh */ }
+  return {};
 }
 
 // ─── Fit A4 sheet into the preview frame (sized by width so the
@@ -62,7 +112,14 @@ function useCoverScale(frameRef) {
   return coverScale;
 }
 
+// Remount the form whenever the signed-in account changes, so its state
+// (and saved draft) always belongs to the current user.
 export default function CoverPageGeneratorPage() {
+  const { user } = useAuth();
+  return <CoverPageGeneratorForm key={coverFormKey(user)} />;
+}
+
+function CoverPageGeneratorForm() {
   const { user } = useAuth();
   // Same live config as the admin card and the page gate (keyed by route path).
   const { config, loading: accessLoading } = useRoleAccess('/cover-page-generator');
@@ -179,7 +236,7 @@ export default function CoverPageGeneratorPage() {
     const rect = menuButtonRef.current?.getBoundingClientRect();
     if (rect) {
       const menuWidth = Math.min(180, window.innerWidth - 24);
-      const menuHeight = 128;
+      const menuHeight = 136;
       const left = Math.max(12, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 12));
       const below = rect.bottom + 6;
       const top = below + menuHeight <= window.innerHeight - 8
@@ -191,7 +248,7 @@ export default function CoverPageGeneratorPage() {
   };
 
   // ─── Form state (persisted to localStorage) ───
-  const [savedForm] = useState(() => loadCoverForm());
+  const [savedForm] = useState(() => loadCoverForm(user));
   const [coverType, setCoverType] = useState(savedForm.coverType || 'Assignment');
   const [courseCode, setCourseCode] = useState(savedForm.courseCode || '');
   const [courseName, setCourseName] = useState(savedForm.courseName || '');
@@ -205,47 +262,20 @@ export default function CoverPageGeneratorPage() {
   });
   const [refNo, setRefNo] = useState(savedForm.refNo || '');
   const [groupNo, setGroupNo] = useState(savedForm.groupNo || '');
-  const getRealStudentId = (u) => {
-    const raw = u?.id || '';
-    if (/^\d{8,}$/.test(raw)) return raw;
-    const aw = u?.awid || '';
-    if (/^\d{8,}$/.test(aw)) return aw;
-    const email = u?.email || '';
-    const m = String(email).match(/(\d{8,})/);
-    if (m) return m[1];
-    if (raw && raw.startsWith('STU-')) return '20230204026';
-    if (aw && aw.includes('AW')) return '20230204026';
-    return raw || aw || '20230204026';
-  };
+  // Member 1 defaults to your own profile name + real student ID.
   const [members, setMembers] = useState(() => {
-    if (Array.isArray(savedForm.members) && savedForm.members.length) {
-      return savedForm.members.map(mm => {
-        const id = String(mm?.id || '');
-        if (id.startsWith('STU-') || id.includes('AW') || !/^\d{8,}$/.test(id)) {
-          return { ...mm, id: getRealStudentId(user) };
-        }
-        return mm;
-      });
-    }
-    return [{
-      name: user?.name || '',
-      id: getRealStudentId(user),
-    }];
+    const me = { name: user?.name || '', id: getRealStudentId(user) };
+    if (!Array.isArray(savedForm.members) || !savedForm.members.length) return [me];
+    return savedForm.members.map((mm, i) => {
+      const id = String(mm?.id || '');
+      // Internal account IDs (STU-…, AWID, DEV-…) are never a student ID.
+      const isInternal = /^(STU|DEV)-/i.test(id) || id.includes('AW');
+      // Your own row: keep its ID in sync with your profile.
+      if (i === 0 && sameName(mm?.name, me.name) && me.id && id !== me.id) return { ...mm, id: me.id };
+      if (isInternal) return { ...mm, id: i === 0 ? me.id : '' };
+      return mm;
+    });
   });
-  // Fix persisted wrong IDs (STU-...) on first load
-  useEffect(() => {
-    if (!user) return;
-    const real = getRealStudentId(user);
-    const needsFix = members.some(m => String(m.id || '').startsWith('STU-') || String(m.id || '').includes('AW'));
-    if (needsFix) {
-      setMembers(prev => prev.map(m => {
-        const id = String(m.id || '');
-        if (id.startsWith('STU-') || id.includes('AW') || !/^\d{8,}$/.test(id)) return { ...m, id: real };
-        return m;
-      }));
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, user?.awid, user?.email]);
 
   // Watermark settings (fixed values, previously adjustable)
   const watermarkSize = savedForm.watermarkSize || 500;
@@ -258,10 +288,11 @@ export default function CoverPageGeneratorPage() {
   const footerLogoX = 0;
   const footerLogoY = 0;
 
-  // Save form to localStorage on every change
+  // Save form to localStorage on every change (per account)
+  const storageKey = coverFormKey(user);
   useEffect(() => {
     try {
-      localStorage.setItem(COVER_FORM_KEY, JSON.stringify({
+      localStorage.setItem(storageKey, JSON.stringify({
         coverType,
         courseCode,
         courseName,
@@ -279,7 +310,7 @@ export default function CoverPageGeneratorPage() {
         footerLogoY,
       }));
     } catch { /* storage full / unavailable — ignore */ }
-  }, [coverType, courseCode, courseName, title, refNo, groupNo, members, teachers, watermarkSize, watermarkOpacity, watermarkX, watermarkY, footerLogoSize, footerLogoX, footerLogoY]);
+  }, [storageKey, coverType, courseCode, courseName, title, refNo, groupNo, members, teachers, watermarkSize, watermarkOpacity, watermarkX, watermarkY, footerLogoSize, footerLogoX, footerLogoY]);
 
   // Auto-fill from profile — real student ID (numeric), not AWID
   const studentName = user?.name || '';
@@ -348,6 +379,7 @@ export default function CoverPageGeneratorPage() {
         transform: none; zoom: 1;
         z-index: 99999;
       `;
+      await rasterizeSvgImages(clone);
       document.body.appendChild(clone);
       cloneRef.current = clone;
 
@@ -426,40 +458,71 @@ export default function CoverPageGeneratorPage() {
     return null;
   }
 
+  const filledMembers = members.filter((m) => (m.name || '').trim() || (m.id || '').trim()).length;
+  const statusLabel = generating ? 'Saving…' : generated ? 'Saved' : isFormValid ? 'Ready' : 'Draft';
+
+  const resetAdminStats = async () => {
+    if (!confirm('Reset all 6 counters to 0? This starts fresh.')) return;
+    try {
+      const res = await fetch('/api/admin/cover-stats/reset', { method: 'POST', credentials: 'same-origin' });
+      const d = await res.json();
+      if (d.success) setCoverStats({ uniqueUsers: 0, totalPdf: 0, totalPng: 0, lastMonthUsers: 0, todaysNewUsers: 0, avg6Months: 0 });
+      else loadCoverStats();
+    } catch { loadCoverStats(); }
+  };
+
+  const adminKpis = [
+    { label: 'Unique users', value: coverStats.uniqueUsers, note: 'at least 1 export' },
+    { label: 'PDF exports', value: coverStats.totalPdf, note: 'all users' },
+    { label: 'PNG exports', value: coverStats.totalPng, note: 'all users' },
+    { label: 'Last month users', value: coverStats.lastMonthUsers, note: 'prev month' },
+    { label: "Today's new users", value: coverStats.todaysNewUsers, note: 'first time today' },
+    { label: 'Avg users / month', value: coverStats.avg6Months, note: 'last 6 months' },
+  ];
+
   return (
-    <div className="glass-card-static schedule-widget cpgen-widget animate-fadeInUp">
+    <div className="glass-card-static cpgen-widget animate-fadeInUp">
 
-      {/* ── Masthead ── */}
-      <div className="schedule-masthead">
-        <div className="schedule-title-block">
-          <div className="schedule-icon-tile">
-            <NotebookPen size={20} strokeWidth={2.2} />
+      {/* ── Masthead (shared dl-head, skill-style §2) ── */}
+      <header className={`dl-head${isAdmin ? '' : ' has-actions'}`}>
+        <div className="dl-head-title">
+          <div className="dl-head-tile" aria-hidden="true">
+            <NotebookPen size={20} strokeWidth={2.1} />
           </div>
-          <div>
-            <span className="schedule-overline">Daily Life</span>
-            <p className="schedule-title">Cover Page Generator</p>
-            <span className="schedule-subtitle">Assignment &amp; lab report cover pages</span>
+          <div className="dl-head-text">
+            <span className="dl-head-overline">Daily Life</span>
+            <h2 className="dl-head-name">Cover Page Generator</h2>
+            <span className="dl-head-subtitle">Assignment &amp; lab report cover pages</span>
           </div>
         </div>
 
-        <div className="schedule-masthead-center">
-          {generating ? (
-            <span className="cpgen-status-badge">
-              <span className="cpgen-spinner" /> Generating…
-            </span>
-          ) : generated ? (
-            <span className="cpgen-success-badge">
-              <Check size={14} /> Generated!
-            </span>
-          ) : null}
-        </div>
+        {isAdmin ? (
+          <dl className="dl-head-stats">
+            <div className="dl-head-stat"><dt>Users</dt><dd>{coverStats.uniqueUsers}</dd></div>
+            <div className="dl-head-stat"><dt>PDF</dt><dd>{coverStats.totalPdf}</dd></div>
+            <div className="dl-head-stat"><dt>PNG</dt><dd>{coverStats.totalPng}</dd></div>
+          </dl>
+        ) : (
+          <dl className="dl-head-stats">
+            <div className="dl-head-stat"><dt>Type</dt><dd className="is-small cpgen-stat-text">{coverType || '—'}</dd></div>
+            <div className="dl-head-stat"><dt>Members</dt><dd>{filledMembers}</dd></div>
+            <div className="dl-head-stat">
+              <dt>Status</dt>
+              <dd className="is-small cpgen-stat-status">
+                {generating ? <span className="cpgen-spinner" aria-hidden="true" /> : generated ? <Check size={13} aria-hidden="true" /> : null}
+                {statusLabel}
+              </dd>
+            </div>
+          </dl>
+        )}
 
-        <div className="schedule-actions">
-          {!isAdmin && (
-            <div className="export-dropdown" ref={menuRef}>
+        {!isAdmin && (
+          <div className="dl-head-actions">
+            <div className="cpgen-menu" ref={menuRef}>
               <button
                 ref={menuButtonRef}
-                className="schedule-nav-btn"
+                type="button"
+                className="cpgen-menu-btn"
                 onClick={toggleExportMenu}
                 title="Options"
                 aria-label="Cover page options"
@@ -467,18 +530,19 @@ export default function CoverPageGeneratorPage() {
                 aria-expanded={menuOpen}
                 aria-controls="cpgen-export-menu"
               >
-                <MoreVertical size={18} />
+                <MoreVertical size={17} />
               </button>
               {menuOpen && createPortal(
                 <div
                   ref={menuPortalRef}
                   id="cpgen-export-menu"
-                  className="export-menu cpgen-export-menu"
+                  className="cpgen-menu-list"
                   role="menu"
-                  style={{ position: 'fixed', top: menuPosition.top, left: menuPosition.left, right: 'auto' }}
+                  style={{ top: menuPosition.top, left: menuPosition.left }}
                 >
                   <button
-                    className="export-menu-item"
+                    type="button"
+                    className="cpgen-menu-item"
                     onClick={() => { setMenuOpen(false); generateCover('pdf'); }}
                     disabled={!isFormValid || generating}
                     role="menuitem"
@@ -486,112 +550,59 @@ export default function CoverPageGeneratorPage() {
                     <FileDown size={14} /> Download PDF
                   </button>
                   <button
-                    className="export-menu-item"
+                    type="button"
+                    className="cpgen-menu-item"
                     onClick={() => { setMenuOpen(false); generateCover('png'); }}
                     disabled={!isFormValid || generating}
                     role="menuitem"
                   >
                     <Image size={14} /> Download PNG
                   </button>
-                  <div className="export-menu-sep" />
+                  <div className="cpgen-menu-sep" />
                   <button
-                    className="export-menu-item"
+                    type="button"
+                    className="cpgen-menu-item is-danger"
                     onClick={resetForm}
                     role="menuitem"
                   >
-                    <RotateCcw size={14} /> Reset Form
+                    <RotateCcw size={14} /> Reset form
                   </button>
                 </div>,
                 document.body
               )}
             </div>
-          )}
-        </div>
-      </div>
-
-      <div className="schedule-dotted-divider" />
+          </div>
+        )}
+      </header>
 
       {isAdmin && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '14px' }}>
-          <div className="glass-card" style={{ padding: '12px', textAlign: 'center' }}>
-            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Unique Users</div>
-            <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>{coverStats.uniqueUsers}</div>
-            <div style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>at least 1 export</div>
+        <section className="cpgen-card cpgen-admin-card">
+          <div className="cpgen-card-head-row">
+            <h3 className="cpgen-card-title"><Sparkles size={14} /> Export stats</h3>
+            <button type="button" className="cpgen-btn cpgen-btn-danger" onClick={resetAdminStats}>
+              <RotateCcw size={13} /> Reset
+            </button>
           </div>
-          <div className="glass-card" style={{ padding: '12px', textAlign: 'center' }}>
-            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total PDF Exports</div>
-            <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent-blue)' }}>{coverStats.totalPdf}</div>
-            <div style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>all users</div>
+          <div className="cpgen-kpi-grid">
+            {adminKpis.map((k) => (
+              <div className="cpgen-kpi" key={k.label}>
+                <span className="cpgen-kpi-label">{k.label}</span>
+                <span className="cpgen-kpi-value">{k.value}</span>
+                <span className="cpgen-kpi-note">{k.note}</span>
+              </div>
+            ))}
           </div>
-          <div className="glass-card" style={{ padding: '12px', textAlign: 'center' }}>
-            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total PNG Exports</div>
-            <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent-emerald)' }}>{coverStats.totalPng}</div>
-            <div style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>all users</div>
-          </div>
-          <div className="glass-card" style={{ padding: '12px', textAlign: 'center' }}>
-            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Last Month Users</div>
-            <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent-amber)' }}>{coverStats.lastMonthUsers}</div>
-            <div style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>prev month</div>
-          </div>
-          <div className="glass-card" style={{ padding: '12px', textAlign: 'center' }}>
-            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Today's New Users</div>
-            <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent-purple)' }}>{coverStats.todaysNewUsers}</div>
-            <div style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>first time today</div>
-          </div>
-          <div className="glass-card" style={{ padding: '12px', textAlign: 'center' }}>
-            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Avg Users / Month (6M)</div>
-            <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent-cyan)' }}>{coverStats.avg6Months}</div>
-            <div style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>last 6 months</div>
-          </div>
-        </div>
-      )}
-      {isAdmin && (
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>
-          <button
-            className="btn btn-rose btn-sm"
-            onClick={async () => {
-              if (!confirm('Reset all 6 counters to 0? This starts fresh.')) return;
-              try {
-                const res = await fetch('/api/admin/cover-stats/reset', { method: 'POST', credentials: 'same-origin' });
-                const d = await res.json();
-                if (d.success) setCoverStats({ uniqueUsers: 0, totalPdf: 0, totalPng: 0, lastMonthUsers: 0, todaysNewUsers: 0, avg6Months: 0 });
-                else loadCoverStats();
-              } catch { loadCoverStats(); }
-            }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '7px',
-              borderRadius: '999px',
-              padding: '8px 22px',
-              background: 'var(--accent-rose)',
-              color: 'var(--text-inverse, #fff)',
-              border: '1px solid var(--accent-rose)',
-              boxShadow: '0 4px 14px var(--accent-rose-glow, rgba(244,63,94,0.25)), 0 1px 3px rgba(0,0,0,0.08)',
-              fontWeight: 700,
-              fontSize: '12px',
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase',
-              cursor: 'pointer',
-              transition: 'transform 0.15s, boxShadow 0.15s, background 0.15s',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 18px var(--accent-rose-glow, rgba(244,63,94,0.35))'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 14px var(--accent-rose-glow, rgba(244,63,94,0.25)), 0 1px 3px rgba(0,0,0,0.08)'; }}
-          >
-            <RotateCcw size={13} />
-            Reset
-          </button>
-        </div>
+        </section>
       )}
 
       {!isAdmin && (
         <div className="cpgen-layout">
         {/* ─── Form Panel ─── */}
-        <div className="cpgen-form-panel">
-          <div className="cpgen-form-header">
-            <FileText size={18} />
-            <span>Cover Page Details</span>
-          </div>
+        <section className="cpgen-card cpgen-form-panel" aria-label="Cover page details">
+          <h3 className="cpgen-card-title cpgen-card-title--ruled">
+            <FileText size={14} />
+            <span>Cover page details</span>
+          </h3>
 
           {/* Cover Type */}
           <div className="cpgen-field">
@@ -629,11 +640,12 @@ export default function CoverPageGeneratorPage() {
             />
           </div>
 
-          {/* No. — Title er age */}
+          {/* No. */}
           <div className="cpgen-field">
             <label className="cpgen-label">No.</label>
             <input
               className="input"
+              inputMode="numeric"
               placeholder="e.g. 01"
               value={refNo}
               onChange={(e) => setRefNo(e.target.value.replace(/\D/g, ''))}
@@ -657,7 +669,7 @@ export default function CoverPageGeneratorPage() {
             />
           </div>
 
-          {/* Group No. — upore */}
+          {/* Group No. */}
           <div className="cpgen-field">
             <label className="cpgen-label">Group No.</label>
             <input
@@ -668,20 +680,25 @@ export default function CoverPageGeneratorPage() {
             />
           </div>
 
-          {/* Group Members — Add Member upore, Course Teacher er age */}
+          {/* Group Members */}
           <div className="cpgen-field">
-            <label className="cpgen-label">Group Members</label>
+            <div className="cpgen-label-row">
+              <label className="cpgen-label">Group Members</label>
+              <button type="button" className="cpgen-add-btn" onClick={addMember}>
+                <UserPlus size={13} /> Add member
+              </button>
+            </div>
             <div className="cpgen-members-list">
               {members.map((member, index) => (
                 <div className="cpgen-member-row" key={index}>
                   <input
-                    className="input"
+                    className="input cpgen-member-name"
                     placeholder={`Member ${index + 1} name`}
                     value={member.name}
                     onChange={(e) => updateMember(index, 'name', capitalizeWords(e.target.value))}
                   />
                   <input
-                    className="input"
+                    className="input cpgen-member-id"
                     placeholder="Student ID"
                     value={member.id}
                     onChange={(e) => updateMember(index, 'id', e.target.value)}
@@ -691,25 +708,28 @@ export default function CoverPageGeneratorPage() {
                     className="cpgen-member-remove"
                     onClick={() => removeMember(index)}
                     title="Remove member"
+                    aria-label={`Remove member ${index + 1}`}
                   >
                     <X size={14} />
                   </button>
                 </div>
               ))}
             </div>
-            <button type="button" className="cpgen-add-member" onClick={addMember}>
-              <UserPlus size={13} /> Add Member
-            </button>
           </div>
 
-          {/* Course Teacher — last e */}
+          {/* Course Teacher */}
           <div className="cpgen-field">
-            <label className="cpgen-label">Course Teacher</label>
+            <div className="cpgen-label-row">
+              <label className="cpgen-label">Course Teacher</label>
+              <button type="button" className="cpgen-add-btn" onClick={addTeacher}>
+                <UserPlus size={13} /> Add teacher
+              </button>
+            </div>
             <div className="cpgen-members-list">
               {teachers.map((teacher, index) => (
-                <div className="cpgen-member-row" key={index} style={{ gridTemplateColumns: '1fr auto' }}>
+                <div className="cpgen-member-row is-teacher" key={index}>
                   <input
-                    className="input"
+                    className="input cpgen-member-name"
                     placeholder={`Teacher ${index + 1} name`}
                     value={teacher.name}
                     onChange={(e) => updateTeacher(index, 'name', capitalizeWords(e.target.value))}
@@ -719,23 +739,24 @@ export default function CoverPageGeneratorPage() {
                     className="cpgen-member-remove"
                     onClick={() => removeTeacher(index)}
                     title="Remove teacher"
+                    aria-label={`Remove teacher ${index + 1}`}
                   >
                     <X size={14} />
                   </button>
                 </div>
               ))}
             </div>
-            <button type="button" className="cpgen-add-member" onClick={addTeacher}>
-              <UserPlus size={13} /> Add Teacher
-            </button>
           </div>
-        </div>
+        </section>
 
         {/* ─── Preview Panel ─── */}
-        <div className="cpgen-preview-panel">
-          <div className="cpgen-preview-header">
-            <Sparkles size={16} />
-            <span>Live Preview</span>
+        <section className="cpgen-card cpgen-preview-panel" aria-label="Live preview">
+          <div className="cpgen-card-head-row cpgen-card-title--ruled">
+            <h3 className="cpgen-card-title">
+              <Sparkles size={14} />
+              <span>Live preview</span>
+            </h3>
+            <span className="cpgen-preview-meta">A4 · 210 × 297 mm</span>
           </div>
           <div className="cpgen-preview-frame" ref={frameRef}>
             {isFormValid ? (
@@ -782,54 +803,54 @@ export default function CoverPageGeneratorPage() {
                 </div>
               </div>
             ) : (
-              <div className="cpgen-preview-placeholder" style={{ position: 'relative', inset: 'auto' }}>
-                <NotebookPen size={40} strokeWidth={1.2} />
-                <p>Fill in <strong>Course Code *</strong> and <strong>Title *</strong> to preview — Course Name is optional (auto-filled via autocomplete)</p>
+              <div className="cpgen-empty">
+                <span className="cpgen-empty-icon"><NotebookPen size={16} /></span>
+                <p className="cpgen-empty-hint">Add a <strong>Course Code</strong> and <strong>Title</strong> to see the cover. Course Name is optional.</p>
               </div>
             )}
           </div>
-        </div>
+        </section>
       </div>
       )}
 
       {/* ─── Profile Info (Read-only) — full-width, below the editor ─── */}
       {!isAdmin && (
-        <div className="cpgen-profile-card">
-        <div className="cpgen-profile-header">
-          <User size={14} />
-          <span>Your Profile</span>
-        </div>
-        <div className="cpgen-profile-grid">
-          <div className="cpgen-profile-item">
-            <span className="cpgen-profile-label">Name</span>
-            <span className="cpgen-profile-value">{studentName || '—'}</span>
-          </div>
-          <div className="cpgen-profile-item">
-            <span className="cpgen-profile-label">ID</span>
-            <span className="cpgen-profile-value">{studentId || '—'}</span>
-          </div>
-          <div className="cpgen-profile-item">
-            <span className="cpgen-profile-label">Department</span>
-            <span className="cpgen-profile-value">{department || '—'}</span>
-          </div>
-          <div className="cpgen-profile-item">
-            <span className="cpgen-profile-label">Semester</span>
-            <span className="cpgen-profile-value">{semester || '—'}</span>
-          </div>
-          <div className="cpgen-profile-item">
-            <span className="cpgen-profile-label">Batch</span>
-            <span className="cpgen-profile-value">{batch || '—'}</span>
-          </div>
-          <div className="cpgen-profile-item">
-            <span className="cpgen-profile-label">Section</span>
-            <span className="cpgen-profile-value">{section || '—'}</span>
-          </div>
-          <div className="cpgen-profile-item cpgen-profile-item--wide">
-            <span className="cpgen-profile-label">Lab Group</span>
-            <span className="cpgen-profile-value">{labGroup || '—'}</span>
-          </div>
-        </div>
-      </div>
+        <section className="cpgen-card cpgen-profile-card" aria-label="Your profile">
+          <h3 className="cpgen-card-title cpgen-card-title--ruled">
+            <User size={14} />
+            <span>Your profile</span>
+          </h3>
+          <dl className="cpgen-profile-grid">
+            <div className="cpgen-profile-item">
+              <dt className="cpgen-profile-label">Name</dt>
+              <dd className="cpgen-profile-value">{studentName || '—'}</dd>
+            </div>
+            <div className="cpgen-profile-item">
+              <dt className="cpgen-profile-label">ID</dt>
+              <dd className="cpgen-profile-value">{studentId || '—'}</dd>
+            </div>
+            <div className="cpgen-profile-item">
+              <dt className="cpgen-profile-label">Department</dt>
+              <dd className="cpgen-profile-value">{department || '—'}</dd>
+            </div>
+            <div className="cpgen-profile-item">
+              <dt className="cpgen-profile-label">Semester</dt>
+              <dd className="cpgen-profile-value">{semester || '—'}</dd>
+            </div>
+            <div className="cpgen-profile-item">
+              <dt className="cpgen-profile-label">Batch</dt>
+              <dd className="cpgen-profile-value">{batch || '—'}</dd>
+            </div>
+            <div className="cpgen-profile-item">
+              <dt className="cpgen-profile-label">Section</dt>
+              <dd className="cpgen-profile-value">{section || '—'}</dd>
+            </div>
+            <div className="cpgen-profile-item">
+              <dt className="cpgen-profile-label">Lab Group</dt>
+              <dd className="cpgen-profile-value">{labGroup || '—'}</dd>
+            </div>
+          </dl>
+        </section>
       )}
     </div>
   );
