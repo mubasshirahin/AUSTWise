@@ -11,12 +11,21 @@ import {
   clearAllNotifications,
   showNativeNotification,
   addNotification,
+  makeNotifId,
+  noticeScopeMatchesUser,
 } from '../utils/inAppNotifications';
-import { loadSharedSync } from '../utils/storageService';
+import { loadSharedSync, loadSharedAsync } from '../utils/storageService';
 import { getAllRoleApplications } from '../utils/authStorage';
 import { onRealtimeMessage } from '../utils/liveStore';
 
 const POLL_MS = 5000;
+const CRSR_NOTICES_KEY = 'aust-cr-sr-notices';
+
+// CR/SR notices live in their own store. Skip the viewer's own posts —
+// nobody should be notified about a notice they wrote.
+function withoutOwnNotices(list, userId) {
+  return Array.isArray(list) ? list.filter((n) => !(userId && n.postedBy === userId)) : [];
+}
 
 /**
  * Cheap change-detector for the notification list. `loadNotifications()`
@@ -98,10 +107,60 @@ export function useInAppNotifications(user) {
     return () => { cancelled = true; clearInterval(interval); };
   }, [user?.id, user?.isGuest, isAdmin, addRoleReviewNotification]);
 
+  // Live: a CR/SR just posted. Listening here (navbar, every page) rather than
+  // in the dashboard's NoticeBoard means the bell updates wherever the user is.
+  useEffect(() => {
+    if (!user?.id || user?.isGuest) return undefined;
+    return onRealtimeMessage('notice-new', (p) => {
+      if (!p?.title) return;
+      if (p.postedById && p.postedById === user.id) return;
+      if (!noticeScopeMatchesUser(p.scope, user)) return;
+      addNotification({
+        // Same id the store-based seed uses, so the two never duplicate.
+        id: p.noticeId ? `notice-${p.noticeId}` : makeNotifId('notice'),
+        title: p.title,
+        body: (p.content || `Posted by ${p.postedByName || 'CR/SR'}`).slice(0, 120),
+        type: 'notice',
+        icon: 'BellRing',
+        path: '/',
+        timestamp: Date.now(),
+        read: false,
+        priority: p.pinned ? 'high' : 'medium',
+        actorName: p.postedByName || '',
+        avatar: p.postedByAvatar || null,
+      });
+      setNotifications(loadNotifications());
+      setUnread(getUnreadCount());
+    });
+  }, [user?.id, user?.isGuest, user?.department, user?.semester, user?.section, user?.labSection]);
+
+  // Catch-up: notices posted while this user was offline / socket dropped.
+  useEffect(() => {
+    if (!user?.id || user?.isGuest) return undefined;
+    let cancelled = false;
+    const sync = async () => {
+      try {
+        const list = await loadSharedAsync(CRSR_NOTICES_KEY, []);
+        if (cancelled) return;
+        seedFromNotices(withoutOwnNotices(list, user.id), user);
+        setNotifications(loadNotifications());
+        setUnread(getUnreadCount());
+      } catch { /* offline — try again next tick */ }
+    };
+    sync();
+    const interval = setInterval(sync, 30000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [user?.id, user?.isGuest, user?.department, user?.semester, user?.section, user?.labSection]);
+
   const runSeed = useCallback(() => {
     try {
       const storedNotices = loadSharedSync('aust-notices');
       if (storedNotices) seedFromNotices(storedNotices, user);
+    } catch { /* ignore */ }
+
+    try {
+      const crsr = loadSharedSync(CRSR_NOTICES_KEY);
+      if (crsr) seedFromNotices(withoutOwnNotices(crsr, user?.id), user);
     } catch { /* ignore */ }
 
     try {
@@ -124,7 +183,7 @@ export function useInAppNotifications(user) {
 
     setNotifications(loadNotifications());
     setUnread(getUnreadCount());
-  }, [isAdmin]);
+  }, [isAdmin, user]);
 
   // Admin only: fetch applications from the server so submissions made on
   // another device reach the admin's bell (and native popup) automatically.

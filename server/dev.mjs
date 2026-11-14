@@ -2297,7 +2297,6 @@ async function handleApiRequest(req, res) {
 
   // Broadcast a notice to all Telegram users (CR / SR / admin / moderator)
   if (req.url === '/api/telegram/send-notice' && req.method === 'POST') {
-    if (!requireFeature('telegram', res, 'TELEGRAM_BOT_TOKEN')) return;
     const auth = requireRole('cr', 'sr', 'admin', 'moderator')(req, res);
     if (!auth) return;
     try {
@@ -2316,6 +2315,17 @@ async function handleApiRequest(req, res) {
       let scope = null;
       if (serverUser && auth.role === 'cr' && serverUser.labSection) scope = { department: serverUser.department, semester: String(serverUser.semester), labSection: serverUser.labSection };
       else if (serverUser && auth.role === 'sr' && serverUser.section) scope = { department: serverUser.department, semester: String(serverUser.semester), section: serverUser.section };
+      // In-app bell broadcast first — it must not depend on Telegram being
+      // configured or succeeding.
+      const noticeId = typeof payload.noticeId === 'string' ? payload.noticeId.slice(0, 80) : '';
+      try {
+        const postedByAvatar = typeof serverUser?.avatar === 'string' && serverUser.avatar.length <= 120000 ? serverUser.avatar : null;
+        broadcastToAll({ type: 'notice-new', payload: { noticeId, postedByAvatar, title: payload.title, content: payload.content, pinned: !!payload.pinned, postedById: auth.id, postedByName: safeName, postedByRole: auth.role, scope } });
+      } catch { /* realtime is best-effort */ }
+      if (!FEATURES.telegram) {
+        sendJson(res, 200, { success: true, telegram: false });
+        return;
+      }
       const result = await sendNoticeToAllUsers({
         title: payload.title,
         content: payload.content,
@@ -2324,7 +2334,6 @@ async function handleApiRequest(req, res) {
         postedByRole: auth.role,
         scope,
       });
-      broadcastToAll({ type: 'notice-new', payload: { title: payload.title, content: payload.content, postedById: auth.id, postedByName: safeName, postedByRole: auth.role, scope } });
       sendJson(res, 200, result);
     } catch (error) {
       sendJson(res, 500, {

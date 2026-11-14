@@ -1,18 +1,20 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { BellRing, Pin, ChevronDown, ChevronUp, Sparkles, Plus, X, Trash2, UserRound } from 'lucide-react';
+import { BellRing, Pin, ChevronDown, ChevronUp, Sparkles, Plus, X, Trash2, UserRound, Pencil } from 'lucide-react';
 import { notices } from '../../data/mockData';
 import { useAuth } from '../../context/AuthContext';
 import useWebSocket from '../../hooks/useWebSocket';
 import { loadSharedSync, loadSharedAsync, saveShared } from '../../utils/storageService';
 import { getLiveValue } from '../../utils/liveStore';
-import { addNotification, makeNotifId, showNativeNotification, removeNotificationById, removeNotificationsByTitle, noticeScopeMatchesUser } from '../../utils/inAppNotifications';
+import { removeNotificationById, removeNotificationsByTitle } from '../../utils/inAppNotifications';
 
 const CRSR_KEY = 'aust-cr-sr-notices';
 const NOTICE_TITLE_MAX = 80;
 const NOTICE_CONTENT_MAX = 5000;
 const NOTICE_RATE_KEY = 'aust-notice-last-post';
 const NOTICE_RATE_MS = 30000; // 1 post per 30s client-side throttle
+const SWIPE_TRIGGER = 72; // px of horizontal drag that fires edit/delete
+const SWIPE_MAX = 110;
 
 export default function NoticeBoard() {
   const { user } = useAuth();
@@ -21,26 +23,18 @@ export default function NoticeBoard() {
   const [formTitle, setFormTitle] = useState('');
   const [formContent, setFormContent] = useState('');
   const [formPinned, setFormPinned] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  // Swipe on own notices (touch): left → edit, right → delete confirm
+  const [swipe, setSwipe] = useState(null); // { id, dx }
+  const swipeStart = useRef(null);
+  const swipeSuppressClick = useRef(false);
 
-  // Real-time notices are broadcast to all connected clients; only notify
-  // people whose profile matches the notice's department/semester/section.
+  // The navbar bell (useInAppNotifications) handles the notification itself;
+  // here we only refresh the list so a new CR/SR notice shows up immediately.
   useWebSocket(user?.id || null, {
-    onNoticeNew: useCallback(({ title, content, postedByName, postedById, scope }) => {
-      if (postedById && postedById === user?.id) return;
-      if (!noticeScopeMatchesUser(scope, user)) return;
-      const notif = {
-        id: makeNotifId(),
-        title: `New Notice: ${title}`,
-        body: content || `Posted by ${postedByName || 'CR/SR'}`,
-        icon: 'BellRing',
-        path: '/',
-        timestamp: Date.now(),
-        read: false,
-        priority: 'medium',
-      };
-      addNotification(notif);
-      showNativeNotification(notif);
-    }, [user?.id, user?.department, user?.semester, user?.section, user?.labSection]),
+    onNoticeNew: useCallback(() => {
+      loadSharedAsync(CRSR_KEY, []).then(v => { if (Array.isArray(v)) setCrsrNotices(v); });
+    }, []),
   });
 
   const [adminNotices, setAdminNotices] = useState(() => loadSharedSync('aust-notices', notices));
@@ -97,19 +91,31 @@ export default function NoticeBoard() {
     if (t.length < 5) { setFormError('Title must be at least 5 characters.'); return; }
     if (t.length > NOTICE_TITLE_MAX) { setFormError(`Title must be ≤ ${NOTICE_TITLE_MAX} characters.`); return; }
     if (c.length > NOTICE_CONTENT_MAX) { setFormError(`Content must be ≤ ${NOTICE_CONTENT_MAX} characters.`); return; }
-    // Client-side rate limit
+    // Client-side rate limit (new posts only)
     const last = Number(localStorage.getItem(NOTICE_RATE_KEY) || 0);
-    if (Date.now() - last < NOTICE_RATE_MS) {
+    if (!editingId && Date.now() - last < NOTICE_RATE_MS) {
       const wait = Math.ceil((NOTICE_RATE_MS - (Date.now() - last)) / 1000);
       setFormError(`Please wait ${wait}s before posting another notice.`);
       return;
     }
     setFormError('');
+    if (editingId) {
+      saveCrsr(crsrNotices.map(n => n.id === editingId
+        ? { ...n, title: t.slice(0, NOTICE_TITLE_MAX), content: c.slice(0, NOTICE_CONTENT_MAX), pinned: formPinned, editedAt: new Date().toISOString() }
+        : n));
+      closeForm();
+      return;
+    }
     const isCr = user.role === 'cr';
     const notice = {
       id: `cr-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
       pinned: formPinned,
       date: new Date().toISOString().slice(0, 10),
+      // Exact post time — `date` alone parses as UTC midnight, which made
+      // the bell show "4h ago" for a notice posted minutes earlier.
+      createdAt: new Date().toISOString(),
+      // Poster's photo for the bell; skip oversized data URLs.
+      postedByAvatar: typeof user.avatar === 'string' && user.avatar.length <= 120000 ? user.avatar : null,
       title: t.slice(0, NOTICE_TITLE_MAX),
       content: c.slice(0, NOTICE_CONTENT_MAX),
       postedBy: user.id,
@@ -129,21 +135,79 @@ export default function NoticeBoard() {
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        noticeId: notice.id,
         title: notice.title,
         content: notice.content,
         pinned: notice.pinned,
       }),
     }).catch(() => { /* Telegram broadcast is best-effort */ });
+    closeForm();
+  };
+
+  const openNewForm = () => {
+    setEditingId(null);
     setFormTitle('');
     setFormContent('');
     setFormPinned(false);
+    setFormError('');
+    setShowForm(true);
+  };
+
+  const openEditForm = (notice) => {
+    setEditingId(notice.id);
+    setFormTitle(notice.title || '');
+    setFormContent(notice.content || '');
+    setFormPinned(Boolean(notice.pinned));
+    setFormError('');
+    setShowForm(true);
+  };
+
+  function closeForm() {
     setShowForm(false);
+    setEditingId(null);
+    setFormTitle('');
+    setFormContent('');
+    setFormPinned(false);
+    setFormError('');
+  }
+
+  const onSwipeStart = (e, notice) => {
+    const t = e.touches[0];
+    if (!t) return;
+    swipeStart.current = { id: notice.id, x: t.clientX, y: t.clientY, axis: null };
+  };
+
+  const onSwipeMove = (e) => {
+    const st = swipeStart.current;
+    const t = e.touches[0];
+    if (!st || !t) return;
+    const dx = t.clientX - st.x;
+    const dy = t.clientY - st.y;
+    if (!st.axis) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      st.axis = Math.abs(dx) > Math.abs(dy) * 1.2 ? 'x' : 'y';
+    }
+    if (st.axis !== 'x') return;
+    setSwipe({ id: st.id, dx: Math.max(-SWIPE_MAX, Math.min(SWIPE_MAX, dx)) });
+  };
+
+  const onSwipeEnd = (notice) => {
+    const st = swipeStart.current;
+    swipeStart.current = null;
+    if (!st || st.axis !== 'x') { setSwipe(null); return; }
+    swipeSuppressClick.current = true;
+    setTimeout(() => { swipeSuppressClick.current = false; }, 350);
+    const dx = swipe?.id === notice.id ? swipe.dx : 0;
+    setSwipe(null);
+    if (dx <= -SWIPE_TRIGGER) openEditForm(notice);
+    else if (dx >= SWIPE_TRIGGER) setDeleteConfirmId(notice.id);
   };
 
   const handleDelete = (id) => {
     const target = crsrNotices.find(n => n.id === id);
     if (target) {
       removeNotificationById(target.notifId);
+      removeNotificationById(`notice-${target.id}`);
       removeNotificationsByTitle(target.title);
     }
     saveCrsr(crsrNotices.filter(n => n.id !== id));
@@ -151,6 +215,7 @@ export default function NoticeBoard() {
   };
 
   const toggleExpand = (id) => {
+    if (swipeSuppressClick.current) { swipeSuppressClick.current = false; return; }
     if (expandedNotice === id) {
       setExpandedNotice(null);
     } else {
@@ -196,7 +261,7 @@ export default function NoticeBoard() {
 
         {isCrSr && (
           <div className="schedule-actions">
-            <button className="schedule-nav-btn" onClick={() => setShowForm(true)} aria-label="Post a notice" title="Post a notice">
+            <button className="schedule-nav-btn" onClick={openNewForm} aria-label="Post a notice" title="Post a notice">
               <Plus size={18} />
             </button>
           </div>
@@ -220,7 +285,7 @@ export default function NoticeBoard() {
             <BellRing size={22} style={{ opacity: 0.3, marginBottom: '2px' }} />
             <span>No notices for your section yet</span>
             {isCrSr ? (
-              <button className="btn btn-sm" onClick={() => setShowForm(true)} style={{ display:'inline-flex', alignItems:'center', gap:'6px' }}>
+              <button className="btn btn-sm" onClick={openNewForm} style={{ display:'inline-flex', alignItems:'center', gap:'6px' }}>
                 <Plus size={14} /> Post first notice
               </button>
             ) : (
@@ -232,14 +297,37 @@ export default function NoticeBoard() {
           const accent = notice.pinned ? 'var(--accent-amber)' : 'var(--accent-blue)';
           const isOwn = isCrSr && notice.postedBy === user.id;
 
+          const dx = swipe?.id === notice.id ? swipe.dx : 0;
+          const swipeHandlers = isOwn ? {
+            onTouchStart: (e) => onSwipeStart(e, notice),
+            onTouchMove: onSwipeMove,
+            onTouchEnd: () => onSwipeEnd(notice),
+            onTouchCancel: () => { swipeStart.current = null; setSwipe(null); },
+          } : {};
+
           return (
             <div
               key={notice.id}
-              className="schedule-day-card notice-row"
+              className={`notice-swipe${isOwn ? ' is-swipeable' : ''}`}
+              style={{ animationDelay: `${idx * 60}ms` }}
+            >
+              {isOwn && (
+                <div className="notice-swipe-bg" aria-hidden="true">
+                  <span className={`notice-swipe-action is-delete${dx >= SWIPE_TRIGGER ? ' is-armed' : ''}`} style={{ opacity: dx > 0 ? 1 : 0 }}>
+                    <Trash2 size={16} /> Delete
+                  </span>
+                  <span className={`notice-swipe-action is-edit${dx <= -SWIPE_TRIGGER ? ' is-armed' : ''}`} style={{ opacity: dx < 0 ? 1 : 0 }}>
+                    Edit <Pencil size={16} />
+                  </span>
+                </div>
+              )}
+            <div
+              className={`schedule-day-card notice-row${dx ? ' is-dragging' : ''}`}
               onClick={() => toggleExpand(notice.id)}
+              {...swipeHandlers}
               style={{
                 '--notice-accent': accent,
-                animationDelay: `${idx * 60}ms`,
+                transform: dx ? `translateX(${dx}px)` : undefined,
               }}
             >
               <div className="schedule-day-top">
@@ -309,17 +397,18 @@ export default function NoticeBoard() {
                 <div className="notice-preview">{notice.content}</div>
               )}
             </div>
+            </div>
           );
         })}
       </div>
 
       {showForm && createPortal(
         <>
-          <div className="modal-overlay" onClick={() => setShowForm(false)} />
+          <div className="modal-overlay" onClick={closeForm} />
           <div className="routine-edit-modal notice-form-modal">
             <div className="routine-edit-header">
-              <h3>Post a Notice</h3>
-              <button className="schedule-nav-btn" onClick={() => setShowForm(false)} aria-label="Close">
+              <h3>{editingId ? 'Edit Notice' : 'Post a Notice'}</h3>
+              <button className="schedule-nav-btn" onClick={closeForm} aria-label="Close">
                 <X size={18} />
               </button>
             </div>
@@ -346,8 +435,8 @@ export default function NoticeBoard() {
                 <span className="notice-pin-label">Pin this notice</span>
               </label>
               <div className="routine-edit-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Post Notice</button>
+                <button type="button" className="btn btn-secondary" onClick={closeForm}>Cancel</button>
+                <button type="submit" className="btn btn-primary">{editingId ? 'Save Changes' : 'Post Notice'}</button>
               </div>
             </form>
           </div>

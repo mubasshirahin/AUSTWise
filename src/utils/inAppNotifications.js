@@ -216,6 +216,22 @@ export function makeNotifId(prefix = 'n') {
 
 // ─── Seed from data sources (call on mount) ───
 
+/**
+ * Best post time for a notice: exact `createdAt`, else the ms timestamp
+ * baked into CR/SR ids (`cr-<ms>-xxxx`), else the date at *local* midnight.
+ * A bare 'YYYY-MM-DD' must not go through Date() — it parses as UTC.
+ */
+function noticeTimestamp(notice) {
+  const created = notice.createdAt ? new Date(notice.createdAt).getTime() : NaN;
+  if (Number.isFinite(created)) return created;
+  const fromId = /^cr-(\d{12,14})-/.exec(String(notice.id || ''));
+  if (fromId) return Number(fromId[1]);
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(notice.date || ''));
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getTime();
+  const parsed = notice.date ? new Date(notice.date).getTime() : NaN;
+  return Number.isFinite(parsed) ? parsed : Date.now();
+}
+
 export function seedFromNotices(notices, user) {
   if (!notices || !notices.length) return;
   const sourceIds = new Set(notices.map((notice) => `notice-${notice.id}`));
@@ -229,7 +245,21 @@ export function seedFromNotices(notices, user) {
   visibleNotices.forEach((notice) => {
     if (!getNotificationChannelEnabled('bell', 'notices')) return;
     const id = `notice-${notice.id}`;
-    if (existingIds.has(id)) return;
+    const timestamp = noticeTimestamp(notice);
+    const actor = {
+      actorName: notice.postedByName || '',
+      avatar: notice.postedByAvatar || null,
+    };
+    if (existingIds.has(id)) {
+      // Repair items saved before exact times / poster photos existed.
+      const item = existing.find((n) => n.id === id);
+      if (item) {
+        item.timestamp = timestamp;
+        if (actor.actorName) item.actorName = actor.actorName;
+        if (actor.avatar) item.avatar = actor.avatar;
+      }
+      return;
+    }
     existing.push({
       id,
       title: notice.title || 'New Notice',
@@ -237,9 +267,10 @@ export function seedFromNotices(notices, user) {
       type: 'notice',
       icon: 'BellRing',
       path: '/',
-      timestamp: new Date(notice.date || notice.createdAt || Date.now()).getTime(),
+      timestamp,
       read: false,
       priority: notice.pinned ? 'high' : 'medium',
+      ...actor,
     });
   });
 
