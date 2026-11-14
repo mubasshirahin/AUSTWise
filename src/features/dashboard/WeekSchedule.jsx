@@ -721,18 +721,13 @@ export default function WeekSchedule() {
       <div className="schedule-dotted-divider" />
 
       {/* Semester Start Date box */}
-      <div className="schedule-semester-box" style={{
-        display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
-        background: 'var(--accent-blue-glow)',
-        border: '1px solid color-mix(in srgb, var(--accent-blue) 18%, transparent)',
-        borderRadius: 'var(--radius-sm)', padding: '10px 12px', marginBottom: '12px',
-      }}>
-        <span style={{ fontSize: '16px' }}>📅</span>
-        <div style={{ flex: 1, minWidth: '160px' }}>
-          <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+      <div className={`schedule-semester-box${canManageStartDate ? ' is-admin' : ''}`}>
+        <span className="schedule-semester-icon" aria-hidden="true">📅</span>
+        <div className="schedule-semester-text">
+          <div className="schedule-semester-title">
             Semester Start Date
           </div>
-          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
+          <div className="schedule-semester-date">
             {semesterStart
               ? new Date(semesterStart).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
               : 'Not set yet'}
@@ -741,25 +736,24 @@ export default function WeekSchedule() {
           </div>
         </div>
         {canManageStartDate ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div className="schedule-semester-controls">
             <input
               type="date"
-              className="input"
+              className="input schedule-semester-input"
+              aria-label="Semester start date"
               value={startDraft ?? semesterStart}
               onChange={(e) => setStartDraft(e.target.value)}
-              style={{ maxWidth: '150px', fontSize: '11px', padding: '4px 6px' }}
             />
             <button
-              className="btn btn-primary btn-sm"
+              className="btn btn-primary btn-sm schedule-semester-save"
               disabled={startDraft == null || startDraft === semesterStart}
               onClick={() => { saveSemesterStart(startDraft); setStartDraft(null); setStartSaved(true); setTimeout(() => setStartSaved(false), 2000); }}
-              style={{ fontSize: 'var(--fs-xs)' }}
             >
               {startSaved ? 'Saved ✓' : 'Save'}
             </button>
           </div>
         ) : (
-          <span className="badge badge-blue" style={{ fontSize: '10px' }}>Set by admin · view only</span>
+          <span className="badge badge-blue schedule-semester-badge"><span className="schedule-semester-badge-by">Set by admin · </span>view only</span>
         )}
       </div>
       </div>{/* end schedule-fixed-header */}
