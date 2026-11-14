@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Calendar, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, FileDown, MoreVertical, Check, LayoutGrid, List, Loader2, Image as ImageIcon } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
@@ -464,20 +464,41 @@ export default function WeekSchedule() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  // Keep the portalled ⋮ menu pinned directly under its button while the
-  // page scrolls or resizes (it is position:fixed, so it would otherwise
-  // stay where it opened and drift away from the button).
+  // Place the portalled ⋮ menu so it is fully visible: under its button when
+  // it fits, otherwise opening upward, otherwise shifted up so its bottom
+  // sits just above the mobile bottom nav. Only a menu taller than the whole
+  // screen scrolls inside.
+  const placeMenu = useCallback(() => {
+    const btn = menuBtnRef.current;
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const nav = document.querySelector('nav.mobile-nav');
+    const navRect = nav && getComputedStyle(nav).display !== 'none' ? nav.getBoundingClientRect() : null;
+    const limitBottom = (navRect && navRect.height ? Math.min(navRect.top, window.innerHeight) : window.innerHeight) - 8;
+    const limitTop = 8;
+    const el = menuRef.current;
+    // Full height incl. borders, even while a max-height is clipping it.
+    const menuH = el ? el.scrollHeight + (el.offsetHeight - el.clientHeight) : 0;
+    let top = rect.bottom + 6;
+    if (menuH && top + menuH > limitBottom) {
+      top = rect.top - 6 - menuH >= limitTop
+        ? rect.top - 6 - menuH
+        : Math.max(limitTop, limitBottom - menuH);
+    }
+    setMenuPos({ top, right: window.innerWidth - rect.right, maxH: Math.max(120, limitBottom - top) });
+  }, []);
+  useLayoutEffect(() => {
+    if (showExportMenu) placeMenu();
+  }, [showExportMenu, placeMenu]);
+
+  // Keep it placed while the page scrolls or resizes (it is position:fixed,
+  // so it would otherwise stay where it opened and drift from the button).
   useEffect(() => {
     if (!showExportMenu) return undefined;
     let frame = 0;
     const place = () => {
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const btn = menuBtnRef.current;
-        if (!btn) return;
-        const rect = btn.getBoundingClientRect();
-        setMenuPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
-      });
+      frame = requestAnimationFrame(placeMenu);
     };
     window.addEventListener('scroll', place, { passive: true, capture: true });
     window.addEventListener('resize', place);
@@ -486,7 +507,7 @@ export default function WeekSchedule() {
       window.removeEventListener('scroll', place, { capture: true });
       window.removeEventListener('resize', place);
     };
-  }, [showExportMenu]);
+  }, [showExportMenu, placeMenu]);
 
   // ── Export: drawn from task data (see semesterExport.js), same approach
   // and house style as the Routine Grid export. Exports the open view
@@ -599,14 +620,14 @@ export default function WeekSchedule() {
               <MoreVertical size={18} />
             </button>
             {showExportMenu && createPortal(
-              <div ref={menuRef} className="export-menu routine-more-menu" style={{
+              <div ref={menuRef} className="export-menu routine-more-menu week-schedule-menu" style={{
                 position: 'fixed',
                 top: menuPos.top,
                 right: menuPos.right,
                 zIndex: 99999,
-                // Fits the space below the button (above the mobile bottom nav);
-                // longer menus scroll inside instead of sliding off-screen.
-                maxHeight: `max(160px, calc(100dvh - ${Math.round(menuPos.top)}px - 96px))`,
+                // placeMenu() keeps it on screen; only a menu taller than the
+                // whole screen scrolls inside.
+                maxHeight: menuPos.maxH ? `${Math.round(menuPos.maxH)}px` : undefined,
                 overflowY: 'auto',
               }}>
                 <button
