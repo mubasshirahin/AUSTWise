@@ -100,3 +100,43 @@ test-results/
 /Vector*.svg
 /AUSTWise.svg
 /AUSTWise-dark.svg
+
+# Local-only notes, AI prompts and assistant instructions
+/CLAUDE.md
+/ISSUE_*.md
+/*PROMPT*.md
+/*-prompt.md
+/*_prompt_*.md
+/PROJECT_SUMMARY.md
+/production-readiness-report.md
+/schema.sql
+/.freebuff/
+/.att-harness/
+/.zh-harness/
+
+# Root-level scratch files (tests, probes, captures, lint dumps)
+/test-*
+/verify-*.mjs
+/boot-*
+/*.png
+/.warnings.txt
+/.lint-now.txt
+*.docx
+
+# Dev probes — keep only seed data under dev/
+/dev/*
+!/dev/devUsers.json
+!/dev/seed-*.mjs
+!/dev/seed-*.js
+
+# One-off script captures and harnesses
+/scripts/*.png
+/scripts/hero_shot.mjs
+/scripts/see_page.mjs
+/scripts/verify_fix.mjs
+/scripts/qba-*.mjs
+/scripts/contrast-*.mjs
+
+# Runtime logs
+server/.tg_schedule_log.json
+server/*.log

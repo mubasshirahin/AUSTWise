@@ -22,7 +22,7 @@ const ROOT = path.resolve(__dirname, '..');
 // ── Destination: AUST Tejgaon Campus (geocoded via Nominatim) ──
 const DEST = { name: 'AUST Tejgaon Campus', lat: 23.7634468, lon: 90.4072150 };
 
-const SOURCE_MD = path.join(ROOT, 'dhaka_master_location_list.md');
+const SOURCE_MD = path.join(__dirname, 'data', 'dhaka-locations.md');
 const OUT_ROWS = path.join(ROOT, 'src', 'data', 'dhakaRouteCosts.json');
 const OUT_NEEDS = path.join(ROOT, 'src', 'data', 'dhakaRouteCosts.needsReview.json');
 const CACHE = path.join(os.tmpdir(), 'opencode', 'route-geocode-cache.json');
