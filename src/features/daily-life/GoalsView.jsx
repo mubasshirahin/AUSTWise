@@ -6,7 +6,7 @@ import {
 import { LpEmpty, LpDateInput } from './LifePlannerUI';
 import {
   goalsOfMilestone, goalProgress, goalLocked, depsOfGoal, byId, TYPE_META, milestoneProgress,
-  tasksOfGoal, stepsOfTask, toggleStep, deleteStep, deleteTask, updateGoal, updateTask, fmtDate, todayKey, WEEKDAYS,
+  tasksOfGoal, isOngoingRecurringTask, stepsOfTask, toggleStep, deleteStep, deleteTask, updateGoal, updateTask, fmtDate, todayKey, WEEKDAYS,
   goalDisplayNumber, goalAutoDeadline, taskProgress, toggleTaskDone, toggleGoalDone,
 } from './lifePlannerStorage';
 
@@ -253,9 +253,11 @@ export default function GoalsView({
                       setEditingTaskId(task.id);
                     };
                     return (
-                      <div key={task.id} className={`pb-task${isOpen ? ' is-open' : ''}${tPct === 100 ? ' is-done' : ''}`} data-task-id={task.id}>
+                      <div key={task.id} className={`pb-task${isOpen ? ' is-open' : ''}${tPct === 100 && !(recurring && steps.length === 0) ? ' is-done' : ''}`} data-task-id={task.id}>
                         <div className="pb-task-row">
-                          {steps.length === 0 ? (
+                          {recurring && steps.length === 0 ? (
+                            <span className="pb-recur-mark" title="Recurring — keeps running, no checkbox" aria-hidden="true"><Repeat size={13} /></span>
+                          ) : steps.length === 0 ? (
                             <input
                               type="checkbox"
                               className="lp-check pb-check"
@@ -274,9 +276,13 @@ export default function GoalsView({
                           <button type="button" className="pb-task-main" onClick={() => setActiveTaskId(isOpen ? null : task.id)} aria-expanded={isOpen}>
                             <span className="pb-task-name">{task.name}</span>
                             <span className="pb-task-meta">
-                              {steps.length > 0 ? `${done}/${steps.length} steps` : 'No steps'}
-                              <span className="pb-dot" aria-hidden="true" />
-                              {tPct}%
+                              {recurring && steps.length === 0 ? 'Recurring' : (
+                                <>
+                                  {steps.length > 0 ? `${done}/${steps.length} steps` : 'No steps'}
+                                  <span className="pb-dot" aria-hidden="true" />
+                                  {tPct}%
+                                </>
+                              )}
                             </span>
                           </button>
 
@@ -319,7 +325,7 @@ export default function GoalsView({
                           </div>
                         </div>
 
-                        {steps.length === 0 && task.manualDone && task.doneAt && (
+                        {steps.length === 0 && !recurring && task.manualDone && task.doneAt && (
                           <div className="pb-task-done"><CheckCircle2 size={12} /> Completed on {fmtDoneAt(task.doneAt)}</div>
                         )}
 
@@ -499,7 +505,7 @@ function GoalRow({
   const depNames = deps.map((d) => byId(doc.goals, d.dependsOnGoalId)?.title).filter(Boolean).join(', ');
   const autoDeadline = goalAutoDeadline(doc, goal.id);
   const isOverdue = autoDeadline && autoDeadline < todayKey() && pct < 100;
-  const hasTasks = tasksOfGoal(doc, goal.id).length > 0;
+  const hasTasks = tasksOfGoal(doc, goal.id).some((t) => !isOngoingRecurringTask(doc, t));
   const menuRef = useRef(null);
   const btnRef = useRef(null);
   const [lockWarn, setLockWarn] = useState('');

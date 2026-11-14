@@ -239,8 +239,14 @@ export function taskProgress(doc, taskId) {
   return Math.round((done / steps.length) * 100);
 }
 
+/** A recurring task with no steps never "finishes" (it has no checkbox),
+ *  so it is left out of goal progress. */
+export function isOngoingRecurringTask(doc, task) {
+  return !!task?.isRecurring && stepsOfTask(doc, task.id).length === 0;
+}
+
 export function goalProgress(doc, goalId) {
-  const tasks = tasksOfGoal(doc, goalId);
+  const tasks = tasksOfGoal(doc, goalId).filter((t) => !isOngoingRecurringTask(doc, t));
   if (tasks.length > 0) {
     const sum = tasks.reduce((s, t) => s + taskProgress(doc, t.id), 0);
     return Math.round(sum / tasks.length);

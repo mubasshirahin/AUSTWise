@@ -573,6 +573,9 @@ button.pb-chip:hover { border-color: color-mix(in srgb, var(--pb-accent) 50%, va
 .pb-task-meta { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--pb-ink-3); font-variant-numeric: tabular-nums; }
 .pb-task-side { display: flex; align-items: center; gap: 4px; flex: none; }
 .pb-task-side > .pb-chip { margin-right: 4px; }
+/* Recurring tasks have no checkbox — a repeat mark holds the same slot */
+.pb-recur-mark { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; flex: none; color: var(--pb-accent); }
+@media (max-width: 640px) { .lp-widget .pb-recur-mark { width: 16px; height: 16px; } }
 .pb-task-caret { color: var(--pb-ink-3); transition: transform 0.2s var(--pb-ease); }
 .pb-task.is-open .pb-task-caret { transform: rotate(180deg); color: var(--pb-accent); }
 .pb-task-done {
