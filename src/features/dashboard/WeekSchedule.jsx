@@ -313,21 +313,12 @@ export default function WeekSchedule() {
     );
   };
 
-  // List layout — one row per day: date block · that day's tasks.
-  // Month list shows only days that have tasks.
-  const renderDayList = (dates, { onlyWithTasks = false } = {}) => {
+  // List layout — one row per day (every day of the week / month):
+  // date block · that day's tasks, or "Clear".
+  const renderDayList = (dates) => {
     const rows = dates
       .filter(Boolean)
-      .map(date => ({ date, dayTasks: isInitialLoading ? [] : getTasksForDate(date) }))
-      .filter(({ dayTasks }) => !onlyWithTasks || dayTasks.length > 0);
-    if (!isInitialLoading && rows.length === 0) {
-      return (
-        <div className="schedule-list-empty-state">
-          <span className="schedule-list-empty-icon"><List size={16} /></span>
-          <p>No tasks this {viewMode === 'monthly' ? 'month' : 'week'}.</p>
-        </div>
-      );
-    }
+      .map(date => ({ date, dayTasks: isInitialLoading ? [] : getTasksForDate(date) }));
     return (
       <div className="schedule-list" role="list">
         {rows.map(({ date, dayTasks }) => {
@@ -868,7 +859,7 @@ export default function WeekSchedule() {
           </div>
         );
       })() : layout === 'list' ? (
-        renderDayList(viewMode === 'monthly' ? monthDates : weekDates, { onlyWithTasks: viewMode === 'monthly' })
+        renderDayList(viewMode === 'monthly' ? monthDates : weekDates)
       ) : viewMode === 'monthly' ? (
         <>
           <div className="schedule-month-grid schedule-days-row" style={{ marginBottom: '12px' }}>

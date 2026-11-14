@@ -6165,8 +6165,7 @@ tr.day-row-active {
    One row per day: date block · tasks, ruled off like the agenda row
    (skill-style §9). Flat surfaces, hairline separators between rows.
    ═══════════════════════════════════════════════════════════════════ */
-.week-schedule-widget .schedule-list,
-.week-schedule-widget .schedule-list-empty-state {
+.week-schedule-widget .schedule-list {
   /* The scroll body is a flex column with a capped height on phone; without
      this the list (overflow: hidden) shrinks and clips its last rows
      instead of the body scrolling. */
@@ -6288,33 +6287,6 @@ tr.day-row-active {
   text-transform: uppercase;
   color: var(--accent-amber);
 }
-.week-schedule-widget .schedule-list-empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 20px 12px;
-  border: 1px dashed var(--border-primary);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--bg-tertiary) 45%, transparent);
-  text-align: center;
-}
-.week-schedule-widget .schedule-list-empty-state p {
-  margin: 0;
-  font-size: 12px;
-  color: var(--text-tertiary);
-}
-.week-schedule-widget .schedule-list-empty-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-md);
-  background: var(--bg-tertiary);
-  color: var(--accent-amber);
-}
-
 @media (max-width: 640px) {
   .week-schedule-widget .schedule-list { border-radius: var(--radius-md); }
   .week-schedule-widget .schedule-list-row {
@@ -6343,6 +6315,4 @@ tr.day-row-active {
     font-size: 12px;
   }
   .week-schedule-widget .schedule-list-clear { font-size: 11.5px; }
-  .week-schedule-widget .schedule-list-empty-state { padding: 10px; }
-  .week-schedule-widget .schedule-list-empty-icon { width: 24px; height: 24px; }
 }
