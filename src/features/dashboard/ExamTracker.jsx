@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { useRoutine } from '../../context/RoutineContext';
 import { useAuth } from '../../context/AuthContext';
@@ -352,8 +353,8 @@ export default function ExamTracker() {
       {isAdminView && <ExamFlowTracker user={user} canEdit={canEditShared} />}
 
       {/* ─── Detail Overlay ─── */}
-      {detailModal && (
-        <div className="modal-overlay" onClick={() => setDetailModal(null)}>
+      {detailModal && createPortal(
+        <div className="modal-overlay exam-detail-overlay" onClick={() => setDetailModal(null)}>
           <div className="modal glass-card-static exam-detail-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px', width: '90%', padding: '24px', margin: 0 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
               <div>
@@ -446,7 +447,8 @@ export default function ExamTracker() {
               </>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
