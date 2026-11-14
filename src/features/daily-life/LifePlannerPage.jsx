@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   CalendarDays, MoreVertical, Target, ListChecks,
-  Clock, TrendingUp, FileDown, ChevronRight, RotateCcw,
+  Clock, TrendingUp, Workflow, ChevronRight, RotateCcw,
   Flag, Sparkles, Repeat, AlertTriangle,
 } from 'lucide-react';
 import './LifePlannerPage.css';
@@ -21,7 +21,6 @@ import TimelineView from './TimelineView';
 import MindmapView from './MindmapView';
 import CoursesView from './CoursesView';
 import AutomateView from './AutomateView';
-import { exportLifePlannerPDF } from './lifePlannerPDF';
 
 const LP_VIEW_KEY = 'aust-life-planner-view';
 const LP_VALID_VIEWS = ['dashboard', 'goals', 'courses', 'mindmap', 'timeline', 'automate'];
@@ -57,6 +56,9 @@ export default function LifePlannerPage() {
   const menuBtnRef = useRef(null);
   const [confirmState, setConfirmState] = useConfirmState();
   const [exporting, setExporting] = useState(false);
+  // Set to a fresh Date.now() token by "Export mindmap"; MindmapView captures
+  // a fully expanded PNG once per token
+  const [mindmapExportReq, setMindmapExportReq] = useState(0);
   const [showMilestoneInput, setShowMilestoneInput] = useState(false);
   const [milestoneInput, setMilestoneInput] = useState('');
   const [milestoneDeadline, setMilestoneDeadline] = useState('');
@@ -277,14 +279,12 @@ export default function LifePlannerPage() {
   const hasAnything = doc.goals.length > 0;
   const hasGoals = doc.goals.length > 0;
 
-  const handleExportPDF = async () => {
+  // Switch to the mindmap and ask it to save a fully expanded PNG
+  const handleExportMindmap = () => {
     setShowMenu(false);
     setExporting(true);
-    try {
-      await exportLifePlannerPDF(doc);
-    } finally {
-      setExporting(false);
-    }
+    setView('mindmap');
+    setMindmapExportReq(Date.now());
   };
 
   const handleDeleteGoal = (g) => {
@@ -425,8 +425,8 @@ export default function LifePlannerPage() {
             </button>
             {showMenu && (
               <div className="lp-menu-list" role="menu">
-                <button type="button" className="lp-menu-item" role="menuitem" onClick={handleExportPDF} disabled={exporting}>
-                  <FileDown size={14} /> {exporting ? 'Rendering…' : 'Export PDF'}
+                <button type="button" className="lp-menu-item" role="menuitem" onClick={handleExportMindmap} disabled={exporting || !hasAnything}>
+                  <Workflow size={14} /> {exporting ? 'Rendering…' : 'Export mindmap'}
                 </button>
                 <div className="lp-menu-sep" />
                 <button type="button" className="lp-menu-item is-danger" role="menuitem" onClick={handleReset}>
@@ -630,6 +630,8 @@ export default function LifePlannerPage() {
           onOpenGoal={openMindmapGoal}
           onOpenTask={openMindmapTask}
           onViewTimeline={() => setView('timeline')}
+          exportRequest={mindmapExportReq}
+          onExportDone={() => setExporting(false)}
         />
       )}
       </div>

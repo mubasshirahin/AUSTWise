@@ -93,7 +93,6 @@ html[data-layout="studio"] .profile-dropdown-item {
     box-shadow: var(--shadow-xl);
   }
   html[data-layout="studio"] .mobile-nav-item { border-radius: 16px; }
-  html[data-layout="studio"] .mobile-nav-item::after { display: none; }
 }
 
 /* ════════════════ PAGE ENTRANCE — staggered section reveal ════════════════ */

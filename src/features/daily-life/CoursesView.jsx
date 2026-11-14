@@ -11,11 +11,21 @@ import {
   useCourses, createCourse, updateCourse, deleteCourse, COURSE_COLORS,
   useCourseNodes, createCourseNode, updateCourseNode, deleteCourseNode,
   toggleCourseNodeCollapse, toggleCourseNodeDone, moveCourseNode, getCourseNodes, countCourseNodes, NODE_TYPES,
-  updateCourseNodeComment, toggleCourseNodeCheck, DEFAULT_CHECKLIST_TEMPLATES
+  updateCourseNodeComment, toggleCourseNodeCheck, DEFAULT_CHECKLIST_TEMPLATES, moveCourseNodeTo
 } from './coursesStorage';
+import useCourseRowGestures, { SWIPE_TRIGGER } from './useCourseRowGestures';
+import CourseHeatmap from './CourseHeatmap';
 import { COURSE_AI_MASTER_PROMPT } from './courseAiPrompt';
 import { validateCourseAiJson, importCourseFromAiJson } from './courseAiImport';
 import './CourseStructure.css';
+
+/** e.g. "14 Nov 2026, 3:45 pm" — when a lesson was ticked done. */
+function fmtDoneAt(iso) {
+  if (!iso) return '';
+  try {
+    return new Date(iso).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+  } catch { return ''; }
+}
 
 const EMPTY_DRAFT = {
   title: '', provider: '', instructor: '', duration: '', category: '', link: '', notes: '',
@@ -357,7 +367,8 @@ function CourseDetailView({ course, nodes, updateNodes, onBack, onEditCourse }) 
     [courseNodes]
   );
   const doneLeafCount = leafNodes.filter((n) => n.isDone).length;
-  const progressPct = leafNodes.length ? Math.round((doneLeafCount / leafNodes.length) * 100) : 0;
+  const progressPct = leafNodes.length ? (doneLeafCount / leafNodes.length) * 100 : 0;
+  const progressLabel = progressPct.toFixed(2); // e.g. "33.33"
 
   const setAllCollapsed = (collapsed) => {
     updateNodes((prev) => prev.map((n) => (n.courseId === course.id ? { ...n, collapsed } : n)));
@@ -443,10 +454,10 @@ function CourseDetailView({ course, nodes, updateNodes, onBack, onEditCourse }) 
         {course.description && <p className="pb-context-desc">{course.description}</p>}
         {courseNodes.length > 0 && (
           <div className="pb-context-progress">
-            <span className="pb-bar" role="progressbar" aria-valuenow={progressPct} aria-valuemin={0} aria-valuemax={100} aria-label={`Course progress ${progressPct}%`}>
+            <span className="pb-bar" role="progressbar" aria-valuenow={progressPct} aria-valuemin={0} aria-valuemax={100} aria-label={`Course progress ${progressLabel}%`}>
               <span style={{ width: `${progressPct}%` }} />
             </span>
-            <strong>{progressPct}%</strong>
+            <strong>{progressLabel}%</strong>
             <span className="pb-meta">{doneLeafCount}/{leafNodes.length} lessons done</span>
           </div>
         )}
@@ -496,7 +507,7 @@ function CourseDetailView({ course, nodes, updateNodes, onBack, onEditCourse }) 
         {topNodes.length === 0 ? (
           <p className="pb-empty-line is-boxed">No structure yet. Add a top-level item — e.g. <strong>Chapter</strong> or <strong>Module</strong>.</p>
         ) : (
-          <div className="cs-tree">
+          <div className="cs-tree pb-list-scroll">
             {topNodes.map((node, idx) => (
               <CourseNodeRow
                 key={node.id}
@@ -527,6 +538,9 @@ function CourseDetailView({ course, nodes, updateNodes, onBack, onEditCourse }) 
           </div>
         )}
       </section>
+
+      {/* ── Activity heatmap — which days lessons were ticked done ── */}
+      {leafNodes.length > 0 && <CourseHeatmap lessons={leafNodes} />}
 
       {/* ── Delete warning — lists everything under the item ── */}
       {deletingNode && (
@@ -568,6 +582,9 @@ function CourseDetailView({ course, nodes, updateNodes, onBack, onEditCourse }) 
 const DEPTH_COLORS = ['var(--accent-amber)'];
 const DEPTH_GLOWS = ['var(--accent-amber-glow)'];
 
+// Touch phones/tablets get swipe + long-press gestures on structure rows
+const IS_TOUCH = typeof window !== 'undefined' && !!window.matchMedia?.('(hover: none)').matches;
+
 const TYPE_ICONS = {
   chapter: BookOpen,
   module: Layers,
@@ -600,9 +617,19 @@ function CourseNodeRow({
 
   const TypeIcon = TYPE_ICONS[(node.type || '').toLowerCase()] || Sparkles;
 
+  const startAddChild = () => { setAddDraft({ title: '', type: '' }); setEditingNodeId(null); setAddingParentId(node.id); };
+  const { bindCard, dx: swipeDx, open: swipeOpen, holding, dragging, close: closeSwipe } = useCourseRowGestures({
+    enabled: IS_TOUCH,
+    index,
+    onDelete: () => onDeleteRequest(node),
+    onComment: () => { setEditingNodeId(null); setAddingParentId(null); setOpenCommentId(node.id); },
+    onReorder: (to) => updateNodes((prev) => moveCourseNodeTo(prev, node.id, to)),
+  });
+  const showSwipeBg = IS_TOUCH && (swipeDx !== 0 || swipeOpen);
+
   return (
     <div
-      className="cs-node"
+      className={`cs-node${dragging ? ' is-lifted' : ''}`}
       style={{
         '--cs-color': depthColor,
         '--cs-glow': depthGlow,
@@ -610,7 +637,27 @@ function CourseNodeRow({
         '--cs-delay': `${Math.min(depth * 45 + index * 40, 360)}ms`,
       }}
     >
-      <div className={`cs-node-card${node.isDone ? ' is-done' : ''}`}>
+      <div className={`cs-swipe${IS_TOUCH ? ' is-swipeable' : ''}`}>
+      {showSwipeBg && (
+        <div className="cs-swipe-bg">
+          <span className={`cs-swipe-action is-delete${swipeDx >= SWIPE_TRIGGER ? ' is-armed' : ''}`} style={{ opacity: swipeDx > 0 ? 1 : 0 }} aria-hidden="true">
+            <Trash2 size={14} /> Delete
+          </span>
+          <span className="cs-swipe-btns" style={{ opacity: swipeDx < 0 ? 1 : 0 }}>
+            <button type="button" className="cs-swipe-btn" tabIndex={-1} onClick={() => { closeSwipe(); startEdit(node); }}>
+              <Pencil size={13} /> Edit
+            </button>
+            <button type="button" className="cs-swipe-btn is-add" tabIndex={-1} onClick={() => { closeSwipe(); startAddChild(); }} aria-label={`Add inside ${node.title}`}>
+              <Plus size={15} />
+            </button>
+          </span>
+        </div>
+      )}
+      <div
+        ref={bindCard}
+        className={`cs-node-card${node.isDone ? ' is-done' : ''}${swipeDx ? ' is-swiping' : ''}${holding || dragging ? ' is-held' : ''}`}
+        style={swipeDx ? { transform: `translateX(${swipeDx}px)` } : undefined}
+      >
         {hasChildren ? (
           <button
             type="button"
@@ -640,6 +687,11 @@ function CourseNodeRow({
           <TypeIcon size={9} /> {(() => { const t = node.type || 'Item'; return t.charAt(0).toUpperCase() + t.slice(1); })()}
         </span>
         <span className={`cs-node-title${node.isDone ? ' is-done' : ''}`}>{node.title}</span>
+        {node.isDone && node.doneAt && !hasChildren && (
+          <span className="cs-pill cs-done-at" title={`Completed ${fmtDoneAt(node.doneAt)}`}>
+            <Check size={10} />{fmtDoneAt(node.doneAt)}
+          </span>
+        )}
         {node.duration && <span className="cs-pill" title={node.duration}><Clock size={10} />{node.duration}</span>}
         {node.notes && <span className="cs-pill notes" title={node.notes}>{node.notes}</span>}
 
@@ -650,10 +702,11 @@ function CourseNodeRow({
           </button>
           <button type="button" className="lp-icon-btn" disabled={index === 0} onClick={() => updateNodes((prev) => moveCourseNode(prev, node.id, 'up'))} title="Move up"><ArrowUp size={11} /></button>
           <button type="button" className="lp-icon-btn" disabled={index === sibCount - 1} onClick={() => updateNodes((prev) => moveCourseNode(prev, node.id, 'down'))} title="Move down"><ArrowDown size={11} /></button>
-          <button type="button" className="lp-icon-btn" onClick={() => { setAddDraft({ title: '', type: '' }); setEditingNodeId(null); setAddingParentId(node.id); }} title="Add child" aria-label={`Add child to ${node.title}`} data-on={isAddingChild || undefined}><Plus size={11} /></button>
+          <button type="button" className="lp-icon-btn" onClick={startAddChild} title="Add child" aria-label={`Add child to ${node.title}`} data-on={isAddingChild || undefined}><Plus size={11} /></button>
           <button type="button" className="lp-icon-btn" onClick={() => startEdit(node)} title="Edit" aria-label={`Edit ${node.title}`} data-on={isEditing || undefined}><Pencil size={11} /></button>
           <button type="button" className="lp-icon-btn" onClick={() => onDeleteRequest(node)} title="Delete" aria-label={`Delete ${node.title}`}><Trash2 size={11} /></button>
         </div>
+      </div>
       </div>
 
       {/* ── Edit panel — 2 rows, right below the clicked box ── */}

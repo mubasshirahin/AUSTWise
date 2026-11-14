@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Crosshair, CalendarDays, List, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Crosshair, CalendarDays, List, Check, Repeat } from 'lucide-react';
 import { buildTimelineRange, fmtDate, todayKey, goalDisplayNumber } from './lifePlannerStorage';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -183,12 +183,12 @@ export default function TimelineView({ doc, onOpenGoal }) {
       <button
         key={`${e.date}-${e.kind}-${i}`}
         type="button"
-        className={`pb-entry kind-${e.kind}${e.done ? ' is-done' : ''}${late ? ' is-late' : ''}`}
+        className={`pb-entry kind-${e.kind}${e.recurring ? ' is-recurring' : ''}${e.done ? ' is-done' : ''}${late ? ' is-late' : ''}`}
         onClick={open}
         disabled={!goal}
         title={goal ? 'Open in Milestones' : undefined}
       >
-        <span className="pb-entry-mark" aria-hidden="true">{e.done ? <Check size={11} /> : null}</span>
+        <span className="pb-entry-mark" aria-hidden="true">{e.done ? <Check size={11} /> : e.recurring ? <Repeat size={11} /> : null}</span>
         <span className="pb-entry-body">
           <span className="pb-entry-top">
             <span className="pb-entry-kind">{e.recurring ? 'Recurring task' : KIND_LABEL[e.kind] || e.kind}</span>
@@ -301,7 +301,9 @@ export default function TimelineView({ doc, onOpenGoal }) {
                   <span className="pb-cal-day">{Number(dateKey.slice(8, 10))}</span>
                   {dayEntries.length > 0 && (
                     <span className="pb-cal-dots">
-                      {dayEntries.slice(0, 3).map((e, di) => <i key={di} className={`kind-${e.kind}${e.done ? ' is-done' : ''}`} />)}
+                      {dayEntries.slice(0, 3).map((e, di) => (e.recurring
+                        ? <Repeat key={di} size={9} className={`pb-cal-recur${e.done ? ' is-done' : ''}`} aria-hidden="true" />
+                        : <i key={di} className={`kind-${e.kind}${e.done ? ' is-done' : ''}`} />))}
                       {dayEntries.length > 3 && <em>+{dayEntries.length - 3}</em>}
                     </span>
                   )}
@@ -311,6 +313,7 @@ export default function TimelineView({ doc, onOpenGoal }) {
           </div>
           <div className="pb-cal-legend" aria-hidden="true">
             <span><i className="kind-task" /> Task</span>
+            <span><Repeat size={9} className="pb-cal-recur" /> Recurring</span>
             <span><i className="kind-step" /> Step</span>
             <span><i className="kind-goal" /> Deadline</span>
             <span><i className="kind-task is-done" /> Done</span>

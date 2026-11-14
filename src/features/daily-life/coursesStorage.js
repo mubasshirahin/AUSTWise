@@ -220,6 +220,22 @@ export function moveCourseNode(nodes, id, dir) {
   });
 }
 
+/** Move a node to position `toIndex` among its siblings (used by drag-to-reorder). */
+export function moveCourseNodeTo(nodes, id, toIndex) {
+  const node = nodes.find((n) => n.id === id);
+  if (!node) return nodes;
+  const siblings = nodes
+    .filter((n) => n.courseId === node.courseId && (n.parentId || null) === (node.parentId || null))
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+  const from = siblings.findIndex((s) => s.id === id);
+  const to = Math.max(0, Math.min(siblings.length - 1, toIndex));
+  if (from === -1 || from === to) return nodes;
+  const reordered = [...siblings];
+  reordered.splice(to, 0, reordered.splice(from, 1)[0]);
+  const orderOf = new Map(reordered.map((s, i) => [s.id, i]));
+  return nodes.map((n) => (orderOf.has(n.id) ? { ...n, order: orderOf.get(n.id) } : n));
+}
+
 export function getCourseNodes(nodes, courseId, parentId = null) {
   return nodes
     .filter((n) => n.courseId === courseId && (n.parentId || null) === (parentId || null))

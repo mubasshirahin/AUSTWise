@@ -11,8 +11,8 @@ import './MobileNav.css';
 // Primary items shown in the fixed bottom bar (most-used campus tools)
 const primaryItems = [
   { path: '/dashboard/quickstats', label: 'Dashboard', short: 'Home', icon: LayoutDashboard },
+  { path: '/daily-life', label: 'Daily Life', icon: Home },
   { path: '/gradelab', label: 'GradeLab', icon: BarChart3 },
-  { path: '/resource-vault', label: 'Resource Vault', short: 'Vault', icon: BookOpen },
   { path: '/community', label: 'Social', icon: Users },
   { path: '/connectbox', label: 'Chat', icon: MessageSquare },
 ];
@@ -22,7 +22,7 @@ const moreSections = [
   {
     title: 'Campus',
     items: [
-      { path: '/daily-life', label: 'Daily Life', icon: Home },
+      { path: '/resource-vault', label: 'Resource Vault', icon: BookOpen },
       { path: '/insideaust', label: 'InsideAUST', icon: MapPin },
       { path: '/question-bank', label: 'Question Bank', icon: FileSearch },
       { path: '/productivity', label: 'Productivity', icon: Zap },

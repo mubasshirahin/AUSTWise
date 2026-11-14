@@ -725,6 +725,7 @@
 
 /* Each top-level chapter is its own block, ruled off from the next */
 .lp-widget .cs-tree { gap: 0; }
+.lp-widget .cs-tree.pb-list-scroll { overflow-x: hidden; }
 .lp-widget .cs-tree > .cs-node { padding: 8px 0; }
 .lp-widget .cs-tree > .cs-node:first-child { padding-top: 0; }
 .lp-widget .cs-tree > .cs-node:last-child { padding-bottom: 0; }
@@ -778,15 +779,19 @@
   .lp-widget .cs-node-card .lp-check { width: 16px !important; height: 16px !important; min-width: 16px !important; }
   .lp-widget .cs-num { font-size: 10px; }
   .lp-widget .cs-type-badge { height: 17px; padding: 0 5px; gap: 3px; font-size: 9px; }
-  .lp-widget .cs-node-title { flex: 1 1 0; font-size: 12.5px; line-height: 1.3; overflow-wrap: anywhere; }
-  .lp-widget .cs-pill { font-size: 9.5px; }
-
-  /* Row actions: a slim right-aligned strip under the title */
-  .lp-widget .cs-node-actions { width: 100%; justify-content: flex-end; gap: 0; opacity: 0.7; }
-  .lp-widget .cs-node-actions .lp-icon-btn {
-    width: 24px; height: 24px; min-width: 24px; min-height: 24px;
+  /* Title fills the rest of line 1; pills + actions share one slim line 2
+     (pills left, icons right) instead of a separate full-width icon strip. */
+  .lp-widget .cs-node-title {
+    flex: 1 1 calc(100% - 130px);
+    min-width: 0;
+    font-size: 12.5px;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
   }
-  .lp-widget .cs-node-actions .lp-icon-btn svg { width: 11px; height: 11px; }
+  .lp-widget .cs-pill { height: 20px; padding: 0 6px; font-size: 9.5px; }
+  .lp-widget .cs-pill.cs-done-at { padding: 0; border: 0; gap: 2px; }
+
+  .lp-widget .cs-node-actions { width: auto; margin-left: auto; justify-content: flex-end; gap: 0; opacity: 0.7; }
 
   /* Inline add/edit panels */
   .lp-widget .cs-add-form,
@@ -880,7 +885,7 @@
 
 @media (max-width: 640px) {
   .lp-widget .cs-node-actions .lp-icon-btn {
-    width: 24px; height: 24px; min-width: 24px; min-height: 24px;
+    width: 22px; height: 22px; min-width: 22px; min-height: 22px;
   }
   .lp-widget .cs-node-actions .lp-icon-btn svg { width: 11px; height: 11px; }
 
@@ -959,7 +964,8 @@
    Desktop: small comment button in each row (count shown when > 0).
    Touch:   long-press the row opens the same sheet; the button only shows
             when there are comments, as a count indicator. Flat, no tints. */
-.lp-widget .pb-comment-btn { gap: 3px; color: var(--text-tertiary); }
+/* Icon + count side by side (pb-icon is a grid, which stacked the count under the icon) */
+.lp-widget .pb-comment-btn { display: inline-flex; align-items: center; justify-content: center; gap: 3px; color: var(--text-tertiary); }
 .lp-widget .pb-comment-btn:hover { color: var(--accent-amber); }
 .lp-widget .pb-comment-btn.has-count { width: auto; padding: 0 6px; color: var(--accent-amber); }
 .lp-widget .pb-comment-count { font-size: 10.5px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
@@ -1034,3 +1040,185 @@
   .lp-widget .lp-cm-text, .lp-widget .lp-cm-input { font-size: 12.5px; }
   .lp-widget .pb-task-side .pb-comment-btn.has-count { height: 24px; padding: 0 4px; }
 }
+
+/* ═══════════════════ COURSE STRUCTURE — dividers + touch gestures ═══════════════════
+   Divider: a theme-accent rule under each Chapter / Module, before its children;
+   it meets the top of the "[" bracket.
+   Touch (skill-slider-button): swipe left keeps Edit / + open, swipe right arms
+   Delete (confirmed in a modal), long-press = comment, hold + drag = reorder.
+   Flat: no gradients, glows or tints. */
+/* "[" bracket drawn by the children box's own borders, so the rail can't be
+   clipped or covered: solid vertical rail (border-left), dotted divider on top
+   (border-top) — they meet at the corner — and a short dotted bottom tick. */
+.lp-widget .cs-children-inner {
+  border-left: 2px solid var(--pb-accent);
+  border-top: 1px dotted var(--pb-accent);
+  padding-top: 4px;
+}
+.lp-widget .cs-children-inner::before {
+  display: block;
+  left: 0;
+  top: auto;
+  bottom: 0;
+  width: 6px;
+  height: 0;
+  border: 0;
+  border-bottom: 1px dotted var(--pb-accent);
+  border-radius: 0;
+  background: none;
+  opacity: 1;
+  transform: none;
+  animation: none;
+}
+
+.lp-widget .cs-swipe { position: relative; margin-left: var(--cs-indent, 0px); }
+.lp-widget .cs-swipe > .cs-node-card { position: relative; z-index: 1; margin-left: 0; }
+.lp-widget .cs-swipe.is-swipeable > .cs-node-card {
+  touch-action: pan-y;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: transform 0.18s ease;
+}
+.lp-widget .cs-swipe > .cs-node-card.is-swiping { transition: none; background: var(--bg-card); }
+.lp-widget .cs-swipe > .cs-node-card.is-held { background: var(--bg-tertiary); border-color: var(--pb-accent); }
+.lp-widget .cs-node.is-lifted { position: relative; z-index: 5; transition: none; }
+.lp-widget .cs-node:not(.is-lifted) { transition: transform 0.15s ease; }
+
+.lp-widget .cs-swipe-bg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 0 12px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--pb-r-xs);
+  background: var(--bg-tertiary);
+  overflow: hidden;
+}
+.lp-widget .cs-swipe-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  transition: color 0.15s ease, opacity 0.15s ease;
+}
+.lp-widget .cs-swipe-action.is-delete.is-armed { color: var(--accent-rose); }
+.lp-widget .cs-swipe-btns { display: flex; align-self: stretch; transition: opacity 0.15s ease; }
+.lp-widget .cs-swipe-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 52px;
+  border: 0;
+  border-left: 1px solid var(--border-primary);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+.lp-widget .cs-swipe-btn:active { color: var(--pb-accent); }
+.lp-widget .cs-swipe-btn.is-add { color: var(--pb-accent); }
+
+@media (max-width: 640px) {
+  .lp-widget .cs-swipe { margin-left: 0; }
+}
+
+/* Touch phones: gestures replace the row icon strip. The comment button stays
+   only when the item has a comment, as an indicator (like Goals/Tasks). */
+@media (hover: none) and (max-width: 640px) {
+  .lp-widget .cs-node-actions .lp-icon-btn:not(:has(.cs-comment-dot)) { display: none; }
+  .lp-widget .cs-node-actions:not(:has(.cs-comment-dot)) { display: none; }
+}
+
+/* Phones: give lesson names the width. Type badge shows its icon only (the
+   full type is in the add/edit form), nesting steps in by 14px instead of 19px,
+   and the leading controls sit on the title's first line when names wrap. */
+@media (max-width: 640px) {
+  .lp-widget .cs-node-card { align-items: flex-start; column-gap: 6px; }
+  .lp-widget .cs-num { line-height: 17px; min-width: 14px; }
+  .lp-widget .cs-type-badge { width: 20px; height: 17px; padding: 0; justify-content: center; font-size: 0; gap: 0; }
+  .lp-widget .cs-type-badge svg { width: 10px; height: 10px; }
+  .lp-widget .cs-node-title { flex: 1 1 calc(100% - 90px); line-height: 17px; }
+  .lp-widget .cs-children-inner { margin-left: 8px; padding-left: 6px; }
+  .lp-widget .cs-children-inner::before { width: 5px; }
+  /* Line 2 (done date / duration) lines up under the title, not the checkbox */
+  .lp-widget .cs-node-title + .cs-pill { margin-left: 68px; }
+}
+
+/* PC/tablet: the course Structure box gets more height (phones keep 360px) */
+@media (min-width: 641px) {
+  .lp-widget .cs-tree.pb-list-scroll { max-height: min(70vh, 640px); }
+}
+
+/* ═══════════════════ COURSE ACTIVITY HEATMAP (GitHub style) ═══════════════════
+   One hue (theme accent) in 4 steps over the neutral well; empty days stay
+   neutral. Flat cells, 2px radius, no glow. Scrolls sideways on narrow screens. */
+.lp-widget .cs-heat { --heat-cell: 11px; --heat-gap: 3px; }
+.lp-widget .cs-heat .pb-head { flex-wrap: wrap; row-gap: 2px; }
+.lp-widget .cs-heat-sub { font-size: 11px; color: var(--text-tertiary); }
+.lp-widget .cs-heat-scroll { overflow-x: auto; scrollbar-width: thin; padding-bottom: 4px; }
+.lp-widget .cs-heat-grid {
+  display: grid;
+  grid-template-columns: 28px max-content;
+  grid-template-rows: auto auto;
+  column-gap: 6px;
+  row-gap: 4px;
+  width: max-content;
+}
+.lp-widget .cs-heat-months {
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: repeat(var(--weeks), var(--heat-cell));
+  column-gap: var(--heat-gap);
+  font-size: 10px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+.lp-widget .cs-heat-days {
+  grid-column: 1;
+  grid-row: 2;
+  display: grid;
+  grid-template-rows: repeat(7, var(--heat-cell));
+  row-gap: var(--heat-gap);
+  font-size: 9.5px;
+  line-height: var(--heat-cell);
+  color: var(--text-tertiary);
+}
+.lp-widget .cs-heat-cells { grid-column: 2; grid-row: 2; display: flex; gap: var(--heat-gap); }
+.lp-widget .cs-heat-week { display: grid; grid-template-rows: repeat(7, var(--heat-cell)); row-gap: var(--heat-gap); }
+.lp-widget .cs-heat-cell {
+  display: block;
+  width: var(--heat-cell);
+  height: var(--heat-cell);
+  border-radius: 2px;
+  background: var(--bg-tertiary);
+}
+.lp-widget .cs-heat-cell.lv-1 { background: color-mix(in srgb, var(--pb-accent) 30%, var(--bg-tertiary)); }
+.lp-widget .cs-heat-cell.lv-2 { background: color-mix(in srgb, var(--pb-accent) 55%, var(--bg-tertiary)); }
+.lp-widget .cs-heat-cell.lv-3 { background: color-mix(in srgb, var(--pb-accent) 78%, var(--bg-tertiary)); }
+.lp-widget .cs-heat-cell.lv-4 { background: var(--pb-accent); }
+.lp-widget .cs-heat-cell.is-future { background: transparent; }
+.lp-widget .cs-heat-cells .cs-heat-cell:not(.is-future):hover { outline: 1px solid var(--text-secondary); outline-offset: 1px; }
+.lp-widget .cs-heat-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+.lp-widget .cs-heat-legend > span:first-child { margin-right: 3px; }
+.lp-widget .cs-heat-legend > span:last-child { margin-left: 3px; }
+
+@media (max-width: 640px) {
+  .lp-widget .cs-heat { --heat-cell: 10px; --heat-gap: 3px; }
+  .lp-widget .cs-heat-sub { flex-basis: 100%; font-size: 10.5px; }
+}
+/* Weekday labels stay pinned while the grid scrolls sideways */
+.lp-widget .cs-heat-days { position: sticky; left: 0; z-index: 1; background: var(--bg-card); }
