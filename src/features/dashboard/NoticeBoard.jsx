@@ -16,6 +16,32 @@ const NOTICE_RATE_MS = 30000; // 1 post per 30s client-side throttle
 const SWIPE_TRIGGER = 72; // px of horizontal drag that fires edit/delete
 const SWIPE_MAX = 110;
 
+/**
+ * "14 Nov 2026 · 11:05 AM" when the exact post time is known — from
+ * `createdAt`, or the ms timestamp in CR/SR ids (`cr-<ms>-xxxx`) for notices
+ * saved before createdAt existed. Date-only notices (admin) show just the date.
+ */
+function formatNoticePosted(notice) {
+  let ts = notice.createdAt ? new Date(notice.createdAt).getTime() : NaN;
+  if (!Number.isFinite(ts)) {
+    const fromId = /^cr-(\d{12,14})-/.exec(String(notice.id || ''));
+    if (fromId) ts = Number(fromId[1]);
+  }
+  if (Number.isFinite(ts)) {
+    const d = new Date(ts);
+    const date = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    return { label: `${date} · ${time}`, iso: d.toISOString() };
+  }
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(notice.date || ''));
+  if (m) {
+    // Local midnight — a bare 'YYYY-MM-DD' would parse as UTC.
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return { label: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }), iso: notice.date };
+  }
+  return notice.date ? { label: String(notice.date), iso: undefined } : null;
+}
+
 export default function NoticeBoard() {
   const { user } = useAuth();
   const [expandedNotice, setExpandedNotice] = useState(null);
@@ -375,7 +401,12 @@ export default function NoticeBoard() {
               </div>
 
               <div className="notice-title">{notice.title}</div>
-              <div className="notice-date">{notice.date}</div>
+              {(() => {
+                const posted = formatNoticePosted(notice);
+                return posted ? (
+                  <time className="notice-date" dateTime={posted.iso}>{posted.label}</time>
+                ) : null;
+              })()}
               {notice.postedByName && (
                 <div className="notice-author-meta">
                   <span className="notice-author-name">{notice.postedByName}</span>
