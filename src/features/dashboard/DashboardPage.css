@@ -6165,6 +6165,13 @@ tr.day-row-active {
    One row per day: date block · tasks, ruled off like the agenda row
    (skill-style §9). Flat surfaces, hairline separators between rows.
    ═══════════════════════════════════════════════════════════════════ */
+.week-schedule-widget .schedule-list,
+.week-schedule-widget .schedule-list-empty-state {
+  /* The scroll body is a flex column with a capped height on phone; without
+     this the list (overflow: hidden) shrinks and clips its last rows
+     instead of the body scrolling. */
+  flex: none;
+}
 .week-schedule-widget .schedule-list {
   display: flex;
   flex-direction: column;
@@ -6311,11 +6318,14 @@ tr.day-row-active {
 @media (max-width: 640px) {
   .week-schedule-widget .schedule-list { border-radius: var(--radius-md); }
   .week-schedule-widget .schedule-list-row {
-    grid-template-columns: 40px minmax(0, 1fr);
+    grid-template-columns: 34px minmax(0, 1fr);
     gap: 10px;
-    padding: 8px 10px;
+    padding: 6px 10px;
   }
-  .week-schedule-widget .schedule-list-num { font-size: 15px; }
+  /* Two-line date block (FRI / 13); the month is already in the navigator */
+  .week-schedule-widget .schedule-list-mon { display: none; }
+  .week-schedule-widget .schedule-list-dow { font-size: 9px; }
+  .week-schedule-widget .schedule-list-num { font-size: 14.5px; margin: 0; }
   .week-schedule-widget .schedule-list-body { padding-left: 10px; gap: 5px; }
   .week-schedule-widget .schedule-list-today { display: none; }
   /* Task: code · batch · time on line 1, title on its own line */
