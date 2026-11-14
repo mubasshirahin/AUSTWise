@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef, Fragment } from 'react';
 import { useRoutine } from '../../context/RoutineContext';
 import {
   Percent, Clock, MapPin, CheckCircle2, XCircle, Eye, PenLine,
-  ShieldCheck, TriangleAlert, ChevronDown,
+  ShieldCheck, TriangleAlert, ChevronDown, BookOpen, Info, Send,
 } from 'lucide-react';
 import { useLiveValue } from '../../utils/liveStore';
 import { getCalculatedAttendanceDates, getSemesterStartDate } from '../../utils/semesterDates';
@@ -375,11 +375,10 @@ export default function RoutineAttendanceTracker() {
           </div>
         </div>
         <div className="att-empty">
-          <span className="att-empty-icon"><Percent size={22} aria-hidden="true" /></span>
-          <p className="att-empty-title">No courses found</p>
-          <span className="att-empty-desc">Add courses to your Routine Grid first</span>
-          <button className="btn btn-sm att-empty-cta" onClick={() => { window.location.href = '/dashboard/routine'; }}>
-            Go to Routine Grid
+          <span className="att-empty-icon"><BookOpen size={16} aria-hidden="true" /></span>
+          <p className="att-empty-hint">No courses yet — add your classes to the Routine Grid to start tracking.</p>
+          <button type="button" className="att-empty-action" onClick={() => { window.location.href = '/dashboard/routine'; }}>
+            <Clock size={13} aria-hidden="true" /> Go to Routine Grid
           </button>
         </div>
       </div>
@@ -406,28 +405,27 @@ export default function RoutineAttendanceTracker() {
           aria-expanded={isExpanded}
           aria-controls={isExpanded ? panelId : undefined}
         >
-          <span className="att-row-ident">
+          <span className="att-row-index" aria-hidden="true">{String(idx + 1).padStart(2, '0')}</span>
+
+          <span className="att-row-body">
             <span className="att-row-code">
-              {stat.course}
+              <span className="att-row-code-text">{stat.course}</span>
               {stat.part && <span className="att-row-part">Part {stat.part}</span>}
             </span>
             <span className="att-row-name">{stat.name}</span>
-          </span>
-
-          <span className="att-row-gauge" aria-hidden="true">
-            <span className="att-row-gauge-track">
-              <span
-                className={`att-row-gauge-fill is-${state}`}
-                style={{ width: `${Math.min(pctValue, 100)}%` }}
-              />
-              <span className="att-row-gauge-target" />
+            <span className="att-row-gauge">
+              <span className="att-row-gauge-track" aria-hidden="true">
+                <span
+                  className={`att-row-gauge-fill is-${state}`}
+                  style={{ width: `${Math.min(pctValue, 100)}%` }}
+                />
+                <span className="att-row-gauge-target" />
+              </span>
+              <span className="att-row-count">{stat.attended}/{stat.held} held</span>
             </span>
           </span>
 
-          <span className="att-row-metric">
-            <span className={`att-row-pct is-${state}`}>{pctValue}%</span>
-            <span className="att-row-count">{stat.attended}/{stat.held}</span>
-          </span>
+          <span className={`att-row-pct is-${state}`}>{pctValue}%</span>
 
           <ChevronDown className="att-row-caret" size={15} aria-hidden="true" />
         </button>
@@ -436,9 +434,9 @@ export default function RoutineAttendanceTracker() {
           <div className="att-row-panel" id={panelId}>
             <div className="att-panel-summary">
               <div className="att-panel-counts">
-                <span className="att-count is-present"><strong>{stat.attended}</strong> attended</span>
-                <span className="att-count is-absent"><strong>{stat.absent}</strong> absent</span>
-                <span className="att-count is-unmarked"><strong>{stat.unmarked}</strong> unmarked</span>
+                <span className="att-badge is-amber">Attended <strong>{stat.attended}</strong></span>
+                <span className="att-badge is-rose">Absent <strong>{stat.absent}</strong></span>
+                <span className="att-badge">Unmarked <strong>{stat.unmarked}</strong></span>
               </div>
               <span className={`att-panel-buffer${stat.canMiss === 0 ? ' is-warn' : ''}`}>
                 {stat.canMiss > 0
@@ -604,18 +602,16 @@ export default function RoutineAttendanceTracker() {
       </div>
 
       {/* ─── Semester summary meter ─── */}
-      <section className="att-meter" aria-label="Semester attendance summary">
+      <section className="att-card att-meter" aria-label="Semester attendance summary">
         <div className="att-meter-head">
-          <div className="att-meter-headings">
-            <span className="att-overline">Semester average</span>
-            <span className="att-meter-sub">
-              {overallStats.totalAttended} of {overallStats.totalHeld} held classes attended
-            </span>
-          </div>
-          <div className="att-meter-readout">
-            <span className={`att-meter-value ${overallStats.average >= MIN_ATTENDANCE ? 'is-ok' : 'is-warn'}`}>
-              {overallStats.average}%
-            </span>
+          <span className="att-overline">Semester average</span>
+          <span className={`att-meter-value ${overallStats.average >= MIN_ATTENDANCE ? 'is-ok' : 'is-warn'}`}>
+            {overallStats.average}%
+          </span>
+          <span className="att-meter-sub">
+            {overallStats.totalAttended} of {overallStats.totalHeld} held classes attended
+          </span>
+          <span className="att-meter-readout">
             {overallStats.warningCount > 0 ? (
               <span className="att-status-chip is-danger">
                 <TriangleAlert size={11} aria-hidden="true" />
@@ -627,7 +623,7 @@ export default function RoutineAttendanceTracker() {
                 On track
               </span>
             )}
-          </div>
+          </span>
         </div>
 
         <SegmentedMeter
@@ -646,18 +642,26 @@ export default function RoutineAttendanceTracker() {
       </section>
 
       {/* ─── Course list ─── */}
-      <ul className="att-course-list">
-        {courseView.map(renderCourseRow)}
-      </ul>
+      <section className="att-card att-courses" aria-label="Courses">
+        <div className="att-card-head">
+          <h3 className="att-card-title"><BookOpen size={14} aria-hidden="true" /> Courses</h3>
+          <span className="att-card-meta">{editMode ? 'Editing' : 'View only'}</span>
+        </div>
+        <ul className="att-course-list">
+          {courseView.map(renderCourseRow)}
+        </ul>
+      </section>
 
       {!sharedSemStart && (
         <p className="att-note">
+          <span className="att-note-icon"><Info size={13} aria-hidden="true" /></span>
           Semester start date not set — the list starts from today. An admin can set it in Semester View.
         </p>
       )}
 
       {isTelegramSync && (
         <p className="att-note is-sync">
+          <span className="att-note-icon"><Send size={13} aria-hidden="true" /></span>
           Telegram auto-marking connected — bot answers appear here instantly
         </p>
       )}
