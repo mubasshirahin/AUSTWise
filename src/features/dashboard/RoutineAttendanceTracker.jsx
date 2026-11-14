@@ -4,7 +4,7 @@ import {
   Percent, Clock, MapPin, CheckCircle2, XCircle, Eye, PenLine,
   ShieldCheck, TriangleAlert, ChevronDown, BookOpen, Info, Send,
 } from 'lucide-react';
-import { useLiveValue } from '../../utils/liveStore';
+import { useLiveValue, onRealtimeMessage } from '../../utils/liveStore';
 import { getCalculatedAttendanceDates, getSemesterStartDate } from '../../utils/semesterDates';
 import './attendance-widget.css';
 
@@ -155,42 +155,22 @@ export default function RoutineAttendanceTracker() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTelegramSync, telegramChatId]);
 
-  // ── Real-time WebSocket listener: the Telegram bot broadcasts an
-  //    attendance-sync event every time the user answers a prompt, so the
-  //    bot's marks land here instantly (no polling). ──
+  // ── Real-time: the bot sends attendance-sync to this user's subscribed
+  //    sockets (broadcastToUser) every time they answer a prompt. Listen on
+  //    the shared liveStore socket — it is subscribed with the user id and
+  //    reaches the backend in production (VITE_WS_URL). A private socket
+  //    would never be subscribed, so it never got the event. Also refetch
+  //    when the tab comes back, in case an event was missed while asleep. ──
   useEffect(() => {
     if (!isTelegramSync) return;
-    let ws = null;
-    let reconnectTimer = null;
-
-    function connect() {
-      try {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        ws = new WebSocket(`${protocol}//${window.location.host}`);
-
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (data.type === 'attendance-sync') loadTelegramAttendance();
-          } catch { /* ignore */ }
-        };
-
-        ws.onclose = () => {
-          reconnectTimer = setTimeout(connect, 5000);
-        };
-
-        ws.onerror = () => { ws.close(); };
-      } catch { /* ignore */ }
-    }
-
-    connect();
-
+    const offSync = onRealtimeMessage('attendance-sync', () => loadTelegramAttendance());
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') loadTelegramAttendance();
+    };
+    document.addEventListener('visibilitychange', onVisible);
     return () => {
-      if (ws) {
-        ws.onclose = null; // prevent reconnect
-        ws.close();
-      }
-      if (reconnectTimer) clearTimeout(reconnectTimer);
+      offSync();
+      document.removeEventListener('visibilitychange', onVisible);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTelegramSync, telegramChatId]);
