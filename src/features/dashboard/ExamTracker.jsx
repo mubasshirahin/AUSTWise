@@ -11,6 +11,7 @@ import './ExamTracker.css';
 
 const SHARED_PREFIX = 'aust-exam-schedule:';
 const PERSONAL_STORAGE_KEY = 'aust-exam-tracker';
+const EMPTY_EXAMS = {};
 
 /* One shared schedule per section slot — the same key the server and
    RoutineSharingStatus use to group a CR with their students. */
@@ -50,11 +51,10 @@ function formatDate(dateStr) {
 }
 
 export default function ExamTracker() {
-  const { routine } = useRoutine();
+  const { routine, loadedSharedCrId } = useRoutine();
   const { user } = useAuth();
   const slotKey = examSlotKeyOf(user);
   const sharedKey = slotKey ? `${SHARED_PREFIX}${slotKey}` : null;
-  const [exams, setExams] = useLiveValue('shared', sharedKey, {});
   const [personalExams, setPersonalExams] = useLiveValue('user', PERSONAL_STORAGE_KEY, {});
   const [detailModal, setDetailModal] = useState(null); // { slotKey, slotLabel, date, syllabus, courseCode, courseName, courseSource, isEditing, editDate, editSyllabus }
 
@@ -64,54 +64,66 @@ export default function ExamTracker() {
 
   const profileIncomplete = !isZeroHourReady(user);
 
-  // ── CR shared routine (for the 25 students under this labSection) ──
+  // ── CR shared routine (for the students under this labSection) ──
   const [sharedRoutine, setSharedRoutine] = useState(null);
-  const [sharedRoutineMeta, setSharedRoutineMeta] = useState(null); // {crName, updatedAt}
-  const [labCrName, setLabCrName] = useState('');
+  const [sharedRoutineMeta, setSharedRoutineMeta] = useState(null); // {crId, crName, updatedAt}
+  const [sharedRoutineChecked, setSharedRoutineChecked] = useState(false);
+
+  // Zero Hour follows a CR's shared schedule ONLY for students who actually
+  // loaded that CR's routine (the per-user marker is written by Load Routine).
+  // A student who built their own routine stays fully self-managed.
+  const loadedFromThisCr = Boolean(
+    loadedSharedCrId
+    && sharedRoutineMeta?.crId
+    && String(sharedRoutineMeta.crId) === String(loadedSharedCrId)
+  );
+  // While the one-row slot lookup is in flight, optimistically follow the CR
+  // source. The grid renders immediately instead of waiting for the network.
+  const sharedSourcePending = Boolean(loadedSharedCrId && !sharedRoutineChecked);
+  const usesSharedSchedule = canEditShared || loadedFromThisCr;
+  const followShared = usesSharedSchedule || sharedSourcePending;
+  const [exams, setExams] = useLiveValue('shared', followShared ? sharedKey : null, {});
 
   useEffect(() => {
-    if (!slotKey) { setLabCrName(''); return; }
+    if (!slotKey) { setSharedRoutine(null); setSharedRoutineMeta(null); setSharedRoutineChecked(true); return; }
     let cancelled = false;
-    fetch('/api/zero-hour/cr', { credentials: 'same-origin' })
-      .then((res) => res.ok ? res.json() : null)
-      .then((data) => { if (!cancelled) setLabCrName(data?.cr?.name || ''); })
-      .catch(() => { if (!cancelled) setLabCrName(''); });
-    return () => { cancelled = true; };
-  }, [slotKey]);
-
-  useEffect(() => {
-    if (!slotKey) { setSharedRoutine(null); setSharedRoutineMeta(null); return; }
-    let cancelled = false;
+    setSharedRoutineChecked(false);
     (async () => {
       try {
-        const res = await fetch('/api/routines/shared', { credentials: 'same-origin' });
+        // One-row endpoint: no need to download every CR's routine.
+        const res = await fetch('/api/routines/shared/mine', { credentials: 'same-origin' });
         const data = await res.json().catch(() => ({}));
         if (cancelled) return;
-        const list = Array.isArray(data.routines) ? data.routines : [];
-        const mine = list.find((r) => `${r.department || ''}|${r.yearSemester || ''}|${r.section || ''}|${r.labSection || ''}` === slotKey);
+        const mine = data.routine;
         if (mine) {
           let parsed = mine.routine;
           if (typeof parsed === 'string') {
             try { parsed = JSON.parse(parsed); } catch { parsed = {}; }
           }
           setSharedRoutine(parsed && typeof parsed === 'object' ? parsed : null);
-          setSharedRoutineMeta({ crName: mine.crName || '', updatedAt: mine.updatedAt || mine.createdAt || '' });
+          setSharedRoutineMeta({
+            crId: mine.crId || '',
+            crName: mine.crName || '',
+            updatedAt: mine.updatedAt || mine.createdAt || '',
+          });
         } else {
           setSharedRoutine(null);
           setSharedRoutineMeta(null);
         }
       } catch {
         if (!cancelled) { setSharedRoutine(null); setSharedRoutineMeta(null); }
+      } finally {
+        if (!cancelled) setSharedRoutineChecked(true);
       }
     })();
     return () => { cancelled = true; };
-  }, [slotKey]);
+  }, [slotKey, loadedSharedCrId]);
 
   // Keep CR-published exam data separate from each user's own manually added
   // course data. A CR course always resolves to the shared schedule below.
-  const sharedExamData = exams && typeof exams === 'object' ? exams : {};
+  const sharedExamData = followShared && exams && typeof exams === 'object' ? exams : EMPTY_EXAMS;
 
-  // Merged Theory courses: personal + CR shared routine
+  // Merged Theory courses: personal + CR shared routine (loaders/CR only)
   // Duplicate courseCode => only CR wins, personal is discarded (per requirement)
   const mergedCourses = useMemo(() => {
     const map = new Map(); // code -> {code, name, color, source, crName}
@@ -127,7 +139,7 @@ export default function ExamTracker() {
               name: cls.name || cls.course,
               color: cls.color || 'var(--accent-blue)',
               source,
-              crName: labCrName || sharedRoutineMeta?.crName || '',
+              crName: sharedRoutineMeta?.crName || '',
             });
           } else if (source === 'cr' && existing.source === 'personal') {
             // Duplicate: CR authoritative — discard personal, keep only CR
@@ -136,17 +148,19 @@ export default function ExamTracker() {
               name: cls.name || existing.name,
               color: cls.color || existing.color,
               source: 'cr',
-              crName: labCrName || sharedRoutineMeta?.crName || '',
+              crName: sharedRoutineMeta?.crName || '',
             });
           }
           // else: duplicate already cr or personal duplicate — keep first, ignore
         });
       });
     };
-    addFrom(routine, 'personal');
-    if (sharedRoutine) addFrom(sharedRoutine, 'cr');
+    addFrom(routine, loadedSharedCrId && followShared ? 'cr' : 'personal');
+    // Only people who loaded the CR's routine follow its course list. A user
+    // with a manually built routine keeps seeing (and editing) their own.
+    if (usesSharedSchedule) addFrom(sharedRoutine, 'cr');
     return [...map.values()];
-  }, [routine, sharedRoutine, sharedRoutineMeta, labCrName]);
+  }, [routine, sharedRoutine, sharedRoutineMeta, usesSharedSchedule, followShared, loadedSharedCrId]);
 
   // Keep theoryCourses alias for stats that previously used it (now merged)
   const theoryCourses = mergedCourses;
@@ -251,7 +265,7 @@ export default function ExamTracker() {
               <span className="exam-cell-code">{course.code}</span>
               <span className={`exam-source-badge ${course.source === 'personal' ? 'personal' : 'cr'}`} title={course.source === 'personal' ? 'Added to your own routine' : `Shared by your lab group CR${course.crName ? `, ${course.crName}` : ''}`}>
                 {course.source === 'personal' ? <User size={10} /> : <Users size={10} />}
-                {course.source === 'personal' ? 'You' : (course.crName || labCrName ? `CR · ${course.crName || labCrName}` : 'No CR')}
+                {course.source === 'personal' ? 'You' : (course.crName ? `CR · ${course.crName}` : 'No CR')}
               </span>
             </div>
             <div className="exam-cell-name" title={course.name}>{course.name}</div>
@@ -301,7 +315,7 @@ export default function ExamTracker() {
             </span>
             {canEditShared && (
               <span className="exam-access-badge editor">
-                <PenLine size={10} /> Editor · updates visible to your section
+                <PenLine size={10} /> Editor · updates reach students who loaded your routine
               </span>
             )}
           </div>
@@ -352,7 +366,11 @@ export default function ExamTracker() {
         <div className="exam-empty">
           <span className="exam-empty-icon" aria-hidden="true"><BookOpen size={16} /></span>
           <p>No theory courses found</p>
-          <span>Add theory courses to your routine first{slotKey && sharedRoutine ? '' : ' — or wait for your CR to share'}</span>
+          <span>
+            {usesSharedSchedule
+              ? 'Add theory courses to your routine first'
+              : 'Add theory courses to your routine — or load your CR\'s routine from Weekly Planner to sync'}
+          </span>
         </div>
       ) : (
         <div className="exam-grid">
@@ -390,7 +408,7 @@ export default function ExamTracker() {
               <div className="exam-modal-summary">
                 <span className="exam-badge is-muted">
                   {detailModal.courseSource === 'personal' ? <User size={10} /> : <Users size={10} />}
-                  {detailModal.courseSource === 'personal' ? 'You' : (labCrName ? `CR · ${labCrName}` : 'No CR')}
+                  {detailModal.courseSource === 'personal' ? 'You' : (sharedRoutineMeta?.crName ? `CR · ${sharedRoutineMeta.crName}` : 'No CR')}
                 </span>
                 <span className="exam-badge is-accent">{detailModal.date ? formatDate(detailModal.date) : 'No date yet'}</span>
                 {detailModal.date && (

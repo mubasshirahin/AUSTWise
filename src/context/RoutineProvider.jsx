@@ -14,10 +14,16 @@ const storageKeyTypes = {
 const ROUTINE_KEY = 'aust-user-routine';
 const WEEKDAYS_KEY = 'aust-user-weekdays';
 
+// Per-user marker: set when the user loads a CR's published routine. It is the
+// single source of truth for whether Zero Hour follows the CR's shared exam
+// schedule or the user's own, manually edited routine.
+const loadedSharedRoutineKey = (userId) => `aust-loaded-shared-routine:${userId}`;
+
 export function RoutineProvider({ children }) {
   const { user, isAuthenticated } = useAuth();
-  const activeUserIdRef = useRef(user?.id || null);
-  activeUserIdRef.current = user?.id || null;
+  const userId = user?.id || null;
+  const activeUserIdRef = useRef(userId);
+  activeUserIdRef.current = userId;
 
   const [routine, setRoutine] = useState(() => {
     const saved = getUserStorageItem(storageKeyTypes.routine);
@@ -32,7 +38,39 @@ export function RoutineProvider({ children }) {
   });
 
   const [isLoading, setIsLoading] = useState(() => isAuthenticated);
+  const [loadedSharedCrId, setLoadedSharedCrId] = useState(null);
   const loadGenerationRef = useRef(0);
+
+  // Restore the "loaded from CR" source for this account. Zero Hour uses it to
+  // decide whether the CR's shared exam schedule applies (only after a load).
+  useEffect(() => {
+    if (!userId) {
+      setLoadedSharedCrId(null);
+      return undefined;
+    }
+    let cancelled = false;
+    userStore.get(loadedSharedRoutineKey(userId)).then((crId) => {
+      if (!cancelled && activeUserIdRef.current === userId) {
+        setLoadedSharedCrId(crId || null);
+      }
+    }).catch(() => {
+      if (!cancelled && activeUserIdRef.current === userId) setLoadedSharedCrId(null);
+    });
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  const markSharedRoutineLoaded = useCallback(async (crId) => {
+    if (!userId || !crId) return false;
+    const saved = await userStore.set(loadedSharedRoutineKey(userId), crId);
+    if (saved) setLoadedSharedCrId(crId);
+    return saved;
+  }, [userId]);
+
+  const clearSharedRoutineSource = useCallback(async () => {
+    setLoadedSharedCrId(null);
+    if (!userId) return true;
+    return userStore.del(loadedSharedRoutineKey(userId));
+  }, [userId]);
 
   const loadFromServer = useCallback(() => {
     const generation = ++loadGenerationRef.current;
@@ -93,6 +131,13 @@ export function RoutineProvider({ children }) {
           setWeekDays(serverWeekDays);
           setUserStorageItem(storageKeyTypes.weekDays, serverWeekDays);
         });
+      } else if (targetUserId && changedKey === loadedSharedRoutineKey(targetUserId)) {
+        // A load/unload (or manual edit that detaches the routine) on another
+        // device keeps Zero Hour's shared/personal mode in sync here too.
+        userStore.get(changedKey).then((crId) => {
+          if (activeUserIdRef.current !== targetUserId) return;
+          setLoadedSharedCrId(crId || null);
+        });
       }
     }, [user?.id]),
   });
@@ -104,6 +149,8 @@ export function RoutineProvider({ children }) {
     setUserStorageItem(storageKeyTypes.weekDays, ocrImportedWeekDays);
     userStore.set(ROUTINE_KEY, ocrImportedRoutine);
     userStore.set(WEEKDAYS_KEY, ocrImportedWeekDays);
+    // Manually imported data is no longer the CR's routine.
+    clearSharedRoutineSource();
   };
 
   const saveRoutine = (nextRoutine) => {
@@ -112,7 +159,7 @@ export function RoutineProvider({ children }) {
     userStore.set(ROUTINE_KEY, nextRoutine);
   };
 
-  const replaceRoutine = async (nextRoutine, nextWeekDays) => {
+  const replaceRoutine = async (nextRoutine, nextWeekDays, { keepSharedSource = false } = {}) => {
     // A routine loaded from a CR must be committed to the account store before
     // presenting it as successfully loaded. This keeps other devices in sync.
     if (isAuthenticated) {
@@ -128,6 +175,9 @@ export function RoutineProvider({ children }) {
     setWeekDays(nextWeekDays);
     setUserStorageItem(storageKeyTypes.routine, nextRoutine);
     setUserStorageItem(storageKeyTypes.weekDays, nextWeekDays);
+    // Loading a template / resetting detaches the routine from any CR. The
+    // live CR sync passes keepSharedSource so its own refresh does not unlink.
+    if (!keepSharedSource) await clearSharedRoutineSource();
   };
 
   const updateRoutineClass = (originalDay, updatedClass) => {
@@ -177,6 +227,7 @@ export function RoutineProvider({ children }) {
     if (weekDaysKey) localStorage.removeItem(weekDaysKey);
     userStore.del(ROUTINE_KEY);
     userStore.del(WEEKDAYS_KEY);
+    clearSharedRoutineSource();
   };
 
   return (
@@ -184,9 +235,12 @@ export function RoutineProvider({ children }) {
       routine,
       weekDays,
       isLoading,
+      loadedSharedCrId,
       importOcrRoutine,
       resetRoutine,
       replaceRoutine,
+      markSharedRoutineLoaded,
+      clearSharedRoutineSource,
       updateRoutineClass,
       addRoutineClass,
       deleteRoutineClass,

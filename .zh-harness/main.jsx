@@ -1,0 +1,11 @@
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { MemoryRouter } from 'react-router-dom';
+import '../src/index.css';
+import '../src/App.css';
+import '../src/layout/ResponsiveShell.css';
+import ExamTracker from '../src/features/dashboard/ExamTracker';
+import '../src/features/dashboard/dashboard-tokens.css';
+import '../src/features/dashboard/DashboardPage.css';
+document.documentElement.setAttribute('data-theme', 'dark');
+import('../src/themes/dark-enhanced.css').then(() => createRoot(document.getElementById('root')).render(<MemoryRouter><div className="dashboard-page" style={{ padding: 12 }}><ExamTracker /></div></MemoryRouter>));

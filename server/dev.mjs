@@ -87,6 +87,7 @@ import {
   upsertCourse,
   deleteCourse,
   listSharedRoutines,
+  getSharedRoutineBySlot,
   upsertSharedRoutine,
   deleteSharedRoutineBySlot,
   getSharedRoutineStats,
@@ -5106,6 +5107,41 @@ async function handleApiRequest(req, res) {
   }
 
   // ========== Shared Routines (CRs publish their routine) ==========
+
+  // Zero Hour only needs the caller's own lab slot. Returning every published
+  // routine (and all users for the CR name) made the page wait on large,
+  // unrelated payloads. This one-row lookup keeps course loading instant.
+  if (req.url === '/api/routines/shared/mine' && req.method === 'GET') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
+    try {
+      const user = await getUserById(auth.id);
+      if (!user) { sendJson(res, 404, { success: false, error: 'User not found.' }); return; }
+      const required = [user.department, user.yearSemester, user.section, user.labSection];
+      if (required.some((value) => !value)) {
+        sendJson(res, 200, { success: true, routine: null });
+        return;
+      }
+      const record = await getSharedRoutineBySlot({
+        department: user.department,
+        yearSemester: user.yearSemester,
+        section: user.section,
+        labSection: user.labSection,
+      });
+      if (!record) { sendJson(res, 200, { success: true, routine: null }); return; }
+      sendJson(res, 200, {
+        success: true,
+        routine: {
+          ...record,
+          routine: safeJsonParse(record.routine, {}),
+          weekDays: safeJsonParse(record.weekDays, []),
+        },
+      });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to load your shared routine.' });
+    }
+    return;
+  }
 
   // List every routine CRs have published, so anyone can load one.
   if (req.url === '/api/routines/shared' && req.method === 'GET') {

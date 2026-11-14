@@ -558,6 +558,23 @@ export default function RoutineAttendanceTracker() {
           </div>
         </div>
 
+        <div className="schedule-masthead-center">
+          <div className="schedule-stats">
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{courseCount}</span>
+              <span className="schedule-stat-label">courses</span>
+            </div>
+            <div className="schedule-stat">
+              <span className="schedule-stat-value">{overallStats.totalHeld}</span>
+              <span className="schedule-stat-label">held</span>
+            </div>
+            <div className={`schedule-stat${overallStats.warningCount > 0 ? ' is-alert' : ''}`}>
+              <span className="schedule-stat-value">{overallStats.warningCount}</span>
+              <span className="schedule-stat-label">at risk</span>
+            </div>
+          </div>
+        </div>
+
         <div className="schedule-actions att-masthead-actions">
           <div className="att-mode-switch" role="group" aria-label="Attendance editing mode">
             <button
