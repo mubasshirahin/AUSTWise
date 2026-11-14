@@ -3,7 +3,6 @@ Allow: /
 Disallow: /api/
 Disallow: /__dev/
 Disallow: /accept-invite
-Sitemap: https://austwise.example/sitemap.xml
+Disallow: /reset-password
 
-# AUSTWise campus companion — non-production index.
-# Adjust the Sitemap host above to your real PUBLIC_BASE_URL.
+Sitemap: https://austwise.vercel.app/sitemap.xml
