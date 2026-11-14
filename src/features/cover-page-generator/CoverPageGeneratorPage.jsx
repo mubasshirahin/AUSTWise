@@ -10,6 +10,7 @@ import austwiseLogo from '../../assets/austwise-icon-final.svg';
 import austLogo from '../../assets/aust-logo.jpg';
 import { useRoleAccess } from '../../hooks/useRoleAccess';
 import { getAccessRole } from '../../utils/accessRole';
+import { ensureFetched, getLiveValue, setLiveValue, onLiveChange } from '../../utils/liveStore';
 import '../daily-life/DailyMasthead.css';
 import './CoverPageGeneratorPage.css';
 
@@ -75,20 +76,72 @@ function getRealStudentId(u) {
 
 const sameName = (a, b) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
 
-// ─── Cover form persistence (survives page refresh) — one entry per
-//     account, so a shared browser never shows another user's members ───
-const LEGACY_COVER_FORM_KEY = 'aust-cover-form-v1';
-const coverFormKey = (u) => `aust-cover-form-v2:${u?.id || u?.email || 'guest'}`;
+// ─── Cover form persistence — server-synced per account ───
+//     The whole form is one document in the per-user store (liveStore →
+//     /api/store/user/:key), so it follows the user across devices and
+//     updates live on their other open tabs/devices. localStorage is only
+//     liveStore's cache (purged on logout).
+const COVER_STORE_KEY = 'aust-cover-page-v1';
+const OLD_FALLBACK_ID = '20230204026';
+const SAVE_DEBOUNCE_MS = 700;
 
-function loadCoverForm(u) {
+// Older browser-only drafts, moved to the server once if it has none yet.
+const LEGACY_COVER_FORM_KEY = 'aust-cover-form-v1';
+const localDraftKey = (u) => `aust-cover-form-v2:${u?.id || u?.email || 'guest'}`;
+
+function loadLocalDraft(u) {
   try {
-    const raw = localStorage.getItem(coverFormKey(u));
-    if (raw) return JSON.parse(raw);
+    const own = localStorage.getItem(localDraftKey(u));
+    if (own) return { draft: JSON.parse(own), keys: [localDraftKey(u)] };
     // Old shared key: adopt it only if it was this account's own form.
     const legacy = JSON.parse(localStorage.getItem(LEGACY_COVER_FORM_KEY) || 'null');
-    if (legacy && sameName(legacy.members?.[0]?.name, u?.name)) return legacy;
+    if (legacy && sameName(legacy.members?.[0]?.name, u?.name)) {
+      return { draft: legacy, keys: [LEGACY_COVER_FORM_KEY] };
+    }
   } catch { /* corrupt / unavailable storage — start fresh */ }
-  return {};
+  return null;
+}
+
+function clearLocalDrafts(keys) {
+  (keys || []).forEach((k) => { try { localStorage.removeItem(k); } catch { /* ignore */ } });
+}
+
+/** Any stored shape → a complete, clean form document for user `u`. */
+function normalizeForm(raw, u) {
+  const src = raw && typeof raw === 'object' ? raw : {};
+  const me = { name: u?.name || '', id: getRealStudentId(u) };
+  // Member 1 defaults to your own profile name + real student ID.
+  const members = Array.isArray(src.members) && src.members.length
+    ? src.members.map((mm, i) => {
+      const m = { name: String(mm?.name || ''), id: String(mm?.id || '') };
+      // Internal account IDs (STU-…, AWID, DEV-…) are never a student ID.
+      const isInternal = /^(STU|DEV)-/i.test(m.id) || m.id.includes('AW');
+      // Your own row: keep its ID in sync with your profile.
+      if (i === 0 && sameName(m.name, me.name) && me.id && m.id !== me.id) return { ...m, id: me.id };
+      // Old builds stamped one fixed ID into everyone's first row when their
+      // profile had none — drop it for anyone whose profile isn't that ID.
+      if (i === 0 && !me.id && m.id === OLD_FALLBACK_ID) return { ...m, id: '' };
+      if (isInternal) return { ...m, id: i === 0 ? me.id : '' };
+      return m;
+    })
+    : [me];
+  const teachers = Array.isArray(src.teachers) && src.teachers.length
+    ? src.teachers.map((t) => ({ name: String(t?.name || ''), designation: String(t?.designation || '') }))
+    : [{ name: String(src.courseTeacher || ''), designation: String(src.designation || '') }];
+  return {
+    coverType: typeof src.coverType === 'string' ? src.coverType : 'Assignment',
+    courseCode: String(src.courseCode || ''),
+    courseName: String(src.courseName || ''),
+    title: String(src.title || ''),
+    refNo: String(src.refNo || ''),
+    groupNo: String(src.groupNo || ''),
+    members,
+    teachers,
+    watermarkSize: src.watermarkSize || 500,
+    watermarkOpacity: src.watermarkOpacity ?? 0.04,
+    watermarkX: src.watermarkX ?? 0,
+    watermarkY: src.watermarkY ?? 0,
+  };
 }
 
 // ─── Fit A4 sheet into the preview frame (sized by width so the
@@ -116,7 +169,7 @@ function useCoverScale(frameRef) {
 // (and saved draft) always belongs to the current user.
 export default function CoverPageGeneratorPage() {
   const { user } = useAuth();
-  return <CoverPageGeneratorForm key={coverFormKey(user)} />;
+  return <CoverPageGeneratorForm key={user?.id || user?.email || 'guest'} />;
 }
 
 function CoverPageGeneratorForm() {
@@ -247,70 +300,114 @@ function CoverPageGeneratorForm() {
     setMenuOpen(true);
   };
 
-  // ─── Form state (persisted to localStorage) ───
-  const [savedForm] = useState(() => loadCoverForm(user));
-  const [coverType, setCoverType] = useState(savedForm.coverType || 'Assignment');
-  const [courseCode, setCourseCode] = useState(savedForm.courseCode || '');
-  const [courseName, setCourseName] = useState(savedForm.courseName || '');
-  const [title, setTitle] = useState(savedForm.title || '');
-  const [teachers, setTeachers] = useState(() => {
-    if (Array.isArray(savedForm.teachers) && savedForm.teachers.length) return savedForm.teachers;
-    return [{
-      name: savedForm.courseTeacher || '',
-      designation: savedForm.designation || '',
-    }];
+  // ─── Form state (server-synced per account) ───
+  // First paint comes from liveStore's cached copy of the server document;
+  // with none (fresh device / first use) an old browser-only draft is shown
+  // and moved to the server once the server confirms it has nothing.
+  const [initial] = useState(() => {
+    ensureFetched('user', COVER_STORE_KEY);
+    const cached = getLiveValue('user', COVER_STORE_KEY, null);
+    const local = cached ? null : loadLocalDraft(user);
+    return { form: normalizeForm(cached || local?.draft, user), migrate: local };
   });
-  const [refNo, setRefNo] = useState(savedForm.refNo || '');
-  const [groupNo, setGroupNo] = useState(savedForm.groupNo || '');
-  // Member 1 defaults to your own profile name + real student ID.
-  const [members, setMembers] = useState(() => {
-    const me = { name: user?.name || '', id: getRealStudentId(user) };
-    if (!Array.isArray(savedForm.members) || !savedForm.members.length) return [me];
-    return savedForm.members.map((mm, i) => {
-      const id = String(mm?.id || '');
-      // Internal account IDs (STU-…, AWID, DEV-…) are never a student ID.
-      const isInternal = /^(STU|DEV)-/i.test(id) || id.includes('AW');
-      // Your own row: keep its ID in sync with your profile.
-      if (i === 0 && sameName(mm?.name, me.name) && me.id && id !== me.id) return { ...mm, id: me.id };
-      if (isInternal) return { ...mm, id: i === 0 ? me.id : '' };
-      return mm;
-    });
-  });
+  const [coverType, setCoverType] = useState(initial.form.coverType);
+  const [courseCode, setCourseCode] = useState(initial.form.courseCode);
+  const [courseName, setCourseName] = useState(initial.form.courseName);
+  const [title, setTitle] = useState(initial.form.title);
+  const [teachers, setTeachers] = useState(initial.form.teachers);
+  const [refNo, setRefNo] = useState(initial.form.refNo);
+  const [groupNo, setGroupNo] = useState(initial.form.groupNo);
+  const [members, setMembers] = useState(initial.form.members);
 
   // Watermark settings (fixed values, previously adjustable)
-  const watermarkSize = savedForm.watermarkSize || 500;
-  const watermarkOpacity = savedForm.watermarkOpacity ?? 0.04;
-  const watermarkX = savedForm.watermarkX ?? 0;
-  const watermarkY = savedForm.watermarkY ?? 0;
+  const { watermarkSize, watermarkOpacity, watermarkX, watermarkY } = initial.form;
 
   // Keep the brand mark small and anchored in the cover's bottom-right corner.
   const footerLogoSize = 24;
   const footerLogoX = 0;
   const footerLogoY = 0;
 
-  // Save form to localStorage on every change (per account)
-  const storageKey = coverFormKey(user);
+  const formJson = JSON.stringify({
+    coverType, courseCode, courseName, title, refNo, groupNo, members, teachers,
+    watermarkSize, watermarkOpacity, watermarkX, watermarkY,
+  });
+  const syncedJsonRef = useRef(JSON.stringify(initial.form)); // what the server has (as far as we know)
+  const pendingJsonRef = useRef(null); // local edit not yet sent
+  const migrateRef = useRef(initial.migrate);
+  const userRef = useRef(user);
+  useEffect(() => { userRef.current = user; }, [user]);
+
+  const pushForm = useCallback((json) => {
+    pendingJsonRef.current = null;
+    syncedJsonRef.current = json;
+    migrateRef.current = null; // the user's own edit supersedes any old draft
+    setLiveValue('user', COVER_STORE_KEY, JSON.parse(json));
+  }, []);
+
+  // Save edits to the server, debounced so typing isn't a write per key.
   useEffect(() => {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify({
-        coverType,
-        courseCode,
-        courseName,
-        title,
-        refNo,
-        groupNo,
-        members,
-        teachers,
-        watermarkSize,
-        watermarkOpacity,
-        watermarkX,
-        watermarkY,
-        footerLogoSize,
-        footerLogoX,
-        footerLogoY,
-      }));
-    } catch { /* storage full / unavailable — ignore */ }
-  }, [storageKey, coverType, courseCode, courseName, title, refNo, groupNo, members, teachers, watermarkSize, watermarkOpacity, watermarkX, watermarkY, footerLogoSize, footerLogoX, footerLogoY]);
+    if (formJson === syncedJsonRef.current) { pendingJsonRef.current = null; return undefined; }
+    pendingJsonRef.current = formJson;
+    const t = setTimeout(() => pushForm(formJson), SAVE_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [formJson, pushForm]);
+
+  // Never drop the last keystrokes: flush on unmount and when the tab closes.
+  useEffect(() => {
+    const flush = () => { if (pendingJsonRef.current) pushForm(pendingJsonRef.current); };
+    window.addEventListener('pagehide', flush);
+    return () => { window.removeEventListener('pagehide', flush); flush(); };
+  }, [pushForm]);
+
+  // Live updates: the server copy arrived (fresh device) or another device
+  // changed the form → show it, unless this device is mid-edit.
+  const applyRemote = useCallback((remote) => {
+    if (!remote) return;
+    if (migrateRef.current) { clearLocalDrafts(migrateRef.current.keys); migrateRef.current = null; }
+    const next = normalizeForm(remote, userRef.current);
+    const json = JSON.stringify(next);
+    if (json === syncedJsonRef.current || pendingJsonRef.current) return;
+    syncedJsonRef.current = json;
+    setCoverType(next.coverType);
+    setCourseCode(next.courseCode);
+    setCourseName(next.courseName);
+    setTitle(next.title);
+    setRefNo(next.refNo);
+    setGroupNo(next.groupNo);
+    setMembers(next.members);
+    setTeachers(next.teachers);
+  }, []);
+
+  useEffect(() => onLiveChange((composite, isLocal) => {
+    if (isLocal || composite !== `user:${COVER_STORE_KEY}`) return;
+    applyRemote(getLiveValue('user', COVER_STORE_KEY, null));
+  }), [applyRemote]);
+
+  // One-time move of an old browser-only draft to the server — only when the
+  // server has no cover form for this account yet.
+  useEffect(() => {
+    const mig = migrateRef.current;
+    if (!mig) return undefined;
+    let cancelled = false;
+    // Direct request (not userStore.get, which also returns null on errors):
+    // migrate only on a confirmed "no value" answer from the server.
+    fetch(`/api/store/user/${encodeURIComponent(COVER_STORE_KEY)}`, { credentials: 'same-origin' })
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+      .then((data) => {
+        if (!data?.success) throw new Error('store read failed');
+        if (cancelled || !migrateRef.current) return;
+        if (data.value == null) {
+          const json = JSON.stringify(normalizeForm(mig.draft, userRef.current));
+          if (!pendingJsonRef.current) pushForm(json);
+          clearLocalDrafts(mig.keys);
+          migrateRef.current = null;
+        } else {
+          applyRemote(data.value); // server copy wins over the old local draft
+        }
+      })
+      .catch(() => { /* offline / server error: keep the local draft, retry next visit */ });
+    return () => { cancelled = true; };
+  }, [pushForm, applyRemote]);
 
   // Auto-fill from profile — real student ID (numeric), not AWID
   const studentName = user?.name || '';
