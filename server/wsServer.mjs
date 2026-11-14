@@ -13,6 +13,7 @@
 
 import { WebSocketServer } from 'ws';
 import { readTokenCookie, resolveSocketUser, hasValidWsTicket } from './auth.mjs';
+import { handleGamingSocket, dropGamingSocket } from './gaming/gamingRealtime.mjs';
 
 // Allowed cross-origin WS origins (same-origin + dev localhost are always OK).
 const ALLOWED_WS_ORIGINS = (process.env.ALLOWED_ORIGIN || '')
@@ -396,6 +397,11 @@ export function createWSServer(httpServer) {
           }
 
           default:
+            // Gaming Zone rooms: identity is the socket's verified user.
+            if (typeof type === 'string' && type.startsWith('gz-')) {
+              handleGamingSocket(ws, authUserId, type, payload);
+              break;
+            }
             sendTo(ws, { type: 'error', payload: { message: `Unknown message type: ${type}` } });
         }
       } catch {
@@ -404,6 +410,7 @@ export function createWSServer(httpServer) {
     });
 
     ws.on('close', () => {
+      dropGamingSocket(ws);
       // Shadow cleanup
       if (shadowId) {
         removeFromShadowQueue(ws);
