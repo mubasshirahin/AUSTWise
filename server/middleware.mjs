@@ -29,6 +29,7 @@
  */
 
 import { readTokenCookie } from './auth.mjs';
+import { hasAnyRole, isBannedAccount } from './roleGuards.mjs';
 
 /**
  * Factory returning a middleware function that:
@@ -50,8 +51,15 @@ export function requireRole(...allowedRoles) {
       res.end(JSON.stringify({ success: false, error: 'Authentication required.' }));
       return null;
     }
-    const userRoles = [...new Set([...(Array.isArray(payload.roles) ? payload.roles : []), payload.role])];
-    if (!allowedRoles.some((role) => userRoles.includes(role))) {
+    // A banned account passes only routes that name 'banned' explicitly.
+    if (isBannedAccount(payload) && !allowedRoles.includes('banned')) {
+      res.writeHead(403, {
+        'Content-Type': 'application/json',
+      });
+      res.end(JSON.stringify({ success: false, banned: true, error: 'This account is suspended.' }));
+      return null;
+    }
+    if (!hasAnyRole(payload, ...allowedRoles)) {
       res.writeHead(403, {
         'Content-Type': 'application/json',
       });
@@ -63,8 +71,21 @@ export function requireRole(...allowedRoles) {
   };
 }
 
-/** Every role that maps to a real authenticated account (excludes guest). */
-export const AUTH_ROLES = ['student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'vp', 'gs', 'bus_coordinator', 'guest', 'clubs_representative', 'help_desk', 'banned'];
-
-/** Require any authenticated (non-guest) session. */
-export const requireAuth = requireRole(...AUTH_ROLES);
+/**
+ * Require any signed-in account that is not banned. Not a role list: users
+ * whose only role is e.g. help_desk, readd or faculty_cse count too.
+ */
+export function requireAuth(req, res) {
+  const payload = readTokenCookie(req);
+  if (!payload) {
+    res.writeHead(401, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: false, error: 'Authentication required.' }));
+    return null;
+  }
+  if (isBannedAccount(payload)) {
+    res.writeHead(403, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: false, banned: true, error: 'This account is suspended.' }));
+    return null;
+  }
+  return payload;
+}

@@ -1265,8 +1265,11 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                       className="input"
                       disabled={editingUser && accounts.find(a => a.id === editingUser)?.role === 'admin'}
                     >
-                      {!(editingUser && accounts.find(a => a.id === editingUser)?.role === 'admin') && <option value="admin">Admin</option>}
-                      <option value="moderator">Moderator</option>
+                      {/* Admin is never assignable from the panel; the server rejects it.
+                          Moderator can only be granted by an admin. */}
+                      {editingUser && accounts.find(a => a.id === editingUser)?.role === 'admin' && <option value="admin">Admin</option>}
+                      {(currentUser?.role === 'admin' || (Array.isArray(currentUser?.roles) && currentUser.roles.includes('admin'))
+                        || (editingUser && accounts.find(a => a.id === editingUser)?.role === 'moderator')) && <option value="moderator">Moderator</option>}
                       <option value="help_desk">Help Desk</option>
                       <option value="guest">Guest</option>
                       <option value="banned">Banned</option>

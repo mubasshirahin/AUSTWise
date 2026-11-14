@@ -6,16 +6,110 @@ import jwt from 'jsonwebtoken';
 import { randomUUID } from 'node:crypto';
 import {
   createUser, validateLogin, getUserById, getUserByEmail,
-  findOrCreateGoogleUser, updateUserProfile,
+  findOrCreateGoogleUser, updateUserProfile, bannedMessage,
 } from './userStore.mjs';
 import { authRateLimiter, loginRateLimiter } from './rateLimiter.mjs';
+import { rolesOf, isBannedAccount } from './roleGuards.mjs';
 
 export { handleDevSwitchUser, handleDevSeedUsers, handleDevUsers };
 
 const JWT_SECRET = process.env.JWT_SECRET || (() => {
+  // The fallback secret is public (it is in this file), so anyone could sign
+  // an admin token with it. Never run production without a real secret.
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET must be set in production.');
+  }
   console.warn('⚠️  JWT_SECRET not set in .env — using insecure default. Set JWT_SECRET in production!');
   return 'aust-wise-dev-secret-change-in-production';
 })();
+
+// ── Fresh role state ──
+// A JWT lives for 7 days, so the role inside it can be stale after an admin
+// demotes or bans someone. The request entry point calls refreshAuthState()
+// (one DB read per user per minute) and readTokenCookie() then overrides the
+// token's role/roles with the stored ones, so changes apply within a minute.
+const AUTH_STATE_TTL_MS = 60 * 1000;
+const AUTH_STATE_MAX = 20000;
+const authState = new Map(); // userId -> { at, missing, role, roles, pending }
+
+function verifyCookieToken(req) {
+  const cookieHeader = req?.headers?.cookie || '';
+  const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${COOKIE_NAME}=([^;]*)`));
+  if (!match) return null;
+  try {
+    return jwt.verify(match[1], JWT_SECRET);
+  } catch {
+    return null;
+  }
+}
+
+function rememberAuthState(id, user) {
+  if (authState.size >= AUTH_STATE_MAX) authState.clear();
+  authState.set(String(id), user
+    ? { at: Date.now(), missing: false, role: user.role, roles: [...rolesOf(user)], pending: user.status === 'PENDING_APPROVAL' }
+    : { at: Date.now(), missing: true });
+}
+
+/** Load the caller's stored role into the cache (no-op while it is fresh). */
+export async function refreshAuthState(req) {
+  const payload = verifyCookieToken(req);
+  if (!payload?.id) return;
+  const hit = authState.get(String(payload.id));
+  if (hit && Date.now() - hit.at < AUTH_STATE_TTL_MS) return;
+  try {
+    rememberAuthState(payload.id, await getUserById(payload.id));
+  } catch {
+    // DB hiccup: keep whatever we had rather than locking everyone out.
+  }
+}
+
+// ── WebSocket tickets ──
+// In production the browser opens the socket straight to the backend origin,
+// so the session cookie (set on the frontend origin) is not sent. The client
+// fetches a 2-minute ticket through the /api proxy and passes it as ?ticket=.
+const WS_TICKET_PURPOSE = 'ws';
+
+export function issueWsTicket(userId) {
+  return jwt.sign({ id: String(userId), purpose: WS_TICKET_PURPOSE }, JWT_SECRET, { expiresIn: '2m' });
+}
+
+function readWsTicket(request) {
+  try {
+    const url = new URL(request.url || '/', 'http://localhost');
+    const ticket = url.searchParams.get('ticket');
+    if (!ticket) return null;
+    const payload = jwt.verify(ticket, JWT_SECRET);
+    return payload?.purpose === WS_TICKET_PURPOSE && payload.id ? payload : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Who is opening this socket? Uses the session cookie, else a ticket.
+ * Returns { id, banned } with the role read fresh from the store, or null.
+ */
+export async function resolveSocketUser(request) {
+  const id = verifyCookieToken(request)?.id || readWsTicket(request)?.id;
+  if (!id) return null;
+  const hit = authState.get(String(id));
+  if (!hit || Date.now() - hit.at >= AUTH_STATE_TTL_MS) {
+    try { rememberAuthState(id, await getUserById(id)); } catch { /* keep cache */ }
+  }
+  const state = authState.get(String(id));
+  if (!state || state.missing || state.pending) return null;
+  return { id: String(id), banned: isBannedAccount(state) };
+}
+
+/** True when the upgrade carries a valid ws ticket (used for origin-less clients). */
+export function hasValidWsTicket(request) {
+  return !!readWsTicket(request);
+}
+
+/** Drop a user's cached role so the next request re-reads it. */
+export function invalidateAuthState(userId) {
+  if (userId) authState.delete(String(userId));
+}
 const COOKIE_NAME = 'aust_token';
 const TOKEN_EXPIRY = '7d';
 
@@ -56,16 +150,18 @@ function clearAuthCookie(res) {
   res.setHeader('Set-Cookie', `${COOKIE_NAME}=; ${cookieClearFlags()}`);
 }
 
-/** Read JWT from cookie and return payload or null */
+/**
+ * Read JWT from cookie and return payload or null. When the stored role is
+ * cached (see refreshAuthState) it replaces the token's role/roles, and a
+ * deleted or pending account gets null.
+ */
 export function readTokenCookie(req) {
-  const cookieHeader = req.headers.cookie || '';
-  const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${COOKIE_NAME}=([^;]*)`));
-  if (!match) return null;
-  try {
-    return jwt.verify(match[1], JWT_SECRET);
-  } catch {
-    return null;
-  }
+  const payload = verifyCookieToken(req);
+  if (!payload) return null;
+  const fresh = authState.get(String(payload.id));
+  if (!fresh) return payload;
+  if (fresh.missing || fresh.pending) return null;
+  return { ...payload, role: fresh.role, roles: fresh.roles };
 }
 
 async function handleSignup(req, res) {
@@ -354,6 +450,9 @@ async function handleGoogle(req, res) {
       created = result.created;
     }
 
+    if (isBannedAccount(user)) {
+      return sendJson(res, 403, { success: false, banned: true, error: bannedMessage(user) });
+    }
     const token = signToken(user);
     setAuthCookie(res, token);
     return sendJson(res, 200, { success: true, user: sanitizeUser(user), existing: !created });
@@ -395,6 +494,12 @@ export async function handleMe(req, res) {
   if (user.status === 'PENDING_APPROVAL') {
     clearAuthCookie(res);
     return sendJson(res, 403, { success: false, error: 'Your account is pending admin approval.' });
+  }
+  rememberAuthState(user.id, user);
+  if (isBannedAccount(user)) {
+    // 401 (not 403) so the client drops its cached profile and signs out.
+    clearAuthCookie(res);
+    return sendJson(res, 401, { success: false, banned: true, error: bannedMessage(user) });
   }
   setAuthCookie(res, signToken(user));
   return sendJson(res, 200, { success: true, user: sanitizeUser(user) });

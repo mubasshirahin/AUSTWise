@@ -52,8 +52,9 @@ import {
 import { initializeDatabase, resetDatabase, query, sql, testConnection } from './db.mjs';
 import { handleOAuthRequest } from './socialOAuth.mjs';
 import { handleCleanerRequest } from './googleCleaner.mjs';
-import { handleAuthRoute, readTokenCookie, handleDevSwitchUser, handleDevSeedUsers, handleDevUsers, issueAuthCookie } from './auth.mjs';
+import { handleAuthRoute, readTokenCookie, handleDevSwitchUser, handleDevSeedUsers, handleDevUsers, issueAuthCookie, refreshAuthState, invalidateAuthState, issueWsTicket } from './auth.mjs';
 import { requireRole, requireAuth } from './middleware.mjs';
+import { hasAnyRole, isStaff, isProtectedSharedKey, canManageAccount, canAssignRoles } from './roleGuards.mjs';
 import { rateLimit, extractRoutineRateLimiter } from './rateLimiter.mjs';
 import { getUserById, getUserByEmail, getAllUsersSafe, getUserByIdOrAwid, updateUserProfile, setUserPasswordHash, deleteUserById, countUsers, createUser, hashPassword, ADMIN_ASSIGNABLE_ROLES, FACULTY_DEPARTMENTS, facultyDepartmentRole } from './userStore.mjs';
 import {
@@ -1053,6 +1054,9 @@ server.on('request', async (req, res) => {
     // straight through to handleApiRequest (which serves them / the SPA).
     const isApiRequest = req.url.startsWith('/api/');
     if (!isApiRequest || globalRateLimiter(req, res)) {
+      // Pull the caller's current role from the DB (cached 60s) so a demotion
+      // or ban applies without waiting for the 7-day JWT to expire.
+      if (isApiRequest) await refreshAuthState(req);
       await handleApiRequest(req, res);
     }
   } catch (err) {
@@ -1067,6 +1071,16 @@ server.on('request', async (req, res) => {
 
 // API + non-static request dispatch (run inside the global rate limiter).
 async function handleApiRequest(req, res) {
+  // GET /api/ws-ticket — short-lived ticket the browser passes when opening
+  // the realtime socket (the socket may not carry the session cookie).
+  if (req.url === '/api/ws-ticket' && req.method === 'GET') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
+    res.setHeader('Cache-Control', 'no-store');
+    sendJson(res, 200, { success: true, ticket: issueWsTicket(auth.id) });
+    return;
+  }
+
   // ── Public stats endpoints (no auth required) ───────────────────────
   // GET /api/stats/count — lightweight member count (no user data)
   if (req.url === '/api/stats/count' && req.method === 'GET') {
@@ -1264,7 +1278,7 @@ async function handleApiRequest(req, res) {
       const existing = await getUser(chatId);
       const existingAwid = existing ? (existing.awid ?? existing.Awid) : null;
       const isOwner = existing && awid && existingAwid && String(existingAwid) === String(awid);
-      const isManager = ['admin', 'moderator'].includes(auth.role);
+      const isManager = hasAnyRole(auth, 'admin', 'moderator');
       if (!isOwner && !isManager) {
         sendJson(res, 403, {
           success: false,
@@ -1366,12 +1380,28 @@ async function handleApiRequest(req, res) {
     return;
   }
 
+  // Staff may act on any Telegram chat; everyone else only on the chat
+  // linked to their own account. Sends 403 and returns false otherwise.
+  async function ensureOwnTelegramChat(auth, chatId) {
+    if (hasAnyRole(auth, 'admin', 'moderator')) return true;
+    const account = await getUserById(auth.id);
+    const linked = account?.awid ? await getUserByAwid(account.awid) : null;
+    const ownChatId = String(linked?.chatId ?? linked?.ChatId ?? account?.settings?.telegram?.chatId ?? '');
+    if (!ownChatId || ownChatId !== String(chatId)) {
+      sendJson(res, 403, { success: false, error: 'You can only use your own Telegram connection.' });
+      return false;
+    }
+    return true;
+  }
+
   // Get user registration status
   if (req.url.startsWith('/api/telegram/status') && req.method === 'GET') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
     try {
       const url = new URL(req.url, `http://${req.headers.host}`);
       const chatId = url.searchParams.get('chatId');
-      
+
       if (!chatId) {
         sendJson(res, 400, {
           success: false,
@@ -1379,6 +1409,7 @@ async function handleApiRequest(req, res) {
         });
         return;
       }
+      if (!(await ensureOwnTelegramChat(auth, chatId))) return;
 
       const registered = await isRegistered(chatId);
       const user = await getUser(chatId);
@@ -1404,9 +1435,11 @@ async function handleApiRequest(req, res) {
 
   // Update user's routine
   if (req.url === '/api/telegram/routine' && req.method === 'PUT') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
     try {
       const { chatId, routine } = await readJsonBody(req);
-      
+
       if (!chatId || !routine) {
         sendJson(res, 400, {
           success: false,
@@ -1414,6 +1447,7 @@ async function handleApiRequest(req, res) {
         });
         return;
       }
+      if (!(await ensureOwnTelegramChat(auth, chatId))) return;
 
       const user = await updateUserRoutine(chatId, routine);
       
@@ -1633,6 +1667,10 @@ async function handleApiRequest(req, res) {
         sendJson(res, 404, { success: false, error: 'User not found.' });
         return;
       }
+      if (!canManageAccount(auth, current) || !canAssignRoles(auth, [role])) {
+        sendJson(res, 403, { success: false, error: 'You cannot change this account\'s role.' });
+        return;
+      }
       const leadershipRoles = ['cr', 'sr', 'vp', 'gs', 'readd'];
       const currentRoles = new Set([...(Array.isArray(current.roles) ? current.roles : []), current.role]);
       const conflict = leadershipRoles.find((existingRole) => currentRoles.has(existingRole) && existingRole !== role);
@@ -1681,6 +1719,7 @@ async function handleApiRequest(req, res) {
         sendJson(res, 404, { success: false, error: 'User not found.' });
         return;
       }
+      invalidateAuthState(userId);
       broadcastToAll({ type: 'profile-update', payload: { userId, fields: ['role'] } });
       sendJson(res, 200, { success: true, user: updated });
     } catch (error) {
@@ -1718,8 +1757,17 @@ async function handleApiRequest(req, res) {
         sendJson(res, 404, { success: false, error: 'User not found.' });
         return;
       }
-      if (existing.role === 'admin' && body.role && body.role !== 'admin') {
-        sendJson(res, 400, { success: false, error: 'Cannot change the role of an admin account.' });
+      if (!canManageAccount(auth, existing)) {
+        sendJson(res, 403, { success: false, error: 'You cannot edit this account.' });
+        return;
+      }
+      if (body.role !== undefined && body.role !== null && body.role !== ''
+        && !ADMIN_ASSIGNABLE_ROLES.includes(body.role)) {
+        sendJson(res, 400, { success: false, error: 'Invalid role.' });
+        return;
+      }
+      if (!canAssignRoles(auth, [body.role, ...(Array.isArray(body.roles) ? body.roles : [])])) {
+        sendJson(res, 403, { success: false, error: 'You cannot grant that role.' });
         return;
       }
       // Whitelist the fields an admin may edit.
@@ -1732,6 +1780,9 @@ async function handleApiRequest(req, res) {
       for (const key of allowed) {
         if (key in body) patch[key] = body[key];
       }
+      // roles[] is derived from the primary role below; never accept it raw.
+      delete patch.roles;
+      if (!body.role) delete patch.role;
       if (body.role) {
         const studentRoles = ['student', 'cr', 'sr', 'readd', 'gs', 'vp', 'bus_coordinator', 'clubs_representative'];
         const studentAddons = ['bus_coordinator', 'clubs_representative'];
@@ -1780,6 +1831,7 @@ async function handleApiRequest(req, res) {
         }
       }
       const updated = await updateUserProfile(userId, patch, { allowRole: true });
+      invalidateAuthState(userId);
       broadcastToAll({ type: 'profile-update', payload: { userId, fields: Object.keys(patch) } });
       sendJson(res, 200, { success: true, user: updated });
     } catch (error) {
@@ -1804,11 +1856,12 @@ async function handleApiRequest(req, res) {
         sendJson(res, 404, { success: false, error: 'User not found.' });
         return;
       }
-      if (existing.role === 'admin') {
-        sendJson(res, 400, { success: false, error: 'Cannot delete an admin account.' });
+      if (!canManageAccount(auth, existing)) {
+        sendJson(res, 403, { success: false, error: 'You cannot delete this account.' });
         return;
       }
       const deleted = await deleteUserById(userId);
+      invalidateAuthState(userId);
       if (deleted) {
         const awid = existing.awid ?? existing.Awid;
         const linkedChatId = normalizeUserSettings(existing.settings).telegram.chatId;
@@ -2126,7 +2179,7 @@ async function handleApiRequest(req, res) {
       // per-page check for cover
       const all = await readRoleAccess();
       const cfg = (all && all['cover']) || all['default'] || { statsAllowed: ['admin', 'moderator'] };
-      if (!cfg.statsAllowed.includes(payload.role)) {
+      if (!hasAnyRole(payload, ...cfg.statsAllowed)) {
         res.writeHead(403, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: false, error: `Forbidden: ${cfg.statsAllowed.join(' or ')} role required.` }));
         return;
@@ -2151,7 +2204,7 @@ async function handleApiRequest(req, res) {
     let all = {};
     try { all = await readRoleAccess(); } catch {}
     const cfg = (all && all['cover']) || all['default'] || { statsAllowed: ['admin', 'moderator'] };
-    if (!cfg.statsAllowed.includes(payload.role)) {
+    if (!hasAnyRole(payload, ...cfg.statsAllowed)) {
       res.writeHead(403, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: false, error: `Forbidden: ${cfg.statsAllowed.join(' or ')} role required.` }));
       return;
@@ -2314,8 +2367,8 @@ async function handleApiRequest(req, res) {
       try { serverUser = await getUserById(auth.id); } catch {}
       const safeName = serverUser?.name || payload.postedByName || '';
       let scope = null;
-      if (serverUser && auth.role === 'cr' && serverUser.labSection) scope = { department: serverUser.department, semester: String(serverUser.semester), labSection: serverUser.labSection };
-      else if (serverUser && auth.role === 'sr' && serverUser.section) scope = { department: serverUser.department, semester: String(serverUser.semester), section: serverUser.section };
+      if (serverUser && hasAnyRole(auth, 'cr') && serverUser.labSection) scope = { department: serverUser.department, semester: String(serverUser.semester), labSection: serverUser.labSection };
+      else if (serverUser && hasAnyRole(auth, 'sr') && serverUser.section) scope = { department: serverUser.department, semester: String(serverUser.semester), section: serverUser.section };
       // In-app bell broadcast first — it must not depend on Telegram being
       // configured or succeeding.
       const noticeId = typeof payload.noticeId === 'string' ? payload.noticeId.slice(0, 80) : '';
@@ -2586,6 +2639,8 @@ async function handleApiRequest(req, res) {
 
   // Get webhook info
   if (req.url.startsWith('/api/telegram/webhook-info') && req.method === 'GET') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
     try {
       const botToken = process.env.TELEGRAM_BOT_TOKEN;
       if (!botToken) {
@@ -2627,7 +2682,7 @@ async function handleApiRequest(req, res) {
         return;
       }
 
-      if (!['admin', 'moderator'].includes(auth.role)) {
+      if (!hasAnyRole(auth, 'admin', 'moderator')) {
         const account = await getUserById(auth.id);
         const linked = account?.awid ? await getUserByAwid(account.awid) : null;
         const ownChatId = String(
@@ -2703,9 +2758,11 @@ async function handleApiRequest(req, res) {
 
   // Manually record attendance (from web interface)
   if (req.url === '/api/telegram/attendance' && req.method === 'POST') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
     try {
       const { chatId, courseCode, attended } = await readJsonBody(req);
-      
+
       if (!chatId || !courseCode) {
         sendJson(res, 400, {
           success: false,
@@ -2713,6 +2770,7 @@ async function handleApiRequest(req, res) {
         });
         return;
       }
+      if (!(await ensureOwnTelegramChat(auth, chatId))) return;
       
       const record = await saveAttendanceRecord(chatId, courseCode, attended === true);
       
@@ -3036,7 +3094,7 @@ async function handleApiRequest(req, res) {
         const existingUser = await getUserByEmail(request.email)
           || (request.role === 'alumni' && request.previousEmail ? await getUserByEmail(request.previousEmail) : null);
         if (existingUser) {
-          if (['admin', 'moderator'].includes(existingUser.role)) {
+          if (hasAnyRole(existingUser, 'admin', 'moderator')) {
             sendJson(res, 409, { success: false, error: 'Admin and Moderator accounts cannot be reassigned through an access request.' });
             return;
           }
@@ -3266,131 +3324,6 @@ async function handleApiRequest(req, res) {
       });
     } catch (error) {
       sendJson(res, 400, { success: false, error: error.message || 'Could not accept the invitation.' });
-    }
-    return;
-  }
-
-  // Create a new invitation (admin only)
-  if (req.url === '/api/invites' && req.method === 'POST') {
-    if (!requireFeature('db', res, 'Database connection')) return;
-    const auth = requireRole('admin')(req, res);
-    if (!auth) return;
-    try {
-      const { email, role, invitedBy } = await readJsonBody(req);
-
-      if (!email || !role) {
-        sendJson(res, 400, { success: false, error: 'Email and role are required.' });
-        return;
-      }
-
-      if (!['faculty', 'alumni'].includes(role)) {
-        sendJson(res, 400, { success: false, error: 'Role must be "faculty" or "alumni".' });
-        return;
-      }
-
-      const emailPattern = /@.*\./;
-      if (!emailPattern.test(email)) {
-        sendJson(res, 400, { success: false, error: 'Please enter a valid email address.' });
-        return;
-      }
-
-      // Check if already invited with this email
-      const existing = await query(
-        'SELECT "Id", "Status" FROM "Invitations" WHERE "Email" = @email',
-        { email: { value: email } }
-      );
-
-      const pendingInvite = existing.recordset.find(i => i.Status === 'pending');
-      if (pendingInvite) {
-        sendJson(res, 409, { success: false, error: 'An active invitation already exists for this email.' });
-        return;
-      }
-
-      // Generate unique single-use token and store ONLY its SHA-256 hash so a
-      // DB read can never reveal a usable token.
-      const crypto = await import('node:crypto');
-      const token = crypto.randomBytes(32).toString('hex');
-      const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-
-      // Set expiry to 7 days from now
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-
-      await query(
-        `INSERT INTO "Invitations" ("Email", "Role", "Token", "Status", "InvitedBy", "ExpiresAt")
-         VALUES (@email, @role, @tokenHash, 'pending', @invitedBy, @expiresAt)`,
-        {
-          email: { value: email },
-          role: { value: role },
-          tokenHash: { value: tokenHash },
-          invitedBy: { value: invitedBy || 'Admin' },
-          expiresAt: { value: expiresAt },
-        }
-      );
-
-      console.log(`📨 Invitation sent to ${email} (${role}); hash=${tokenHash.substring(0, 12)}...`);
-
-      // In production, send email here via SMTP/API. Build the link from the
-      // server-configured base URL (PUBLIC_BASE_URL) to avoid host-header
-      // injection / phishing via a spoofed Host header.
-      const baseUrl = process.env.PUBLIC_BASE_URL ||
-        (req.headers.host && /localhost:?/.test(req.headers.host)
-          ? `http://${req.headers.host}`
-          : 'https://austwise.example');
-      const cleanBase = baseUrl.replace(/\/+$/, '');
-      const inviteLink = `${cleanBase}/accept-invite?token=${encodeURIComponent(token)}`;
-
-      sendJson(res, 201, {
-        success: true,
-        message: `Invitation sent to ${email}`,
-        inviteLink,
-        isHash: true, // server stores only the hash; plaintext token leaves via this link only
-      });
-    } catch (error) {
-      sendJson(res, 500, {
-        success: false,
-        error: error.message || 'Failed to create invitation.',
-      });
-    }
-    return;
-  }
-
-  // List invitations with pagination (admin only)
-  if (req.url.startsWith('/api/invites') && req.method === 'GET') {
-    if (!requireFeature('db', res, 'Database connection')) return;
-    const auth = requireRole('admin')(req, res);
-    if (!auth) return;
-    try {
-      const url = new URL(req.url, `http://${req.headers.host}`);
-      const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
-      const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get('limit') || '10')));
-      const offset = (page - 1) * limit;
-
-      const countResult = await query('SELECT COUNT(*)::int AS total FROM "Invitations"');
-      const total = countResult.recordset[0].total;
-
-      const result = await query(
-        `SELECT "Id", "Email", "Role", "Status", "InvitedBy", "CreatedAt", "ExpiresAt", "AcceptedAt"
-         FROM "Invitations"
-         ORDER BY "CreatedAt" DESC
-         OFFSET @offset LIMIT @limit`,
-        { offset: { type: sql.Int, value: offset }, limit: { type: sql.Int, value: limit } }
-      );
-
-      sendJson(res, 200, {
-        success: true,
-        invitations: result.recordset,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages: Math.ceil(total / limit),
-        },
-      });
-    } catch (error) {
-      sendJson(res, 500, {
-        success: false,
-        error: error.message || 'Failed to list invitations.',
-      });
     }
     return;
   }
@@ -4470,6 +4403,10 @@ async function handleApiRequest(req, res) {
       sendJson(res, 403, { success: false, error: 'Use the Batch Drive lock API for this data.' });
       return;
     }
+    if (isProtectedSharedKey(key) && !isStaff(auth)) {
+      sendJson(res, 403, { success: false, error: 'This value is managed by the server.' });
+      return;
+    }
     try {
       const value = await getSharedStoreValue(key, null);
       sendJson(res, 200, { success: true, key, value });
@@ -4488,10 +4425,16 @@ async function handleApiRequest(req, res) {
       sendJson(res, 403, { success: false, error: 'Use the Batch Drive lock API for this data.' });
       return;
     }
+    if (isProtectedSharedKey(key)) {
+      // system:* and server-owned keys are written only by their own APIs
+      // (e.g. /api/role-access), never through the generic store.
+      sendJson(res, 403, { success: false, error: 'This value is managed by the server.' });
+      return;
+    }
     try {
       const body = await readJsonBody(req);
       if (key.startsWith('aust-semester-tasks:')) {
-        if (auth.role !== 'cr') {
+        if (!hasAnyRole(auth, 'cr')) {
           sendJson(res, 403, { success: false, error: 'Only CRs can publish semester tasks.' });
           return;
         }
@@ -4551,24 +4494,24 @@ async function handleApiRequest(req, res) {
         sendJson(res, 200, { success: true, key, value });
         return;
       }
-      if (key === 'semester-start-date' && auth.role !== 'admin') {
+      if (key === 'semester-start-date' && !hasAnyRole(auth, 'admin')) {
         sendJson(res, 403, { success: false, error: 'Only admins can change the semester start date.' });
         return;
       }
       // Only admins may overwrite the global notice board (prevents student takeover).
-      if (key === 'aust-notices' && !['admin', 'moderator'].includes(auth.role)) {
+      if (key === 'aust-notices' && !hasAnyRole(auth, 'admin', 'moderator')) {
         sendJson(res, 403, { success: false, error: 'Only admin or moderator can update notices.' });
         return;
       }
       // CR/SR scoped notices are managed via this shared key (server-synced, not localStorage).
-      if (key === 'aust-cr-sr-notices' && !['cr', 'sr', 'admin', 'moderator'].includes(auth.role)) {
+      if (key === 'aust-cr-sr-notices' && !hasAnyRole(auth, 'cr', 'sr', 'admin', 'moderator')) {
         sendJson(res, 403, { success: false, error: 'Only CR/SR or admin can update CR/SR notices.' });
         return;
       }
       // Server-side rate limit for CR/SR notice bursts (30s per user)
       if (key === 'aust-cr-sr-notices') {
         const last = noticePostLastByUser.get(auth.id) || 0;
-        if (Date.now() - last < 30000 && !['admin','moderator'].includes(auth.role)) {
+        if (Date.now() - last < 30000 && !hasAnyRole(auth, 'admin', 'moderator')) {
           const wait = Math.ceil((30000 - (Date.now() - last))/1000);
           sendJson(res, 429, { success: false, error: `Rate limited — wait ${wait}s before next notice.` });
           return;
@@ -4586,7 +4529,7 @@ async function handleApiRequest(req, res) {
           title: typeof n.title === 'string' ? n.title.slice(0, 80) : n.title,
           content: typeof n.content === 'string' ? n.content.slice(0, 5000) : n.content,
         });
-        if (['admin', 'moderator'].includes(auth.role)) {
+        if (hasAnyRole(auth, 'admin', 'moderator')) {
           // Managers may curate the whole list; only the length guards apply.
           body.value = body.value.filter((n) => n && typeof n === 'object').map(clampText);
         } else {
@@ -4594,7 +4537,7 @@ async function handleApiRequest(req, res) {
           try { dbUser = await getUserById(auth.id); } catch { /* handled below */ }
           if (!dbUser) { sendJson(res, 503, { success: false, error: 'Could not verify your profile — try again.' }); return; }
           let ownScope;
-          if (auth.role === 'cr') {
+          if (hasAnyRole(auth, 'cr')) {
             if (!dbUser.labSection) { sendJson(res, 400, { success: false, error: 'CR profile missing labSection — complete profile first.' }); return; }
             ownScope = { department: dbUser.department, semester: String(dbUser.semester), labSection: dbUser.labSection };
           } else {
@@ -4614,10 +4557,10 @@ async function handleApiRequest(req, res) {
             // Someone else's notice: ignore whatever the client sent for it.
             if (prior && prior.postedBy !== auth.id) continue;
             const s = n.scope || {};
-            if (auth.role === 'cr' && s.labSection && s.labSection !== dbUser.labSection) {
+            if (hasAnyRole(auth, 'cr') && s.labSection && s.labSection !== dbUser.labSection) {
               sendJson(res, 400, { success: false, error: 'Scope labSection must match your profile.' }); return;
             }
-            if (auth.role === 'sr' && s.section && s.section !== dbUser.section) {
+            if (hasAnyRole(auth, 'sr') && s.section && s.section !== dbUser.section) {
               sendJson(res, 400, { success: false, error: 'Scope section must match your profile.' }); return;
             }
             ownNotices.push(clampText({
@@ -4639,13 +4582,13 @@ async function handleApiRequest(req, res) {
       }
       // The semester start date is a single admin-controlled value: everyone
       // reads the same date, but only admins may update it.
-      if (key === 'semester-start-date' && auth.role !== 'admin') {
+      if (key === 'semester-start-date' && !hasAnyRole(auth, 'admin')) {
         sendJson(res, 403, { success: false, error: 'Only admins can change the semester start date.' });
         return;
       }
       // The shared exam schedule (Zero Hour) is CR/SR-controlled per section:
       // every section member reads the same key, but only editors may write it.
-      if (key.startsWith('aust-exam-schedule:') && auth.role !== 'cr') {
+      if (key.startsWith('aust-exam-schedule:') && !hasAnyRole(auth, 'cr')) {
         sendJson(res, 403, { success: false, error: 'Only a CR can update the shared Zero Hour schedule.' });
         return;
       }
@@ -4692,28 +4635,32 @@ async function handleApiRequest(req, res) {
       sendJson(res, 403, { success: false, error: 'Use the Batch Drive lock API for this data.' });
       return;
     }
+    if (isProtectedSharedKey(key)) {
+      sendJson(res, 403, { success: false, error: 'This value is managed by the server.' });
+      return;
+    }
     if (key.startsWith('aust-semester-tasks:')) {
-      const dbUser = auth.role === 'cr' ? await getUserById(auth.id) : null;
+      const dbUser = hasAnyRole(auth, 'cr') ? await getUserById(auth.id) : null;
       const group = key.slice(key.lastIndexOf(':') + 1).toUpperCase();
       const expectedPrefix = dbUser?.department && dbUser?.semester
         ? `aust-semester-tasks:${String(dbUser.department).trim().toUpperCase()}:${dbUser.semester}:`
         : '';
-      if (auth.role !== 'cr' || !expectedPrefix || !key.startsWith(expectedPrefix)
+      if (!hasAnyRole(auth, 'cr') || !expectedPrefix || !key.startsWith(expectedPrefix)
         || String(dbUser.labSection || '').trim().toUpperCase() !== group) {
         sendJson(res, 403, { success: false, error: 'CRs can remove tasks only from their own lab group.' });
         return;
       }
     }
-    if (key === 'semester-start-date' && auth.role !== 'admin') {
+    if (key === 'semester-start-date' && !hasAnyRole(auth, 'admin')) {
       sendJson(res, 403, { success: false, error: 'Only admins can change the semester start date.' });
       return;
     }
-    if ((key === 'aust-notices' || key === 'aust-cr-sr-notices') && !['admin', 'moderator'].includes(auth.role) && !(key === 'aust-cr-sr-notices' && ['cr','sr'].includes(auth.role))) {
+    if ((key === 'aust-notices' || key === 'aust-cr-sr-notices') && !hasAnyRole(auth, 'admin', 'moderator') && !(key === 'aust-cr-sr-notices' && hasAnyRole(auth, 'cr', 'sr'))) {
       // Re-use the PUT logic: aust-notices admin-only, aust-cr-sr-notices cr/sr/admin.
       if (key === 'aust-notices') { sendJson(res, 403, { success: false, error: 'Only admin or moderator can delete notices.' }); return; }
-      if (key === 'aust-cr-sr-notices' && !['cr','sr','admin','moderator'].includes(auth.role)) { sendJson(res, 403, { success: false, error: 'Only CR/SR or admin can delete CR/SR notices.' }); return; }
+      if (key === 'aust-cr-sr-notices' && !hasAnyRole(auth, 'cr', 'sr', 'admin', 'moderator')) { sendJson(res, 403, { success: false, error: 'Only CR/SR or admin can delete CR/SR notices.' }); return; }
     }
-    if (key.startsWith('aust-exam-schedule:') && auth.role !== 'cr') {
+    if (key.startsWith('aust-exam-schedule:') && !hasAnyRole(auth, 'cr')) {
       sendJson(res, 403, { success: false, error: 'Only a CR can modify the shared Zero Hour schedule.' });
       return;
     }
@@ -4746,8 +4693,12 @@ async function handleApiRequest(req, res) {
         migrated += 1;
       }
       for (const [key, value] of Object.entries(sharedEntries)) {
-        if (key.startsWith('aust-semester-tasks:')) continue;
-        if (key === 'semester-start-date' && auth.role !== 'admin') continue;
+        // Migration may only seed plain shared keys. Keys with their own role
+        // rule on PUT, or owned by the server, must go through PUT.
+        if (isProtectedSharedKey(key)) continue;
+        if (key.startsWith('aust-semester-tasks:') || key.startsWith('aust-exam-schedule:')) continue;
+        if (key === 'aust-notices' || key === 'aust-cr-sr-notices') continue;
+        if (key === 'semester-start-date' && !hasAnyRole(auth, 'admin')) continue;
         if (await isSharedStoreDeleted(key)) continue;
         const existing = await getSharedStoreValue(key, null);
         if (existing !== null) continue;
@@ -4766,7 +4717,7 @@ async function handleApiRequest(req, res) {
   // until they redeem a code. Sharers: semester 5+ (3.1+) students generate
   // single-use 8-digit codes; max 5 people may redeem per sharer. Drive
   // Links (CR/SR link editor) is separate and stays open.
-  const BATCH_DRIVE_LOCK_ROLES = ['student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'vp', 'gs', 'readd', 'bus_coordinator', 'clubs_representative', 'help_desk', 'banned'];
+  const BATCH_DRIVE_LOCK_ROLES = ['student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr', 'vp', 'gs', 'readd', 'bus_coordinator', 'clubs_representative', 'help_desk'];
 
   if (req.url === '/api/batch-drive/lock/me' && req.method === 'GET') {
     const auth = requireRole(...BATCH_DRIVE_LOCK_ROLES)(req, res);
@@ -5339,7 +5290,7 @@ async function handleApiRequest(req, res) {
       const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
       if (!auth) return;
       const id = new URL(req.url, `http://${req.headers.host}`).pathname.split('/').pop();
-      await deleteMarketplaceListing(id, auth.id, auth.role === 'admin' || auth.role === 'moderator');
+      await deleteMarketplaceListing(id, auth.id, hasAnyRole(auth, 'admin') || hasAnyRole(auth, 'moderator'));
       broadcastToAll({ type: 'marketplace-listing', payload: { action: 'delete', id } });
       sendJson(res, 200, { success: true });
     } catch (error) {
@@ -5888,7 +5839,7 @@ async function handleApiRequest(req, res) {
     if (!auth) return;
     try {
       const id = decodeURIComponent(req.url.split('/').pop());
-      const result = await deleteQuestionPaperById(id, auth.id, auth.role === 'admin' || auth.role === 'moderator');
+      const result = await deleteQuestionPaperById(id, auth.id, hasAnyRole(auth, 'admin') || hasAnyRole(auth, 'moderator'));
       if (!result.deleted) {
         sendJson(res, 403, { success: false, error: result.error || 'Delete failed.' });
         return;
@@ -6215,7 +6166,7 @@ async function handleApiRequest(req, res) {
         sendJson(res, 404, { success: false, error: 'Pending application not found.' });
         return;
       }
-      if (status === 'approved' && ['vp', 'gs', 'faculty'].includes(existingApp.appliedRole) && auth.role !== 'admin') {
+      if (status === 'approved' && ['vp', 'gs', 'faculty'].includes(existingApp.appliedRole) && !hasAnyRole(auth, 'admin')) {
         sendJson(res, 403, { success: false, error: 'Only an admin can approve VP, GS, or Faculty applications.' });
         return;
       }
@@ -6343,7 +6294,7 @@ async function handleApiRequest(req, res) {
         return;
       }
       const user = await getUserById(auth.id);
-      if (!user || (user.role !== 'cr' && user.role !== 'sr')) {
+      if (!user || !hasAnyRole(user, 'cr', 'sr')) {
         sendJson(res, 400, { success: false, error: 'You do not have a CR or SR role to resign from.' });
         return;
       }
