@@ -5,9 +5,59 @@
     <link rel="icon" type="image/svg+xml" href="/austwise_icon_final.svg?v=3" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png?v=3" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="AUSTWise &mdash; Your all-in-one campus companion for schedules, grades, resources, and community." />
+    <meta name="description" content="AUSTWise is the all-in-one campus companion for AUST students: class routine, CGPA calculator, question bank analyzer, campus map, budget tracker, chat, marketplace and more." />
     <meta name="google-site-verification" content="h4IqLozAjXb9woYcmEjlGAbwBLh7UZEUi3mgYmt1PnQ" />
-    <title>AUSTWise &mdash; Your Campus Companion</title>
+    <title>AUSTWise &mdash; Campus Companion for AUST Students</title>
+    <meta name="application-name" content="AUSTWise" />
+    <meta name="robots" content="index, follow" />
+    <!-- One canonical host (Vercel), so the Render mirror never competes in search. -->
+    <link rel="canonical" href="https://austwise.vercel.app/" />
+    <script>
+      (function() {
+        var c = document.querySelector('link[rel="canonical"]');
+        if (c) c.href = 'https://austwise.vercel.app' + location.pathname;
+      })();
+    </script>
+
+    <!-- Link previews (Facebook, Messenger, WhatsApp, LinkedIn, X) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="AUSTWise" />
+    <meta property="og:title" content="AUSTWise &mdash; Campus Companion for AUST Students" />
+    <meta property="og:description" content="Routine, CGPA, question banks, campus map, budgeting, chat and marketplace for AUST students, all in one app." />
+    <meta property="og:url" content="https://austwise.vercel.app/" />
+    <meta property="og:image" content="https://austwise.vercel.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="AUSTWise: Everything you need to ace your semester" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="AUSTWise &mdash; Campus Companion for AUST Students" />
+    <meta name="twitter:description" content="Routine, CGPA, question banks, campus map, budgeting, chat and marketplace for AUST students, all in one app." />
+    <meta name="twitter:image" content="https://austwise.vercel.app/og-image.png" />
+
+    <!-- Structured data: tells Google the site name and that this is a web app -->
+    <script type="application/ld+json">
+      [
+        {
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          "name": "AUSTWise",
+          "alternateName": ["AUST Wise", "AUSTWise Campus Companion"],
+          "url": "https://austwise.vercel.app/"
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "WebApplication",
+          "name": "AUSTWise",
+          "url": "https://austwise.vercel.app/",
+          "description": "All-in-one campus companion for students of Ahsanullah University of Science and Technology (AUST).",
+          "applicationCategory": "EducationalApplication",
+          "operatingSystem": "Any",
+          "image": "https://austwise.vercel.app/og-image.png",
+          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "BDT" },
+          "author": { "@type": "Person", "name": "Mubasshir Ahin", "url": "https://github.com/mubasshirahin" }
+        }
+      ]
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Every family the app + all themes use, in ONE request. Previously the
