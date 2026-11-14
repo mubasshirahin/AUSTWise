@@ -56,6 +56,9 @@ import { handleAuthRoute, readTokenCookie, handleDevSwitchUser, handleDevSeedUse
 import { requireRole, requireAuth } from './middleware.mjs';
 import { hasAnyRole, isStaff, isProtectedSharedKey, canManageAccount, canAssignRoles } from './roleGuards.mjs';
 import { ensureGamingSeed } from './gaming/gameCatalog.mjs';
+import { handleGamingRoute } from './gaming/gamingRoutes.mjs';
+import { configureGamingBus } from './gaming/gamingBus.mjs';
+import { startGamingJobs } from './gaming/gamingJobs.mjs';
 import { rateLimit, extractRoutineRateLimiter } from './rateLimiter.mjs';
 import { getUserById, getUserByEmail, getAllUsersSafe, getUserByIdOrAwid, updateUserProfile, setUserPasswordHash, deleteUserById, countUsers, createUser, hashPassword, ADMIN_ASSIGNABLE_ROLES, FACULTY_DEPARTMENTS, facultyDepartmentRole } from './userStore.mjs';
 import {
@@ -2265,6 +2268,32 @@ async function handleApiRequest(req, res) {
       enabled,
     };
   }
+  // ── Gaming Zone API (/api/gaming/*) ──
+  // Enforces the /gaming page's access config on the server too: a page that
+  // is switched off or hidden for a role is refused here, not only in the UI.
+  if (req.url.startsWith('/api/gaming/')) {
+    await handleGamingRoute(req, res, {
+      sendJson,
+      readJsonBody,
+      dbReady: () => dbConnected,
+      checkAccess: async (auth) => {
+        if (hasAnyRole(auth, 'admin', 'moderator')) return { allowed: true };
+        const all = await readRoleAccess();
+        if (all['/gaming']?.enabled === false) {
+          return { allowed: false, reason: 'The Gaming Zone is switched off right now.' };
+        }
+        const cfg = getRoleAccessForKey(all, '/gaming');
+        const roles = Array.isArray(auth.roles) ? auth.roles : [];
+        const accessRole = roles.includes('readd') ? 'readd' : (auth.role || 'guest');
+        if (cfg.featureHidden.includes(accessRole)) {
+          return { allowed: false, reason: 'The Gaming Zone is not available for your role.' };
+        }
+        return { allowed: true };
+      },
+    });
+    return;
+  }
+
   // Public availability is separate from per-role access: admins can prepare
   // a feature privately, then publish it for everyone with one switch.
   if (req.url.startsWith('/api/page-availability') && req.method === 'GET') {
@@ -6640,6 +6669,8 @@ process.on('unhandledRejection', (err) => {
 
 // Initialize WebSocket server for real-time messaging
 createWSServer(server);
+configureGamingBus({ broadcastToUsers, getPresenceMap, isDbReady: () => dbConnected });
+startGamingJobs({ isDbReady: () => dbConnected });
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
