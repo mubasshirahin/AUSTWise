@@ -1,4 +1,13 @@
+/* ================================================================
+   GRADE LAB - PAGE SHELL
+   Mirrors the Dashboard page: frosted card surfaces, the same hero
+   card, the same GliderTabs card, and widget cards sitting directly
+   on the page background (no box inside a box).
+   ================================================================ */
 .analytics-page {
+  /* Same typeface + aliases the dashboard uses. */
+  --font-dash: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --shadow-lift: var(--shadow-md);
   display: flex;
   flex-direction: column;
   gap: var(--sp-5);
@@ -6,6 +15,7 @@
   max-width: 1200px;
   margin: 0 auto;
   padding-bottom: var(--sp-10);
+  font-family: var(--font-dash);
 
   /* Unified palette lives in analytics-tokens.css (imported after this
      file). Amber is the one brand accent; blue/purple/orange collapse into
@@ -13,23 +23,47 @@
      (success) and cyan (info) remain semantic. */
 }
 
-/* ── 1. Hero box — its own card (matches dashboard hero) ── */
+/* Frosted surfaces - identical to .dashboard-page .glass-card-static. */
+.analytics-page .glass-card-static {
+  background: color-mix(in srgb, var(--bg-card) 68%, transparent);
+  backdrop-filter: blur(20px) saturate(1.6);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  border-color: color-mix(in srgb, var(--border-primary) 82%, transparent);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 4px 28px -8px rgba(0, 0, 0, 0.28);
+}
+.analytics-page .modal.glass-card-static {
+  background: var(--bg-card);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* Widget shells keep the dashboard's flat border + lift. */
+.analytics-page .glass-card-static.schedule-widget {
+  border-color: var(--border-primary);
+  box-shadow: var(--shadow-lift);
+}
+
+/* -- 1. Masthead - the dashboard hero card -- */
 .gl-hero {
   position: relative;
   border-radius: var(--radius-xl);
-  border: 1px solid var(--border-primary);
-  background: var(--bg-card);
+  border: 1px solid color-mix(in srgb, var(--border-primary) 82%, transparent);
+  background: color-mix(in srgb, var(--bg-card) 62%, transparent);
+  backdrop-filter: blur(20px) saturate(1.6);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 4px 28px -8px rgba(0, 0, 0, 0.28);
   overflow: hidden;
-  box-shadow: var(--shadow-lift);
   animation: glHeroIn 0.55s cubic-bezier(0.4, 0, 0.2, 1) both;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  transition: border-color 0.3s ease;
 }
 
 .gl-hero:hover {
   border-color: var(--border-focus);
-  box-shadow: var(--shadow-lift);
 }
-
 
 @keyframes glHeroIn {
   from { opacity: 0; transform: translateY(16px); }
@@ -38,15 +72,15 @@
 
 .gl-hero-content {
   position: relative;
-  padding: var(--sp-6) var(--sp-6) var(--sp-5);
   z-index: 1;
+  padding: var(--sp-6) var(--sp-6) var(--sp-5);
 }
 
 .gl-hero-eyebrow {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  margin-bottom: var(--sp-3);
+  margin-bottom: var(--sp-4);
 }
 
 .gl-hero-period-icon {
@@ -75,7 +109,7 @@
   font-weight: 800;
   letter-spacing: -0.035em;
   line-height: 1.12;
-  margin: 0 0 var(--sp-1);
+  margin: 0 0 var(--sp-2);
   color: var(--text-primary);
 }
 
@@ -89,25 +123,30 @@
   font-weight: var(--fw-regular);
   color: var(--text-secondary);
   margin: 0;
-  max-width: 440px;
+  max-width: 520px;
   line-height: 1.6;
 }
 
-/* ── 2. Glider tabs bar (own card) ── */
+/* -- 2. Glider tabs bar (own card) -- */
 .gl-tabs-card {
   padding: var(--sp-2);
 }
 
-/* ── 3. Main content box (own card) ── */
+/* -- 3. Content - flat wrapper; the widgets themselves are the cards -- */
 .gl-content-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg);
-  padding: var(--sp-5);
-  box-shadow: var(--shadow-lift);
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
 }
 
-.gl-content-card .analytics-content-area {
+.analytics-content-area {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  min-width: 0;
   animation: gradeContentSwap 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
@@ -121,54 +160,39 @@
   letter-spacing: 0.02em;
 }
 
-/* Sub-widget shells — subtle glow lift instead of heavy borders */
-.analytics-page .glass-card-static.schedule-widget {
-  border-color: var(--border-primary);
-  box-shadow: var(--shadow-lift);
+/* Scrollbars follow the dashboard. */
+.analytics-page ::-webkit-scrollbar { width: 4px; height: 4px; }
+.analytics-page ::-webkit-scrollbar-track { background: transparent; }
+.analytics-page ::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+  border-radius: 99px;
+}
+.analytics-page ::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--accent-amber) 45%, var(--border-primary));
 }
 
-@media (max-width: 640px) {
+/* -- Masthead responsive - the dashboard's breakpoints -- */
+@media (max-width: 900px) {
+  .gl-hero-content { padding: var(--sp-5); }
+}
+@media (max-width: 768px) {
   .gl-hero-content {
-    padding: var(--sp-4) var(--sp-3);
+    padding: var(--sp-4) var(--sp-3) var(--sp-3);
+  }
+  .gl-hero-eyebrow { margin-bottom: var(--sp-2); }
+  .gl-hero-title { font-size: clamp(1.4rem, 6vw, 1.9rem); }
+}
+@media (max-width: 480px) {
+  .gl-hero-content {
+    padding: var(--sp-3) var(--sp-3) var(--sp-2);
   }
   .gl-hero-eyebrow {
+    flex-wrap: wrap;
+    gap: var(--sp-1);
     margin-bottom: var(--sp-1);
   }
-  .gl-hero-period-icon {
-    width: 26px;
-    height: 26px;
-  }
-  .gl-hero-title {
-    font-size: 1.6rem;
-    letter-spacing: -0.02em;
-  }
-  .gl-hero-subtitle {
-    font-size: var(--fs-xs);
-    max-width: 100%;
-    line-height: 1.5;
-  }
-  .gl-content-card {
-    padding: var(--sp-4);
-  }
-  /* Grade Lab content area: tighter padding + compact stat cards */
-  .analytics-content-area {
-    padding: 0 var(--sp-1);
-  }
-  .schedule-stat-value {
-    font-size: 15px;
-  }
-  .schedule-stat-label {
-    font-size: 8px;
-  }
-  /* Poll submit → icon only on mobile */
-  .poll-submit span {
-    display: none;
-  }
-  .poll-submit {
-    padding: 8px;
-    min-width: 32px;
-    justify-content: center;
-  }
+  .gl-hero-title { font-size: 1.4rem; }
+  .gl-hero-subtitle { font-size: var(--fs-xs); line-height: 1.5; }
 }
 
 /* ─── Hero: Shell ─── */
@@ -2363,349 +2387,60 @@
   .poll-pickers { display: block !important; }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   MOBILE ONE-PAGE — everything visible without scrolling
-   Aggressive compaction for mobile viewports (≤640px)
-   ═══════════════════════════════════════════════════════════════ */
+/* -- Phone compaction - the dashboard's 560px treatment, not a separate
+   ultra-compact mode. Everything stays readable and scrollable. -- */
 @media (max-width: 640px) {
-  /* ── Page-level: kill extra space ── */
-  .analytics-page {
-    gap: var(--sp-2);
-    padding-bottom: var(--sp-3);
-  }
+  .analytics-page { padding-bottom: var(--sp-6); }
+  .gl-tabs-card { padding: var(--sp-2); }
+  .gl-content-card { padding: 0; }
 
-  /* ── Hero: vault-style on mobile — matches .vl-hero ── */
-  .gl-hero {
-    border-radius: var(--radius-xl);
-  }
-  .gl-hero-content {
-    padding: var(--sp-4) var(--sp-3);
-  }
-
-  /* ── Tabs card: matches dashboard .das-tabs-card on mobile ── */
-  .gl-tabs-card {
-    padding: var(--sp-2);
-  }
-
-  /* ── Content card: zero extra padding ── */
-  .gl-content-card {
-    padding: var(--sp-2);
-    border-radius: var(--radius-md);
-  }
-
-  /* ── CGPA Calculator widget — mobile masthead matches Dashboard ── */
-  .cgpa-bol-widget .schedule-masthead {
-    padding: var(--sp-3);
-    gap: var(--sp-2);
-    border-width: 1px;
-  }
-  .cgpa-bol-widget .schedule-icon-tile {
-    width: 36px;
-    height: 36px;
-    min-width: 36px;
-    border-radius: var(--radius-sm);
-  }
-  .cgpa-bol-widget .schedule-icon-tile svg {
-    width: 20px;
-    height: 20px;
-  }
-  .cgpa-bol-widget .schedule-title-block {
-    gap: 10px;
-    min-width: 0;
-  }
-  .cgpa-bol-widget .schedule-overline {
-    font-size: 9px;
-  }
-  .cgpa-bol-widget .schedule-title {
-    font-size: var(--fs-sm);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .cgpa-bol-widget .schedule-subtitle {
-    font-size: 9px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-  }
-  .cgpa-bol-widget .schedule-masthead-center {
-    display: none;
-  }
-  .cgpa-bol-widget .schedule-stats {
-    display: none;
-  }
-
-  /* ── Chart: ultra-short ── */
-  .cgpa-chart-card {
-    border-radius: var(--radius-md);
-  }
+  /* CGPA Calculator: chart stays legible instead of shrinking to a stamp. */
+  .cgpa-chart-card { border-radius: var(--radius-md); }
   .cgpa-chart-header {
-    padding: var(--sp-2) var(--sp-2) 0;
+    padding: var(--sp-3) var(--sp-3) 0;
     gap: var(--sp-2);
   }
-  .cgpa-chart-header-left {
-    gap: var(--sp-1);
-  }
-  .cgpa-chart-icon {
-    width: 24px;
-    height: 24px;
-    min-width: 24px;
-  }
-  .cgpa-chart-icon svg {
-    width: 14px;
-    height: 14px;
-  }
-  .cgpa-chart-title {
-    font-size: 10px;
-    margin: 0;
-  }
-  .cgpa-chart-subtitle {
-    font-size: 8px;
-    margin: 1px 0 0;
-  }
-  .cgpa-chart-badge {
-    padding: 3px 8px;
-    font-size: 8px;
-    gap: 3px;
-  }
-  .cgpa-chart-badge svg {
-    width: 10px;
-    height: 10px;
-  }
+  .cgpa-chart-header-left { gap: var(--sp-2); }
+  .cgpa-chart-title { font-size: var(--fs-sm); }
+  .cgpa-chart-subtitle { font-size: 10px; }
   .cgpa-chart-body {
-    height: clamp(340px, 55vw, 420px);
-    padding: var(--sp-3) var(--sp-3) var(--sp-4);
+    height: clamp(240px, 62vw, 300px);
+    padding: var(--sp-3);
   }
   .cgpa-chart-body canvas {
     width: 100% !important;
     height: 100% !important;
-    max-height: clamp(340px, 55vw, 420px);
   }
+  .cgpa-breakdown-box { margin-top: 0; }
+  .cgpa-empty { min-height: 120px; padding: 20px 0; }
 
-  /* ── Semester Breakdown box ── */
-  .cgpa-breakdown-box {
-    margin-top: var(--sp-2);
-  }
+  /* Poll + heatmap blocks stack instead of squeezing. */
+  .poll-widget .schedule-dotted-divider { margin: 10px 0 14px; }
+  .poll-widget .grid-2.poll-leaderboards { grid-template-columns: 1fr !important; }
+  .hm-legend { justify-content: flex-start; border-radius: var(--radius-md); }
+}
 
-  /* ── Transcript masthead — same Dashboard mobile masthead ── */
-  .cgpa-breakdown-box .schedule-masthead {
-    padding: var(--sp-3);
-    gap: var(--sp-2);
+/* Same card density the dashboard switches to at 560px. */
+@media (max-width: 560px) {
+  .analytics-page .glass-card-static.schedule-widget { padding: var(--sp-3); }
+  .analytics-page .schedule-widget .schedule-masthead {
+    padding: var(--sp-2);
+    margin-bottom: 10px;
     border-width: 1px;
   }
-  .cgpa-breakdown-box .schedule-masthead .cgpa-transcript-actions {
-    gap: 6px;
+  .analytics-page .schedule-widget .schedule-masthead::after {
+    left: 16px;
+    right: 16px;
   }
-  .cgpa-breakdown-box .schedule-nav-btn {
-    width: 26px;
-    height: 26px;
+  .analytics-page .schedule-widget .schedule-title-block { gap: 8px; }
+  /* Semester switcher sits outside the masthead on phones - keep its room. */
+  .analytics-page .st-widget .schedule-masthead:has(.schedule-week-nav) {
+    margin-bottom: 52px;
   }
-  .cgpa-breakdown-box .schedule-nav-btn.cgpa-load-template-btn {
-    height: 28px;
-    padding: 0 8px;
-    font-size: 8px;
-    gap: 4px;
-  }
-  .cgpa-breakdown-box .schedule-nav-btn.cgpa-more-btn {
-    width: 28px;
-    height: 28px;
-  }
-  .cgpa-breakdown-box .schedule-nav-btn svg {
-    width: 14px;
-    height: 14px;
-  }
+}
 
-  /* Mobile: Load Template is a ⋮ menu item (button hidden in masthead) */
-  .cgpa-load-mobile-wrap {
-    display: none !important;
-  }
-
-  /* ── Semester list: ultra-compact ── */
-  .cgpa-sem-list {
-    gap: 4px;
-  }
-  .cgpa-bol-widget .cgpa-sem-card {
-    padding: 3px 8px;
-    gap: 2px;
-    min-height: 0;
-  }
-  .cgpa-sem-head {
-    gap: 4px;
-  }
-  .cgpa-sem-code {
-    font-size: 11px;
-  }
-  .cgpa-sem-year {
-    font-size: 8px;
-  }
-  .cgpa-sem-current {
-    font-size: 6px;
-    padding: 1px 5px;
-  }
-  .cgpa-sem-metrics {
-    gap: 8px;
-  }
-  .cgpa-sem-metric span {
-    font-size: 6px;
-  }
-  .cgpa-sem-metric b {
-    font-size: 11px;
-  }
-
-  /* ── Expanded semester body: single-line spacing only. The 768px
-     single-line layout already handles narrow screens, so keep titles
-     on one line (ellipsis) here — never stacked, never 80px-clipped. */
-  .cgpa-sem-body {
-    padding-top: 4px;
-    gap: 4px;
-  }
-  .cgpa-sem-table {
-    font-size: 11px;
-  }
-  .cgpa-course-name {
-    font-size: 11px;
-    max-width: none;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .cgpa-sem-table .cgpa-col-title {
-    max-width: none;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .cgpa-credit-input {
-    width: 38px;
-    font-size: 10px;
-    padding: 2px 2px;
-  }
-  .cgpa-grade-select {
-    width: 48px;
-    font-size: 10px;
-    padding: 2px 2px;
-    padding-right: 16px;
-  }
-  .cgpa-sem-body .input {
-    font-size: 11px !important;
-    padding: 1px 2px !important;
-  }
-  .cgpa-sem-foot {
-    padding: 3px 0 0;
-  }
-  .cgpa-sem-foot .btn {
-    font-size: 10px;
-    padding: 4px 10px;
-    gap: 4px;
-  }
-  .cgpa-sem-foot .btn svg {
-    width: 12px;
-    height: 12px;
-  }
-
-  /* ── Grade badge: tighter ── */
-  .cgpa-sem-table .badge {
-    padding: 2px 8px;
-    font-size: 10px;
-    min-width: 32px;
-  }
-
-  /* ── Schedule dotted divider ── */
-  .cgpa-bol-widget .schedule-dotted-divider {
-    margin: 6px 0 8px;
-  }
-
-  /* ── Hide次要 actions on tiny screens ── */
-  .cgpa-sem-actions .btn-icon {
-    width: 24px;
-    height: 24px;
-  }
-  .cgpa-sem-actions .btn-icon svg {
-    width: 12px;
-    height: 12px;
-  }
-  .cgpa-sem-actions .btn-sm:not(.btn-icon) {
-    font-size: 8px;
-    padding: 2px 6px;
-    gap: 3px;
-  }
-  .cgpa-sem-actions .btn-sm svg {
-    width: 10px;
-    height: 10px;
-  }
-
-  /* ── Empty state: shorter ── */
-  .cgpa-empty {
-    min-height: 80px;
-    padding: 16px 0;
-  }
-  .cgpa-empty svg {
-    width: 28px;
-    height: 28px;
-  }
-  .cgpa-empty h3 {
-    font-size: 11px;
-  }
-  .cgpa-empty p {
-    font-size: 9px;
-  }
-
-  /* ── Chart legend: compact ── */
-  .cgpa-chart-body {
-    height: clamp(340px, 55vw, 420px);
-    padding: var(--sp-3) var(--sp-3) var(--sp-4);
-  }
-  .cgpa-chart-body canvas {
-    width: 100% !important;
-    height: 100% !important;
-    max-height: clamp(340px, 55vw, 420px);
-  }
-
-  /* ── GliderTabs: dashboard-consistent on mobile ──
-     Inherits the shared @media (max-width:640px) rules from
-     src/components/GliderTabs.css (icon 28px, label 8px, gap 4px).
-     No extra compaction here so Grade Lab stays 1:1 with Dashboard. */
-  .gl-tabs-card .glider-tabs-wrap {
-    gap: 6px;
-  }
-  .gl-tabs-card .glider-tab {
-    padding: 8px 10px;
-    padding-left: 19px;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 4px;
-    border-radius: 12px;
-  }
-  .gl-tabs-card .glider-tab-icon {
-    width: 28px;
-    height: 28px;
-  }
-  .gl-tabs-card .glider-tab-icon svg {
-    transform: scale(1.2);
-    transform-origin: center;
-  }
-  .gl-tabs-card .glider-tab-label {
-    font-size: 8px;
-    line-height: 1;
-    white-space: nowrap;
-  }
-
-  /* ── Grade badge: tighter ── */
-  .badge {
-    padding: 1px 5px;
-    font-size: 8px;
-    min-width: 24px;
-  }
-
-  /* ── Stat values: compact ── */
-  .schedule-stat-value {
-    font-size: 13px;
-  }
-  .schedule-stat-label {
-    font-size: 7px;
-  }
+@media (max-width: 480px) {
+  .cgpa-chart-body { height: clamp(220px, 66vw, 280px); }
 }
 
 /* ───────────────────────────────────────────────────────────────
@@ -2761,23 +2496,5 @@ div.gl-content-card div.glass-card-static.schedule-widget.cgpa-bol-widget.cgpa-b
     max-width: calc(100vw - 32px) !important;
     width: max-content !important;
     opacity: 1 !important;
-  }
-}
-
-/* ── First content box inside gl-content-card — mobile responsive ── */
-@media (max-width: 640px) {
-  .gl-content-card > div > div:nth-child(1) {
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: var(--sp-3) !important;
-    overflow: hidden !important;
-  }
-  .gl-content-card > div > div:nth-child(1) > * {
-    min-width: 0 !important;
-    max-width: 100% !important;
-    overflow: hidden !important;
   }
 }

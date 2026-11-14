@@ -532,7 +532,9 @@
   .lp-widget .pb-task { padding: 0; }
   .lp-widget .pb-task-row {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    /* Name column keeps a guaranteed minimum; the side column may shrink
+       (its chip ellipsizes) so names never collapse to one letter per line. */
+    grid-template-columns: auto minmax(5.5rem, 1fr) minmax(0, auto);
     align-items: center;
     gap: 8px;
     padding: 7px 6px;
@@ -549,7 +551,14 @@
     background: transparent;
     font-size: 10px;
     white-space: nowrap;
+    /* Long recurrence labels must not squeeze the task name into a
+       one-letter column — cap the chip and ellipsize (full text in title). */
+    display: block;
+    max-width: 7.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
+  .lp-widget .pb-task-side { min-width: 0; }
   .lp-widget .pb-task-side > .pb-chip svg { display: none; }
   .lp-widget .pb-task-side .pb-icon { width: 24px; height: 24px; min-width: 24px; min-height: 24px; }
   .lp-widget .pb-task-side .pb-icon svg { width: 12px; height: 12px; }

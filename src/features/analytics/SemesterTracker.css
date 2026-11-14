@@ -232,8 +232,13 @@
     gap: var(--sp-2);
     border-width: 1px;
     position: relative;
-    margin-bottom: 52px;
+    /* Only widgets whose semester switcher sits outside the box need the
+       extra room below the masthead; the rest keep the normal gap. */
+    margin-bottom: 12px;
     overflow: visible;
+  }
+  .st-widget .schedule-masthead:has(.schedule-week-nav) {
+    margin-bottom: 52px;
   }
   .st-widget .schedule-icon-tile {
     width: 36px;

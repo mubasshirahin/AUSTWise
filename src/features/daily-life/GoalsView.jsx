@@ -282,8 +282,8 @@ export default function GoalsView({
 
                           <div className="pb-task-side">
                             {!isEditing && (recurring ? (
-                              <button type="button" className="pb-chip is-accent" onClick={openEditor} title="Edit recurrence">
-                                <Repeat size={11} /> {(task.recurringWeekdays || []).join(', ') || 'Recurring'}
+                              <button type="button" className="pb-chip is-accent" onClick={openEditor} title={`Edit recurrence — ${(task.recurringWeekdays || []).join(', ') || 'Recurring'}${task.recurringEndDate ? ` until ${fmtDate(task.recurringEndDate)}` : ''}`}>
+                                <Repeat size={11} /> {(task.recurringWeekdays || []).length === 7 ? 'Daily' : (task.recurringWeekdays || []).join(', ') || 'Recurring'}
                                 {task.recurringEndDate ? ` → ${fmtDate(task.recurringEndDate)}` : ''}
                               </button>
                             ) : (task.dueDate || task.startDate) ? (
