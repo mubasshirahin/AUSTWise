@@ -178,7 +178,27 @@ export default function ExamTracker() {
     }, 0);
   }, [theoryCourses, sharedExamData, personalExams]);
 
-  const openDetails = (slotKey, slotLabel, date, syllabus, courseCode, courseName, courseSource) => {
+  // Days until the nearest upcoming exam (masthead "Next" stat).
+  const nextExamLabel = useMemo(() => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    let best = Infinity;
+    theoryCourses.forEach((course) => {
+      const raw = course.source === 'personal'
+        ? (personalExams?.[course.code] || {})
+        : (sharedExamData?.[course.code] || {});
+      Object.values(raw).forEach((v) => {
+        if (!v?.date) return;
+        const t = new Date(v.date.includes('T') ? v.date : `${v.date}T00:00:00`);
+        t.setHours(0, 0, 0, 0);
+        const diff = Math.round((t - today) / 86400000);
+        if (diff >= 0 && diff < best) best = diff;
+      });
+    });
+    if (!Number.isFinite(best)) return '—';
+    return best === 0 ? 'Today' : `${best}d`;
+  }, [theoryCourses, sharedExamData, personalExams]);
+
+  const openDetails =(slotKey, slotLabel, date, syllabus, courseCode, courseName, courseSource) => {
     setDetailModal({ slotKey, slotLabel, date, syllabus, courseCode, courseName, courseSource, isEditing: false, editDate: date || '', editSyllabus: syllabus || '' });
   };
 
@@ -224,56 +244,42 @@ export default function ExamTracker() {
     const editable = canEditCourse(course);
 
     return (
-      <div
-        key={course.code}
-        className={[
-          'schedule-day-card',
-          'exam-cell',
-          hasToday ? 'today' : '',
-        ].filter(Boolean).join(' ')}
-      >
-        <div className="schedule-day-top">
-          <div className="schedule-day-num-wrap">
-            <div className="exam-cell-code">{course.code}</div>
+      <article key={course.code} className={`exam-cell${hasToday ? ' today' : ''}`}>
+        <header className="exam-cell-head">
+          <div className="exam-cell-titles">
+            <div className="exam-cell-code-row">
+              <span className="exam-cell-code">{course.code}</span>
+              <span className={`exam-source-badge ${course.source === 'personal' ? 'personal' : 'cr'}`} title={course.source === 'personal' ? 'Added to your own routine' : `Shared by your lab group CR${course.crName ? `, ${course.crName}` : ''}`}>
+                {course.source === 'personal' ? <User size={10} /> : <Users size={10} />}
+                {course.source === 'personal' ? 'You' : (course.crName || labCrName ? `CR · ${course.crName || labCrName}` : 'No CR')}
+              </span>
+            </div>
+            <div className="exam-cell-name" title={course.name}>{course.name}</div>
           </div>
-          <div className="schedule-day-badges">
-            {scheduled.length > 0 && (
-              <span className="schedule-day-count">{scheduled.length}</span>
-            )}
-          </div>
-        </div>
-        <div className="exam-cell-name">{course.name}</div>
-        <div style={{ display: 'flex', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
-          <span className={`exam-source-badge ${course.source === 'personal' ? 'personal' : 'cr'}`} title={course.source === 'personal' ? 'Added to your own routine' : `Shared by your lab group CR${course.crName ? `, ${course.crName}` : ''}`}>
-            {course.source === 'personal' ? <User size={10} /> : <Users size={10} />}
-            {course.source === 'personal' ? 'You' : (course.crName || labCrName ? `CR · ${course.crName || labCrName}` : 'No CR')}
+          <span className="exam-cell-count" title={`${scheduled.length} of ${slots.length} scheduled${!editable && course.source === 'cr' ? ' · read-only' : ''}`}>
+            {scheduled.length}<span>/{slots.length}</span>
           </span>
-          {!editable && course.source === 'cr' && (
-            <span style={{ fontSize: '9px', color: 'var(--text-tertiary)', alignSelf: 'center' }}>read-only</span>
-          )}
-        </div>
-        <div className="schedule-task-list" style={{ marginTop: '8px' }}>
+        </header>
+        <div className="exam-slot-list" role="list">
           {slots.map((slot) => {
             const state = getSlotState(slot.data?.date);
             const handleClick = () => openDetails(slot.key, slot.label, slot.data?.date, slot.data?.syllabus, course.code, course.name, course.source);
             return (
-              <div
+              <button
                 key={slot.key}
-                className="schedule-task-item exam-slot-item"
+                type="button"
+                role="listitem"
+                className={`exam-slot-item${slot.data?.date ? '' : ' is-empty'}`}
                 onClick={handleClick}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleClick(); }}
               >
-                <span className="exam-slot-name" style={{ color: 'var(--text-primary)' }}>{slot.label}</span>
+                <span className="exam-slot-name">{slot.label}</span>
                 <span className="exam-slot-date">{formatDate(slot.data?.date)}</span>
-                {slot.data?.date && <span className={`exam-slot-state ${state.cls}`}>{state.label}</span>}
-              </div>
+                <span className={`exam-slot-state ${state.cls}`}>{slot.data?.date ? state.label : ''}</span>
+              </button>
             );
           })}
-          {scheduled.length === 0 && <div className="schedule-empty">No exams scheduled</div>}
         </div>
-      </div>
+      </article>
     );
   };
 
@@ -308,7 +314,11 @@ export default function ExamTracker() {
             </div>
             <div className="schedule-stat">
               <span className="schedule-stat-value">{totalScheduled}</span>
-              <span className="schedule-stat-label">scheduled</span>
+              <span className="schedule-stat-label">upcoming</span>
+            </div>
+            <div className={`schedule-stat${nextExamLabel === 'Today' ? ' is-alert' : ''}`}>
+              <span className="schedule-stat-value">{nextExamLabel}</span>
+              <span className="schedule-stat-label">next</span>
             </div>
           </div>
         </div>
@@ -326,21 +336,21 @@ export default function ExamTracker() {
       )}
 
       {profileIncomplete && (
-        <div style={{ margin: '0 0 12px', padding: '10px 12px', borderRadius: 'var(--radius-md)', background: 'var(--accent-amber-glow)', border: '1px solid var(--accent-amber)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--fs-xs)', color: 'var(--text-primary)' }}>
-          <BookOpen size={14} style={{ color: 'var(--accent-amber)', flexShrink: 0 }} />
-          <span><strong>Lab Group missing</strong> — add Section + Lab Group in <Link to="/settings" style={{ color: 'var(--accent-blue)', textDecoration: 'underline' }}>Settings</Link> to enable CR sync. Your personal courses are still shown below.</span>
+        <div className="exam-notice" role="status">
+          <span className="exam-notice-icon" aria-hidden="true"><BookOpen size={13} /></span>
+          <span><strong>Lab Group missing</strong> — add Section + Lab Group in <Link to="/settings">Settings</Link> to enable CR sync. Your personal courses are still shown below.</span>
         </div>
       )}
 
       {!slotKey && !profileIncomplete ? (
         <div className="exam-empty">
-          <BookOpen size={24} style={{ opacity: 0.3 }} />
+          <span className="exam-empty-icon" aria-hidden="true"><BookOpen size={16} /></span>
           <p>Loading schedule…</p>
           <span>Syncing shared section data</span>
         </div>
       ) : theoryCourses.length === 0 ? (
         <div className="exam-empty">
-          <BookOpen size={24} style={{ opacity: 0.3 }} />
+          <span className="exam-empty-icon" aria-hidden="true"><BookOpen size={16} /></span>
           <p>No theory courses found</p>
           <span>Add theory courses to your routine first{slotKey && sharedRoutine ? '' : ' — or wait for your CR to share'}</span>
         </div>
@@ -353,103 +363,107 @@ export default function ExamTracker() {
       {isAdminView && <ExamFlowTracker user={user} canEdit={canEditShared} />}
 
       {/* ─── Detail Overlay ─── */}
-      {detailModal && createPortal(
-        <div className="modal-overlay exam-detail-overlay" onClick={() => setDetailModal(null)}>
-          <div className="modal glass-card-static exam-detail-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px', width: '90%', padding: '24px', margin: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
-              <div>
-                <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent-blue)', fontWeight: 'var(--fw-semibold)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{detailModal.slotLabel}</span>
-                <h3 style={{ fontSize: 'var(--fs-lg)', fontWeight: 'var(--fw-bold)', margin: '4px 0 0' }}>{detailModal.courseCode}</h3>
-                <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: '2px 0 0' }}>{detailModal.courseName}</p>
-                <span className={`exam-source-badge ${detailModal.courseSource === 'personal' ? 'personal' : 'cr'}`} style={{ marginTop: '6px', display: 'inline-flex' }}>
+      {detailModal && (() => {
+        const editableModal = canEditCourse({ source: detailModal.courseSource });
+        const modalState = getSlotState(detailModal.date);
+        const closeModal = () => setDetailModal(null);
+        return createPortal(
+          <div className="modal-overlay exam-detail-overlay" onClick={closeModal}>
+            <div
+              className="modal exam-detail-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-label={`${detailModal.slotLabel} · ${detailModal.courseCode}`}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => { if (e.key === 'Escape') closeModal(); }}
+            >
+              <div className="exam-modal-head">
+                <span className="exam-modal-title">
+                  <BookOpen size={13} /> {detailModal.slotLabel} · {detailModal.courseCode}
+                </span>
+                <button type="button" className="exam-modal-close" aria-label="Close" onClick={closeModal}>
+                  <X size={12} />
+                </button>
+              </div>
+              <p className="exam-modal-course">{detailModal.courseName}</p>
+
+              <div className="exam-modal-summary">
+                <span className="exam-badge is-muted">
                   {detailModal.courseSource === 'personal' ? <User size={10} /> : <Users size={10} />}
                   {detailModal.courseSource === 'personal' ? 'You' : (labCrName ? `CR · ${labCrName}` : 'No CR')}
                 </span>
+                <span className="exam-badge is-accent">{detailModal.date ? formatDate(detailModal.date) : 'No date yet'}</span>
+                {detailModal.date && (
+                  <span className={`exam-badge ${modalState.cls === 'today' ? 'is-alert' : 'is-muted'}`}>{modalState.label}</span>
+                )}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {canEditCourse({ source: detailModal.courseSource }) && !detailModal.isEditing && (
-                  <button
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => setDetailModal(prev => ({ ...prev, isEditing: true }))}
-                  >
-                    <PenLine size={12} /> Edit
-                  </button>
+
+              {detailModal.isEditing ? (
+                <>
+                  <label className="exam-modal-field">
+                    <span className="exam-modal-label">Date</span>
+                    <input
+                      type="date"
+                      className="input exam-modal-input"
+                      value={detailModal.editDate || ''}
+                      onChange={(e) => setDetailModal(prev => ({ ...prev, editDate: e.target.value }))}
+                    />
+                  </label>
+                  <label className="exam-modal-field">
+                    <span className="exam-modal-label">Syllabus</span>
+                    <textarea
+                      className="input exam-modal-input exam-modal-textarea"
+                      value={detailModal.editSyllabus || ''}
+                      onChange={(e) => setDetailModal(prev => ({ ...prev, editSyllabus: e.target.value }))}
+                      placeholder="Syllabus topics, chapters, page numbers..."
+                      rows={5}
+                    />
+                  </label>
+                </>
+              ) : (
+                <div className="exam-modal-field">
+                  <span className="exam-modal-label">Syllabus</span>
+                  {detailModal.syllabus ? (
+                    <div className="exam-modal-syllabus">{detailModal.syllabus}</div>
+                  ) : (
+                    <div className="exam-modal-empty">No syllabus added yet</div>
+                  )}
+                </div>
+              )}
+
+              <div className="exam-modal-actions">
+                {editableModal && detailModal.isEditing ? (
+                  <>
+                    <button type="button" className="btn btn-primary btn-sm" onClick={handleSaveSingleSlot}>
+                      <Check size={13} /> Save
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => setDetailModal(prev => ({ ...prev, isEditing: false, editDate: prev.date || '', editSyllabus: prev.syllabus || '' }))}
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {editableModal && (
+                      <button type="button" className="btn btn-primary btn-sm" onClick={() => setDetailModal(prev => ({ ...prev, isEditing: true }))}>
+                        <PenLine size={12} /> Edit
+                      </button>
+                    )}
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={closeModal}>Close</button>
+                  </>
                 )}
-                {canEditCourse({ source: detailModal.courseSource }) && detailModal.isEditing && (
-                  <button
-                    className="btn btn-primary btn-sm"
-                    onClick={handleSaveSingleSlot}
-                  >
-                    <Check size={13} /> Done
-                  </button>
+                {!editableModal && detailModal.courseSource === 'cr' && (
+                  <span className="exam-modal-note">Only your CR can edit this</span>
                 )}
-                <button className="btn btn-ghost btn-icon" onClick={() => setDetailModal(null)}>
-                  <X size={18} />
-                </button>
               </div>
             </div>
-
-            {!canEditCourse({ source: detailModal.courseSource }) && detailModal.courseSource === 'cr' && !detailModal.isEditing && (
-              <div style={{ marginBottom: '12px', padding: '8px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-input)', border: '1px dashed var(--border-primary)', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>
-                Only your CR can edit this course. You can view dates & syllabus.
-              </div>
-            )}
-
-            {detailModal.isEditing ? (
-              <>
-                <div style={{ marginBottom: '14px' }}>
-                  <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Date</span>
-                  <input
-                    type="date"
-                    value={detailModal.editDate || ''}
-                    onChange={(e) => setDetailModal(prev => ({ ...prev, editDate: e.target.value }))}
-                    style={{
-                      width: '100%', height: '38px', padding: '6px 12px', fontSize: 'var(--fs-sm)',
-                      borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-primary)',
-                      background: 'var(--bg-input)', color: 'var(--text-primary)', outline: 'none'
-                    }}
-                  />
-                </div>
-                <div>
-                  <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Syllabus</span>
-                  <textarea
-                    value={detailModal.editSyllabus || ''}
-                    onChange={(e) => setDetailModal(prev => ({ ...prev, editSyllabus: e.target.value }))}
-                    placeholder="Syllabus topics, chapters, page numbers..."
-                    rows={6}
-                    style={{
-                      width: '100%', padding: '10px 12px', fontSize: 'var(--fs-sm)', lineHeight: '1.6',
-                      borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-primary)',
-                      background: 'var(--bg-input)', color: 'var(--text-primary)', resize: 'vertical',
-                      fontFamily: 'inherit', outline: 'none'
-                    }}
-                  />
-                </div>
-              </>
-            ) : (
-              <>
-                <div style={{ background: 'var(--bg-input)', borderRadius: 'var(--radius-md)', padding: '14px 16px', marginBottom: '16px' }}>
-                  <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', display: 'block', marginBottom: '4px' }}>Date</span>
-                  <span style={{ fontSize: 'var(--fs-md)', fontWeight: 'var(--fw-bold)', color: 'var(--text-primary)' }}>{formatDate(detailModal.date)}</span>
-                </div>
-                {detailModal.syllabus ? (
-                  <div>
-                    <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Syllabus</span>
-                    <div style={{ fontSize: 'var(--fs-base)', lineHeight: '1.7', color: 'var(--text-primary)', whiteSpace: 'pre-wrap', background: 'var(--bg-input)', borderRadius: 'var(--radius-md)', padding: '16px' }}>
-                      {detailModal.syllabus}
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-tertiary)', fontSize: 'var(--fs-sm)' }}>
-                    No syllabus added yet
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>,
-        document.body
-      )}
+          </div>,
+          document.body
+        );
+      })()}
     </div>
   );
 }
