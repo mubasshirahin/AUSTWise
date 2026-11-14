@@ -10,7 +10,7 @@ import {
   LayoutDashboard, BarChart3, BookOpen, MapPin, Users, ShoppingBag, Settings, MessageSquare,
   LogIn, Shield,
   ChevronLeft, ChevronRight, Crown,
-  NotebookPen, Coffee,
+  NotebookPen, Coffee, Gamepad2,
   Zap, Home, Moon, FileSearch
 } from 'lucide-react';
 import './Sidebar.css';
@@ -28,6 +28,7 @@ const navItems = [
   { path: '/productivity', label: 'Productivity', icon: Zap },
   { path: '/marketplace', label: 'Marketplace', icon: ShoppingBag },
   { path: '/downtime', label: 'DownTime', icon: Coffee },
+  { path: '/gaming', label: 'Gaming Zone', icon: Gamepad2 },
   { path: '/shadow', label: 'Shadow', icon: Moon },
 ];
 

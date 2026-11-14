@@ -57,6 +57,11 @@ const QuestionBankAnalyzerPage = lazy(() => import('./features/question-bank-ana
 
 const CoverPageGeneratorPage = lazy(() => import('./features/cover-page-generator/CoverPageGeneratorPage'));
 const ChillZonePage = lazy(() => import('./features/chill-zone/ChillZonePage'));
+const GamingPage = lazy(() => import('./features/gaming/GamingPage'));
+const GameHubPage = lazy(() => import('./features/gaming/GameHubPage'));
+const GamingRoomPage = lazy(() => import('./features/gaming/RoomPage'));
+const GamingEventPage = lazy(() => import('./features/gaming/EventPage'));
+const GamingModPage = lazy(() => import('./features/gaming/GamingModPage'));
 const RoastCVPage = lazy(() => import('./features/roast-cv/RoastCVPage'));
 const CertificatePage = lazy(() => import('./features/certificate/CertificatePage'));
 const AutoAlarmPage = lazy(() => import('./features/auto-alarm/AutoAlarmPage'));
@@ -79,7 +84,7 @@ const CANONICAL_ACCESS_PATHS = {
   '/connectbox': '/messages', '/question-bank': '/question-bank-analyzer',
   '/downtime': '/chill-zone', '/see-plans': '/pro', '/code-pulse': '/cp-hub',
   '/takagelokoi': '/money-tracker', '/study-time': '/study-room', '/wakemeup': '/auto-alarm',
-  '/cheat-sheets': '/cheatsheets',
+  '/cheat-sheets': '/cheatsheets', '/gaming': '/gaming',
 };
 
 function getAccessPath(pathname) {
@@ -202,7 +207,7 @@ function AppContent() {
     prefetchRoutesIdle([
       '/dashboard/quickstats', '/dashboard/routine', '/dashboard/semester-view', '/dashboard/zero-hour', '/dashboard/attendance', '/gradelab', '/insideaust', '/resource-vault', '/notebook', '/community',
       '/connectbox', '/marketplace', '/settings', '/productivity',
-      '/daily-life', '/downtime', '/shadow', '/cheatsheets',
+      '/daily-life', '/downtime', '/gaming', '/shadow', '/cheatsheets',
       '/workspace', '/study-time', '/code-pulse', '/takagelokoi', '/cheat-sheets',
       '/question-bank',
       '/cover-page-generator', '/roast-cv', '/certificate',
@@ -335,6 +340,11 @@ function AppContent() {
                   <Route path="/cover-page-generator" element={<CoverPageGeneratorPage />} />
                   <Route path="/empty-classroom" element={<Navigate to="/campus" replace />} />
                   <Route path="/downtime" element={<ChillZonePage />} />
+                  <Route path="/gaming" element={<GamingPage />} />
+                  <Route path="/gaming/g/:slug" element={<GameHubPage />} />
+                  <Route path="/gaming/room/:roomId" element={<GamingRoomPage />} />
+                  <Route path="/gaming/event/:eventId" element={<GamingEventPage />} />
+                  <Route path="/gaming/mod" element={<GamingModPage />} />
                   <Route path="/chill-zone" element={<CanonicalRedirect to="/downtime" />} />
                   <Route path="/roast-cv" element={<RoastCVPage />} />
                   <Route path="/certificate" element={<CertificatePage />} />
@@ -427,6 +437,7 @@ function AppShell() {
     '/cover-page-generator': 'Cover Page Generator',
     '/downtime': 'DownTime',
     '/chill-zone': 'DownTime',
+    '/gaming': 'Gaming Zone',
     '/roast-cv': 'Roast CV',
     '/certificate': 'Certificate',
     '/wakemeup': 'WakeMeUp',

@@ -134,6 +134,49 @@ export function useInAppNotifications(user) {
     });
   }, [user?.id, user?.isGuest, user?.department, user?.semester, user?.section, user?.labSection]);
 
+  // Gaming Zone pushes: squads pinging for players, event reminders and
+  // changes, being removed from a room, and moderation actions.
+  useEffect(() => {
+    if (!user?.id || user?.isGuest) return undefined;
+    const push = (item) => {
+      addNotification({ type: 'info', category: 'gaming', timestamp: Date.now(), read: false, priority: 'medium', ...item });
+      setNotifications(loadNotifications());
+      setUnread(getUnreadCount());
+    };
+    const offs = [
+      onRealtimeMessage('gz-lfg-ping', (p) => {
+        if (!p?.roomId) return;
+        push({
+          id: `gz-ping-${p.roomId}-${Math.floor(Date.now() / 600000)}`,
+          title: `${p.game?.name || 'A squad'} needs ${p.missing} more`,
+          body: `${p.from?.name || 'Someone'}: "${p.title}"`.slice(0, 120),
+          icon: 'BellRing',
+          path: `/gaming/room/${p.roomId}`,
+          priority: 'high',
+        });
+      }),
+      onRealtimeMessage('gz-event-reminder', (p) => {
+        if (!p?.eventId) return;
+        push({ id: `gz-remind-${p.eventId}`, title: `${p.title} starts soon`, body: 'Check in and join the event chat.', icon: 'Clock', path: `/gaming/event/${p.eventId}`, priority: 'high' });
+      }),
+      onRealtimeMessage('gz-event-update', (p) => {
+        if (!p?.eventId) return;
+        const what = p.status === 'cancelled' ? 'was cancelled' : p.status === 'live' ? 'is live' : 'was updated';
+        push({ id: `gz-event-${p.eventId}-${p.status}-${p.startsAt || ''}`, title: `${p.title} ${what}`, body: 'Open the event for details.', icon: 'CalendarCheck', path: `/gaming/event/${p.eventId}` });
+      }),
+      onRealtimeMessage('gz-kicked', (p) => {
+        if (!p?.roomId) return;
+        push({ id: makeNotifId('gz-kick'), title: p.banned ? 'Removed and blocked from a room' : 'Removed from a room', body: p.title || '', icon: 'AlertTriangle', path: '/gaming?view=rooms' });
+      }),
+      onRealtimeMessage('gz-sanction', (p) => {
+        if (!p?.type) return;
+        const label = p.type === 'zone_ban' ? 'Gaming Zone suspension' : p.type === 'room_ban' ? 'Room ban' : 'Mute';
+        push({ id: makeNotifId('gz-sanction'), title: p.revoked ? `${label} lifted` : `${label} applied`, body: p.revoked ? 'You can take part again.' : (p.reason || ''), icon: 'AlertTriangle', path: '/gaming', priority: 'high' });
+      }),
+    ];
+    return () => offs.forEach((off) => off());
+  }, [user?.id, user?.isGuest]);
+
   // Catch-up: notices posted while this user was offline / socket dropped.
   useEffect(() => {
     if (!user?.id || user?.isGuest) return undefined;

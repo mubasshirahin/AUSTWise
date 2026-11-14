@@ -32,6 +32,7 @@ const routeImports = {
   '/marketplace': () => import('../features/marketplace/index.jsx'),
   '/chill-zone': () => import('../features/chill-zone/ChillZonePage'),
   '/downtime': () => import('../features/chill-zone/ChillZonePage'),
+  '/gaming': () => import('../features/gaming/GamingPage'),
   '/shadow': () => import('../features/shadow/ShadowPage'),
   '/settings': () => import('../features/settings/SettingsPage'),
   '/pro': () => import('../features/pro/ProPage'),

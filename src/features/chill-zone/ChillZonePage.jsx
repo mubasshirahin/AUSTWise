@@ -21,7 +21,7 @@ const TABS = [
   { id: 'media',       label: 'Media Tracker',    icon: Film,                   color: 'amber', desc: 'Movies & more', accessKey: 'feature:chill-zone:media'    },
   { id: 'rumour',      label: 'Rumour or Real',   icon: MessageCircleQuestion,  color: 'amber', desc: 'Fact or fiction', accessKey: 'feature:chill-zone:rumour'  },
   { id: 'trivia',      label: 'Trivia',           icon: Brain,                  color: 'amber', desc: 'Test your brain', accessKey: 'feature:chill-zone:trivia'  },
-  { id: 'gaming',      label: 'Gaming Zone',      icon: Gamepad2,               color: 'amber', desc: 'Mini games', accessKey: 'feature:chill-zone:gaming'       },
+  { id: 'gaming',      label: 'Gaming Zone',      icon: Gamepad2,               color: 'amber', desc: 'Squads & game nights', accessKey: 'feature:chill-zone:gaming'       },
 ];
 
 const STORAGE_KEY = 'chill-zone-active-tab';

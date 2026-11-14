@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search, BookOpen, GraduationCap, Library, Users, ShoppingBag, Settings,
-  LayoutDashboard, X, Home, NotebookPen, MessageSquare, Zap, Coffee, Moon, Crown, CornerDownLeft,
+  LayoutDashboard, X, Home, NotebookPen, MessageSquare, Zap, Coffee, Gamepad2, Moon, Crown, CornerDownLeft,
   FileSearch,
 } from 'lucide-react';
 import './SearchModal.css';
@@ -49,8 +49,11 @@ const searchItems = [
       { id: 'media', label: 'Media Tracker', keywords: 'media tracker movies shows' },
       { id: 'rumour', label: 'Rumour or Real', keywords: 'rumour or real fact fiction' },
       { id: 'trivia', label: 'Trivia', keywords: 'trivia brain quiz' },
-      { id: 'gaming', label: 'Gaming Zone', keywords: 'gaming zone mini games' },
+      { id: 'gaming', label: 'Gaming Zone preview', keywords: 'gaming zone preview' },
     ],
+  },
+  {
+    label: 'Gaming Zone', path: '/gaming', icon: Gamepad2, keywords: 'gaming zone games squad lfg valorant pubg free fire cs2 fifa chess tournament game night lobby',
   },
   {
     label: 'Shadow', path: '/shadow', icon: Moon, keywords: 'shadow anonymous post',

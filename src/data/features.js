@@ -184,7 +184,7 @@ export const modules = [
       { title: 'Media Tracker', comingSoon: true },
       { title: 'Rumour or Real', comingSoon: true },
       { title: 'Trivia', comingSoon: true },
-      { title: 'Gaming Zone', comingSoon: true },
+      { title: 'Gaming Zone' },
     ],
   },
   {
@@ -330,7 +330,7 @@ export const tickerFeatures = [
   { icon: Tv, title: 'Media Tracker', tagline: 'Your watchlist, organised', description: 'Track anime, shows and movies you are binging.', color: C.rose, glow: C.roseGlow, benefits: ['Watch progress', 'Ratings & reviews', 'Continue-watching list'] },
   { icon: BadgeCheck, title: 'Rumour or Real', tagline: 'Fact-check the campus gossip', description: "Verify what's true and what's just chatter.", color: C.rose, glow: C.roseGlow, benefits: ['Vote on rumours', 'Community verdicts', 'Anonymous posting'] },
   { icon: Puzzle, title: 'Trivia', tagline: 'Play, learn, flex', description: 'Quick trivia rounds with friends between classes.', color: C.rose, glow: C.roseGlow, benefits: ['Daily trivia', 'Leaderboards', 'Friend challenges'] },
-  { icon: Gamepad2, title: 'Gaming Zone', tagline: 'Game nights, campus-wide', description: 'Join custom rooms and tournaments with fellow gamers.', color: C.rose, glow: C.roseGlow, benefits: ['Custom game rooms', 'Tournament nights', 'Squad finder'] },
+  { icon: Gamepad2, title: 'Gaming Zone', tagline: 'Game nights, campus-wide', description: 'Squad rooms with live chat, a squad finder, game nights and bracket tournaments for every game AUSTians play.', color: C.rose, glow: C.roseGlow, benefits: ['Squad rooms + live chat', 'Squad finder & pings', 'Game nights & tournaments', 'Dept wars leaderboard'] },
   // Shadow · purple
   { icon: MessageCircle, title: 'Shadow Chat', tagline: 'Talk without a name', description: 'Anonymous chats where real opinions can finally surface.', color: C.purple, glow: C.purpleGlow, benefits: ['Fully anonymous', 'Topic channels', 'Safe-space rules'] },
   { icon: Radio, title: 'Buzz', tagline: 'The campus grapevine', description: 'A pulse of what students are actually talking about.', color: C.purple, glow: C.purpleGlow, benefits: ['Trending topics', 'Anonymous posts', 'Community reactions'] },

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, BarChart3, BookOpen, MapPin, Users, ShoppingBag,
-  MessageSquare, Settings, Crown, NotebookPen, Coffee, Zap, Moon, Home,
+  MessageSquare, Settings, Crown, NotebookPen, Coffee, Gamepad2, Zap, Moon, Home,
   MoreHorizontal, X, FileSearch,
 } from 'lucide-react';
 import { prefetchRoute } from '../utils/routePrefetch';
@@ -33,6 +33,7 @@ const moreSections = [
     items: [
       { path: '/marketplace', label: 'Marketplace', icon: ShoppingBag },
       { path: '/downtime', label: 'DownTime', icon: Coffee },
+      { path: '/gaming', label: 'Gaming Zone', icon: Gamepad2 },
       { path: '/shadow', label: 'Shadow', icon: Moon },
     ],
   },

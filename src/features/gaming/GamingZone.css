@@ -1,0 +1,984 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Gaming Zone — /gaming, /gaming/g/:slug, /gaming/room/:id,
+   /gaming/event/:id, /gaming/mod.  House style: .claude/skills/skill-style
+   (reference TakaGeloKoi). Flat surfaces, theme tokens only; the masthead
+   (DailyMasthead.css) is the only decorated surface. Prefix: gmz-.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Widget shell ── */
+.gmz-widget {
+  container: gmz / inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: visible;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  min-width: 0;
+}
+.gmz-widget .dl-head { margin-bottom: 0; }
+
+.gmz-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+.gmz-back:hover { color: var(--text-primary); }
+
+/* ── 2. Masthead ⋮ menu (bare icon, §2) ── */
+.gmz-menu { position: relative; }
+.gmz-menu-btn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.gmz-menu-btn:hover,
+.gmz-menu-btn[aria-expanded='true'] { color: var(--text-primary); }
+.gmz-menu-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 200;
+  min-width: 196px;
+  padding: 6px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  box-shadow: var(--shadow-md);
+}
+.gmz-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 34px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+.gmz-menu-item svg { color: var(--text-tertiary); flex: none; }
+.gmz-menu-item:hover:not(:disabled) { background: var(--bg-tertiary); }
+.gmz-menu-item:disabled { opacity: 0.45; cursor: not-allowed; }
+.gmz-menu-item.is-danger { color: var(--accent-rose); }
+.gmz-menu-item.is-danger svg { color: var(--accent-rose); }
+.gmz-menu-sep { height: 1px; margin: 4px 2px; background: var(--border-primary); }
+
+/* Row-level ⋮ (member actions) is smaller */
+.gmz-row .gmz-menu-btn { width: 28px; height: 28px; min-width: 28px; min-height: 28px; }
+
+/* ── 3. Cards and type (§3) ── */
+.gmz-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  box-shadow: var(--shadow-sm);
+  min-width: 0;
+}
+.gmz-card:hover {
+  border-color: color-mix(in srgb, var(--accent-amber) 20%, var(--border-primary));
+  box-shadow: var(--shadow-md);
+}
+.gmz-card-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.gmz-card-head-row.is-ruled {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-primary);
+  margin-bottom: 4px;
+}
+.gmz-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.gmz-card-title svg { color: var(--accent-amber); flex: none; }
+.gmz-card-note,
+.gmz-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.gmz-card-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--accent-amber);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.gmz-card-link:hover { text-decoration: underline; }
+.gmz-add-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+  color: var(--accent-amber);
+  cursor: pointer;
+}
+.gmz-add-icon-btn:hover,
+.gmz-add-icon-btn[data-on='true'] { border-color: color-mix(in srgb, var(--accent-amber) 45%, var(--border-primary)); }
+
+.gmz-loading { margin: 0; padding: 14px 0; font-size: 12px; color: var(--text-tertiary); }
+.gmz-text { margin: 10px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--text-secondary); text-wrap: pretty; }
+.gmz-prewrap { white-space: pre-wrap; overflow-wrap: anywhere; }
+.gmz-section-label {
+  display: block;
+  margin: 14px 0 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.gmz-card .gmz-section-label:first-child { margin-top: 0; }
+
+.gmz-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+.gmz-notice svg { color: var(--accent-amber); flex: none; }
+.gmz-notice.is-rose { border-color: color-mix(in srgb, var(--accent-rose) 45%, var(--border-primary)); color: var(--text-primary); }
+.gmz-notice.is-rose svg { color: var(--accent-rose); }
+.gmz-notice .gmz-card-link { margin-left: auto; }
+
+.gmz-flash { margin: 8px 0 0; font-size: 12px; font-weight: 600; }
+.gmz-flash.is-error { color: var(--accent-rose); }
+.gmz-flash.is-info { color: var(--text-secondary); }
+
+/* Badges (shared with portalled modals) */
+:is(.gmz-widget, .gmz-modal) .lp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  box-shadow: none;
+}
+:is(.gmz-widget, .gmz-modal) .lp-badge-amber { background: var(--accent-amber-glow); color: var(--accent-amber); border-color: color-mix(in srgb, var(--accent-amber) 20%, transparent); }
+:is(.gmz-widget, .gmz-modal) .lp-badge-rose { background: var(--accent-rose-glow); color: var(--accent-rose); border-color: color-mix(in srgb, var(--accent-rose) 20%, transparent); }
+:is(.gmz-widget, .gmz-modal) .lp-badge-emerald { background: var(--accent-emerald-glow); color: var(--accent-emerald); border-color: color-mix(in srgb, var(--accent-emerald) 20%, transparent); }
+:is(.gmz-widget, .gmz-modal) .lp-badge-muted { background: var(--bg-tertiary); color: var(--text-secondary); border-color: var(--border-primary); }
+
+/* Avatars */
+.gmz-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-primary);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+.gmz-avatar.is-sm { width: 22px; height: 22px; font-size: 9px; }
+.gmz-avatar.is-lg { width: 36px; height: 36px; font-size: 12px; }
+.gmz-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.gmz-user-line { display: flex; align-items: center; gap: 6px; min-width: 0; flex-wrap: wrap; }
+.gmz-user-name {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.gmz-user-tier {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-amber);
+  white-space: nowrap;
+}
+.gmz-online {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent-emerald);
+  white-space: nowrap;
+}
+
+/* ── 4. Toolbar + segmented switcher (§4) ── */
+.gmz-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+.gmz-pills {
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+  padding: 3px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-full);
+  background: var(--bg-tertiary);
+}
+.gmz-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  min-height: 28px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+.gmz-pill:hover { color: var(--text-primary); }
+.gmz-pill.is-active {
+  background: var(--bg-card);
+  border-color: color-mix(in srgb, var(--accent-amber) 45%, var(--border-primary));
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+.gmz-pill.is-active svg { color: var(--accent-amber); }
+.gmz-pill-count { color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+
+.gmz-toolbar-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  height: 30px;
+  min-height: 30px;
+  padding: 0 13px;
+  border-radius: var(--radius-full);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+/* Buttons used across the zone */
+.gmz-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  height: 30px;
+  min-height: 30px;
+  padding: 0 12px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.gmz-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  min-height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  text-decoration: none;
+}
+.gmz-icon-btn:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+.gmz-icon-btn.is-danger:hover { color: var(--accent-rose); }
+.gmz-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+.gmz-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.gmz-select { height: 30px; min-height: 30px; width: auto; max-width: 180px; padding: 0 10px; font-size: 12px; }
+.gmz-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.gmz-check input { accent-color: var(--accent-amber); }
+
+/* ── 5. Main grid + rail (§1) ── */
+.gmz-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(280px, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.gmz-rail { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+/* ── 6. Lists and rows (§3, §9) ── */
+.gmz-list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.gmz-list > * + * { border-top: 1px solid var(--border-primary); }
+.gmz-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px 0;
+  color: inherit;
+  text-decoration: none;
+}
+a.gmz-row:hover .gmz-row-title,
+.gmz-row a.gmz-row-body:hover .gmz-row-title { color: var(--accent-amber); }
+.gmz-row.is-muted { opacity: 0.55; }
+.gmz-row-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+  color: var(--accent-amber);
+}
+.gmz-row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+.gmz-row-title {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.gmz-row-title svg { vertical-align: -1px; color: var(--text-tertiary); }
+.gmz-row-meta {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+.gmz-row-note {
+  display: block;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.gmz-row-side { display: flex; align-items: center; gap: 8px; flex: none; }
+.gmz-row-side-actions { flex-wrap: wrap; justify-content: flex-end; }
+
+.gmz-date-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 40px;
+  padding-right: 10px;
+  border-right: 1px solid var(--border-primary);
+  line-height: 1.05;
+}
+.gmz-date-block strong { font-size: 17px; font-weight: 800; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.gmz-date-block span { font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
+
+.gmz-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+.gmz-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 3px 8px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-full);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gmz-chips.is-toggles .gmz-chip { cursor: pointer; min-height: 26px; }
+.gmz-chip[data-on='true'] {
+  border-color: color-mix(in srgb, var(--accent-amber) 45%, var(--border-primary));
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
+}
+
+/* Index rows (ranks) */
+.gmz-rank-row { gap: 0; }
+.gmz-rank-index { flex: none; width: 28px; font-size: 12px; font-weight: 700; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.gmz-rank-body {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-left: 12px;
+  border-left: 1px solid var(--border-primary);
+}
+.gmz-rank-points {
+  flex: none;
+  min-width: 48px;
+  text-align: right;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.gmz-rank-list > li:first-child .gmz-rank-points { color: var(--accent-amber); }
+
+/* Progress bars */
+.gmz-bar-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.gmz-bar { position: relative; flex: 1 1 auto; height: 6px; margin-top: 4px; overflow: hidden; border-radius: var(--radius-full); background: var(--bg-tertiary); }
+.gmz-bar-line .gmz-bar { margin-top: 0; }
+.gmz-bar-fill { display: block; height: 100%; border-radius: inherit; background: var(--accent-amber); transition: width 0.3s ease; }
+
+/* ── 7. Game grid (lobby) ── */
+.gmz-game-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.gmz-game-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color var(--transition-fast);
+}
+.gmz-game-tile:hover { border-color: color-mix(in srgb, var(--accent-amber) 35%, var(--border-primary)); }
+.gmz-game-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-bottom: 6px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--accent-amber);
+}
+.gmz-game-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.gmz-game-genre { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--text-tertiary); }
+.gmz-game-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border-primary);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.gmz-game-meta span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.gmz-game-meta svg { color: var(--text-tertiary); }
+
+/* ── 8. Empty states (§6) ── */
+.gmz-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 20px 12px;
+  border: 1px dashed var(--border-primary);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-tertiary) 45%, transparent);
+  text-align: center;
+}
+.gmz-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+  color: var(--accent-amber);
+}
+.gmz-empty-hint { max-width: 260px; margin: 0; font-size: 12px; line-height: 1.5; color: var(--text-tertiary); text-wrap: balance; }
+.gmz-empty-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 25%, transparent);
+  border-radius: var(--radius-full);
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ── 9. Inline panels and composers (§7b) ── */
+.gmz-pop-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  box-shadow: none;
+}
+.gmz-composer { margin-top: 0; }
+.gmz-pop-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.gmz-pop-title svg { color: var(--accent-amber); }
+.gmz-pop-row { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.gmz-pop-input {
+  flex: none;
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 12.5px;
+}
+.gmz-pop-input.is-title { font-weight: 600; }
+.gmz-pop-row .gmz-pop-input { flex: 1 1 150px; width: auto; }
+.gmz-pop-row .gmz-pop-input.is-half { flex: 1 1 150px; }
+.gmz-pop-input:focus,
+.gmz-field:focus,
+.gmz-chat-input:focus { border-color: var(--accent-amber); box-shadow: none; outline: none; }
+.gmz-pop-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.gmz-pop-note { margin-left: auto; font-size: 11px; color: var(--text-tertiary); white-space: nowrap; }
+
+/* ── 10. Modals (§7) ── */
+.gmz-overlay { z-index: 1000; }
+.modal.gmz-modal {
+  width: 100%;
+  max-width: 460px;
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 18px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-primary) transparent;
+}
+.modal.gmz-modal.is-wide { max-width: 560px; }
+.gmz-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.gmz-modal-title { display: inline-flex; align-items: center; gap: 8px; min-width: 0; font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.gmz-modal-title svg { color: var(--accent-amber); flex: none; }
+.gmz-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+.gmz-modal-close:hover { background: var(--accent-rose-glow); color: var(--accent-rose); }
+.gmz-modal-summary { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.gmz-form-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; min-width: 0; }
+.gmz-field { height: 36px; min-height: 36px; min-width: 0; padding: 0 10px; font-size: 13px; flex: 1 1 110px; }
+.gmz-field.is-grow { flex: 2 1 160px; }
+.gmz-textarea { height: 76px; padding: 8px 10px; resize: vertical; line-height: 1.45; }
+.gmz-field-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 110px;
+  min-width: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.gmz-field-label .gmz-field { flex: none; width: 100%; }
+.gmz-modal-actions { justify-content: flex-start; margin: 12px 0 0; }
+.gmz-code-input { letter-spacing: 0.3em; font-weight: 700; text-transform: uppercase; font-variant-numeric: tabular-nums; }
+.gmz-game-entry { padding: 6px 0; border-bottom: 1px dashed var(--border-primary); }
+.gmz-entry-name { flex: 0 0 100%; font-size: 12px; font-weight: 700; color: var(--text-primary); }
+.gmz-avail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; }
+.gmz-avail-cell { display: flex; flex-direction: column; gap: 3px; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-tertiary); }
+.gmz-avail-cell .gmz-field { flex: none; width: 100%; height: 32px; min-height: 32px; font-size: 12px; text-transform: none; letter-spacing: 0; }
+.gmz-quote {
+  margin: 6px 0 2px;
+  padding: 6px 10px;
+  border: 1px dashed var(--border-primary);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+/* ── 11. Chat ── */
+.gmz-chat { display: flex; flex-direction: column; min-height: 0; }
+.gmz-chat-meta { display: inline-flex; align-items: center; gap: 10px; font-size: 11px; font-weight: 700; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.gmz-chat-meta > span:first-child { display: inline-flex; align-items: center; gap: 4px; }
+.gmz-chat-scroll {
+  display: flex;
+  flex-direction: column;
+  height: min(60vh, 520px);
+  min-height: 260px;
+  padding: 8px 2px 4px 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-primary) transparent;
+}
+.gmz-chat-older {
+  align-self: center;
+  margin: 4px 0 10px;
+  padding: 4px 10px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-full);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.gmz-msg { position: relative; display: flex; align-items: flex-start; gap: 9px; padding: 6px 4px 2px; border-radius: var(--radius-sm); }
+.gmz-msg.is-grouped { padding-top: 1px; }
+.gmz-msg:hover { background: color-mix(in srgb, var(--bg-tertiary) 60%, transparent); }
+.gmz-msg-gutter { flex: none; width: 22px; }
+.gmz-msg-body { flex: 1 1 auto; min-width: 0; }
+.gmz-msg-head { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.gmz-msg-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 700; color: var(--text-primary); }
+.gmz-msg.is-mine .gmz-msg-name { color: var(--accent-amber); }
+.gmz-msg-time { font-size: 10px; color: var(--text-tertiary); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.gmz-msg-text { margin: 1px 0 0; font-size: 13px; line-height: 1.45; color: var(--text-primary); white-space: pre-wrap; overflow-wrap: anywhere; }
+.gmz-msg-text.is-deleted { font-style: italic; color: var(--text-tertiary); }
+.gmz-msg-actions { position: absolute; top: 2px; right: 2px; display: none; gap: 2px; padding: 1px; border-radius: var(--radius-sm); background: var(--bg-card); }
+.gmz-msg:hover .gmz-msg-actions,
+.gmz-msg:focus-within .gmz-msg-actions { display: flex; }
+.gmz-msg-system {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin: 6px 0;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+.gmz-msg-system { flex-wrap: wrap; text-wrap: balance; }
+.gmz-msg-system span { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.gmz-typing { min-height: 16px; margin: 2px 0 6px; font-size: 11px; color: var(--text-tertiary); }
+.gmz-composer-row { display: flex; align-items: flex-end; gap: 8px; padding-top: 10px; border-top: 1px dashed var(--border-primary); }
+.gmz-chat-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 38px;
+  max-height: 120px;
+  padding: 9px 11px;
+  resize: none;
+  font-size: 13px;
+  line-height: 1.4;
+  field-sizing: content;
+}
+.gmz-send-btn { display: grid; place-items: center; flex: none; width: 38px; height: 38px; min-width: 38px; min-height: 38px; padding: 0; }
+.gmz-chat-blocked {
+  margin: 0;
+  padding: 10px 0 0;
+  border-top: 1px dashed var(--border-primary);
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+/* ── 12. Room rail ── */
+.gmz-lobby-code { display: flex; align-items: center; gap: 8px; margin-top: 12px; min-width: 0; }
+.gmz-lobby-code code,
+.gmz-invite-line code {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 8px 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.04em;
+}
+.gmz-invite-line { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border-primary); }
+.gmz-invite-line .gmz-section-label { margin: 0; }
+.gmz-invite-line code { flex: 0 1 auto; letter-spacing: 0.25em; }
+.gmz-ready { display: grid; place-items: center; color: var(--text-tertiary); }
+.gmz-ready.is-on { color: var(--accent-emerald); }
+.gmz-room-link { margin-top: 12px; }
+
+/* ── 13. Events / bracket ── */
+.gmz-facts { display: grid; gap: 8px; margin: 12px 0 0; }
+.gmz-facts > div { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.gmz-facts dt { font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-tertiary); }
+.gmz-facts dd { margin: 0; font-size: 12.5px; color: var(--text-primary); overflow-wrap: anywhere; }
+.gmz-bracket {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-primary) transparent;
+}
+.gmz-bracket-round { display: flex; flex-direction: column; justify-content: space-around; gap: 10px; flex: 0 0 220px; min-width: 0; }
+.gmz-bracket-round .gmz-section-label { margin: 0; }
+.gmz-match {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+}
+.gmz-match.is-mine { border-color: color-mix(in srgb, var(--accent-amber) 45%, var(--border-primary)); }
+.gmz-match .lp-badge { align-self: flex-start; }
+.gmz-match-side { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; font-size: 12.5px; color: var(--text-secondary); }
+.gmz-match-side.is-winner { color: var(--text-primary); font-weight: 700; }
+.gmz-match-side.is-winner .gmz-match-score { color: var(--accent-amber); }
+.gmz-match-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gmz-match-score { flex: none; font-weight: 800; font-variant-numeric: tabular-nums; }
+.gmz-match-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.gmz-match-actions .gmz-btn { height: 26px; min-height: 26px; padding: 0 9px; font-size: 11px; }
+.gmz-match .gmz-pop-panel { margin-top: 4px; }
+.gmz-score-row { flex-wrap: nowrap; }
+.gmz-score-field { display: flex; flex-direction: column; gap: 3px; flex: 1 1 0; min-width: 0; font-size: 10.5px; color: var(--text-tertiary); }
+.gmz-score-field span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gmz-score-field .gmz-pop-input { width: 100%; }
+
+/* Tabular numbers everywhere a number is shown */
+.gmz-count, .gmz-rank-points, .gmz-rank-index, .gmz-match-score, .gmz-date-block strong { font-variant-numeric: tabular-nums; }
+
+/* ── 14. Focus (keyboard only, no glow) ── */
+:is(.gmz-pill, .gmz-btn, .gmz-icon-btn, .gmz-add-icon-btn, .gmz-menu-btn, .gmz-empty-action, .gmz-game-tile, .gmz-row, .gmz-chip, .gmz-modal-close):focus-visible {
+  outline: 2px solid var(--accent-amber);
+  outline-offset: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   RESPONSIVE — container queries on the widget (§8). New blocks are
+   appended as separate blocks.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Masthead compaction on phones (§2, same as the compact widgets) */
+@media (max-width: 640px) {
+  .gmz-widget .dl-head { gap: 8px; padding: 9px 10px; }
+  .gmz-widget .dl-head-title { gap: 8px; }
+  .gmz-widget .dl-head-tile { width: 34px; height: 34px; }
+  .gmz-widget .dl-head-name { margin: 2px 0 0; font-size: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gmz-widget .dl-head-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+    width: 100%;
+    padding-top: 8px;
+  }
+  .gmz-widget .dl-head-stat { position: relative; justify-content: center; gap: 3px; padding: 2px 4px; border-left: 0; }
+  .gmz-widget .dl-head-stat + .dl-head-stat { border-left: 0; }
+  .gmz-widget .dl-head-stat:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 0;
+    width: 1px;
+    height: 30px;
+    transform: translateY(-50%);
+    background: var(--border-primary);
+  }
+  .gmz-widget .dl-head-stat dd:not(.is-small) { font-size: 1rem; }
+  .gmz-widget .dl-head-stat dd.is-small { overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .gmz-widget .gmz-menu-btn { width: 30px; height: 30px; min-width: 30px; min-height: 30px; }
+}
+@media (max-width: 400px) {
+  .gmz-widget .dl-head { padding: 8px; gap: 7px; }
+  .gmz-widget .dl-head-tile { width: 32px; height: 32px; }
+}
+
+/* Tablet */
+@container gmz (max-width: 1000px) {
+  .gmz-main-grid { grid-template-columns: minmax(0, 1fr); }
+  .gmz-rail { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
+}
+@container gmz (max-width: 700px) {
+  .gmz-rail { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Phone */
+@container gmz (max-width: 560px) {
+  .gmz-widget { gap: 6px; }
+  .gmz-main-grid, .gmz-rail { gap: 6px; }
+  .gmz-card { padding: 11px; }
+  .gmz-card-title { font-size: 12.5px; }
+  .gmz-card-head-row.is-ruled { padding-bottom: 9px; }
+  .gmz-toolbar { flex-direction: column; align-items: stretch; gap: 6px; }
+  .gmz-toolbar-action { align-self: flex-end; height: 28px; min-height: 28px; }
+  /* 5 sections: one row that scrolls sideways, never a grid (§4) */
+  .gmz-pills {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-primary) transparent;
+  }
+  .gmz-pills::-webkit-scrollbar { height: 3px; }
+  .gmz-pills::-webkit-scrollbar-thumb { background: var(--border-primary); border-radius: var(--radius-full); }
+  .gmz-pill { scroll-snap-align: start; min-height: 30px; }
+  .gmz-card-head-row .gmz-pills { width: 100%; }
+  .gmz-filters { width: 100%; }
+  .gmz-filters .gmz-select { flex: 1 1 120px; max-width: none; }
+  .gmz-game-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+  .gmz-game-tile { padding: 9px; }
+  .gmz-game-icon { width: 26px; height: 26px; margin-bottom: 4px; }
+  .gmz-row { padding: 8px 0; gap: 8px; }
+  .gmz-row-side { gap: 6px; }
+  .gmz-room-row { flex-wrap: wrap; }
+  .gmz-room-row .gmz-row-body { flex-basis: calc(100% - 40px); }
+  .gmz-room-row .gmz-row-side { width: 100%; justify-content: flex-end; }
+  .gmz-report-row { flex-wrap: wrap; }
+  .gmz-report-row .gmz-row-side { width: 100%; justify-content: flex-start; padding-left: 36px; }
+  .gmz-empty { padding: 10px; }
+  .gmz-empty-icon { width: 24px; height: 24px; }
+  .gmz-chat-scroll { height: min(58vh, 440px); min-height: 220px; }
+  .gmz-pop-panel { padding: 8px; }
+  .gmz-pop-input { height: 30px; min-height: 30px; font-size: 12px; }
+  .gmz-pop-actions .gmz-btn { height: 26px; min-height: 26px; font-size: 11px; }
+  .gmz-pop-note { flex-basis: 100%; margin-left: 0; }
+  .gmz-bracket-round { flex-basis: 190px; }
+}
+@container gmz (max-width: 340px) {
+  .gmz-card-title svg { display: none; }
+  .gmz-game-grid { grid-template-columns: minmax(0, 1fr); }
+  .gmz-row-icon { display: none; }
+}
+
+/* Touch: bigger targets, then phone density reset (§8 gotcha) */
+@media (pointer: coarse) {
+  .gmz-widget .gmz-icon-btn { width: 34px; height: 34px; }
+  /* No hover on touch: keep the actions visible, inline at the right. */
+  .gmz-msg-actions { display: flex; position: static; flex: none; align-self: flex-start; background: transparent; }
+  .gmz-widget .gmz-msg-actions .gmz-icon-btn { width: 26px; height: 26px; min-width: 26px; min-height: 26px; }
+}
+@container gmz (max-width: 560px) {
+  .gmz-widget :is(.gmz-pill, .gmz-btn, .gmz-add-icon-btn, .gmz-icon-btn) { min-width: 0; }
+  .gmz-widget .gmz-add-icon-btn { width: 30px; height: 30px; min-height: 30px; }
+  .gmz-widget .gmz-icon-btn { width: 28px; height: 28px; min-height: 28px; }
+  .gmz-widget .gmz-pill { min-height: 30px; height: 30px; }
+  .gmz-widget .gmz-btn { min-height: 28px; height: 28px; }
+}
+/* Compact field text survives the global 16px touch-input rule (§8) */
+@media (max-width: 768px) and (pointer: coarse) {
+  .gmz-widget .gmz-pop-panel .gmz-pop-input { font-size: 12px !important; }
+}
+
+/* Modals on phones (§7) */
+@media (max-width: 480px) {
+  .gmz-overlay { padding: 10px; }
+  .modal.gmz-modal { padding: 12px; border-radius: 14px; max-height: calc(100dvh - 20px); }
+  .gmz-modal .gmz-field { height: 40px; min-height: 40px; }
+  .gmz-modal .gmz-textarea { height: 76px; }
+}
