@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, FileDown, MoreVertical, Check } from 'lucide-react';
+import { Calendar, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, FileDown, MoreVertical, Check, LayoutGrid, List } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useLiveValue } from '../../utils/liveStore';
@@ -38,6 +38,14 @@ export default function WeekSchedule() {
     viewWasChangedByUserRef.current = true;
     setViewMode(nextView);
   };
+  // Week/Month layout: 'box' (calendar grid) or 'list' (one row per day).
+  // Remembered per device.
+  const [layout, setLayout] = useState(() => {
+    try { return localStorage.getItem('aust-semester-layout') === 'list' ? 'list' : 'box'; } catch { return 'box'; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('aust-semester-layout', layout); } catch {}
+  }, [layout]);
   const [semesterStart, setSemesterStart] = useLiveValue(
     'shared', 'semester-start-date', new Date().toISOString().split('T')[0]
   );
@@ -301,6 +309,57 @@ export default function WeekSchedule() {
             </div>
           )}
         </div>
+      </div>
+    );
+  };
+
+  // List layout — one row per day: date block · that day's tasks.
+  // Month list shows only days that have tasks.
+  const renderDayList = (dates, { onlyWithTasks = false } = {}) => {
+    const rows = dates
+      .filter(Boolean)
+      .map(date => ({ date, dayTasks: isInitialLoading ? [] : getTasksForDate(date) }))
+      .filter(({ dayTasks }) => !onlyWithTasks || dayTasks.length > 0);
+    if (!isInitialLoading && rows.length === 0) {
+      return (
+        <div className="schedule-list-empty-state">
+          <span className="schedule-list-empty-icon"><List size={16} /></span>
+          <p>No tasks this {viewMode === 'monthly' ? 'month' : 'week'}.</p>
+        </div>
+      );
+    }
+    return (
+      <div className="schedule-list" role="list">
+        {rows.map(({ date, dayTasks }) => {
+          const before = isBeforeSemesterStart(date);
+          const today = isToday(date);
+          return (
+            <div key={formatDateKey(date)} role="listitem"
+              className={`schedule-list-row${today ? ' today' : ''}${before ? ' before-semester' : ''}${dayTasks.length === 0 ? ' is-empty' : ''}`}>
+              <div className="schedule-list-date">
+                <span className="schedule-list-dow">{date.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+                <span className="schedule-list-num">{getDayNumber(date)}</span>
+                <span className="schedule-list-mon">{getMonthName(date)}</span>
+              </div>
+              <div className="schedule-list-body">
+                {isInitialLoading ? (
+                  <div className="skeleton-line skeleton-line--full" style={{ height: '14px' }} />
+                ) : dayTasks.length === 0 ? (
+                  <span className="schedule-list-clear">{before ? 'Before semester' : 'Clear'}</span>
+                ) : dayTasks.map(task => (
+                  <button key={task.id} type="button" className="schedule-list-task"
+                    onClick={(e) => { e.stopPropagation(); setSelectedTask(task); }}>
+                    {task.courseCode && <span className="schedule-list-code">{task.courseCode}</span>}
+                    <span className="schedule-list-title">{task.title}</span>
+                    {task.batchGroup && <span className="schedule-list-batch">{task.batchGroup}</span>}
+                    {task.time && <span className="schedule-list-time">{task.time}</span>}
+                  </button>
+                ))}
+              </div>
+              {today && <span className="schedule-list-today">Today</span>}
+            </div>
+          );
+        })}
       </div>
     );
   };
@@ -714,6 +773,19 @@ export default function WeekSchedule() {
                   <Calendar size={14} /> Month View {viewMode === 'monthly' && <Check size={14} className="menu-check" />}
                 </button>
                 <div className="export-menu-sep" />
+                <button
+                  className={`export-menu-item${layout === 'box' ? ' menu-active' : ''}`}
+                  onClick={() => { setLayout('box'); setShowExportMenu(false); }}
+                >
+                  <LayoutGrid size={14} /> Box Layout {layout === 'box' && <Check size={14} className="menu-check" />}
+                </button>
+                <button
+                  className={`export-menu-item${layout === 'list' ? ' menu-active' : ''}`}
+                  onClick={() => { setLayout('list'); setShowExportMenu(false); }}
+                >
+                  <List size={14} /> List Layout {layout === 'list' && <Check size={14} className="menu-check" />}
+                </button>
+                <div className="export-menu-sep" />
                 <button className="export-menu-item" onClick={() => { downloadSchedulePDF(); setShowExportMenu(false); }}>
                   <FileDown size={14} /> Export as PDF
                 </button>
@@ -795,7 +867,9 @@ export default function WeekSchedule() {
             )}
           </div>
         );
-      })() : viewMode === 'monthly' ? (
+      })() : layout === 'list' ? (
+        renderDayList(viewMode === 'monthly' ? monthDates : weekDates, { onlyWithTasks: viewMode === 'monthly' })
+      ) : viewMode === 'monthly' ? (
         <>
           <div className="schedule-month-grid schedule-days-row" style={{ marginBottom: '12px' }}>
             {['Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu'].map((day, i) => (

@@ -6159,3 +6159,180 @@ tr.day-row-active {
     padding-bottom: 2px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   14-Weeks View — List layout (⋮ → List Layout)
+   One row per day: date block · tasks, ruled off like the agenda row
+   (skill-style §9). Flat surfaces, hairline separators between rows.
+   ═══════════════════════════════════════════════════════════════════ */
+.week-schedule-widget .schedule-list {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.week-schedule-widget .schedule-list > * + * { border-top: 1px solid var(--border-primary); }
+.week-schedule-widget .schedule-list-row {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  min-width: 0;
+}
+.week-schedule-widget .schedule-list-row.before-semester { opacity: 0.45; }
+.week-schedule-widget .schedule-list-date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.week-schedule-widget .schedule-list-dow,
+.week-schedule-widget .schedule-list-mon {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.week-schedule-widget .schedule-list-num {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin: 1px 0;
+}
+.week-schedule-widget .schedule-list-row.today .schedule-list-dow,
+.week-schedule-widget .schedule-list-row.today .schedule-list-num { color: var(--accent-amber); }
+.week-schedule-widget .schedule-list-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding-left: 12px;
+  border-left: 1px solid var(--border-primary);
+  align-self: stretch;
+  justify-content: center;
+}
+.week-schedule-widget .schedule-list-clear {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.week-schedule-widget .schedule-list-task {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 7px 10px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: none;
+  cursor: pointer;
+  transition: border-color var(--transition-base);
+}
+.week-schedule-widget .schedule-list-task:hover {
+  border-color: color-mix(in srgb, var(--accent-amber) 25%, var(--border-primary));
+}
+.week-schedule-widget .schedule-list-code {
+  flex: none;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-amber);
+  white-space: nowrap;
+}
+.week-schedule-widget .schedule-list-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.week-schedule-widget .schedule-list-batch {
+  flex: none;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.week-schedule-widget .schedule-list-time {
+  flex: none;
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.week-schedule-widget .schedule-list-today {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-amber);
+}
+.week-schedule-widget .schedule-list-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 12px;
+  border: 1px dashed var(--border-primary);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-tertiary) 45%, transparent);
+  text-align: center;
+}
+.week-schedule-widget .schedule-list-empty-state p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.week-schedule-widget .schedule-list-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+  color: var(--accent-amber);
+}
+
+@media (max-width: 640px) {
+  .week-schedule-widget .schedule-list { border-radius: var(--radius-md); }
+  .week-schedule-widget .schedule-list-row {
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 10px;
+    padding: 8px 10px;
+  }
+  .week-schedule-widget .schedule-list-num { font-size: 15px; }
+  .week-schedule-widget .schedule-list-body { padding-left: 10px; gap: 5px; }
+  .week-schedule-widget .schedule-list-today { display: none; }
+  /* Task: code · batch · time on line 1, title on its own line */
+  .week-schedule-widget .schedule-list-task {
+    flex-wrap: wrap;
+    row-gap: 2px;
+    column-gap: 6px;
+    padding: 6px 8px;
+  }
+  .week-schedule-widget .schedule-list-code { font-size: 10.5px; }
+  .week-schedule-widget .schedule-list-time { margin-left: auto; font-size: 10.5px; }
+  .week-schedule-widget .schedule-list-title {
+    order: 5;
+    flex: 1 1 100%;
+    font-size: 12px;
+  }
+  .week-schedule-widget .schedule-list-clear { font-size: 11.5px; }
+  .week-schedule-widget .schedule-list-empty-state { padding: 10px; }
+  .week-schedule-widget .schedule-list-empty-icon { width: 24px; height: 24px; }
+}
