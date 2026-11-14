@@ -33,7 +33,7 @@ import {
 } from './telegramMessageTemplates.mjs';
 import { getAllUsersSafe } from './userStore.mjs';
 import { getUserStoreValue } from './storeDB.mjs';
-import { getPool } from './db.mjs';
+import { createDedicatedClient } from './db.mjs';
 
 // ── Timezone handling (Asia/Dhaka) ───────────────────────────────────────────
 const APP_TZ = 'Asia/Dhaka';
@@ -567,7 +567,7 @@ async function isSchedulerLeader() {
       return true;
     } catch {
       if (schedulerLockClient === currentClient) schedulerLockClient = null;
-      try { currentClient.release(true); } catch { /* already released */ }
+      currentClient.end().catch(() => { /* already closed */ });
     }
   }
 
@@ -579,25 +579,26 @@ async function isSchedulerLeader() {
   );
   if (!hasDatabase) return true;
 
+  // The lock lives on its own connection, not a pool slot, so holding it
+  // forever doesn't shrink the pool that serves requests.
   let client;
   try {
-    const pool = await getPool();
-    client = await pool.connect();
+    client = createDedicatedClient();
+    // Attach before connect: an unhandled 'error' on a pg Client crashes Node.
+    client.on('error', () => {
+      if (schedulerLockClient === client) schedulerLockClient = null;
+      client.end().catch(() => { /* already closed */ });
+    });
+    await client.connect();
     const result = await client.query('SELECT pg_try_advisory_lock($1) AS locked', [SCHEDULER_LOCK_ID]);
     if (!result.rows[0]?.locked) {
-      client.release();
+      await client.end().catch(() => {});
       return false;
     }
     schedulerLockClient = client;
-    client.on('error', () => {
-      if (schedulerLockClient === client) {
-        schedulerLockClient = null;
-        try { client.release(true); } catch { /* already released */ }
-      }
-    });
     return true;
   } catch (error) {
-    if (client) client.release();
+    if (client) client.end().catch(() => {});
     console.warn('Telegram scheduler waiting for the shared database lock:', error?.message || error);
     return false;
   }
@@ -638,4 +639,10 @@ export function startTelegramScheduler() {
 
 export function stopTelegramScheduler() {
   if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
+  // Closing the session releases the advisory lock for another instance.
+  if (schedulerLockClient) {
+    const c = schedulerLockClient;
+    schedulerLockClient = null;
+    c.end().catch(() => { /* already closed */ });
+  }
 }

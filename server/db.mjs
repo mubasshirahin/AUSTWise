@@ -49,6 +49,17 @@ export async function getPool() {
   return pool;
 }
 
+/**
+ * A standalone connection outside the pool, for long-held sessions such as
+ * the scheduler's advisory lock. Keeping those out of the pool means request
+ * traffic always gets all PG_POOL_MAX slots. Caller must connect() and end().
+ */
+export function createDedicatedClient() {
+  // Pool-only options (max, idleTimeoutMillis) are dropped for a single client.
+  const { max: _max, idleTimeoutMillis: _idle, ...clientConfig } = poolConfig();
+  return new pg.Client(clientConfig);
+}
+
 function pgType(t) {
   if (!t) return null;
   if (typeof t === 'string') return t;
