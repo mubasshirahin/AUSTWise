@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, FileDown, MoreVertical, Check, LayoutGrid, List } from 'lucide-react';
+import { Calendar, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, FileDown, MoreVertical, Check, LayoutGrid, List, Loader2, Image as ImageIcon } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useLiveValue } from '../../utils/liveStore';
@@ -488,175 +488,44 @@ export default function WeekSchedule() {
     };
   }, [showExportMenu]);
 
-  const scheduleRef = useRef(null);
-
-  const downloadSchedulePDF = useCallback(async () => {
-    const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
-      import('html2canvas-pro'), import('jspdf')
-    ]);
-    const el = scheduleRef.current;
-    if (!el) return;
-
-    const root = document.documentElement;
-    const cs = (n) => getComputedStyle(root).getPropertyValue(n).trim();
-    const bg = cs('--bg-primary');
-    const textPri = cs('--text-primary');
-    const textSec = cs('--text-secondary');
-    const textTer = cs('--text-tertiary');
-    const logoUrl = brandMark;
-
-    const container = document.createElement('div');
-    container.style.cssText = `
-      position: fixed; left: -9999px; top: 0; width: fit-content; max-width: 1200px;
-      background: ${bg};
-      font-family: system-ui, -apple-system, sans-serif;
-      padding-bottom: 10px;
-    `;
-
-    const ord = (n) => n + ({1:'st',2:'nd',3:'rd'}[n]||'th');
-    const fmtSem = (s) => {
-      const m = (s||'').match(/Year\s*(\d+)\s*-\s*Semester\s*(\d+)/i);
-      return m ? `${ord(+m[1])} Year, ${+m[2]}${['th','st','nd','rd'][+m[2]]||'th'} Sem` : s;
-    };
-    const semStr = user?.yearSemester || user?.semester || '';
-    const deptStr = user?.department || '';
-
-    const brandBar = document.createElement('div');
-    brandBar.style.cssText = 'padding: 4px 8px;';
-    brandBar.innerHTML = `
-      <div style="display: flex; align-items: center; justify-content: space-between;">
-        <div style="display: flex; align-items: center; gap: 6px;">
-          <img src="${logoUrl}" alt="AUSTWise" style="width: 28px; height: 28px; object-fit: contain; flex-shrink: 0;" />
-          <div style="display: flex; flex-direction: column; justify-content: center; margin-top: -14px;">
-            <div style="font-size: 16px; font-weight: 800; color: ${textPri}; letter-spacing: -0.01em; line-height: 1.1;">AUSTWise</div>
-            <div style="font-size: 8px; color: ${textTer}; letter-spacing: 0.06em; text-transform: uppercase;">Your Academic Companion</div>
-          </div>
-        </div>
-        ${(deptStr || semStr) ? `<div style="font-size: 12px; color: ${textSec}; font-weight: 600; text-align: center; line-height: 1.5;">
-          ${deptStr ? `<div>${deptStr}</div>` : ''}
-          ${semStr ? `<div>${fmtSem(semStr)}</div>` : ''}
-        </div>` : ''}
-        <div style="text-align: right;">
-          <div style="font-size: 8px; color: ${textTer}; text-transform: uppercase; letter-spacing: 0.06em;">Generated</div>
-          <div style="font-size: 11px; color: ${textPri}; font-weight: 700; margin-top: 1px;">
-            ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-          </div>
-        </div>
-      </div>
-    `;
-    container.appendChild(brandBar);
-
-    const isMonthly = viewMode === 'monthly';
-    const clone = el.cloneNode(true);
-    clone.style.cssText = `overflow: visible; border-radius: ${isMonthly ? 0 : 8}px; padding: 0;`;
-    clone.style.margin = '6px 8px 0';
-    container.appendChild(clone);
-
-    document.body.appendChild(container);
-
+  // ── Export: drawn from task data (see semesterExport.js), same approach
+  // and house style as the Routine Grid export. Exports the open view
+  // (Day / Week / Month) with the current batch filter.
+  const [exporting, setExporting] = useState(null); // 'pdf' | 'jpg' | null
+  const runExport = async (kind) => {
+    if (exporting) return;
+    setExporting(kind);
     try {
-      const canvas = await html2canvas(container, {
-        scale: isMonthly ? 3 : 2.5, useCORS: true, backgroundColor: bg || '#ffffff',
-        logging: false, width: container.scrollWidth, height: container.scrollHeight,
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      const imgW = isMonthly ? canvas.width * 0.2646 : 290;
-      const imgH = isMonthly ? canvas.height * 0.2646 : (canvas.height * imgW) / canvas.width;
-      const pageW = imgW + 8;
-      const pageH = imgH + 4;
-
-      const pdf = new jsPDF({ orientation: 'l', unit: 'mm', format: [pageW, pageH] });
-      const hex = bg.replace('#', '');
-      if (hex.length >= 6) {
-        pdf.setFillColor(parseInt(hex.substring(0,2),16), parseInt(hex.substring(2,4),16), parseInt(hex.substring(4,6),16));
-        pdf.rect(0, 0, pageW, pageH, 'F');
-      }
-      pdf.addImage(imgData, 'PNG', 4, 2, imgW, imgH);
-      pdf.save('AUST-14Week-Schedule.pdf');
+      const { exportSemesterPDF, exportSemesterJPG } = await import('./semesterExport');
+      const dates = viewMode === 'daily' ? [currentDate] : viewMode === 'monthly' ? monthDates : weekDates;
+      const cells = dates.map((date) => (date ? {
+        date,
+        tasks: getTasksForDate(date),
+        today: isToday(date),
+        before: isBeforeSemesterStart(date),
+      } : null));
+      const short = (d) => d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+      const periodLabel = viewMode === 'daily'
+        ? currentDate.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })
+        : viewMode === 'monthly'
+          ? currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+          : `${getWeekLabel()} · ${short(weekDates[0])} – ${short(weekDates[6])}`;
+      const opts = {
+        viewMode,
+        cells,
+        periodLabel,
+        filterLabel: batchFilter !== 'all' ? `${batchFilter} only` : '',
+        meta: { dept: user?.department || '', sem: user?.yearSemester || user?.semester || '' },
+        logoUrl: brandMark,
+      };
+      await (kind === 'pdf' ? exportSemesterPDF(opts) : exportSemesterJPG(opts));
+    } catch (error) {
+      console.error('Semester View export failed', error);
+      window.alert('Export failed — please try again.');
     } finally {
-      document.body.removeChild(container);
+      setExporting(null);
     }
-  }, [user, viewMode]);
-
-  const downloadScheduleImage = useCallback(async () => {
-    const { default: html2canvas } = await import('html2canvas-pro');
-    const el = scheduleRef.current;
-    if (!el) return;
-
-    const root = document.documentElement;
-    const cs = (n) => getComputedStyle(root).getPropertyValue(n).trim();
-    const bg = cs('--bg-primary');
-    const textPri = cs('--text-primary');
-    const textSec = cs('--text-secondary');
-    const textTer = cs('--text-tertiary');
-    const logoUrl = brandMark;
-
-    const container = document.createElement('div');
-    container.style.cssText = `
-      position: fixed; left: -9999px; top: 0; width: fit-content; max-width: 1200px;
-      background: ${bg};
-      font-family: system-ui, -apple-system, sans-serif;
-      padding-bottom: 10px;
-    `;
-
-    const ord = (n) => n + ({1:'st',2:'nd',3:'rd'}[n]||'th');
-    const fmtSem = (s) => {
-      const m = (s||'').match(/Year\s*(\d+)\s*-\s*Semester\s*(\d+)/i);
-      return m ? `${ord(+m[1])} Year, ${+m[2]}${['th','st','nd','rd'][+m[2]]||'th'} Sem` : s;
-    };
-    const semStr = user?.yearSemester || user?.semester || '';
-    const deptStr = user?.department || '';
-
-    const brandBar = document.createElement('div');
-    brandBar.style.cssText = 'padding: 4px 8px;';
-    brandBar.innerHTML = `
-      <div style="display: flex; align-items: center; justify-content: space-between;">
-        <div style="display: flex; align-items: center; gap: 6px;">
-          <img src="${logoUrl}" alt="AUSTWise" style="width: 28px; height: 28px; object-fit: contain; flex-shrink: 0;" />
-          <div style="display: flex; flex-direction: column; justify-content: center; margin-top: -14px;">
-            <div style="font-size: 16px; font-weight: 800; color: ${textPri}; letter-spacing: -0.01em; line-height: 1.1;">AUSTWise</div>
-            <div style="font-size: 8px; color: ${textTer}; letter-spacing: 0.06em; text-transform: uppercase;">Your Academic Companion</div>
-          </div>
-        </div>
-        ${(deptStr || semStr) ? `<div style="font-size: 12px; color: ${textSec}; font-weight: 600; text-align: center; line-height: 1.5;">
-          ${deptStr ? `<div>${deptStr}</div>` : ''}
-          ${semStr ? `<div>${fmtSem(semStr)}</div>` : ''}
-        </div>` : ''}
-        <div style="text-align: right;">
-          <div style="font-size: 8px; color: ${textTer}; text-transform: uppercase; letter-spacing: 0.06em;">Generated</div>
-          <div style="font-size: 11px; color: ${textPri}; font-weight: 700; margin-top: 1px;">
-            ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-          </div>
-        </div>
-      </div>
-    `;
-    container.appendChild(brandBar);
-
-    const isMonthly = viewMode === 'monthly';
-    const clone = el.cloneNode(true);
-    clone.style.cssText = `overflow: visible; border-radius: ${isMonthly ? 0 : 8}px; padding: 0;`;
-    clone.style.margin = '6px 8px 0';
-    container.appendChild(clone);
-
-    document.body.appendChild(container);
-
-    try {
-      const canvas = await html2canvas(container, {
-        scale: isMonthly ? 3 : 2.5, useCORS: true, backgroundColor: bg || '#ffffff',
-        logging: false, width: container.scrollWidth, height: container.scrollHeight,
-      });
-
-      const link = document.createElement('a');
-      link.download = 'AUST-14Week-Schedule.png';
-      link.href = canvas.toDataURL('image/png');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } finally {
-      document.body.removeChild(container);
-    }
-  }, [user, viewMode]);
+  };
 
   return (
     <div className="glass-card-static schedule-widget week-schedule-widget animate-fadeInUp" style={{ minHeight: '680px' }}>
@@ -777,11 +646,11 @@ export default function WeekSchedule() {
                   <List size={14} /> List Layout {layout === 'list' && <Check size={14} className="menu-check" />}
                 </button>
                 <div className="export-menu-sep" />
-                <button className="export-menu-item" onClick={() => { downloadSchedulePDF(); setShowExportMenu(false); }}>
-                  <FileDown size={14} /> Export as PDF
+                <button className="export-menu-item" disabled={!!exporting} onClick={() => { runExport('pdf'); setShowExportMenu(false); }}>
+                  {exporting === 'pdf' ? <Loader2 size={14} className="spin" /> : <FileDown size={14} />} Export as PDF
                 </button>
-                <button className="export-menu-item" onClick={() => { downloadScheduleImage(); setShowExportMenu(false); }}>
-                  <FileDown size={14} /> Export as Image
+                <button className="export-menu-item" disabled={!!exporting} onClick={() => { runExport('jpg'); setShowExportMenu(false); }}>
+                  {exporting === 'jpg' ? <Loader2 size={14} className="spin" /> : <ImageIcon size={14} />} Export as JPG
                 </button>
               </div>,
               document.body
@@ -830,7 +699,7 @@ export default function WeekSchedule() {
       </div>
       </div>{/* end schedule-fixed-header */}
 
-      <div className="schedule-scroll-body" ref={scheduleRef}>
+      <div className="schedule-scroll-body">
       {viewMode === 'daily' ? (() => {
         const date = currentDate;
         return (

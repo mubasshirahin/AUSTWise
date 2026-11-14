@@ -537,3 +537,6 @@ export async function exportRoutinePDF(opts) {
   pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 297, 210);
   pdf.save('AUSTWise-Routine.pdf');
 }
+
+// Shared drawing helpers (used by the Semester View export too).
+export { readPalette, loadLogo, setFont, ellipsize, wrap, roundRect, tracked, drawBrand, formatSemester, toBlob, saveBlob };
