@@ -239,10 +239,16 @@ export function taskProgress(doc, taskId) {
   return Math.round((done / steps.length) * 100);
 }
 
-/** A recurring task with no steps never "finishes" (it has no checkbox),
- *  so it is left out of goal progress. */
+/** A recurring task never "finishes" — neither it nor its steps have a
+ *  checkbox — so it is left out of goal progress. */
 export function isOngoingRecurringTask(doc, task) {
-  return !!task?.isRecurring && stepsOfTask(doc, task.id).length === 0;
+  return !!task?.isRecurring;
+}
+
+/** Steps that count toward goal progress/status (not those of recurring tasks). */
+function trackedStepsOfGoal(doc, goalId) {
+  const taskIds = new Set(tasksOfGoal(doc, goalId).filter((t) => !t.isRecurring).map((t) => t.id));
+  return doc.steps.filter((s) => taskIds.has(s.taskId));
 }
 
 export function goalProgress(doc, goalId) {
@@ -251,7 +257,7 @@ export function goalProgress(doc, goalId) {
     const sum = tasks.reduce((s, t) => s + taskProgress(doc, t.id), 0);
     return Math.round(sum / tasks.length);
   }
-  const steps = stepsOfGoal(doc, goalId);
+  const steps = trackedStepsOfGoal(doc, goalId);
   if (steps.length === 0) {
     const g = byId(doc.goals, goalId);
     return g?.manualDone ? 100 : 0;
@@ -284,7 +290,7 @@ export function goalLocked(doc, goalId) {
 export function recomputeGoalStatus(doc, goalId) {
   const g = byId(doc.goals, goalId);
   if (!g) return;
-  const steps = stepsOfGoal(doc, goalId);
+  const steps = trackedStepsOfGoal(doc, goalId);
   if (steps.length === 0) {
     g.status = g.manualDone ? 'done' : 'not_started';
     return;
@@ -747,5 +753,35 @@ export function stripExampleContent(doc) {
     ...doc,
     goals: doc.goals.filter((g) => !goalIds.has(g.id)),
     tasks, steps, deps,
+  };
+}
+
+// ── comments (milestones, goals, tasks, steps) ──────────────────────────────
+// Stored inline on the entity as `comments: [{ id, text, createdAt }]`.
+// Milestones are goals with the 'milestone' type, so both live in `goals`.
+
+export const COMMENT_COLLECTION = { milestone: 'goals', goal: 'goals', task: 'tasks', step: 'steps' };
+
+export function commentsOf(entity) {
+  return Array.isArray(entity?.comments) ? entity.comments : [];
+}
+
+export function addComment(doc, kind, entityId, text) {
+  const key = COMMENT_COLLECTION[kind];
+  const body = String(text || '').trim();
+  if (!key || !body) return doc;
+  const comment = { id: uid(), text: body, createdAt: new Date().toISOString() };
+  return {
+    ...doc,
+    [key]: doc[key].map((x) => (x.id === entityId ? { ...x, comments: [...commentsOf(x), comment] } : x)),
+  };
+}
+
+export function deleteComment(doc, kind, entityId, commentId) {
+  const key = COMMENT_COLLECTION[kind];
+  if (!key) return doc;
+  return {
+    ...doc,
+    [key]: doc[key].map((x) => (x.id === entityId ? { ...x, comments: commentsOf(x).filter((c) => c.id !== commentId) } : x)),
   };
 }

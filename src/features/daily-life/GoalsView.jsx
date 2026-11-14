@@ -3,11 +3,13 @@ import {
   Lock, ArrowUp, ArrowDown, Flag, Target, Trash2, ChevronRight, ChevronDown, CalendarDays,
   Clock, X, Repeat, CheckCircle2, MoreHorizontal,
 } from 'lucide-react';
-import { LpEmpty, LpDateInput } from './LifePlannerUI';
+import { LpEmpty, LpDateInput, LpComments, LpCommentButton } from './LifePlannerUI';
+import { longPressProps } from './lpLongPress';
 import {
   goalsOfMilestone, goalProgress, goalLocked, depsOfGoal, byId, TYPE_META, milestoneProgress,
   tasksOfGoal, isOngoingRecurringTask, stepsOfTask, toggleStep, deleteStep, deleteTask, updateGoal, updateTask, fmtDate, todayKey, WEEKDAYS,
   goalDisplayNumber, goalAutoDeadline, taskProgress, toggleTaskDone, toggleGoalDone,
+  COMMENT_COLLECTION, commentsOf, addComment, deleteComment,
 } from './lifePlannerStorage';
 
 const pad2 = (n) => String(n).padStart(2, '0');
@@ -44,6 +46,9 @@ export default function GoalsView({
   const [taskDraftWeekdays, setTaskDraftWeekdays] = useState([]);
   const [taskDraftEndDate, setTaskDraftEndDate] = useState('');
   const [activeGoalWarn, setActiveGoalWarn] = useState('');
+  // Comments sheet: { kind: 'milestone'|'goal'|'task'|'step', id }
+  const [commentTarget, setCommentTarget] = useState(null);
+  const openComments = (kind, id) => setCommentTarget({ kind, id });
   useEffect(() => { if (!activeGoalWarn) return undefined; const t = setTimeout(() => setActiveGoalWarn(''), 3200); return () => clearTimeout(t); }, [activeGoalWarn]);
   // Single-open ⋯ menu
   const [openGoalMenuId, setOpenGoalMenuId] = useState(null);
@@ -119,9 +124,9 @@ export default function GoalsView({
           {milestones.length === 0 ? (
             <LpEmpty icon={Flag} title="No milestones yet" hint="Use Add Milestone above to create your first one." />
           ) : (
-            <div className="pb-list">
+            <div className="pb-list pb-list-scroll">
               {milestones.map((m, idx) => (
-                <MilestoneRow key={m.id} doc={doc} m={m} idx={idx} update={update} onOpen={() => setActiveMilestoneId(m.id)} onDeleteGoal={onDeleteGoal} />
+                <MilestoneRow key={m.id} doc={doc} m={m} idx={idx} update={update} onOpen={() => setActiveMilestoneId(m.id)} onDeleteGoal={onDeleteGoal} onComment={() => openComments('milestone', m.id)} />
               ))}
             </div>
           )}
@@ -134,9 +139,10 @@ export default function GoalsView({
         const overdue = activeMilestone.timingDate && activeMilestone.timingDate < today && pct < 100;
         return (
           <>
-            <section className="pb-card pb-context" data-milestone-id={activeMilestone.id}>
+            <section className="pb-card pb-context" data-milestone-id={activeMilestone.id} {...longPressProps(() => openComments('milestone', activeMilestone.id))}>
               <div className="pb-context-top">
                 <span className="pb-label"><Flag size={11} /> Milestone {pad2(mIndex)}</span>
+                <LpCommentButton count={commentsOf(activeMilestone).length} label={activeMilestone.title} onClick={() => openComments('milestone', activeMilestone.id)} />
                 {activeMilestone.timingDate && (
                   <span className={`pb-chip${overdue ? ' is-alert' : ''}`}><CalendarDays size={11} /> {overdue ? 'Overdue · ' : ''}{fmtDate(activeMilestone.timingDate)}</span>
                 )}
@@ -157,7 +163,7 @@ export default function GoalsView({
               {milestoneGoals.length === 0 ? (
                 <LpEmpty icon={Target} title="No goals yet" hint="Use Add Goal above to add a goal inside this milestone." />
               ) : (
-                <div className="pb-list">
+                <div className="pb-list pb-list-scroll is-goals">
                   {milestoneGoals.map((g, idx) => (
                     <GoalRow
                       key={g.id}
@@ -183,6 +189,7 @@ export default function GoalsView({
                       isMenuOpen={openGoalMenuId === g.id}
                       onToggleMenu={() => setOpenGoalMenuId((prev) => (prev === g.id ? null : g.id))}
                       onCloseMenu={() => setOpenGoalMenuId(null)}
+                      onComment={() => openComments('goal', g.id)}
                     />
                   ))}
                 </div>
@@ -201,12 +208,13 @@ export default function GoalsView({
         const tasks = tasksOfGoal(doc, activeGoal.id);
         return (
           <>
-            <section className="pb-card pb-context" data-goal-id={activeGoal.id}>
+            <section className="pb-card pb-context" data-goal-id={activeGoal.id} {...longPressProps(() => openComments('goal', activeGoal.id))}>
               <div className="pb-context-top">
                 <span className="pb-label">
                   {mIndex ? <>Milestone {pad2(mIndex)} <span className="pb-label-sep">/</span> </> : null}
                   <Target size={11} /> Goal G{goalDisplayNumber(doc, activeGoal)}
                 </span>
+                <LpCommentButton count={commentsOf(activeGoal).length} label={activeGoal.title} onClick={() => openComments('goal', activeGoal.id)} />
                 {autoDl ? (
                   <span className={`pb-chip${overdue ? ' is-alert' : ''}`} title="Auto from tasks’ last end date"><Clock size={11} /> {fmtDate(autoDl)}</span>
                 ) : (
@@ -231,7 +239,7 @@ export default function GoalsView({
               {tasks.length === 0 ? (
                 <LpEmpty icon={Target} title="No tasks yet" hint="Use Add Task above to add the first task for this goal." />
               ) : (
-                <div className="pb-list">
+                <div className="pb-list pb-list-scroll is-tasks">
                   {tasks.map((task) => {
                     const steps = stepsOfTask(doc, task.id);
                     const done = steps.filter((s) => s.isDone).length;
@@ -253,9 +261,9 @@ export default function GoalsView({
                       setEditingTaskId(task.id);
                     };
                     return (
-                      <div key={task.id} className={`pb-task${isOpen ? ' is-open' : ''}${tPct === 100 && !(recurring && steps.length === 0) ? ' is-done' : ''}`} data-task-id={task.id}>
-                        <div className="pb-task-row">
-                          {recurring && steps.length === 0 ? (
+                      <div key={task.id} className={`pb-task${isOpen ? ' is-open' : ''}${tPct === 100 && !recurring ? ' is-done' : ''}`} data-task-id={task.id}>
+                        <div className="pb-task-row" {...longPressProps(() => openComments('task', task.id))}>
+                          {recurring ? (
                             <span className="pb-recur-mark" title="Recurring — keeps running, no checkbox" aria-hidden="true"><Repeat size={13} /></span>
                           ) : steps.length === 0 ? (
                             <input
@@ -276,7 +284,7 @@ export default function GoalsView({
                           <button type="button" className="pb-task-main" onClick={() => setActiveTaskId(isOpen ? null : task.id)} aria-expanded={isOpen}>
                             <span className="pb-task-name">{task.name}</span>
                             <span className="pb-task-meta">
-                              {recurring && steps.length === 0 ? 'Recurring' : (
+                              {recurring ? `Recurring${steps.length > 0 ? ` · ${steps.length} step${steps.length === 1 ? '' : 's'}` : ''}` : (
                                 <>
                                   {steps.length > 0 ? `${done}/${steps.length} steps` : 'No steps'}
                                   <span className="pb-dot" aria-hidden="true" />
@@ -300,6 +308,7 @@ export default function GoalsView({
                             ) : (
                               <button type="button" className="pb-chip is-dashed" onClick={openEditor}><CalendarDays size={11} /> Add date</button>
                             ))}
+                            <LpCommentButton count={commentsOf(task).length} label={task.name} onClick={() => openComments('task', task.id)} />
                             <button
                               type="button"
                               className="pb-icon is-danger"
@@ -384,7 +393,10 @@ export default function GoalsView({
                             {steps.length === 0 ? (
                               <p className="pb-empty-line">No steps yet — use <strong>Add Step</strong> above.</p>
                             ) : steps.map((s) => (
-                              <div key={s.id} className={`pb-step${s.isDone ? ' is-done' : ''}`} data-step-id={s.id}>
+                              <div key={s.id} className={`pb-step${s.isDone && !recurring ? ' is-done' : ''}`} data-step-id={s.id} {...longPressProps(() => openComments('step', s.id))}>
+                                {recurring ? (
+                                  <span className="pb-recur-mark" title="Recurring step — repeats with the task, no checkbox" aria-hidden="true"><Repeat size={12} /></span>
+                                ) : (
                                 <input
                                   type="checkbox"
                                   className="lp-step-check pb-check"
@@ -395,16 +407,18 @@ export default function GoalsView({
                                   }}
                                   title={locked && !s.isDone ? 'Locked — complete prerequisite first' : s.isDone && s.doneAt ? `Completed on ${fmtDoneAt(s.doneAt)}` : s.isDone ? 'Completed' : 'Mark done'}
                                 />
+                                )}
                                 <span className="pb-step-body">
                                   <span className="pb-step-text">{s.text}</span>
                                   {(s.isDone && s.doneAt) || task.isRecurring || s.dueDate ? (
                                     <span className="pb-step-meta">
                                       {s.dueDate && !task.isRecurring && <span className={s.dueDate < today && !s.isDone ? 'is-alert' : ''}>{fmtDate(s.dueDate)}</span>}
                                       {task.isRecurring && <span title={`Auto recurring — same as task: ${(task.recurringWeekdays || []).join(', ')}`}><Repeat size={10} /> Auto</span>}
-                                      {s.isDone && s.doneAt && <span className="is-done"><CheckCircle2 size={10} /> {fmtDoneAt(s.doneAt)}</span>}
+                                      {!recurring && s.isDone && s.doneAt && <span className="is-done"><CheckCircle2 size={10} /> {fmtDoneAt(s.doneAt)}</span>}
                                     </span>
                                   ) : null}
                                 </span>
+                                <LpCommentButton count={commentsOf(s).length} label={s.text} onClick={() => openComments('step', s.id)} />
                                 <button type="button" className="pb-icon is-danger" onClick={() => update((d) => deleteStep(d, s.id))} aria-label={`Delete step ${s.text}`}>
                                   <Trash2 size={13} />
                                 </button>
@@ -421,13 +435,29 @@ export default function GoalsView({
           </>
         );
       })()}
+
+      {commentTarget && (() => {
+        const { kind, id } = commentTarget;
+        const entity = byId(doc[COMMENT_COLLECTION[kind]] || [], id);
+        if (!entity) return null;
+        return (
+          <LpComments
+            kindLabel={{ milestone: 'Milestone', goal: 'Goal', task: 'Task', step: 'Step' }[kind]}
+            name={entity.title || entity.name || entity.text || ''}
+            comments={commentsOf(entity)}
+            onAdd={(text) => update((d) => addComment(d, kind, id, text))}
+            onDelete={(cid) => update((d) => deleteComment(d, kind, id, cid))}
+            onClose={() => setCommentTarget(null)}
+          />
+        );
+      })()}
     </div>
   );
 }
 
 // ── Milestone row (list) — open, inline deadline edit, delete ────────────────
 
-function MilestoneRow({ doc, m, idx, update, onOpen, onDeleteGoal }) {
+function MilestoneRow({ doc, m, idx, update, onOpen, onDeleteGoal, onComment }) {
   const [editingDeadline, setEditingDeadline] = useState(false);
   const [draft, setDraft] = useState(m.timingDate || '');
   const pct = milestoneProgress(doc, m.id);
@@ -439,7 +469,7 @@ function MilestoneRow({ doc, m, idx, update, onOpen, onDeleteGoal }) {
   };
 
   return (
-    <div className={`pb-mile${pct === 100 ? ' is-done' : ''}`} data-milestone-id={m.id}>
+    <div className={`pb-mile${pct === 100 ? ' is-done' : ''}`} data-milestone-id={m.id} {...longPressProps(onComment)}>
       <div
         className="pb-mile-main"
         role="button"
@@ -481,6 +511,7 @@ function MilestoneRow({ doc, m, idx, update, onOpen, onDeleteGoal }) {
             <button type="button" className="pb-icon" onClick={() => setEditingDeadline(false)} aria-label="Cancel"><X size={14} /></button>
           </span>
         )}
+        <LpCommentButton count={commentsOf(m).length} label={m.title} onClick={onComment} />
         <button type="button" className="pb-icon is-danger" onClick={(e) => { e.stopPropagation(); onDeleteGoal(m); }} title={`Delete milestone ${m.title}`} aria-label={`Delete milestone ${m.title}`}>
           <Trash2 size={14} />
         </button>
@@ -497,7 +528,7 @@ function MilestoneRow({ doc, m, idx, update, onOpen, onDeleteGoal }) {
 function GoalRow({
   doc, update, goal, onEditGoal, onDeleteGoal,
   onMove, canMoveUp, canMoveDown, onOpen,
-  isMenuOpen = false, onToggleMenu, onCloseMenu,
+  isMenuOpen = false, onToggleMenu, onCloseMenu, onComment,
 }) {
   const pct = goalProgress(doc, goal.id);
   const locked = goalLocked(doc, goal.id);
@@ -512,6 +543,8 @@ function GoalRow({
 
   useEffect(() => {
     if (!isMenuOpen) return undefined;
+    // The goals list scrolls inside its card; keep the dropdown visible.
+    menuRef.current?.scrollIntoView({ block: 'nearest' });
     const handleDown = (e) => {
       if (menuRef.current?.contains(e.target) || btnRef.current?.contains(e.target)) return;
       onCloseMenu?.();
@@ -541,7 +574,7 @@ function GoalRow({
   };
 
   return (
-    <div className={`pb-goal${isMenuOpen ? ' is-menu-open' : ''}${pct === 100 ? ' is-done' : ''}${locked && pct !== 100 ? ' is-locked' : ''}`} data-goal-id={goal.id}>
+    <div className={`pb-goal${isMenuOpen ? ' is-menu-open' : ''}${pct === 100 ? ' is-done' : ''}${locked && pct !== 100 ? ' is-locked' : ''}`} data-goal-id={goal.id} {...longPressProps(onComment)}>
       <div className="pb-goal-row">
         <input
           type="checkbox"
@@ -587,6 +620,7 @@ function GoalRow({
               <button type="button" className="pb-icon is-sm" disabled={!canMoveDown} onClick={() => onMove(goal.id, 'down')} aria-label="Move goal down"><ArrowDown size={12} /></button>
             </span>
           )}
+          <LpCommentButton count={commentsOf(goal).length} label={goal.title} onClick={onComment} />
           <span className="pb-menu-anchor">
             <button ref={btnRef} type="button" className="pb-icon" onClick={(e) => { e.stopPropagation(); onToggleMenu?.(); }} aria-label={`Options for ${goal.title}`} aria-haspopup="true" aria-expanded={isMenuOpen}>
               <MoreHorizontal size={16} />

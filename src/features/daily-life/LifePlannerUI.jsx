@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Target, Flag, CalendarDays, LayoutDashboard, BookOpen, Network, CalendarRange, Sparkles, X } from 'lucide-react';
+import { Target, Flag, CalendarDays, LayoutDashboard, BookOpen, Network, CalendarRange, Sparkles, X, MessageSquare, Trash2 } from 'lucide-react';
 
 // ── Date input — always shows dd/mm/yy, stores ISO (yyyy-mm-dd) ──────────────
 
@@ -246,4 +246,90 @@ export function LpConfirm({ title, message, confirmLabel = 'Delete', onConfirm, 
 
 export function useConfirmState() {
   return useState(null); // { title, message, confirmLabel, onConfirm }
+}
+
+// ── Comments ─────────────────────────────────────────────────────────────────
+// Desktop: a small comment button on each row. Touch: long-press the row.
+
+export function LpCommentButton({ count = 0, label, onClick }) {
+  return (
+    <button
+      type="button"
+      className={`pb-icon pb-comment-btn${count ? ' has-count' : ''}`}
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      title={count ? `${count} comment${count === 1 ? '' : 's'}` : 'Add comment'}
+      aria-label={`Comments for ${label}${count ? ` (${count})` : ''}`}
+    >
+      <MessageSquare size={13} />
+      {count > 0 && <span className="pb-comment-count">{count}</span>}
+    </button>
+  );
+}
+
+function fmtCommentTime(iso) {
+  try {
+    return new Date(iso).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true });
+  } catch { return ''; }
+}
+
+export function LpComments({ kindLabel, name, comments, onAdd, onDelete, onClose }) {
+  const [text, setText] = useState('');
+  const listRef = useRef(null);
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  useEffect(() => {
+    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
+  }, [comments.length]);
+
+  const submit = (e) => {
+    e.preventDefault();
+    if (!text.trim()) return;
+    onAdd(text);
+    setText('');
+  };
+
+  return (
+    <LpModal title="Comments" onClose={onClose}>
+      <div className="lp-cm-target">
+        <span className="lp-badge lp-badge-muted">{kindLabel}</span>
+        <span className="lp-cm-name" title={name}>{name}</span>
+      </div>
+      {comments.length === 0 ? (
+        <p className="lp-cm-empty">No comments yet.</p>
+      ) : (
+        <ul className="lp-cm-list" ref={listRef}>
+          {comments.map((c) => (
+            <li key={c.id} className="lp-cm-item">
+              <div className="lp-cm-body">
+                <p className="lp-cm-text">{c.text}</p>
+                <span className="lp-cm-time">{fmtCommentTime(c.createdAt)}</span>
+              </div>
+              <button type="button" className="pb-icon is-danger" onClick={() => onDelete(c.id)} aria-label="Delete comment" title="Delete comment">
+                <Trash2 size={13} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form className="lp-cm-form" onSubmit={submit}>
+        <textarea
+          className="input lp-cm-input"
+          rows={2}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) submit(e); }}
+          placeholder="Write a comment…"
+          aria-label="New comment"
+          autoFocus
+        />
+        <div className="lp-modal-actions">
+          <button type="submit" className="btn btn-primary btn-sm" disabled={!text.trim()}>Add</button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>
+        </div>
+      </form>
+    </LpModal>
+  );
 }
