@@ -208,6 +208,20 @@ function drawCalendar(ctx, P, C) {
   });
 }
 
+/**
+ * Height of a one-row week sheet: header + the tallest day's tasks
+ * (never shorter than `minBody`, never taller than `maxH`).
+ */
+function weekSheetHeight(ctx, P, cells, w, headH, S, minBody, maxH) {
+  const maxW = w / 7 - S.pad * 2;
+  const bodies = cells.filter(Boolean).map((c) => {
+    if (c.before || !c.tasks.length) return 0;
+    const ms = c.tasks.map((t) => measureTask(ctx, P, t, maxW, S));
+    return S.pad * 2 + ms.reduce((s, m) => s + m.h, 0) + (ms.length - 1) * S.gap + 2;
+  });
+  return Math.min(maxH, headH + Math.max(minBody, ...bodies));
+}
+
 /** Day list (List layout): measure every row at width `w`. */
 function layoutDayList(ctx, P, rows, w, S) {
   const bodyW = w - S.dateW - S.pad * 2;
@@ -350,8 +364,8 @@ function renderWallpaper(o) {
     const S = { head: 24, headSub: 18, num: 30, code: 17, title: 17, titleLines: 3, sub: 14, showSub: false, pad: 10, gap: 6 };
     plan = { h, draw: (top) => drawCalendar(ctx, P, { x: mx, y: top, w: contentW, h, cols: 7, cells: o.cells, headH, lw: 2, radius: 22, S }) };
   } else {
-    const h = Math.min(avail, 980);
     const S = { head: 24, headSub: 18, num: 30, code: 19, title: 19, titleLines: 6, sub: 15, showSub: true, pad: 10, gap: 12 };
+    const h = weekSheetHeight(ctx, P, o.cells, contentW, 84, S, 160, avail);
     plan = { h, draw: (top) => drawCalendar(ctx, P, { x: mx, y: top, w: contentW, h, cols: 7, cells: o.cells, headH: 84, lw: 2, radius: 22, S }) };
   }
 
@@ -440,7 +454,8 @@ function renderSheet(o) {
     drawCalendar(ctx, P, { x: mx, y: top, w, h: bottom - top, cols: 7, cells: o.cells, headH: 30, lw: 1, radius: 10, S });
   } else {
     const S = { head: 10, headSub: 8.5, num: 12, code: 9.5, title: 9.5, titleLines: 4, sub: 8, showSub: true, pad: 8, gap: 8 };
-    drawCalendar(ctx, P, { x: mx, y: top, w, h: bottom - top, cols: 7, cells: o.cells, headH: 40, lw: 1, radius: 10, S });
+    const h = weekSheetHeight(ctx, P, o.cells, w, 40, S, 64, bottom - top);
+    drawCalendar(ctx, P, { x: mx, y: top, w, h, cols: 7, cells: o.cells, headH: 40, lw: 1, radius: 10, S });
   }
 
   ctx.textAlign = 'center';
