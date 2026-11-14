@@ -5296,3 +5296,459 @@ tr.day-row-active {
   }
   .exam-widget .schedule-icon-tile { width: 36px; height: 36px; min-width: 36px; }
 }
+
+/* ─── Routine Edit Modal — flat checked switch (no gradient) ─── */
+.biweekly-label input[type="checkbox"]:checked {
+  background: color-mix(in srgb, var(--accent-blue) 20%, var(--bg-input));
+}
+
+/* ─── Routine Edit Modal — phone, compact & minimal (skill-style §7) ─── */
+@media (max-width: 480px) {
+  .routine-edit-modal {
+    width: calc(100vw - 24px);
+    max-width: 400px;
+    max-height: calc(100dvh - 24px);
+    padding: 10px 12px;
+    border-radius: 14px;
+  }
+
+  .routine-edit-header {
+    align-items: center;
+    padding-bottom: 8px;
+  }
+  .routine-edit-header h3 {
+    font-size: 13px;
+    margin: 0;
+  }
+  .routine-edit-header .btn-icon {
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+    min-height: 26px;
+    padding: 0;
+    color: var(--text-secondary);
+  }
+  .routine-edit-header .btn-icon svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .routine-edit-body {
+    padding: 8px 1px;
+    overscroll-behavior: contain;
+  }
+
+  .routine-edit-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .routine-edit-grid label:not(.biweekly-label) {
+    gap: 3px;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-tertiary);
+  }
+
+  /* Fields: small, quiet; drop the search icon */
+  .routine-edit-grid .course-autocomplete-input-wrapper > svg {
+    display: none;
+  }
+  .routine-edit-modal .routine-edit-grid .input {
+    height: 32px;
+    min-height: 32px;
+    padding-left: 10px !important;
+    font-size: 12px !important;
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+    text-overflow: ellipsis;
+    text-transform: none;
+    letter-spacing: normal;
+  }
+  .routine-edit-grid .course-autocomplete-input-wrapper button {
+    min-width: 0;
+    min-height: 0;
+    right: 4px !important;
+  }
+  .routine-edit-grid .course-autocomplete-input-wrapper button svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  /* Theory/Lab + Part A/B: slim full-width segmented rows */
+  .routine-edit-type-row .type-toggle,
+  .week-split-box {
+    width: 100%;
+    border-radius: var(--radius-sm);
+  }
+  .type-toggle-btn {
+    height: 28px;
+    min-height: 28px;
+    padding: 0 10px;
+    font-size: 11.5px;
+  }
+  .week-split-box {
+    flex-direction: row;
+  }
+  .week-split-option {
+    flex: 1;
+    padding: 6px 10px;
+    font-size: 11.5px;
+  }
+  .week-split-divider {
+    width: 1px;
+    height: auto;
+    margin: 5px 0;
+  }
+
+  /* Switch row */
+  .routine-edit-type-row:has(.biweekly-label) {
+    justify-content: flex-start;
+  }
+  .biweekly-label {
+    gap: 8px;
+  }
+  .biweekly-label span {
+    font-size: 11.5px;
+  }
+  .biweekly-label input[type="checkbox"] {
+    flex: none;
+    width: 30px;
+    height: 17px;
+    min-width: 30px;
+    min-height: 17px;
+  }
+  .biweekly-label input[type="checkbox"]::after {
+    top: 2px;
+    left: 2px;
+    width: 11px;
+    height: 11px;
+  }
+  .biweekly-label input[type="checkbox"]:checked::after {
+    transform: translateX(13px);
+  }
+
+  /* Actions: one compact row — Delete left, Cancel · Save right */
+  .routine-edit-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    padding-top: 8px;
+    background: transparent;
+  }
+  .routine-edit-actions .routine-edit-spacer {
+    display: block;
+    flex: 1 1 auto;
+  }
+  .routine-edit-actions .btn {
+    flex: 0 0 auto;
+    height: 28px;
+    min-height: 28px;
+    min-width: 0;
+    padding: 0 12px;
+    font-size: 11.5px;
+    gap: 5px;
+    white-space: nowrap;
+  }
+  .routine-edit-actions .btn svg {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+/* ─── Load Routine overlay (skill-style §7 — flat, compact) ─── */
+.modal.lr-modal {
+  width: min(460px, 100%);
+  max-width: 460px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.lr-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.lr-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.lr-title svg { color: var(--accent-amber); }
+.lr-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.lr-close:hover { color: var(--text-primary); background: var(--bg-tertiary); }
+
+.lr-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.lr-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: var(--radius-full);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.lr-badge strong { color: var(--text-primary); font-weight: 700; }
+.lr-badge.is-accent { background: var(--accent-amber-glow); color: var(--accent-amber); }
+
+/* Search on its own row; dept + semester share the next row */
+.lr-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
+}
+.lr-field {
+  position: relative;
+  min-width: 0;
+  margin: 0;
+}
+.lr-field-search { grid-column: 1 / -1; }
+.lr-field > svg {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+.lr-modal .lr-field .input {
+  width: 100%;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 10px 0 30px;
+  font-size: 12.5px;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: none;
+  text-overflow: ellipsis;
+}
+.lr-modal .lr-field select.input { padding-right: 24px; }
+.lr-modal .lr-field .input:focus {
+  border-color: var(--accent-amber);
+  box-shadow: none;
+  outline: none;
+}
+
+.lr-list-head {
+  padding: 4px 0 8px;
+  border-bottom: 1px solid var(--border-primary);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.lr-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.lr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.lr-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 9px 11px;
+  text-align: left;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: inherit;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+.lr-row:hover { border-color: color-mix(in srgb, var(--accent-amber) 25%, var(--border-primary)); }
+.lr-row.is-selected {
+  background: var(--bg-card);
+  border-color: var(--accent-amber);
+}
+.lr-radio {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-focus, var(--text-tertiary));
+  color: var(--bg-card);
+}
+.lr-row.is-selected .lr-radio {
+  background: var(--accent-amber);
+  border-color: var(--accent-amber);
+}
+.lr-row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.lr-row-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.lr-row-name-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.lr-mine {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.lr-row-meta {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+.lr-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 12px;
+  border: 1px dashed var(--border-primary);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-tertiary) 45%, transparent);
+  text-align: center;
+}
+.lr-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+  color: var(--accent-amber);
+}
+.lr-empty-hint {
+  margin: 0;
+  max-width: 260px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-wrap: balance;
+}
+.lr-error {
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--accent-rose);
+  color: var(--accent-rose);
+  font-size: 12px;
+}
+
+.lr-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-primary);
+}
+.lr-actions .btn {
+  flex: 0 0 auto;
+  height: 30px;
+  min-height: 30px;
+  min-width: 0;
+  padding: 0 13px;
+  font-size: 12px;
+  gap: 6px;
+  white-space: nowrap;
+}
+.lr-actions .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Phone (§7: ≤480px) */
+@media (max-width: 480px) {
+  .modal-overlay.lr-overlay { padding: 10px; }
+  .modal.lr-modal {
+    width: 100%;
+    max-height: calc(100dvh - 20px);
+    padding: 12px;
+    gap: 8px;
+    border-radius: 14px;
+  }
+  .lr-title { font-size: 13px; }
+  .lr-close { width: 26px; height: 26px; min-width: 26px; min-height: 26px; }
+  .lr-badge { height: 20px; font-size: 10.5px; padding: 0 8px; }
+  .lr-modal .lr-field .input {
+    height: 32px;
+    min-height: 32px;
+    font-size: 12px !important;
+    padding-left: 28px;
+  }
+  .lr-field > svg { left: 9px; width: 12px; height: 12px; }
+  .lr-row { padding: 8px 10px; gap: 8px; }
+  .lr-row-name-text { font-size: 12.5px; }
+  .lr-row-meta { font-size: 10.5px; }
+  .lr-empty { padding: 10px; }
+  .lr-empty-icon { width: 24px; height: 24px; }
+  .lr-actions .btn { height: 28px; min-height: 28px; font-size: 11.5px; padding: 0 12px; }
+}

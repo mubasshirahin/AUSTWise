@@ -276,6 +276,31 @@ export default function WeeklyPlanner() {
     return { startIdx, colSpan };
   };
 
+  // ── On first load, scroll the (horizontally scrolling) grid to the earliest
+  // class start so phone users don't have to swipe past empty morning slots.
+  // Runs once per mount; with no classes the grid stays where it is.
+  const didAutoScrollRef = useRef(false);
+  useEffect(() => {
+    if (didAutoScrollRef.current || isLoading) return;
+    const wrap = tableWrapRef.current;
+    if (!wrap) return;
+    let earliest = Infinity;
+    weekDays.forEach((day) => {
+      (routine[day] || []).forEach((cls) => {
+        if (cls?.time) earliest = Math.min(earliest, getSlotDetails(cls.time).startIdx);
+      });
+    });
+    if (!Number.isFinite(earliest)) return;
+    didAutoScrollRef.current = true;
+    if (earliest <= 0 || wrap.scrollWidth <= wrap.clientWidth) return;
+    const heads = wrap.querySelectorAll('thead th');
+    const target = heads[earliest + 1]; // +1 skips the "Time/Day" column
+    if (!target) return;
+    const stickyW = heads[0]?.offsetWidth || 0;
+    wrap.scrollLeft = Math.max(0, target.offsetLeft - stickyW);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, routine, weekDays]);
+
   const openAddModal = (day = weekDays[0] || 'Sunday', slotIdx = 0) => {
     const start = slotBoundaries[slotIdx] || '08:00';
     const end = slotBoundaries[slotIdx + 1] || '08:50';
@@ -530,190 +555,28 @@ export default function WeeklyPlanner() {
 
   const deptOptions = [...new Set(sharedRoutines.map(r => r.department).filter(Boolean))].sort();
 
-  const downloadSchedulePDF = async () => {
-    const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
-      import('html2canvas-pro'), import('jspdf')
-    ]);
-    const tableWrap = document.querySelector('.weekly-table-wrap');
-    if (!tableWrap) return;
-
-    const root = document.documentElement;
-    const cs = (name) => getComputedStyle(root).getPropertyValue(name).trim();
-    const bg = cs('--bg-primary');
-    const textPri = cs('--text-primary');
-    const textSec = cs('--text-secondary');
-    const textTer = cs('--text-tertiary');
-    const logoUrl = brandMark;
-
-    const container = document.createElement('div');
-    container.style.cssText = `
-      position: fixed; left: -9999px; top: 0; width: fit-content; max-width: 1200px;
-      background: ${bg};
-      font-family: system-ui, -apple-system, sans-serif;
-      padding-bottom: 10px;
-    `;
-
-    // ─── Brand Header ───
-    const ord = (n) => n + ({1:'st',2:'nd',3:'rd'}[n]||'th');
-    const fmtSem = (s) => {
-      const m = (s||'').match(/Year\s*(\d+)\s*-\s*Semester\s*(\d+)/i);
-      return m ? `${ord(+m[1])} Year, ${+m[2]}${['th','st','nd','rd'][+m[2]]||'th'} Sem` : s;
-    };
-    const semStr = user?.yearSemester || user?.semester || '';
-    const deptStr = user?.department || '';
-
-    const brandBar = document.createElement('div');
-    brandBar.style.cssText = `
-      padding: 4px 8px;
-    `;
-    brandBar.innerHTML = `
-      <div style="display: flex; align-items: center; justify-content: space-between;">
-          <div style="display: flex; align-items: center; gap: 6px;">
-          <img src="${logoUrl}" alt="AUSTWise" style="width: 28px; height: 28px; object-fit: contain; flex-shrink: 0;" />
-          <div style="display: flex; flex-direction: column; justify-content: center; margin-top: -14px;">
-            <div style="font-size: 16px; font-weight: 800; color: ${textPri}; letter-spacing: -0.01em; line-height: 1.1;">
-              AUSTWise
-            </div>
-            <div style="font-size: 8px; color: ${textTer}; letter-spacing: 0.06em; margin-top: 0; text-transform: uppercase;">
-              Your Academic Companion
-            </div>
-          </div>
-        </div>
-        ${(deptStr || semStr) ? `<div style="font-size: 12px; color: ${textSec}; font-weight: 600; text-align: center; line-height: 1.5;">
-          ${deptStr ? `<div>${deptStr}</div>` : ''}
-          ${semStr ? `<div>${fmtSem(semStr)}</div>` : ''}
-        </div>` : ''}
-        <div style="text-align: right;">
-          <div style="font-size: 8px; color: ${textTer}; text-transform: uppercase; letter-spacing: 0.06em;">Generated</div>
-          <div style="font-size: 11px; color: ${textPri}; font-weight: 700; margin-top: 1px;">
-            ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-          </div>
-        </div>
-      </div>
-    `;
-    container.appendChild(brandBar);
-
-    // ─── Cloned Table ───
-    const clone = tableWrap.cloneNode(true);
-    clone.style.cssText = `overflow: visible; border-radius: 8px; padding: 0;`;
-    clone.style.margin = '6px 8px 0';
-    container.appendChild(clone);
-
-    document.body.appendChild(container);
-
+  // ── Export: drawn from routine data (see routineExport.js) ──
+  const [exporting, setExporting] = useState(null); // 'pdf' | 'jpg' | null
+  const runExport = async (kind) => {
+    if (exporting) return;
+    setExporting(kind);
     try {
-      const canvas = await html2canvas(container, {
-        scale: 2.5,
-        useCORS: true,
-        backgroundColor: bg || '#ffffff',
-        logging: false,
-        width: container.scrollWidth,
-        height: container.scrollHeight,
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      const maxW = 290;
-      const imgW = maxW;
-      const imgH = (canvas.height * imgW) / canvas.width;
-      const pageW = imgW + 8;
-      const pageH = imgH + 4;
-
-      const pdf = new jsPDF({ orientation: 'l', unit: 'mm', format: [pageW, pageH] });
-
-      // Fill PDF page with theme background
-      const hex = bg.replace('#', '');
-      if (hex.length >= 6) {
-        pdf.setFillColor(
-          parseInt(hex.substring(0, 2), 16),
-          parseInt(hex.substring(2, 4), 16),
-          parseInt(hex.substring(4, 6), 16)
-        );
-        pdf.rect(0, 0, pageW, pageH, 'F');
-      }
-
-      pdf.addImage(imgData, 'PNG', 4, 2, imgW, imgH);
-
-      pdf.save('AUST-Student-Helper-Schedule.pdf');
+      const { exportRoutinePDF, exportRoutineJPG } = await import('./routineExport');
+      const opts = {
+        routine,
+        weekDays,
+        getSlotDetails,
+        slotLabels: ramadanMode ? ramadanDisplays : timeSlots.map((s) => s.display),
+        meta: { dept: user?.department || '', sem: user?.yearSemester || user?.semester || '' },
+        logoUrl: brandMark,
+      };
+      await (kind === 'pdf' ? exportRoutinePDF(opts) : exportRoutineJPG(opts));
+    } catch (error) {
+      console.error('Routine export failed', error);
+      setShareMsg('Export failed — please try again.');
+      setTimeout(() => setShareMsg(null), 3000);
     } finally {
-      document.body.removeChild(container);
-    }
-  };
-
-  const downloadScheduleImage = async () => {
-    const { default: html2canvas } = await import('html2canvas-pro');
-    const tableWrap = document.querySelector('.weekly-table-wrap');
-    if (!tableWrap) return;
-
-    const root = document.documentElement;
-    const cs = (name) => getComputedStyle(root).getPropertyValue(name).trim();
-    const bg = cs('--bg-primary');
-    const logoUrl = brandMark;
-
-    const container = document.createElement('div');
-    container.style.cssText = `
-      position: fixed; left: -9999px; top: 0; width: fit-content; max-width: 1200px;
-      background: ${bg};
-      font-family: system-ui, -apple-system, sans-serif;
-      padding-bottom: 10px;
-    `;
-
-    const ord = (n) => n + ({1:'st',2:'nd',3:'rd'}[n]||'th');
-    const fmtSem = (s) => {
-      const m = (s||'').match(/Year\s*(\d+)\s*-\s*Semester\s*(\d+)/i);
-      return m ? `${ord(+m[1])} Year, ${+m[2]}${['th','st','nd','rd'][+m[2]]||'th'} Sem` : s;
-    };
-    const semStr = user?.yearSemester || user?.semester || '';
-    const deptStr = user?.department || '';
-    const textPri = cs('--text-primary');
-    const textSec = cs('--text-secondary');
-    const textTer = cs('--text-tertiary');
-
-    const brandBar = document.createElement('div');
-    brandBar.style.cssText = `padding: 4px 8px;`;
-    brandBar.innerHTML = `
-      <div style="display: flex; align-items: center; justify-content: space-between;">
-        <div style="display: flex; align-items: center; gap: 6px;">
-          <img src="${logoUrl}" alt="AUSTWise" style="width: 28px; height: 28px; object-fit: contain; flex-shrink: 0;" />
-          <div style="display: flex; flex-direction: column; justify-content: center; margin-top: -14px;">
-            <div style="font-size: 16px; font-weight: 800; color: ${textPri}; letter-spacing: -0.01em; line-height: 1.1;">AUSTWise</div>
-            <div style="font-size: 8px; color: ${textTer}; letter-spacing: 0.06em; text-transform: uppercase;">Your Academic Companion</div>
-          </div>
-        </div>
-        ${(deptStr || semStr) ? `<div style="font-size: 12px; color: ${textSec}; font-weight: 600; text-align: center; line-height: 1.5;">
-          ${deptStr ? `<div>${deptStr}</div>` : ''}
-          ${semStr ? `<div>${fmtSem(semStr)}</div>` : ''}
-        </div>` : ''}
-        <div style="text-align: right;">
-          <div style="font-size: 8px; color: ${textTer}; text-transform: uppercase; letter-spacing: 0.06em;">Generated</div>
-          <div style="font-size: 11px; color: ${textPri}; font-weight: 700; margin-top: 1px;">
-            ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-          </div>
-        </div>
-      </div>
-    `;
-    container.appendChild(brandBar);
-
-    const clone = tableWrap.cloneNode(true);
-    clone.style.cssText = `overflow: visible; border-radius: 8px; padding: 0;`;
-    clone.style.margin = '6px 8px 0';
-    container.appendChild(clone);
-
-    document.body.appendChild(container);
-
-    try {
-      const canvas = await html2canvas(container, {
-        scale: 2.5, useCORS: true, backgroundColor: bg || '#ffffff',
-        logging: false, width: container.scrollWidth, height: container.scrollHeight,
-      });
-
-      const link = document.createElement('a');
-      link.download = 'AUST-Student-Helper-Schedule.png';
-      link.href = canvas.toDataURL('image/png');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } finally {
-      document.body.removeChild(container);
+      setExporting(null);
     }
   };
 
@@ -771,11 +634,11 @@ export default function WeeklyPlanner() {
              </button>
              {showMenu && (
                <div className="export-menu routine-more-menu">
-                 <button className="export-menu-item" onClick={() => { downloadSchedulePDF(); setShowMenu(false); }}>
-                   <FileDown size={14} /> Export as PDF
+                 <button className="export-menu-item" disabled={!!exporting} onClick={() => { runExport('pdf'); setShowMenu(false); }}>
+                   {exporting === 'pdf' ? <Loader2 size={14} className="spin" /> : <FileDown size={14} />} Export as PDF
                  </button>
-                 <button className="export-menu-item" onClick={() => { downloadScheduleImage(); setShowMenu(false); }}>
-                   <ImageIcon size={14} /> Export as Image
+                 <button className="export-menu-item" disabled={!!exporting} onClick={() => { runExport('jpg'); setShowMenu(false); }}>
+                   {exporting === 'jpg' ? <Loader2 size={14} className="spin" /> : <ImageIcon size={14} />} Export as JPG
                  </button>
 
                  <div className="export-menu-sep" />
@@ -1152,130 +1015,108 @@ export default function WeeklyPlanner() {
 
       {/* Load Routine Modal */}
       {!isFaculty && showLoadModal && createPortal(
-        <div className="modal-overlay" onClick={() => setShowLoadModal(false)}>
-          <div className="modal glass-card-static" onClick={(e) => e.stopPropagation()} style={{ width: 'min(620px, 94vw)', height: 'auto', maxHeight: 'calc(100vh - clamp(64px, 14vh, 144px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', maxWidth: 'none', margin: 'auto', animation: 'none' }}>
-            <div className="flex justify-between items-center" style={{ padding: '0 0 12px', borderBottom: '1px solid var(--border-primary)', flexShrink: 0 }}>
-              <div>
-                <h3 style={{ fontSize: 'var(--fs-lg)', fontWeight: 'bold', margin: 0, color: '#fff' }}>Load Routine</h3>
-                <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                  Routines shared by CRs — select one to load
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="badge badge-purple" style={{ fontSize: '10px', padding: '4px 10px' }}>
-                  {sharedStats.shared} / {sharedStats.total} CRs shared
-                </span>
-                <button className="btn btn-icon" onClick={() => setShowLoadModal(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-tertiary)' }}>
-                  <X size={20} />
-                </button>
-              </div>
+        <div className="modal-overlay lr-overlay" onClick={() => setShowLoadModal(false)}>
+          <div className="modal lr-modal" role="dialog" aria-modal="true" aria-label="Load routine" onClick={(e) => e.stopPropagation()}>
+            <div className="lr-head">
+              <span className="lr-title"><Download size={13} /> Load Routine</span>
+              <button type="button" className="lr-close" onClick={() => setShowLoadModal(false)} aria-label="Close">
+                <X size={14} />
+              </button>
             </div>
 
-            {/* Search / filter bar */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '16px 0 14px', flexShrink: 0 }}>
-              <div className="load-filter load-filter-search">
-                <Search size={14} />
+            <div className="lr-summary">
+              <span className="lr-badge">CRs shared: <strong>{sharedStats.shared} / {sharedStats.total}</strong></span>
+              <span className="lr-badge is-accent">Showing {filteredShared.length}</span>
+            </div>
+
+            <div className="lr-filters">
+              <label className="lr-field lr-field-search">
+                <Search size={13} />
                 <input
                   className="input"
                   value={loadSearch}
                   onChange={e => setLoadSearch(e.target.value)}
-                  placeholder="Search by dept, section, lab group or CR name…"
+                  placeholder="Search dept, section, lab or CR"
+                  aria-label="Search shared routines"
                 />
-              </div>
-              <div className="load-filter-row">
-                <div className="load-filter">
-                  <Building2 size={14} />
-                  <select className="input" value={loadDept} onChange={e => handleLoadDeptChange(e.target.value)}>
-                    <option value="all">All departments</option>
-                    {deptOptions.map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                </div>
-                <div className="load-filter">
-                  <GraduationCap size={14} />
-                  <select className="input" value={loadSem} onChange={e => setLoadSem(e.target.value)}>
-                    <option value="all">All semesters</option>
-                    {sharedSems.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-              </div>
+              </label>
+              <label className="lr-field">
+                <Building2 size={13} />
+                <select className="input" value={loadDept} onChange={e => handleLoadDeptChange(e.target.value)} aria-label="Department">
+                  <option value="all">All depts</option>
+                  {deptOptions.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </label>
+              <label className="lr-field">
+                <GraduationCap size={13} />
+                <select className="input" value={loadSem} onChange={e => setLoadSem(e.target.value)} aria-label="Semester">
+                  <option value="all">All semesters</option>
+                  {sharedSems.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </label>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, margin: '6px 0 16px' }}>
+            <div className="lr-list-head">Shared by CRs</div>
+
+            <div className="lr-body">
+              {loadError && <div role="alert" className="lr-error">{loadError}</div>}
               {sharedLoading ? (
-                <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
-                  <Loader2 size={20} className="spin" style={{ margin: '0 auto 8px' }} />
-                  <p>Loading shared routines…</p>
+                <div className="lr-empty">
+                  <span className="lr-empty-icon"><Loader2 size={15} className="spin" /></span>
+                  <p className="lr-empty-hint">Loading shared routines…</p>
+                </div>
+              ) : filteredShared.length === 0 ? (
+                <div className="lr-empty">
+                  <span className="lr-empty-icon"><Share2 size={15} /></span>
+                  <p className="lr-empty-hint">
+                    {loadError ? 'The shared routine list is unavailable.' : sharedRoutines.length === 0 ? 'No CR has shared a routine yet.' : 'No routines match your search.'}
+                  </p>
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {loadError && (
-                    <div role="alert" style={{ padding: '12px', borderRadius: '8px', color: 'var(--accent-rose)', background: 'var(--accent-rose-glow)' }}>
-                      {loadError}
-                    </div>
-                  )}
-                  {filteredShared.length === 0 && (
-                    <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
-                      <p>{loadError ? 'The shared routine list is unavailable.' : sharedRoutines.length === 0 ? 'No CR has shared a routine yet.' : 'No routines match your search.'}</p>
-                    </div>
-                  )}
-                  {filteredShared.length > 0 && (
-                    <div style={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', margin: '0 0 2px' }}>
-                      Routines shared by CRs
-                    </div>
-                  )}
+                <div className="lr-list" role="radiogroup" aria-label="Shared routines">
                   {filteredShared.map(routine => {
                     const isSelected = selectedTemplate?.id === routine.id;
                     const isMine = mySlotKey === `${routine.department || ''}|${routine.yearSemester || ''}|${routine.section || ''}|${routine.labSection || ''}`;
+                    const meta = [
+                      routine.department,
+                      routine.yearSemester,
+                      routine.section && `Sec ${routine.section}`,
+                      routine.labSection && `Lab ${routine.labSection}`,
+                    ].filter(Boolean).join(' · ');
                     return (
-                      <div
+                      <button
+                        type="button"
                         key={routine.id}
+                        role="radio"
+                        aria-checked={isSelected}
+                        className={`lr-row${isSelected ? ' is-selected' : ''}`}
                         onClick={() => setSelectedTemplate(routine)}
-                        style={{
-                          padding: '12px',
-                          background: isSelected ? 'var(--accent-blue-glow)' : 'var(--bg-input)',
-                          border: `1px solid ${isSelected ? 'var(--accent-blue)' : 'var(--border-primary)'}`,
-                          borderRadius: 'var(--radius-md)',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s'
-                        }}
                       >
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              {routine.crName || 'CR'}
-                              {isMine && <span className="badge badge-emerald" style={{ fontSize: '8px', padding: '1px 4px' }}>Yours</span>}
-                            </h4>
-                            <div className="flex items-center gap-2 mt-1" style={{ flexWrap: 'wrap' }}>
-                              <span className="badge badge-blue" style={{ fontSize: '9px', padding: '1px 4px' }}>{routine.department}</span>
-                              <span className="badge badge-purple" style={{ fontSize: '9px', padding: '1px 4px' }}>{routine.yearSemester}</span>
-                              <span className="badge badge-blue" style={{ fontSize: '9px', padding: '1px 4px' }}>Sec {routine.section}</span>
-                              <span className="badge badge-purple" style={{ fontSize: '9px', padding: '1px 4px' }}>Lab {routine.labSection}</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {isSelected && (
-                              <Check size={18} style={{ color: 'var(--accent-emerald)' }} />
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                        <span className="lr-radio" aria-hidden="true">{isSelected && <Check size={10} strokeWidth={3} />}</span>
+                        <span className="lr-row-body">
+                          <span className="lr-row-name">
+                            <span className="lr-row-name-text">{routine.crName || 'CR'}</span>
+                            {isMine && <span className="lr-mine">Yours</span>}
+                          </span>
+                          <span className="lr-row-meta">{meta}</span>
+                        </span>
+                      </button>
                     );
                   })}
-
                 </div>
               )}
             </div>
 
-            <div className="flex gap-2" style={{ paddingTop: '12px', borderTop: '1px solid var(--border-primary)', flexShrink: 0 }}>
-              <button className="btn btn-secondary flex-1" onClick={() => setShowLoadModal(false)}>Cancel</button>
+            <div className="lr-actions">
               <button
-                className="btn btn-primary flex-1"
+                type="button"
+                className="btn btn-primary"
                 onClick={handleLoadTemplate}
                 disabled={!selectedTemplate || !!loadError}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: selectedTemplate ? 1 : 0.5 }}
               >
-                <Download size={16} /> Load Routine
+                <Download size={13} /> Load routine
               </button>
+              <button type="button" className="btn btn-ghost" onClick={() => setShowLoadModal(false)}>Cancel</button>
             </div>
           </div>
         </div>,
@@ -1287,7 +1128,7 @@ export default function WeeklyPlanner() {
           <form className="modal routine-edit-modal" onSubmit={saveEdit} onClick={(event) => event.stopPropagation()}>
             <div className="routine-edit-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h3 style={{ color: '#fff' }}>{editing.mode === 'add' ? 'Add Class' : 'Edit Class'}</h3>
+                <h3>{editing.mode === 'add' ? 'Add Class' : 'Edit Class'}</h3>
                 {editing.form.part && (
                   <span style={{
                     fontSize: '9px', fontWeight: 'bold',
