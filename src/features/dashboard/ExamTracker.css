@@ -287,3 +287,12 @@
     font-size: 9px;
   }
 }
+
+/* Course detail overlay: solid surface. The dark theme gives every .modal a
+   see-through glass background (--bg-glass-heavy + blur), which let the
+   Zero Hour grid show through. skill-style §7: overlays are solid. */
+.modal-overlay > .modal.exam-detail-modal {
+  background: var(--bg-secondary);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
