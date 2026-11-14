@@ -4154,6 +4154,10 @@ tr.day-row-active {
   .study-streak-widget .streak-label {
     font-size: 10px;
   }
+  /* Sit the streak chip a little lower in the hero title row */
+  .dash-hero-widgets {
+    margin-top: 20px;
+  }
 }
 
 @media (max-width: 380px) {
@@ -5263,6 +5267,334 @@ tr.day-row-active {
     white-space: normal;
   }
   .exam-widget .schedule-icon-tile { width: 36px; height: 36px; min-width: 36px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   14-Weeks View & Routine Grid — desktop mastheads follow the Zero Hour
+   house style: 1px accent border, faint 7% inner shade, no outer shadow /
+   highlight line, and the same stacked uppercase stat cells.
+   ═══════════════════════════════════════════════════════════════════ */
+@media (min-width: 641px) {
+  .week-schedule-widget .schedule-fixed-header > .schedule-masthead,
+  .week-schedule-widget .schedule-masthead {
+    column-gap: 16px;
+    padding: 18px 20px !important;
+    border: 1px solid var(--accent-amber);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(125deg, color-mix(in srgb, var(--accent-amber) 7%, transparent), transparent 55%), var(--bg-card);
+    box-shadow: none;
+  }
+  .week-schedule-widget .schedule-masthead::after { display: none; }
+  .week-schedule-widget .schedule-title-block { gap: 12px; }
+  .week-schedule-widget .schedule-icon-tile {
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+    border-radius: var(--radius-md);
+  }
+  .week-schedule-widget .schedule-icon-tile svg { width: 21px; height: 21px; filter: none; }
+  .week-schedule-widget .schedule-icon-tile:hover { transform: none; }
+  .week-schedule-widget .schedule-masthead .schedule-overline {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+  }
+  .week-schedule-widget .schedule-masthead .schedule-title {
+    font-size: 1.3rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+  .week-schedule-widget .schedule-masthead .schedule-subtitle {
+    font-size: 11.5px;
+    margin-top: 3px;
+  }
+  .week-schedule-widget .schedule-masthead .schedule-stats { gap: 0 !important; }
+  .week-schedule-widget .schedule-masthead .schedule-stat {
+    flex-direction: column-reverse;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 2px;
+    padding: 0 18px;
+    min-width: 72px;
+  }
+  .week-schedule-widget .schedule-masthead .schedule-stat + .schedule-stat {
+    border-left: 1px solid var(--border-primary);
+  }
+  .week-schedule-widget .schedule-masthead .schedule-stat:last-child { padding-right: 0; }
+  .week-schedule-widget .schedule-masthead .schedule-stat-label {
+    margin: 0;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--text-tertiary);
+  }
+  .week-schedule-widget .schedule-masthead .schedule-stat-value {
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ─── Routine Grid masthead — same house style as Zero Hour ─── */
+  .weekly-planner .schedule-masthead.weekly-masthead {
+    column-gap: 16px;
+    padding: 18px 20px !important;
+    border: 1px solid var(--accent-amber);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(125deg, color-mix(in srgb, var(--accent-amber) 7%, transparent), transparent 55%), var(--bg-card);
+    box-shadow: none;
+  }
+  .weekly-planner .weekly-masthead::after { display: none; }
+  .weekly-planner .weekly-masthead .schedule-title-block { gap: 12px; }
+  .weekly-planner .weekly-masthead .schedule-icon-tile {
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+    border-radius: var(--radius-md);
+  }
+  .weekly-planner .weekly-masthead .schedule-icon-tile svg { width: 21px; height: 21px; filter: none; }
+  .weekly-planner .weekly-masthead .schedule-icon-tile:hover { transform: none; }
+  .weekly-planner .weekly-masthead .schedule-overline {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+  }
+  .weekly-planner .weekly-masthead .schedule-title {
+    font-size: 1.3rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+  .weekly-planner .weekly-masthead .schedule-subtitle {
+    font-size: 11.5px;
+    margin-top: 3px;
+  }
+
+  /* ─── Quick Stats widgets — same house style as Zero Hour
+     (At a glance · Daily Flow · Deadlines · Notice Board; the
+     Attendance Tracker already carries it in attendance-widget.css) ─── */
+  .quick-stats-widget .schedule-masthead,
+  .routine-widget .schedule-masthead,
+  .deadline-widget .schedule-masthead,
+  .notice-widget .schedule-masthead {
+    padding: 18px 20px !important;
+    border: 1px solid var(--accent-amber);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(125deg, color-mix(in srgb, var(--accent-amber) 7%, transparent), transparent 55%), var(--bg-card);
+    box-shadow: none;
+  }
+  .quick-stats-widget .schedule-masthead::after,
+  .routine-widget .schedule-masthead::after,
+  .deadline-widget .schedule-masthead::after,
+  .notice-widget .schedule-masthead::after { display: none; }
+  .quick-stats-widget .schedule-title-block,
+  .routine-widget .schedule-title-block,
+  .deadline-widget .schedule-title-block,
+  .notice-widget .schedule-title-block { gap: 12px; }
+  .quick-stats-widget .schedule-icon-tile,
+  .routine-widget .schedule-icon-tile,
+  .deadline-widget .schedule-icon-tile,
+  .notice-widget .schedule-icon-tile {
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+    border-radius: var(--radius-md);
+  }
+  .quick-stats-widget .schedule-icon-tile svg,
+  .routine-widget .schedule-icon-tile svg,
+  .deadline-widget .schedule-icon-tile svg,
+  .notice-widget .schedule-icon-tile svg { width: 21px; height: 21px; filter: none; }
+  .quick-stats-widget .schedule-icon-tile:hover,
+  .routine-widget .schedule-icon-tile:hover,
+  .deadline-widget .schedule-icon-tile:hover,
+  .notice-widget .schedule-icon-tile:hover { transform: none; }
+  .quick-stats-widget .schedule-masthead .schedule-overline,
+  .routine-widget .schedule-masthead .schedule-overline,
+  .deadline-widget .schedule-masthead .schedule-overline,
+  .notice-widget .schedule-masthead .schedule-overline {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+  }
+  .quick-stats-widget .schedule-masthead .schedule-title,
+  .routine-widget .schedule-masthead .schedule-title,
+  .deadline-widget .schedule-masthead .schedule-title,
+  .notice-widget .schedule-masthead .schedule-title {
+    font-size: 1.3rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+  .quick-stats-widget .schedule-masthead .schedule-subtitle,
+  .routine-widget .schedule-masthead .schedule-subtitle,
+  .deadline-widget .schedule-masthead .schedule-subtitle,
+  .notice-widget .schedule-masthead .schedule-subtitle {
+    font-size: 11.5px;
+    margin-top: 3px;
+  }
+
+  /* Daily Flow's classes count sits inside the title block — same stat cell */
+  .routine-widget .schedule-title-block .schedule-stat {
+    flex-direction: column-reverse;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 2px;
+    margin: 0 0 0 auto;
+    padding: 0 0 0 18px;
+    border-left: 1px solid var(--border-primary);
+    min-width: 72px;
+  }
+  .routine-widget .schedule-title-block .schedule-stat-label {
+    margin: 0;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--text-tertiary);
+  }
+  .routine-widget .schedule-title-block .schedule-stat-value {
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Same house style on phones — compact masthead (skill-style §2). */
+@media (max-width: 640px) {
+  .quick-stats-widget .schedule-masthead,
+  .routine-widget .schedule-masthead,
+  .deadline-widget .schedule-masthead,
+  .notice-widget .schedule-masthead,
+  .weekly-planner .schedule-masthead.weekly-masthead {
+    padding: 10px 12px !important;
+    border: 1px solid var(--accent-amber);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(125deg, color-mix(in srgb, var(--accent-amber) 7%, transparent), transparent 55%), var(--bg-card);
+    box-shadow: none;
+  }
+  .quick-stats-widget .schedule-masthead::after,
+  .routine-widget .schedule-masthead::after,
+  .deadline-widget .schedule-masthead::after,
+  .notice-widget .schedule-masthead::after,
+  .weekly-planner .weekly-masthead::after { display: none; }
+  .quick-stats-widget .schedule-icon-tile,
+  .routine-widget .schedule-icon-tile,
+  .deadline-widget .schedule-icon-tile,
+  .notice-widget .schedule-icon-tile,
+  .weekly-planner .schedule-icon-tile {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    border-radius: var(--radius-sm);
+  }
+  .quick-stats-widget .schedule-icon-tile svg,
+  .routine-widget .schedule-icon-tile svg,
+  .deadline-widget .schedule-icon-tile svg,
+  .notice-widget .schedule-icon-tile svg,
+  .weekly-planner .schedule-icon-tile svg { width: 18px; height: 18px; filter: none; }
+  .quick-stats-widget .schedule-icon-tile:hover,
+  .routine-widget .schedule-icon-tile:hover,
+  .deadline-widget .schedule-icon-tile:hover,
+  .notice-widget .schedule-icon-tile:hover,
+  .weekly-planner .schedule-icon-tile:hover { transform: none; }
+  .quick-stats-widget .schedule-masthead .schedule-overline,
+  .routine-widget .schedule-masthead .schedule-overline,
+  .deadline-widget .schedule-masthead .schedule-overline,
+  .notice-widget .schedule-masthead .schedule-overline,
+  .weekly-planner .weekly-masthead .schedule-overline { font-size: 9px; }
+  .quick-stats-widget .schedule-masthead .schedule-title,
+  .routine-widget .schedule-masthead .schedule-title,
+  .deadline-widget .schedule-masthead .schedule-title,
+  .notice-widget .schedule-masthead .schedule-title,
+  .weekly-planner .weekly-masthead .schedule-title {
+    font-size: 1rem;
+    line-height: 1.2;
+    margin-top: 1px;
+  }
+  .quick-stats-widget .schedule-masthead .schedule-subtitle,
+  .routine-widget .schedule-masthead .schedule-subtitle,
+  .deadline-widget .schedule-masthead .schedule-subtitle,
+  .notice-widget .schedule-masthead .schedule-subtitle,
+  .weekly-planner .weekly-masthead .schedule-subtitle {
+    font-size: 10.5px;
+    margin-top: 1px;
+  }
+
+  /* Daily Flow: day switcher moves to its own row (14-Weeks View phone
+     pattern) so the daily counts no longer squeeze "Daily Flow" into
+     an ellipsis. */
+  .routine-widget .schedule-masthead {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-areas: "title" "nav";
+    row-gap: 0;
+  }
+  .routine-widget .schedule-masthead > .schedule-title-block {
+    grid-area: title;
+    width: 100%;
+  }
+  .routine-widget .schedule-masthead > .schedule-actions {
+    grid-area: nav;
+    display: block !important;
+    width: 100%;
+    margin: 8px 0 0 !important;
+    padding-top: 6px;
+    border-top: 1px dashed var(--border-primary);
+  }
+  .routine-widget .schedule-masthead .schedule-week-nav {
+    width: 100%;
+    justify-content: space-between;
+    margin: 0 !important;
+  }
+  .routine-widget .schedule-masthead .schedule-week-pill {
+    flex: 1 1 auto;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 0 6px !important;
+  }
+  .routine-widget .schedule-masthead .schedule-week-pill-value {
+    display: block;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Daily Flow — keep the two-row masthead but strip the dead space:
+     slimmer padding, a hairline row gap and 30px arrows. */
+  .routine-widget .schedule-masthead {
+    padding: 7px 10px !important;
+  }
+  .routine-widget .schedule-masthead > .schedule-actions {
+    margin-top: 10px !important;
+    padding-top: 4px;
+  }
+  .routine-widget .schedule-masthead .schedule-actions > div { transform: none !important; }
+  .dashboard-page .routine-widget .schedule-masthead .schedule-week-nav .schedule-nav-btn {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    min-height: 30px !important;
+    padding: 0 !important;
+  }
+  .dashboard-page .routine-widget .schedule-masthead .schedule-week-nav .schedule-nav-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+  .dashboard-page .routine-widget .schedule-masthead .schedule-week-nav .schedule-week-pill {
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 0 6px !important;
+  }
 }
 
 /* ─── Routine Edit Modal — flat checked switch (no gradient) ─── */
