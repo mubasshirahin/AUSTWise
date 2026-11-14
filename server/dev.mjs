@@ -4574,44 +4574,66 @@ async function handleApiRequest(req, res) {
         }
         noticePostLastByUser.set(auth.id, Date.now());
       }
-      // Server-derived scope validation: prevent spoofing (SR cannot post with labSection, CR cannot spoof section).
+      // CR/SR notices: the client sends the whole list, but a CR/SR may only
+      // create, edit or delete their OWN notices. Everyone else's notices are
+      // kept exactly as stored — previously every notice in the list was
+      // re-stamped with the saver's name/role/scope, so an SR posting turned a
+      // CR's notice into the SR's (and moved it to the SR's section).
       if (key === 'aust-cr-sr-notices' && Array.isArray(body.value)) {
-        try {
-          const dbUser = await getUserById(auth.id);
-          if (!dbUser) { sendJson(res, 404, { success: false, error: 'User not found.' }); return; }
-          for (const n of body.value) {
-            if (!n || typeof n !== 'object') continue;
-            const s = n.scope || {};
-            // Normalize client sent scope, then overwrite with server truth where role dictates
-            if (auth.role === 'cr') {
-              if (!dbUser.labSection) { sendJson(res, 400, { success: false, error: 'CR profile missing labSection — complete profile first.' }); return; }
-              if (s.labSection && s.labSection !== dbUser.labSection) { sendJson(res, 400, { success: false, error: 'Scope labSection must match your profile.' }); return; }
-              if (s.section && s.section !== dbUser.section) { /* allow but server will correct */ }
-              // Enforce server truth
-              n.scope = { department: dbUser.department, semester: String(dbUser.semester), labSection: dbUser.labSection };
-              n.postedBy = auth.id;
-              n.postedByName = dbUser.name || n.postedByName;
-              n.postedByRole = auth.role;
-            } else if (auth.role === 'sr') {
-              if (!dbUser.section) { sendJson(res, 400, { success: false, error: 'SR profile missing section — complete profile first.' }); return; }
-              if (s.section && s.section !== dbUser.section) { sendJson(res, 400, { success: false, error: 'Scope section must match your profile.' }); return; }
-              n.scope = { department: dbUser.department, semester: String(dbUser.semester), section: dbUser.section };
-              n.postedBy = auth.id;
-              n.postedByName = dbUser.name || n.postedByName;
-              n.postedByRole = auth.role;
-            } else if (['admin','moderator'].includes(auth.role)) {
-              // Admin can manage but scope must be present and non-empty
-              if (!s.department || (!s.labSection && !s.section)) {
-                // Allow global cleanup — no strict check
-              }
-            }
-            // Length guards (prevent 15MB store bloat)
-            if (typeof n.title === 'string' && n.title.length > 80) n.title = n.title.slice(0,80);
-            if (typeof n.content === 'string' && n.content.length > 5000) n.content = n.content.slice(0,5000);
+        const clampText = (n) => ({
+          ...n,
+          title: typeof n.title === 'string' ? n.title.slice(0, 80) : n.title,
+          content: typeof n.content === 'string' ? n.content.slice(0, 5000) : n.content,
+        });
+        if (['admin', 'moderator'].includes(auth.role)) {
+          // Managers may curate the whole list; only the length guards apply.
+          body.value = body.value.filter((n) => n && typeof n === 'object').map(clampText);
+        } else {
+          let dbUser = null;
+          try { dbUser = await getUserById(auth.id); } catch { /* handled below */ }
+          if (!dbUser) { sendJson(res, 503, { success: false, error: 'Could not verify your profile — try again.' }); return; }
+          let ownScope;
+          if (auth.role === 'cr') {
+            if (!dbUser.labSection) { sendJson(res, 400, { success: false, error: 'CR profile missing labSection — complete profile first.' }); return; }
+            ownScope = { department: dbUser.department, semester: String(dbUser.semester), labSection: dbUser.labSection };
+          } else {
+            if (!dbUser.section) { sendJson(res, 400, { success: false, error: 'SR profile missing section — complete profile first.' }); return; }
+            ownScope = { department: dbUser.department, semester: String(dbUser.semester), section: dbUser.section };
           }
-        } catch (e) {
-          if (e.message && e.message.includes('Scope')) throw e;
-          // On DB miss, fall through to store raw (offline fallback will validate client-side)
+
+          const stored = await getSharedStoreValue(key, []);
+          const existing = Array.isArray(stored) ? stored.filter((n) => n && typeof n === 'object') : [];
+          const existingById = new Map(existing.map((n) => [String(n.id), n]));
+
+          const ownNotices = [];
+          for (const n of body.value) {
+            if (!n || typeof n !== 'object' || !n.id) continue;
+            const id = String(n.id).slice(0, 100);
+            const prior = existingById.get(id);
+            // Someone else's notice: ignore whatever the client sent for it.
+            if (prior && prior.postedBy !== auth.id) continue;
+            const s = n.scope || {};
+            if (auth.role === 'cr' && s.labSection && s.labSection !== dbUser.labSection) {
+              sendJson(res, 400, { success: false, error: 'Scope labSection must match your profile.' }); return;
+            }
+            if (auth.role === 'sr' && s.section && s.section !== dbUser.section) {
+              sendJson(res, 400, { success: false, error: 'Scope section must match your profile.' }); return;
+            }
+            ownNotices.push(clampText({
+              ...n,
+              id,
+              scope: ownScope,
+              postedBy: auth.id,
+              postedByName: dbUser.name || n.postedByName || '',
+              postedByRole: auth.role,
+              createdAt: prior?.createdAt || n.createdAt || new Date().toISOString(),
+            }));
+          }
+          // Keep every other author's notice untouched — including ones missing
+          // from this client's (possibly stale) list. Own notices left out of
+          // the list are the ones the author deleted.
+          const othersNotices = existing.filter((n) => n.postedBy !== auth.id);
+          body.value = [...ownNotices, ...othersNotices];
         }
       }
       // The semester start date is a single admin-controlled value: everyone
