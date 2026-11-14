@@ -3,13 +3,19 @@
  * Routine Grid export (routineExport.js): drawn straight onto a <canvas> from
  * data, in the current theme's colours, flat surfaces only.
  *
- *  • JPG → portrait phone wallpaper (1170×2532), clock / shortcut areas kept
- *          clear. Week & Day: one row per day. Month: 7-column calendar.
- *  • PDF → A4 landscape poster (300 dpi). Week: 7 columns. Month: calendar.
- *          Day: that day's tasks as a list.
+ * The export follows the layout chosen in the widget:
+ *  • Box  → Week: 7-column sheet · Month: calendar
+ *  • List → one row per day (a month list splits into two columns)
+ *  • Day view is always a list.
+ *
+ *  • JPG → portrait phone wallpaper (1170×2532), clock / shortcut areas kept clear.
+ *  • PDF → A4 landscape poster (300 dpi).
+ *
+ * Each task reads "CODE  title" on its first line (e.g. "CSE3101 quiz 1"),
+ * then syllabus · batch · time in small text when there is room.
  *
  * opts = {
- *   viewMode: 'daily' | 'weekly' | 'monthly',
+ *   viewMode: 'daily' | 'weekly' | 'monthly', layout: 'box' | 'list',
  *   cells: [{ date, tasks, today, before } | null],  // Fri-start, null = pad
  *   periodLabel, filterLabel, meta: { dept, sem }, logoUrl,
  * }
@@ -21,45 +27,76 @@ import {
 
 const WEEKDAYS = ['FRI', 'SAT', 'SUN', 'MON', 'TUE', 'WED', 'THU'];
 
-const subOf = (t) => [t.batchGroup, t.time].filter(Boolean).join(' · ');
+// Words of `text` that fit in `w` on the current font → [first, rest].
+function splitFirstLine(ctx, text, w) {
+  const words = String(text || '').split(/\s+/).filter(Boolean);
+  let first = '';
+  let i = 0;
+  for (; i < words.length; i++) {
+    const next = first ? `${first} ${words[i]}` : words[i];
+    if (ctx.measureText(next).width > w) break;
+    first = next;
+  }
+  return [first, words.slice(i).join(' ')];
+}
 
-// Measure one task block: code line (code + batch/time) then wrapped title.
+/**
+ * Measure one task: "CODE title" on line 1 (title continues on up to
+ * S.titleLines - 1 more lines), then a small meta line
+ * (syllabus · batch · time) when S.showSub.
+ */
 function measureTask(ctx, P, t, maxW, S) {
   const code = t.courseCode || '';
-  setFont(ctx, P, S.title, 500);
-  const titleRows = S.titleLines > 0 ? wrap(ctx, t.title || 'Task', maxW, S.titleLines) : [];
-  const hasHead = !!code || (S.titleLines === 0);
-  const h = (hasHead ? S.code * 1.25 : 0) + titleRows.length * S.title * 1.25;
-  return { t, code, titleRows, hasHead, h };
+  const title = t.title || (code ? '' : 'Task');
+  setFont(ctx, P, S.code, 800);
+  const codeW = code ? ctx.measureText(code).width + S.code * 0.45 : 0;
+  setFont(ctx, P, S.code, 600);
+  const room = maxW - codeW;
+  const maxLines = Math.max(1, S.titleLines);
+  let first = '';
+  let extra = [];
+  if (title) {
+    if (maxLines === 1) {
+      first = room > S.code * 2 ? ellipsize(ctx, title, room) : '';
+    } else {
+      // Narrow cell: if the whole title doesn't fit beside the code, start it
+      // on its own line instead of splitting it ("quiz" / "1").
+      const beside = ctx.measureText(title).width <= room || room >= maxW * 0.5;
+      const [f, rest] = beside && room > S.code * 2 ? splitFirstLine(ctx, title, room) : ['', title];
+      first = f;
+      if (rest) extra = wrap(ctx, rest, maxW, maxLines - 1);
+    }
+  }
+  const meta = S.showSub ? [t.syllabus, t.batchGroup, t.time].filter(Boolean).join(' · ') : '';
+  const lineH = S.code * 1.28;
+  const h = lineH * (1 + extra.length) + (meta ? S.sub * 1.35 : 0);
+  return { code, codeW, first, extra, meta, h, lineH };
 }
 
 function drawTask(ctx, P, m, x, y, maxW, S) {
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  let cy = y;
-  if (m.hasHead) {
-    const head = m.code || m.t.title || 'Task';
+  if (m.code) {
     setFont(ctx, P, S.code, 800);
     ctx.fillStyle = P.accent;
-    const shown = ellipsize(ctx, head, maxW);
-    ctx.fillText(shown, x, cy);
-    const used = ctx.measureText(shown).width;
-    const sub = S.showSub ? subOf(m.t) : '';
-    if (sub && used + S.code < maxW) {
-      setFont(ctx, P, S.sub, 600);
-      ctx.fillStyle = P.text3;
-      ctx.fillText(ellipsize(ctx, sub, maxW - used - S.code * 0.5), x + used + S.code * 0.5, cy + (S.code - S.sub) * 0.55);
-    }
-    cy += S.code * 1.25;
+    ctx.fillText(ellipsize(ctx, m.code, maxW), x, y);
   }
-  setFont(ctx, P, S.title, 500);
+  setFont(ctx, P, S.code, 600);
   ctx.fillStyle = P.text;
-  m.titleRows.forEach((row) => { ctx.fillText(row, x, cy); cy += S.title * 1.25; });
+  if (m.first) ctx.fillText(m.first, x + m.codeW, y);
+  let cy = y + m.lineH;
+  m.extra.forEach((row) => { ctx.fillText(row, x, cy); cy += m.lineH; });
+  if (m.meta) {
+    setFont(ctx, P, S.sub, 600);
+    ctx.fillStyle = P.text3;
+    ctx.fillText(ellipsize(ctx, m.meta, maxW), x, cy + S.sub * 0.1);
+  }
 }
 
 /**
- * Calendar matrix: weekday header row, bordered cells, each cell with its
- * date number and as many tasks as fit ("+n more" for the rest).
+ * Calendar matrix (Box layout): weekday header row, bordered cells, each
+ * cell with its date and as many tasks as fit ("+n more" for the rest).
+ * A one-row sheet (a week) puts the date in the header instead.
  */
 function drawCalendar(ctx, P, C) {
   const { x, y, w, h, cols, cells, headH, lw, radius, S } = C;
@@ -94,21 +131,19 @@ function drawCalendar(ctx, P, C) {
   ctx.lineWidth = lw;
   ctx.stroke();
 
-  // Header: weekday names (+ date for a one-row week sheet)
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   for (let c = 0; c < cols; c++) {
     const cell = rows === 1 ? cells[c] : null;
-    const isToday = cell?.today;
     const main = cell ? cell.date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase() : WEEKDAYS[c];
     setFont(ctx, P, S.head, 800);
     tracked(ctx, S.head * 0.08);
-    ctx.fillStyle = isToday ? P.accent : P.text;
+    ctx.fillStyle = cell?.today ? P.accent : P.text;
     if (cell) {
       ctx.fillText(main, cx(c) + cellW / 2, y + headH / 2 - S.headSub * 0.62);
       tracked(ctx, 0);
       setFont(ctx, P, S.headSub, 600);
-      ctx.fillStyle = isToday ? P.accent : P.text3;
+      ctx.fillStyle = cell.today ? P.accent : P.text3;
       ctx.fillText(cell.date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }), cx(c) + cellW / 2, y + headH / 2 + S.head * 0.62);
     } else {
       ctx.fillText(main, cx(c) + cellW / 2, y + headH / 2);
@@ -116,7 +151,6 @@ function drawCalendar(ctx, P, C) {
     }
   }
 
-  // Cells
   cells.forEach((cell, i) => {
     if (!cell) return;
     const bx = cx(i % cols);
@@ -157,8 +191,7 @@ function drawCalendar(ctx, P, C) {
     for (let k = 0; k < measured.length; k++) {
       const m = measured[k];
       const left = measured.length - k - 1;
-      const need = m.h + (left > 0 ? S.gap + moreH : 0);
-      if (ty + need > bottom && k > 0) break;
+      if (ty + m.h + (left > 0 ? S.gap + moreH : 0) > bottom && k > 0) break;
       if (ty + m.h > bottom) break;
       drawTask(ctx, P, m, bx + pad, ty, maxW, S);
       ty += m.h + S.gap;
@@ -175,12 +208,9 @@ function drawCalendar(ctx, P, C) {
   });
 }
 
-/**
- * Day list: one row per day — date block on the left, that day's tasks as
- * flat cards on the right ("Clear" when none). Returns its height.
- */
+/** Day list (List layout): measure every row at width `w`. */
 function layoutDayList(ctx, P, rows, w, S) {
-  const bodyW = w - S.dateW - S.pad * 3;
+  const bodyW = w - S.dateW - S.pad * 2;
   return rows.map((r) => {
     const tasks = r.before ? [] : r.tasks.map((t) => measureTask(ctx, P, t, bodyW - S.cardPad * 2, S));
     const tasksH = tasks.reduce((s, m) => s + m.h + S.cardPad * 2, 0) + Math.max(0, tasks.length - 1) * S.gap;
@@ -189,6 +219,7 @@ function layoutDayList(ctx, P, rows, w, S) {
   });
 }
 
+/** One row per day — date block · task cards ("Clear" when none). */
 function drawDayList(ctx, P, x, y, w, laid, S) {
   const total = laid.reduce((s, r) => s + r.h, 0);
   const half = S.lw / 2;
@@ -212,8 +243,6 @@ function drawDayList(ctx, P, x, y, w, laid, S) {
 
   ry = y;
   laid.forEach((r) => {
-    const dim = r.before;
-    const col = r.today ? P.accent : dim ? P.text3 : P.text;
     const mid = ry + r.h / 2;
     const dx = x + S.dateW / 2;
     ctx.textAlign = 'center';
@@ -224,7 +253,7 @@ function drawDayList(ctx, P, x, y, w, laid, S) {
     ctx.fillText(r.date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(), dx, mid - S.dayNum * 0.62);
     tracked(ctx, 0);
     setFont(ctx, P, S.dayNum, 800);
-    ctx.fillStyle = col;
+    ctx.fillStyle = r.today ? P.accent : r.before ? P.text3 : P.text;
     ctx.fillText(String(r.date.getDate()), dx, mid + S.dow * 0.55);
 
     const bx = x + S.dateW + S.pad;
@@ -234,7 +263,7 @@ function drawDayList(ctx, P, x, y, w, laid, S) {
       ctx.textBaseline = 'middle';
       setFont(ctx, P, S.title, 500);
       ctx.fillStyle = P.text3;
-      ctx.fillText(dim ? 'Before semester' : 'Clear', bx, mid);
+      ctx.fillText(r.before ? 'Before semester' : 'Clear', bx, mid);
     } else {
       let ty = ry + S.pad;
       r.measured.forEach((m) => {
@@ -254,7 +283,35 @@ function drawDayList(ctx, P, x, y, w, laid, S) {
   return total;
 }
 
+/**
+ * Lay a day list into 1 column (≤10 days) or 2 (a month), scaled down
+ * together if needed so it fits `maxH`. Returns { h, draw(top) }.
+ */
+function planList(ctx, P, rows, x, w, maxH, S, colGap) {
+  const nCols = rows.length > 10 ? 2 : 1;
+  const per = Math.ceil(rows.length / nCols);
+  const chunks = Array.from({ length: nCols }, (_, i) => rows.slice(i * per, (i + 1) * per));
+  const colW = (w - colGap * (nCols - 1)) / nCols;
+  const lay = (cw) => chunks.map((c) => layoutDayList(ctx, P, c, cw, S));
+  const heightOf = (laids) => Math.max(...laids.map((l) => l.reduce((s, r) => s + r.h, 0)));
+  let laids = lay(colW);
+  let natural = heightOf(laids);
+  const scale = natural > maxH ? Math.max(0.4, maxH / natural) : 1;
+  if (scale < 1) { laids = lay(colW / scale); natural = heightOf(laids); }
+  return {
+    h: natural * scale,
+    draw: (top) => laids.forEach((laid, i) => {
+      ctx.save();
+      ctx.translate(x + i * (colW + colGap), top);
+      ctx.scale(scale, scale);
+      drawDayList(ctx, P, 0, 0, colW / scale, laid, S);
+      ctx.restore();
+    }),
+  };
+}
+
 const metaLine = (o) => [o.meta.dept, formatSemester(o.meta.sem), o.filterLabel].filter(Boolean).join(' · ');
+const asList = (o) => o.viewMode === 'daily' || o.layout === 'list';
 
 // ─── JPG: lock-screen wallpaper ───
 function renderWallpaper(o) {
@@ -276,41 +333,29 @@ function renderWallpaper(o) {
   const contentW = W - mx * 2;
   const avail = safeBottom - safeTop - headerH - footerH;
 
-  let draw;
-  let contentH;
-  if (o.viewMode === 'monthly') {
+  let plan;
+  if (asList(o)) {
+    const twoCol = o.cells.filter(Boolean).length > 10;
+    const S = twoCol
+      ? { dateW: 74, pad: 10, cardPad: 9, cardRadius: 10, gap: 6, minRow: 62, lw: 2, radius: 18,
+        dow: 14, dayNum: 26, code: 19, title: 19, titleLines: 2, sub: 15, showSub: true }
+      : { dateW: 132, pad: 18, cardPad: 14, cardRadius: 14, gap: 10, minRow: 108, lw: 2, radius: 22,
+        dow: 20, dayNum: 40, code: 27, title: 27, titleLines: 2, sub: 21, showSub: true };
+    plan = planList(ctx, P, o.cells.filter(Boolean), mx, contentW, avail, S, 18);
+  } else if (o.viewMode === 'monthly') {
     const rows = Math.ceil(o.cells.length / 7);
     const headH = 72;
     const cellH = Math.max(110, Math.min(230, (avail - headH) / rows));
-    contentH = headH + cellH * rows;
-    const S = { head: 24, headSub: 18, num: 30, code: 21, title: 18, titleLines: 0, sub: 17, showSub: false, pad: 12, gap: 6 };
-    draw = (top) => drawCalendar(ctx, P, { x: mx, y: top, w: contentW, h: contentH, cols: 7, cells: o.cells, headH, lw: 2, radius: 22, S });
+    const h = headH + cellH * rows;
+    const S = { head: 24, headSub: 18, num: 30, code: 17, title: 17, titleLines: 3, sub: 14, showSub: false, pad: 10, gap: 6 };
+    plan = { h, draw: (top) => drawCalendar(ctx, P, { x: mx, y: top, w: contentW, h, cols: 7, cells: o.cells, headH, lw: 2, radius: 22, S }) };
   } else {
-    const rows = o.cells.filter(Boolean);
-    const S = {
-      dateW: 132, pad: 18, cardPad: 14, cardRadius: 14, gap: 10, minRow: 108, lw: 2, radius: 22,
-      dow: 20, dayNum: 40, code: 26, title: 28, titleLines: 2, sub: 21, showSub: true,
-    };
-    let laid = layoutDayList(ctx, P, rows, contentW, S);
-    let natural = laid.reduce((s, r) => s + r.h, 0);
-    let scale = 1;
-    if (natural > avail) {
-      // Too many tasks for the screen: shrink the whole list to fit.
-      scale = Math.max(0.45, avail / natural);
-      laid = layoutDayList(ctx, P, rows, contentW / scale, S);
-      natural = laid.reduce((s, r) => s + r.h, 0);
-    }
-    contentH = natural * scale;
-    draw = (top) => {
-      ctx.save();
-      ctx.translate(mx, top);
-      ctx.scale(scale, scale);
-      drawDayList(ctx, P, 0, 0, contentW / scale, laid, S);
-      ctx.restore();
-    };
+    const h = Math.min(avail, 980);
+    const S = { head: 24, headSub: 18, num: 30, code: 19, title: 19, titleLines: 6, sub: 15, showSub: true, pad: 10, gap: 12 };
+    plan = { h, draw: (top) => drawCalendar(ctx, P, { x: mx, y: top, w: contentW, h, cols: 7, cells: o.cells, headH: 84, lw: 2, radius: 22, S }) };
   }
 
-  const blockH = headerH + contentH + footerH;
+  const blockH = headerH + plan.h + footerH;
   const top = safeTop + Math.max(0, (safeBottom - safeTop - blockH) / 2);
 
   ctx.textAlign = 'left';
@@ -330,8 +375,8 @@ function renderWallpaper(o) {
     ctx.fillText(ellipsize(ctx, sub, contentW), mx, top + 146);
   }
 
-  draw(top + headerH);
-  drawBrand(ctx, P, logo, W / 2, top + headerH + contentH + 32, 40, 'center');
+  plan.draw(top + headerH);
+  drawBrand(ctx, P, logo, W / 2, top + headerH + plan.h + 32, 40, 'center');
   return canvas;
 }
 
@@ -382,24 +427,19 @@ function renderSheet(o) {
   const top = 116;
   const bottom = H - 50;
   const w = W - mx * 2;
-  if (o.viewMode === 'daily') {
-    const S = {
-      dateW: 90, pad: 12, cardPad: 9, cardRadius: 8, gap: 6, minRow: 64, lw: 1, radius: 10,
-      dow: 10, dayNum: 24, code: 12, title: 12.5, titleLines: 3, sub: 10, showSub: true,
-    };
-    const laid = layoutDayList(ctx, P, o.cells.filter(Boolean), w, S);
-    const natural = laid.reduce((s, r) => s + r.h, 0);
-    const scale = Math.min(1, (bottom - top) / natural);
-    ctx.save();
-    ctx.translate(mx, top);
-    ctx.scale(scale, scale);
-    drawDayList(ctx, P, 0, 0, w / scale, laid, S);
-    ctx.restore();
+  if (asList(o)) {
+    const twoCol = o.cells.filter(Boolean).length > 10;
+    const S = twoCol
+      ? { dateW: 46, pad: 5, cardPad: 4, cardRadius: 5, gap: 3, minRow: 26, lw: 1, radius: 8,
+        dow: 6.5, dayNum: 11, code: 8.5, title: 8.5, titleLines: 1, sub: 7, showSub: true }
+      : { dateW: 80, pad: 10, cardPad: 7, cardRadius: 7, gap: 5, minRow: 52, lw: 1, radius: 10,
+        dow: 9, dayNum: 20, code: 11.5, title: 11.5, titleLines: 2, sub: 9, showSub: true };
+    planList(ctx, P, o.cells.filter(Boolean), mx, w, bottom - top, S, 14).draw(top);
   } else if (o.viewMode === 'monthly') {
-    const S = { head: 10, headSub: 8, num: 11, code: 8.5, title: 8, titleLines: 1, sub: 7.5, showSub: true, pad: 5, gap: 3 };
+    const S = { head: 10, headSub: 8, num: 11, code: 8, title: 8, titleLines: 2, sub: 7, showSub: true, pad: 5, gap: 3 };
     drawCalendar(ctx, P, { x: mx, y: top, w, h: bottom - top, cols: 7, cells: o.cells, headH: 30, lw: 1, radius: 10, S });
   } else {
-    const S = { head: 10, headSub: 8.5, num: 12, code: 10, title: 9.5, titleLines: 3, sub: 8, showSub: true, pad: 8, gap: 7 };
+    const S = { head: 10, headSub: 8.5, num: 12, code: 9.5, title: 9.5, titleLines: 4, sub: 8, showSub: true, pad: 8, gap: 8 };
     drawCalendar(ctx, P, { x: mx, y: top, w, h: bottom - top, cols: 7, cells: o.cells, headH: 40, lw: 1, radius: 10, S });
   }
 
@@ -419,7 +459,7 @@ async function prepare(opts) {
   const logo = await loadLogo(opts.logoUrl);
   const cells = [...opts.cells];
   if (opts.viewMode === 'monthly') while (cells.length % 7) cells.push(null);
-  return { ...opts, cells, P, logo };
+  return { layout: 'box', ...opts, cells, P, logo };
 }
 
 /** Phone-wallpaper JPG. On phones, opens the share sheet ("Save Image"). */

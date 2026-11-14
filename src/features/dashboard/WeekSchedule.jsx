@@ -512,6 +512,7 @@ export default function WeekSchedule() {
           : `${getWeekLabel()} · ${short(weekDates[0])} – ${short(weekDates[6])}`;
       const opts = {
         viewMode,
+        layout,
         cells,
         periodLabel,
         filterLabel: batchFilter !== 'all' ? `${batchFilter} only` : '',
