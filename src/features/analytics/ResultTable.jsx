@@ -591,10 +591,13 @@ export default function ResultTable({ onResultsChange }) {
         {/* Collapsed/expanded details */}
         {isExpanded && (
           <div className="cgpa-sem-body" onClick={(event) => event.stopPropagation()}>
-            <table className="cgpa-sem-table">
+            <table className={`cgpa-sem-table${isEditing ? ' is-editing' : ''}`}>
               <thead>
                 <tr>
-                  <th className="cgpa-col-code">Code</th>
+                  <th className="cgpa-col-code">
+                    <span className="cgpa-th-wide">Code</span>
+                    <span className="cgpa-th-narrow">Course</span>
+                  </th>
                   <th className="cgpa-col-title">Course Title</th>
                   <th className="cgpa-col-credit" style={{ textAlign: 'center' }}>Credits</th>
                   <th className="cgpa-col-grade" style={{ textAlign: 'center' }}>Grade</th>
@@ -815,41 +818,43 @@ export default function ResultTable({ onResultsChange }) {
         {results.map(renderSemesterCard)}
       </div>
 
-      {/* Load Template — Department Picker overlay stays inside the breakdown box */}
-      {showDeptModal && (
+      {/* Load Template — Department Picker. Portalled to <body> so the sheet
+          can cover the full viewport (and clear the mobile bottom nav). */}
+      {showDeptModal && createPortal(
         <div
           className="cgpa-template-overlay"
           onClick={() => { setShowDeptModal(false); setSelectedDept(null); }}
-          style={{
-            background: 'rgba(4, 6, 20, 0.52)',
-            backdropFilter: 'blur(16px) saturate(140%)',
-            WebkitBackdropFilter: 'blur(16px) saturate(140%)',
-          }}
+          style={{ background: 'var(--bg-primary)' }}
         >
           <div
-            className="modal glass-card-static"
+            className={`modal glass-card-static cgpa-template-modal${selectedDept ? ' is-list' : ''}`}
             onClick={(e) => e.stopPropagation()}
-            style={
-              selectedDept
-                ? { maxWidth: '520px', maxHeight: '72vh', overflowY: 'auto', padding: 'var(--sp-4)' }
-                : { maxWidth: '400px', maxHeight: 'auto', overflowY: 'visible', padding: 'var(--sp-4)', width: 'min(400px, calc(100% - 32px))' }
-            }
           >
-            <div className="flex justify-between items-center" style={{ marginBottom: '12px', gap: '12px' }}>
-              <div style={{ minWidth: 0 }}>
-                <h3 style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, margin: 0, letterSpacing: '-0.01em' }}>
+            <div className="cgpa-template-head">
+              {selectedDept && (
+                <button
+                  type="button"
+                  className="cgpa-template-icon-btn"
+                  onClick={() => setSelectedDept(null)}
+                  aria-label="Back to departments"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+              )}
+              <div className="cgpa-template-head-text">
+                <h3 className="cgpa-template-title">
                   {selectedDept ? `${DEPT_FULL_NAMES[selectedDept] || selectedDept}` : 'Load Template'}
                 </h3>
-                <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', margin: '2px 0 0', lineHeight: 1.4 }}>
+                <p className="cgpa-template-sub">
                   {selectedDept
                     ? `Pick a semester for ${selectedDept}.`
                     : 'Choose your department — 8 options.'}
                 </p>
               </div>
               <button
-                className="btn btn-icon"
+                type="button"
+                className="cgpa-template-icon-btn"
                 onClick={() => { setShowDeptModal(false); setSelectedDept(null); }}
-                style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-tertiary)', flexShrink: 0, width: 32, height: 32 }}
                 aria-label="Close"
               >
                 <X size={16} />
@@ -857,137 +862,76 @@ export default function ResultTable({ onResultsChange }) {
             </div>
 
             {!selectedDept ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
+              <div className="cgpa-dept-grid">
                 {TRANSCRIPT_DEPARTMENTS.map(dept => (
                   <button
                     key={dept}
-                    className="btn btn-secondary"
+                    className="btn btn-secondary cgpa-dept-btn"
                     onClick={() => setSelectedDept(dept)}
-                    style={{
-                      padding: '10px 8px',
-                      fontSize: 'var(--fs-xs)',
-                      fontWeight: 700,
-                      letterSpacing: '0.03em',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '2px',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderRadius: 'var(--radius-md)',
-                      lineHeight: 1.2,
-                      minHeight: 56,
-                    }}
                   >
-                    <span style={{ fontSize: '13px', fontWeight: 800 }}>{dept}</span>
-                    <span style={{ fontSize: '9px', fontWeight: 500, opacity: 0.65, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
-                      {DEPT_FULL_NAMES[dept]}
-                    </span>
+                    <span className="cgpa-dept-code">{dept}</span>
+                    <span className="cgpa-dept-name">{DEPT_FULL_NAMES[dept]}</span>
                   </button>
                 ))}
               </div>
             ) : (transcriptTemplates[selectedDept] || []).length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '48px 20px' }}>
-                <div
-                  style={{
-                    fontSize: 'var(--fs-lg)',
-                    fontWeight: 'bold',
-                    color: 'var(--accent-cyan)',
-                    marginBottom: '8px',
-                  }}
-                >
-                  {selectedDept}
-                </div>
-                <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: '0 0 4px' }}>
+              <div className="cgpa-template-empty">
+                <div className="cgpa-template-empty-dept">{selectedDept}</div>
+                <p className="cgpa-template-empty-title">
                   Templates for {selectedDept} are coming soon.
                 </p>
-                <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', margin: 0 }}>
+                <p className="cgpa-template-empty-sub">
                   The department curriculum template will appear here.
                 </p>
-                <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => setSelectedDept(null)}
-                  style={{ marginTop: '20px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                >
-                  <ChevronLeft size={14} /> Back to departments
-                </button>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div className="cgpa-tpl-list">
                 {/* Load entire department curriculum at once */}
                 <button
-                  className="btn btn-primary"
+                  className="btn btn-primary cgpa-tpl-full"
                   onClick={() => handleLoadFullCurriculum(selectedDept)}
-                  style={{
-                    padding: '16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '12px',
-                    textAlign: 'left',
-                    width: '100%',
-                  }}
                 >
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 'bold', fontSize: 'var(--fs-sm)' }}>Load Full Curriculum</div>
-                    <div style={{ fontSize: '10px', opacity: 0.75, marginTop: '2px' }}>
+                  <div className="cgpa-tpl-full-main">
+                    <div className="cgpa-tpl-full-title">Load Full Curriculum</div>
+                    <div className="cgpa-tpl-full-sub">
                       All {(transcriptTemplates[selectedDept] || []).length} semesters of {selectedDept} in one go
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-                    <span style={{ fontSize: '11px', fontWeight: 'bold' }}>
-                      {(transcriptTemplates[selectedDept] || []).reduce((sum, t) => sum + getTemplateCredits(t), 0)} cr total
+                  <div className="cgpa-tpl-full-side">
+                    <span className="cgpa-tpl-full-credits">
+                      {(transcriptTemplates[selectedDept] || []).reduce((sum, t) => sum + getTemplateCredits(t), 0)} cr
                     </span>
                     <ChevronRight size={16} />
                   </div>
                 </button>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '4px 0' }}>
-                  <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
-                  <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    or load a single semester
-                  </span>
-                  <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
+                <div className="cgpa-tpl-divider">
+                  <i className="cgpa-tpl-divider-line" />
+                  <span>or load a single semester</span>
+                  <i className="cgpa-tpl-divider-line" />
                 </div>
 
                 {(transcriptTemplates[selectedDept] || []).map(template => (
                   <button
                     key={template.semester}
-                    className="btn btn-secondary"
+                    className="btn btn-secondary cgpa-tpl-row"
                     onClick={() => handleLoadTemplate(template)}
-                    style={{
-                      padding: '14px 16px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '12px',
-                      textAlign: 'left',
-                    }}
                   >
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 'bold', fontSize: 'var(--fs-sm)' }}>{template.label}</div>
-                      <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
-                        {template.courses.length} courses
-                      </div>
+                    <div className="cgpa-tpl-row-main">
+                      <div className="cgpa-tpl-row-title">{template.label}</div>
+                      <div className="cgpa-tpl-row-sub">{template.courses.length} courses</div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-                      <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--accent-amber)' }}>
-                        {getTemplateCredits(template)} cr
-                      </span>
-                      <ChevronRight size={16} style={{ color: 'var(--text-tertiary)' }} />
+                    <div className="cgpa-tpl-row-side">
+                      <span className="cgpa-tpl-row-credits">{getTemplateCredits(template)} cr</span>
+                      <ChevronRight size={16} className="cgpa-tpl-chev" />
                     </div>
                   </button>
                 ))}
-                <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => setSelectedDept(null)}
-                  style={{ marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                >
-                  <ChevronLeft size={14} /> Back to departments
-                </button>
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Reset All — Confirmation Modal */}

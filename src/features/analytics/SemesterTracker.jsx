@@ -1063,7 +1063,8 @@ export default function SemesterTracker() {
                               type="number" min="1" max="20"
                               className="st-draft-input st-draft-num"
                               value={comp.count}
-                              placeholder="quantity"
+                              placeholder="qty"
+                              aria-label="Count"
                               onChange={e=>updateDraft(idx,'count',e.target.value)}
                             />
                             {/* Total Marks (user enters this) */}
@@ -1071,7 +1072,8 @@ export default function SemesterTracker() {
                               type="number" min="1" max="500"
                               className="st-draft-input st-draft-num"
                               value={comp.totalMarks}
-                              placeholder={comp.type === 'online' ? 'total online marks' : `total ${comp.label.toLowerCase()} marks`}
+                              placeholder="marks"
+                              aria-label="Total marks"
                               onChange={e=>updateDraft(idx,'totalMarks',e.target.value)}
                             />
                             {/* Per Item (auto-calculated) */}

@@ -661,6 +661,56 @@ export default function PrerequisiteTree() {
   const statsCourses = isDeptAvailable ? `${visibleCourses}/${totalCourses}` : '—';
   const statsBranches = isDeptAvailable ? parentIds.length : '—';
 
+  const deptDropdown = (
+    <div className="prereq-dept-dropdown" ref={deptDropdownRef}>
+      <button
+        type="button"
+        ref={deptTriggerRef}
+        className="prereq-dept-trigger"
+        onClick={() => {
+          const el = deptTriggerRef.current;
+          if (el) {
+            const rect = el.getBoundingClientRect();
+            const left = Math.max(8, Math.min(rect.left, window.innerWidth - 190));
+            const top = rect.bottom + 6 + 270 > window.innerHeight && rect.top > 280
+              ? Math.max(8, rect.top - 270 - 6)
+              : rect.bottom + 6;
+            setDeptMenuPos({ top, left });
+          }
+          setDeptDropdownOpen((v) => !v);
+        }}
+        aria-expanded={deptDropdownOpen}
+        aria-haspopup="true"
+      >
+        <span>{DEPARTMENTS.find((d) => d.id === dept)?.label || dept}</span>
+        <ChevronDown size={14} className={deptDropdownOpen ? 'open' : ''} />
+      </button>
+      {deptDropdownOpen && createPortal(
+        <div
+          className="prereq-dept-menu"
+          ref={deptMenuRef}
+          style={{ position: 'fixed', top: deptMenuPos.top, left: deptMenuPos.left, right: 'auto', bottom: 'auto', zIndex: 999999 }}
+        >
+          {DEPARTMENTS.map((d) => (
+            <button
+              key={d.id}
+              type="button"
+              className={`prereq-dept-item ${dept === d.id ? 'active' : ''}`}
+              onClick={() => {
+                setDept(d.id);
+                setDeptDropdownOpen(false);
+              }}
+            >
+              <span>{d.label}</span>
+              {dept === d.id && <Check size={12} />}
+            </button>
+          ))}
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+
   const content = (
     <div
       ref={containerRef}
@@ -700,53 +750,7 @@ export default function PrerequisiteTree() {
       </header>
 
       {/* Dept dropdown — 8 options below box (portal-fixed, no ancestor clip) */}
-      <div className="prereq-dept-dropdown" ref={deptDropdownRef}>
-        <button
-          type="button"
-          ref={deptTriggerRef}
-          className="prereq-dept-trigger"
-          onClick={() => {
-            const el = deptTriggerRef.current;
-            if (el) {
-              const rect = el.getBoundingClientRect();
-              const left = Math.max(8, Math.min(rect.left, window.innerWidth - 190));
-              const top = rect.bottom + 6 + 270 > window.innerHeight && rect.top > 280
-                ? Math.max(8, rect.top - 270 - 6)
-                : rect.bottom + 6;
-              setDeptMenuPos({ top, left });
-            }
-            setDeptDropdownOpen((v) => !v);
-          }}
-          aria-expanded={deptDropdownOpen}
-          aria-haspopup="true"
-        >
-          <span>{DEPARTMENTS.find((d) => d.id === dept)?.label || dept}</span>
-          <ChevronDown size={14} className={deptDropdownOpen ? 'open' : ''} />
-        </button>
-        {deptDropdownOpen && createPortal(
-          <div
-            className="prereq-dept-menu"
-            ref={deptMenuRef}
-            style={{ position: 'fixed', top: deptMenuPos.top, left: deptMenuPos.left, right: 'auto', bottom: 'auto', zIndex: 999999 }}
-          >
-            {DEPARTMENTS.map((d) => (
-              <button
-                key={d.id}
-                type="button"
-                className={`prereq-dept-item ${dept === d.id ? 'active' : ''}`}
-                onClick={() => {
-                  setDept(d.id);
-                  setDeptDropdownOpen(false);
-                }}
-              >
-                <span>{d.label}</span>
-                {dept === d.id && <Check size={12} />}
-              </button>
-            ))}
-          </div>,
-          document.body
-        )}
-      </div>
+      {!isDeptAvailable && deptDropdown}
 
       <div style={{ display: 'none' }}>
           <div className="export-dropdown" ref={menuRef} style={{ display: 'none' }}>
@@ -811,6 +815,7 @@ export default function PrerequisiteTree() {
       <div className="prereq-content" style={{ display: isDeptAvailable ? 'contents' : 'none' }}>
       {/* Search */}
       <div className="prereq-toolbar">
+        {isDeptAvailable && deptDropdown}
         <div className="prereq-search">
           <Search size={14} className="prereq-search-icon" />
           <input

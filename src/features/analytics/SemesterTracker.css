@@ -212,6 +212,18 @@
   margin: 4px 8px;
 }
 
+/* The ⋮ dropdown is portalled to <body>, so it leaves .st-widget scope (and
+   its solid background rule). Re-apply a guaranteed opaque surface: solid page
+   colour underneath + the theme card tint on top, so translucent glass tokens
+   never let the page show through. */
+html body .export-menu {
+  background-color: var(--bg-primary, #0E0E10) !important;
+  background-image: linear-gradient(var(--bg-card, #1B1B1F), var(--bg-card, #1B1B1F)) !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
 @media (max-width: 1000px) {
   .st-widget .schedule-masthead {
     grid-template-columns: 1fr auto;
@@ -416,61 +428,6 @@
   .st-lab-header-actions {
     width: 100%;
     justify-content: flex-end;
-  }
-  /* Draft rows stay in ONE row: Component | Count | Total | Per Item | × */
-  .st-draft-header-row {
-    display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 24px;
-    gap: 6px;
-    padding: 6px 8px;
-    font-size: 8px;
-  }
-  .st-draft-row {
-    display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 24px;
-    align-items: center;
-    flex-direction: row;
-    gap: 6px;
-    padding: 6px 8px;
-  }
-  .st-draft-label,
-  .st-draft-label-text {
-    flex: none;
-    width: auto;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 10px;
-  }
-  .st-draft-num {
-    flex: none;
-    width: auto;
-    min-width: 0;
-  }
-  .st-draft-input {
-    flex: 1;
-    min-width: 0;
-    width: 100%;
-    font-size: 10px;
-    padding: 4px 4px;
-  }
-  .st-draft-sub {
-    text-align: center;
-    font-size: 10px;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .st-draft-row .st-icon-btn {
-    width: 24px;
-    height: 24px;
-    min-width: 24px;
-    padding: 0;
-  }
-  .st-setup-panel {
-    padding: 10px 12px;
   }
 }
 
@@ -1241,7 +1198,8 @@
 .st-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.5);
+  /* Solid page colour — nothing behind it shows through */
+  background: var(--bg-primary, #0E0E10);
   z-index: 99999;
 }
 .st-modal {
@@ -1249,7 +1207,9 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: var(--bg-card);
+  /* Opaque panel: solid base + theme card tint (handles glass/alpha tokens) */
+  background-color: var(--bg-primary, #0E0E10);
+  background-image: linear-gradient(var(--bg-card, #1B1B1F), var(--bg-card, #1B1B1F));
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
   padding: 24px;
@@ -1269,4 +1229,103 @@
   display: flex;
   gap: 10px;
   justify-content: center;
+}
+
+/* ── Setup wizard — phones (declared last so it wins over the base rules) ── */
+@media (max-width: 640px) {
+  .st-widget .st-setup-panel { padding: 8px 8px; gap: 6px; }
+  .st-widget .st-setup-heading { font-size: 10px; line-height: 1.4; }
+  .st-widget .st-type-grid { gap: 3px; }
+  .st-widget .st-type-btn { padding: 3px 8px; font-size: 0.58rem; }
+
+  /* One row: Component | Count | Total | Per item | ×
+     The fixed columns stay tight so the component name gets the width. */
+  .st-widget .st-draft-header-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 36px 46px 30px 18px;
+    gap: 4px;
+    padding: 6px;
+    font-size: 7px;
+    letter-spacing: 0.02em;
+  }
+  .st-widget .st-draft-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 36px 46px 30px 18px;
+    align-items: center;
+    gap: 4px;
+    padding: 6px;
+  }
+  .st-widget .st-draft-label,
+  .st-widget .st-draft-label-text {
+    width: auto;
+    min-width: 0;
+    font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .st-widget .st-draft-input {
+    width: 100%;
+    min-width: 0;
+    font-size: 10px;
+    padding: 4px 2px;
+  }
+  .st-widget .st-draft-input::placeholder {
+    font-size: 9px;
+    letter-spacing: -0.02em;
+    opacity: 0.75;
+  }
+  .st-widget .st-draft-sub { font-size: 10px; }
+  .st-widget .st-draft-row .st-icon-btn {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    padding: 0;
+  }
+  .st-widget .st-draft-total-row {
+    padding: 6px;
+    font-size: 9px;
+  }
+  .st-widget .st-setup-actions {
+    width: 100%;
+    gap: 6px;
+    justify-content: space-between;
+  }
+  /* Compact action buttons — small pills, Save anchored right */
+  .st-widget .st-setup-actions .btn {
+    flex: 0 0 auto;
+    width: auto;
+    min-height: 30px;
+    padding: 5px 12px;
+    font-size: 11px;
+    gap: 4px;
+    border-radius: var(--radius-sm);
+  }
+  .st-widget .st-setup-actions .btn-primary {
+    margin-left: auto;
+    min-width: 104px;
+  }
+  .st-widget .st-setup-actions .btn svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  /* Confirm dialog stays compact on small screens */
+  .st-modal {
+    padding: 16px;
+    width: calc(100% - 48px);
+    max-width: 300px;
+    border-radius: var(--radius-md);
+  }
+  .st-modal-message {
+    margin-bottom: 14px;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .st-modal-actions { gap: 8px; }
+  .st-modal-actions .btn {
+    min-height: 32px;
+    padding: 5px 12px;
+    font-size: 11px;
+  }
 }
