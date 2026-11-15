@@ -205,7 +205,7 @@ export default function RoomPage() {
   if (detail.error) {
     return (
       <div className="gmz-widget glass-card-static animate-fadeInUp">
-        <Link to="/gaming?view=rooms" className="gmz-back"><ArrowLeft size={13} /> Gaming Zone</Link>
+        <Link to="/downtime?tab=gaming&view=rooms" className="gmz-back"><ArrowLeft size={13} /> Gaming Zone</Link>
         <div className="gmz-card"><GzEmpty icon={ShieldAlert} hint={detail.error.message} /></div>
       </div>
     );
@@ -263,7 +263,7 @@ export default function RoomPage() {
 
   return (
     <div className="gmz-widget glass-card-static animate-fadeInUp">
-      <Link to="/gaming?view=rooms" className="gmz-back"><ArrowLeft size={13} /> Gaming Zone</Link>
+      <Link to="/downtime?tab=gaming&view=rooms" className="gmz-back"><ArrowLeft size={13} /> Gaming Zone</Link>
       <GzMasthead
         iconKey={game?.iconKey}
         overline={game?.name || 'Squad room'}
@@ -281,7 +281,7 @@ export default function RoomPage() {
         <div className="gmz-card gmz-notice is-rose" role="status">
           <XCircle size={14} />
           <span>{removed ? (ended === 'banned' ? 'You were removed and blocked from this room.' : 'You were removed from this room.') : 'This room is closed.'}</span>
-          <Link to="/gaming?view=rooms" className="gmz-card-link">Find another squad</Link>
+          <Link to="/downtime?tab=gaming&view=rooms" className="gmz-card-link">Find another squad</Link>
         </div>
       )}
       {flash}

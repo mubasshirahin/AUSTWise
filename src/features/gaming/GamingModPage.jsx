@@ -253,7 +253,7 @@ export default function GamingModPage() {
 
   return (
     <div className="gmz-widget glass-card-static animate-fadeInUp">
-      <Link to="/gaming" className="gmz-back"><ArrowLeft size={13} /> Gaming Zone</Link>
+      <Link to="/downtime?tab=gaming" className="gmz-back"><ArrowLeft size={13} /> Gaming Zone</Link>
       <GzMasthead icon={ShieldCheck} overline="Gaming Zone" title="Moderation" subtitle="Reports, sanctions and the game catalog" />
       {me.loading && !me.data ? <p className="gmz-loading">Loading…</p> : !caps?.moderate ? (
         <div className="gmz-card"><GzEmpty icon={ShieldAlert} hint="Only gaming mods and staff can open moderation." /></div>

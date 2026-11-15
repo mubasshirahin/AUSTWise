@@ -66,7 +66,7 @@ export default function EventPage() {
   if (detail.error) {
     return (
       <div className="gmz-widget glass-card-static animate-fadeInUp">
-        <Link to="/gaming?view=events" className="gmz-back"><ArrowLeft size={13} /> Events</Link>
+        <Link to="/downtime?tab=gaming&view=events" className="gmz-back"><ArrowLeft size={13} /> Events</Link>
         <div className="gmz-card"><GzEmpty icon={ShieldAlert} hint={detail.error.message} /></div>
       </div>
     );
@@ -123,7 +123,7 @@ export default function EventPage() {
 
   return (
     <div className="gmz-widget glass-card-static animate-fadeInUp">
-      <Link to="/gaming?view=events" className="gmz-back"><ArrowLeft size={13} /> Events</Link>
+      <Link to="/downtime?tab=gaming&view=events" className="gmz-back"><ArrowLeft size={13} /> Events</Link>
       <GzMasthead
         iconKey={game?.iconKey}
         overline={`${game?.name || 'Game'} · ${isCup ? 'Tournament' : 'Game night'}`}

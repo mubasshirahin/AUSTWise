@@ -30,7 +30,7 @@ export default function GameHubPage() {
   if (overview.error || me.error) {
     return (
       <div className="gmz-widget glass-card-static animate-fadeInUp">
-        <Link to="/gaming" className="gmz-back"><ArrowLeft size={13} /> Gaming Zone</Link>
+        <Link to="/downtime?tab=gaming" className="gmz-back"><ArrowLeft size={13} /> Gaming Zone</Link>
         <div className="gmz-card"><GzEmpty icon={Gamepad2} hint={(overview.error || me.error).message} /></div>
       </div>
     );
@@ -39,7 +39,7 @@ export default function GameHubPage() {
   if (!game) {
     return (
       <div className="gmz-widget glass-card-static animate-fadeInUp">
-        <Link to="/gaming" className="gmz-back"><ArrowLeft size={13} /> Gaming Zone</Link>
+        <Link to="/downtime?tab=gaming" className="gmz-back"><ArrowLeft size={13} /> Gaming Zone</Link>
         <div className="gmz-card"><GzEmpty icon={Gamepad2} hint="That game isn’t in the Gaming Zone." /></div>
       </div>
     );
@@ -63,7 +63,7 @@ export default function GameHubPage() {
 
   return (
     <div className="gmz-widget glass-card-static animate-fadeInUp">
-      <Link to="/gaming" className="gmz-back"><ArrowLeft size={13} /> Gaming Zone</Link>
+      <Link to="/downtime?tab=gaming" className="gmz-back"><ArrowLeft size={13} /> Gaming Zone</Link>
       <GzMasthead
         iconKey={game.iconKey}
         overline={game.genre || 'Game'}

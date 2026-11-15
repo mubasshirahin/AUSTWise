@@ -77,12 +77,10 @@ export default function BuzzPage({ identity: identityProp } = {}) {
       channel,
       authorId: identity.id,
       author: identity.nickname,
-      score: 1,             // author's implicit upvote
+      score: 0,
       timestamp: Date.now(),
       comments: [],
     };
-    // Author auto-upvotes their own post.
-    setVotes((prev) => ({ ...prev, [post.id]: 1 }));
     setPosts((prev) => [post, ...prev]);
     setTitle('');
     setBody('');
@@ -131,10 +129,9 @@ export default function BuzzPage({ identity: identityProp } = {}) {
       text,
       authorId: identity.id,
       author: identity.nickname,
-      score: 1,
+      score: 0,
       timestamp: Date.now(),
     };
-    setVotes((prev) => ({ ...prev, [comment.id]: 1 }));
     setPosts((prev) => prev.map((p) =>
       p.id === postId ? { ...p, comments: [...p.comments, comment] } : p));
     setCommentDrafts((prev) => ({ ...prev, [postId]: '' }));
@@ -261,111 +258,114 @@ export default function BuzzPage({ identity: identityProp } = {}) {
           const myVote = votes[post.id] || 0;
           const open = !!openComments[post.id];
           return (
-            <article key={post.id} className="buzz-post">
-              {/* Vote rail */}
-              <div className="buzz-votes">
-                <button
-                  className={`buzz-vote-btn up ${myVote === 1 ? 'active' : ''}`}
-                  onClick={() => votePost(post.id, 1)}
-                  aria-label="Upvote"
-                >
-                  <ArrowBigUp size={20} />
-                </button>
-                <span className={`buzz-score ${myVote === 1 ? 'up' : myVote === -1 ? 'down' : ''}`}>
-                  {post.score}
-                </span>
-                <button
-                  className={`buzz-vote-btn down ${myVote === -1 ? 'active' : ''}`}
-                  onClick={() => votePost(post.id, -1)}
-                  aria-label="Downvote"
-                >
-                  <ArrowBigDown size={20} />
-                </button>
-              </div>
+            <div key={post.id} className="buzz-post-wrap">
+              <span className="buzz-post-label">
+                <Hash size={11} /> {meta.label}
+              </span>
+              <article className="buzz-post">
+                <div className="buzz-post-main">
+                  <div className="buzz-post-meta">
+                    <span className="buzz-post-author">{post.author}</span>
+                    <span className="buzz-post-dot">·</span>
+                    <span className="buzz-post-time">{getTimeAgo(post.timestamp)}</span>
+                  </div>
+                  <div className="buzz-post-divider" aria-hidden="true" />
+                  {post.title && <h3 className="buzz-post-title">{post.title}</h3>}
+                  {post.body && <p className="buzz-post-body">{post.body}</p>}
 
-              {/* Post content */}
-              <div className="buzz-post-main">
-                <div className="buzz-post-meta">
-                  <span className="buzz-post-channel">
-                    <Hash size={11} /> {meta.label}
-                  </span>
-                  <span className="buzz-post-author">{post.author}</span>
-                  <span className="buzz-post-dot">Â·</span>
-                  <span className="buzz-post-time">{getTimeAgo(post.timestamp)}</span>
-                </div>
-                {post.title && <h3 className="buzz-post-title">{post.title}</h3>}
-                {post.body && <p className="buzz-post-body">{post.body}</p>}
-
-                <div className="buzz-post-actions">
+                  <div className="buzz-post-divider" aria-hidden="true" />
+                  <div className="buzz-post-actions">
+                  <div className="buzz-votes">
+                    <button
+                      className={`buzz-vote-btn up ${myVote === 1 ? 'active' : ''}`}
+                      onClick={() => votePost(post.id, 1)}
+                      aria-label="Upvote"
+                    >
+                      <ArrowBigUp size={18} />
+                    </button>
+                    <span className={`buzz-score ${myVote === 1 ? 'up' : myVote === -1 ? 'down' : ''}`}>
+                      {post.score}
+                    </span>
+                    <button
+                      className={`buzz-vote-btn down ${myVote === -1 ? 'active' : ''}`}
+                      onClick={() => votePost(post.id, -1)}
+                      aria-label="Downvote"
+                    >
+                      <ArrowBigDown size={18} />
+                    </button>
+                  </div>
                   <button className="buzz-comment-toggle" onClick={() => toggleComments(post.id)}>
                     <MessageCircle size={14} /> {post.comments.length} {post.comments.length === 1 ? 'comment' : 'comments'}
                   </button>
                 </div>
 
-                {/* Comments */}
-                {open && (
-                  <div className="buzz-comments">
-                    <div className="buzz-comment-form">
-                      <input
-                        className="buzz-comment-input"
-                        placeholder={`Comment as ${identity.nickname}â€¦`}
-                        value={commentDrafts[post.id] || ''}
-                        onChange={(e) => setCommentDrafts((prev) => ({ ...prev, [post.id]: e.target.value }))}
-                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submitComment(post.id); } }}
-                        maxLength={1000}
-                      />
-                      <button
-                        className="buzz-comment-send"
-                        onClick={() => submitComment(post.id)}
-                        disabled={!(commentDrafts[post.id] || '').trim()}
-                      >
-                        <Send size={13} />
-                      </button>
-                    </div>
+                  {/* Comments */}
+                  {open && (
+                    <div className="buzz-comments">
+                      <div className="buzz-comment-form">
+                        <input
+                          className="buzz-comment-input"
+                          placeholder={`Comment as ${identity.nickname}…`}
+                          value={commentDrafts[post.id] || ''}
+                          onChange={(e) => setCommentDrafts((prev) => ({ ...prev, [post.id]: e.target.value }))}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submitComment(post.id); } }}
+                          maxLength={1000}
+                        />
+                        <button
+                          className="buzz-comment-send"
+                          onClick={() => submitComment(post.id)}
+                          disabled={!(commentDrafts[post.id] || '').trim()}
+                        >
+                          <Send size={13} />
+                        </button>
+                      </div>
 
-                    {post.comments.length === 0 ? (
-                      <p className="buzz-no-comments">No comments yet â€” start the thread.</p>
-                    ) : (
-                      [...post.comments]
-                        .sort((a, b) => b.score - a.score || a.timestamp - b.timestamp)
-                        .map((c) => {
-                          const cVote = votes[c.id] || 0;
-                          return (
-                            <div key={c.id} className="buzz-comment">
-                              <CornerDownRight size={13} className="buzz-comment-branch" />
-                              <div className="buzz-comment-body">
-                                <div className="buzz-comment-meta">
-                                  <span className="buzz-comment-author">{c.author}</span>
-                                  <span className="buzz-post-dot">Â·</span>
-                                  <span className="buzz-comment-time">{getTimeAgo(c.timestamp)}</span>
+                      <div className="buzz-comments-list">
+                        {post.comments.length === 0 ? (
+                          <p className="buzz-no-comments">No comments yet — start the thread.</p>
+                        ) : (
+                          [...post.comments]
+                            .sort((a, b) => b.score - a.score || a.timestamp - b.timestamp)
+                            .map((c) => {
+                              const cVote = votes[c.id] || 0;
+                              return (
+                                <div key={c.id} className="buzz-comment">
+                                  <CornerDownRight size={13} className="buzz-comment-branch" />
+                                  <div className="buzz-comment-body">
+                                    <div className="buzz-comment-meta">
+                                      <span className="buzz-comment-author">{c.author}</span>
+                                      <span className="buzz-post-dot">·</span>
+                                      <span className="buzz-comment-time">{getTimeAgo(c.timestamp)}</span>
+                                    </div>
+                                    <p className="buzz-comment-text">{c.text}</p>
+                                    <div className="buzz-comment-votes">
+                                      <button
+                                        className={`buzz-cvote up ${cVote === 1 ? 'active' : ''}`}
+                                        onClick={() => voteComment(post.id, c.id, 1)}
+                                        aria-label="Upvote comment"
+                                      >
+                                        <ArrowBigUp size={15} />
+                                      </button>
+                                      <span className="buzz-cscore">{c.score}</span>
+                                      <button
+                                        className={`buzz-cvote down ${cVote === -1 ? 'active' : ''}`}
+                                        onClick={() => voteComment(post.id, c.id, -1)}
+                                        aria-label="Downvote comment"
+                                      >
+                                        <ArrowBigDown size={15} />
+                                      </button>
+                                    </div>
+                                  </div>
                                 </div>
-                                <p className="buzz-comment-text">{c.text}</p>
-                                <div className="buzz-comment-votes">
-                                  <button
-                                    className={`buzz-cvote up ${cVote === 1 ? 'active' : ''}`}
-                                    onClick={() => voteComment(post.id, c.id, 1)}
-                                    aria-label="Upvote comment"
-                                  >
-                                    <ArrowBigUp size={15} />
-                                  </button>
-                                  <span className="buzz-cscore">{c.score}</span>
-                                  <button
-                                    className={`buzz-cvote down ${cVote === -1 ? 'active' : ''}`}
-                                    onClick={() => voteComment(post.id, c.id, -1)}
-                                    aria-label="Downvote comment"
-                                  >
-                                    <ArrowBigDown size={15} />
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })
-                    )}
-                  </div>
-                )}
-              </div>
-            </article>
+                              );
+                            })
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </article>
+            </div>
           );
         })}
       </div>

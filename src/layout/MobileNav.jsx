@@ -32,9 +32,8 @@ const moreSections = [
     title: 'Extras',
     items: [
       { path: '/marketplace', label: 'Marketplace', icon: ShoppingBag },
-      { path: '/downtime', label: 'DownTime', icon: Coffee },
-      { path: '/gaming', label: 'Gaming Zone', icon: Gamepad2 },
-      { path: '/shadow', label: 'Shadow', icon: Moon },
+        { path: '/downtime', label: 'DownTime', icon: Coffee },
+        { path: '/shadow', label: 'Shadow', icon: Moon },
     ],
   },
   {

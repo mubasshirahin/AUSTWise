@@ -2,6 +2,29 @@
   "requests": [],
   "invitations": [
     {
+      "id": "INV-1794773038663-GPTG2",
+      "email": "mubasshirahinph@gmail.com",
+      "role": "faculty",
+      "tokenHash": "4ac46bea8daac29f980dc2d65c2a6cba69384a98fa9bb35ea98e269e620fb0c5",
+      "status": "pending",
+      "invitedBy": "ADM-MSOP6VG6BVL4",
+      "createdAt": "2026-11-15T20:03:58.663Z",
+      "expiresAt": "2026-11-22T20:03:58.663Z",
+      "profile": {
+        "department": "",
+        "designation": "",
+        "batch": "",
+        "batchNo": "",
+        "batchName": "",
+        "graduationYear": "",
+        "company": ""
+      },
+      "emailStatus": "accepted_by_gmail",
+      "emailSubmittedAt": "2026-11-15T20:04:03.387Z",
+      "emailMessageId": "<2f1441b3-7eac-5cce-fefe-3656a0103bcb@gmail.com>",
+      "emailErrorCode": null
+    },
+    {
       "id": "INV-1792321360379-VFTZX",
       "email": "mubasshirahinph@gmail.com",
       "role": "faculty",

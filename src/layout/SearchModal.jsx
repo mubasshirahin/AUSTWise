@@ -43,17 +43,14 @@ const searchItems = [
     ],
   },
   {
-    label: 'DownTime', path: '/chill-zone', icon: Coffee, keywords: 'downtime chill zone relax games',
+    label: 'DownTime', path: '/chill-zone', icon: Coffee, keywords: 'downtime chill zone relax games gaming',
     subs: [
       { id: 'organizing', label: 'Organizing Area', keywords: 'organizing area plan organize' },
       { id: 'media', label: 'Media Tracker', keywords: 'media tracker movies shows' },
       { id: 'rumour', label: 'Rumour or Real', keywords: 'rumour or real fact fiction' },
       { id: 'trivia', label: 'Trivia', keywords: 'trivia brain quiz' },
-      { id: 'gaming', label: 'Gaming Zone preview', keywords: 'gaming zone preview' },
+      { id: 'gaming', label: 'Gaming Zone', keywords: 'gaming zone squads lfg rooms events ranks' },
     ],
-  },
-  {
-    label: 'Gaming Zone', path: '/gaming', icon: Gamepad2, keywords: 'gaming zone games squad lfg valorant pubg free fire cs2 fifa chess tournament game night lobby',
   },
   {
     label: 'Shadow', path: '/shadow', icon: Moon, keywords: 'shadow anonymous post',

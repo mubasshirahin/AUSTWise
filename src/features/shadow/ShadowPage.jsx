@@ -359,8 +359,8 @@ export default function ShadowPage() {
         />
       </div>
 
-      {/* ── Stats Row (below the tabs) ── */}
-      {!isAdmin && totalReviews > 0 && (
+      {/* ── Stats Row (Course Reviews only, below the tabs) ── */}
+      {!isAdmin && activeTab === 'reviews' && totalReviews > 0 && (
         <div className="shadow-stats-row">
           {stats.map((stat, i) => {
             const Icon = stat.icon;

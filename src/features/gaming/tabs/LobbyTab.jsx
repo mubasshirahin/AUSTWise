@@ -91,7 +91,7 @@ export default function LobbyTab({ games, myRooms, events, loading, canCreate, o
         <section className="gmz-card">
           <div className="gmz-card-head-row is-ruled">
             <h3 className="gmz-card-title"><CalendarDays size={14} /> Up next</h3>
-            <Link to="/gaming?view=events" className="gmz-card-link">All events</Link>
+            <Link to="/downtime?tab=gaming&view=events" className="gmz-card-link">All events</Link>
           </div>
           {events.length ? (
             <div className="gmz-list">{events.map((event) => <EventRow key={event.id} event={event} />)}</div>

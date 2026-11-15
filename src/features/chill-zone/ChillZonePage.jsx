@@ -10,7 +10,7 @@ import useAdminMode from '../../hooks/useAdminMode';
 import OrganizingArea from './tabs/OrganizingArea';
 import RumourOrReal from './tabs/RumourOrReal';
 import Trivia from './tabs/Trivia';
-import GamingZone from './tabs/GamingZone';
+import GamingZoneTab from '../gaming/GamingPage';
 import MediaTracker from './tabs/MediaTracker';
 import './ChillZonePage.css';
 import '../../components/PageHero.css';
@@ -45,7 +45,7 @@ export default function ChillZonePage() {
       case 'media':      return <MediaTracker />;
       case 'rumour':     return <RumourOrReal />;
       case 'trivia':     return <Trivia />;
-      case 'gaming':     return <GamingZone />;
+      case 'gaming':     return <GamingZoneTab />;
       default:           return <OrganizingArea />;
     }
   };
