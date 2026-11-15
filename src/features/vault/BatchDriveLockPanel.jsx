@@ -78,6 +78,10 @@ export default function BatchDriveLockPanel({ status, loading, onRedeem, showLoc
           </div>
           {message && <p className="bdl-message">{message}</p>}
           {user && <p className="bdl-hint">Signed in as {user.name} — one code unlocks this account on every device.</p>}
+          <p className="bdl-hint bdl-account-sem">
+            Your account semester: {status.yearSemLabel ? status.yearSemLabel : (status.semesterNum ? `Semester ${status.semesterNum}` : 'Not set')}
+            {status.department ? ` · ${status.department}` : ''}
+          </p>
         </form>
       )}
     </div>

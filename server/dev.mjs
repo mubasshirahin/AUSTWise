@@ -728,10 +728,10 @@ function getPublicBaseUrl(req) {
 }
 
 // ── Batch Drive lock (8-digit code, max 5 people per sharer) ────
-// Junior viewers (semester 1–4) and CR/SR are locked; a one-time 8-digit
-// code from a semester-5+ (3.1+) student unlocks one account. Each
-// generated code is single-use. Login parity with the client helpers in
-// src/utils/batchDriveLock.js — keep the rules in sync.
+// Junior viewers (semester 1.1–2.2) are locked regardless of CR/SR; a
+// one-time 8-digit code from a semester-5+ (3.1+) student unlocks one
+// account. Each generated code is single-use. Login parity with the client
+// helpers in src/utils/batchDriveLock.js — keep the rules in sync.
 const BATCH_DRIVE_LOCK_KEY = 'aust-batch-drive-lock-v1';
 const BATCH_DRIVE_CODE_MAX_USES = 5;
 
@@ -774,9 +774,12 @@ function isBatchDriveCrSr(dbUser) {
   return roles.has('cr') || roles.has('sr');
 }
 
+// Kept for admin UIs that label CR/SR sharers; it no longer affects the lock.
+
 function batchDriveNeedsUnlock(dbUser) {
   if (!isBatchDriveStudentLike(dbUser)) return false;
-  if (isBatchDriveCrSr(dbUser)) return true;
+  // Semester decides the lock — CR/SR counts exactly like any other student.
+  // Their only extra power is the Drive Links tab.
   const semesterNum = parseBatchDriveSemesterNum(dbUser);
   if (semesterNum === null) return true;
   return semesterNum <= 4;
@@ -4998,6 +5001,69 @@ async function handleApiRequest(req, res) {
       sendJson(res, 200, { success: true, maxUses: BATCH_DRIVE_CODE_MAX_USES, sharers });
     } catch (error) {
       sendJson(res, 500, { success: false, error: error.message || 'Failed to load code shares.' });
+    }
+    return;
+  }
+
+  if (req.url?.startsWith('/api/batch-drive/maintainers') && req.method === 'GET') {
+    const auth = requireRole(...BATCH_DRIVE_LOCK_ROLES)(req, res);
+    if (!auth) return;
+    try {
+      const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+      const department = String(url.searchParams.get('department') || '').trim().toUpperCase();
+      const batchName = String(url.searchParams.get('batchName') || '').trim();
+      const batchNo = String(url.searchParams.get('batchNo') || '').trim();
+      const batchLabel = String(url.searchParams.get('batchLabel') || '').trim();
+      if (!department || !(batchLabel || batchNo || batchName)) {
+        sendJson(res, 400, { success: false, error: 'department and batch are required.' });
+        return;
+      }
+      const target = { department, batchName, batchNo, batch: batchLabel };
+      let candidates = null;
+      try {
+        const rows = await query(
+          `SELECT id, email, data FROM "AuthUsers"
+           WHERE upper(COALESCE(data::jsonb->>'department', '')) = @dept
+             AND (
+               lower(COALESCE(data::jsonb->>'role', '')) IN ('cr', 'sr')
+               OR COALESCE(data::jsonb->'roles', '[]'::jsonb) @> '"cr"'::jsonb
+               OR COALESCE(data::jsonb->'roles', '[]'::jsonb) @> '"sr"'::jsonb
+             )`,
+          [{ name: 'dept', type: sql.NVarChar(50), value: department }],
+        );
+        candidates = (rows || []).map((row) => {
+          try { return JSON.parse(row.data); } catch { return null; }
+        }).filter(Boolean);
+      } catch {
+        candidates = null;
+      }
+      if (!candidates) {
+        candidates = await getAllUsersSafe();
+      }
+      const members = candidates
+        .filter((u) => {
+          if (!u?.id || u.id === 'guest') return false;
+          const roles = [...new Set([u.role || '', ...(Array.isArray(u.roles) ? u.roles : [])].map((r) => String(r).toLowerCase()))];
+          if (!roles.includes('cr') && !roles.includes('sr')) return false;
+          const dept = String(u.department || '').trim().toUpperCase();
+          if (dept !== department) return false;
+          return batchDriveSameBatch(u, target);
+        })
+        .map((u) => ({
+          id: u.id,
+          name: u.name || '',
+          initials: String(u.name || 'AU').trim().split(/\s+/).slice(0, 2).map((x) => x[0]?.toUpperCase()).join('') || 'AU',
+          avatar: u.avatar || null,
+          role: u.role || 'student',
+          roles: [...new Set([u.role || 'student', ...(Array.isArray(u.roles) ? u.roles : [])].filter(Boolean))],
+          department: u.department || '',
+          batchNo: u.batchNo || '',
+          batchName: u.batchName || '',
+          batch: u.batch || '',
+        }));
+      sendJson(res, 200, { success: true, members });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to load maintainers.' });
     }
     return;
   }

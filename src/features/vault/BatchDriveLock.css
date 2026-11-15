@@ -26,6 +26,7 @@
 .bdl-code-state { flex: 1 1 160px; color: var(--text-tertiary); font-size: 11px; }
 .bdl-code-state.is-used { color: var(--accent-emerald); }
 .bdl-hint { margin: 0; color: var(--text-tertiary); font-size: 11px; line-height: 1.5; }
+.bdl-account-sem { color: var(--text-secondary); font-weight: 600; }
 @media (max-width: 560px) {
   .bdl-code-row { align-items: stretch; }
   .bdl-input { flex-basis: 100%; }

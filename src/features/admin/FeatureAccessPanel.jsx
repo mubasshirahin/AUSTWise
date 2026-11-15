@@ -34,7 +34,7 @@ export const MANAGED_FEATURES = [
     ['marketplace', 'AW Market', 'exchange'], ['marketplace', 'ToLet Mama', 'tolet'], ['marketplace', 'Lost & Found', 'lost'],
     ['chill-zone', 'Organizing Area', 'organizing'], ['chill-zone', 'Media Tracker', 'media'], ['chill-zone', 'Rumour or Real', 'rumour'], ['chill-zone', 'Trivia', 'trivia'], ['chill-zone', 'Gaming Zone', 'gaming'],
     ['productivity', 'Study Time', 'study-room'], ['productivity', 'Cheat Sheets', 'cheatsheets'], ['productivity', 'Code Pulse', 'cp-hub'], ['productivity', 'Workspace', 'workspace'],
-    ['vault', 'Batch Drive', 'batch-drive'], ['vault', 'Question Bank', 'question-bank'], ['vault', 'Carbon Vault', 'carbon-vault'],
+    ['vault', 'Batch Drive', 'batch-drive'], ['vault', 'Question Bank', 'question-bank'], ['vault', 'Carbon Vault', 'carbon-vault'], ['vault', 'Notebook', 'notebook'],
     ['settings', 'Identity', 'profile'], ['settings', 'My Orbits', 'orbits'], ['settings', 'UI', 'theme'], ['settings', 'Configure', 'notifications'], ['settings', 'Credits', 'about'],
     ['shadow', 'Course Reviews', 'reviews'], ['shadow', 'Shadow Chat', 'chat'], ['shadow', 'Buzz', 'buzz'], ['shadow', 'Roast CV', 'roast-cv'],
   ].map(([page, label, tab]) => ({ key: `feature:${page}:${tab}`, label, page: page.replace('-', ' ') })),

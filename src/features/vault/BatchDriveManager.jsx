@@ -4,7 +4,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useLiveValue } from '../../utils/liveStore';
-import { getAllAccounts } from '../../utils/authStorage';
 import {
   batchLabelOf,
   sameBatch,
@@ -35,21 +34,26 @@ export default function BatchDriveManager() {
   const bucket = store?.[department] || {};
 
   // Who else can edit this batch's links (CR + SR of the same dept + batch).
-  const [members, setMembers] = useState(() => getAllAccounts());
+  // Start with self for instant render; fetch only same-batch maintainers.
+  const [members, setMembers] = useState(() => (user ? [user] : []));
   useEffect(() => {
+    if (!department || !batchLabel) return;
     let cancelled = false;
-    fetch('/api/presence/members')
+    const params = new URLSearchParams({
+      department,
+      batchName,
+      batchNo,
+      batchLabel,
+    });
+    fetch(`/api/batch-drive/maintainers?${params.toString()}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (cancelled || !Array.isArray(data?.members)) return;
-        setMembers((prev) => {
-          const byId = new Map(prev.map((a) => [a.id, a]));
-          return data.members.map((m) => ({ ...(byId.get(m.id) || {}), ...m }));
-        });
+        setMembers(data.members);
       })
-      .catch(() => { /* keep the local account cache */ });
+      .catch(() => { /* keep self fallback */ });
     return () => { cancelled = true; };
-  }, []);
+  }, [department, batchLabel, batchName, batchNo]);
 
   const mine = useMemo(() => ({ batchName, batchNo, batch: batchLabel }), [batchName, batchNo, batchLabel]);
 
