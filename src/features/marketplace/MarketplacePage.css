@@ -118,6 +118,57 @@
   animation: fadeInUp 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
+/* ── AW Market search/filter bar ── */
+.aw-filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+
+.aw-search-group {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.aw-search-input {
+  flex: 1 1 260px;
+  min-width: 180px;
+}
+
+.aw-search-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.aw-filter-controls {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.aw-filter-select {
+  flex: 1 1 160px;
+  min-width: 140px;
+}
+
+@media (max-width: 640px) {
+  .aw-search-group,
+  .aw-filter-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .aw-search-btn,
+  .aw-filter-select,
+  .aw-search-input {
+    width: 100%;
+  }
+}
+
 /* Sub-widget shells — glow lift instead of heavy borders */
 .marketplace-page .glass-card-static {
   border-color: var(--border-primary);

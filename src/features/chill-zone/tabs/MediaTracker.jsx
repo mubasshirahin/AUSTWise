@@ -149,7 +149,7 @@ function ApiKeySettings({ apiKeys, onSave, onClose }) {
           <div className="media-field">
             <label className="media-label">
               OMDb API Key
-              <span style={{ fontWeight: 400, textTransform: 'none', marginLeft: 6, opacity: 0.6 }}>(movies &amp; series)</span>
+              <span style={{ fontWeight: 400, textTransform: 'none', marginLeft: 6, opacity: 0.6 }}>(movies, series &amp; anime)</span>
             </label>
             <input id="media-omdb-key" name="omdbKey" className="media-input" value={omdb}
               onChange={(e) => setOmdb(e.target.value)}
@@ -201,7 +201,7 @@ function MediaFormModal({ category, item, onSave, onClose, apiKeys }) {
   const searchTimer = useRef(null);
 
   const catInfo = CATEGORIES.find((c) => c.id === category);
-  const useApi = (category === 'movies' || category === 'series' || category === 'games') && !item;
+  const useApi = (category === 'movies' || category === 'series' || category === 'anime' || category === 'games') && !item;
 
   // Debounced API search
   const doSearch = useCallback(async (q) => {
@@ -210,7 +210,7 @@ function MediaFormModal({ category, item, onSave, onClose, apiKeys }) {
     let results = [];
     if (category === 'games' && apiKeys.rawg) {
       results = await searchRAWG(q, apiKeys.rawg);
-    } else if ((category === 'movies' || category === 'series') && apiKeys.omdb) {
+    } else if ((category === 'movies' || category === 'series' || category === 'anime') && apiKeys.omdb) {
       results = await searchOMDb(q, apiKeys.omdb);
     }
     setSearchResults(results);
@@ -425,12 +425,13 @@ export default function MediaTracker() {
   };
 
   const handleSave = (item) => {
+    const saved = { ...item, category: item.category || activeCat };
     setData((prev) => {
       const list = prev[activeCat] || [];
-      const idx = list.findIndex((i) => i.id === item.id);
+      const idx = list.findIndex((i) => i.id === saved.id);
       const newList = idx >= 0
-        ? list.map((i) => (i.id === item.id ? item : i))
-        : [item, ...list];
+        ? list.map((i) => (i.id === saved.id ? saved : i))
+        : [saved, ...list];
       return { ...prev, [activeCat]: newList };
     });
     setShowForm(false);
@@ -463,7 +464,8 @@ export default function MediaTracker() {
   };
 
   const hasApiKeys = apiKeys.omdb || apiKeys.rawg;
-  const needsApiKey = !hasApiKeys && (activeCat === 'movies' || activeCat === 'series' || activeCat === 'games');
+  const needsApiKey = (!apiKeys.omdb && (activeCat === 'movies' || activeCat === 'series' || activeCat === 'anime'))
+    || (!apiKeys.rawg && activeCat === 'games');
 
   return (
     <div className="media-tracker cz-mst">
@@ -584,11 +586,23 @@ export default function MediaTracker() {
             )}
           </div>
         ) : (
-          sortedItems.map((item, idx) => (
-            <div key={item.id} className="media-item" data-cat={activeCat}
+          sortedItems.map((item, idx) => {
+            const itemCatId = item.category || activeCat;
+            const ItemIcon = (CATEGORIES.find((c) => c.id === itemCatId)?.icon) || CatIcon;
+            return (
+            <div key={item.id} className="media-item" data-cat={itemCatId}
               style={{ animationDelay: `${idx * 0.04}s` }}>
-              <div className="media-item-icon">
-                <CatIcon size={18} />
+              <div className={`media-item-icon ${item.poster ? 'has-poster' : ''}`}>
+                {item.poster ? (
+                  <img
+                    src={item.poster}
+                    alt=""
+                    className="media-item-poster"
+                    loading="lazy"
+                    onError={(e) => { e.currentTarget.parentElement.classList.remove('has-poster'); e.currentTarget.remove(); }}
+                  />
+                ) : null}
+                <ItemIcon size={18} className="media-item-fallback-icon" />
               </div>
               <div className="media-item-body">
                 <div className="media-item-top">
@@ -627,7 +641,8 @@ export default function MediaTracker() {
                 </button>
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </div>
 

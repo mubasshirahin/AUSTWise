@@ -1,5 +1,5 @@
-import { useState, useRef, useCallback } from 'react';
-import { ShoppingCart, Plus, X, Upload, Trash2 } from 'lucide-react';
+import { useState, useRef, useCallback, useMemo } from 'react';
+import { ShoppingCart, Plus, X, Upload, Trash2, Search } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import useWebSocket from '../../hooks/useWebSocket';
 import {
@@ -65,8 +65,45 @@ export default function ExchangeKits() {
   const [previewUrl, setPreviewUrl] = useState('');
   const fileInputRef = useRef(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [searchInput, setSearchInput] = useState('');
+  const [query, setQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [conditionFilter, setConditionFilter] = useState('All');
+  const [sortBy, setSortBy] = useState('newest');
 
   const refresh = useCallback(() => setItems(listExchangeItems()), []);
+
+  const filteredItems = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    let result = items.filter((item) => {
+      if (categoryFilter !== 'All' && item.category !== categoryFilter) return false;
+      if (conditionFilter !== 'All' && item.condition !== conditionFilter) return false;
+      if (!q) return true;
+      const haystack = `${item.title || ''} ${item.seller || ''} ${item.category || ''}`.toLowerCase();
+      return haystack.includes(q);
+    });
+    result = [...result].sort((a, b) => {
+      switch (sortBy) {
+        case 'oldest':
+          return new Date(a.postedAt).getTime() - new Date(b.postedAt).getTime();
+        case 'price-asc':
+          return (Number(a.price) || 0) - (Number(b.price) || 0);
+        case 'price-desc':
+          return (Number(b.price) || 0) - (Number(a.price) || 0);
+        case 'title':
+          return String(a.title || '').localeCompare(String(b.title || ''));
+        case 'newest':
+        default:
+          return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
+      }
+    });
+    return result;
+  }, [items, query, categoryFilter, conditionFilter, sortBy]);
+
+  const handleSearch = (event) => {
+    event.preventDefault();
+    setQuery(searchInput);
+  };
 
   // Real-time: when another device adds/removes a listing, refresh the list.
   // The storage util writes through sharedStore, which the server reports as a
@@ -187,6 +224,39 @@ export default function ExchangeKits() {
       {message && <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent-emerald)', marginBottom: '10px' }}>{message}</p>}
       {error && <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent-rose)', marginBottom: '10px' }}>{error}</p>}
 
+      <div className="aw-filter-bar">
+        <form className="aw-search-group" onSubmit={handleSearch}>
+          <input
+            className="input aw-search-input"
+            type="text"
+            placeholder="Search products, seller, category..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            aria-label="Search AW Market"
+          />
+          <button type="submit" className="btn btn-primary btn-sm aw-search-btn">
+            <Search size={14} /> Search
+          </button>
+        </form>
+        <div className="aw-filter-controls">
+          <select className="input aw-filter-select" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} aria-label="Filter by category">
+            <option value="All">All categories</option>
+            {categories.map((category) => <option key={category} value={category}>{category}</option>)}
+          </select>
+          <select className="input aw-filter-select" value={conditionFilter} onChange={(e) => setConditionFilter(e.target.value)} aria-label="Filter by condition">
+            <option value="All">All conditions</option>
+            {conditions.map((condition) => <option key={condition} value={condition}>{condition}</option>)}
+          </select>
+          <select className="input aw-filter-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label="Sort listings">
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="price-asc">Price: Low to High</option>
+            <option value="price-desc">Price: High to Low</option>
+            <option value="title">Title: A–Z</option>
+          </select>
+        </div>
+      </div>
+
       {showForm && (
         <form onSubmit={handleSubmit} className="glass-card" style={{ padding: '16px', marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <div className="grid-2" style={{ gap: '10px' }}>
@@ -263,9 +333,15 @@ export default function ExchangeKits() {
           <h3>No listings yet</h3>
           <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>Be the first to sell books, lab kits, or stationery.</p>
         </div>
+      ) : filteredItems.length === 0 ? (
+        <div className="empty-state" style={{ padding: '28px' }}>
+          <Search size={36} />
+          <h3>No listings match</h3>
+          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>Try a different search, filter, or sort option.</p>
+        </div>
       ) : (
         <div className="exchange-grid">
-          {items.map((item) => (
+          {filteredItems.map((item) => (
             <div key={item.id} className="mp-card">
               <div className="mp-card-image">
                 {renderImage(item.image)}

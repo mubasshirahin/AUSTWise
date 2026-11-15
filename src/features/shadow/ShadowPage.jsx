@@ -2,10 +2,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Moon, Eye, Star, Shield, Send, User, Timer, MessageSquare, Flame,
-  Loader2, AlertTriangle, Wifi, WifiOff, Zap,
+  Loader2, AlertTriangle, Wifi, WifiOff, Zap, Ghost, RefreshCw,
 } from 'lucide-react';
 import CourseReview from '../analytics/CourseReview';
-import BuzzPage from '../austeddit/AustedditPage';
+import BuzzPage from '../buzz/BuzzPage';
 import RoastCVPage from '../roast-cv/RoastCVPage';
 import GliderTabs from '../../components/GliderTabs';
 import MastheadAccessControl from '../../components/MastheadAccessControl';
@@ -14,14 +14,11 @@ import SidebarPageAccessPanel, { SidebarPageAccessHeader } from '../admin/Sideba
 import useTabUrlState from '../../hooks/useTabUrlState';
 import useAdminMode from '../../hooks/useAdminMode';
 import { useLiveValue } from '../../utils/liveStore';
+import { getShadowIdentity, regenerateShadowNickname, shadowInitials } from '../../utils/shadowName';
 import './ShadowPage.css';
 import './shadow-tokens.css';
 
 const SHADOW_DURATION = 10 * 60; // 10 minutes in seconds
-
-function generateShadowId() {
-  return `shadow-${Math.random().toString(36).slice(2, 10)}`;
-}
 
 function formatTime(seconds) {
   const m = Math.floor(seconds / 60);
@@ -65,9 +62,13 @@ export default function ShadowPage() {
     onChange: setActiveTab,
   });
 
+  /* ─── Shadow identity (shared with Buzz) ─── */
+  const [identity, setIdentity] = useState(() => getShadowIdentity());
+  const handleRegenerateIdentity = () => setIdentity(regenerateShadowNickname());
+
   /* ─── Shadow Chat State ─── */
   const [chatState, setChatState] = useState('idle'); // idle | queued | matched | ended
-  const [shadowId] = useState(generateShadowId);
+  const shadowId = identity.nickname;
   const [, setPeerId] = useState(null);
   const [sessionId, setSessionId] = useState(null);
   const [timeLeft, setTimeLeft] = useState(SHADOW_DURATION);
@@ -78,6 +79,7 @@ export default function ShadowPage() {
   const [endReason, setEndReason] = useState('');
   const [peerTyping, setPeerTyping] = useState(false);
   const [wsError, setWsError] = useState(false);
+  const [shadowStatus, setShadowStatus] = useState({ queueCount: 0, activeSessions: 0 });
 
   const wsRef = useRef(null);
   const reconnectAttemptsRef = useRef(0);
@@ -125,6 +127,7 @@ export default function ShadowPage() {
         reconnectAttemptsRef.current = 0;
         setWsConnected(true);
         setWsError(false);
+        try { ws.send(JSON.stringify({ type: 'shadow-status', payload: {} })); } catch { /* ignore */ }
       };
 
       ws.onmessage = (event) => {
@@ -138,6 +141,13 @@ export default function ShadowPage() {
             case 'shadow-queued':
               setQueuePosition(payload.position || 1);
               setChatState('queued');
+              break;
+
+            case 'shadow-status':
+              setShadowStatus({
+                queueCount: Number(payload.queueCount) || 0,
+                activeSessions: Number(payload.activeSessions) || 0,
+              });
               break;
 
             case 'shadow-matched': {
@@ -295,25 +305,42 @@ export default function ShadowPage() {
   return (
     <div className="shadow-page animate-fadeIn">
 
-      {/* ── 1. Hero box (own card) ── */}
-      {isAdmin ? <SidebarPageAccessHeader pageKey="/shadow" /> : <header className="sh-hero">
-        <div className="sh-hero-content">
-          <div className="sh-hero-eyebrow">
-            <span className="sh-hero-period-icon">
-              <Moon size={16} />
-            </span>
-            <span className="sh-hero-date-label">
-              Anonymous · no login required
-            </span>
+      {/* ── 1. Hero box + identity (own row) ── */}
+      {isAdmin ? <SidebarPageAccessHeader pageKey="/shadow" /> : (
+        <div className="sh-hero-row">
+          <header className="sh-hero">
+            <div className="sh-hero-content">
+              <div className="sh-hero-eyebrow">
+                <span className="sh-hero-period-icon">
+                  <Moon size={16} />
+                </span>
+                <span className="sh-hero-date-label">
+                  Anonymous · no login required
+                </span>
+              </div>
+              <h1 className="sh-hero-title">
+                Shadow<span className="sh-hero-name"> Mode</span>
+              </h1>
+              <p className="sh-hero-subtitle">
+                Anonymous course reviews and 10-minute anonymous chats — no login required.
+              </p>
+            </div>
+          </header>
+          <div className="sh-identity-card">
+            <div className="sh-identity-top">
+              <div className="sh-identity-avatar">{shadowInitials(identity.nickname)}</div>
+              <div className="sh-identity-info">
+                <span className="sh-identity-label"><Ghost size={11} /> Your shadow name</span>
+                <span className="sh-identity-name">{identity.nickname}</span>
+              </div>
+            </div>
+            <p className="sh-identity-hint">Used in Buzz and Shadow Chat.</p>
+            <button type="button" className="sh-identity-regen" onClick={handleRegenerateIdentity} title="Generate new name">
+              <RefreshCw size={13} /> New name
+            </button>
           </div>
-          <h1 className="sh-hero-title">
-            Shadow<span className="sh-hero-name"> Mode</span>
-          </h1>
-          <p className="sh-hero-subtitle">
-            Anonymous course reviews and 10-minute anonymous chats — no login required.
-          </p>
         </div>
-      </header>}
+      )}
 
       {/* ── 2. Glider tabs bar (own card) ── */}
       {isAdmin && <SidebarPageAccessPanel pageKey="/shadow" part="parent" />}
@@ -371,7 +398,7 @@ export default function ShadowPage() {
                 subtitle="AUST forum — anonymous posts"
               />
               <div className="schedule-dotted-divider shadow-repeat-divider" />
-              <BuzzPage />
+              <BuzzPage identity={identity} />
             </>
           ) : activeTab === 'reviews' ? (
             <CourseReview />
@@ -406,6 +433,12 @@ export default function ShadowPage() {
                 </div>
                 <h3>Ready to talk?</h3>
                 <p>You'll be matched with a random stranger for exactly 10 minutes. Completely anonymous — no names, no traces.</p>
+                <p className="shadow-chat-as-name">Chatting as <strong>{identity.nickname}</strong></p>
+                <div className="shadow-chat-live-stats">
+                  <span className="shadow-live-stat"><strong>{shadowStatus.queueCount}</strong> in queue</span>
+                  <span className="shadow-live-stat-sep">·</span>
+                  <span className="shadow-live-stat"><strong>{shadowStatus.activeSessions}</strong> in 10-min session{shadowStatus.activeSessions === 1 ? '' : 's'}</span>
+                </div>
                 <button
                   className="shadow-join-btn"
                   onClick={handleJoinQueue}
@@ -424,7 +457,7 @@ export default function ShadowPage() {
                 )}
               </div>
             )}
-  
+
             {/* Queued state */}
             {chatState === 'queued' && (
               <div className="shadow-chat-queued">
@@ -433,6 +466,12 @@ export default function ShadowPage() {
                 </div>
                 <h3>Finding a stranger...</h3>
                 <p>You're in the queue at position #{queuePosition}. Hang tight!</p>
+                <p className="shadow-chat-as-name">Chatting as <strong>{identity.nickname}</strong></p>
+                <div className="shadow-chat-live-stats">
+                  <span className="shadow-live-stat"><strong>{shadowStatus.queueCount}</strong> in queue</span>
+                  <span className="shadow-live-stat-sep">·</span>
+                  <span className="shadow-live-stat"><strong>{shadowStatus.activeSessions}</strong> in 10-min session{shadowStatus.activeSessions === 1 ? '' : 's'}</span>
+                </div>
                 <button className="shadow-leave-btn" onClick={handleLeaveQueue}>
                   Cancel
                 </button>

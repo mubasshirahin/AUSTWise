@@ -1,14 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import {
   MessageCircle, ArrowBigUp, ArrowBigDown, Hash, Send,
-  RefreshCw, CornerDownRight, Ghost, Plus, X,
+  Plus, X, CornerDownRight,
 } from 'lucide-react';
-import {
-  getShadowIdentity, regenerateShadowNickname, shadowInitials,
-} from '../../utils/shadowName';
+import { getShadowIdentity, shadowInitials } from '../../utils/shadowName';
 import { liveLoad, liveSave } from '../../utils/liveStorage';
 import { useLiveRefresh } from '../../utils/liveStore';
-import './AustedditPage.css';
+import './BuzzPage.css';
 import '../../components/PageHero.css';
 
 const POSTS_KEY = 'aust-buzz-posts';       // shared across all students
@@ -40,8 +38,9 @@ const loadPosts = () => liveLoad('shared', POSTS_KEY, [], ['aust-buzz-posts-v0']
 
 const loadVotes = () => liveLoad('user', VOTES_KEY, {});
 
-export default function AustedditPage() {
-  const [identity, setIdentity] = useState(getShadowIdentity);
+export default function BuzzPage({ identity: identityProp } = {}) {
+  const [ownIdentity] = useState(getShadowIdentity);
+  const identity = identityProp || ownIdentity;
   const [posts, setPosts] = useState(loadPosts);
   const [votes, setVotes] = useState(loadVotes);
 
@@ -67,8 +66,6 @@ export default function AustedditPage() {
     const t = setInterval(() => forceTick((n) => n + 1), 60000);
     return () => clearInterval(t);
   }, []);
-
-  const handleRegenerate = () => setIdentity(regenerateShadowNickname());
 
   const handleCreatePost = (e) => {
     e.preventDefault();
@@ -155,34 +152,51 @@ export default function AustedditPage() {
 
   return (
     <div className="aed-page animate-fadeIn">
-      {/* ── Identity bar ── */}
-      <div className="buzz-identity">
-        <div className="buzz-identity-left">
-          <div className="buzz-avatar">{shadowInitials(identity.nickname)}</div>
-          <div className="buzz-identity-info">
-            <span className="buzz-identity-label"><Ghost size={11} /> Posting as</span>
-            <div className="buzz-identity-name-row">
-              <span className="buzz-identity-name">{identity.nickname}</span>
-              <button type="button" className="buzz-regen-btn" onClick={handleRegenerate} title="Get a new nickname" aria-label="Get a new nickname">
-                <RefreshCw size={13} />
+      {/* â”€â”€ Toolbar: filters + new post â”€â”€ */}
+      <div className="buzz-topbar">
+        <div className="buzz-toolbar">
+          <div className="buzz-filters">
+            <button
+              className={`buzz-filter ${activeChannel === 'all' ? 'active' : ''}`}
+              onClick={() => setActiveChannel('all')}
+            >
+              All
+            </button>
+            {CHANNELS.map((c) => (
+              <button
+                key={c.id}
+                className={`buzz-filter ${activeChannel === c.id ? 'active' : ''}`}
+                onClick={() => setActiveChannel(c.id)}
+              >
+                <Hash size={11} /> {c.label}
               </button>
+            ))}
+          </div>
+          <div className="buzz-topbar-right">
+            <div className="buzz-sort">
+              <button className={sort === 'hot' ? 'active' : ''} onClick={() => setSort('hot')}>Hot</button>
+              <button className={sort === 'new' ? 'active' : ''} onClick={() => setSort('new')}>New</button>
             </div>
+            <button
+              type="button"
+              className="buzz-new-post-btn"
+              onClick={() => setComposerOpen((o) => !o)}
+              aria-label={composerOpen ? 'Close composer' : 'Create a post'}
+            >
+              {composerOpen ? <X size={14} /> : <Plus size={14} />}
+              {composerOpen ? 'Close' : 'New Post'}
+            </button>
           </div>
         </div>
-        <button
-          type="button"
-          className="buzz-fab"
-          onClick={() => setComposerOpen((o) => !o)}
-          aria-label={composerOpen ? 'Close composer' : 'Create a post'}
-          title={composerOpen ? 'Close composer' : 'Create a post'}
-        >
-          {composerOpen ? <X size={16} /> : <Plus size={16} />}
-        </button>
       </div>
 
-      {/* ── Composer (hidden until the + button is pressed) ── */}
+      {/* â”€â”€ Composer (hidden until the + button is pressed) â”€â”€ */}
       {composerOpen && (
         <form className="buzz-composer" onSubmit={handleCreatePost}>
+          <div className="buzz-composer-head">
+            <div className="buzz-avatar">{shadowInitials(identity.nickname)}</div>
+            <span className="buzz-composer-as">Posting as <strong>{identity.nickname}</strong></span>
+          </div>
           <div className="buzz-channel-row">
             {CHANNELS.map((c) => (
               <button
@@ -208,7 +222,7 @@ export default function AustedditPage() {
             id="buzz-body"
             name="body"
             className="buzz-body-input"
-            placeholder="Share your thoughts anonymously…"
+            placeholder="Share your thoughts anonymouslyâ€¦"
             value={body}
             onChange={(e) => setBody(e.target.value)}
             rows={3}
@@ -232,32 +246,7 @@ export default function AustedditPage() {
         </form>
       )}
 
-      {/* ── Filter / sort bar ── */}
-      <div className="buzz-toolbar">
-        <div className="buzz-filters">
-          <button
-            className={`buzz-filter ${activeChannel === 'all' ? 'active' : ''}`}
-            onClick={() => setActiveChannel('all')}
-          >
-            All
-          </button>
-          {CHANNELS.map((c) => (
-            <button
-              key={c.id}
-              className={`buzz-filter ${activeChannel === c.id ? 'active' : ''}`}
-              onClick={() => setActiveChannel(c.id)}
-            >
-              <Hash size={11} /> {c.label}
-            </button>
-          ))}
-        </div>
-        <div className="buzz-sort">
-          <button className={sort === 'hot' ? 'active' : ''} onClick={() => setSort('hot')}>Hot</button>
-          <button className={sort === 'new' ? 'active' : ''} onClick={() => setSort('new')}>New</button>
-        </div>
-      </div>
-
-      {/* ── Feed ── */}
+      {/* â”€â”€ Feed â”€â”€ */}
       <div className="buzz-feed">
         {visiblePosts.length === 0 && (
           <div className="buzz-empty">
@@ -301,7 +290,7 @@ export default function AustedditPage() {
                     <Hash size={11} /> {meta.label}
                   </span>
                   <span className="buzz-post-author">{post.author}</span>
-                  <span className="buzz-post-dot">·</span>
+                  <span className="buzz-post-dot">Â·</span>
                   <span className="buzz-post-time">{getTimeAgo(post.timestamp)}</span>
                 </div>
                 {post.title && <h3 className="buzz-post-title">{post.title}</h3>}
@@ -319,7 +308,7 @@ export default function AustedditPage() {
                     <div className="buzz-comment-form">
                       <input
                         className="buzz-comment-input"
-                        placeholder={`Comment as ${identity.nickname}…`}
+                        placeholder={`Comment as ${identity.nickname}â€¦`}
                         value={commentDrafts[post.id] || ''}
                         onChange={(e) => setCommentDrafts((prev) => ({ ...prev, [post.id]: e.target.value }))}
                         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submitComment(post.id); } }}
@@ -335,7 +324,7 @@ export default function AustedditPage() {
                     </div>
 
                     {post.comments.length === 0 ? (
-                      <p className="buzz-no-comments">No comments yet — start the thread.</p>
+                      <p className="buzz-no-comments">No comments yet â€” start the thread.</p>
                     ) : (
                       [...post.comments]
                         .sort((a, b) => b.score - a.score || a.timestamp - b.timestamp)
@@ -347,7 +336,7 @@ export default function AustedditPage() {
                               <div className="buzz-comment-body">
                                 <div className="buzz-comment-meta">
                                   <span className="buzz-comment-author">{c.author}</span>
-                                  <span className="buzz-post-dot">·</span>
+                                  <span className="buzz-post-dot">Â·</span>
                                   <span className="buzz-comment-time">{getTimeAgo(c.timestamp)}</span>
                                 </div>
                                 <p className="buzz-comment-text">{c.text}</p>

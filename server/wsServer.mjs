@@ -172,6 +172,7 @@ function endShadowSession(sessionId, reason) {
   const endPayload = { type: 'shadow-ended', payload: { sessionId, reason, serverTime: Date.now() } };
   sendTo(session.userA.ws, endPayload);
   sendTo(session.userB.ws, endPayload);
+  broadcastShadowStatus();
 }
 
 function findShadowSession(ws) {
@@ -187,6 +188,21 @@ function getShadowPeer(ws, session) {
 
 function removeFromShadowQueue(ws) {
   shadowQueue = shadowQueue.filter((entry) => entry.ws !== ws);
+}
+
+function getShadowStatus() {
+  return {
+    queueCount: shadowQueue.length,
+    activeSessions: shadowSessions.size,
+  };
+}
+
+function sendShadowStatus(ws) {
+  sendTo(ws, { type: 'shadow-status', payload: { ...getShadowStatus(), serverTime: Date.now() } });
+}
+
+function broadcastShadowStatus() {
+  broadcastToAll({ type: 'shadow-status', payload: { ...getShadowStatus(), serverTime: Date.now() } });
 }
 
 let wss = null;
@@ -351,6 +367,7 @@ export function createWSServer(httpServer) {
                 sendTo(entry.ws, { type: 'shadow-queued', payload: { position: idx + 1, serverTime: Date.now() } });
               });
             }
+            broadcastShadowStatus();
             break;
           }
 
@@ -360,6 +377,12 @@ export function createWSServer(httpServer) {
             shadowQueue.forEach((entry, idx) => {
               sendTo(entry.ws, { type: 'shadow-queued', payload: { position: idx + 1, serverTime: Date.now() } });
             });
+            broadcastShadowStatus();
+            break;
+          }
+
+          case 'shadow-status': {
+            sendShadowStatus(ws);
             break;
           }
 
@@ -421,6 +444,7 @@ export function createWSServer(httpServer) {
         shadowQueue.forEach((entry, idx) => {
           sendTo(entry.ws, { type: 'shadow-queued', payload: { position: idx + 1, serverTime: Date.now() } });
         });
+        broadcastShadowStatus();
       }
       // Regular user cleanup
       if (currentUserId) {
@@ -452,6 +476,7 @@ export function createWSServer(httpServer) {
         if (shadowEntry) {
           endShadowSession(shadowEntry.sessionId, 'peer-disconnected');
         }
+        broadcastShadowStatus();
       }
       // Regular user cleanup
       if (currentUserId) {

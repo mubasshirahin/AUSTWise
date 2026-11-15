@@ -17,6 +17,122 @@
   padding-bottom: var(--sp-10);
 }
 
+/* ── Hero + identity row ── */
+.sh-hero-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: var(--sp-4);
+  align-items: stretch;
+}
+
+.sh-hero-row .sh-hero {
+  min-width: 0;
+}
+
+.sh-identity-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-xl);
+  padding: var(--sp-4);
+  box-shadow: var(--shadow-lift);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  justify-content: center;
+  animation: shHeroIn 0.55s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.sh-identity-top {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.sh-identity-avatar {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--accent-amber);
+  background: var(--accent-amber-glow);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 25%, transparent);
+}
+
+.sh-identity-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sh-identity-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.sh-identity-name {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.sh-identity-hint {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
+
+.sh-identity-regen {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 30%, transparent);
+  background: color-mix(in srgb, var(--accent-amber) 8%, transparent);
+  color: var(--accent-amber);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.sh-identity-regen:hover {
+  background: color-mix(in srgb, var(--accent-amber) 16%, transparent);
+}
+
+.shadow-chat-as-name {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+
+.shadow-chat-as-name strong {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  color: var(--accent-amber);
+}
+
+@media (max-width: 900px) {
+  .sh-hero-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════════
    0. PAGE HERO — own card (matches dashboard hero)
    ═══════════════════════════════════════════════════════════════ */
@@ -416,6 +532,31 @@
   font-size: var(--fs-xs);
   color: var(--accent-rose);
   margin-top: var(--sp-2);
+}
+
+.shadow-chat-live-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: var(--sp-2);
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-primary);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+}
+
+.shadow-live-stat strong {
+  color: var(--accent-amber);
+  font-weight: 700;
+}
+
+.shadow-live-stat-sep {
+  color: var(--text-tertiary);
 }
 
 /* ── Queued ── */

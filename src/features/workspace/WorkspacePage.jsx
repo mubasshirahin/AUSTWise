@@ -251,20 +251,22 @@ export default function WorkspacePage() {
         return;
       }
       isRefreshFlowRef.current = true;
-      
+
       // Look up the account to get email and googleId for hints
       // Access accounts via a ref to avoid dependency issues
       const acc = findAccountRef.current?.(accountId);
-      
+
       const refreshClient = window.google.accounts.oauth2.initTokenClient({
         client_id: GOOGLE_CLIENT_ID,
         scope: SCOPES,
         // Pass the stored email as a hint so Google knows which account to use silently
-        ...(acc?.email ? { login_hint: acc.email } : {}),
+        ...(acc?.email ? { hint: acc.email } : {}),
         callback: (response) => {
           if (response.error) {
             isRefreshFlowRef.current = false;
-            reject(new Error(response.error));
+            const code = response.error || 'unknown_error';
+            const desc = response.error_description || response.error_subtype || '';
+            reject(new Error(desc ? `${code}: ${desc}` : code));
             return;
           }
           const scopes = (response.scope || '').split(' ').filter(Boolean);
@@ -283,13 +285,15 @@ export default function WorkspacePage() {
           isRefreshFlowRef.current = false;
           resolve(response.access_token);
         },
-        error_callback: () => {
+        error_callback: (err) => {
           isRefreshFlowRef.current = false;
-          reject(new Error('Token refresh failed'));
+          const type = err?.type || err?.error || 'unknown';
+          const msg = err?.message || err?.error_description || '';
+          reject(new Error(msg ? `${type}: ${msg}` : type));
         },
       });
       // No prompt = let Google silently return token if session is valid.
-      // login_hint above tells Google which account to use.
+      // hint above tells Google which account to use.
       refreshClient.requestAccessToken({});
     });
   }, []);
@@ -303,6 +307,7 @@ export default function WorkspacePage() {
       return newToken;
     } catch (err) {
       console.warn('[Workspace] Token refresh failed, needs re-auth:', err.message);
+      // Missing/expired session is expected after reload; prompt re-auth without surfacing a scary error.
       setNeedsReauth(true);
       return null;
     }
@@ -378,7 +383,14 @@ export default function WorkspacePage() {
       scope: SCOPES,
       callback: (response) => {
         if (response.error) {
-          setError('Authorization failed. Please try again.');
+          if (isRefreshFlowRef.current) return;
+          const code = response.error || 'unknown_error';
+          const desc = response.error_description || response.error_subtype || '';
+          if (code === 'access_denied') {
+            setError('Google sign-in was cancelled or access was denied. Grant the requested permissions to connect Classroom.');
+          } else {
+            setError(`Google authorization failed: ${code}${desc ? ` — ${desc}` : ''}.`);
+          }
           setIsAuthorizing(false);
           return;
         }
@@ -392,9 +404,17 @@ export default function WorkspacePage() {
         setIsAuthorizing(false);
         setError(null);
       },
-      error_callback: () => {
+      error_callback: (err) => {
         if (isRefreshFlowRef.current) return;
-        setError('Authorization failed. Please try again.');
+        const type = err?.type || err?.error || 'unknown';
+        if (type === 'popup_closed') {
+          setError('Google sign-in popup was closed before completing. Please try again.');
+        } else if (type === 'popup_failed_to_open') {
+          setError('Could not open the Google sign-in popup. Allow popups for this site and try again.');
+        } else {
+          const msg = err?.message || err?.error_description || '';
+          setError(`Google sign-in failed: ${type}${msg ? ` — ${msg}` : ''}.`);
+        }
         setIsAuthorizing(false);
       },
     });
@@ -406,8 +426,6 @@ export default function WorkspacePage() {
     if (!pendingAuth) return;
     const { token, scopes, expiresIn } = pendingAuth;
     setPendingAuth(null);
-
-    const expiresAt = Date.now() + (expiresIn || 3600) * 1000;
 
     (async () => {
       setLoadingCourses(true);
@@ -422,7 +440,14 @@ export default function WorkspacePage() {
         courseList = (data.courses || []).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
       } catch (err) {
         console.error('Failed to fetch courses:', err);
-        setError(err.message);
+        const msg = String(err?.message || '');
+        if (msg.includes('403') || msg.includes('accessNotConfigured') || msg.includes('has not been used') || msg.includes('disabled')) {
+          setError('Google Classroom access failed (403). In Google Cloud Console for this OAuth client/project: enable "Google Classroom API", add this app origin as an Authorized JavaScript origin, and if the app is in Testing add your Google account as a Test user. Then try Sign in again.');
+        } else if (msg.includes('401')) {
+          setError('Google Classroom authorization expired or is invalid (401). Please sign in again.');
+        } else {
+          setError(msg || 'Failed to load Classroom courses.');
+        }
         setLoadingCourses(false);
         return;
       }
@@ -430,15 +455,19 @@ export default function WorkspacePage() {
       // Use Google UserInfo API instead of Classroom profile API
       // (classroom.profile.emails scope may be dropped by Google for unverified apps)
       try {
-        const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
           profile = await res.json();
         } else {
           let detail = '';
-          try { const body = await res.json(); detail = body.error?.message || ''; } catch {}
-          throw new Error(detail || `UserInfo API returned ${res.status}`);
+          try { const body = await res.json(); detail = body.error?.message || body.error_description || ''; } catch {}
+          if (res.status !== 403) {
+            throw new Error(detail || `UserInfo API returned ${res.status}`);
+          }
+          // 403 can happen if userinfo scopes weren't granted; continue without profile
+          profileError = detail || 'userinfo_unavailable';
         }
       } catch (err) {
         profileError = err.message;
@@ -448,7 +477,7 @@ export default function WorkspacePage() {
       // UserInfo API returns different field names than Classroom profile API
       // https://www.googleapis.com/oauth2/v2/userinfo → { email, name (string), picture, id }
       const email = profile?.email || '';
-      const googleId = profile?.id || '';
+      const googleId = profile?.sub || profile?.id || '';
       const name = typeof profile?.name === 'string' ? profile.name : (profile?.given_name || email.split('@')[0] || '');
       const photoUrl = profile?.picture || '';
 
@@ -978,7 +1007,7 @@ export default function WorkspacePage() {
               <><LogIn size={18} /> Sign in with Google Classroom</>
             )}
           </button>
-          {error && <p className="workspace-error">{error}</p>}
+          {error && accounts.length > 0 && <p className="workspace-error">{error}</p>}
         </div>
       )}
 

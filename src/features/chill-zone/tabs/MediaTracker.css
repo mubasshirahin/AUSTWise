@@ -702,6 +702,23 @@ textarea.media-input {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.media-item-icon.has-poster {
+  background: var(--bg-input);
+}
+
+.media-item-poster {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.media-item-icon.has-poster .media-item-fallback-icon {
+  display: none;
 }
 
 .media-item[data-cat="movies"] .media-item-icon {
