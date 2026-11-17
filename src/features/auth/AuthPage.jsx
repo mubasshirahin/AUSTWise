@@ -970,7 +970,7 @@ export default function AuthPage() {
                   value={signupForm.batchNo}
                   onChange={(e) => setSignupForm((c) => ({ ...c, batchNo: e.target.value }))}
                   placeholder="e.g. Batch 45"
-                  pattern="[A-Za-z]+\\s+[0-9]+"
+                  pattern={'[A-Za-z]+\\s+[0-9]+'}
                   title={batchFormatHint}
                   required
                 />
@@ -987,7 +987,7 @@ export default function AuthPage() {
                   value={signupForm.batchNo}
                   onChange={(e) => setSignupForm((c) => ({ ...c, batchNo: e.target.value }))}
                   placeholder="e.g. Batch 45"
-                  pattern="[A-Za-z]+\\s+[0-9]+"
+                  pattern={'[A-Za-z]+\\s+[0-9]+'}
                   title={batchFormatHint}
                   required
                 />
