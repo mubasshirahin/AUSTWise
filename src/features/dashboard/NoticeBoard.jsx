@@ -356,7 +356,7 @@ export default function NoticeBoard() {
                 transform: dx ? `translateX(${dx}px)` : undefined,
               }}
             >
-              <div className="schedule-day-top">
+              <div className="notice-card-head">
                 <div className="schedule-day-num-wrap">
                   {notice.postedByName ? (
                     <div className="notice-author-avatar" aria-hidden="true">
@@ -366,18 +366,30 @@ export default function NoticeBoard() {
                     <UserRound size={14} className="notice-author-avatar-fallback" />
                   )}
                 </div>
-                <div className="schedule-day-badges">
-                  {notice.pinned && (
-                    <span className="notice-tag pinned"><Pin size={10} /> PINNED</span>
-                  )}
-                  {isNewNotice(notice.date) && (
-                    <span className="notice-tag new"><Sparkles size={10} /> NEW</span>
-                  )}
-                  {notice.category && (
-                    <span className={`notice-tag cat ${getCategoryBadgeClass(notice.category)}`}>
-                      {notice.category}
+                <div className="notice-head-text">
+                  <div className="notice-head-name">{notice.postedByName || 'Notice Board'}</div>
+                  <div className="notice-head-info">
+                    {notice.pinned && (
+                      <span className="notice-tag pinned"><Pin size={10} /> PINNED</span>
+                    )}
+                    {isNewNotice(notice.date) && (
+                      <span className="notice-tag new"><Sparkles size={10} /> NEW</span>
+                    )}
+                    {notice.category && (
+                      <span className={`notice-tag cat ${getCategoryBadgeClass(notice.category)}`}>
+                        {notice.category}
+                      </span>
+                    )}
+                    <span className="notice-head-meta">
+                      {[
+                        notice.postedByRole && notice.postedByRole.toUpperCase(),
+                        (notice.postedBySection || notice.scope?.section) && `Section ${notice.postedBySection || notice.scope.section}`,
+                        (notice.postedByLabSection || notice.scope?.labSection) && `Lab ${notice.postedByLabSection || notice.scope.labSection}`,
+                      ].filter(Boolean).join(' · ')}
                     </span>
-                  )}
+                  </div>
+                </div>
+                <div className="notice-head-actions">
                   {isOwn && (
                     deleteConfirmId === notice.id ? (
                       <span className="notice-delete-confirm" onClick={e => e.stopPropagation()}>
@@ -400,33 +412,25 @@ export default function NoticeBoard() {
                 </div>
               </div>
 
+              <div className="notice-divider" />
+
               <div className="notice-title">{notice.title}</div>
+              <div className="notice-body">
+                {isExpanded ? (
+                  <div className="notice-details">{notice.content}</div>
+                ) : (
+                  <div className="notice-preview">{notice.content}</div>
+                )}
+              </div>
+
+              <div className="notice-divider" />
+
               {(() => {
                 const posted = formatNoticePosted(notice);
                 return posted ? (
                   <time className="notice-date" dateTime={posted.iso}>{posted.label}</time>
                 ) : null;
               })()}
-              {notice.postedByName && (
-                <div className="notice-author-meta">
-                  <span className="notice-author-name">{notice.postedByName}</span>
-                  {notice.postedByRole && <span>{notice.postedByRole.toUpperCase()}</span>}
-                  {(notice.postedBySection || notice.scope?.section) && (
-                    <span>Section {notice.postedBySection || notice.scope.section}</span>
-                  )}
-                  {(notice.postedByLabSection || notice.scope?.labSection) && (
-                    <span>Lab {notice.postedByLabSection || notice.scope.labSection}</span>
-                  )}
-                </div>
-              )}
-
-              {isExpanded ? (
-                <div className="notice-details">
-                  {notice.content}
-                </div>
-              ) : (
-                <div className="notice-preview">{notice.content}</div>
-              )}
             </div>
             </div>
           );
