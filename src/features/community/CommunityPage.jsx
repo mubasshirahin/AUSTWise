@@ -24,11 +24,11 @@ const STUDENT_DIRECTORY_DEPARTMENT_EXPANSION_KEY = 'aust-student-directory-expan
 // Unified theme: every tab uses the single brand accent (amber) so the tab bar
 // stays monochrome instead of rotating purple/green/blue per category.
 const communityTabs = [
-  { id: 'alumni', label: 'Alumni Directory', icon: GraduationCap, color: 'amber', desc: 'Connect with alumni', accessKey: 'feature:community:alumni' },
-  { id: 'clubs', label: 'Clubs Hub', icon: Building2, color: 'amber', desc: 'Join student clubs', accessKey: 'feature:community:clubs' },
   { id: 'students', label: 'Student Directory', icon: Users, color: 'amber', desc: 'Find classmates', accessKey: 'feature:community:students' },
   { id: 'faculty', label: 'Faculty Directory', icon: School, color: 'amber', desc: 'Meet your teachers', accessKey: 'feature:community:faculty' },
+  { id: 'alumni', label: 'Alumni Directory', icon: GraduationCap, color: 'amber', desc: 'Connect with alumni', accessKey: 'feature:community:alumni' },
   { id: 'mentorRequests', label: 'Mentor Requests', icon: UserPlus, color: 'amber', desc: 'Connect study buddies', accessKey: 'feature:community:mentorRequests' },
+  { id: 'clubs', label: 'Clubs Hub', icon: Building2, color: 'amber', desc: 'Join student clubs', accessKey: 'feature:community:clubs' },
 ];
 
 export default function CommunityPage() {

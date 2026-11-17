@@ -51,6 +51,14 @@ services:
       - key: TELEGRAM_WEBHOOK_SECRET
         sync: false
         # Required for Telegram webhook in production.
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+        # Web Push: npx web-push generate-vapid-keys (public half).
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+        # Web Push: keep secret — never expose to the browser.
+      - key: VAPID_SUBJECT
+        value: mailto:austwise@aust.edu
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_ROUTINE_MODEL

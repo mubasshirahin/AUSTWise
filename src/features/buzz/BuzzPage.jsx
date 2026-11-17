@@ -149,7 +149,7 @@ export default function BuzzPage({ identity: identityProp } = {}) {
 
   return (
     <div className="aed-page animate-fadeIn">
-      {/* â”€â”€ Toolbar: filters + new post â”€â”€ */}
+      {/* ── Toolbar: filters + new post ── */}
       <div className="buzz-topbar">
         <div className="buzz-toolbar">
           <div className="buzz-filters">
@@ -187,7 +187,7 @@ export default function BuzzPage({ identity: identityProp } = {}) {
         </div>
       </div>
 
-      {/* â”€â”€ Composer (hidden until the + button is pressed) â”€â”€ */}
+      {/* ── Composer (hidden until the + button is pressed) ── */}
       {composerOpen && (
         <form className="buzz-composer" onSubmit={handleCreatePost}>
           <div className="buzz-composer-head">
@@ -219,7 +219,7 @@ export default function BuzzPage({ identity: identityProp } = {}) {
             id="buzz-body"
             name="body"
             className="buzz-body-input"
-            placeholder="Share your thoughts anonymouslyâ€¦"
+            placeholder="Share your thoughts anonymously…"
             value={body}
             onChange={(e) => setBody(e.target.value)}
             rows={3}
@@ -243,7 +243,7 @@ export default function BuzzPage({ identity: identityProp } = {}) {
         </form>
       )}
 
-      {/* â”€â”€ Feed â”€â”€ */}
+      {/* ── Feed ── */}
       <div className="buzz-feed">
         {visiblePosts.length === 0 && (
           <div className="buzz-empty">

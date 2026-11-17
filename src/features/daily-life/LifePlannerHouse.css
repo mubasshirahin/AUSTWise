@@ -705,10 +705,6 @@
   .lp-widget .lp-mm-pct { font-size: 10px; }
   .lp-widget .pb-zoom-value { font-size: 11px; }
 
-  /* Automate */
-  .lp-widget .pb-auto-icon { width: 32px; height: 32px; }
-  .lp-widget .pb-step-num { width: 22px; height: 22px; font-size: 11px; }
-  .lp-widget .pb-code { min-height: 180px; padding: 10px; font-size: 10.5px; }
 }
 
 /* ── Course detail ── */

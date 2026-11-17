@@ -44,10 +44,13 @@ function FeatureRow({ feature }) {
   const { config, loading, save } = useRoleAccess(feature.key);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const enabled = config.enabled !== false;
   const toggle = async () => {
     setBusy(true);
-    await save({ ...config, enabled: !enabled });
+    setSaveError('');
+    const ok = await save({ ...config, enabled: !enabled });
+    if (!ok) setSaveError('Could not save — check your connection and try again.');
     setBusy(false);
   };
 
@@ -59,6 +62,7 @@ function FeatureRow({ feature }) {
         {enabled ? <><Eye size={13} /> On</> : <><EyeOff size={13} /> Turn on</>}
       </button>
     </div>
+    {saveError && <p role="alert" style={{ color: 'var(--accent-rose)', fontSize: '11px', margin: '0 12px 10px' }}>{saveError}</p>}
     {open && <div style={{ padding: '0 10px 10px' }}><RoleAccessControlCard pageKey={feature.key} label={feature.label} /></div>}
   </div>;
 }

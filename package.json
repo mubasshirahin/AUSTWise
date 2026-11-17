@@ -48,6 +48,7 @@
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.16.0",
     "three": "^0.185.1",
+    "web-push": "^4.0.0",
     "ws": "^8.21.1"
   },
   "devDependencies": {

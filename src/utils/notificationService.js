@@ -179,6 +179,10 @@ function getTodayDayName() {
 }
 
 export function checkClassReminders(routine, weekDays, minutesBefore = 30) {
+  // When this device is subscribed to Web Push, the server scheduler owns
+  // class reminders so they arrive even with the app closed. Running the
+  // page-local check too would deliver each alert twice.
+  try { if (localStorage.getItem('aust-push-reminders-handoff') === '1') return; } catch { /* ignore */ }
   const today = getTodayDayName();
   if (!weekDays.includes(today)) return;
   const classes = routine[today] || [];
@@ -211,6 +215,8 @@ export function checkClassReminders(routine, weekDays, minutesBefore = 30) {
 }
 
 export function checkDeadlineReminders(deadlines, hoursBefore = 12) {
+  // See checkClassReminders — the server pushes these when Web Push is on.
+  try { if (localStorage.getItem('aust-push-reminders-handoff') === '1') return; } catch { /* ignore */ }
   const now = Date.now();
   const thresholdMs = hoursBefore * 60 * 60 * 1000;
 

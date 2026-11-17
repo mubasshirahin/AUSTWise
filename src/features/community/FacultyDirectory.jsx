@@ -6,9 +6,11 @@ import { getCachedMembers, refreshMemberDirectory } from '../../utils/memberDire
 import { useAuth } from '../../context/AuthContext';
 import { DirectoryDepartmentHeader, DirectoryMemberCard } from './DirectoryShared';
 import { getDepartmentLabel } from './directoryUtils';
+import '../daily-life/DailyMasthead.css';
 
-// Canonical AUST department order — every department renders even when empty.
-const DEPARTMENTS = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'];
+// Same alphabetical order as the Alumni / Student directories.
+const DEPARTMENTS = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA']
+  .sort((a, b) => a.localeCompare(b));
 
 const DEPT_FULL_NAMES = {
   CSE: 'Computer Science & Engineering',
@@ -163,23 +165,18 @@ export default function FacultyDirectory() {
   };
 
   return (
-    <div className="student-dir faculty-dir member-directory">
-      {/* Masthead */}
-      <div className="schedule-masthead">
-        <div className="schedule-title-block">
-          <div className="schedule-icon-tile">
-            <School size={20} strokeWidth={2.2} />
-          </div>
-          <div>
-            <span className="schedule-overline">Community</span>
-            <div className="schedule-title">Faculty Directory</div>
-            <span className="schedule-subtitle">Find AUST faculty members.</span>
+    <div className="sd-widget student-dir faculty-dir member-directory">
+      <header className="dl-head">
+        <div className="dl-head-title">
+          <div className="dl-head-tile" aria-hidden="true"><School size={20} strokeWidth={2.1} /></div>
+          <div className="dl-head-text">
+            <span className="dl-head-overline">Community</span>
+            <h2 className="dl-head-name">Faculty Directory</h2>
+            <span className="dl-head-subtitle">Find AUST faculty members.</span>
           </div>
         </div>
 
-        <div className="schedule-masthead-center" />
-
-        <div className="schedule-actions student-dir-controls">
+        <div className="schedule-actions al-head-controls student-dir-controls">
           <select
             className="input alumni-select"
             value={activeDept}
@@ -193,8 +190,9 @@ export default function FacultyDirectory() {
               </option>
             ))}
           </select>
+          <span className="alumni-controls-split" aria-hidden="true" />
           <div className="search-box alumni-search student-dir-search">
-            <Search size={14} aria-hidden="true" />
+            <Search size={12} aria-hidden="true" />
             <input
               type="text"
               placeholder="Search name / designation"
@@ -204,7 +202,7 @@ export default function FacultyDirectory() {
             />
           </div>
         </div>
-      </div>
+      </header>
 
       <div className="schedule-dotted-divider" style={{ marginTop: 0 }} />
 

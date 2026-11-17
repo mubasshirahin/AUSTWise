@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getAlumniEmployment } from '../../utils/alumniEmployment';
 import { DirectoryDepartmentHeader, DirectoryMemberCard } from './DirectoryShared';
 import { getDepartmentLabel } from './directoryUtils';
+import '../daily-life/DailyMasthead.css';
 
 const DEPARTMENT_EXPANSION_KEY = 'austwise-alumni-department-expansion';
 
@@ -168,23 +169,18 @@ export default function AlumniDirectory() {
   };
 
   return (
-    <div className="alumni-page member-directory">
-      {/* Header section */}
-      <div className="schedule-masthead">
-        <div className="schedule-title-block">
-          <div className="schedule-icon-tile">
-            <GraduationCap size={20} strokeWidth={2.2} />
-          </div>
-          <div>
-            <span className="schedule-overline">Community</span>
-            <div className="schedule-title">Alumni Corner</div>
-            <span className="schedule-subtitle">Registered AUST graduates</span>
+    <div className="al-widget alumni-page member-directory">
+      <header className="dl-head">
+        <div className="dl-head-title">
+          <div className="dl-head-tile" aria-hidden="true"><GraduationCap size={20} strokeWidth={2.1} /></div>
+          <div className="dl-head-text">
+            <span className="dl-head-overline">Community</span>
+            <h2 className="dl-head-name">Alumni Corner</h2>
+            <span className="dl-head-subtitle">Registered AUST graduates</span>
           </div>
         </div>
 
-        <div className="schedule-masthead-center" />
-
-        <div className="schedule-actions">
+        <div className="schedule-actions al-head-controls">
           <select
             className="input alumni-select"
             value={selectedDept}
@@ -197,6 +193,8 @@ export default function AlumniDirectory() {
             ))}
           </select>
 
+          <span className="alumni-controls-split" aria-hidden="true" />
+
           <div className="search-box alumni-search">
             <Search size={12} aria-hidden="true" />
             <input
@@ -207,7 +205,7 @@ export default function AlumniDirectory() {
             />
           </div>
         </div>
-      </div>
+      </header>
 
       <div className="schedule-dotted-divider" style={{ marginTop: 0 }} />
 

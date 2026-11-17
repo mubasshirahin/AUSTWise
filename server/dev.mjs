@@ -24,6 +24,14 @@ import {
   sendTelegramMessage,
 } from './telegramNotifier.mjs';
 import {
+  isWebPushConfigured,
+  getVapidPublicKey,
+  saveSubscription,
+  removeSubscription,
+  getSubscriptionStatus,
+  sendNoticeWebPush,
+} from './webPush.mjs';
+import {
   unregisterUser,
   getUser,
   getAllUsers,
@@ -146,6 +154,7 @@ import {
   isUserStoreDeleted, isSharedStoreDeleted,
 } from './storeDB.mjs';
 import { startTelegramScheduler, sendTelegramTestMessage } from './telegramSchedulerJob.mjs';
+import { startWebPushScheduler } from './webPushSchedulerJob.mjs';
 import { sendInvitationEmail } from './inviteEmail.mjs';
 import { previewSemesterMove, moveToNextSemester, saveAcademicResult, advanceAllStudents } from './academicEngine.mjs';
 
@@ -939,6 +948,7 @@ const vite = useViteMiddleware
 const FEATURES = {
   openai:   !!process.env.OPENAI_API_KEY,
   telegram: !!process.env.TELEGRAM_BOT_TOKEN,
+  webPush:  isWebPushConfigured,
   gemini:   !!process.env.GEMINI_API_KEY,
   googleApi: !!process.env.VITE_GOOGLE_API_KEY,
   db:       false,   // set to true after successful SQL Server connection
@@ -2387,6 +2397,57 @@ async function handleApiRequest(req, res) {
     return;
   }
 
+  // ── Web Push (VAPID) ──────────────────────────────────────────────────────
+  // The public key is safe to hand to the browser; the private key never
+  // leaves .env. Subscriptions are stored per user and pruned on 404/410.
+  if (req.url === '/api/web-push/public-key' && req.method === 'GET') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
+    if (!FEATURES.webPush) {
+      sendJson(res, 503, { success: false, error: 'Web push is not configured on this server.' });
+      return;
+    }
+    sendJson(res, 200, { success: true, publicKey: getVapidPublicKey() });
+    return;
+  }
+
+  if (req.url === '/api/web-push/status' && req.method === 'GET') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
+    sendJson(res, 200, { success: true, ...(await getSubscriptionStatus(auth.id)) });
+    return;
+  }
+
+  if (req.url === '/api/web-push/subscribe' && req.method === 'POST') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
+    if (!FEATURES.webPush) {
+      sendJson(res, 503, { success: false, error: 'Web push is not configured on this server.' });
+      return;
+    }
+    try {
+      const body = await readJsonBody(req);
+      const result = await saveSubscription(auth.id, body?.subscription);
+      sendJson(res, result.success ? 200 : 400, result);
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Could not save push subscription.' });
+    }
+    return;
+  }
+
+  if (req.url === '/api/web-push/subscribe' && req.method === 'DELETE') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
+    try {
+      const body = await readJsonBody(req).catch(() => ({}));
+      const result = await removeSubscription(auth.id, body?.endpoint);
+      sendJson(res, 200, result);
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Could not remove push subscription.' });
+    }
+    return;
+  }
+
   // Broadcast a notice to all Telegram users (CR / SR / admin / moderator)
   if (req.url === '/api/telegram/send-notice' && req.method === 'POST') {
     const auth = requireRole('cr', 'sr', 'admin', 'moderator')(req, res);
@@ -2414,6 +2475,19 @@ async function handleApiRequest(req, res) {
         const postedByAvatar = typeof serverUser?.avatar === 'string' && serverUser.avatar.length <= 120000 ? serverUser.avatar : null;
         broadcastToAll({ type: 'notice-new', payload: { noticeId, postedByAvatar, title: payload.title, content: payload.content, pinned: !!payload.pinned, postedById: auth.id, postedByName: safeName, postedByRole: auth.role, scope } });
       } catch { /* realtime is best-effort */ }
+      // Mobile push: independent of Telegram. Fire-and-forget so a slow/broken
+      // push provider never delays the POST response or the in-app bell.
+      if (FEATURES.webPush) {
+        void sendNoticeWebPush({
+          noticeId,
+          title: payload.title,
+          content: payload.content,
+          pinned: !!payload.pinned,
+          postedById: auth.id,
+          postedByName: safeName,
+          scope,
+        }).catch((e) => console.warn('[web-push] notice fan-out failed:', e?.message || e));
+      }
       if (!FEATURES.telegram) {
         sendJson(res, 200, { success: true, telegram: false });
         return;
@@ -6752,6 +6826,10 @@ const ENDPOINT_GROUPS = [
     ['GET',  '/api/telegram/users', 'List all users (admin)'],
     ['POST', '/api/telegram/broadcast', 'Send notifications to all users'],
     ['POST', '/api/telegram/send-notice', 'Broadcast a notice to all users (CR/SR)'],
+    ['GET',  '/api/web-push/public-key', 'VAPID public key for browser push'],
+    ['GET',  '/api/web-push/status', 'Current device push subscription status'],
+    ['POST', '/api/web-push/subscribe', 'Register this device for push'],
+    ['DELETE', '/api/web-push/subscribe', 'Remove this device from push'],
     ['POST', '/api/telegram/test', 'Send test notification (8 AM)'],
     ['POST', '/api/telegram/test-attendance', 'Send test attendance message (9 PM)'],
     ['POST', '/api/telegram/attendance-callback', 'Handle attendance button callback'],
@@ -7035,6 +7113,9 @@ server.listen(port, '0.0.0.0', async () => {
   // 3) Scheduled Telegram jobs (midnight digest, pre-class alert, attendance
   //    prompts, 9 PM reminder, auto-missed sweep, deadline alerts).
   startTelegramScheduler();
+  // Web Push smart reminders run independently of Telegram (works even if no
+  // bot token is configured) and only when VAPID keys are present.
+  startWebPushScheduler();
 
   // 4) Broad endpoint directory.
   printEndpointDirectory();

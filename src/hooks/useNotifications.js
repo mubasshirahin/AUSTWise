@@ -13,6 +13,14 @@ import {
 } from '../utils/notificationService';
 import { deadlines } from '../data/mockData';
 import { useAuth } from '../context/AuthContext';
+import {
+  isPushSupported,
+  getExistingPushSubscription,
+  subscribeToPush,
+  unsubscribeFromPush,
+  fetchPushStatus,
+  showTestPushNotification,
+} from '../utils/webPush';
 
 const POLL_INTERVAL_MS = 60 * 1000;
 const SYNC_INTERVAL_MS = 20 * 1000;
@@ -24,7 +32,13 @@ export function useNotifications(routine, weekDays) {
   const intervalRef = useRef(null);
   const syncIntervalRef = useRef(null);
 
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushSubscribed, setPushSubscribed] = useState(false);
+  const [pushConfigured, setPushConfigured] = useState(null);
+  const [pushError, setPushError] = useState('');
+
   const supported = isNotificationSupported();
+  const pushSupported = isPushSupported();
 
   // Pull the account's server-side prefs so changes made on other devices
   // (e.g. the laptop) show up here without a manual refresh.
@@ -102,14 +116,20 @@ export function useNotifications(routine, weekDays) {
     setPermission(result);
     if (result !== 'granted') return result;
 
-    // Confirm the browser accepts a real notification before saving the toggle.
+    // Confirm the browser accepts a real notification before saving the
+    // toggle. Mobile browsers reject `new Notification()`, so go through the
+    // service worker whenever one is available.
     try {
-      const probe = new Notification('AUSTWise notification check', {
-        body: 'Browser notifications are ready.',
-        silent: true,
-        tag: 'austwise-notification-check',
-      });
-      probe.close();
+      if (pushSupported) {
+        await showTestPushNotification();
+      } else {
+        const probe = new Notification('AUSTWise notification check', {
+          body: 'Browser notifications are ready.',
+          silent: true,
+          tag: 'austwise-notification-check',
+        });
+        probe.close();
+      }
     } catch {
       return 'unavailable';
     }
@@ -121,7 +141,7 @@ export function useNotifications(routine, weekDays) {
       saveSettingsToServer(next);
     }
     return 'granted';
-  }, [supported]);
+  }, [supported, pushSupported]);
 
   const disable = useCallback(() => {
     const next = { ...loadSettings(), enabled: false };
@@ -137,5 +157,86 @@ export function useNotifications(routine, weekDays) {
     saveSettingsToServer(next);
   }, []);
 
-  return { supported, permission, settings, enable, prepareBrowserChannel, disable, updateSetting };
+  // ── Web Push (service-worker based, works on mobile) ────────────────────
+  const refreshPushState = useCallback(async () => {
+    if (!pushSupported || !isAuthenticated) return;
+    try {
+      const [local, status] = await Promise.all([
+        getExistingPushSubscription(),
+        fetchPushStatus(),
+      ]);
+      // Require both sides: a local subscription the server forgot (or vice
+      // versa) is not a working push setup.
+      const subscribed = Boolean(local && status.subscribed);
+      setPushSubscribed(subscribed);
+      setPushConfigured(status.configured !== false);
+      try {
+        const key = 'aust-push-reminders-handoff';
+        if (subscribed) localStorage.setItem(key, '1');
+        else localStorage.removeItem(key);
+      } catch { /* best effort */ }
+    } catch {
+      setPushConfigured(false);
+    }
+  }, [pushSupported, isAuthenticated]);
+
+  const enablePush = useCallback(async () => {
+    if (!isAuthenticated) return 'auth_required';
+    setPushBusy(true);
+    setPushError('');
+    try {
+      if (Notification.permission !== 'granted') {
+        const result = await requestPermission();
+        if (result !== 'granted') {
+          setPushError(result === 'denied'
+            ? 'Notifications are blocked in your browser settings.'
+            : 'Notification permission was not granted.');
+          return result;
+        }
+        setPermission(result);
+      }
+      await subscribeToPush();
+      await refreshPushState();
+      return 'subscribed';
+    } catch (e) {
+      setPushError(e?.message || 'Could not enable push notifications.');
+      return 'error';
+    } finally {
+      setPushBusy(false);
+    }
+  }, [isAuthenticated, refreshPushState]);
+
+  const disablePush = useCallback(async () => {
+    setPushBusy(true);
+    setPushError('');
+    try {
+      await unsubscribeFromPush();
+      await refreshPushState();
+    } catch (e) {
+      setPushError(e?.message || 'Could not disable push notifications.');
+    } finally {
+      setPushBusy(false);
+    }
+  }, [refreshPushState]);
+
+  useEffect(() => {
+    // Defer a tick so the initial render isn't followed by a synchronous
+    // state update (and so SW registration has a chance to start).
+    const timer = setTimeout(refreshPushState, 0);
+    return () => clearTimeout(timer);
+  }, [refreshPushState]);
+
+  return {
+    supported, permission, settings, enable, prepareBrowserChannel, disable, updateSetting,
+    push: {
+      supported: pushSupported,
+      busy: pushBusy,
+      subscribed: pushSubscribed,
+      configured: pushConfigured,
+      error: pushError,
+      refresh: refreshPushState,
+      enable: enablePush,
+      disable: disablePush,
+    },
+  };
 }

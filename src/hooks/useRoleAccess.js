@@ -42,6 +42,36 @@ const configCache = new Map(); // storageKey -> cfg
 const fetchedAt = new Map(); // storageKey -> timestamp
 const FRESH_MS = 5 * 60 * 1000;
 
+/**
+ * One request seeds every per-key cache. The admin "Feature box access" page
+ * mounts ~90 FeatureRows; without this each row fired its own GET, saturating
+ * the DB pool and making the save POST time out (and silently roll back).
+ */
+let mapPrefetchPromise = null;
+function ensureMapPrefetch() {
+  if (mapPrefetchPromise) return mapPrefetchPromise;
+  mapPrefetchPromise = fetch('/api/role-access/map', { credentials: 'same-origin' })
+    .then((res) => (res.ok ? res.json() : null))
+    .then((data) => {
+      if (!data?.success || !data.configs) return;
+      for (const [rawKey, cfg] of Object.entries(data.configs)) {
+        if (!Array.isArray(cfg?.featureHidden) || !Array.isArray(cfg?.statsAllowed)) continue;
+        const sKey = `${ROLE_ACCESS_STORAGE_BASE}:${pageAccessKey(rawKey)}`;
+        const normalized = {
+          featureHidden: cfg.featureHidden,
+          statsAllowed: cfg.statsAllowed,
+          enabled: cfg.enabled !== false,
+        };
+        configCache.set(sKey, normalized);
+        fetchedAt.set(sKey, Date.now());
+        try { localStorage.setItem(sKey, JSON.stringify(normalized)); } catch { /* ignore */ }
+      }
+    })
+    .catch(() => { /* offline — the hook falls back to its own fetch */ })
+    .finally(() => { mapPrefetchPromise = null; });
+  return mapPrefetchPromise;
+}
+
 function readStorage(storageKey) {
   try {
     const raw = localStorage.getItem(storageKey);
@@ -116,6 +146,14 @@ export function useRoleAccess(pageKey) {
     const fresh = configCache.has(storageKey) && age < FRESH_MS;
     if (!fresh) {
       (async () => {
+        await ensureMapPrefetch();
+        if (cancelled) return;
+        const cached = configCache.get(storageKey);
+        if (cached && Date.now() - (fetchedAt.get(storageKey) || 0) < FRESH_MS) {
+          setConfig(cached);
+          setLoading(false);
+          return;
+        }
         const cfg = await fetchConfig();
         if (!cancelled) { setConfig(cfg); setLoading(false); }
       })();
@@ -152,8 +190,12 @@ export function useRoleAccess(pageKey) {
 
   const save = useCallback(async (newCfg) => {
     if (!isConfig(newCfg)) return false;
-    const previous = config;
-    const next = { featureHidden: newCfg.featureHidden, statsAllowed: newCfg.statsAllowed, enabled: newCfg.enabled ?? config.enabled ?? true };
+    const hasEnabled = typeof newCfg.enabled === 'boolean';
+    const next = {
+      featureHidden: newCfg.featureHidden,
+      statsAllowed: newCfg.statsAllowed,
+      enabled: hasEnabled ? newCfg.enabled : (config.enabled !== false),
+    };
     applyConfig(next);
     try {
       window.dispatchEvent(new CustomEvent('role-access-updated', { detail: { ...next, key: storageKey, pageKey: key } }));
@@ -163,23 +205,31 @@ export function useRoleAccess(pageKey) {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pageKey: key, featureHidden: next.featureHidden, statsAllowed: next.statsAllowed, enabled: next.enabled }),
+        // When the caller did not touch the On/Off switch (e.g. a role-matrix
+        // drag), omit `enabled` so the server keeps its own authoritative value
+        // instead of a possibly stale one from this hook's local state.
+        body: JSON.stringify({
+          pageKey: key,
+          featureHidden: next.featureHidden,
+          statsAllowed: next.statsAllowed,
+          ...(hasEnabled ? { enabled: next.enabled } : {}),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         console.warn('[role-access] save failed:', data?.error || res.status);
-        applyConfig(previous);
-        window.dispatchEvent(new CustomEvent('role-access-updated', { detail: { ...previous, key: storageKey, pageKey: key } }));
+        // Reconcile with the server rather than blindly restoring `previous`:
+        // the write may already have succeeded and only the response was lost.
+        await fetchConfig();
         return false;
       }
       return true;
     } catch (e) {
       console.warn('[role-access] save failed:', e?.message);
-      applyConfig(previous);
-      try { window.dispatchEvent(new CustomEvent('role-access-updated', { detail: { ...previous, key: storageKey, pageKey: key } })); } catch { /* ignore */ }
+      await fetchConfig();
       return false;
     }
-  }, [applyConfig, storageKey, key, config]);
+  }, [applyConfig, fetchConfig, storageKey, key, config]);
 
   return { config, loading, save, key, storageKey };
 }

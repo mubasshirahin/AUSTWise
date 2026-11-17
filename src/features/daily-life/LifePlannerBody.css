@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    LIFE PLANNER — BODY DESIGN SYSTEM  (pb-*)
    ───────────────────────────────────────────────────────────────────────────
-   Dashboard · Milestones · Courses · Mindmap · Timeline · Automate.
+   Dashboard · Milestones · Timeline · Mindmap · Courses.
    Built from the active [data-theme] tokens only:
      surfaces  → --bg-card / --bg-tertiary      lines → --border-*
      ink       → --text-primary/secondary/tertiary/inverse
@@ -993,48 +993,6 @@ button.pb-chip:hover { border-color: color-mix(in srgb, var(--pb-accent) 50%, va
 .pb-form-label { display: block; margin-bottom: 6px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
 .pb-form-label.is-accent { display: flex; align-items: center; gap: 6px; color: var(--accent-amber); }
 
-/* ═════════════════════════════ AUTOMATE ═════════════════════════════ */
-.pb-auto-intro { display: flex; align-items: center; gap: 14px; }
-.pb-auto-intro p { margin: 4px 0 0; }
-.pb-auto-icon { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: var(--pb-r-sm); background: var(--pb-accent-soft); color: var(--pb-accent); }
-.pb-auto-grid { align-items: stretch; }
-.pb-auto-step { display: flex; flex-direction: column; gap: 14px; }
-.pb-auto-head { display: flex; align-items: flex-start; gap: 12px; }
-.pb-auto-head p { margin: 4px 0 0; }
-.pb-step-num {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  flex: none;
-  border: 1px solid var(--pb-accent);
-  border-radius: 50%;
-  color: var(--pb-accent);
-  font-size: 12px;
-  font-weight: 800;
-}
-.pb-code {
-  display: block;
-  width: 100%;
-  min-height: 300px;
-  padding: 14px;
-  resize: vertical;
-  border: 1px solid var(--pb-line);
-  border-radius: var(--pb-r-sm);
-  background: var(--bg-input, var(--pb-well));
-  color: var(--pb-ink-2);
-  font: 11.5px/1.6 var(--font-mono, ui-monospace, SFMono-Regular, Consolas, monospace);
-}
-.pb-code.is-editable { color: var(--pb-ink); }
-.pb-auto-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
-.pb-auto-actions .pb-meta { flex: 1 1 200px; }
-.pb-auto-step .pb-note { margin: 0; }
-.pb-auto-preview { display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid var(--pb-line); border-radius: var(--pb-r-sm); background: var(--pb-well); font-size: 12.5px; color: var(--pb-ink-2); }
-.pb-auto-preview strong { color: var(--pb-ink); }
-.pb-auto-preview p { margin: 0; }
-.pb-auto-tree { display: grid; gap: 6px; max-height: 200px; margin: 0; padding-left: 18px; overflow: auto; }
-.pb-auto-tree ul { margin: 3px 0 0; padding-left: 18px; }
-
 /* ═════════════════════════════ EMPTY STATE (shared) ═════════════════════════════ */
 .lp-widget .pb-card .lp-empty { border: 0; padding: 28px 12px 16px; }
 
@@ -1087,6 +1045,15 @@ button.pb-chip:hover { border-color: color-mix(in srgb, var(--pb-accent) 50%, va
   .pb-steps { margin-left: 18px; }
   .pb-step .pb-icon { opacity: 1; }
 
+  /* Timeline: keep the year stepper and the List/Calendar switcher on ONE line
+     even on a narrow phone — shrink their padding/gaps instead of wrapping. */
+  .pb-tl-bar { flex-wrap: nowrap; gap: 6px; }
+  .pb-tl-bar .pb-stepper { padding: 1px; gap: 0; }
+  .pb-tl-bar .pb-stepper-value { min-width: 34px; font-size: 12px; }
+  .pb-tl-bar .pb-seg { margin-left: auto; padding: 2px; gap: 1px; }
+  .pb-tl-bar .pb-seg button { height: 26px; padding: 0 7px; gap: 4px; font-size: 11px; }
+  .pb-tl-bar .pb-seg button svg { width: 11px; height: 11px; }
+
   .pb-months { grid-template-columns: repeat(12, 52px); overflow-x: auto; scrollbar-width: none; margin-inline: -14px; padding-inline: 14px; }
   .pb-months::-webkit-scrollbar { display: none; }
   .pb-day-gutter { width: 52px; }
@@ -1100,7 +1067,6 @@ button.pb-chip:hover { border-color: color-mix(in srgb, var(--pb-accent) 50%, va
   .lp-widget .lp-mm-canvas { height: 420px; }
 
   .pb-course-actions { opacity: 1; }
-  .pb-code { min-height: 220px; }
 }
 
 @media (max-width: 400px) {

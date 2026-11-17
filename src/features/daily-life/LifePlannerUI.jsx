@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Target, Flag, CalendarDays, LayoutDashboard, BookOpen, Network, CalendarRange, Sparkles, X, MessageSquare, Trash2 } from 'lucide-react';
+import { Target, Flag, CalendarDays, LayoutDashboard, BookOpen, Network, CalendarRange, X, MessageSquare, Trash2 } from 'lucide-react';
 
 // ── Date input — always shows dd/mm/yy, stores ISO (yyyy-mm-dd) ──────────────
 
@@ -105,12 +105,11 @@ export function LpDateInput({
 
 export function LpSubnav({ view, onChange }) {
   const views = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'dashboard', label: 'Dashboard',  icon: LayoutDashboard },
     { id: 'goals',     label: 'Milestones', icon: Flag },
-    { id: 'courses',   label: 'Courses',   icon: BookOpen },
-    { id: 'mindmap',   label: 'Mindmap',   icon: Network },
-    { id: 'timeline',  label: 'Timeline',  icon: CalendarRange },
-    { id: 'automate',  label: 'Automate',  icon: Sparkles },
+    { id: 'timeline',  label: 'Timeline',   icon: CalendarRange },
+    { id: 'mindmap',   label: 'Mindmap',    icon: Network },
+    { id: 'courses',   label: 'Courses',    icon: BookOpen },
   ];
   return (
     <div className="lp-subnav" role="tablist" aria-label="Life Planner sections">

@@ -13,6 +13,7 @@ import { useAuth } from '../../context/AuthContext';
 import { formatSemesterLabel, getSemesterCountForDepartment } from '../../utils/semester';
 import { DirectoryDepartmentHeader, DirectoryMemberCard } from './DirectoryShared';
 import { getDepartmentLabel } from './directoryUtils';
+import '../daily-life/DailyMasthead.css';
 
 // Role pill shown next to a student's name (and their label in the hover card).
 const ROLE_TAGS = {
@@ -33,7 +34,9 @@ function extractStudentId(student) {
   return student.id || '';
 }
 
-const DEPARTMENTS = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'];
+// Same alphabetical order as the Alumni Directory (ARCH, BBA, CE, CSE, …).
+const DEPARTMENTS = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA']
+  .sort((a, b) => a.localeCompare(b));
 
 const DEPT_FULL_NAMES = {
   CSE: 'Computer Science & Engineering',
@@ -434,42 +437,36 @@ export default function StudentDirectory() {
   };
 
   return (
-    <div className="student-dir member-directory">
-      {/* Masthead */}
-      <div className="schedule-masthead">
-        <div className="schedule-title-block">
-          <div className="schedule-icon-tile">
-            <GraduationCap size={20} strokeWidth={2.2} />
-          </div>
-          <div>
-            <span className="schedule-overline">Community</span>
-            <div className="schedule-title">Student Directory</div>
-            <span className="schedule-subtitle">Find classmates, SRs &amp; CRs — sorted by name.</span>
+    <div className="sd-widget student-dir member-directory">
+      <header className="dl-head">
+        <div className="dl-head-title">
+          <div className="dl-head-tile" aria-hidden="true"><GraduationCap size={20} strokeWidth={2.1} /></div>
+          <div className="dl-head-text">
+            <span className="dl-head-overline">Community</span>
+            <h2 className="dl-head-name">Student Directory</h2>
+            <span className="dl-head-subtitle">Find classmates, SRs &amp; CRs — sorted by name.</span>
           </div>
         </div>
 
-        <div className="schedule-masthead-center" />
-
-        <div className="schedule-actions student-dir-controls">
-          <div className="student-dir-filter-select-wrap">
-            <select
-              className="input alumni-select"
-              value={activeDept}
-              onChange={(event) => setActiveDept(event.target.value)}
-              aria-label="Filter students by department"
-            >
-              <option value="all">All departments</option>
-              {DEPARTMENTS.map((dept) => (
-                <option key={dept} value={dept}>
-                  {dept} ({deptStats[dept]?.total || 0})
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="schedule-actions al-head-controls student-dir-controls">
+          <select
+            className="input alumni-select"
+            value={activeDept}
+            onChange={(event) => setActiveDept(event.target.value)}
+            aria-label="Filter students by department"
+          >
+            <option value="all">All departments</option>
+            {DEPARTMENTS.map((dept) => (
+              <option key={dept} value={dept}>
+                {dept} ({deptStats[dept]?.total || 0})
+              </option>
+            ))}
+          </select>
+          <span className="alumni-controls-split" aria-hidden="true" />
           <div className="search-box alumni-search student-dir-search">
-            <Search size={14} aria-hidden="true" />
+            <Search size={12} aria-hidden="true" />
             <input
-              type="search"
+              type="text"
               placeholder="Search name / ID"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
@@ -477,7 +474,7 @@ export default function StudentDirectory() {
             />
           </div>
         </div>
-      </div>
+      </header>
 
       <div className="schedule-dotted-divider" style={{ marginTop: 0 }} />
 

@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   CalendarDays, MoreVertical, Target, ListChecks,
   Clock, TrendingUp, Workflow, ChevronRight, RotateCcw,
-  Flag, Sparkles, Repeat, AlertTriangle,
+  Flag, Repeat, AlertTriangle,
 } from 'lucide-react';
 import './LifePlannerPage.css';
 import './LifePlannerRedesign.css';
@@ -20,10 +20,9 @@ import GoalsView from './GoalsView';
 import TimelineView from './TimelineView';
 import MindmapView from './MindmapView';
 import CoursesView from './CoursesView';
-import AutomateView from './AutomateView';
 
 const LP_VIEW_KEY = 'aust-life-planner-view';
-const LP_VALID_VIEWS = ['dashboard', 'goals', 'courses', 'mindmap', 'timeline', 'automate'];
+const LP_VALID_VIEWS = ['dashboard', 'goals', 'timeline', 'mindmap', 'courses'];
 
 function readInitialView() {
   try {
@@ -622,7 +621,6 @@ export default function LifePlannerPage() {
 
       {view === 'courses' && <CoursesView />}
       {view === 'timeline' && <TimelineView doc={doc} onOpenGoal={openTimelineEntry} />}
-      {view === 'automate' && <AutomateView doc={doc} update={update} />}
       {view === 'mindmap' && (
         <MindmapView
           doc={doc}

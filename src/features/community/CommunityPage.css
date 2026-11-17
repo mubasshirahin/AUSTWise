@@ -276,6 +276,27 @@
   gap: var(--sp-5);
   width: 100%;
 }
+/* Masthead is the framed card (same shell as TakaGeloKoi) */
+.al-widget.alumni-page { gap: 0; background: transparent; border: 0; box-shadow: none; }
+.al-widget .dl-head { margin: 0; }
+/* Controls sit in the stats slot of the masthead (right on desktop,
+   own row under a dashed divider on narrow screens — like dl-head-stats). */
+.al-head-controls { display: flex; align-items: center; flex-wrap: nowrap; gap: 8px; margin: 0; min-width: 0; }
+.sd-widget.student-dir { gap: 0; background: transparent; border: 0; box-shadow: none; }
+.sd-widget .dl-head { margin: 0; }
+.community-page .al-head-controls.student-dir-controls { flex-wrap: nowrap; }
+@media (max-width: 1100px) {
+  .al-head-controls {
+    grid-column: 1 / -1;
+    order: 3;
+    width: 100%;
+    padding-top: 14px;
+    border-top: 1px dashed var(--border-primary);
+  }
+}
+@media (max-width: 640px) {
+  .al-head-controls { padding-top: 10px; }
+}
 
 .alumni-header-section {
   display: flex;
@@ -516,6 +537,8 @@
   width: 260px;
   max-width: 100%;
 }
+.community-page .alumni-page .alumni-controls-divider,
+.community-page .alumni-page .alumni-controls-split { display: none; }
 
 /* Faculty search — premium pill with icon + clear, amber focus */
 .faculty-search {
@@ -589,6 +612,7 @@
   flex-direction: column;
   gap: var(--sp-6);
 }
+.community-page .alumni-page .alumni-groups { margin-top: 18px; }
 
 .alumni-batch-header {
   display: flex;
@@ -2978,6 +3002,7 @@
     gap: 14px;
     min-width: 0;
   }
+  .sd-widget.student-dir { gap: 0; }
 
   .community-page .student-dir-controls {
     gap: 8px;
@@ -2986,27 +3011,27 @@
   }
 
   .community-page .student-dir-filter-select-wrap {
-    flex: 0 1 auto;
+    flex: 0 0 auto;
     min-width: 0;
   }
 
   .community-page .student-dir .alumni-select {
     flex: 0 1 auto;
     width: auto;
-    min-width: 0;
+    min-width: 116px;
     max-width: 46%;
-    min-height: 32px;
-    font-size: 10.5px;
+    min-height: 28px;
+    font-size: 10px;
   }
 
   .community-page .student-dir-search {
-    flex: 1 1 110px;
+    flex: 1 1 auto;
     width: auto;
     max-width: none;
   }
 
   .community-page .student-dir .alumni-search input {
-    min-height: 32px;
+    min-height: 28px;
     font-size: 16px;
     padding: 8px 12px 8px 28px;
   }
@@ -3370,6 +3395,22 @@
   .community-page .alumni-page .schedule-masthead-center {
     display: none;
   }
+  /* Divider between the masthead title and the filter/search row */
+  .community-page .alumni-page .alumni-controls-divider {
+    display: block;
+    grid-column: 1 / -1;
+    height: 1px;
+    background: var(--border-primary);
+    margin: 14px 0 10px;
+  }
+  /* Thin vertical split between the two control boxes (matches Zero Hour) */
+  .community-page .alumni-page .alumni-controls-split {
+    display: block;
+    flex: 0 0 1px;
+    width: 1px;
+    height: 18px;
+    background: var(--border-secondary);
+  }
   .community-page .alumni-page .schedule-actions {
     width: 100%;
     flex-wrap: nowrap;
@@ -3417,6 +3458,7 @@
   .community-page .alumni-page {
     gap: 10px;
   }
+  .al-widget.alumni-page { gap: 0; }
   .community-page .alumni-page .schedule-masthead {
     margin-bottom: 0;
     padding: 10px 12px;
@@ -3449,10 +3491,19 @@
   .community-page .alumni-page .alumni-select {
     flex: 0 1 auto;
     width: auto;
-    min-width: 148px;
-    max-width: 46%;
-    min-height: 36px;
-    font-size: 11px;
+    min-width: 104px;
+    max-width: 42%;
+    min-height: 28px;
+    padding: 4px 22px 4px 24px;
+    border-radius: var(--radius-sm, 8px);
+    border-color: var(--border-primary);
+    background-color: transparent;
+    background-position: left 8px center, right 7px center;
+    background-size: 9px 9px, 8px 8px;
+    box-shadow: none;
+    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: var(--fw-medium);
   }
   .community-page .alumni-page .alumni-search {
     flex: 1 1 auto;
@@ -3460,17 +3511,24 @@
     min-width: 0;
   }
   .community-page .alumni-page .alumni-search input {
-    min-height: 36px;
+    min-height: 28px;
     /* 16px avoids iOS auto-zoom when the field is focused */
     font-size: 16px;
-    /* 16px text sits too high with desktop's 7px vertical padding on a
-       36px box — symmetric 8px padding + tight line-height centers it. */
-    padding: 8px 12px 8px 32px;
+    padding: 4px 10px 4px 26px;
+    border-radius: var(--radius-sm, 8px);
+    border-color: var(--border-primary);
+    background: var(--bg-input);
+    box-shadow: none;
     line-height: 1.2;
   }
   .community-page .alumni-page .alumni-search input::placeholder {
-    font-size: 9.5px;
+    font-size: 9px;
     letter-spacing: normal;
+  }
+  .community-page .alumni-page .alumni-search svg {
+    left: 8px;
+    width: 11px;
+    height: 11px;
   }
 
   /* Open for Talk banner */
@@ -3496,9 +3554,12 @@
   }
 
   /* Batch groups */
-  .community-page .alumni-page .alumni-groups {
+  .community-page .alumni-page .alumni-groups,
+  .community-page .student-dir .alumni-groups {
     gap: 14px;
+    margin-top: 10px;
   }
+  .community-page .alumni-page .alumni-groups { margin-top: 18px; }
   .community-page .member-directory .alumni-batch-header {
     gap: 6px;
     margin-bottom: 8px;
@@ -3614,4 +3675,158 @@
   .community-page .member-directory .alumni-card-details {
     font-size: 9.5px;
   }
+}
+
+/* Student Directory filters — identical to Alumni Directory filters
+   (same alignment, height, padding, radius, font size, colours). */
+@media (max-width: 900px) {
+  .community-page .student-dir .al-head-controls {
+    max-width: none;
+  }
+  .community-page .student-dir .student-dir-filter-select-wrap {
+    flex: 0 1 auto;
+  }
+  .community-page .student-dir .alumni-select {
+    width: auto;
+    min-width: 104px;
+    max-width: 42%;
+    min-height: 28px;
+    padding: 4px 22px 4px 24px;
+    border-radius: var(--radius-sm, 8px);
+    border-color: var(--border-primary);
+    background-color: transparent;
+    background-position: left 8px center, right 7px center;
+    background-size: 9px 9px, 8px 8px;
+    box-shadow: none;
+    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: var(--fw-medium);
+    line-height: 1.3;
+  }
+  .community-page .student-dir .alumni-search {
+    max-width: 100%;
+  }
+  .community-page .student-dir .alumni-search input {
+    min-height: 28px;
+    padding: 4px 10px 4px 26px;
+    border-radius: var(--radius-sm, 8px);
+    border-color: var(--border-primary);
+    background: var(--bg-input);
+    box-shadow: none;
+    color: var(--text-primary);
+    font-size: 16px;
+    line-height: 1.2;
+  }
+  .community-page .student-dir .alumni-search input::placeholder {
+    font-size: 9px;
+    letter-spacing: normal;
+  }
+  .community-page .student-dir .alumni-search svg {
+    left: 8px;
+    width: 11px;
+    height: 11px;
+  }
+  .community-page .student-dir .alumni-controls-split {
+    display: block;
+    flex: 0 0 1px;
+    width: 1px;
+    height: 18px;
+    background: var(--border-secondary);
+  }
+}
+
+/* Student Directory — theme-matched accents. Drop the off-theme
+   red / green / blue / purple badges and use neutral + the brand accent. */
+.community-page .stu-badge.badge-gs,
+.community-page .stu-badge.stu-badge-sr,
+.community-page .stu-badge.stu-badge-cr,
+.community-page .student-dir-role-badge.is-gs,
+.community-page .student-dir-role-badge.is-sr,
+.community-page .student-dir-role-badge.is-cr,
+.community-page .member-directory .alumni-card-role.is-gs,
+.community-page .member-directory .alumni-card-role.is-sr,
+.community-page .member-directory .alumni-card-role.is-cr {
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  border-color: var(--border-primary);
+}
+.community-page .student-dir-sem-count.hot {
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
+}
+.community-page .student-dir-sem-card.is-emerald .student-dir-sem-header,
+.community-page .student-dir-sem-card.is-cyan .student-dir-sem-header,
+.community-page .student-dir-sem-card.is-amber .student-dir-sem-header,
+.community-page .student-dir-sem-card.is-rose .student-dir-sem-header {
+  border-left-color: var(--accent-amber);
+}
+.community-page .student-dir-sem-card.is-emerald .student-dir-sem-label,
+.community-page .student-dir-sem-card.is-cyan .student-dir-sem-label,
+.community-page .student-dir-sem-card.is-amber .student-dir-sem-label,
+.community-page .student-dir-sem-card.is-rose .student-dir-sem-label {
+  color: var(--accent-amber);
+}
+.community-page .student-dir-slot-cr,
+.community-page .student-dir-slot-cr:hover { border-left-color: var(--accent-amber); }
+.community-page .stu-avatar-cr {
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
+}
+.community-page .student-dir-blood.has-blood {
+  background: var(--bg-input);
+  color: var(--text-secondary);
+}
+
+/* Semester cards: no export sidebar divider, white label text */
+.community-page .student-dir .student-dir-sem-export {
+  border-left: 0;
+  padding-right: 6px;
+}
+.community-page .student-dir .student-dir-sem-label,
+.community-page .student-dir .student-dir-sem-card.is-emerald .student-dir-sem-label,
+.community-page .student-dir .student-dir-sem-card.is-cyan .student-dir-sem-label,
+.community-page .student-dir .student-dir-sem-card.is-amber .student-dir-sem-label,
+.community-page .student-dir .student-dir-sem-card.is-rose .student-dir-sem-label {
+  color: var(--text-primary);
+}
+
+@media (min-width: 901px) {
+  .community-page .student-dir .al-head-controls { max-width: none; }
+  .community-page .student-dir .alumni-select {
+    min-width: 146px;
+    max-width: 190px;
+    min-height: 36px;
+    padding: 7px 28px 7px 31px;
+    border-radius: var(--radius-full);
+    border-color: color-mix(in srgb, var(--accent-amber) 30%, var(--border-primary));
+    background-color: color-mix(in srgb, var(--accent-amber) 5%, var(--bg-input));
+    background-position: left 11px center, right 10px center;
+    background-size: 11px 11px, 9px 9px;
+    box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 6%, transparent);
+    color: var(--text-primary);
+    font-size: 11.5px;
+    font-weight: var(--fw-semibold);
+    line-height: 1.3;
+  }
+  .community-page .student-dir .alumni-search {
+    flex: 0 1 220px;
+    width: 220px;
+    min-width: 140px;
+    max-width: 100%;
+  }
+  .community-page .student-dir .alumni-search input {
+    min-height: 36px;
+    padding: 7px 14px 7px 32px;
+    border-radius: var(--radius-full);
+    border-color: color-mix(in srgb, var(--accent-amber) 22%, var(--border-primary));
+    background: linear-gradient(135deg,
+      color-mix(in srgb, var(--accent-amber) 7%, var(--bg-input)),
+      var(--bg-input) 72%);
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, #ffffff 7%, transparent),
+      0 1px 2px color-mix(in srgb, #000000 22%, transparent);
+    font-size: 11.5px;
+    letter-spacing: 0.01em;
+  }
+  .community-page .student-dir .alumni-controls-split { display: none; }
 }

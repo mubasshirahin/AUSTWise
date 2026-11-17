@@ -45,6 +45,10 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Web Push handlers (public/push-sw.js) are pulled into the generated
+        // service worker. Kept as a separate script so Workbox keeps owning
+        // precaching/runtime caching while we own the push + click events.
+        importScripts: ['/push-sw.js'],
         // html + webmanifest must be precached too, otherwise an offline visit
         // has JS chunks but no document to boot them.
         globPatterns: ['**/*.{js,css,svg,html,webmanifest}'],

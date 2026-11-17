@@ -106,6 +106,7 @@ function StrengthRing({ pct = 0, tone = 'muted', grade = '', variant }) {
       >
         <span>{grade ? value : '—'}</span>
       </div>
+      <span className="pm-strength-minimal" aria-hidden="true">{grade || '—'}</span>
     </div>
   );
 }
@@ -633,7 +634,7 @@ export default function PasswordManagerPage() {
                                 <td className="pm-td-username"><span className="pm-mobile-label" aria-hidden="true">Username</span><span className="pm-cell-value">{rec.username ? `@${rec.username.replace(/^@/, '')}` : <span className="pm-td-empty">—</span>}</span></td>
                                 <td className="pm-td-pass">
                                   <span className="pm-mobile-label" aria-hidden="true">Password</span>
-                                  <span className="pm-password-inline">
+                                  <span className={`pm-password-inline${revealed ? ' is-revealed' : ''}`}>
                                     <span className="pm-pass-text">
                                       {!rec.password
                                         ? <span className="pm-td-empty">—</span>
@@ -641,17 +642,19 @@ export default function PasswordManagerPage() {
                                           ? rec.password
                                           : masked(rec.password.length)}
                                     </span>
-                                    <button
-                                      className="pm-icon-btn pm-reveal-password-inline"
-                                      onClick={() => setRevealedId(revealed ? null : rec.id)}
-                                      aria-label={revealed ? 'Hide password' : 'View password'}
-                                      title={revealed ? 'Hide password' : 'View password'}
-                                    >
-                                      {revealed ? <EyeOff size={12} /> : <Eye size={12} />}
-                                    </button>
-                                    <button className="pm-icon-btn pm-copy-password-inline" onClick={() => copyPassword(rec)} aria-label="Copy password" title="Copy password">
-                                      <Copy size={10} />
-                                    </button>
+                                    <span className="pm-pass-inline-actions">
+                                      <button
+                                        className="pm-icon-btn pm-reveal-password-inline"
+                                        onClick={() => setRevealedId(revealed ? null : rec.id)}
+                                        aria-label={revealed ? 'Hide password' : 'View password'}
+                                        title={revealed ? 'Hide password' : 'View password'}
+                                      >
+                                        {revealed ? <EyeOff size={12} /> : <Eye size={12} />}
+                                      </button>
+                                      <button className="pm-icon-btn pm-copy-password-inline" onClick={() => copyPassword(rec)} aria-label="Copy password" title="Copy password">
+                                        <Copy size={10} />
+                                      </button>
+                                    </span>
                                   </span>
                                 </td>
                                 <td className="pm-td-strength">

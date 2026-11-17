@@ -1230,17 +1230,6 @@
 .lp-widget .lp-cal-cell { border-radius: var(--lp-r-md); }
 .lp-widget .lp-mm-node { border-radius: var(--lp-r-md); }
 
-/* Automate: card-ify the two steps */
-.lp-widget .lp-automate-panel {
-  padding: 16px;
-  border: 1px solid var(--lp-line);
-  border-radius: var(--lp-r-lg);
-  background: var(--lp-surface);
-}
-.lp-widget .lp-automate-prompt,
-.lp-widget .lp-automate-json,
-.lp-widget .lp-automate-preview { border-radius: var(--lp-r-md); }
-
 /* ═════════════════════════════ RESPONSIVE ═════════════════════════════ */
 @media (max-width: 1100px) {
   .lp-head { grid-template-columns: minmax(0, 1fr) auto; }

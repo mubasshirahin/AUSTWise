@@ -123,7 +123,7 @@ function ProtectedAdminRoute({ children }) {
       setServerVerified(false);
       return;
     }
-    // Double-check with server â€” the JWT is the source of truth
+    // Double-check with server — the JWT is the source of truth
     fetch('/api/auth/admin', { credentials: 'same-origin' })
       .then(r => {
         if (r.status === 200) setServerVerified(true);
@@ -137,7 +137,7 @@ function ProtectedAdminRoute({ children }) {
   }
   // Show nothing while server verification is pending
   if (serverVerified === null) {
-    return <div className="page-loading"><div className="page-loading-spinner" /><span>Verifyingâ€¦</span></div>;
+    return <div className="page-loading"><div className="page-loading-spinner" /><span>Verifying…</span></div>;
   }
   if (serverVerified === false) {
     return <Navigate to="/" replace />;
@@ -152,7 +152,7 @@ function AppContent() {
   const isAdmin = hasRole ? hasRole('admin') || hasRole('moderator') : false;
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  // Mobile/tablet (<=1024px) slide-over nav drawer â€” pure UI state.
+  // Mobile/tablet (<=1024px) slide-over nav drawer — pure UI state.
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(() => {
     try { return localStorage.getItem('aust-members-open-v1') === 'true'; }
@@ -224,10 +224,10 @@ function AppContent() {
     // key as the page's own gate and the admin card.
     const { config, loading } = useRoleAccess(accessPath);
     const isStaff = hasRole?.('admin') || hasRole?.('moderator');
-    // Never block navigation on the availability fetch â€” render immediately
+    // Never block navigation on the availability fetch — render immediately
     // (fail-open) and gate only once we know the page is disabled.
-    if (!isStaff && !availability.loading && !availability.enabled) return <div className="glass-card-static" style={{ margin: '32px auto', maxWidth: '560px', padding: '32px', textAlign: 'center' }}><div style={{ fontSize: '32px', marginBottom: '12px' }}>ðŸš§</div><h2 style={{ margin: '0 0 8px' }}>Coming soon</h2><p style={{ margin: 0, color: 'var(--text-secondary)' }}>This page is being prepared and will be available soon.</p></div>;
-    // Skip guard for pages that gate their own content internally â€” their hero
+    if (!isStaff && !availability.loading && !availability.enabled) return <div className="glass-card-static" style={{ margin: '32px auto', maxWidth: '560px', padding: '32px', textAlign: 'center' }}><div style={{ fontSize: '32px', marginBottom: '12px' }}>🚧</div><h2 style={{ margin: '0 0 8px' }}>Coming soon</h2><p style={{ margin: 0, color: 'var(--text-secondary)' }}>This page is being prepared and will be available soon.</p></div>;
+    // Skip guard for pages that gate their own content internally — their hero
     // box + glider tab bar must stay visible at all times (like the dashboard),
     // with only the content box below the tabs hidden for feature-hidden roles.
     const skipPaths = ['/', '/cover-page-generator', '/daily-life', '/analytics', '/campus', '/community', '/marketplace', '/vault', '/notebook', '/settings', '/messages', '/productivity', '/chill-zone', '/shadow'];
@@ -275,7 +275,7 @@ function AppContent() {
                   <Suspense fallback={
                   <div className="page-loading">
                     <div className="page-loading-spinner" />
-                    <span>Loadingâ€¦</span>
+                    <span>Loading…</span>
                   </div>
                 }>
                   <Routes>
@@ -364,7 +364,7 @@ function AppContent() {
               </ErrorBoundary>
               {isAdmin && !location.pathname.startsWith('/dashboard') && !['/', '/daily-life', '/analytics', '/question-bank-analyzer'].includes(getAccessPath(location.pathname)) && !ADMIN_PAGE_CONFIG[getAccessPath(location.pathname)] && !location.pathname.startsWith('/admin') && (
                 <div style={{ padding: '0 24px 24px' }}>
-                  {/* One card per page, keyed by the route path â€” the same key
+                  {/* One card per page, keyed by the route path — the same key
                       the page's internal content gate reads. */}
                   <RoleAccessControlCard pageKey={getAccessPath(location.pathname)} />
                 </div>
@@ -389,7 +389,7 @@ function AppContent() {
   );
 }
 
-// Root App Shell with Auth Check â€” no BrowserRouter here, uses parent's single instance
+// Root App Shell with Auth Check — no BrowserRouter here, uses parent's single instance
 function AppShell() {
   const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
@@ -444,7 +444,7 @@ function AppShell() {
     '/daily-life': 'Daily Life',
   };
   const pageName = pageTitles[location.pathname] || Object.entries(pageTitles).find(([path]) => path.length > 1 && location.pathname.startsWith(`${path}/`))?.[1] || 'Dashboard';
-  useEffect(() => { document.title = `AUSTWise â€” ${pageName}`; }, [location.pathname]);
+  useEffect(() => { document.title = `AUSTWise — ${pageName}`; }, [location.pathname]);
 
   // Show loading state while checking auth
   if (isLoading) {
@@ -464,7 +464,7 @@ function AppShell() {
     );
   }
 
-  // Zen routes â€” full screen overlays outside main layout
+  // Zen routes — full screen overlays outside main layout
   if (isAuthenticated && (location.pathname === '/zen' || location.pathname === '/zen-study-room')) {
     return (
       <Suspense fallback={null}>

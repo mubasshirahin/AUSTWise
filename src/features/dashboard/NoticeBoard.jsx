@@ -89,6 +89,10 @@ export default function NoticeBoard() {
 
   const noticeMatches = (notice) => {
     if (!notice.scope) return true;
+    // The poster must always see their own notice, even if their profile is
+    // missing a scope field (e.g. a mock/dev account) — otherwise posting
+    // appears to do nothing because the new card is immediately filtered out.
+    if (notice.postedBy === user.id) return true;
     if (notice.scope.department && notice.scope.department !== user.department) return false;
     if (notice.scope.semester && String(notice.scope.semester) !== String(user.semester || '')) return false;
     if (notice.scope.section && notice.scope.section !== user.section) return false;
@@ -150,8 +154,8 @@ export default function NoticeBoard() {
       postedBySection: user.section || '',
       postedByLabSection: user.labSection || '',
       scope: isCr
-        ? { department: user.department, semester: String(user.semester), section: user.section, labSection: user.labSection }
-        : { department: user.department, semester: String(user.semester), section: user.section },
+        ? { department: user.department, semester: String(user.semester || ''), section: user.section, labSection: user.labSection }
+        : { department: user.department, semester: String(user.semester || ''), section: user.section },
     };
     saveCrsr([notice, ...crsrNotices]);
     try { localStorage.setItem(NOTICE_RATE_KEY, String(Date.now())); } catch {}
@@ -439,7 +443,7 @@ export default function NoticeBoard() {
 
       {showForm && createPortal(
         <>
-          <div className="modal-overlay" onClick={closeForm} />
+          <div className="modal-overlay notice-form-overlay" onClick={closeForm} />
           <div className="routine-edit-modal notice-form-modal">
             <div className="routine-edit-header">
               <h3>{editingId ? 'Edit Notice' : 'Post a Notice'}</h3>

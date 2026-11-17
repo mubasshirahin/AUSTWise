@@ -65,12 +65,12 @@ function dhakaParts(date = new Date()) {
 }
 
 // Current Dhaka wall-clock snapshot: { y, m, d, weekdayIndex, hour, minute, minutes, key }
-function dhakaNow() {
+export function dhakaNow() {
   const p = dhakaParts(new Date());
   return { ...p, minutes: p.hour * 60 + p.minute };
 }
 
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+export const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 // ── Attendance record helpers ────────────────────────────────────────────────
 // Postgres rows come back as { CourseCode, RecordDate } while the JSON fallback
@@ -118,7 +118,7 @@ async function markFired(key) {
 
 // ── Routine parsing helpers ──────────────────────────────────────────────────
 
-function parseRoutine(raw) {
+export function parseRoutine(raw) {
   if (!raw) return {};
   if (typeof raw === 'string') {
     try { return JSON.parse(raw); } catch { return {}; }
@@ -156,7 +156,7 @@ function classesForDay(routine, dayName) {
   return Array.isArray(list) ? list : [];
 }
 
-function classStartMinutes(cls) {
+export function classStartMinutes(cls) {
   return timeToMinutes(String(cls.time || '').split('-')[0]);
 }
 
@@ -275,7 +275,7 @@ export function buildDeadlineMessage(dl, phase) {
 
 // ── Deadline source (per-user store, mirrors the dashboard's live values) ────
 
-async function loadUserDeadlines(awid) {
+export async function loadUserDeadlines(awid) {
   if (!awid) return [];
   try {
     const [manual, weekTasks] = await Promise.all([

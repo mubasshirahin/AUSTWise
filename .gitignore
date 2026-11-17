@@ -64,6 +64,7 @@ server/library_presence.json
 server/password_vault.json
 server/roleApplications.json
 server/shared_routines.json
+server/webPushSubscriptions.json
 server/data/coverStats.json
 
 # Nested third-party repo (unrelated to AUSTWise)

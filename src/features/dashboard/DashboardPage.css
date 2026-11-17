@@ -1467,6 +1467,17 @@
 }
 
 /* ─── Notice Board: Post form ─── */
+/* AdminPanelPage.css also styles a bare `.modal-overlay` with z-index: 1000.
+   Because that stylesheet is injected on demand (and stays in <head>), it can
+   leak onto the dashboard and cover this modal, so every click lands on the
+   backdrop and closes the form. The two-class selectors below win on
+   specificity regardless of load order, keeping the form above its overlay. */
+.modal-overlay.notice-form-overlay {
+  z-index: calc(var(--z-modal) + 1);
+}
+.routine-edit-modal.notice-form-modal {
+  z-index: calc(var(--z-modal) + 2);
+}
 .notice-form-body {
   display: flex;
   flex-direction: column;

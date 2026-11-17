@@ -17,6 +17,12 @@ import pg from 'pg';
 
 const { Pool } = pg;
 
+// A short connect timeout locally keeps the JSON fallbacks responsive when a
+// remote dev DB is unreachable; production keeps the longer default.
+const CONNECT_TIMEOUT_MS = Number(
+  process.env.DB_CONNECT_TIMEOUT_MS || (process.env.NODE_ENV === 'production' ? 10000 : 2500)
+);
+
 function poolConfig() {
   if (process.env.DATABASE_URL) {
     return {
@@ -25,7 +31,7 @@ function poolConfig() {
       // Keep each process small; deployments can tune this when their DB allows it.
       max: Number(process.env.PG_POOL_MAX || 5),
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 10000,
+      connectionTimeoutMillis: CONNECT_TIMEOUT_MS,
       ssl: process.env.DATABASE_URL.includes('localhost')
         ? false
         : { rejectUnauthorized: false },
@@ -39,7 +45,7 @@ function poolConfig() {
     password: process.env.PGPASSWORD || process.env.DB_PASSWORD || '',
     max: Number(process.env.PG_POOL_MAX || 5),
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000,
+    connectionTimeoutMillis: CONNECT_TIMEOUT_MS,
   };
 }
 
@@ -92,16 +98,36 @@ function toPositional(sqlStr, params) {
   return { text, values };
 }
 
+// Circuit breaker: once the DB starts timing out, fail fast for a short
+// cooldown so callers hit their JSON fallbacks immediately instead of paying
+// the connect timeout on every single request (which made admin toggles hang).
+const DB_CIRCUIT_THRESHOLD = Number(process.env.DB_CIRCUIT_THRESHOLD || 3);
+const DB_CIRCUIT_COOLDOWN_MS = Number(process.env.DB_CIRCUIT_COOLDOWN_MS || 30000);
+let _dbFailures = 0;
+let _dbCircuitUntil = 0;
+
 export async function query(queryStr, params) {
+  if (Date.now() < _dbCircuitUntil) throw new Error('database circuit open');
   const { text, values } = toPositional(queryStr, params);
-  const result = await pool.query(text, values);
-  const rows = result.rows || [];
-  // Array-like so storeDB/userStore can do `rows[0]` / `rows.map`, plus the
-  // mssql-shaped `.recordset` / `.rowsAffected` that telegramDB/dev.mjs use.
-  const out = rows.slice();
-  out.recordset = rows;
-  out.rowsAffected = [result.rowCount ?? rows.length];
-  return out;
+  try {
+    const result = await pool.query(text, values);
+    _dbFailures = 0;
+    const rows = result.rows || [];
+    // Array-like so storeDB/userStore can do `rows[0]` / `rows.map`, plus the
+    // mssql-shaped `.recordset` / `.rowsAffected` that telegramDB/dev.mjs use.
+    const out = rows.slice();
+    out.recordset = rows;
+    out.rowsAffected = [result.rowCount ?? rows.length];
+    return out;
+  } catch (err) {
+    _dbFailures += 1;
+    if (_dbFailures >= DB_CIRCUIT_THRESHOLD) {
+      _dbCircuitUntil = Date.now() + DB_CIRCUIT_COOLDOWN_MS;
+      _dbFailures = 0;
+      console.warn(`⚠️ db: circuit opened for ${DB_CIRCUIT_COOLDOWN_MS}ms after repeated failures`);
+    }
+    throw err;
+  }
 }
 
 /**

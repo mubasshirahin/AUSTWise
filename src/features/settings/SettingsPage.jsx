@@ -4,7 +4,7 @@ import QRCode from 'qrcode';
 import { useTheme, getThemeAccent } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useRoutine } from '../../context/RoutineContext';
-import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, ShieldAlert, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, SquareTerminal, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2, Orbit, DraftingCompass, PawPrint, Palette, Sparkles, ExternalLink, CalendarDays, Mail, Phone, Droplets, BookOpen, Flame, FileText, Handshake, Vote, Coffee, MessageSquare, Gem, WandSparkles, Gamepad2, Cloud, Smile, Flower2 } from 'lucide-react';
+import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, ShieldAlert, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, SquareTerminal, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2, Orbit, DraftingCompass, PawPrint, Palette, Sparkles, ExternalLink, CalendarDays, Mail, Phone, Droplets, BookOpen, Flame, FileText, Handshake, Vote, Coffee, MessageSquare, Gem, WandSparkles, Gamepad2, Cloud, Smile, Flower2, Smartphone } from 'lucide-react';
 import AboutUs from './AboutUs';
 import LinkedAccountsSection from './LinkedAccountsSection';
 import GliderTabs from '../../components/GliderTabs';
@@ -339,9 +339,13 @@ export default function SettingsPage() {
   const isAlumniMember = accountRoles.has('alumni') || accountRoles.has('alumni_with_carry');
   const isFacultyMember = accountRoles.has('faculty') || [...accountRoles].some(role => String(role).startsWith('faculty_'));
   const { routine, weekDays } = useRoutine();
-  const { supported, permission, settings: notifSettings, enable: enableNotifs, prepareBrowserChannel, disable: disableNotifs, updateSetting } = useNotifications(routine, weekDays);
+  const { supported, permission, settings: notifSettings, enable: enableNotifs, prepareBrowserChannel, disable: disableNotifs, updateSetting, push } = useNotifications(routine, weekDays);
   const [checkingDelivery, setCheckingDelivery] = useState('');
   const [deliveryStatus, setDeliveryStatus] = useState('');
+  const [pushMsg, setPushMsg] = useState('');
+  const isIOSDevice = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isStandalonePWA = typeof window !== 'undefined'
+    && (window.navigator.standalone === true || window.matchMedia?.('(display-mode: standalone)').matches);
   const [telegramHealth, setTelegramHealth] = useState('checking');
   const refreshTelegramHealth = useCallback(async () => {
     if (!isAuthenticated) {
@@ -2138,6 +2142,69 @@ export default function SettingsPage() {
                 </>
               )}
 
+              <section className="cfg-section">
+                <div className="cfg-section-head">
+                  <h3 className="cfg-section-title">Mobile push notifications</h3>
+                  <p className="cfg-section-desc">
+                    Get Notice Board alerts and Smart Reminders (30 min before class / 12 h before a deadline) on this device even when the app is closed — delivered through your browser's push service.
+                  </p>
+                  <p className="delivery-channel-status">
+                    Device: <strong>
+                      {!push.supported ? 'Unsupported'
+                        : push.configured === false ? 'Not configured on server'
+                        : push.subscribed ? 'On' : 'Off'}
+                    </strong>
+                  </p>
+                </div>
+
+                <div className="cfg-row">
+                  <div className="cfg-row-main">
+                    <span className={`cfg-row-icon ${push.subscribed ? 'is-emerald' : ''}`}>
+                      <Smartphone size={18} />
+                    </span>
+                    <div className="cfg-row-text">
+                      <h4 className="cfg-row-title">Push alerts on this device</h4>
+                      <p className="cfg-row-desc">
+                        {push.subscribed
+                          ? 'Active — notices and Smart Reminders arrive as system notifications, even with the app closed.'
+                          : 'Off — notifications only appear while the app is open.'}
+                      </p>
+                    </div>
+                  </div>
+                  <div
+                    className={`toggle-switch ${push.subscribed ? 'active' : ''}`}
+                    onClick={async () => {
+                      if (push.busy || !push.supported || push.configured === false) return;
+                      if (push.subscribed) {
+                        await push.disable();
+                        setPushMsg('Push alerts turned off on this device.');
+                      } else {
+                        const result = await push.enable();
+                        if (result === 'subscribed') setPushMsg('Push alerts enabled — notices will reach this device even when the app is closed.');
+                        else if (result === 'auth_required') setPushMsg('Sign in first to enable push alerts.');
+                        else setPushMsg(push.error || 'Could not enable push alerts on this device.');
+                      }
+                      setTimeout(() => setPushMsg(''), 5000);
+                    }}
+                    style={{ opacity: (push.busy || !push.supported || push.configured === false) ? 0.6 : 1, cursor: (push.busy || !push.supported || push.configured === false) ? 'not-allowed' : 'pointer' }}
+                  />
+                </div>
+
+                {isIOSDevice && !isStandalonePWA && (
+                  <div className="cfg-perm">
+                    <Info size={13} style={{ color: 'var(--accent-amber)' }} />
+                    <p>
+                      <strong>iPhone/iPad:</strong> Web push needs the app installed. Tap <strong>Share → Add to Home Screen</strong>, open AUSTWise from the home screen, then turn this on (iOS 16.4+).
+                    </p>
+                  </div>
+                )}
+
+                {pushMsg && (
+                  <p className="animate-fadeIn" style={{ fontSize: 'var(--fs-xs)', color: push.subscribed ? 'var(--accent-emerald)' : 'var(--accent-rose)', padding: '0 4px' }}>
+                    {pushMsg}
+                  </p>
+                )}
+              </section>
 
               <div className="cfg-divider" />
 
