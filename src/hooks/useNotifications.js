@@ -35,6 +35,7 @@ export function useNotifications(routine, weekDays) {
   const [pushBusy, setPushBusy] = useState(false);
   const [pushSubscribed, setPushSubscribed] = useState(false);
   const [pushConfigured, setPushConfigured] = useState(null);
+  const [pushStatusFailed, setPushStatusFailed] = useState(false);
   const [pushError, setPushError] = useState('');
 
   const supported = isNotificationSupported();
@@ -159,7 +160,8 @@ export function useNotifications(routine, weekDays) {
 
   // ── Web Push (service-worker based, works on mobile) ────────────────────
   const refreshPushState = useCallback(async () => {
-    if (!pushSupported || !isAuthenticated) return;
+    if (!pushSupported || !isAuthenticated) return { configured: null, subscribed: false };
+    setPushStatusFailed(false);
     try {
       const [local, status] = await Promise.all([
         getExistingPushSubscription(),
@@ -168,15 +170,23 @@ export function useNotifications(routine, weekDays) {
       // Require both sides: a local subscription the server forgot (or vice
       // versa) is not a working push setup.
       const subscribed = Boolean(local && status.subscribed);
+      const configured = status.configured !== false;
       setPushSubscribed(subscribed);
-      setPushConfigured(status.configured !== false);
+      setPushConfigured(configured);
       try {
         const key = 'aust-push-reminders-handoff';
         if (subscribed) localStorage.setItem(key, '1');
         else localStorage.removeItem(key);
       } catch { /* best effort */ }
-    } catch {
-      setPushConfigured(false);
+      return { configured, subscribed };
+    } catch (e) {
+      // A failed status check is NOT proof the server is unconfigured. Keep
+      // `configured` unknown so the UI can offer a retry instead of silently
+      // disabling push for the rest of the session.
+      setPushConfigured(null);
+      setPushStatusFailed(true);
+      setPushError(e?.message || 'Could not check push status.');
+      return { configured: null, subscribed: false };
     }
   }, [pushSupported, isAuthenticated]);
 
@@ -233,6 +243,7 @@ export function useNotifications(routine, weekDays) {
       busy: pushBusy,
       subscribed: pushSubscribed,
       configured: pushConfigured,
+      statusFailed: pushStatusFailed,
       error: pushError,
       refresh: refreshPushState,
       enable: enablePush,

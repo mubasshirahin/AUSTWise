@@ -2151,6 +2151,8 @@ export default function SettingsPage() {
                   <p className="delivery-channel-status">
                     Device: <strong>
                       {!push.supported ? 'Unsupported'
+                        : push.statusFailed ? 'Status check failed — tap the toggle to retry'
+                        : push.configured === null ? 'Checking…'
                         : push.configured === false ? 'Not configured on server'
                         : push.subscribed ? 'On' : 'Off'}
                     </strong>
@@ -2174,19 +2176,31 @@ export default function SettingsPage() {
                   <div
                     className={`toggle-switch ${push.subscribed ? 'active' : ''}`}
                     onClick={async () => {
-                      if (push.busy || !push.supported || push.configured === false) return;
-                      if (push.subscribed) {
+                      if (push.busy || !push.supported) return;
+                      // Re-check when the last status check failed, was
+                      // inconclusive, or reported the server as unconfigured.
+                      let state = { configured: push.configured, subscribed: push.subscribed };
+                      if (push.statusFailed || push.configured !== true) {
+                        state = (await push.refresh()) || state;
+                      }
+                      if (state.configured === false) {
+                        setPushMsg('Web push is not configured on the server. Ask an admin to set the VAPID keys.');
+                        setTimeout(() => setPushMsg(''), 5000);
+                        return;
+                      }
+                      if (state.subscribed) {
                         await push.disable();
                         setPushMsg('Push alerts turned off on this device.');
                       } else {
                         const result = await push.enable();
                         if (result === 'subscribed') setPushMsg('Push alerts enabled — notices will reach this device even when the app is closed.');
                         else if (result === 'auth_required') setPushMsg('Sign in first to enable push alerts.');
+                        else if (result === 'denied') setPushMsg('Notifications are blocked — allow them in your browser site settings.');
                         else setPushMsg(push.error || 'Could not enable push alerts on this device.');
                       }
                       setTimeout(() => setPushMsg(''), 5000);
                     }}
-                    style={{ opacity: (push.busy || !push.supported || push.configured === false) ? 0.6 : 1, cursor: (push.busy || !push.supported || push.configured === false) ? 'not-allowed' : 'pointer' }}
+                    style={{ opacity: (push.busy || !push.supported) ? 0.6 : 1, cursor: (push.busy || !push.supported) ? 'not-allowed' : 'pointer' }}
                   />
                 </div>
 
