@@ -4120,6 +4120,7 @@ async function handleApiRequest(req, res) {
           graduationYear: user.graduationYear || '',
           createdAt: user.createdAt || null,
           status: presence[user.id]?.status || 'offline',
+          openForTalk: Boolean(user.openForTalk),
           linkedAccounts,
           orbit: user.orbit || null,
           lastSeenAt: presence[user.id]?.lastSeenAt || (user.lastSeenAt ? new Date(user.lastSeenAt).getTime() : null),

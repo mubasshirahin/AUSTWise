@@ -445,10 +445,13 @@
 .mp-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-  align-items: start;
+  /* Stretch so the Identity card ends level with the Contributions rail. */
+  align-items: stretch;
   gap: 14px;
 }
 .mp-rail { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+/* If the rail is the shorter column, its last card fills the gap instead. */
+.mp-rail > :last-child { flex: 1 0 auto; }
 
 /* Card header: icon tile · title/subtitle, solid rule under it */
 .mp-view .member-profile-section-heading,

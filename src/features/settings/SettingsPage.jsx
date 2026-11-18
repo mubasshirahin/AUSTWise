@@ -4,7 +4,7 @@ import QRCode from 'qrcode';
 import { useTheme, getThemeAccent } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useRoutine } from '../../context/RoutineContext';
-import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, ShieldAlert, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, SquareTerminal, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2, Orbit, DraftingCompass, PawPrint, Palette, Sparkles, ExternalLink, CalendarDays, Mail, Phone, Droplets, BookOpen, Award, Flame, FileText, Handshake, Vote, Coffee, MessageSquare, Gem, WandSparkles, Gamepad2, Cloud, Smile, Flower2, Smartphone } from 'lucide-react';
+import { Activity, Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, ShieldAlert, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, SquareTerminal, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2, Orbit, DraftingCompass, PawPrint, Palette, Sparkles, ExternalLink, CalendarDays, Mail, Phone, Droplets, BookOpen, Award, Flame, FileText, Handshake, Vote, Coffee, MessageCircle, MessageSquare, Gem, WandSparkles, Gamepad2, Cloud, Smile, Flower2, Smartphone } from 'lucide-react';
 import AboutUs from './AboutUs';
 import LinkedAccountsSection from './LinkedAccountsSection';
 import GliderTabs from '../../components/GliderTabs';
@@ -986,6 +986,9 @@ export default function SettingsPage() {
       { label: 'Section', value: previewProfile.section || quickProfile.section, icon: Users },
       { label: 'Lab Group', value: previewProfile.labSection || quickProfile.labSection, icon: Users },
     ]),
+    { label: 'Status', value: profileLastActiveText || 'Offline', icon: Activity },
+    { label: 'Open for talk', value: (previewProfile.openForTalk ?? user?.openForTalk) ? 'Yes' : 'No', icon: MessageCircle },
+    { label: 'Member since', value: memberSinceLabel, icon: CalendarDays },
   ];
   const handleCopyProfileEmail = async (email) => {
     try {

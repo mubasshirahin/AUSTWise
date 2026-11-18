@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, Award, BookOpen, CalendarDays, CheckCircle2, Coffee, Droplets, FileText, Flame, GraduationCap, Handshake, Mail,
-  MessageSquare, Orbit, Phone, UserRound, Users, Vote,
+  Activity, ArrowLeft, Award, BookOpen, CalendarDays, CheckCircle2, Coffee, Droplets, FileText, Flame, GraduationCap, Handshake, Mail,
+  MessageCircle, MessageSquare, Orbit, Phone, UserRound, Users, Vote,
 } from 'lucide-react';
 import { useStalk } from '../stalk-road/StalkContext';
 import { getAllAccounts, getDisplayRoles, getRoleDisplayName } from '../../utils/authStorage';
@@ -49,6 +49,7 @@ function findLocalProfile(memberId) {
       graduationYear: acc.graduationYear || '',
       createdAt: acc.createdAt || null,
       status: 'offline',
+      openForTalk: Boolean(acc.openForTalk),
       linkedAccounts: [],
       activity: {},
       orbit: acc.orbit || null,
@@ -179,6 +180,12 @@ export default function MemberProfilePage() {
     ? new Date(profile.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
     : '';
   const employment = getAlumniEmployment(profile);
+  const lastSeenDate = profile.lastSeenAt
+    ? new Date(profile.lastSeenAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+    : '';
+  const lastActiveText = profile.status === 'online'
+    ? 'Active now'
+    : lastSeenDate ? `Last active ${lastSeenDate}` : '';
   const identity = [
     { label: 'AUSTWise ID', value: profile.awid || profile.id, icon: UserRound },
     ...(!isFacultyProfile ? [{ label: 'Student ID', value: profile.studentId, icon: GraduationCap }] : []),
@@ -200,12 +207,10 @@ export default function MemberProfilePage() {
       { label: 'Section', value: profile.section, icon: Users },
       { label: 'Lab Group', value: profile.labSection, icon: Users },
     ]),
+    { label: 'Status', value: lastActiveText || 'Offline', icon: Activity },
+    { label: 'Open for talk', value: profile.openForTalk ? 'Yes' : 'No', icon: MessageCircle },
+    { label: 'Member since', value: joinedDate, icon: CalendarDays },
   ];
-  const lastActiveText = profile.status === 'online'
-    ? 'Active now'
-    : profile.lastSeenAt
-      ? `Last active ${new Date(profile.lastSeenAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
-      : '';
   const handleCopyEmail = async () => {
     try {
       await copyText(profile.email);
