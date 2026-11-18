@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { MemberIconPreview } from '../community/DirectoryShared';
 import { Shield, ShieldCheck, ShieldX, Coffee, Activity, Users, Trash2, Plus, AlertCircle, Eye, EyeOff, Edit3, Search, X, Save, Check, CheckCircle2, XCircle, ClipboardList, CalendarDays, Mic, CalendarClock, Ban, Banknote, FileText, Percent, PanelsTopLeft, HardDrive, Clock } from 'lucide-react';
 import { getAuditoriumEvent, setAuditoriumEvent, defaultAuditoriumEvent } from '../../data/mockData';
 import { loadSharedSync, loadSharedAsync, saveShared } from '../../utils/storageService';
@@ -1985,18 +1986,16 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                 {filteredCodeShares.map((sharer) => (
                   <article key={sharer.userId} className="glass-card-static admin-code-share-card">
                     <div className="admin-code-share-head">
-                      <button
-                        type="button"
-                        className="admin-code-avatar"
-                        onClick={() => navigate(`/members/${encodeURIComponent(sharer.studentId || sharer.userId)}`)}
-                        title={`View ${sharer.name}'s profile`}
-                      >
-                        {sharer.avatar ? (
+                      <MemberIconPreview
+                        person={sharer}
+                        avatarClassName="admin-code-avatar"
+                        onOpenProfile={() => navigate(`/members/${encodeURIComponent(sharer.studentId || sharer.userId)}`)}
+                        avatarContent={sharer.avatar ? (
                           <img src={sharer.avatar} alt="" referrerPolicy="no-referrer" />
                         ) : (
                           (sharer.name || '?').slice(0, 2).toUpperCase()
                         )}
-                      </button>
+                      />
                       <div>
                         <strong>{sharer.name}</strong>
                         <span>{sharer.department || '—'}{sharer.batchLabel ? ` · ${sharer.batchLabel}` : ''}{sharer.yearSemLabel ? ` · ${sharer.yearSemLabel}` : ''}</span>
@@ -2022,18 +2021,16 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                         <ul>
                           {sharer.uses.map((entry) => (
                             <li key={`${entry.userId}-${entry.code}`}>
-                              <button
-                                type="button"
-                                className="admin-code-recipient-avatar"
-                                onClick={() => navigate(`/members/${encodeURIComponent(entry.studentId || entry.userId)}`)}
-                                title={`View ${entry.name}'s profile`}
-                              >
-                                {entry.avatar ? (
+                              <MemberIconPreview
+                                person={entry}
+                                avatarClassName="admin-code-recipient-avatar"
+                                onOpenProfile={() => navigate(`/members/${encodeURIComponent(entry.studentId || entry.userId)}`)}
+                                avatarContent={entry.avatar ? (
                                   <img src={entry.avatar} alt="" referrerPolicy="no-referrer" />
                                 ) : (
                                   (entry.name || '?').slice(0, 2).toUpperCase()
                                 )}
-                              </button>
+                              />
                               <span><strong>{entry.name}</strong> · {entry.department || '—'}{entry.batchLabel ? ` · ${entry.batchLabel}` : ''}{entry.yearSemLabel ? ` · ${entry.yearSemLabel}` : ''} · <code>{entry.code}</code></span>
                             </li>
                           ))}

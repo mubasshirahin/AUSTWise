@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getMemberPreviewStats, resolveNoticePoster, extractStudentId } from './memberPreview';
+import { getMemberPreviewStats, resolveNoticePoster, extractStudentId, mergeWithDirectory } from './memberPreview';
 
 describe('resolveNoticePoster', () => {
   const notice = { postedBy: 'u7', postedByName: 'Rafi', postedByRole: 'cr', postedBySection: 'A', postedByLabSection: 'A1' };
@@ -38,6 +38,17 @@ describe('getMemberPreviewStats', () => {
     expect(rows.find(([l]) => l === 'Department')[1]).toBe('');
     expect(rows.find(([l]) => l === 'AWID')[1]).toBe('');
     expect(rows).toContainEqual(['Lab', 'A']);
+  });
+});
+
+describe('mergeWithDirectory', () => {
+  it('fills missing fields from the directory, keeping the given ones when the directory is blank', () => {
+    const merged = mergeWithDirectory({ id: 'u7', name: 'Rafi', avatar: 'a.png' }, [{ id: 'u7', department: 'CSE', avatar: '' }]);
+    expect(merged).toMatchObject({ id: 'u7', name: 'Rafi', department: 'CSE', avatar: 'a.png' });
+  });
+  it('matches by studentId and returns the input when nothing matches', () => {
+    expect(mergeWithDirectory({ id: '2021', name: 'X' }, [{ id: 'u1', studentId: '2021', batch: '49' }]).batch).toBe('49');
+    expect(mergeWithDirectory({ id: 'zz', name: 'X' }, [])).toEqual({ id: 'zz', name: 'X' });
   });
 });
 

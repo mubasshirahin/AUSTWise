@@ -53,9 +53,14 @@ export function resolveNoticePoster(notice, members) {
     section: notice.postedBySection,
     labSection: notice.postedByLabSection,
   };
-  const found = findMember(members, notice.postedBy);
-  if (!found) return fromNotice;
-  const merged = { ...fromNotice };
+  return mergeWithDirectory(fromNotice, members);
+}
+
+/** `base` with its directory record's non-empty fields laid over it. */
+export function mergeWithDirectory(base, members) {
+  const found = findMember(members, base?.id);
+  if (!found) return base;
+  const merged = { ...base };
   Object.entries(found).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') merged[k] = v; });
   return merged;
 }

@@ -2,6 +2,38 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from
 import { createPortal } from 'react-dom';
 import { Building2, ChevronDown, Orbit, UserRound } from 'lucide-react';
 import './MemberAvatarPreview.css';
+import { getMemberPreviewStats, mergeWithDirectory } from '../../utils/memberPreview';
+import { getCachedMembers } from '../../utils/memberDirectory';
+
+/**
+ * Profile icon for a loose person record ({ userId|id, studentId, name,
+ * avatar, department, batchLabel, email }): floating mini stats card filled
+ * from the member directory; "View profile" calls onOpenProfile.
+ */
+export function MemberIconPreview({ person, onOpenProfile, avatarClassName, avatarContent }) {
+  const id = person?.studentId || person?.userId || person?.id || '';
+  const card = mergeWithDirectory({
+    id: person?.userId || person?.id || id,
+    studentId: person?.studentId,
+    name: person?.name || 'Member',
+    avatar: person?.avatar || undefined,
+    department: person?.department,
+    batch: person?.batchLabel || person?.batch,
+    email: person?.email,
+  }, getCachedMembers());
+  return (
+    <MemberAvatarPreview
+      floating
+      member={card}
+      roleLabel={card.role ? String(card.role).toUpperCase() : 'Member'}
+      previewStats={getMemberPreviewStats(card)}
+      onOpenProfile={id ? onOpenProfile : undefined}
+      avatarClassName={avatarClassName}
+      avatarStyle={{}}
+      avatarContent={avatarContent}
+    />
+  );
+}
 import { useStalk } from '../stalk-road/StalkContext';
 import { getMemberInitials } from './directoryUtils';
 
