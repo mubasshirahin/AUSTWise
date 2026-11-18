@@ -190,6 +190,12 @@ export function MemberAvatarPreview({
         role="dialog"
         aria-label={`${member.name} quick stats`}
         style={floating ? { top: floatPos?.top ?? -9999, left: floatPos?.left ?? -9999 } : undefined}
+        // React bubbles portal events up the component tree: keep clicks and
+        // touches on the card from expanding/swiping the row it belongs to.
+        onClick={(event) => event.stopPropagation()}
+        onTouchStart={(event) => event.stopPropagation()}
+        onTouchMove={(event) => event.stopPropagation()}
+        onTouchEnd={(event) => event.stopPropagation()}
       >
         <div className="alumni-profile-preview-head">
           <span className="alumni-profile-preview-avatar">
@@ -243,6 +249,8 @@ export function MemberAvatarPreview({
           event.stopPropagation();
           setPreviewOpen((open) => !open);
         }}
+        onTouchStart={(event) => event.stopPropagation()}
+        onTouchEnd={(event) => event.stopPropagation()}
         title={`${member.name} — quick stats`}
         aria-label={`Show ${member.name}'s quick stats`}
         aria-expanded={previewOpen}
