@@ -148,6 +148,7 @@ export function MemberAvatarPreview({
   const buttonRef = useRef(null);
   const cardRef = useRef(null);
   const hoverTimer = useRef(null);
+  const lastPointer = useRef('mouse');
   const { stalk } = useStalk();
 
   // Close on an outside tap or Escape.
@@ -172,6 +173,17 @@ export function MemberAvatarPreview({
     const btn = buttonRef.current;
     if (!btn) return;
     const r = btn.getBoundingClientRect();
+    // Icon scrolled out of a clipping ancestor (or the viewport): close
+    // rather than float detached over unrelated content.
+    const visible = (box) => r.bottom > box.top && r.top < box.bottom && r.right > box.left && r.left < box.right;
+    if (!visible({ top: 0, left: 0, bottom: window.innerHeight, right: window.innerWidth })) { setPreviewOpen(false); return; }
+    for (let el = btn.parentElement; el && el !== document.body; el = el.parentElement) {
+      const cs = getComputedStyle(el);
+      if (/(auto|scroll|hidden|clip)/.test(cs.overflowY + cs.overflowX) && !visible(el.getBoundingClientRect())) {
+        setPreviewOpen(false);
+        return;
+      }
+    }
     const card = cardRef.current;
     const w = card?.offsetWidth || Math.min(300, window.innerWidth - 32);
     const h = card?.offsetHeight || 0;
@@ -276,9 +288,13 @@ export function MemberAvatarPreview({
         ref={buttonRef}
         className={avatarClassName}
         style={{ ...avatarStyle, padding: 0, border: 'none', cursor: 'pointer', overflow: 'hidden' }}
+        onPointerDown={(event) => { lastPointer.current = event.pointerType || 'mouse'; }}
         onClick={(event) => {
           // Never let the icon click open/expand the row it sits in.
           event.stopPropagation();
+          // Floating + mouse: hover already opened it — a click must not
+          // toggle it shut. Touch/keyboard still toggle.
+          if (floating && lastPointer.current === 'mouse') { setPreviewOpen(true); return; }
           setPreviewOpen((open) => !open);
         }}
         onTouchStart={(event) => event.stopPropagation()}
