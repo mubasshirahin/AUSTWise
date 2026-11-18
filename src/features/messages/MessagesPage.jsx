@@ -32,6 +32,7 @@ import MastheadAccessControl from '../../components/MastheadAccessControl';
 import FeatureAccessGate from '../admin/FeatureAccessGate';
 import SidebarPageAccessPanel, { SidebarPageAccessHeader } from '../admin/SidebarPageAccessPanel';
 import '../campus/SemesterViewWidget.css';
+import '../daily-life/DailyMasthead.css';
 import './MessagesPage.css';
 
 /* ─── Emoji Reactions ─── */
@@ -542,7 +543,7 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
       <header className="chat-header">
         <button
           type="button"
-          className="chat-back hide-desktop"
+          className="chat-back"
           onClick={() => onSent('back')}
           aria-label="Back to inbox"
         >
@@ -551,22 +552,21 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
         <div className="avatar-wrapper">
           <button
             type="button"
-            className="avatar"
-            style={{ width: '40px', height: '40px', padding: 0, border: 'none', cursor: 'pointer' }}
+            className="avatar chat-avatar-btn"
             onClick={() => navigate(`/members/${peerId}`)}
             title={peer?.name ? `View ${peer.name}'s profile / ID` : 'View profile'}
             aria-label="View profile"
           >
-            {peer?.avatar ? <img src={peer.avatar} alt="" referrerPolicy="no-referrer" onError={(event) => { event.currentTarget.style.display = 'none'; }} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : peer?.initials}
+            {peer?.avatar ? <img src={peer.avatar} alt="" referrerPolicy="no-referrer" onError={(event) => { event.currentTarget.style.display = 'none'; }} /> : peer?.initials}
           </button>
           <span className={`avatar-status-dot ${connected ? 'online' : 'offline'}`} />
         </div>
-        <div className="chat-peer-info" style={{ flex: 1 }}>
+        <div className="chat-peer-info">
           <span className="chat-peer-name">{peer?.name || 'Loading…'}</span>
           <span className="chat-peer-sub">
             {peer ? getDisplayRoles(peer).map(getRoleDisplayName).join(' · ') : ''}
             {peer?.department ? ` · ${peer.department}` : ''}
-            <span style={{ marginLeft: '6px' }}>
+            <span className={`chat-peer-presence${connected ? ' is-online' : ''}`}>
               · {connected ? 'Online' : 'Offline'}
             </span>
           </span>
@@ -1257,36 +1257,36 @@ export default function MessagesPage() {
     const isActive = c.peerId === activePeerId;
     const isOnline = onlineUsers.includes(c.peerId);
     const unread = c.unread || 0;
-    const densityClass = unread >= 3 ? 'is-rose' : unread === 2 ? 'is-amber' : unread === 1 ? 'is-cyan' : 'is-emerald';
     return (
       <button
         key={c.conversationId}
         type="button"
-        className={`sv-cell conversation-cell ${densityClass}${isActive ? ' active' : ''}${unread > 0 ? ' has-unread' : ''}`}
+        className={`conversation-cell${isActive ? ' active' : ''}${unread > 0 ? ' has-unread' : ''}`}
         style={{ '--conv-delay': `${Math.min(cellIdx * 40, 280)}ms` }}
         onClick={() => openConversation(c.peerId)}
+        aria-current={isActive ? 'true' : undefined}
       >
-        {unread > 0 && <span className={`sv-count${unread >= 3 ? ' hot' : ''}`}>{unread}</span>}
-        <div className="conv-cell-main">
-          <div className="avatar-wrapper">
-            <div className="avatar">
-              {c.peer.avatar
-                ? <img src={c.peer.avatar} alt="" referrerPolicy="no-referrer" onError={(event) => { event.currentTarget.style.display = 'none'; }} />
-                : c.peer.initials}
-            </div>
-            <span className={`avatar-status-dot ${isOnline ? 'online' : 'offline'}`} />
+        <div className="avatar-wrapper">
+          <div className="avatar">
+            {c.peer.avatar
+              ? <img src={c.peer.avatar} alt="" referrerPolicy="no-referrer" onError={(event) => { event.currentTarget.style.display = 'none'; }} />
+              : c.peer.initials}
           </div>
-          <div className="conv-cell-body">
-            <div className="conv-cell-top">
-              <span className="sv-cell-title conv-name">{c.peer.name}</span>
-              <span className="conv-time">{formatConversationTime(c.lastTimestamp)}</span>
-            </div>
-            <div className="conv-preview">
+          <span className={`avatar-status-dot ${isOnline ? 'online' : 'offline'}`} />
+        </div>
+        <div className="conv-cell-body">
+          <div className="conv-cell-top">
+            <span className="conv-name">{c.peer.name}</span>
+            <span className="conv-time">{formatConversationTime(c.lastTimestamp)}</span>
+          </div>
+          <div className="conv-cell-bottom">
+            <span className="conv-preview">
               {c.lastMessage.fromId === currentUserId && (
                 <CheckCheck size={11} className="preview-status" />
               )}
-              {c.lastMessage.text}
-            </div>
+              <span className="conv-preview-text">{c.lastMessage.text}</span>
+            </span>
+            {unread > 0 && <span className={`conv-count${unread >= 3 ? ' is-hot' : ''}`}>{unread}</span>}
           </div>
         </div>
       </button>
@@ -1308,12 +1308,12 @@ export default function MessagesPage() {
             <p className="ms-hero-subtitle">Chat with alumni, classmates &amp; mentors.</p>
           </div>
         </header>
-        <div className="ms-content-card">
-          <div className="sv-empty">
-            <MessageSquare size={38} className="sv-empty-icon" />
-            <h3>Login to view messages</h3>
-            <p>You need an account to use the inbox.</p>
-            <button className="btn btn-primary" onClick={() => navigate('/login')}>
+        <div className="glass-card-static ms-content-card cb-widget">
+          <div className="cb-empty is-page">
+            <span className="cb-empty-icon"><MessageSquare size={16} /></span>
+            <h3 className="cb-empty-title">Login to view messages</h3>
+            <p className="cb-empty-hint">You need an account to use the inbox.</p>
+            <button type="button" className="cb-empty-action" onClick={() => navigate('/login')}>
               Login / Sign up
             </button>
           </div>
@@ -1359,97 +1359,81 @@ export default function MessagesPage() {
 
       {/* ── 3. Main box — masthead header + chat layout (one card, gated by featureHidden) ── */}
       {isAdmin ? <SidebarPageAccessPanel pageKey="/messages" featureKey="feature:messages:main" part="child" /> : <MastheadAccessControl pageKey="/messages">
-        <FeatureAccessGate featureKey="feature:messages:main"><div className="ms-content-card">
-          {/* Masthead header */}
-          <div className="schedule-masthead ms-masthead">
-            {/* Left: title block */}
-            <div className="schedule-title-block">
-              <div className="schedule-icon-tile">
-                <MessageSquare size={20} strokeWidth={2.2} />
+        <FeatureAccessGate featureKey="feature:messages:main"><div className="glass-card-static ms-content-card cb-widget">
+          <header className="dl-head has-actions">
+            <div className="dl-head-title">
+              <div className="dl-head-tile" aria-hidden="true">
+                <MessageSquare size={20} strokeWidth={2.1} />
               </div>
-              <div>
-                <span className="schedule-overline">ConnectBox</span>
-                <div className="schedule-title">Messages</div>
-                <span className="schedule-subtitle">Inbox &amp; filters</span>
+              <div className="dl-head-text">
+                <span className="dl-head-overline">ConnectBox</span>
+                <h2 className="dl-head-name">Messages</h2>
+                <span className="dl-head-subtitle">Chat with alumni, classmates &amp; mentors</span>
               </div>
             </div>
 
-            {/* Center: stats */}
-            <div className="schedule-masthead-center">
-              <div className="schedule-stats">
-                <div className="schedule-stat">
-                  <span className="schedule-stat-value">{conversations.length}</span>
-                  <span className="schedule-stat-label">chats</span>
-                </div>
-                <div className="schedule-stat">
-                  <span className="schedule-stat-value" style={{ color: unreadTotal > 0 ? 'var(--accent-rose)' : undefined }}>
-                    {unreadTotal}
-                  </span>
-                  <span className="schedule-stat-label">unread</span>
-                </div>
-                <div className="schedule-stat">
-                  <span className="schedule-stat-value">{onlineChatCount}</span>
-                  <span className="schedule-stat-label">online</span>
-                </div>
-              </div>
-            </div>
+            <dl className="dl-head-stats">
+              <div className="dl-head-stat"><dt>Chats</dt><dd>{conversations.length}</dd></div>
+              <div className={`dl-head-stat${unreadTotal > 0 ? ' is-alert' : ''}`}><dt>Unread</dt><dd>{unreadTotal}</dd></div>
+              <div className="dl-head-stat"><dt>Online</dt><dd>{onlineChatCount}</dd></div>
+            </dl>
 
-            {/* Right: nav + ⋮ menu */}
-            <div className="schedule-actions">
-
-
-              <div className="export-dropdown" ref={menuRef}>
+            <div className="dl-head-actions">
+              <div className="cb-menu" ref={menuRef}>
                 <button
-                  className="schedule-nav-btn"
+                  type="button"
+                  className="dl-head-menu-btn"
                   onClick={() => setMenuOpen((o) => !o)}
                   title="Options"
+                  aria-label="Options"
                   aria-haspopup="true"
                   aria-expanded={menuOpen}
                 >
-                  <MoreVertical size={18} />
+                  <MoreVertical size={17} />
                 </button>
                 {menuOpen && (
-                  <div className="export-menu" role="menu">
+                  <div className="cb-menu-list" role="menu">
                     <button
-                      className={`export-menu-item${filterMode === 'all' ? ' menu-active' : ''}`}
+                      type="button"
+                      className={`cb-menu-item${filterMode === 'all' ? ' is-active' : ''}`}
                       onClick={() => { setFilterMode('all'); setMenuOpen(false); }}
                       role="menuitem"
                     >
                       <Inbox size={14} /> All conversations
-                      {filterMode === 'all' && <Check size={14} className="menu-check" />}
+                      {filterMode === 'all' && <Check size={14} className="cb-menu-check" />}
                     </button>
                     <button
-                      className={`export-menu-item${filterMode === 'unread' ? ' menu-active' : ''}`}
+                      type="button"
+                      className={`cb-menu-item${filterMode === 'unread' ? ' is-active' : ''}`}
                       onClick={() => { setFilterMode('unread'); setMenuOpen(false); }}
                       role="menuitem"
                     >
                       <Mail size={14} /> Unread only
-                      {filterMode === 'unread' && <Check size={14} className="menu-check" />}
+                      {filterMode === 'unread' && <Check size={14} className="cb-menu-check" />}
                     </button>
-                    <div className="export-menu-sep" />
+                    <div className="cb-menu-sep" />
                     {notifSupported && (
-                    <button
-                      className={`export-menu-item${notifEnabled ? ' menu-active' : ''}`}
-                      onClick={handleNotifToggle}
-                      role="menuitem"
-                    >
-                      {notifEnabled ? <Bell size={14} /> : <BellOff size={14} />} Browser notifications
-                      {notifEnabled && <Check size={14} className="menu-check" />}
-                      <span
-                        style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginLeft: 'auto' }}
-                        title="Asks for browser notification permission — used only to alert you about new messages. Nothing is shared; revoke anytime from your browser's site settings."
+                      <button
+                        type="button"
+                        className={`cb-menu-item${notifEnabled ? ' is-active' : ''}`}
+                        onClick={handleNotifToggle}
+                        role="menuitem"
                       >
-                        ⓘ
-                      </span>
-                    </button>
-                  )}
-                </div>
-              )}
+                        {notifEnabled ? <Bell size={14} /> : <BellOff size={14} />} Browser notifications
+                        {notifEnabled && <Check size={14} className="cb-menu-check" />}
+                        <span
+                          className="cb-menu-info"
+                          title="Asks for browser notification permission — used only to alert you about new messages. Nothing is shared; revoke anytime from your browser's site settings."
+                        >
+                          ⓘ
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
-
-        <div className="schedule-dotted-divider" />
+          </header>
 
         {!wsConnected && currentUserId && (
           <div className="connection-status-banner">
@@ -1459,15 +1443,21 @@ export default function MessagesPage() {
         )}
 
         <div className="messages-layout">
-          <aside className={`messages-list ${activePeerId ? 'hidden-mobile' : ''}`}>
-            <div className="messages-search-wrapper">
-              <div className="search-box">
-                <Search size={14} className="messages-search-icon" />
+          <aside className={`messages-list cb-card ${activePeerId ? 'hidden-mobile' : ''}`}>
+            <div className="cb-list-head">
+              <h4 className="cb-card-title">
+                <Inbox size={14} />
+                <span>{filterMode === 'unread' ? 'Unread' : 'Conversations'}</span>
+                <span className="cb-card-count">{filteredConversations.length}</span>
+              </h4>
+              <div className="search-box messages-search">
+                <Search size={13} className="messages-search-icon" />
                 <input
                   type="text"
                   placeholder="Search conversations..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  aria-label="Search conversations"
                 />
                 <button
                   type="button"
@@ -1482,13 +1472,12 @@ export default function MessagesPage() {
 
             <div className="conversation-items">
               {filteredConversations.length === 0 ? (
-                <div className="sv-empty small">
-                  <Inbox size={28} className="sv-empty-icon" />
-                  <h3>{filterMode === 'unread' ? 'No unread messages' : 'No conversations yet'}</h3>
-                  <p>
+                <div className="cb-empty">
+                  <span className="cb-empty-icon"><Inbox size={16} /></span>
+                  <p className="cb-empty-hint">
                     {filterMode === 'unread'
-                      ? 'All messages are read. Great job!'
-                      : 'Message an alumnus or classmate to start a conversation.'}
+                      ? 'No unread messages - all caught up.'
+                      : 'No conversations yet - message an alumnus or classmate to start one.'}
                   </p>
                 </div>
               ) : (
@@ -1497,12 +1486,11 @@ export default function MessagesPage() {
             </div>
           </aside>
 
-          <section className={`messages-chat ${!activePeerId ? 'hidden-mobile' : ''}`}>
+          <section className={`messages-chat cb-card ${!activePeerId ? 'hidden-mobile' : ''}`}>
             {!activePeerId ? (
-              <div className="sv-empty">
-                <MessageSquare size={32} className="sv-empty-icon" />
-                <h3>Select a conversation</h3>
-                <p>Pick a chat from the left to start messaging.</p>
+              <div className="cb-empty is-pane">
+                <span className="cb-empty-icon"><MessageSquare size={16} /></span>
+                <p className="cb-empty-hint">Select a conversation from the inbox to start messaging.</p>
               </div>
             ) : (
               <ChatThread
