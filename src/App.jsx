@@ -47,6 +47,7 @@ const CommunityPage = lazy(() => import('./features/community/CommunityPage'));
 const MarketplacePage = lazy(() => import('./features/marketplace/index.jsx'));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
 const AdminPanelPage = lazy(() => import('./features/admin/AdminPanelPage'));
+const FlowCanvasPage = lazy(() => import('./features/admin/FlowCanvasPage'));
 const MessagesPage = lazy(() => import('./features/messages/MessagesPage'));
 const WorkspacePage = lazy(() => import('./features/workspace/WorkspacePage'));
 const StudyRoomPage = lazy(() => import('./features/study-room/StudyRoomPage'));
@@ -302,6 +303,7 @@ function AppContent() {
                   <Route path="/messages" element={<CanonicalRedirect to="/connectbox" />} />
                   <Route path="/admin-panel" element={<Navigate to="/admin-panel/overview" replace />} />
                   <Route path="/admin-panel/role-preview" element={import.meta.env.DEV ? <RoleMatrixPreview /> : <ProtectedAdminRoute><RoleMatrixPreview /></ProtectedAdminRoute>} />
+                  <Route path="/admin-panel/flow-canvas" element={<ProtectedAdminRoute><FlowCanvasPage /></ProtectedAdminRoute>} />
                   <Route path="/admin-panel/:section" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
                   <Route path="/admin" element={<LegacyAdminRedirect />} />
                   <Route path="/admin/overview" element={<LegacyAdminRedirect />} />

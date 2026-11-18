@@ -15,6 +15,7 @@ import useTabUrlState from '../../hooks/useTabUrlState';
 import useAdminMode from '../../hooks/useAdminMode';
 import { useLiveValue } from '../../utils/liveStore';
 import { getShadowIdentity, regenerateShadowNickname, shadowInitials } from '../../utils/shadowName';
+import '../daily-life/DailyMasthead.css';
 import './ShadowPage.css';
 import './shadow-tokens.css';
 
@@ -26,31 +27,15 @@ function formatTime(seconds) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-// Shared subtab masthead.
-function ShadowMasthead({ icon: Icon, title, subtitle, actions }) {
-  return (
-    <div className="schedule-masthead">
-      <div className="schedule-title-block">
-        <div className="schedule-icon-tile">
-          <Icon size={20} strokeWidth={2.2} />
-        </div>
-        <div>
-          <span className="schedule-overline">Shadow</span>
-          <p className="schedule-title">{title}</p>
-          <span className="schedule-subtitle">{subtitle}</span>
-        </div>
-      </div>
-      <div className="schedule-masthead-center" />
-      <div className="schedule-actions">{actions}</div>
-    </div>
-  );
-}
-
 export default function ShadowPage() {
   const { isAdmin } = useAdminMode();
   const [rawReviews] = useLiveValue('shared', 'aust-course-reviews-v2', []);
   const reviews = Array.isArray(rawReviews) ? rawReviews : [];
   const totalReviews = reviews.length;
+  const [rawBuzz] = useLiveValue('shared', 'aust-buzz-posts', []);
+  const buzzPosts = Array.isArray(rawBuzz) ? rawBuzz : [];
+  const buzzComments = buzzPosts.reduce((n, p) => n + (p.comments?.length || 0), 0);
+  const buzzToday = buzzPosts.filter((p) => Date.now() - (p.timestamp || 0) < 86400000).length;
   const uniqueUsers = new Set(reviews.map(r => r.contributorId).filter(Boolean)).size;
 
   /* ─── Tab state ─── */
@@ -392,12 +377,21 @@ export default function ShadowPage() {
           <FeatureAccessGate featureKey={`feature:shadow:${activeTab}`}>
           {activeTab === 'buzz' ? (
             <>
-              <ShadowMasthead
-                icon={Zap}
-                title="Buzz"
-                subtitle="AUST forum — anonymous posts"
-              />
-              <div className="schedule-dotted-divider shadow-repeat-divider" />
+              <header className="dl-head sc-head">
+                <div className="dl-head-title">
+                  <div className="dl-head-tile" aria-hidden="true"><Zap size={20} strokeWidth={2.1} /></div>
+                  <div className="dl-head-text">
+                    <span className="dl-head-overline">Shadow</span>
+                    <h2 className="dl-head-name">Buzz</h2>
+                    <span className="dl-head-subtitle">AUST forum - anonymous posts</span>
+                  </div>
+                </div>
+                <dl className="dl-head-stats">
+                  <div className="dl-head-stat"><dt>Posts</dt><dd>{buzzPosts.length}</dd></div>
+                  <div className="dl-head-stat"><dt>Comments</dt><dd>{buzzComments}</dd></div>
+                  <div className="dl-head-stat"><dt>Today</dt><dd>{buzzToday}</dd></div>
+                </dl>
+              </header>
               <BuzzPage identity={identity} />
             </>
           ) : activeTab === 'reviews' ? (
@@ -406,24 +400,25 @@ export default function ShadowPage() {
             <RoastCVPage />
           ) : (
             <>
-              <ShadowMasthead
-                icon={MessageSquare}
-                title="Shadow Chat"
-                subtitle="Match with a stranger for a 10-minute anonymous conversation."
-                actions={
-                  wsConnected ? (
-                    <span className="shadow-chat-status-badge badge-live">
-                      <Wifi size={10} /> Connected
-                    </span>
-                  ) : (
-                    <span className="shadow-chat-status-badge badge-urgent">
-                      <WifiOff size={10} /> Disconnected
-                    </span>
-                  )
-                }
-              />
-              <div className="schedule-dotted-divider shadow-repeat-divider" />
-            <section className="shadow-chat-card">
+              <header className="dl-head sc-head">
+                <div className="dl-head-title">
+                  <div className="dl-head-tile" aria-hidden="true"><MessageSquare size={20} strokeWidth={2.1} /></div>
+                  <div className="dl-head-text">
+                    <span className="dl-head-overline">Shadow</span>
+                    <h2 className="dl-head-name">Shadow Chat</h2>
+                    <span className="dl-head-subtitle">Match with a stranger for a 10-minute anonymous chat.</span>
+                  </div>
+                </div>
+                <dl className="dl-head-stats">
+                  <div className="dl-head-stat"><dt>In queue</dt><dd>{shadowStatus.queueCount}</dd></div>
+                  <div className="dl-head-stat"><dt>Live chats</dt><dd>{shadowStatus.activeSessions}</dd></div>
+                  <div className={`dl-head-stat${wsConnected ? '' : ' is-alert'}`}>
+                    <dt>Status</dt>
+                    <dd className="sc-status">{wsConnected ? <><Wifi size={13} /> Online</> : <><WifiOff size={13} /> Offline</>}</dd>
+                  </div>
+                </dl>
+              </header>
+            <section className="shadow-chat-card sc-widget">
               <div className="shadow-chat-body">
             {/* Idle state */}
             {chatState === 'idle' && (
@@ -434,11 +429,6 @@ export default function ShadowPage() {
                 <h3>Ready to talk?</h3>
                 <p>You'll be matched with a random stranger for exactly 10 minutes. Completely anonymous — no names, no traces.</p>
                 <p className="shadow-chat-as-name">Chatting as <strong>{identity.nickname}</strong></p>
-                <div className="shadow-chat-live-stats">
-                  <span className="shadow-live-stat"><strong>{shadowStatus.queueCount}</strong> in queue</span>
-                  <span className="shadow-live-stat-sep">·</span>
-                  <span className="shadow-live-stat"><strong>{shadowStatus.activeSessions}</strong> in 10-min session{shadowStatus.activeSessions === 1 ? '' : 's'}</span>
-                </div>
                 <button
                   className="shadow-join-btn"
                   onClick={handleJoinQueue}
@@ -467,11 +457,6 @@ export default function ShadowPage() {
                 <h3>Finding a stranger...</h3>
                 <p>You're in the queue at position #{queuePosition}. Hang tight!</p>
                 <p className="shadow-chat-as-name">Chatting as <strong>{identity.nickname}</strong></p>
-                <div className="shadow-chat-live-stats">
-                  <span className="shadow-live-stat"><strong>{shadowStatus.queueCount}</strong> in queue</span>
-                  <span className="shadow-live-stat-sep">·</span>
-                  <span className="shadow-live-stat"><strong>{shadowStatus.activeSessions}</strong> in 10-min session{shadowStatus.activeSessions === 1 ? '' : 's'}</span>
-                </div>
                 <button className="shadow-leave-btn" onClick={handleLeaveQueue}>
                   Cancel
                 </button>

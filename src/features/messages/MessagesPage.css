@@ -1442,6 +1442,8 @@ mark.chat-highlight {
   .cb-widget .reply-preview-cancel { width: 26px; height: 26px; min-width: 26px; min-height: 26px; }
   .cb-widget .edit-actions .btn,
   .cb-widget .delete-confirm-actions .btn { height: 26px; min-height: 26px; padding: 0 11px; font-size: 11px; }
+  /* §7b exception: the inline edit field stays small on touch (beats ResponsiveShell's 16px) */
+  .cb-widget .chat-bubble-editing .edit-textarea { font-size: 12px !important; }
 }
 
 /* Modal-style overlay sheet on narrow phones */

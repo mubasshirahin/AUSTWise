@@ -1,0 +1,10 @@
+layout-dashboard house chart-column map-pin book-open file-search users message-square zap shopping-bag coffee moon settings crown shield
+search bell sun play pause rotate-ccw chevron-left chevron-right chevron-down chevron-up ellipsis-vertical plus x check calendar calendar-days clock wallet
+trending-up trending-down graduation-cap award file-text folder download upload heart message-circle send paperclip smile phone video star funnel
+list pencil trash-2 lock key-round eye eye-off copy globe link image gamepad-2 film circle-help brain timer alarm-clock code terminal briefcase
+building-2 bus utensils library flame target arrow-right arrow-up arrow-left menu log-out user user-plus megaphone sparkles layers chart-pie activity
+bookmark tag map compass mic hash inbox triangle-alert info circle-check coins receipt piggy-bank credit-card cpu trophy medal newspaper thumbs-up
+share-2 repeat music headphones mail sliders-horizontal palette monitor tablet smartphone layout-grid mouse-pointer-click rocket notebook-pen sticky-note
+scroll-text printer wand-sparkles shield-check fingerprint footprints bot dumbbell list-checks kanban flag pin refresh-cw grid-3x3 square-pen
+circle-dot dot workflow git-branch arrow-up-right school book-marked swords dice-5 radio waves ticket shirt package door-open sparkle rows-3 move
+thumbs-down arrow-down maximize-2 minimize-2 play-circle lightbulb clipboard-list file-badge orbit route hourglass laptop

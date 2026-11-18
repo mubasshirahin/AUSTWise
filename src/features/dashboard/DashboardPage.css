@@ -1259,6 +1259,9 @@
 .notice-widget .notice-row:hover {
   background: var(--bg-card-hover, var(--bg-card));
   box-shadow: var(--shadow-sm);
+  /* No lift: the list scrolls (overflow-y: auto), so translateY(-1px)
+     clipped the top border of the first card. */
+  transform: none;
 }
 /* Header: avatar on the left, two info rows on the right (name / other info) */
 .notice-widget .notice-row .notice-card-head {

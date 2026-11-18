@@ -7,6 +7,7 @@ import { getShadowIdentity, shadowInitials } from '../../utils/shadowName';
 import { liveLoad, liveSave } from '../../utils/liveStorage';
 import { useLiveRefresh } from '../../utils/liveStore';
 import './BuzzPage.css';
+import './BuzzForum.css';
 import '../../components/PageHero.css';
 
 const POSTS_KEY = 'aust-buzz-posts';       // shared across all students
@@ -148,7 +149,7 @@ export default function BuzzPage({ identity: identityProp } = {}) {
   }, [posts, activeChannel, sort]);
 
   return (
-    <div className="aed-page animate-fadeIn">
+    <div className="aed-page buzz-widget animate-fadeIn">
       {/* ── Toolbar: filters + new post ── */}
       <div className="buzz-topbar">
         <div className="buzz-toolbar">
@@ -247,9 +248,13 @@ export default function BuzzPage({ identity: identityProp } = {}) {
       <div className="buzz-feed">
         {visiblePosts.length === 0 && (
           <div className="buzz-empty">
-            <MessageCircle size={26} />
-            <h4>No buzz yet</h4>
-            <p>Be the first to post in this channel.</p>
+            <span className="buzz-empty-icon"><MessageCircle size={16} /></span>
+            <p className="buzz-empty-hint">No buzz in this channel yet - be the first to post.</p>
+            {!composerOpen && (
+              <button type="button" className="buzz-empty-action" onClick={() => setComposerOpen(true)}>
+                <Plus size={13} /> New post
+              </button>
+            )}
           </div>
         )}
 

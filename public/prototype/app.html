@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AUSTWise</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&family=Kalam:wght@700&display=swap">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="screens.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head>
+<body>
+<div id="root"></div>
+<div id="overlays"></div>
+<script src="icons.js"></script>
+<script src="data.js"></script>
+<script src="ui.js"></script>
+<script src="screens/core.js"></script>
+<script src="screens/learning.js"></script>
+<script src="screens/life.js"></script>
+<script src="screens/social.js"></script>
+<script src="screens/tools.js"></script>
+<script src="screens/public.js"></script>
+<script>P.render();</script>
+</body>
+</html>

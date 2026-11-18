@@ -1,0 +1,217 @@
+/* ============================================
+   AUSTWise — Design System
+   Professional Minimalist Edition
+   + Newsprint theme (editorial / ink-on-paper)
+   ============================================ */
+
+/* Newsprint theme typefaces. Inter is already the primary UI font; the rest
+   only load-in when the newsprint theme (or a .font-* helper) uses them.
+   These families are loaded in ONE request from index.html — keep the @import
+   out of the stylesheet: a CSS @import is only discovered after this file has
+   downloaded and parsed, which added a serial round-trip to first paint. */
+
+/* ─── CSS Custom Properties ─── */
+:root {
+  color-scheme: dark;
+  /* Typography */
+  --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --fs-xs: 0.69rem;
+  --fs-sm: 0.79rem;
+  --fs-base: 0.86rem;
+  --fs-md: 0.96rem;
+  --fs-lg: 1.06rem;
+  --fs-xl: 1.22rem;
+  --fs-2xl: 1.45rem;
+  --fs-3xl: 1.75rem;
+  --fs-4xl: 2.2rem;
+  --fw-light: 300;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --fw-black: 900;
+
+  /* Spacing */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-2xl: 28px;
+  --radius-full: 9999px;
+
+  /* Transitions */
+  --transition-fast: 140ms cubic-bezier(0.2, 0, 0, 1);
+  --transition-base: 220ms cubic-bezier(0.2, 0, 0, 1);
+  --transition-slow: 360ms cubic-bezier(0.2, 0, 0, 1);
+  --transition-spring: 420ms cubic-bezier(0.2, 0, 0, 1);
+
+  /* Sidebar */
+  --sidebar-width: 256px;
+  --sidebar-collapsed: 68px;
+  --topbar-height: 68px;
+
+  /* Z-index layers */
+  --z-base: 1;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-overlay: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+}
+
+/* ─── Dark Theme (Default) — Enhanced ───
+     Deep charcoal, vibrant orange-gold accent, subtle light-blue glow,
+     rich dark-to-black gradients, and glowing card edges.
+     ───────────────────────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  /* Unified palette — amber/orange (#F5A623) is the single brand accent.
+     Semantic green (#3ECF8E) / red (#F0554A) / teal (#3AC1D9) are reserved
+     for success / urgent / info states only, never category decoration. */
+  --bg-primary: #0E0E10;
+  --bg-secondary: #1B1B1F;
+  --bg-tertiary: #222227;
+  --bg-card: #1B1B1F;
+  --bg-card-hover: #232329;
+  --bg-glass: rgba(27, 27, 31, 0.85);
+  --bg-glass-heavy: rgba(27, 27, 31, 0.92);
+  --bg-input: #222227;
+
+  --text-primary: #F2F2F3;
+  --text-secondary: #9A9AA0;
+  --text-tertiary: #6E6E75;
+  --text-inverse: #0E0E10;
+
+  --border-primary: #2A2A2E;
+  --border-secondary: rgba(42, 42, 46, 0.6);
+  --border-focus: rgba(245, 166, 35, 0.5);
+
+  /* Brand accent palette — every interactive/primary element reads amber */
+  --accent-blue: #F5A623;
+  --accent-blue-glow: rgba(245, 166, 35, 0.14);
+  --accent-purple: #8b7e74;
+  --accent-purple-glow: rgba(139, 126, 116, 0.13);
+  --accent-amber: #F5A623;
+  --accent-amber-glow: rgba(245, 166, 35, 0.14);
+  --accent-emerald: #3ECF8E;
+  --accent-emerald-glow: rgba(62, 207, 142, 0.13);
+  --accent-rose: #F0554A;
+  --accent-rose-glow: rgba(240, 85, 74, 0.13);
+  --accent-cyan: #3AC1D9;
+  --accent-cyan-glow: rgba(58, 193, 217, 0.13);
+  --accent-info: #3AC1D9;
+  --accent-info-glow: rgba(58, 193, 217, 0.13);
+  --accent-orange: #f97316;
+  --accent-orange-glow: rgba(249, 115, 22, 0.14);
+
+  /* Gradients — all built from the unified palette */
+  --gradient-primary: linear-gradient(135deg, #F9B93C 0%, #F5A623 50%, #E07A16 100%);
+  --gradient-secondary: linear-gradient(135deg, #1c1c1f 0%, #0E0E10 100%);
+  --gradient-accent: linear-gradient(135deg, #F5A623 0%, #3AC1D9 100%);
+  --gradient-warm: linear-gradient(135deg, #E07A16 0%, #F0554A 100%);
+  --gradient-success: linear-gradient(135deg, #3ECF8E 0%, #3AC1D9 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(245, 166, 35, 0.07) 0%, rgba(58, 193, 217, 0.03) 100%);
+
+  /* Shadows with ambient glow */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.18);
+  --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.22);
+  --shadow-xl: 0 18px 44px rgba(0, 0, 0, 0.28);
+  --shadow-popper: 0 8px 24px rgba(0, 0, 0, 0.32);
+  --shadow-glow-blue: 0 0 24px rgba(245, 166, 35, 0.14);
+  --shadow-glow-purple: 0 0 24px rgba(139, 126, 116, 0.12);
+  --shadow-glow-amber: 0 0 24px rgba(245, 166, 35, 0.14);
+
+  --scrollbar-track: #0f0f12;
+  --scrollbar-thumb: #2A2A2E;
+  --scrollbar-thumb-hover: #52525b;
+
+  --status-online: #3ECF8E;
+  --status-away: #F5A623;
+  --status-offline: #71717a;
+  --status-busy: #F0554A;
+
+  --danger: #F0554A;
+  --warning: #F5A623;
+  --success: #3ECF8E;
+  --info: #3AC1D9;
+}
+
+  /* ─── Light Theme ─── */
+  [data-theme="light"] {
+    color-scheme: light;
+    --bg-primary: #f8f7f4;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #efede8;
+    --bg-card: rgba(255, 255, 255, 0.95);
+    --bg-card-hover: rgba(255, 255, 255, 1);
+    --bg-glass: rgba(255, 255, 255, 0.85);
+    --bg-glass-heavy: rgba(255, 255, 255, 0.95);
+    --bg-input: #f0eee9;
+
+    --text-primary: #09090b;
+    --text-secondary: #52525b;
+    --text-tertiary: #6b7280;
+    --text-inverse: #fafafa;
+
+  --border-primary: rgba(9, 9, 11, 0.08);
+  --border-secondary: rgba(9, 9, 11, 0.05);
+  --border-focus: rgba(122, 101, 61, 0.32);
+
+  --accent-blue: #7a653d;
+  --accent-blue-glow: rgba(122, 101, 61, 0.11);
+  --accent-purple: #766d61;
+  --accent-purple-glow: rgba(118, 109, 97, 0.1);
+  --accent-amber: #7a653d;
+  --accent-amber-glow: rgba(122, 101, 61, 0.11);
+  --accent-emerald: #3f7b63;
+  --accent-emerald-glow: rgba(63, 123, 99, 0.1);
+  --accent-rose: #9a5b5f;
+  --accent-rose-glow: rgba(154, 91, 95, 0.1);
+  --accent-cyan: #5d7780;
+  --accent-cyan-glow: rgba(93, 119, 128, 0.1);
+  --accent-orange: #9a6842;
+  --accent-orange-glow: rgba(154, 104, 66, 0.1);
+
+  --gradient-primary: linear-gradient(135deg, #7a653d 0%, #8a7a5d 100%);
+  --gradient-secondary: linear-gradient(135deg, #ffffff 0%, #efede8 100%);
+  --gradient-accent: linear-gradient(135deg, #7a653d 0%, #5d7780 100%);
+  --gradient-warm: linear-gradient(135deg, #9a6842 0%, #9a5b5f 100%);
+  --gradient-success: linear-gradient(135deg, #3f7b63 0%, #5d7780 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(122, 101, 61, 0.04) 0%, rgba(9, 9, 11, 0.01) 100%);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 6px 18px rgba(24, 24, 27, 0.07);
+  --shadow-lg: 0 12px 28px rgba(24, 24, 27, 0.09);
+  --shadow-xl: 0 18px 44px rgba(24, 24, 27, 0.12);
+  --shadow-popper: 0 8px 24px rgba(24, 24, 27, 0.12);
+  --shadow-glow-blue: 0 6px 18px rgba(24, 24, 27, 0.07);
+  --shadow-glow-purple: 0 6px 18px rgba(24, 24, 27, 0.07);
+  --shadow-glow-amber: 0 6px 18px rgba(24, 24, 27, 0.07);
+
+  --scrollbar-track: #f4f4f5;
+  --scrollbar-thumb: #d4d4d8;
+  --scrollbar-thumb-hover: #a1a1aa;
+
+  --status-online: #3f7b63;
+  --status-away: #9a6f32;
+  --status-offline: #a1a1aa;
+  --status-busy: #9a5b5f;
+
+  --danger: #9a4f4f;
+  --warning: #9a6f32;
+  --success: #3f7b63;
+  --info: #5d7780;
+}
+

@@ -633,11 +633,13 @@ function normalizeUserSettings(raw) {
 
 /** Minimal, safe security headers. CSP/HSTS are opt-in via env so we don't
  *  break the inline-styles + external-embed heavy SPA by default. */
-function applySecurityHeaders(res) {
+function applySecurityHeaders(res, req) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   // The dev-only role matrix embeds this app's own pages in same-origin
   // iframes. Keep production protected from framing by default.
-  res.setHeader('X-Frame-Options', isDevMode ? 'SAMEORIGIN' : 'DENY');
+  // The admin Flow Canvas (public/prototype) frames its own static screens.
+  const isPrototype = req?.url?.startsWith('/prototype/');
+  res.setHeader('X-Frame-Options', isDevMode || isPrototype ? 'SAMEORIGIN' : 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   // CORB fix: allow cross-origin images (Google avatars) and API JSON to be read —
   // without this, nosniff + wrong MIME triggers CORB block on vercel→render rewrite.
@@ -1034,7 +1036,7 @@ server.on('request', async (req, res) => {
     if (requireHttps(req, res)) return;
 
     // Security headers on every response, then CORS if origin is whitelisted
-    applySecurityHeaders(res);
+    applySecurityHeaders(res, req);
     applyCorsHeaders(req, res);
 
     // CORS preflight

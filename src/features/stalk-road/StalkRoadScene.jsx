@@ -1,41 +1,72 @@
 import {
-  lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState,
+  createElement, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState,
 } from 'react';
 import {
   X, ChevronDown, Flag, Route, Clapperboard, Gamepad2, Eye, Headphones, Swords,
   Play, Pause, RotateCcw, Check, TrainFront, Gauge, ScanEye, Map as MapIcon,
-  Building2, Flame, Trees, Orbit,
 } from 'lucide-react';
 import { useStalk } from './StalkContext';
 import { useAuth } from '../../context/AuthContext';
-import { loadUserFavoriteColor } from '../orbits/OrbitsContext';
+import { loadUserFavoriteColor, hasOrbitContent } from '../orbits/OrbitsContext';
 import { MoviesSection, GamingSection, AnimeSection, MusicSection, ThisOrThatSection } from './StalkPortfolio';
 import OrbitsCheckpointPreview from '../orbits/OrbitsPreview';
+import { withDevFakeFields, DEV_FAKE_STOPS } from './devFakeStops';
 import {
   buildTrack, makeProgressMap, mulberry, WORLD_H, GROUND, BASE, CAR_GAP, CAR_COUNT,
 } from './coasterTrack';
 import {
   SkyLife, FarBackdrop, ParkBackdrop, WorldBack, WorldFront, ForegroundLayer,
 } from './ParkScenery';
+import { THEME_SCENERY } from './themeScenery';
+import { INTEREST_SCENERY } from './interestScenery';
+import { INTEREST_BY_ID } from './interestThemes';
+import CoasterCar from './coasterCars';
+import { RIDE_THEMES, themeById } from './rideThemes';
 import './StalkPortfolio.css';
 import './StalkRoad.css';
 
 // three.js only loads once the rider switches to the first-person view
 const CoasterFPP = lazy(() => import('./CoasterFPP'));
 
-// first-person backgrounds (built in CoasterFPP; sky = the colour behind the canvas)
-const FPP_BGS = [
-  { id: 'city', label: 'Night city', note: 'Skyline, 110 floors up', Icon: Building2, sky: '#070b14', ink: '#ffd27a' },
-  { id: 'fire', label: 'Fire', note: 'Lava fields and volcanoes', Icon: Flame, sky: '#1c0a07', ink: '#ff7a2a' },
-  { id: 'forest', label: 'Forest', note: 'Pine valley in the morning', Icon: Trees, sky: '#a9cfe0', ink: '#2f6a3a' },
-  { id: 'space', label: 'Space', note: 'Orbital station above a planet', Icon: Orbit, sky: '#02030a', ink: '#a99cff' },
-];
+// Ride theme (rideThemes.js): one theme drives both the side view and the
+// first-person view — track layout, car, scenery, station names, colours.
 const readBg = () => {
   try {
     const v = localStorage.getItem('stalk-fpp-bg');
-    return FPP_BGS.some((b) => b.id === v) ? v : 'city';
+    return RIDE_THEMES.some((b) => b.id === v) ? v : 'city';
   } catch { return 'city'; }
 };
+
+// Side-view scenery layer for the theme: the Night city park is built in
+// ParkScenery; the other themes come from themeScenery.
+const CITY_SCENERY = {
+  SkyLife, Far: FarBackdrop, Park: ParkBackdrop, Back: WorldBack, Front: WorldFront, Fg: ForegroundLayer,
+};
+const layer = (theme, name, props) => createElement(
+  (THEME_SCENERY[theme] || INTEREST_SCENERY[theme] || CITY_SCENERY)[name] || CITY_SCENERY[name],
+  props,
+);
+
+// Interest themes colour the shared track / station from their palette
+const interestVars = (id) => {
+  const t = INTEREST_BY_ID[id];
+  if (!t) return undefined;
+  const p = t.pal;
+  return {
+    '--sr-sky': p.sky,
+    '--sr-silhouette': p.far,
+    '--sr-silhouette-2': p.mid,
+    '--sr-ground': p.ground,
+    '--sr-steel': p.steel,
+    '--sr-steel-2': p.steel2,
+    '--ti-spine': p.spine,
+    '--ti-roof': p.roof,
+    '--ti-deck': p.deck,
+    '--ti-board': p.board,
+    '--ti-footing': p.footing || p.steel,
+  };
+};
+const THEME_GROUPS = [['world', 'Worlds'], ['interest', 'Interests']];
 
 /* ─── Orbit Express ───
    "Visit Orbit" as a night-time roller-coaster ride. Scroll (or Auto ride)
@@ -53,7 +84,10 @@ const DEFAULT_STOPS = [
   { key: 'vs', label: 'THIS OR THAT', Icon: Swords },
 ];
 
-const CP_ZONE = 0.05; // half-width of a checkpoint's active window (scroll progress)
+// A checkpoint card opens just before its station (not half-way there) and
+// stays a little after it. Values are scroll progress.
+const CP_LEAD = 0.012;
+const CP_TRAIL = 0.05;
 const ARRIVE_AT = 0.965; // ride-complete panel appears only at the very end
 const PARK_FACTOR = 0.32; // parallax speed of the amusement-park skyline
 const FAR_FACTOR = 0.12; // mountains + city
@@ -78,41 +112,6 @@ function shortLabel(label) {
   return t.length > 16 ? `${t.slice(0, 15)}…` : t;
 }
 
-/* ── One coaster car, drawn in its local frame (track centre at y = 0) ── */
-function CoasterCar({ front, innerRef }) {
-  return (
-    <g ref={innerRef} className="sr-car-g">
-      <g className="sr-car-body">
-        <rect x="-19" y="-9" width="38" height="5" rx="1.5" className="sr-car-bogie" />
-        <circle cx="-13" cy="-3.6" r="3.8" className="sr-car-wheel" />
-        <circle cx="13" cy="-3.6" r="3.8" className="sr-car-wheel" />
-        <circle cx="-13" cy="6.4" r="2.2" className="sr-car-wheel sr-car-upstop" />
-        <circle cx="13" cy="6.4" r="2.2" className="sr-car-wheel sr-car-upstop" />
-        <rect x="-15" y="-36" width="4" height="12" rx="2" className="sr-car-headrest" />
-        <rect x="1" y="-36" width="4" height="12" rx="2" className="sr-car-headrest" />
-        {/* riders */}
-        <g className="sr-riders">
-          <line x1="-8" y1="-26" x2="-13" y2="-39" className="sr-arm" />
-          <line x1="-6" y1="-26" x2="-1" y2="-39" className="sr-arm" />
-          <line x1="8" y1="-26" x2="3" y2="-39" className="sr-arm" />
-          <line x1="10" y1="-26" x2="15" y2="-39" className="sr-arm" />
-          <circle cx="-7" cy="-28.5" r="4.4" className="sr-rider" />
-          <circle cx="9" cy="-28.5" r="4.4" className="sr-rider sr-rider-b" />
-        </g>
-        <path
-          d={front
-            ? 'M-22 -8 L-22 -22 Q-22 -25 -19 -25 L4 -25 Q8 -25 11 -22 L24 -12 Q26 -10 25 -8 Z'
-            : 'M-22 -8 L-22 -22 Q-22 -25 -19 -25 L19 -25 Q22 -25 22 -22 L22 -8 Z'}
-          className="sr-car-shell"
-        />
-        <rect x="-18" y="-21" width={front ? 20 : 36} height="5" rx="2" className="sr-car-seat" />
-        <path d="M-2 -20 l5 -4 M14 -20 l5 -4" className="sr-car-lapbar" />
-        {front && <circle cx="21.5" cy="-11.5" r="2" className="sr-car-lamp" />}
-      </g>
-    </g>
-  );
-}
-
 export default function StalkRoadScene() {
   const { target, portfolio, customStops, favoriteColor: tripFavoriteColor, close } = useStalk();
   const { user } = useAuth();
@@ -131,7 +130,9 @@ export default function StalkRoadScene() {
   const miniFillRef = useRef(null);
   const speedRef = useRef(null);
   const stopLabelRef = useRef(null);
-  const autoRef = useRef({ on: false, pauseUntil: 0, dwelled: new Set() });
+  const autoRef = useRef({ on: false, pauseUntil: 0, pauseMs: 0, pos: -1, dwelled: new Set() });
+  const countRef = useRef(null);
+  const stopsLenRef = useRef(0);
   const [autoOn, setAutoOn] = useState(false);
   const fppApiRef = useRef(null);
   const [canFpp] = useState(hasWebGL);
@@ -150,15 +151,14 @@ export default function StalkRoadScene() {
     setView((v) => (v === 'fpp' ? 'side' : 'fpp'));
   }, []);
   const [bg, setBg] = useState(readBg);
-  const bgOpen = fpp && bgOpenRaw;
+  const bgOpen = bgOpenRaw;
   const bgRef = useRef(null);
-  const bgInfo = FPP_BGS.find((b) => b.id === bg) || FPP_BGS[0];
+  const bgInfo = themeById(bg);
   useEffect(() => {
     try { localStorage.setItem('stalk-fpp-bg', bg); } catch { /* ignore */ }
   }, [bg]);
   const cycleBg = useCallback(() => {
-    if (!viewRef.current) return;
-    setBg((cur) => FPP_BGS[(FPP_BGS.findIndex((b) => b.id === cur) + 1) % FPP_BGS.length].id);
+    setBg((cur) => RIDE_THEMES[(RIDE_THEMES.findIndex((b) => b.id === cur) + 1) % RIDE_THEMES.length].id);
   }, []);
   useEffect(() => {
     if (!bgOpen) return undefined;
@@ -176,17 +176,27 @@ export default function StalkRoadScene() {
     };
   }, [bgOpen]);
 
-  const stops = useMemo(() => (
-    customStops && customStops.length
-      ? customStops.map((s) => ({ key: s.key, label: s.label, fields: s.fields }))
-      : DEFAULT_STOPS
-  ), [customStops]);
+  // DEV: always preview the station cards with sample content (empty stops
+  // get fake fields; no custom stops → a fake set). Production is unchanged.
+  const devCards = import.meta.env.DEV;
+  const stops = useMemo(() => {
+    if (customStops && customStops.length) {
+      const real = customStops.map((s) => ({ key: s.key, label: s.label, fields: s.fields }));
+      const all = devCards ? withDevFakeFields(real) : real;
+      // Skip stations with nothing filled in, so a long orbit isn't a ride past
+      // blank cards. If every one is empty, keep them all (shows the empty state).
+      const withContent = all.filter((st) => hasOrbitContent(st.fields));
+      return withContent.length ? withContent : all;
+    }
+    return devCards ? DEV_FAKE_STOPS : DEFAULT_STOPS;
+  }, [customStops, devCards]);
   const STOP_COUNT = stops.length;
+  useEffect(() => { stopsLenRef.current = STOP_COUNT; }, [STOP_COUNT]);
   const fppLabels = useMemo(() => stops.map((s) => s.label), [stops]);
   const SEGMENTS = STOP_COUNT + 2; // scroll runway in viewport heights
-  const isOrbitDrive = Boolean(customStops && customStops.length);
+  const isOrbitDrive = Boolean(customStops && customStops.length) || devCards;
 
-  const track = useMemo(() => buildTrack(STOP_COUNT), [STOP_COUNT]);
+  const track = useMemo(() => buildTrack(STOP_COUNT, bg), [STOP_COUNT, bg]);
   const parkWidth = Math.ceil(track.width * PARK_FACTOR + 2600);
   const farWidth = Math.ceil(track.width * FAR_FACTOR + 2600);
   const fgWidth = Math.ceil(track.width * FG_FACTOR + 2600);
@@ -261,7 +271,18 @@ export default function StalkRoadScene() {
     }
     a.on = true;
     a.pauseUntil = 0;
+    a.pos = -1;
+    // Started mid-road: gates already behind the train count as visited,
+    // otherwise the ride would brake again at every one it has passed.
     a.dwelled = new Set();
+    if (sc) {
+      const max = sc.scrollHeight - sc.clientHeight;
+      const p = max > 0 ? sc.scrollTop / max : 0;
+      const segs = stopsLenRef.current + 2;
+      for (let i = 0; i < stopsLenRef.current; i += 1) {
+        if ((i + 1) / (segs - 1) < p - 0.004) a.dwelled.add(i);
+      }
+    }
     setAutoOn(true);
   }, [stopAuto]);
 
@@ -357,17 +378,45 @@ export default function StalkRoadScene() {
       const a = autoRef.current;
       if (a.on && now > a.pauseUntil) {
         const max = scroller.scrollHeight - scroller.clientHeight;
+        // Float position kept here: phones round scrollTop to whole pixels, so
+        // adding a sub-pixel step each frame never moved the ride on mobile.
+        if (a.pos < 0 || Math.abs(a.pos - scroller.scrollTop) > 2) a.pos = scroller.scrollTop;
         const rate = max / ((STOP_COUNT + 1) * 4.6);
         const p = max > 0 ? scroller.scrollTop / max : 1;
         const gi = gateCentres.findIndex((c, i) => p >= c && !a.dwelled.has(i));
         if (gi >= 0) {
           a.dwelled.add(gi);
-          a.pauseUntil = now + 3400;
+          a.stopIdx = gi;
+          a.pauseMs = viewRef.current ? 5000 : 3400;
+          a.pauseUntil = now + a.pauseMs;
         } else if (p >= 0.999) {
           a.on = false;
           setAutoOn(false);
         } else {
-          scroller.scrollTop = Math.min(max, scroller.scrollTop + rate * dt);
+          a.pos = Math.min(max, a.pos + rate * dt);
+          scroller.scrollTop = a.pos;
+        }
+      }
+
+      // station countdown: how long the card stays before the ride moves on
+      const cd = countRef.current;
+      if (cd) {
+        const left = a.on && now < a.pauseUntil ? a.pauseUntil - now : 0;
+        const show = left > 0;
+        if (cd.dataset.on !== String(show)) cd.dataset.on = String(show);
+        if (show) {
+          const secs = String(Math.ceil(left / 1000));
+          if (cd.firstChild.textContent !== secs) cd.firstChild.textContent = secs;
+          cd.style.setProperty("--left", (left / (a.pauseMs || 1)).toFixed(3));
+          // sit right above the open station card, centred on it
+          const card = stage.querySelector(".sr-cp.active");
+          if (card) {
+            const sr = stage.getBoundingClientRect();
+            const cr = card.getBoundingClientRect();
+            const top = Math.max(8, cr.top - sr.top - cd.offsetHeight - 8);
+            cd.style.top = `${Math.round(top)}px`;
+            cd.style.left = `${Math.round(cr.left - sr.left + cr.width / 2)}px`;
+          }
         }
       }
 
@@ -448,8 +497,10 @@ export default function StalkRoadScene() {
       // checkpoint panels
       let idx = -1;
       for (let i = 0; i < STOP_COUNT; i += 1) {
-        if (curP >= gateCentres[i] - CP_ZONE && curP < gateCentres[i] + CP_ZONE) idx = i;
+        if (curP >= gateCentres[i] - CP_LEAD && curP < gateCentres[i] + CP_TRAIL) idx = i;
       }
+      // auto ride: the card is up only while the train waits at the station
+      if (a.on) idx = now < a.pauseUntil ? a.stopIdx : -1;
       if (curP >= ARRIVE_AT) idx = STOP_COUNT;
       if (idx !== lastIdx) {
         lastIdx = idx;
@@ -528,13 +579,22 @@ export default function StalkRoadScene() {
   const { start: st0, end: st1 } = track.stations;
 
   return (
-    <div className="sr-overlay" ref={scrollerRef} data-role="stalk-road">
+    <div
+      className="sr-overlay"
+      ref={scrollerRef}
+      data-role="stalk-road"
+      data-theme={bg}
+      data-kit={bgInfo.group === 'interest' ? 'interest' : undefined}
+      data-light={bgInfo.light ? 'true' : undefined}
+      style={interestVars(bg)}
+    >
       <div className="sr-track" style={{ '--sr-segments': SEGMENTS }}>
-        <div className="sr-stage" ref={stageRef} data-mode="dock" data-view={fpp ? 'fpp' : 'side'} style={{ '--stalk-accent': accent }}>
-          {/* night sky */}
+        <div className="sr-stage" ref={stageRef} data-mode="dock" data-view={fpp ? 'fpp' : 'side'} data-theme={bg} style={{ '--stalk-accent': accent }}>
+          {/* sky: the theme's sun / moon / planet */}
           <div className="sr-sky" aria-hidden="true">
-            <span className="sr-moon"><i /><i /><i /><i /></span>
-            {stars.map((s) => (
+            {bg !== 'city' && layer(bg, 'Sky', { stars })}
+            {bg === 'city' && <span className="sr-moon"><i /><i /><i /><i /></span>}
+            {bg === 'city' && stars.map((s) => (
               <span
                 key={s.i}
                 className="sr-star"
@@ -546,30 +606,30 @@ export default function StalkRoadScene() {
             ))}
           </div>
 
-          <div className="sr-skylife" aria-hidden="true"><SkyLife /></div>
+          <div className="sr-skylife" aria-hidden="true">{layer(bg, 'SkyLife', {})}</div>
 
           {/* mountains + city (slowest parallax) */}
           <div className="sr-far" ref={farRef} aria-hidden="true">
-            <FarBackdrop width={farWidth} />
+            {layer(bg, 'Far', { width: farWidth })}
           </div>
 
           {/* amusement-park skyline (parallax) */}
           <div className="sr-park" ref={parkRef} aria-hidden="true">
-            <ParkBackdrop width={parkWidth} />
+            {layer(bg, 'Park', { width: parkWidth })}
           </div>
           <div className="sr-ground" ref={groundRef} aria-hidden="true" />
 
           {/* the coaster world — the camera pans across this strip */}
           <div className="sr-band" ref={bandRef}>
             <svg className="sr-world" viewBox={`0 0 ${track.width} ${WORLD_H}`} preserveAspectRatio="none" aria-hidden="true">
-              <WorldBack width={track.width} avoid={avoid} />
+              {layer(bg, 'Back', { width: track.width, avoid })}
 
               {/* supports + lattice */}
               <path d={track.braces} className="sr-brace" />
               <path d={track.supports} className="sr-support" />
               <path d={track.footings} className="sr-footing" />
 
-              <WorldFront width={track.width} crowdAt={crowdAt} />
+              {layer(bg, 'Front', { width: track.width, crowdAt })}
 
               {/* gate posts (behind the train) */}
               {track.gates.map((g, i) => (
@@ -590,7 +650,7 @@ export default function StalkRoadScene() {
                     <rect x={x0 + w - 16} y={BASE - 78} width="6" height="90" className="sr-station-post" />
                     <path d={`M${x0 - 14} ${BASE - 78}L${x0 + w / 2} ${BASE - 108}L${x0 + w + 14} ${BASE - 78}Z`} className="sr-station-roof" />
                     <rect x={x0 + w / 2 - 70} y={BASE - 74} width="140" height="22" rx="4" className="sr-station-sign" />
-                    <text x={x0 + w / 2} y={BASE - 59} className="sr-station-text">{i === 0 ? 'ORBIT EXPRESS' : 'ARRIVAL'}</text>
+                    <text x={x0 + w / 2} y={BASE - 59} className="sr-station-text">{i === 0 ? bgInfo.ride : 'ARRIVAL'}</text>
                     {[0.15, 0.3, 0.45, 0.6, 0.75, 0.9].map((f, k) => (
                       <circle key={f} cx={x0 - 14 + (w + 28) * f} cy={BASE - 80 - 30 * (1 - Math.abs(f - 0.5) * 2)} r="2.4" className={`sr-bulb ${k % 2 ? 'sr-bulb-b' : ''}`} />
                     ))}
@@ -622,7 +682,7 @@ export default function StalkRoadScene() {
               {/* the train */}
               <g ref={trainRef} className="sr-train">
                 {Array.from({ length: CAR_COUNT }, (_, k) => (
-                  <CoasterCar key={k} front={k === 0} innerRef={(el) => { carRefs.current[k] = el; }} />
+                  <CoasterCar key={k} front={k === 0} theme={bg} innerRef={(el) => { carRefs.current[k] = el; }} />
                 )).reverse()}
               </g>
 
@@ -668,14 +728,14 @@ export default function StalkRoadScene() {
 
           {/* near foreground — passes faster than the world */}
           <div className="sr-fg" ref={fgRef} aria-hidden="true">
-            <ForegroundLayer width={fgWidth} />
+            {layer(bg, 'Fg', { width: fgWidth })}
           </div>
 
           {/* first-person (front seat) view */}
           {fpp && (
             <div className="sr-fpp" aria-hidden="true" style={{ background: bgInfo.sky }}>
               <Suspense fallback={<div className="sr-fpp-loading">Boarding the front seat…</div>}>
-                <CoasterFPP track={track} accent={accent} labels={fppLabels} apiRef={fppApiRef} theme={bg} />
+                <CoasterFPP track={track} accent={accent} labels={fppLabels} apiRef={fppApiRef} theme={bg} rideName={bgInfo.ride} />
               </Suspense>
             </div>
           )}
@@ -698,53 +758,61 @@ export default function StalkRoadScene() {
             <div className="sr-badge">
               <span className="sr-badge-tile"><TrainFront size={15} /></span>
               <span className="sr-badge-text">
-                <span className="sr-badge-over">Orbit Express</span>
+                <span className="sr-badge-over">{bgInfo.ride}</span>
                 <strong>{portfolio.name}</strong>
               </span>
             </div>
             <div className="sr-hud-actions">
-              {fpp && (
-                <div className="sr-bg" ref={bgRef}>
-                  <button
-                    type="button"
-                    className={`sr-hud-btn sr-bg-btn ${bgOpen ? 'is-open' : ''}`}
-                    onClick={() => setBgOpen((o) => !o)}
-                    aria-haspopup="menu"
-                    aria-expanded={bgOpen}
-                    aria-label={`Background: ${bgInfo.label}. Change background`}
-                    title="Change background (B)"
-                  >
-                    <bgInfo.Icon size={15} />
-                    <span>{bgInfo.label}</span>
-                    <ChevronDown size={13} className="sr-bg-chev" />
-                  </button>
-                  {bgOpen && (
-                    <div className="sr-bg-menu" role="menu" aria-label="Background">
-                      <div className="sr-bg-head">Background</div>
-                      {FPP_BGS.map((b) => (
-                        <button
-                          key={b.id}
-                          type="button"
-                          role="menuitemradio"
-                          aria-checked={b.id === bg}
-                          className={`sr-bg-opt ${b.id === bg ? 'is-on' : ''}`}
-                          onClick={() => { setBg(b.id); setBgOpen(false); }}
-                        >
-                          <span className="sr-bg-swatch" style={{ background: b.sky, color: b.ink }}>
-                            <b.Icon size={16} />
-                          </span>
-                          <span className="sr-bg-text">
-                            <strong>{b.label}</strong>
-                            <small>{b.note}</small>
-                          </span>
-                          {b.id === bg && <Check size={15} className="sr-bg-check" />}
-                        </button>
+              <div className="sr-bg" ref={bgRef}>
+                <button
+                  type="button"
+                  className={`sr-hud-btn sr-bg-btn ${bgOpen ? 'is-open' : ''}`}
+                  onClick={() => setBgOpen((o) => !o)}
+                  aria-haspopup="menu"
+                  aria-expanded={bgOpen}
+                  aria-label={`Ride theme: ${bgInfo.label}. Change theme`}
+                  title="Change ride theme (B)"
+                >
+                  <bgInfo.Icon size={15} />
+                  <span>{bgInfo.label}</span>
+                  <ChevronDown size={13} className="sr-bg-chev" />
+                </button>
+                {bgOpen && (
+                  <div className="sr-bg-menu" role="menu" aria-label="Ride theme">
+                    <div className="sr-bg-head">Ride theme · both views</div>
+                    <div className="sr-bg-scroll">
+                      {THEME_GROUPS.map(([group, title]) => (
+                        <div key={group} className="sr-bg-group" role="group" aria-label={title}>
+                          <div className="sr-bg-sub">{title}</div>
+                          <div className="sr-bg-grid">
+                            {RIDE_THEMES.filter((b) => b.group === group).map((b) => (
+                              <button
+                                key={b.id}
+                                type="button"
+                                role="menuitemradio"
+                                aria-checked={b.id === bg}
+                                className={`sr-bg-opt ${b.id === bg ? 'is-on' : ''}`}
+                                onClick={() => { setBg(b.id); setBgOpen(false); }}
+                                title={`${b.label} — ${b.note}`}
+                              >
+                                <span className="sr-bg-swatch" style={{ background: b.sky, color: b.ink }}>
+                                  <b.Icon size={16} />
+                                </span>
+                                <span className="sr-bg-text">
+                                  <strong>{b.label}</strong>
+                                  <small>{b.note}</small>
+                                </span>
+                                {b.id === bg && <Check size={15} className="sr-bg-check" />}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       ))}
-                      <div className="sr-bg-foot">Press B to switch</div>
                     </div>
-                  )}
-                </div>
-              )}
+                    <div className="sr-bg-foot">B switches theme · V switches view</div>
+                  </div>
+                )}
+              </div>
               {canFpp && (
                 <button
                   type="button"
@@ -794,7 +862,7 @@ export default function StalkRoadScene() {
           <div className="sr-intro">
             <span className="sr-intro-over">Now boarding</span>
             <h2 className="sr-intro-title">{portfolio.name}&apos;s Orbit</h2>
-            <p className="sr-intro-sub">{STOP_COUNT} stops · loops, drops and a corkscrew. Keep your hands inside the car.</p>
+            <p className="sr-intro-sub">{STOP_COUNT} stops on the {bgInfo.car} · {bgInfo.blurb}. Keep your hands inside the car.</p>
             <div className="sr-intro-actions">
               <button type="button" className="sr-intro-btn" onClick={toggleAuto}>
                 <Play size={14} /> Auto ride
@@ -805,6 +873,9 @@ export default function StalkRoadScene() {
 
           {/* checkpoint panels */}
           <div className="sr-cps">
+            <div className="sr-auto-count" ref={countRef} data-on="false" aria-live="polite">
+              <b>0</b><span>s · next stop</span><i aria-hidden="true" />
+            </div>
             {stops.map((s, i) => (
               <section key={s.key} className="sr-cp" data-cp={s.key} aria-hidden="true">
                 <div className="sr-cp-meta">

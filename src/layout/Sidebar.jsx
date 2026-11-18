@@ -11,7 +11,7 @@ import {
   LogIn, Shield,
   ChevronLeft, ChevronRight, Crown,
   NotebookPen, Coffee, Gamepad2,
-  Zap, Home, Moon, FileSearch
+  Zap, Home, Moon, FileSearch, Workflow
 } from 'lucide-react';
 import './Sidebar.css';
 
@@ -126,7 +126,10 @@ export default function Sidebar({ collapsed: collapsedProp, onToggle, drawerOpen
       { path: '/admin-panel/overview', label: 'Admin Panel', icon: Shield },
       ...navItems,
     ];
-    bottomList = [{ path: '/settings', label: 'Settings', icon: Settings }];
+    bottomList = [
+      { path: '/settings', label: 'Settings', icon: Settings },
+      { path: '/admin-panel/flow-canvas', label: 'Flow Canvas', icon: Workflow },
+    ];
   }
 
   // Drop links the viewer's role is not allowed to open. Staff are exempt and

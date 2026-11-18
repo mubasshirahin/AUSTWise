@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AUSTWise — Interactive Prototype</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="viewer.css">
+</head>
+<body>
+<header class="vbar">
+  <div class="vleft"><button class="vbtn" id="togglePanel" title="Pages panel">☰</button><span class="vfile"><b>AUSTWise</b><span>/ Prototype</span></span></div>
+  <div class="vmid">
+    <div class="vseg" id="devices">
+      <button data-d="desktop" class="on" title="Desktop 1440">🖥 Desktop</button>
+      <button data-d="tablet" title="Tablet 768">▭ Tablet</button>
+      <button data-d="mobile" title="Mobile 375">▯ Mobile</button>
+    </div>
+    <div class="vseg" id="themes"><button data-t="dark" class="on">Dark</button><button data-t="light">Light</button></div>
+  </div>
+  <div class="vright">
+    <button class="vbtn" id="prev" title="Previous screen (←)">‹</button>
+    <span class="vcount" id="count">1 / 1</span>
+    <button class="vbtn" id="next" title="Next screen (→)">›</button>
+    <a class="vbtn wide" href="canvas.html" title="Flow canvas">⧉ Canvas</a>
+    <button class="vbtn wide" id="flowBtn" title="Flow map (F)">▦ Flow map</button>
+    <button class="vbtn wide" id="restart" title="Restart (R)">↺ Restart</button>
+    <a class="vbtn wide primary" id="openFull" target="_blank" title="Open the app full screen">▶ Present</a>
+  </div>
+</header>
+<div class="vbody">
+  <aside class="vpanel" id="panel"><div class="vpanel-h">Pages</div><div id="pages"></div>
+    <div class="vhelp"><b>How to use</b><br>Click anything in the frame — it works like the real site.<br>Click an empty area to flash all <span class="hs">hotspots</span>.<br><kbd>←</kbd><kbd>→</kbd> screens · <kbd>F</kbd> flow map · <kbd>R</kbd> restart · <kbd>Ctrl K</kbd> search (in frame)</div></aside>
+  <main class="vcanvas" id="canvas">
+    <div class="vframe-label" id="flabel">Dashboard — Desktop 1440</div>
+    <div class="vdevice desktop" id="device"><iframe id="frame" title="AUSTWise prototype"></iframe></div>
+  </main>
+</div>
+<div class="vflow" id="flow" hidden><div class="vflow-h"><b>Flow map</b><span>Every screen of AUSTWise. Click one to open it.</span><button class="vbtn" id="flowClose">✕</button></div><div class="vflow-grid" id="flowGrid"></div></div>
+<script src="viewer.js"></script>
+</body>
+</html>

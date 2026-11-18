@@ -1,0 +1,41 @@
+/* Prototype viewer chrome (Figma-style). Flat UI. */
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #1e1e1e; color: #e6e6e6; font: 13px/1.4 Inter, system-ui, sans-serif; overflow: hidden; }
+button, a { font: inherit; }
+.vbar { height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 10px; background: #2c2c2c; border-bottom: 1px solid #3a3a3a; }
+.vleft, .vmid, .vright { display: flex; align-items: center; gap: 8px; }
+.vfile b { font-weight: 600; } .vfile span { color: #9a9a9a; margin-left: 6px; }
+.vbtn { height: 30px; min-width: 30px; padding: 0 9px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: #e6e6e6; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; font-size: 13px; }
+.vbtn:hover { background: #3a3a3a; }
+.vbtn.primary { background: #0d99ff; color: #fff; } .vbtn.primary:hover { background: #0b85e0; }
+.vcount { color: #9a9a9a; font-variant-numeric: tabular-nums; min-width: 54px; text-align: center; }
+.vseg { display: inline-flex; background: #1e1e1e; border: 1px solid #3a3a3a; border-radius: 7px; padding: 2px; }
+.vseg button { height: 26px; padding: 0 11px; border: 0; border-radius: 5px; background: transparent; color: #b3b3b3; cursor: pointer; font-size: 12px; white-space: nowrap; }
+.vseg button.on { background: #3a3a3a; color: #fff; }
+.vbody { display: flex; height: calc(100vh - 48px); }
+.vpanel { width: 240px; flex: none; background: #2c2c2c; border-right: 1px solid #3a3a3a; overflow: auto; display: flex; flex-direction: column; }
+.vpanel.hide { display: none; }
+.vpanel-h { padding: 12px 14px 6px; font-size: 11px; font-weight: 600; color: #9a9a9a; text-transform: uppercase; letter-spacing: .06em; }
+.vgroup { padding: 8px 14px 4px; font-size: 11px; color: #7d7d7d; font-weight: 600; }
+.vpage { display: flex; align-items: center; gap: 8px; padding: 6px 14px 6px 22px; cursor: pointer; color: #d0d0d0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vpage::before { content: '#'; color: #6d6d6d; font-size: 11px; }
+.vpage:hover { background: #383838; } .vpage.on { background: #0d99ff22; color: #fff; box-shadow: inset 2px 0 #0d99ff; }
+.vhelp { margin: auto 10px 12px; padding: 12px; border: 1px solid #3a3a3a; border-radius: 8px; color: #a8a8a8; font-size: 11.5px; line-height: 1.7; }
+.vhelp b { color: #e6e6e6; } .hs { color: #18a0fb; font-weight: 600; }
+kbd { font: 10px/1 ui-monospace, monospace; padding: 2px 5px; border: 1px solid #4a4a4a; border-radius: 4px; margin: 0 2px; color: #ddd; }
+.vcanvas { flex: 1; overflow: hidden auto; display: flex; flex-direction: column; align-items: center; padding: 26px 26px 40px; background: #1e1e1e; position: relative; }
+.vframe-label { align-self: center; color: #9a9a9a; font-size: 12px; margin-bottom: 8px; }
+.vdevice { flex: none; background: #000; border-radius: 6px; overflow: hidden; box-shadow: 0 0 0 1px #3a3a3a, 0 20px 60px rgba(0,0,0,.45); transform-origin: top center; transition: width .3s, height .3s; }
+.vdevice iframe { width: 100%; height: 100%; border: 0; display: block; background: #0E0E10; }
+.vdevice.desktop { width: 1440px; height: 900px; }
+.vdevice.tablet { width: 768px; height: 1024px; border-radius: 26px; border: 12px solid #111; }
+.vdevice.mobile { width: 375px; height: 812px; border-radius: 44px; border: 12px solid #111; }
+.vflow { position: fixed; inset: 48px 0 0 0; background: #1e1e1e; z-index: 20; display: flex; flex-direction: column; }
+.vflow[hidden] { display: none; }
+.vflow-h { display: flex; align-items: center; gap: 14px; padding: 14px 20px; border-bottom: 1px solid #3a3a3a; } .vflow-h span { color: #9a9a9a; } .vflow-h .vbtn { margin-left: auto; }
+.vflow-grid { flex: 1; overflow: auto; padding: 24px; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 26px; align-content: start; }
+.vthumb { cursor: pointer; } .vthumb-name { font-size: 12px; color: #bdbdbd; margin-bottom: 6px; }
+.vthumb-box { width: 100%; aspect-ratio: 16 / 10; overflow: hidden; border-radius: 6px; box-shadow: 0 0 0 1px #3a3a3a; position: relative; background: #0E0E10; }
+.vthumb:hover .vthumb-box { box-shadow: 0 0 0 2px #0d99ff; }
+.vthumb-box iframe { width: 1440px; height: 900px; border: 0; transform-origin: 0 0; pointer-events: none; position: absolute; top: 0; left: 0; }
+@media (max-width: 900px) { .vpanel { display: none; } .vfile, .vbtn.wide:not(.primary) { display: none; } }

@@ -232,11 +232,32 @@ export default function MindmapView({ doc, onOpenMilestone, onOpenGoal, onOpenTa
 
   const zoomIn = useCallback(() => zoomFromCenter(ZOOM_STEP), [zoomFromCenter]);
   const zoomOut = useCallback(() => zoomFromCenter(-ZOOM_STEP), [zoomFromCenter]);
+  // Narrow screens (tablet/phone): start scaled so the tree fits the canvas
+  // width instead of spilling off-screen; desktop keeps 100%.
+  const fitView = useCallback(() => {
+    const vp = viewportRef.current;
+    const layer = layerRef.current;
+    const pad = 12;
+    if (!vp || !layer || window.innerWidth > 768) return { scale: 1, x: 40, y: 40 };
+    const fit = (vp.clientWidth - pad * 2) / (layer.scrollWidth || 1);
+    const next = Math.min(1, Math.max(MIN_ZOOM, fit));
+    const y = Math.max(pad, (vp.clientHeight - layer.scrollHeight * next) / 2);
+    return { scale: next, x: pad, y: next < 1 ? y : 40 };
+  }, []);
+
   const zoomReset = useCallback(() => {
-    setView({ scale: 1, x: 40, y: 40 });
-    panOffsetRef.current = { x: 40, y: 40 };
+    const v = fitView();
+    setView(v);
+    panOffsetRef.current = { x: v.x, y: v.y };
     flashZoom();
-  }, [flashZoom]);
+  }, [flashZoom, fitView]);
+
+  // Fit once on mount and when entering/leaving fullscreen
+  useLayoutEffect(() => {
+    const v = fitView();
+    setView(v);
+    panOffsetRef.current = { x: v.x, y: v.y };
+  }, [fitView, isFullscreen]);
 
   const handleWheel = useCallback((e) => {
     e.preventDefault();
