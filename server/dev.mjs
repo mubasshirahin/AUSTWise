@@ -4055,18 +4055,22 @@ async function handleApiRequest(req, res) {
           .filter((response) => response.contributorId === user.id)
           .map((response) => ({ response, request })));
       const recentContributions = [
-        ...ownedPapers.map((item) => ({ id: `paper-${item.id}`, title: item.name || item.course || 'Question paper', type: 'Question paper shared', createdAt: item.uploadedAt || item.createdAt || null })),
-        ...ownedCheatsheets.map((item) => ({ id: `cheatsheet-${item.id}`, title: item.title || item.course || 'Cheatsheet', type: 'Cheatsheet shared', createdAt: item.createdAt || null })),
-        ...ownedMarketplace.map((item) => ({ id: `community-${item.id}`, title: item.title || item.topic || 'Community post', type: 'Community post', createdAt: item.postedAt || item.createdAt || null })),
-        ...ownedPeerOffers.map((item) => ({ id: `peer-offer-${item.id}`, title: item.expertise || item.name || 'Peer support offer', type: 'Mentor or study partner offer', createdAt: item.postedAt || item.createdAt || null })),
-        ...ownedRoutines.map((item) => ({ id: `routine-${item.id}`, title: `${item.department || 'Department'} routine`, type: 'Class routine shared', createdAt: item.updatedAt || item.createdAt || null })),
-        ...ownedCourseReviews.map((item) => ({ id: `course-review-${item.id}`, title: `${item.course || 'Course'} review`, type: 'Course review', createdAt: item.createdAt || null })),
-        ...ownedCourseComments.map((item) => ({ id: `course-comment-${item.comment.id}`, title: `${item.course || 'Course'} discussion`, type: 'Course comment', createdAt: item.comment.createdAt || item.createdAt || null })),
-        ...ownedCoursePolls.map((item) => ({ id: `course-poll-${item.contributorId}`, title: 'Best & Worst course poll', type: 'Course poll submitted', createdAt: item.updatedAt || null })),
-        ...ownedCanteenReviews.map((item) => ({ id: `canteen-review-${item.id}`, title: 'Canteen review', type: 'Campus feedback', createdAt: item.createdAt || null })),
-        ...ownedCanteenComplaints.map((item) => ({ id: `canteen-complaint-${item.id}`, title: 'Canteen feedback', type: 'Campus feedback', createdAt: item.createdAt || null })),
-        ...ownedMentorReplies.map(({ response, request }) => ({ id: `mentor-reply-${response.id}`, title: request.topic || 'Mentor response', type: 'Mentorship reply', createdAt: response.postedAt || null })),
-      ].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 4);
+        ...ownedPapers.map((item) => ({ id: `paper-${item.id}`, title: item.name || item.course || 'Question paper', type: 'Question paper shared', kind: 'paper', createdAt: item.uploadedAt || item.createdAt || null })),
+        ...ownedCheatsheets.map((item) => ({ id: `cheatsheet-${item.id}`, title: item.title || item.course || 'Cheatsheet', type: 'Cheatsheet shared', kind: 'cheatsheet', createdAt: item.createdAt || null })),
+        ...ownedMarketplace.map((item) => ({ id: `community-${item.id}`, title: item.title || item.topic || 'Community post', type: 'Community post', kind: 'community', createdAt: item.postedAt || item.createdAt || null })),
+        ...ownedPeerOffers.map((item) => ({ id: `peer-offer-${item.id}`, title: item.expertise || item.name || 'Peer support offer', type: 'Mentor or study partner offer', kind: 'peer', createdAt: item.postedAt || item.createdAt || null })),
+        ...ownedRoutines.map((item) => ({ id: `routine-${item.id}`, title: `${item.department || 'Department'} routine`, type: 'Class routine shared', kind: 'routine', createdAt: item.updatedAt || item.createdAt || null })),
+        ...ownedCourseReviews.map((item) => ({ id: `course-review-${item.id}`, title: `${item.course || 'Course'} review`, type: 'Course review', kind: 'review', createdAt: item.createdAt || null })),
+        ...ownedCourseComments.map((item) => ({ id: `course-comment-${item.comment.id}`, title: `${item.course || 'Course'} discussion`, type: 'Course comment', kind: 'comment', createdAt: item.comment.createdAt || item.createdAt || null })),
+        ...ownedCoursePolls.map((item) => ({ id: `course-poll-${item.contributorId}`, title: 'Best & Worst course poll', type: 'Course poll submitted', kind: 'poll', createdAt: item.updatedAt || null })),
+        ...ownedCanteenReviews.map((item) => ({ id: `canteen-review-${item.id}`, title: 'Canteen review', type: 'Campus feedback', kind: 'campus', createdAt: item.createdAt || null })),
+        ...ownedCanteenComplaints.map((item) => ({ id: `canteen-complaint-${item.id}`, title: 'Canteen feedback', type: 'Campus feedback', kind: 'campus', createdAt: item.createdAt || null })),
+        ...ownedMentorReplies.map(({ response, request }) => ({ id: `mentor-reply-${response.id}`, title: request.topic || 'Mentor response', type: 'Mentorship reply', kind: 'reply', createdAt: response.postedAt || null })),
+      ].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+      // Full history (capped) so the profile can show the latest 5 plus a
+      // "View all" list; contributionsTotal is the uncapped count.
+      const contributionsTotal = recentContributions.length;
+      recentContributions.splice(200);
       const presence = getPresenceMap();
       const email = user.email || '';
       const studentId = getStudentId(user);
@@ -4130,6 +4134,7 @@ async function handleApiRequest(req, res) {
             campusFeedback: ownedCanteenReviews.length + ownedCanteenComplaints.length,
             mentorReplies: ownedMentorReplies.length,
             recentContributions,
+            contributionsTotal,
           },
         },
       });

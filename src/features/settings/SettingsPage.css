@@ -2235,7 +2235,6 @@
 /* Theme-matched Identity page */
 .identity-settings-page { display: flex; flex-direction: column; gap: 18px; }
 .identity-settings-page > .schedule-dotted-divider { display: none; }
-.identity-settings-page > .profile-panel-header { order: 0; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 20px 22px; border: 1px solid color-mix(in srgb, var(--accent-blue) 24%, var(--border-primary)); border-radius: var(--radius-xl); background: linear-gradient(120deg, color-mix(in srgb, var(--accent-blue-glow) 62%, var(--bg-card)), var(--bg-card) 58%); }
 .identity-settings-page .schedule-title { margin: 0 0 3px; color: var(--text-primary); font-size: clamp(22px, 3vw, 28px); font-weight: var(--fw-bold); letter-spacing: -.02em; }
 .identity-settings-page .schedule-subtitle { color: var(--text-secondary); }
 .identity-settings-page .schedule-icon-tile { border: 0; border-radius: 14px; color: var(--accent-blue); background: var(--accent-blue-glow); }
@@ -2273,7 +2272,7 @@
 .identity-settings-page .identity-activity-stat strong { color: var(--accent-blue); }
 .identity-settings-page .identity-recent-contributions li { padding: 12px; border: 1px solid var(--border-primary); border-radius: var(--radius-md); background: var(--bg-secondary); }
 .identity-settings-page .identity-activity-empty { padding: 10px 0; }
-@media (max-width: 760px) { .identity-settings-page > .profile-panel-header { align-items: flex-start; flex-wrap: wrap; padding: 16px; } .identity-settings-page .profile-save-actions { justify-content: flex-start; width: 100%; } .identity-settings-page .profile-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .identity-settings-page .identity-activity-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .identity-settings-page .profile-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .identity-settings-page .identity-activity-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 500px) { .identity-settings-page { gap: 13px; } .identity-settings-page .profile-read-grid, .identity-settings-page .profile-summary-grid, .identity-settings-page .identity-activity-stats, .identity-settings-page .identity-recent-contributions ul { grid-template-columns: 1fr; } .identity-settings-page .profile-editor { align-items: flex-start; padding: 14px; } .identity-settings-page .profile-details-form { grid-template-columns: 1fr; padding: 14px; } .identity-settings-page > .cfg-section, .identity-settings-page .identity-austwise-activity { padding: 14px; } }
 
 .identity-settings-page .profile-read-grid { display: block; }
@@ -2337,14 +2336,197 @@
 .identity-view-toggle button { min-height: 32px; padding: 0 11px; border: 0; border-radius: var(--radius-full); background: transparent; color: var(--text-secondary); font: inherit; font-size: var(--fs-xs); font-weight: var(--fw-semibold); white-space: nowrap; cursor: pointer; transition: background var(--transition-fast), color var(--transition-fast); }
 .identity-view-toggle button.is-selected { background: var(--accent-blue-glow); color: var(--accent-blue); }
 .identity-view-toggle button:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 2px; }
-.identity-settings-page.is-public-preview > :not(.profile-panel-header):not(.identity-public-preview) { display: none !important; }
-.identity-settings-page.is-public-preview > .identity-public-preview { display: flex; width: 100%; max-width: 1040px; flex-direction: column; gap: var(--sp-4); margin: 0 auto; }
-.identity-public-preview .member-profile-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.identity-public-preview .member-profile-metric > span:last-child { white-space: normal; }
-.identity-contribution-options { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border-primary); }
-.identity-contribution-options h3 { margin: 0 0 10px; color: var(--text-secondary); font-size: var(--fs-xs); font-weight: var(--fw-bold); }
-.identity-contribution-options > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 16px; }
-.identity-contribution-options label { display: flex; align-items: center; gap: 9px; min-height: 40px; color: var(--text-primary); font-size: var(--fs-sm); cursor: pointer; }
-.identity-contribution-options input { width: 16px; height: 16px; accent-color: var(--accent-blue); }
-@media (max-width: 760px) { .identity-public-preview .member-profile-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .identity-settings-page .profile-save-actions { flex-wrap: wrap; } }
-@media (max-width: 500px) { .identity-view-toggle { width: 100%; } .identity-view-toggle button { flex: 1; padding-inline: 8px; } .identity-public-preview .member-profile-metrics { grid-template-columns: 1fr; } .identity-contribution-options > div { grid-template-columns: 1fr; } }
+.identity-settings-page.is-public-preview > :not(.st-head):not(.identity-public-preview) { display: none !important; }
+/* The preview uses the public-profile layout (.mp-view in MemberProfilePage.css);
+   only the page-level frame and the edit-only bits live here. */
+.identity-settings-page.is-public-preview > .identity-public-preview { display: flex; width: 100%; max-width: 1080px; flex-direction: column; gap: 14px; margin: 0 auto; }
+.identity-contribution-options { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-primary); }
+.identity-contribution-options h3 { margin: 0 0 8px; color: var(--text-tertiary); font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; }
+.identity-contribution-options > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 14px; }
+.identity-contribution-options label { display: flex; align-items: center; gap: 8px; min-height: 34px; color: var(--text-primary); font-size: 12px; cursor: pointer; }
+.identity-contribution-options input { width: 15px; height: 15px; accent-color: var(--accent-amber); }
+.identity-public-preview .identity-preview-avatar-upload { background: var(--accent-amber); border-color: var(--bg-card); color: var(--bg-primary); }
+@media (max-width: 760px) { .identity-settings-page .profile-save-actions { flex-wrap: wrap; } }
+@media (max-width: 640px) { .identity-settings-page.is-public-preview > .identity-public-preview { gap: 8px; } }
+@media (max-width: 500px) { .identity-view-toggle { width: 100%; } .identity-view-toggle button { flex: 1; padding-inline: 8px; } .identity-contribution-options > div { grid-template-columns: 1fr; } }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   House style (.claude/skills/skill-style) — page shell, tab mastheads,
+   flat cards and the container-driven phone layout. Kept at the end so
+   it wins over the older per-tab rules above.
+   ═══════════════════════════════════════════════════════════════ */
+.settings-page { container: st / inline-size; }
+.st-content-card { padding: 0; border: 0; box-shadow: none; min-height: 0; }
+.st-content-card .settings-panel { min-height: 0; overflow: visible; }
+
+/* Tab masthead (dl-head) */
+.settings-panel .st-head { margin: 0 0 16px; }
+.identity-settings-page > .st-head,
+.cfg-stack > .st-head { margin-bottom: 0; }
+.st-head .dl-head-stat dd.is-small { text-transform: capitalize; }
+.st-head .profile-save-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: nowrap; }
+.st-head .profile-save-actions .btn { height: 32px; min-height: 32px; padding: 0 12px; font-size: 12px; white-space: nowrap; }
+.st-head .save-status { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; white-space: nowrap; }
+
+/* Cards: the theme picker and every Configure / Identity section */
+.st-card,
+.settings-panel .cfg-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+}
+.st-card:hover,
+.settings-panel .cfg-section:hover {
+  border-color: color-mix(in srgb, var(--accent-amber) 20%, var(--border-primary));
+}
+.st-card-head,
+.settings-panel .cfg-section-head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-primary);
+}
+.st-card-title,
+.settings-panel .cfg-section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 700;
+}
+.st-card-title svg { color: var(--accent-amber); }
+.st-card-desc,
+.settings-panel .cfg-section-desc {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.st-overline {
+  margin: 0 0 8px;
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Rows inside a card */
+.settings-panel .cfg-row {
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+}
+.settings-panel .cfg-row--wrap { flex-wrap: wrap; }
+.settings-panel .cfg-row-icon { width: 32px; height: 32px; }
+.settings-panel .cfg-row-title { font-size: 13px; }
+.settings-panel .cfg-row-text { min-width: 0; }
+.settings-panel .cfg-banner,
+.settings-panel .cfg-perm,
+.settings-panel .cfg-note,
+.settings-panel .cfg-status-card { border-radius: var(--radius-md); }
+.cfg-field-hint { margin: 0; color: var(--text-tertiary); font-size: 12px; line-height: 1.45; }
+.cfg-test-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; }
+.cfg-test-grid .btn { justify-content: flex-start; min-height: 36px; text-align: left; font-size: 12px; }
+
+/* Theme picker */
+.st-theme-group + .st-theme-group { margin-top: 6px; }
+.st-theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
+.st-theme-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px 11px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.st-theme-option:hover { border-color: color-mix(in srgb, var(--accent-amber) 25%, var(--border-primary)); }
+.st-theme-option.is-active { border-color: var(--accent-amber); background: var(--bg-card); }
+.st-theme-option-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+}
+.st-theme-option.is-active .st-theme-option-icon { background: var(--accent-amber-glow); color: var(--accent-amber); }
+.st-theme-option-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.st-theme-option-text strong { overflow: hidden; font-size: 12.5px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.st-theme-option-text small { color: var(--text-tertiary); font-size: 10.5px; line-height: 1.3; }
+.st-theme-option.is-active .st-theme-option-text strong { color: var(--accent-amber); }
+
+/* Identity: flat surfaces (no gradient cover / decorative ring) */
+.identity-settings-page { gap: 16px; }
+.identity-settings-page .identity-profile-card .identity-cover-editor { background: var(--bg-tertiary); }
+.identity-settings-page .identity-cover-editor::after { content: none; }
+
+/* ── Phone (container ≤560px) ── */
+@container st (max-width: 560px) {
+  .settings-panel .st-head { margin-bottom: 10px; }
+  .st-head .profile-save-actions { gap: 6px; }
+  .st-head .profile-save-actions .btn { height: 30px; min-height: 30px; min-width: 0; padding: 0 10px; font-size: 11.5px; }
+  .st-head .save-status { font-size: 11px; }
+
+  .cfg-stack,
+  .identity-settings-page { gap: 8px; }
+  .st-card,
+  .settings-panel .cfg-section { gap: 10px; padding: 12px; }
+  .st-card-head,
+  .settings-panel .cfg-section-head { padding-bottom: 10px; }
+  .st-card-title,
+  .settings-panel .cfg-section-title { font-size: 12.5px; }
+  .st-card-desc,
+  .settings-panel .cfg-section-desc { font-size: 11.5px; }
+
+  .settings-panel .cfg-row { gap: 10px; padding: 9px 10px; }
+  .settings-panel .cfg-row-main { gap: 10px; }
+  .settings-panel .cfg-row-icon { width: 28px; height: 28px; }
+  .settings-panel .cfg-row-icon svg { width: 15px; height: 15px; }
+  .settings-panel .cfg-row-title { font-size: 12.5px; }
+  .settings-panel .cfg-row-desc { font-size: 11px; }
+  .settings-panel .cfg-row--wrap .btn { height: 30px; min-height: 30px; padding: 0 12px; font-size: 12px; }
+  .cfg-test-grid { grid-template-columns: 1fr; gap: 6px; }
+
+  .st-theme-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .st-theme-option { gap: 8px; min-height: 0; padding: 8px; }
+  .st-theme-option-icon { width: 24px; height: 24px; }
+  .st-theme-option-icon svg { width: 13px; height: 13px; }
+  .st-theme-option-text strong { font-size: 12px; }
+  .st-theme-option-text small { font-size: 10px; }
+}
+@container st (max-width: 340px) {
+  .st-theme-grid { grid-template-columns: 1fr; }
+}
+
+/* My Orbits: hero is a regular flat card */
+.settings-panel .orbits-hero { background: var(--bg-card); box-shadow: var(--shadow-sm); padding: 18px; gap: 16px; }
+@container st (max-width: 560px) {
+  .settings-panel .orbits-hero { gap: 10px 12px; padding: 12px; }
+  .settings-panel .orbits-avatar { width: 48px; height: 48px; border-radius: 14px; font-size: 16px; }
+  .settings-panel .orbits-hero-info { flex: 1 1 160px; }
+  .settings-panel .orbits-name { font-size: 15px; }
+  .settings-panel .orbits-start { flex: 1 1 100%; }
+  .settings-panel .orbits-start .btn { height: 32px; min-height: 32px; padding: 0 12px; font-size: 12px; }
+  .settings-panel .orbits-start p { font-size: 11px; }
+}

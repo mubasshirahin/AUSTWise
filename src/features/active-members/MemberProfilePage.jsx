@@ -9,6 +9,7 @@ import { getAllAccounts, getDisplayRoles, getRoleDisplayName } from '../../utils
 import { getDisplayBatchText } from '../../utils/batchIdentity';
 import { getAlumniEmployment } from '../../utils/alumniEmployment';
 import { copyText } from '../../utils/clipboard';
+import { RecentContributionsCard } from './ContributionList';
 import './MemberProfilePage.css';
 
 /** Local fallback: accounts that exist only on this device (not yet on the
@@ -216,7 +217,7 @@ export default function MemberProfilePage() {
   };
 
   return (
-    <main className={`member-profile-page profile-view-${['classic', 'compact', 'spotlight'].includes(profile.profileView) ? profile.profileView : 'classic'}`}>
+    <main className={`member-profile-page mp-view profile-view-${['classic', 'compact', 'spotlight'].includes(profile.profileView) ? profile.profileView : 'classic'}`}>
       <button type="button" className="member-profile-back" onClick={() => navigate(-1)}>
         <ArrowLeft size={16} /> Back
       </button>
@@ -254,6 +255,7 @@ export default function MemberProfilePage() {
         </div>
       </section>
 
+      <div className="mp-grid">
       <section className="member-profile-section glass-card-static" aria-labelledby="member-identity-title">
         <div className="member-profile-section-heading">
           <span className="member-profile-section-icon"><UserRound size={18} /></span>
@@ -285,9 +287,10 @@ export default function MemberProfilePage() {
         )}
       </section>
 
+      <div className="mp-rail">
       <section className="member-profile-section glass-card-static" aria-labelledby="member-activity-title">
         <div className="member-profile-section-heading">
-          <span className="member-profile-section-icon is-activity"><Orbit size={18} /></span>
+          <span className="member-profile-section-icon is-activity"><Award size={18} /></span>
           <div><h2 id="member-activity-title">Contributions</h2><p>Verified resources and community activity{lastActiveText ? ` · ${lastActiveText}` : ''}</p></div>
         </div>
         <div className="member-profile-metrics">
@@ -295,16 +298,14 @@ export default function MemberProfilePage() {
         </div>
       </section>
 
-      <section className="member-profile-fun glass-card-static" aria-labelledby="member-profile-fun-title">
-        <div className="member-profile-fun-heading"><BookOpen size={17} /><h2 id="member-profile-fun-title">Recent contributions</h2></div>
-        {Array.isArray(activity.recentContributions) && activity.recentContributions.length > 0 ? (
-          <ul>{activity.recentContributions.map((item) => (
-            <li key={item.id}><strong>{item.title}</strong><span>{item.type}{item.createdAt ? ` · ${new Date(item.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}` : ''}</span></li>
-          ))}</ul>
-        ) : (
-          <p>No verified contributions yet.</p>
-        )}
-      </section>
+      <RecentContributionsCard
+        name={profile.name}
+        items={activity.recentContributions}
+        total={activity.contributionsTotal}
+        headingId="member-profile-fun-title"
+      />
+      </div>
+      </div>
 
     </main>
   );

@@ -114,6 +114,7 @@ test-results/
 /.freebuff/
 /.att-harness/
 /.zh-harness/
+/.orbit-harness/
 
 # Root-level scratch files (tests, probes, captures, lint dumps)
 /test-*

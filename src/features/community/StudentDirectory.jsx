@@ -11,7 +11,7 @@ import { getAllAccounts, createAwid } from '../../utils/authStorage';
 import { getCachedMembers, refreshMemberDirectory } from '../../utils/memberDirectory';
 import { useAuth } from '../../context/AuthContext';
 import { formatSemesterLabel, getSemesterCountForDepartment } from '../../utils/semester';
-import { DirectoryDepartmentHeader, DirectoryMemberCard } from './DirectoryShared';
+import { DirectoryDepartmentHeader, DirectoryMemberCard, MemberAvatarPreview } from './DirectoryShared';
 import { getDepartmentLabel } from './directoryUtils';
 import '../daily-life/DailyMasthead.css';
 
@@ -70,9 +70,35 @@ function getLabSortKey(labSection) {
   return idx >= 0 ? idx : 99;
 }
 
-// Shared style for account photos inside the circular slot avatars — fills the
-// circle, crops to a round portrait, covers overflow.
-const AVATAR_IMG_STYLE = { width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' };
+// Mini-stats rows shown in a student's hover/click card (list rows and slots).
+function getStudentPreviewStats(student) {
+  const sem = Number(student.semester) || 0;
+  return [
+    ['Department', getDepartmentLabel(student.department)],
+    ['AUST ID', extractStudentId(student)],
+    ['AWID', student.awid || createAwid(student.department)],
+    ['Semester', sem ? `Year ${formatSemesterLabel(sem)} (Semester ${sem})` : ''],
+    ['Lab', student.labSection || student.section],
+    ['Batch', student.batch || student.batchName || student.batchNo],
+    ['Blood', student.bloodGroup],
+  ];
+}
+
+// Role-slot avatar (VP/GS/SR/CR) — same photo/initials tile and the same
+// hover/click mini stats card (View profile · Visit Orbit) as the rows below.
+function SlotAvatar({ member, onOpen }) {
+  return (
+    <MemberAvatarPreview
+      member={member}
+      roleLabel={ROLE_TAGS[member.role]?.label || 'Student'}
+      previewStats={getStudentPreviewStats(member)}
+      onOpenProfile={onOpen}
+      avatarClassName="avatar student-dir-slot-photo"
+      avatarStyle={{}}
+      className="student-dir-slot-preview"
+    />
+  );
+}
 
 // Minimal HTML escaping for values injected into the export document.
 function escapeHtml(value) {
@@ -518,22 +544,14 @@ export default function StudentDirectory() {
                       const exec = deptExecs[dept]?.[role];
                       return (
                         <div key={role} className={`student-dir-exec-slot${exec ? '' : ' vacant'}`}>
-                          <button
-                            type="button"
-                            className={`student-dir-exec-avatar ${role === 'vp' ? 'stu-avatar-vp' : 'stu-avatar-gs'}`}
-                            disabled={!exec}
-                            onClick={() => exec && navigate(`/members/${exec.id}`)}
-                            title={exec ? `View ${exec.name}'s profile / ID` : undefined}
-                            aria-label={exec ? `View ${exec.name}'s profile` : undefined}
-                            style={{ padding: 0, border: 'none', background: 'transparent', cursor: exec ? 'pointer' : 'default' }}
-                          >
-                            {exec?.avatar ? (
-                              <img src={exec.avatar} alt="" style={AVATAR_IMG_STYLE} />
-                            ) : icon}
-                          </button>
+                          {exec ? (
+                            <SlotAvatar member={exec} onOpen={() => navigate(`/members/${exec.id}`)} />
+                          ) : (
+                            <div className={`student-dir-exec-avatar ${role === 'vp' ? 'stu-avatar-vp' : 'stu-avatar-gs'}`}>{icon}</div>
+                          )}
                           <div className="student-dir-slot-info">
                             {exec ? (
-                              <span className="student-dir-slot-name">{exec.name}</span>
+                              <span className="student-dir-slot-name" title={exec.name}>{exec.name}</span>
                             ) : (
                               <span className="student-dir-slot-name-vacant">— Vacant —</span>
                             )}
@@ -642,23 +660,11 @@ export default function StudentDirectory() {
                                   const uniq = `sr-${dept}-${sem}-${slot.section}`;
                                   return sr ? (
                                     <div key={uniq} className="student-dir-slot-card student-dir-slot-sr">
-                                      <button
-                                        type="button"
-                                        className="student-dir-slot-avatar stu-avatar-sr"
-                                        onClick={() => navigate(`/members/${sr.id}`)}
-                                        title={`View ${sr.name}'s profile / ID`}
-                                        aria-label={`View ${sr.name}'s profile`}
-                                        style={{ padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
-                                      >
-                                        {sr.avatar ? (
-                                          <img src={sr.avatar} alt="" style={AVATAR_IMG_STYLE} />
-                                        ) : <Star size={15} />}
-                                      </button>
+                                      <SlotAvatar member={sr} onOpen={() => navigate(`/members/${sr.id}`)} />
                                       <div className="student-dir-slot-info">
-                                        <span className="student-dir-slot-name">{sr.name}</span>
+                                        <span className="student-dir-slot-name" title={sr.name}>{sr.name}</span>
                                         <span className="student-dir-slot-sub">{slot.label}</span>
                                       </div>
-                                      <span className="stu-badge stu-badge-sr">SR</span>
                                     </div>
                                   ) : (
                                     <div key={uniq} className="student-dir-slot-card student-dir-slot-vacant">
@@ -687,23 +693,11 @@ export default function StudentDirectory() {
                                   const uniq = `cr-${dept}-${sem}-${slot.lab}`;
                                   return cr ? (
                                     <div key={uniq} className="student-dir-slot-card student-dir-slot-cr">
-                                      <button
-                                        type="button"
-                                        className="student-dir-slot-avatar stu-avatar-cr"
-                                        onClick={() => navigate(`/members/${cr.id}`)}
-                                        title={`View ${cr.name}'s profile / ID`}
-                                        aria-label={`View ${cr.name}'s profile`}
-                                        style={{ padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
-                                      >
-                                        {cr.avatar ? (
-                                          <img src={cr.avatar} alt="" style={AVATAR_IMG_STYLE} />
-                                        ) : <BadgeCheck size={15} />}
-                                      </button>
+                                      <SlotAvatar member={cr} onOpen={() => navigate(`/members/${cr.id}`)} />
                                       <div className="student-dir-slot-info">
-                                        <span className="student-dir-slot-name">{cr.name}</span>
+                                        <span className="student-dir-slot-name" title={cr.name}>{cr.name}</span>
                                         <span className="student-dir-slot-sub">{slot.label}</span>
                                       </div>
-                                      <span className="stu-badge stu-badge-cr">{slot.lab}</span>
                                     </div>
                                   ) : (
                                     <div key={uniq} className="student-dir-slot-card student-dir-slot-vacant">
@@ -748,15 +742,7 @@ export default function StudentDirectory() {
                                         deptLine={[student.department, batch, lab && `Lab ${lab}`].filter(Boolean).join(' · ')}
                                         metaItems={[austId && `ID ${austId}`, awid, student.bloodGroup]}
                                         email={student.email}
-                                        previewStats={[
-                                          ['Department', getDepartmentLabel(student.department)],
-                                          ['AUST ID', austId],
-                                          ['AWID', awid],
-                                          ['Semester', `Year ${formatSemesterLabel(Number(sem))} (Semester ${sem})`],
-                                          ['Lab', lab],
-                                          ['Batch', batch],
-                                          ['Blood', student.bloodGroup],
-                                        ]}
+                                        previewStats={getStudentPreviewStats(student)}
                                       />
                                     );
                                   })}

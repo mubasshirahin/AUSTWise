@@ -4,7 +4,7 @@ import QRCode from 'qrcode';
 import { useTheme, getThemeAccent } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useRoutine } from '../../context/RoutineContext';
-import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, ShieldAlert, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, SquareTerminal, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2, Orbit, DraftingCompass, PawPrint, Palette, Sparkles, ExternalLink, CalendarDays, Mail, Phone, Droplets, BookOpen, Flame, FileText, Handshake, Vote, Coffee, MessageSquare, Gem, WandSparkles, Gamepad2, Cloud, Smile, Flower2, Smartphone } from 'lucide-react';
+import { Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, ShieldAlert, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, SquareTerminal, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2, Orbit, DraftingCompass, PawPrint, Palette, Sparkles, ExternalLink, CalendarDays, Mail, Phone, Droplets, BookOpen, Award, Flame, FileText, Handshake, Vote, Coffee, MessageSquare, Gem, WandSparkles, Gamepad2, Cloud, Smile, Flower2, Smartphone } from 'lucide-react';
 import AboutUs from './AboutUs';
 import LinkedAccountsSection from './LinkedAccountsSection';
 import GliderTabs from '../../components/GliderTabs';
@@ -19,9 +19,11 @@ import OrbitsConfigurationPanel from '../orbits/OrbitsConfigurationPanel';
 import { useStalk } from '../stalk-road/StalkContext';
 import { submitRoleApplication, getApplicationsByUserId, getUserApplicationStatus, getSlotVacancyMap, resignFromRole, withdrawApplication, deleteAccountById, createAwid, syncRoleApplicationsFromServer, getDisplayRoles, getRoleDisplayName } from '../../utils/authStorage';
 import { copyText } from '../../utils/clipboard';
+import '../daily-life/DailyMasthead.css';
 import './SettingsPage.css';
 import '../../components/PageHero.css';
 import '../active-members/MemberProfilePage.css';
+import { RecentContributionsCard } from '../active-members/ContributionList';
 
 const departments = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'];
 async function compressProfileImage(source, maxDimension, maxDataUrlLength = 400_000) {
@@ -273,22 +275,31 @@ function AccentColorSection() {
   );
 }
 
-// Shared subtab masthead — same style as the Identity masthead.
-function SettingsMasthead({ icon: Icon, title, subtitle }) {
+// Shared subtab masthead — house `dl-head` (skill-style §2): tile · overline/
+// title/subtitle · 2–4 stats · optional actions slot.
+function SettingsMasthead({ icon: Icon, title, subtitle, stats = [], children }) {
   return (
-    <div className="profile-panel-header schedule-masthead">
-      <div className="schedule-title-block">
-        <div className="schedule-icon-tile">
-          <Icon size={20} strokeWidth={2.2} />
-        </div>
-        <div>
-          <span className="schedule-overline">Settings</span>
-          <p className="schedule-title">{title}</p>
-          <span className="schedule-subtitle">{subtitle}</span>
+    <header className={`dl-head st-head${children ? ' has-actions' : ''}`}>
+      <div className="dl-head-title">
+        <div className="dl-head-tile" aria-hidden="true"><Icon size={20} strokeWidth={2.1} /></div>
+        <div className="dl-head-text">
+          <span className="dl-head-overline">Settings</span>
+          <h2 className="dl-head-name">{title}</h2>
+          <span className="dl-head-subtitle">{subtitle}</span>
         </div>
       </div>
-      <div className="schedule-masthead-center" />
-    </div>
+      {stats.length > 0 && (
+        <dl className="dl-head-stats">
+          {stats.map(({ label, value, alert, small }) => (
+            <div className={`dl-head-stat${alert ? ' is-alert' : ''}`} key={label}>
+              <dt>{label}</dt>
+              <dd className={small ? 'is-small' : undefined}>{value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {children && <div className="dl-head-actions">{children}</div>}
+    </header>
   );
 }
 
@@ -334,6 +345,7 @@ export default function SettingsPage() {
   const { isAdmin } = useAdminMode();
   const { theme, setTheme } = useTheme();
   const { user, isAuthenticated, updateUser, saveUserProfile, logout, refreshUserFromServer } = useAuth();
+  const { stalk } = useStalk();
   const accountRoles = new Set([user?.role, ...(Array.isArray(user?.roles) ? user.roles : [])].filter(Boolean));
   const displayRoles = getDisplayRoles(user);
   const isAlumniMember = accountRoles.has('alumni') || accountRoles.has('alumni_with_carry');
@@ -1443,28 +1455,16 @@ export default function SettingsPage() {
         <div className="settings-panel">
           {activeSubTab === 'profile' && (
             <div className={`animate-fadeIn identity-settings-page${isPublicProfilePreview ? ' is-public-preview' : ''}`}>
-              <div className="profile-panel-header schedule-masthead">
-                <div className="schedule-title-block">
-                  <div className="schedule-icon-tile">
-                    <User size={20} strokeWidth={2.2} />
-                  </div>
-                  <div>
-                    <span className="schedule-overline">Settings</span>
-                    <p className="schedule-title">Identity</p>
-                    <span className="schedule-subtitle">Identity &amp; academic info</span>
-                  </div>
-                </div>
-
-                <div className="schedule-masthead-center" />
-
+              <SettingsMasthead
+                icon={User}
+                title="Identity"
+                subtitle="Identity &amp; academic info"
+                stats={[
+                  { label: 'Profile', value: `${profilePercent}%` },
+                  { label: 'Role', value: (user?.role || 'guest').replaceAll('_', ' '), small: true },
+                ]}
+              >
                 <div className="profile-save-actions">
-                  <div className="profile-completion-circle" title={`${profilePercent}% complete`}>
-                    <svg viewBox="0 0 36 36">
-                      <path className="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                      <path className="circle-fill" strokeDasharray={`${profilePercent}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                    </svg>
-                    <span className="profile-completion-text">{profilePercent}%</span>
-                  </div>
                   {saveMessage && (
                     <span className="save-status" style={{ color: saveMessage === 'Saved' ? 'var(--accent-emerald)' : 'var(--accent-rose)' }}>
                       {saveMessage === 'Saved' ? <CheckCircle size={14} /> : <AlertTriangle size={14} />} {saveMessage}
@@ -1479,10 +1479,10 @@ export default function SettingsPage() {
                     <Pencil size={14} /> {isEditingProfile ? 'Cancel' : 'Edit'}
                   </button>
                 </div>
-              </div>
+              </SettingsMasthead>
 
               {isPublicProfilePreview && (
-                <div className={`member-profile-page identity-public-preview profile-view-${['classic', 'compact', 'spotlight'].includes(previewProfile.profileView) ? previewProfile.profileView : 'classic'}`}>
+                <div className={`member-profile-page mp-view identity-public-preview profile-view-${['classic', 'compact', 'spotlight'].includes(previewProfile.profileView) ? previewProfile.profileView : 'classic'}`}>
                   <section className="member-profile-hero glass-card-static">
                     <div className={`member-profile-cover${(isEditingProfile ? profileDetails.coverPhoto : previewProfile.coverPhoto) ? ' has-cover' : ' is-default-cover'}`}>
                       {(isEditingProfile ? profileDetails.coverPhoto : previewProfile.coverPhoto) && <img src={isEditingProfile ? profileDetails.coverPhoto : previewProfile.coverPhoto} alt="" />}
@@ -1511,14 +1511,15 @@ export default function SettingsPage() {
                         ].filter(Boolean).join(' · ') || 'AUSTWise member'}</p>
                       </div>
                       <div className="member-profile-hero-actions">
-                        <button type="button" className="member-profile-orbit" onClick={() => navigate(`/members/${encodeURIComponent(user.id)}`)}>
-                          <Orbit size={15} /> Open full profile <span aria-hidden="true">↗</span>
+                        <button type="button" className="member-profile-orbit" onClick={() => stalk(user)} aria-label="Visit your Orbit">
+                          <Orbit size={15} /> Visit Orbit <span aria-hidden="true">↗</span>
                         </button>
                         <span className="member-profile-joined"><CalendarDays size={13} /> Member since {memberSinceLabel}</span>
                       </div>
                     </div>
                   </section>
 
+                  <div className="mp-grid">
                   <section className="member-profile-section glass-card-static" aria-labelledby="identity-preview-details-title">
                     <div className="member-profile-section-heading"><span className="member-profile-section-icon"><User size={18} /></span><div><h2 id="identity-preview-details-title">Identity</h2><p>{isEditingProfile ? 'Edit your details in place, then save your profile' : 'How other members see your profile details'}</p></div></div>
                     <div className="member-profile-identity-grid">
@@ -1536,8 +1537,9 @@ export default function SettingsPage() {
                     )}
                   </section>
 
+                  <div className="mp-rail">
                   <section className="member-profile-section glass-card-static" aria-labelledby="identity-preview-activity-title">
-                    <div className="member-profile-section-heading"><span className="member-profile-section-icon is-activity"><Orbit size={18} /></span><div><h2 id="identity-preview-activity-title">Contributions</h2><p>Verified resources and community activity{profileLastActiveText ? ` · ${profileLastActiveText}` : ''}</p></div></div>
+                    <div className="member-profile-section-heading"><span className="member-profile-section-icon is-activity"><Award size={18} /></span><div><h2 id="identity-preview-activity-title">Contributions</h2><p>Verified resources and community activity{profileLastActiveText ? ` · ${profileLastActiveText}` : ''}</p></div></div>
                     <div className="member-profile-metrics">
                       {visibleProfileActivityStats.map(({ id, icon: Icon, label, value, tone }) => (
                         <div className={`member-profile-metric ${tone || ''}`} key={id}><span className="member-profile-metric-icon"><Icon size={17} /></span><strong>{Number(value || 0).toLocaleString()}</strong><span>{label}</span></div>
@@ -1549,19 +1551,20 @@ export default function SettingsPage() {
                     </div>}
                   </section>
 
-                  <section className="member-profile-fun glass-card-static" aria-labelledby="identity-preview-recent-title">
-                    <div className="member-profile-fun-heading"><BookOpen size={17} /><h2 id="identity-preview-recent-title">Recent contributions</h2></div>
-                    {Array.isArray(profileActivity.recentContributions) && profileActivity.recentContributions.length ? (
-                      <ul>{profileActivity.recentContributions.map((item) => <li key={item.id}><strong>{item.title}</strong><span>{item.type}{item.createdAt ? ` · ${new Date(item.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}` : ''}</span></li>)}</ul>
-                    ) : <p>No verified contributions yet.</p>}
-                  </section>
+                  <RecentContributionsCard
+                    name={previewProfile.name || user?.name}
+                    items={profileActivity.recentContributions}
+                    total={profileActivity.contributionsTotal}
+                    headingId="identity-preview-recent-title"
+                  />
+                  </div>
+                  </div>
                 </div>
               )}
 
-              <div className="schedule-dotted-divider" />
 
               {isAuthenticated && isAlumniMember && (
-                <section className="cfg-section" style={{ margin: '0 0 18px' }}>
+                <section className="cfg-section">
                   <div className="cfg-section-head">
                     <h3 className="cfg-section-title">Alumni Status</h3>
                     <p className="cfg-section-desc">Tell us whether you still have courses to complete. This switches your access role between Alumni and Alumni With Carry.</p>
@@ -1822,7 +1825,7 @@ export default function SettingsPage() {
                       <div className="identity-recent-contributions">
                         <h4>Recent contributions</h4>
                         {Array.isArray(profileActivity.recentContributions) && profileActivity.recentContributions.length ? (
-                          <ul>{profileActivity.recentContributions.map((item) => (
+                          <ul>{profileActivity.recentContributions.slice(0, 5).map((item) => (
                             <li key={item.id}>
                               <strong>{item.title}</strong>
                               <span>{item.type}{item.createdAt ? ` · ${new Date(item.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}` : ''}</span>
@@ -1862,111 +1865,65 @@ export default function SettingsPage() {
 
           {activeSubTab === 'theme' && (
             <div className="animate-fadeIn">
-              <SettingsMasthead icon={Settings} title="UI" subtitle="Themes &amp; appearance" />
-              <div className="schedule-dotted-divider" />
+              <SettingsMasthead
+                icon={Settings}
+                title="UI"
+                subtitle="Themes &amp; appearance"
+                stats={[
+                  { label: 'Theme', value: themeOptions.find((t) => t.id === theme)?.label || 'Dark', small: true },
+                  { label: 'Mode', value: lightThemes.some((t) => t.id === theme) ? 'Light' : 'Dark', small: true },
+                  { label: 'Themes', value: themeOptions.length },
+                ]}
+              />
 
-              <div className="p-4" style={{ background: 'var(--bg-input)', borderRadius: 'var(--radius-lg)' }}>
-                <div style={{ marginBottom: '14px' }}>
-                  <h4 style={{ fontSize: 'var(--fs-sm)', fontWeight: 'bold' }}>Interface Theme</h4>
-                  <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                    Current: {themeOptions.find((t) => t.id === theme)?.desc || 'Dark Mode standard'}
-                  </p>
+              <section className="st-card st-theme-card">
+                <div className="st-card-head">
+                  <h3 className="st-card-title"><Palette size={14} /> Interface Theme</h3>
+                  <p className="st-card-desc">Current: {themeOptions.find((t) => t.id === theme)?.desc || 'Dark Mode standard'}</p>
                 </div>
 
-                {/* ─── Dark Themes ─── */}
-                <div style={{ marginBottom: '20px' }}>
-                  <h5 style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px', fontWeight: 600 }}>
-                    Dark Mode
-                  </h5>
-                  <div
-                    role="radiogroup"
-                    aria-label="Dark themes"
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
-                      gap: 'var(--sp-2)',
-                    }}
-                  >
-                    {darkThemes.map(({ id, label, desc, icon: Icon }) => {
-                      const isActive = theme === id;
-                      return (
-                        <button
-                          key={id}
-                          type="button"
-                          role="radio"
-                          aria-checked={isActive}
-                          onClick={() => setTheme(id)}
-                          className="flex flex-col items-start gap-1 p-3"
-                          style={{
-                            textAlign: 'left',
-                            borderRadius: 'var(--radius-md)',
-                            border: `1px solid ${isActive ? 'var(--accent-blue)' : 'var(--border-primary)'}`,
-                            background: isActive ? 'var(--accent-blue-glow)' : 'var(--bg-secondary)',
-                            color: isActive ? 'var(--accent-blue)' : 'var(--text-primary)',
-                            transition: 'all var(--transition-base)',
-                            fontSize: 'var(--fs-xs)',
-                          }}
-                        >
-                          <Icon size={16} />
-                          <span style={{ fontWeight: 'var(--fw-semibold)' }}>{label}</span>
-                          <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', lineHeight: 1.3 }}>{desc}</span>
-                        </button>
-                      );
-                    })}
+                {[['Dark Mode', 'Dark themes', darkThemes], ['Light Mode', 'Light themes', lightThemes]].map(([groupLabel, ariaLabel, list]) => (
+                  <div className="st-theme-group" key={groupLabel}>
+                    <h4 className="st-overline">{groupLabel}</h4>
+                    <div className="st-theme-grid" role="radiogroup" aria-label={ariaLabel}>
+                      {list.map(({ id, label, desc, icon: Icon }) => {
+                        const isActive = theme === id;
+                        return (
+                          <button
+                            key={id}
+                            type="button"
+                            role="radio"
+                            aria-checked={isActive}
+                            onClick={() => setTheme(id)}
+                            className={`st-theme-option${isActive ? ' is-active' : ''}`}
+                          >
+                            <span className="st-theme-option-icon"><Icon size={15} /></span>
+                            <span className="st-theme-option-text">
+                              <strong>{label}</strong>
+                              <small>{desc}</small>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-
-                {/* ─── Light Themes ─── */}
-                <div>
-                  <h5 style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px', fontWeight: 600 }}>
-                    Light Mode
-                  </h5>
-                  <div
-                    role="radiogroup"
-                    aria-label="Light themes"
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
-                      gap: 'var(--sp-2)',
-                    }}
-                  >
-                    {lightThemes.map(({ id, label, desc, icon: Icon }) => {
-                      const isActive = theme === id;
-                      return (
-                        <button
-                          key={id}
-                          type="button"
-                          role="radio"
-                          aria-checked={isActive}
-                          onClick={() => setTheme(id)}
-                          className="flex flex-col items-start gap-1 p-3"
-                          style={{
-                            textAlign: 'left',
-                            borderRadius: 'var(--radius-md)',
-                            border: `1px solid ${isActive ? 'var(--accent-blue)' : 'var(--border-primary)'}`,
-                            background: isActive ? 'var(--accent-blue-glow)' : 'var(--bg-secondary)',
-                            color: isActive ? 'var(--accent-blue)' : 'var(--text-primary)',
-                            transition: 'all var(--transition-base)',
-                            fontSize: 'var(--fs-xs)',
-                          }}
-                        >
-                          <Icon size={16} />
-                          <span style={{ fontWeight: 'var(--fw-semibold)' }}>{label}</span>
-                          <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', lineHeight: 1.3 }}>{desc}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-              </div>
+                ))}
+              </section>
             </div>
           )}
 
           {activeSubTab === 'notifications' && (
             <div className="animate-fadeIn cfg-stack">
-              <SettingsMasthead icon={Bell} title="Configure" subtitle="Alerts &amp; reminders" />
-              <div className="schedule-dotted-divider" />
+              <SettingsMasthead
+                icon={Bell}
+                title="Configure"
+                subtitle="Alerts &amp; reminders"
+                stats={[
+                  { label: 'Browser', value: !supported ? 'N/A' : permission === 'granted' ? 'Ready' : permission === 'denied' ? 'Blocked' : 'Ask', alert: supported && permission === 'denied', small: true },
+                  { label: 'Push', value: push.subscribed ? 'On' : 'Off', small: true },
+                  { label: 'Telegram', value: telegramHealth === 'ready' ? 'Ready' : telegramHealth === 'checking' ? '…' : 'Off', small: true },
+                ]}
+              />
 
               <AccentColorSection />
 
@@ -1999,17 +1956,17 @@ export default function SettingsPage() {
               )}
 
               {isAuthenticated && user?.role === 'student' && (
-                <section className="cfg-section" style={{ margin: '0 0 18px' }}>
+                <section className="cfg-section">
                   <div className="cfg-section-head">
                     <h3 className="cfg-section-title">Semester Status</h3>
                     <p className="cfg-section-desc">If you drop your semester, your account will be marked as Re-add so access can be managed for that status.</p>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap', padding: '14px', border: '1px solid var(--border-primary)', borderRadius: '12px', background: 'var(--bg-input)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div className="cfg-row cfg-row--wrap">
+                    <div className="cfg-row-main">
                       <span className="cfg-row-icon is-blue"><GraduationCap size={18} /></span>
-                      <div>
-                        <strong style={{ display: 'block', color: 'var(--text-primary)' }}>Current status: {user.roles?.includes('readd') ? 'Re-add' : 'Regular Student'}</strong>
-                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>This updates your account role immediately.</span>
+                      <div className="cfg-row-text">
+                        <h4 className="cfg-row-title">Current status: {user.roles?.includes('readd') ? 'Re-add' : 'Regular Student'}</h4>
+                        <p className="cfg-row-desc">This updates your account role immediately.</p>
                       </div>
                     </div>
                     <button
@@ -2220,7 +2177,6 @@ export default function SettingsPage() {
                 )}
               </section>
 
-              <div className="cfg-divider" />
 
               <section className="cfg-section">
                 <div className="cfg-section-head">
@@ -2346,10 +2302,10 @@ export default function SettingsPage() {
                     )}
                   </div>
 
-                  <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', margin: '0 0 10px' }}>
+                  <p className="cfg-field-hint">
                     Send a sample of any Telegram message to your linked account. Test attendance buttons never update your records.
                   </p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '8px' }}>
+                  <div className="cfg-test-grid">
                     {TELEGRAM_MESSAGE_TESTS.map(([type, label]) => (
                       <button
                         key={type}
@@ -2357,7 +2313,6 @@ export default function SettingsPage() {
                         className="btn btn-ghost"
                         onClick={() => sendTelegramMessageTest(type, label)}
                         disabled={telegramTesting || isTelegramRegistered !== true}
-                        style={{ justifyContent: 'flex-start', minHeight: '40px', textAlign: 'left' }}
                       >
                         <Send size={14} />
                         {telegramTesting && telegramTestType === type ? 'Sending…' : `Test · ${label}`}
@@ -2387,7 +2342,6 @@ export default function SettingsPage() {
               )}
               </section>
 
-              <div className="cfg-divider" />
 
               <section className="cfg-section">
                 <div className="cfg-section-head">
@@ -2427,7 +2381,6 @@ export default function SettingsPage() {
 {activeSubTab === 'orbits' && (
             <div className="animate-fadeIn">
               <SettingsMasthead icon={Orbit} title="My Orbits" subtitle="Configure checkpoints, then drive a road-trip through your orbit" />
-              <div className="schedule-dotted-divider" />
 
               <OrbitsProvider user={user}>
                 <div className="orbits-hero">
@@ -2481,7 +2434,6 @@ export default function SettingsPage() {
           {activeSubTab === 'invite' && isAuthenticated && user?.role === 'admin' && (
             <div className="animate-fadeIn">
               <SettingsMasthead icon={Send} title="Invite Member" subtitle="Send invites" />
-              <div className="schedule-dotted-divider" />
 
               {/* Invite Form */}
               <div className="invite-member-panel" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-lg)', padding: '20px', marginBottom: '24px' }}>

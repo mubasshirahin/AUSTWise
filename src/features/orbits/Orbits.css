@@ -327,3 +327,32 @@
 .orb-obj-add {
   align-self: flex-start;
 }
+
+
+/* Responsive pass (skill-style): title column may shrink, flat hover,
+   compact checkpoint rows when inside the Settings page container. */
+.orb-cp-row { grid-template-columns: 26px 34px minmax(0, 1fr) auto 34px; }
+.orb-cp-title { min-width: 0; overflow: hidden; }
+.orb-cp-title > :not(.orb-cp-icon):not(.orb-chevron) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.orb-cp-icon, .orb-chevron { flex: none; }
+.orb-vis:hover { box-shadow: none; border-color: var(--accent, var(--accent-blue)); }
+@container st (max-width: 560px) {
+  .orb-cp-list { gap: 6px; }
+  .orb-cp-row { grid-template-columns: 16px 20px minmax(0, 1fr) auto 28px; gap: 6px; padding: 8px 10px; }
+  .orb-order { font-size: 11px; }
+  .orb-cp-title { gap: 7px; font-size: 12.5px; }
+  .orb-cp-icon { width: 22px; height: 22px; font-size: 11px; }
+  .orb-cp-type { padding: 2px 6px; font-size: 10px; }
+  .orb-vis { width: 28px; height: 28px; min-width: 28px; min-height: 28px; }
+  .orb-cp-fields { grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+}
+@container st (max-width: 560px) {
+  .orb-panel { margin-top: 8px; padding: 12px; box-shadow: var(--shadow-sm); }
+  .orb-panel-head { gap: 8px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border-primary); }
+  .orb-panel-title { font-size: 12.5px; letter-spacing: 0.08em; }
+  .orb-panel-sub { font-size: 11px; }
+}
+@container st (max-width: 400px) {
+  .orb-cp-type { display: none; }
+  .orb-cp-row { grid-template-columns: 16px 20px minmax(0, 1fr) 28px; }
+}

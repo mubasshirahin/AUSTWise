@@ -1,4 +1,6 @@
-import { Building2, ChevronDown } from 'lucide-react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { Building2, ChevronDown, Orbit, UserRound } from 'lucide-react';
+import { useStalk } from '../stalk-road/StalkContext';
 import { getMemberInitials } from './directoryUtils';
 
 // Shared building blocks for the Alumni, Student and Faculty directories so
@@ -44,47 +46,17 @@ export function DirectoryMemberCard({
   actions = null,
   onOpenProfile,
 }) {
-  const previewId = `directory-profile-preview-${encodeURIComponent(String(member.id))}`;
-  const initials = getMemberInitials(member);
   const meta = metaItems.filter(Boolean);
-  const stats = previewStats.filter(([, value]) => value);
 
   return (
     <div className="alumni-card">
       <div className="alumni-card-top">
-        <div className="alumni-avatar-preview">
-          <button
-            type="button"
-            className="avatar"
-            style={{ width: '40px', height: '40px', flexShrink: 0, padding: 0, border: 'none', cursor: 'pointer', overflow: 'hidden' }}
-            onClick={onOpenProfile}
-            title={`View ${member.name}'s profile / ID`}
-            aria-label={`View ${member.name}'s profile`}
-            aria-describedby={previewId}
-          >
-            {member.avatar ? (
-              <img src={member.avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-            ) : initials}
-          </button>
-          <div id={previewId} className="alumni-profile-preview" role="tooltip">
-            <div className="alumni-profile-preview-head">
-              <span className="alumni-profile-preview-avatar">
-                {member.avatar ? <img src={member.avatar} alt="" /> : initials}
-              </span>
-              <span className="alumni-profile-preview-identity">
-                <strong>{member.name}</strong>
-                <span>{roleLabel}</span>
-              </span>
-            </div>
-            {stats.length > 0 && (
-              <div className="alumni-profile-preview-stats">
-                {stats.map(([label, value]) => (
-                  <div key={label}><span>{label}</span><strong>{value}</strong></div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        <MemberAvatarPreview
+          member={member}
+          roleLabel={roleLabel}
+          previewStats={previewStats}
+          onOpenProfile={onOpenProfile}
+        />
 
         <div className="alumni-card-info">
           <h3 className="alumni-card-name">
@@ -109,6 +81,101 @@ export function DirectoryMemberCard({
         </div>
 
         <div className="alumni-card-actions">{actions}</div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Avatar button + mini stats card. Hover (or keyboard focus) shows the card;
+ * click/tap toggles it. The card carries "View profile" and "Visit Orbit".
+ * Shared by the member rows and the Student Directory's SR/CR/VP/GS slots.
+ */
+export function MemberAvatarPreview({
+  member,
+  roleLabel,
+  previewStats = [],
+  onOpenProfile,
+  avatarClassName = 'avatar',
+  avatarStyle = { width: '40px', height: '40px', flexShrink: 0 },
+  className = '',
+}) {
+  const previewId = `directory-profile-preview-${useId().replace(/:/g, '')}`;
+  const initials = getMemberInitials(member);
+  const stats = previewStats.filter(([, value]) => value);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const previewRef = useRef(null);
+  const { stalk } = useStalk();
+
+  // Close on an outside tap or Escape.
+  useEffect(() => {
+    if (!previewOpen) return undefined;
+    const onPointer = (event) => {
+      if (previewRef.current && !previewRef.current.contains(event.target)) setPreviewOpen(false);
+    };
+    const onKey = (event) => { if (event.key === 'Escape') setPreviewOpen(false); };
+    document.addEventListener('pointerdown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [previewOpen]);
+
+  return (
+    <div ref={previewRef} className={`alumni-avatar-preview${previewOpen ? ' is-open' : ''}${className ? ` ${className}` : ''}`}>
+      <button
+        type="button"
+        className={avatarClassName}
+        style={{ ...avatarStyle, padding: 0, border: 'none', cursor: 'pointer', overflow: 'hidden' }}
+        onClick={() => setPreviewOpen((open) => !open)}
+        title={`${member.name} — quick stats`}
+        aria-label={`Show ${member.name}'s quick stats`}
+        aria-expanded={previewOpen}
+        aria-controls={previewId}
+      >
+        {member.avatar ? (
+          <img src={member.avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+        ) : initials}
+      </button>
+      <div id={previewId} className="alumni-profile-preview" role="dialog" aria-label={`${member.name} quick stats`}>
+        <div className="alumni-profile-preview-head">
+          <span className="alumni-profile-preview-avatar">
+            {member.avatar ? <img src={member.avatar} alt="" /> : initials}
+          </span>
+          <span className="alumni-profile-preview-identity">
+            <strong>{member.name}</strong>
+            <span>{roleLabel}</span>
+          </span>
+        </div>
+        {stats.length > 0 && (
+          <div className="alumni-profile-preview-stats">
+            {stats.map(([label, value]) => (
+              <div key={label}><span>{label}</span><strong>{value}</strong></div>
+            ))}
+          </div>
+        )}
+        <div className="alumni-profile-preview-actions">
+          {onOpenProfile && (
+            <button
+              type="button"
+              className="alumni-profile-preview-cta"
+              onClick={() => { setPreviewOpen(false); onOpenProfile(); }}
+            >
+              <UserRound size={13} aria-hidden="true" />
+              View profile
+            </button>
+          )}
+          <button
+            type="button"
+            className="alumni-profile-preview-cta"
+            onClick={() => { setPreviewOpen(false); stalk(member); }}
+            aria-label={`Visit ${member.name}'s Orbit`}
+          >
+            <Orbit size={13} aria-hidden="true" />
+            Visit Orbit
+          </button>
+        </div>
       </div>
     </div>
   );
