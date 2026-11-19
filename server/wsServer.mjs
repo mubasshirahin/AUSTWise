@@ -225,8 +225,13 @@ export function createWSServer(httpServer) {
   // the upgraded socket back into the existing handler.
   httpServer.on('upgrade', async (request, socket, head) => {
     try {
-      if (request.headers['sec-websocket-protocol'] === 'vite-hmr') {
-        return; // Vite handles its own HMR upgrades
+      // Vite owns both its HMR socket and the reconnect ping. Handling the
+      // ping here too wrote a second 101 onto the same socket, which broke
+      // the client's "server restarted -> reload" check and left tabs stuck
+      // on a dead HMR token.
+      const wsProtocol = request.headers['sec-websocket-protocol'];
+      if (wsProtocol === 'vite-hmr' || wsProtocol === 'vite-ping') {
+        return;
       }
       if (!isAllowedWsUpgrade(request)) {
         socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');

@@ -293,6 +293,13 @@ const globalRateLimiter = rateLimit({
   max: Number(process.env.RATE_LIMIT_GLOBAL_MAX) || 600,
 });
 
+// Direct loopback connection with no proxy hop in front (a tunnel or reverse
+// proxy adds X-Forwarded-For, so those requests stay rate limited).
+const LOOPBACK_ADDRESSES = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
+function isLoopbackRequest(req) {
+  return LOOPBACK_ADDRESSES.has(req.socket?.remoteAddress) && !req.headers['x-forwarded-for'];
+}
+
 // ── Password Vault guards ────────────────────────────────────────────────────
 // The vault holds private per-user data, so it carries its own defences on top
 // of the JWT check:
@@ -1060,7 +1067,9 @@ server.requestTimeout = 30_000;
 
 const vite = useViteMiddleware
   ? await createViteServer({
-      server: { middlewareMode: true, hmr: { server } },
+      // `port` only feeds the client's fallback HMR address; without it the
+      // fallback pointed at Vite's default :5173, where nothing listens.
+      server: { middlewareMode: true, hmr: { server }, port },
       appType: 'spa',
     })
   : null;
@@ -1209,7 +1218,11 @@ server.on('request', async (req, res) => {
     // straight through to handleApiRequest (which serves them / the SPA).
     const isApiRequest = req.url.startsWith('/api/');
     if (isApiRequest) trackSlowApi(req, res);
-    if (!isApiRequest || globalRateLimiter(req, res)) {
+    // In dev, every open tab shares the one loopback IP, so a couple of
+    // reloads exhausted the budget (429 on /api/*/mine etc.). The guard is
+    // for scanners hitting a deployed server, so local dev traffic skips it.
+    const skipFloodGuard = isDevMode && isLoopbackRequest(req);
+    if (!isApiRequest || skipFloodGuard || globalRateLimiter(req, res)) {
       // Pull the caller's current role from the DB (cached 60s) so a demotion
       // or ban applies without waiting for the 7-day JWT to expire.
       if (isApiRequest) await refreshAuthState(req);
