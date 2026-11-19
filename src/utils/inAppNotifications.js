@@ -4,8 +4,8 @@ const NOTIFS_KEY = 'aust-inapp-notifs-v1';
 const NATIVE_SHOWN_KEY = 'aust-inapp-notifs-native-v1';
 const DEFAULT_CHANNELS = {
   telegram: { notices: true, classSchedule: true, classReminders: true, attendance: true, deadlines: true },
-  browser: { notices: true, classReminders: true, deadlines: true, tasks: true, messages: true, applications: true, gaming: true },
-  bell: { notices: true, deadlines: true, tasks: true, messages: true, applications: true, gaming: true },
+  browser: { notices: true, classReminders: true, deadlines: true, tasks: true, messages: true, applications: true, gaming: true, results: true },
+  bell: { notices: true, deadlines: true, tasks: true, messages: true, applications: true, gaming: true, results: true },
 };
 
 export function getNotificationChannelEnabled(channel, category) {

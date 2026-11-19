@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mocks = vi.hoisted(() => {
-  const store = { data: {}, sent: [] };
+  // data: the DB-backed per-user store ({ userId: [subs] }); legacy: the old
+  // webPushSubscriptions.json file that is migrated into it once.
+  const store = { data: {}, legacy: {}, sent: [] };
   const sendNotification = vi.fn(async (sub, payload) => {
     store.sent.push({ sub, payload });
   });
@@ -9,8 +11,16 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock('./jsonDB.mjs', () => ({
-  readJson: vi.fn(async () => mocks.store.data),
-  writeJson: vi.fn(async (_file, data) => { mocks.store.data = data; }),
+  readJson: vi.fn(async () => mocks.store.legacy),
+  writeJson: vi.fn(async (_file, data) => { mocks.store.legacy = data; }),
+}));
+
+vi.mock('./storeDB.mjs', () => ({
+  SERVER_ONLY_USER_KEY_PREFIX: '__server:',
+  getUserStoreValue: vi.fn(async (userId, _key, fallback) => mocks.store.data[userId] ?? fallback),
+  setUserStoreValue: vi.fn(async (userId, _key, value) => { mocks.store.data[userId] = value; }),
+  listUserStoreValuesForKey: vi.fn(async () =>
+    Object.entries(mocks.store.data).map(([userId, value]) => ({ userId, value }))),
 }));
 
 vi.mock('./userStore.mjs', () => ({
@@ -29,7 +39,10 @@ vi.mock('web-push', () => ({
   sendNotification: (...args) => mocks.sendNotification(...args),
 }));
 
-function sub(endpoint) {
+const FCM = 'https://fcm.googleapis.com/fcm/send/';
+
+function sub(id) {
+  const endpoint = /^https?:\/\//.test(id) ? id : FCM + id;
   return {
     endpoint,
     keys: { p256dh: `p256dh-${endpoint}`, auth: `auth-${endpoint}` },
@@ -43,6 +56,7 @@ describe('webPush server module', () => {
   beforeEach(async () => {
     vi.resetModules();
     mocks.store.data = {};
+    mocks.store.legacy = {};
     mocks.store.sent = [];
     mocks.sendNotification.mockClear();
     vi.stubEnv('VAPID_PUBLIC_KEY', 'PUBKEY');
@@ -58,16 +72,45 @@ describe('webPush server module', () => {
 
   it('rejects malformed subscriptions and de-duplicates by endpoint', async () => {
     expect((await mod.saveSubscription('u1', { endpoint: 'x' })).success).toBe(false);
-    expect((await mod.saveSubscription('u1', sub('https://push/1'))).count).toBe(1);
-    const again = await mod.saveSubscription('u1', sub('https://push/1'));
+    expect((await mod.saveSubscription('u1', sub('1'))).count).toBe(1);
+    const again = await mod.saveSubscription('u1', sub('1'));
     expect(again.count).toBe(1);
-    expect((await mod.getSubscriptions('u1'))[0].keys.p256dh).toBe('p256dh-https://push/1');
+    expect((await mod.getSubscriptions('u1'))[0].keys.p256dh).toBe(`p256dh-${FCM}1`);
+  });
+
+  it('only accepts https endpoints on known push services (no SSRF targets)', async () => {
+    for (const endpoint of [
+      'http://fcm.googleapis.com/fcm/send/x',
+      'https://169.254.169.254/latest/meta-data',
+      'https://localhost:5174/api/admin/reset',
+      'https://evil.example.com/collect',
+      'https://fcm.googleapis.com.evil.example/x',
+    ]) {
+      expect((await mod.saveSubscription('u1', sub(endpoint))).success).toBe(false);
+    }
+    for (const endpoint of [
+      'https://fcm.googleapis.com/fcm/send/a',
+      'https://updates.push.services.mozilla.com/wpush/v2/b',
+      'https://web.push.apple.com/c',
+      'https://wns2-par02p.notify.windows.com/w/?token=d',
+    ]) {
+      expect((await mod.saveSubscription('u1', sub(endpoint))).success).toBe(true);
+    }
+  });
+
+  it('keeps subscriptions in the DB-backed store and migrates the legacy file once', async () => {
+    mocks.store.legacy = { old: [sub('legacy-device')] };
+    await mod.saveSubscription('u1', sub('new-device'));
+    expect(mocks.store.data.u1[0].endpoint).toBe(FCM + 'new-device');
+    expect(mocks.store.data.old[0].endpoint).toBe(FCM + 'legacy-device');
+    expect(mocks.store.legacy).toEqual({});
+    expect((await mod.getAllSubscriberIds()).sort()).toEqual(['old', 'u1']);
   });
 
   it('removes one device, or all when no endpoint is given', async () => {
-    await mod.saveSubscription('u1', sub('https://push/1'));
-    await mod.saveSubscription('u1', sub('https://push/2'));
-    expect((await mod.removeSubscription('u1', 'https://push/1')).count).toBe(1);
+    await mod.saveSubscription('u1', sub('1'));
+    await mod.saveSubscription('u1', sub('2'));
+    expect((await mod.removeSubscription('u1', FCM + '1')).count).toBe(1);
     expect((await mod.removeSubscription('u1')).count).toBe(0);
     expect(await mod.getSubscriptions('u1')).toEqual([]);
   });
@@ -99,7 +142,7 @@ describe('webPush server module', () => {
 
     expect(result.sent).toBe(1);
     expect(mocks.store.sent).toHaveLength(1);
-    expect(mocks.store.sent[0].sub.endpoint).toBe('match-device');
+    expect(mocks.store.sent[0].sub.endpoint).toBe(FCM + 'match-device');
     const payload = JSON.parse(mocks.store.sent[0].payload);
     expect(payload.title).toBe('Exam schedule');
     expect(payload.tag).toBe('notice-cr-1');

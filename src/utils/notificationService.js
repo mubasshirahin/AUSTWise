@@ -17,8 +17,8 @@ const defaultSettings = {
   notifyNotices: false,
   channels: {
     telegram: { notices: true, classSchedule: true, classReminders: true, attendance: true, deadlines: true },
-    browser: { notices: true, classReminders: true, deadlines: true, tasks: true, messages: true, applications: true, gaming: true },
-    bell: { notices: true, deadlines: true, tasks: true, messages: true, applications: true, gaming: true },
+    browser: { notices: true, classReminders: true, deadlines: true, tasks: true, messages: true, applications: true, gaming: true, results: true },
+    bell: { notices: true, deadlines: true, tasks: true, messages: true, applications: true, gaming: true, results: true },
   },
   // Sound + vibration on device notifications (off = silent popups).
   vibrate: true,

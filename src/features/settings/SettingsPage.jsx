@@ -2000,6 +2000,7 @@ export default function SettingsPage() {
                         { label: 'New messages', key: 'messages', channels: ['browser', 'bell'] },
                         { label: 'Role application updates', key: 'applications', channels: ['browser', 'bell'] },
                         { label: 'Gaming Zone alerts', key: 'gaming', channels: ['browser', 'bell'] },
+                        { label: 'Workspace marks / result / grade posts', key: 'results', channels: ['browser', 'bell'] },
                       ].map((row) => (
                         <div className="delivery-matrix-row" key={row.key}>
                           <span className="delivery-matrix-label">{row.label}</span>

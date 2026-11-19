@@ -11,6 +11,7 @@ import {
 import './WorkspacePage.css';
 import '../daily-life/DailyMasthead.css';
 import { useAuth } from '../../context/AuthContext';
+import { alertResultPosts } from './resultPostAlerts';
 
 // ─── Google Classroom OAuth Configuration ───
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
@@ -966,6 +967,7 @@ export default function WorkspacePage() {
         return dateB.localeCompare(dateA);
       });
       setCourseMaterials(allMaterials);
+      void alertResultPosts(allMaterials, course.name).catch(() => {});
       if (materialsErrors.length > 0) {
         setMaterialsError(materialsErrors.join('; '));
       } else {

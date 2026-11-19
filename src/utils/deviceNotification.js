@@ -15,7 +15,7 @@ export const VIBRATE_PATTERN = [200, 100, 200];
 
 // Categories the server already delivers as Web Push to subscribed devices.
 // Showing them from the page too would pop (and vibrate) every alert twice.
-const SERVER_PUSHED = new Set(['notices', 'messages', 'applications', 'gaming']);
+const SERVER_PUSHED = new Set(['notices', 'messages', 'applications', 'gaming', 'results']);
 
 export function isVibrationEnabled() {
   try {

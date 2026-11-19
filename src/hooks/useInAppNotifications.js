@@ -17,6 +17,7 @@ import {
 import { loadSharedSync, loadSharedAsync } from '../utils/storageService';
 import { getAllRoleApplications } from '../utils/authStorage';
 import { onRealtimeMessage } from '../utils/liveStore';
+import { resyncPushSubscription } from '../utils/webPush';
 
 const POLL_MS = 5000;
 const CRSR_NOTICES_KEY = 'aust-cr-sr-notices';
@@ -87,6 +88,14 @@ export function useInAppNotifications(user) {
       });
     });
   }, [user?.id, user?.isGuest, isAdmin, addRoleReviewNotification]);
+
+  // Once per signed-in session, make sure the server knows this device's push
+  // subscription, so notice-board posts reach the phone even if the server
+  // lost its record (see resyncPushSubscription). Silent and idempotent.
+  useEffect(() => {
+    if (!user?.id || user?.isGuest) return;
+    void resyncPushSubscription();
+  }, [user?.id, user?.isGuest]);
 
   // Reconcile decisions made while the applicant was offline, using the
   // server's application record as the durable source of truth.

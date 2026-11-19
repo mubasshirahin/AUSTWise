@@ -34,6 +34,7 @@ import {
   pushRealtimeEvent,
   sendMessageWebPush,
 } from './webPush.mjs';
+import { sendWorkspaceResultPush } from './workspaceResultPush.mjs';
 import {
   unregisterUser,
   getUser,
@@ -165,7 +166,7 @@ import { encrypt as encryptPassword } from './passwordCrypto.mjs';
 import { createCharge, verifyPayment } from './payment.mjs';
 import { createWSServer, closeWSServer, broadcastToAll, broadcastToUsers, broadcastToUser, getPresenceMap } from './wsServer.mjs';
 import {
-  getUserStoreValue, setUserStoreValue, deleteUserStoreValue, listUserStoreKeys,
+  getUserStoreValue, setUserStoreValue, deleteUserStoreValue, listUserStoreKeys, isServerOnlyUserKey,
   getSharedStoreValue, setSharedStoreValue, deleteSharedStoreValue,
   isUserStoreDeleted, isSharedStoreDeleted, listUserStoreValuesForKey,
 } from './storeDB.mjs';
@@ -619,8 +620,8 @@ const DEFAULT_USER_SETTINGS = {
     notifyDigest: true,
     channels: {
       telegram: { notices: true, classSchedule: true, classReminders: true, attendance: true, deadlines: true },
-      browser: { notices: true, classReminders: true, deadlines: true, tasks: true, messages: true, applications: true, gaming: true },
-      bell: { notices: true, deadlines: true, tasks: true, messages: true, applications: true, gaming: true },
+      browser: { notices: true, classReminders: true, deadlines: true, tasks: true, messages: true, applications: true, gaming: true, results: true },
+      bell: { notices: true, deadlines: true, tasks: true, messages: true, applications: true, gaming: true, results: true },
     },
     // Sound + vibration on device notifications (off = silent popups).
     vibrate: true,
@@ -2612,6 +2613,24 @@ async function handleApiRequest(req, res) {
       sendJson(res, 200, result);
     } catch (error) {
       sendJson(res, 500, { success: false, error: error.message || 'Could not remove push subscription.' });
+    }
+    return;
+  }
+
+  // Workspace marks/result/grade post spotted by the user's own browser (the
+  // Classroom token never reaches us) — push it to that user's devices only.
+  if (req.url === '/api/web-push/workspace-results' && req.method === 'POST') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
+    if (!FEATURES.webPush) {
+      sendJson(res, 200, { success: false, reason: 'not_configured', sent: 0 });
+      return;
+    }
+    try {
+      const body = await readJsonBody(req);
+      sendJson(res, 200, await sendWorkspaceResultPush(auth.id, body?.items));
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Could not send the push.' });
     }
     return;
   }
@@ -4627,6 +4646,7 @@ async function handleApiRequest(req, res) {
     const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     const key = decodeURIComponent(req.url.slice('/api/store/user/'.length));
+    if (isServerOnlyUserKey(key)) { sendJson(res, 403, { success: false, error: 'This key is managed by the server.' }); return; }
     try {
       const value = await getUserStoreValue(auth.id, key, null);
       sendJson(res, 200, { success: true, key, value });
@@ -4641,6 +4661,7 @@ async function handleApiRequest(req, res) {
     const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     const key = decodeURIComponent(req.url.slice('/api/store/user/'.length));
+    if (isServerOnlyUserKey(key)) { sendJson(res, 403, { success: false, error: 'This key is managed by the server.' }); return; }
     try {
       const bodyLimit = key.startsWith('aust-qba-images-v1:')
         ? qbaAttachmentBodyBytes
@@ -4700,6 +4721,7 @@ async function handleApiRequest(req, res) {
     const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     const key = decodeURIComponent(req.url.slice('/api/store/user/'.length));
+    if (isServerOnlyUserKey(key)) { sendJson(res, 403, { success: false, error: 'This key is managed by the server.' }); return; }
     try {
       await deleteUserStoreValue(auth.id, key);
       // Notify other devices that this key was removed (not just changed) so
@@ -4717,7 +4739,7 @@ async function handleApiRequest(req, res) {
     const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     try {
-      const keys = await listUserStoreKeys(auth.id);
+      const keys = (await listUserStoreKeys(auth.id)).filter((k) => !isServerOnlyUserKey(k));
       sendJson(res, 200, { success: true, keys });
     } catch (err) {
       sendJson(res, 500, { success: false, error: err.message || 'Failed to list store keys.' });
@@ -5018,6 +5040,7 @@ async function handleApiRequest(req, res) {
       // deleted (tombstones) and keys the server already has a value for, so
       // a device that missed a live delete/reset can never resurrect it.
       for (const [key, value] of Object.entries(userEntries)) {
+        if (isServerOnlyUserKey(key)) continue;
         if (await isUserStoreDeleted(auth.id, key)) continue;
         const existing = await getUserStoreValue(auth.id, key, null);
         if (existing !== null) continue;
@@ -7080,6 +7103,7 @@ const ENDPOINT_GROUPS = [
     ['GET',  '/api/web-push/status', 'Current device push subscription status'],
     ['POST', '/api/web-push/subscribe', 'Register this device for push'],
     ['DELETE', '/api/web-push/subscribe', 'Remove this device from push'],
+    ['POST', '/api/web-push/workspace-results', 'Push a Workspace marks/result post to your devices'],
     ['POST', '/api/telegram/test', 'Send test notification (8 AM)'],
     ['POST', '/api/telegram/test-attendance', 'Send test attendance message (9 PM)'],
     ['POST', '/api/telegram/attendance-callback', 'Handle attendance button callback'],
@@ -7308,6 +7332,19 @@ const SECRET_KEYS = new Set([
   'OPENAI_API_KEY', 'GEMINI_API_KEY', 'VITE_GOOGLE_API_KEY',
 ]);
 
+// Connection strings embed a password: show host/db so the checkup is still
+// useful, but never print the password (it ended up in terminal + host logs).
+const URL_WITH_CREDENTIALS_KEYS = new Set(['DATABASE_URL']);
+function redactUrlPassword(value) {
+  try {
+    const u = new URL(value);
+    if (u.password) u.password = '***';
+    return u.toString();
+  } catch {
+    return '(set, unparseable)';
+  }
+}
+
 function envStatusIcon(key, required) {
   return process.env[key] ? '✅' : (required === false ? 'ℹ️' : '⚠️');
 }
@@ -7324,7 +7361,10 @@ function printEnvironmentCheckup() {
       const set = !!process.env[item.key];
       const icon = envStatusIcon(item.key, item.required);
       const optional = item.required === false && !set ? ' (optional)' : '';
-      const shown = set && !SECRET_KEYS.has(item.key) ? ` = ${process.env[item.key]}` : (set ? ' (set)' : '');
+      const shown = !set ? ''
+        : SECRET_KEYS.has(item.key) ? ' (set)'
+        : URL_WITH_CREDENTIALS_KEYS.has(item.key) ? ` = ${redactUrlPassword(process.env[item.key])}`
+        : ` = ${process.env[item.key]}`;
       console.log(`    ${icon}  ${item.key.padEnd(28)} ${item.desc}${optional}${shown}`);
     }
   }
@@ -7362,10 +7402,18 @@ server.listen(port, '0.0.0.0', async () => {
 
   // 3) Scheduled Telegram jobs (midnight digest, pre-class alert, attendance
   //    prompts, 9 PM reminder, auto-missed sweep, deadline alerts).
-  startTelegramScheduler();
-  // Web Push smart reminders run independently of Telegram (works even if no
-  // bot token is configured) and only when VAPID keys are present.
-  startWebPushScheduler();
+  //    Local dev talks to the production database, so a dev server that won
+  //    the scheduler lock would send real Telegram/push messages to real
+  //    users from a laptop — and even losing it costs fresh pooler
+  //    connections every minute. Dev runs them only on explicit opt-in.
+  if (isDevMode && process.env.ENABLE_DEV_SCHEDULERS !== '1') {
+    console.log('ℹ️  Telegram + Web Push schedulers off in dev (set ENABLE_DEV_SCHEDULERS=1 to run them).');
+  } else {
+    startTelegramScheduler();
+    // Web Push smart reminders run independently of Telegram (works even if no
+    // bot token is configured) and only when VAPID keys are present.
+    startWebPushScheduler();
+  }
 
   // 4) Broad endpoint directory.
   printEndpointDirectory();

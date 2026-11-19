@@ -33,6 +33,7 @@ const FeaturesPage = lazy(() => import('./pages/FeaturesPage'));
 const PricingPage = lazy(() => import('./pages/PricingPage'));
 const AboutUsPage = lazy(() => import('./pages/AboutUsPage'));
 const NotificationRunner = lazy(() => import('./components/NotificationRunner'));
+const WorkspaceResultWatcher = lazy(() => import('./components/WorkspaceResultWatcher'));
 const FloatingBackground = lazy(() => import('./components/FloatingBackground'));
 const ActiveMembersSidebar = lazy(() => import('./features/active-members/ActiveMembersSidebar'));
 const MemberProfilePage = lazy(() => import('./features/active-members/MemberProfilePage'));
@@ -251,6 +252,7 @@ function AppContent() {
       <RoutineProvider key={user?.id || 'guest'}>
         <Suspense fallback={null}>
           <NotificationRunner />
+          <WorkspaceResultWatcher />
           <FloatingBackground />
         </Suspense>
         <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />

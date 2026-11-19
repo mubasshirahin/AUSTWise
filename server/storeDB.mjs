@@ -13,6 +13,12 @@ import { readJson, writeJson } from './jsonDB.mjs';
 
 // ── JSON-file fallback (when DB is unavailable) ──────────────────────────────
 
+// Per-user keys with this prefix are written only by server code (e.g. Web
+// Push subscriptions, whose endpoints the server POSTs to). The client-facing
+// /api/store/user routes and the localStorage migration refuse them.
+export const SERVER_ONLY_USER_KEY_PREFIX = '__server:';
+export const isServerOnlyUserKey = (key) => typeof key === 'string' && key.startsWith(SERVER_ONLY_USER_KEY_PREFIX);
+
 const USER_STORE_FILE = 'userStore.json';     // { [userId]: { [key]: value } }
 const SHARED_STORE_FILE = 'sharedStore.json'; // { [key]: value }
 

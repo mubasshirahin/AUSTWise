@@ -18,16 +18,31 @@ function getPrisma() {
   return _prisma;
 }
 
+// Prisma's adapter builds its own pg Pool, separate from server/db.mjs. Left
+// unset it defaulted to 10 connections with no connect timeout, so one server
+// process could hold ~17 session-pooler slots (db.mjs 5 + Prisma 10 + locks)
+// against Supabase's ~15 — prod alone could fill it and every other client
+// (a local dev server) queued until "timeout exceeded when trying to connect".
+// Built at init time, not import time: dev.mjs pins NODE_ENV after imports.
+const prismaPool = () => ({
+  max: Number(process.env.PRISMA_POOL_MAX || 2),
+  idleTimeoutMillis: 10_000,
+  connectionTimeoutMillis: Number(
+    process.env.DB_CONNECT_TIMEOUT_MS || (process.env.NODE_ENV === 'production' ? 10000 : 2500)
+  ),
+});
+
 function pgConfig() {
   // Prefer the single DATABASE_URL (Railway injects this); fall back to the
   // split vars so the same client connects to whichever you set.
-  if (process.env.DATABASE_URL) return { connectionString: process.env.DATABASE_URL };
+  if (process.env.DATABASE_URL) return { connectionString: process.env.DATABASE_URL, ...prismaPool() };
   return {
     host: process.env.PGHOST || process.env.DB_SERVER || 'localhost',
     port: Number(process.env.PGPORT || process.env.DB_PORT || 5432),
     database: process.env.PGDATABASE || process.env.DB_DATABASE || 'AUSTWise',
     user: process.env.PGUSER || process.env.DB_USER || 'postgres',
     password: process.env.PGPASSWORD || process.env.DB_PASSWORD || '',
+    ...prismaPool(),
   };
 }
 

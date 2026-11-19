@@ -8,7 +8,7 @@ import {
   Clock, Hourglass, AlertTriangle, CalendarCheck, Info, CheckCheck, Trash2,
   Settings, LogOut, Gauge, MoonStar, Pen, PenTool, Zap,
   Building2, Type, Grid2x2, Cpu, Users, Orbit, DraftingCompass, Menu, X, LayoutGrid, PanelsTopLeft, LayoutDashboard as BentoIcon,
-  Rows3, Sparkles, Leaf, Crown, NotebookPen, Gem, WandSparkles, Coffee, Gamepad2, Cloud, Smile, Flower2 } from 'lucide-react';
+  Rows3, Sparkles, Leaf, Crown, NotebookPen, Gem, WandSparkles, Coffee, Gamepad2, Cloud, Smile, Flower2, GraduationCap } from 'lucide-react';
 import { PRO_LAYOUTS } from '../context/themeConstants';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
@@ -27,6 +27,7 @@ function getNotifIcon(iconName) {
     case 'AlertTriangle': return AlertTriangle;
     case 'CalendarCheck': case 'task': return CalendarCheck;
     case 'Clock': case 'class': return Clock;
+    case 'GraduationCap': return GraduationCap;
     default: return Info;
   }
 }

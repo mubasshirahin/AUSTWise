@@ -23,14 +23,21 @@ const CONNECT_TIMEOUT_MS = Number(
   process.env.DB_CONNECT_TIMEOUT_MS || (process.env.NODE_ENV === 'production' ? 10000 : 2500)
 );
 
+// Local dev shares the production Supabase session pooler (~15 slots total),
+// so a dev process takes a smaller, faster-released share. `--vite` is read
+// from argv because NODE_ENV is only pinned by dev.mjs after imports run.
+const IS_LOCAL_DEV = process.argv.includes('--vite') || process.env.NODE_ENV === 'development';
+const POOL_MAX = Number(process.env.PG_POOL_MAX || (IS_LOCAL_DEV ? 3 : 5));
+const POOL_IDLE_MS = IS_LOCAL_DEV ? 10000 : 30000;
+
 function poolConfig() {
   if (process.env.DATABASE_URL) {
     return {
       connectionString: process.env.DATABASE_URL,
       // Session poolers cap the total number of clients across app instances.
       // Keep each process small; deployments can tune this when their DB allows it.
-      max: Number(process.env.PG_POOL_MAX || 5),
-      idleTimeoutMillis: 30000,
+      max: POOL_MAX,
+      idleTimeoutMillis: POOL_IDLE_MS,
       connectionTimeoutMillis: CONNECT_TIMEOUT_MS,
       ssl: process.env.DATABASE_URL.includes('localhost')
         ? false
@@ -43,8 +50,8 @@ function poolConfig() {
     database: process.env.PGDATABASE || process.env.DB_DATABASE || 'AUSTWise',
     user: process.env.PGUSER || process.env.DB_USER || 'postgres',
     password: process.env.PGPASSWORD || process.env.DB_PASSWORD || '',
-    max: Number(process.env.PG_POOL_MAX || 5),
-    idleTimeoutMillis: 30000,
+    max: POOL_MAX,
+    idleTimeoutMillis: POOL_IDLE_MS,
     connectionTimeoutMillis: CONNECT_TIMEOUT_MS,
   };
 }

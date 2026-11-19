@@ -77,6 +77,54 @@ async function fetchPublicKey() {
   return data.publicKey;
 }
 
+/** POST a browser subscription to the account. The server de-dupes by endpoint. */
+async function sendSubscriptionToServer(subscription) {
+  const payload = subscription.toJSON ? subscription.toJSON() : {
+    endpoint: subscription.endpoint,
+    keys: {
+      p256dh: subscription.getKey ? btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('p256dh')))) : undefined,
+      auth: subscription.getKey ? btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('auth')))) : undefined,
+    },
+  };
+  const res = await fetch('/api/web-push/subscribe', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      subscription: {
+        endpoint: payload.endpoint,
+        keys: payload.keys,
+        addedAt: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+      },
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  return { res, data };
+}
+
+/**
+ * Re-send this browser's existing subscription to the server, silently.
+ * Devices subscribed before subscriptions were stored in the database lost
+ * their server record on a deploy while the browser still held the
+ * subscription — so notice pushes stopped with no visible sign. Never prompts,
+ * never registers a worker; a no-op unless permission is already granted and
+ * a subscription already exists.
+ */
+export async function resyncPushSubscription() {
+  if (!isPushSupported() || Notification.permission !== 'granted') return false;
+  const registration = await navigator.serviceWorker.getRegistration().catch(() => null);
+  if (!registration) return false;
+  const subscription = await registration.pushManager.getSubscription().catch(() => null);
+  if (!subscription) return false;
+  try {
+    const { res } = await sendSubscriptionToServer(subscription);
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 /** Subscribe this browser and register the subscription with the account. */
 export async function subscribeToPush() {
   if (!isPushSupported()) throw new Error('This browser does not support push notifications.');
@@ -100,28 +148,7 @@ export async function subscribeToPush() {
     throw new Error(err?.message || 'Could not subscribe this device to push.', { cause: err });
   }
 
-  const payload = subscription.toJSON ? subscription.toJSON() : {
-    endpoint: subscription.endpoint,
-    keys: {
-      p256dh: subscription.getKey ? btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('p256dh')))) : undefined,
-      auth: subscription.getKey ? btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('auth')))) : undefined,
-    },
-  };
-
-  const res = await fetch('/api/web-push/subscribe', {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      subscription: {
-        endpoint: payload.endpoint,
-        keys: payload.keys,
-        addedAt: new Date().toISOString(),
-        userAgent: navigator.userAgent,
-      },
-    }),
-  });
-  const data = await res.json().catch(() => ({}));
+  const { res, data } = await sendSubscriptionToServer(subscription);
   if (!res.ok) {
     // Undo the local subscription so the UI doesn't claim we're subscribed.
     await subscription.unsubscribe().catch(() => {});

@@ -13,8 +13,20 @@
 import { setVapidDetails, sendNotification } from 'web-push';
 import { readJson, writeJson } from './jsonDB.mjs';
 import { getUserById } from './userStore.mjs';
+import {
+  SERVER_ONLY_USER_KEY_PREFIX,
+  getUserStoreValue,
+  setUserStoreValue,
+  listUserStoreValuesForKey,
+} from './storeDB.mjs';
 
-const SUBSCRIPTIONS_FILE = 'webPushSubscriptions.json';
+// Subscriptions live in the DB-backed per-user store (Postgres, JSON fallback).
+// They used to sit in a git-ignored file on the server's disk, which Railway
+// wipes on every deploy/restart — so every device silently stopped getting
+// notice pushes after the next deploy. The `__server:` prefix keeps the key
+// off the client-facing /api/store/user endpoints.
+const SUBSCRIPTIONS_KEY = `${SERVER_ONLY_USER_KEY_PREFIX}web-push-subscriptions`;
+const LEGACY_SUBSCRIPTIONS_FILE = 'webPushSubscriptions.json';
 const PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || '';
 const PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
 const SUBJECT = process.env.VAPID_SUBJECT || 'mailto:austwise@aust.edu';
@@ -31,12 +43,33 @@ export function getVapidPublicKey() {
   return isWebPushConfigured ? PUBLIC_KEY : null;
 }
 
+// The server POSTs to whatever endpoint a client registers, so an arbitrary
+// URL would let any signed-in user aim server requests at internal hosts or
+// third parties. Accept only the browser push services (Chrome/Edge/Opera/
+// Samsung -> FCM, Firefox -> Mozilla autopush, Safari -> Apple, legacy Edge -> WNS).
+const PUSH_SERVICE_HOSTS = [
+  'fcm.googleapis.com',
+  'android.googleapis.com',
+  'push.services.mozilla.com',
+  'push.apple.com',
+  'notify.windows.com',
+];
+
+function isPushServiceEndpoint(endpoint) {
+  let url;
+  try { url = new URL(endpoint); } catch { return false; }
+  if (url.protocol !== 'https:' || url.username || url.password || url.port) return false;
+  const host = url.hostname.toLowerCase();
+  return PUSH_SERVICE_HOSTS.some((h) => host === h || host.endsWith(`.${h}`));
+}
+
 function normalizeSubscription(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const endpoint = typeof raw.endpoint === 'string' ? raw.endpoint.slice(0, 1000) : '';
   const p256dh = typeof raw.keys?.p256dh === 'string' ? raw.keys.p256dh.slice(0, 500) : '';
   const auth = typeof raw.keys?.auth === 'string' ? raw.keys.auth.slice(0, 500) : '';
   if (!endpoint || !p256dh || !auth) return null;
+  if (!isPushServiceEndpoint(endpoint)) return null;
   // Only persist what the push library needs — never trust client-supplied
   // expiry/UA fields as authority, but keep them for diagnostics.
   return {
@@ -47,49 +80,77 @@ function normalizeSubscription(raw) {
   };
 }
 
-async function readAll() {
-  const value = await readJson(SUBSCRIPTIONS_FILE, {});
-  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+// Devices subscribed while the old file store was in use: fold them into the
+// DB store once per process, then empty the file so they aren't re-imported.
+let legacyMigration = null;
+function migrateLegacyFile() {
+  if (!legacyMigration) {
+    legacyMigration = (async () => {
+      try {
+        const legacy = await readJson(LEGACY_SUBSCRIPTIONS_FILE, {});
+        if (!legacy || typeof legacy !== 'object' || Array.isArray(legacy)) return;
+        const entries = Object.entries(legacy).filter(([, list]) => Array.isArray(list) && list.length);
+        if (!entries.length) return;
+        for (const [userId, list] of entries) {
+          const current = await readUserList(userId);
+          const merged = [...current];
+          for (const raw of list) {
+            const sub = normalizeSubscription(raw);
+            if (sub && !merged.some((s) => s.endpoint === sub.endpoint)) merged.push(sub);
+          }
+          await setUserStoreValue(String(userId), SUBSCRIPTIONS_KEY, merged);
+        }
+        await writeJson(LEGACY_SUBSCRIPTIONS_FILE, {});
+      } catch (err) {
+        legacyMigration = null; // try again on the next call
+        console.warn('[web-push] legacy subscription migration failed:', err?.message || err);
+      }
+    })();
+  }
+  return legacyMigration;
 }
 
-async function writeAll(all) {
-  await writeJson(SUBSCRIPTIONS_FILE, all);
+async function readUserList(userId) {
+  const list = await getUserStoreValue(String(userId), SUBSCRIPTIONS_KEY, []);
+  return Array.isArray(list) ? list : [];
+}
+
+/** { userId: [subscription, ...] } for every user with at least one device. */
+async function readAll() {
+  await migrateLegacyFile();
+  const rows = await listUserStoreValuesForKey(SUBSCRIPTIONS_KEY);
+  const all = {};
+  for (const { userId, value } of rows) {
+    if (Array.isArray(value) && value.length) all[String(userId)] = value;
+  }
+  return all;
 }
 
 /** All user ids with at least one live push subscription (for the scheduler). */
 export async function getAllSubscriberIds() {
-  const all = await readAll();
-  return Object.keys(all).filter((id) => Array.isArray(all[id]) && all[id].length > 0);
+  return Object.keys(await readAll());
 }
 
 export async function getSubscriptions(userId) {
-  const all = await readAll();
-  const list = all[String(userId)];
-  return Array.isArray(list) ? list : [];
+  await migrateLegacyFile();
+  return readUserList(userId);
 }
 
 export async function saveSubscription(userId, raw) {
   const sub = normalizeSubscription(raw);
   if (!sub) return { success: false, error: 'Invalid push subscription.' };
-  const all = await readAll();
-  const key = String(userId);
-  const list = Array.isArray(all[key]) ? all[key] : [];
+  const list = await getSubscriptions(userId);
   const idx = list.findIndex((s) => s?.endpoint === sub.endpoint);
   if (idx >= 0) list[idx] = { ...list[idx], ...sub };
   else list.push(sub);
-  all[key] = list;
-  await writeAll(all);
+  await setUserStoreValue(String(userId), SUBSCRIPTIONS_KEY, list);
   return { success: true, count: list.length };
 }
 
 export async function removeSubscription(userId, endpoint) {
-  const all = await readAll();
-  const key = String(userId);
-  const list = Array.isArray(all[key]) ? all[key] : [];
+  const list = await getSubscriptions(userId);
   const next = endpoint ? list.filter((s) => s?.endpoint !== endpoint) : [];
-  if (next.length) all[key] = next;
-  else delete all[key];
-  await writeAll(all);
+  await setUserStoreValue(String(userId), SUBSCRIPTIONS_KEY, next);
   return { success: true, count: next.length };
 }
 
