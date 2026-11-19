@@ -142,3 +142,9 @@ test-results/
 # Runtime logs
 server/.tg_schedule_log.json
 server/*.log
+
+# QA automation
+.env.test
+e2e/.auth/
+qa-report/
+test-results/

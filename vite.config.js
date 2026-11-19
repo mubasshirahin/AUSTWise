@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  // Playwright specs live in e2e/ and run via `npm run test:e2e`, not Vitest.
+  test: { exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'] },
   plugins: [
     react(),
     VitePWA({
