@@ -391,7 +391,13 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
           </button>
 
           {notifOpen && (() => {
-            const ordered = [...notifications].reverse();
+            // Newest first by timestamp, not insertion order: items synced
+            // late (e.g. role reviews) carry older timestamps, and grouping
+            // below only merges neighbours, so an unsorted list produced two
+            // "Yesterday" groups (duplicate React keys). The stable sort keeps
+            // newest-inserted first among equal/missing timestamps.
+            const ordered = [...notifications].reverse()
+              .sort((a, b) => (Number(b.timestamp) || 0) - (Number(a.timestamp) || 0));
             const filtered = notifFilter === 'unread' ? ordered.filter((n) => !n.read) : ordered;
             const shown = filtered.slice(0, 50);
             const groups = [];
