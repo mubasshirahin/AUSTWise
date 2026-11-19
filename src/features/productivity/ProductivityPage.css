@@ -240,10 +240,82 @@
 }
 
 @media (max-width: 640px) {
-  .pr-hero-content {
-    padding: var(--sp-4) var(--sp-3);
-  }
   .pr-content-card {
     padding: var(--sp-4);
   }
 }
+
+/* ═══ skill-style pass ═══════════════════════════════════════════
+   Hub + every tab use the shared dl-head masthead (§2). Surfaces flat:
+   no glows, shines or shimmer inside the Productivity hub. */
+.productivity-page { gap: 16px; container: pr / inline-size; }
+.productivity-page > .dl-head { margin-bottom: 0; }
+.productivity-page .dl-head-name { font-size: 1.3rem; }
+.pr-content-card .dl-head { margin-bottom: 16px; }
+.pr-hub-head .dl-head-stat dd { white-space: nowrap; }
+
+/* Content card holds tab pages — tab pages bring their own masthead frame */
+.pr-content-card { padding: 18px; box-shadow: var(--shadow-sm); min-height: 0; }
+.pr-content-card .cheatsheets-container {
+  background: transparent !important; border: 0 !important;
+  box-shadow: none !important; padding: 0 !important;
+}
+
+/* Flatten decorative effects */
+.productivity-page .sr-zen-btn::before { display: none; }
+.productivity-page .sr-btn-primary,
+.productivity-page .sr-btn-primary:hover {
+  box-shadow: none; filter: none; transform: none;
+}
+.productivity-page .glass-card-static.schedule-widget { box-shadow: var(--shadow-sm); }
+
+/* Zen button in the masthead action slot: compact pill */
+.pr-head .dl-head-actions .sr-zen-btn {
+  height: 32px; padding: 0 12px; font-size: 12px; gap: 6px;
+  border-radius: var(--radius-full);
+}
+
+/* Tabs bar: one row, scrolls sideways on phone (§4, 4+ sections) */
+.pr-tabs-card { padding: 6px; }
+.pr-tabs-row { min-width: 0; }
+
+@container pr (max-width: 560px) {
+  .pr-content-card { padding: 10px; border-radius: var(--radius-md); }
+  .pr-content-card .dl-head { margin-bottom: 10px; }
+  .pr-tabs-row .glider-tabs-wrap {
+    overflow-x: auto; overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin; scrollbar-color: var(--border-primary) transparent;
+  }
+  .pr-tabs-row .glider-tabs-wrap::-webkit-scrollbar { height: 3px; }
+  .pr-tabs-row .glider-tabs-wrap::-webkit-scrollbar-thumb { background: var(--border-primary); border-radius: 3px; }
+}
+
+/* Compact masthead on phones (§2 ≤640 / ≤400) */
+@media (max-width: 640px) {
+  .productivity-page { gap: 8px; }
+  .productivity-page .dl-head { padding: 9px 10px; gap: 10px; }
+  .productivity-page .dl-head-tile { width: 34px; height: 34px; }
+  .productivity-page .dl-head-name { font-size: 1rem; }
+  .productivity-page .dl-head-stats {
+    display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); padding-top: 10px;
+  }
+  .productivity-page .dl-head-stat { position: relative; padding: 2px 4px; }
+  .productivity-page .dl-head-stat + .dl-head-stat { border-left: 0; }
+  .productivity-page .dl-head-stat + .dl-head-stat::after {
+    content: ''; position: absolute; left: 0; top: 50%; height: 30px;
+    transform: translateY(-50%); width: 1px; background: var(--border-primary);
+  }
+  .productivity-page .dl-head-stat dd {
+    font-size: 1rem; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .productivity-page .dl-head.has-actions { grid-template-columns: minmax(0, 1fr) auto; }
+  .productivity-page .dl-head.has-actions .dl-head-actions { grid-column: 2; grid-row: 1; }
+  .pr-head .dl-head-actions .sr-zen-btn { height: 28px; padding: 0 10px; font-size: 11px; }
+}
+@media (max-width: 400px) {
+  .productivity-page .dl-head { padding: 8px; }
+  .productivity-page .dl-head-tile { width: 32px; height: 32px; }
+  .pr-head .dl-head-actions .sr-zen-btn span { display: none; }
+}
+

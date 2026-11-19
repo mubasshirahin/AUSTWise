@@ -11,6 +11,7 @@ import CheatsheetsPage from '../vault/CheatsheetsPage';
 import CPHubPage from '../cp-hub/CPHubPage';
 import StudyRoomPage from '../study-room/StudyRoomPage';
 import WorkspacePage from '../workspace/WorkspacePage';
+import '../daily-life/DailyMasthead.css';
 import './ProductivityPage.css';
 
 // All tools share the single brand accent (gold) — no per-category color rotation.
@@ -49,23 +50,19 @@ export default function ProductivityPage() {
     <div className="productivity-page animate-fadeIn">
 
       {/* ── 1. Hero box (own card) ── */}
-      {isAdmin ? <SidebarPageAccessHeader pageKey="/productivity" /> : <header className="pr-hero">
-        <div className="pr-hero-content">
-          <div className="pr-hero-eyebrow">
-            <span className="pr-hero-period-icon">
-              <Zap size={16} />
-            </span>
-            <span className="pr-hero-date-label">
-              Tools &amp; Focus
-            </span>
+      {isAdmin ? <SidebarPageAccessHeader pageKey="/productivity" /> : <header className="dl-head pr-hub-head">
+        <div className="dl-head-title">
+          <div className="dl-head-tile" aria-hidden="true"><Zap size={20} strokeWidth={2.1} /></div>
+          <div className="dl-head-text">
+            <span className="dl-head-overline">Tools &amp; Focus</span>
+            <h1 className="dl-head-name">Productivity</h1>
+            <span className="dl-head-subtitle">Study room, cheat sheets, CP platforms and classroom tools.</span>
           </div>
-          <h1 className="pr-hero-title">
-            Productivit<span className="pr-hero-name">y</span>
-          </h1>
-          <p className="pr-hero-subtitle">
-            Study room, cheat sheets, CP platforms, classroom &amp; CV tools.
-          </p>
         </div>
+        <dl className="dl-head-stats">
+          <div className="dl-head-stat"><dt>Tools</dt><dd>{TABS.length}</dd></div>
+          <div className="dl-head-stat"><dt>Open</dt><dd>{TABS.find((t) => t.id === activeTab)?.label || '—'}</dd></div>
+        </dl>
       </header>}
 
       {/* ── 2. Glider tabs bar (own card) ── */}
