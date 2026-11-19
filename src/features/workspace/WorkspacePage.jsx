@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
-  ExternalLink, BookOpen, Clock, ChevronRight,
-  LogIn, Loader2, CheckCircle, AlertCircle, FileText,
-  RefreshCw, X, Plus,
+  ExternalLink, BookOpen, Clock, ChevronRight, ArrowLeft,
+  LogIn, Loader2, CheckCircle, AlertCircle, AlertTriangle, FileText,
+  RefreshCw, X, Plus, Search, MoreVertical, Trash2,
   Eye, EyeOff, Settings, CheckSquare, Square,
-  Users, Mail, Award,
+  Users, Mail, Award, CalendarClock, TrendingUp, GraduationCap, Layers,
   File, Image, Video, Link, Clipboard, Megaphone,
 } from 'lucide-react';
 import './WorkspacePage.css';
-import '../../components/PageHero.css';
+import '../daily-life/DailyMasthead.css';
 
 // ─── Google Classroom OAuth Configuration ───
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
@@ -26,38 +27,78 @@ const SCOPES = [
 const API_BASE = 'https://classroom.googleapis.com/v1';
 const ACCOUNTS_KEY = 'workspace_accounts';
 
-// ─── Helpers ───
-function formatDate(dateStr) {
-  if (!dateStr) return 'No due date';
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diff = d - now;
-  const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-  const formatted = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  if (days < 0) return `Overdue (${formatted})`;
-  if (days === 0) return `Due today (${formatted})`;
-  if (days === 1) return `Due tomorrow (${formatted})`;
-  if (days <= 7) return `Due in ${days} days (${formatted})`;
-  return formatted;
+// ─── Overview (cross-course deadlines) ───
+const OVERVIEW_KEY = 'workspace_overview';
+const OVERVIEW_TTL = 10 * 60 * 1000;
+const DAY = 24 * 60 * 60 * 1000;
+
+function loadOverview() {
+  try { return JSON.parse(localStorage.getItem(OVERVIEW_KEY)) || {}; } catch { return {}; }
+}
+function saveOverview(overview) {
+  try { localStorage.setItem(OVERVIEW_KEY, JSON.stringify(overview)); } catch {}
 }
 
-function getStatusColor(status) {
-  // Semantic only: green for completed work, amber for pending, muted otherwise.
-  switch (status) {
-    case 'TURNED_IN': return 'var(--accent-emerald)';
-    case 'RETURNED': return 'var(--accent-amber)';
-    case 'NEW': return 'var(--accent-amber)';
-    default: return 'var(--text-secondary)';
-  }
+// Classroom due dates/times are UTC. No dueTime = end of that day.
+function dueOf(cw) {
+  if (!cw?.dueDate) return null;
+  const { year, month, day } = cw.dueDate;
+  const h = cw.dueTime ? (cw.dueTime.hours || 0) : 23;
+  const m = cw.dueTime ? (cw.dueTime.minutes || 0) : 59;
+  return Date.UTC(year, month - 1, day, h, m);
 }
 
-function getStatusLabel(status) {
-  switch (status) {
-    case 'TURNED_IN': return 'Turned In';
-    case 'RETURNED': return 'Returned';
-    case 'NEW': return 'Pending';
-    default: return status || 'Unknown';
-  }
+function compactWork(cw) {
+  return {
+    id: cw.id,
+    title: cw.title || 'Untitled',
+    due: dueOf(cw),
+    state: cw.submissionState || 'NEW',
+    maxPoints: cw.maxPoints || null,
+    link: cw.alternateLink || null,
+  };
+}
+
+// 'done' | 'returned' | 'missing' | 'assigned' — Classroom's own words
+function workState(item, now) {
+  if (item.state === 'TURNED_IN') return 'done';
+  if (item.state === 'RETURNED') return 'returned';
+  if (item.due && item.due < now) return 'missing';
+  return 'assigned';
+}
+const STATE_LABEL = { done: 'Turned in', returned: 'Returned', missing: 'Missing', assigned: 'Assigned' };
+const isFinished = (st) => st === 'done' || st === 'returned';
+
+function relDue(due, now) {
+  if (!due) return 'No due date';
+  const today = new Date(now); today.setHours(0, 0, 0, 0);
+  const d = new Date(due);
+  const dueDay = new Date(due); dueDay.setHours(0, 0, 0, 0);
+  const days = Math.round((dueDay - today) / DAY);
+  if (days < -1) return `${-days}d late`;
+  if (days === -1) return 'Yesterday';
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Tomorrow';
+  if (days < 7) return d.toLocaleDateString('en-US', { weekday: 'short' });
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function fullDue(due) {
+  if (!due) return '';
+  return new Date(due).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+function dateParts(due) {
+  if (!due) return { day: '–', mon: 'Any' };
+  const d = new Date(due);
+  return { day: d.getDate(), mon: d.toLocaleDateString('en-US', { month: 'short' }) };
+}
+
+function courseInitials(name) {
+  const code = (name || '').match(/^\s*([A-Za-z]{2,4})(?=[\s\d\-:_.]|$)/);
+  if (code) return code[1].toUpperCase();
+  const parts = (name || '').replace(/[^\p{L}\p{N}\s]/gu, ' ').trim().split(/\s+/);
+  return ((parts[0]?.[0] || '?') + (parts[1]?.[0] || '')).toUpperCase();
 }
 
 async function fetchClassroom(endpoint, token) {
@@ -71,6 +112,17 @@ async function fetchClassroom(endpoint, token) {
     throw new Error(`Google Classroom API returned ${res.status}: ${detail}`.trim());
   }
   return res.json();
+}
+
+// Coursework + this student's submission states in 2 parallel calls.
+async function fetchCourseWorkWithState(courseId, token) {
+  const [data, subData] = await Promise.all([
+    fetchClassroom(`/courses/${courseId}/courseWork?pageSize=50&orderBy=dueDate`, token),
+    fetchClassroom(`/courses/${courseId}/courseWork/-/studentSubmissions?pageSize=100`, token)
+      .catch(() => ({ studentSubmissions: [] })),
+  ]);
+  const stateById = new Map((subData.studentSubmissions || []).map(sub => [sub.courseWorkId, sub.state]));
+  return (data.courseWork || []).map(cw => ({ ...cw, submissionState: stateById.get(cw.id) || 'NEW' }));
 }
 
 // ─── Material type helpers ───
@@ -111,11 +163,6 @@ function getMaterialTypeLabel(materials) {
   return [...new Set(labels)].join(', ');
 }
 
-function getMaterialColor(_materials) {
-  // Material type is conveyed by the icon + label, not color — all use the brand accent.
-  return 'var(--accent-amber)';
-}
-
 function getMaterialLink(materials) {
   if (!materials || materials.length === 0) return null;
   const mat = materials[0];
@@ -136,9 +183,41 @@ function getMaterialTitle(materials) {
   return 'Untitled';
 }
 
-function generateAvatarColor(_email) {
-  // Account identity is shown via initials — avatars use the brand accent consistently.
-  return 'var(--accent-amber)';
+// ─── Shared overlay (skill-style §7: portal on <body>, day-modal look) ───
+function WsModal({ title, icon: Icon, onClose, children, wide = false }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return createPortal(
+    <div className="modal-overlay ws-overlay" onClick={onClose}>
+      <div
+        className={`modal ws-modal${wide ? ' is-wide' : ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="ws-modal-head">
+          <span className="ws-modal-title">{Icon && <Icon size={13} />}<span>{title}</span></span>
+          <button type="button" className="ws-modal-close" aria-label="Close" onClick={onClose}><X size={12} /></button>
+        </div>
+        {children}
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function WsEmpty({ icon: Icon, hint, action, onAction, tone }) {
+  return (
+    <div className={`ws-empty${tone ? ` is-${tone}` : ''}`}>
+      <span className="ws-empty-icon"><Icon size={16} /></span>
+      <p className="ws-empty-hint">{hint}</p>
+      {action && <button type="button" className="ws-empty-action" onClick={onAction}>{action}</button>}
+    </div>
+  );
 }
 
 // ─── Load accounts from localStorage (with cleanups) ───
@@ -214,6 +293,23 @@ export default function WorkspacePage() {
   const [pendingAuth, setPendingAuth] = useState(null);
   const [selectedMaterial, setSelectedMaterial] = useState(null);
   const [needsReauth, setNeedsReauth] = useState(false);
+  const [overview, setOverview] = useState(loadOverview);
+  const [loadingOverview, setLoadingOverview] = useState(false);
+  const [courseFilter, setCourseFilter] = useState('all');
+  const [courseQuery, setCourseQuery] = useState('');
+  const [railTab, setRailTab] = useState('next');
+  const [streamTab, setStreamTab] = useState('all');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+  // Clock for relative due labels (Today / 2d late); ticks every minute.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60 * 1000);
+    return () => clearInterval(t);
+  }, []);
+  const accountsRef = useRef(accounts);
+  const overviewRef = useRef(overview);
+  const overviewBusyRef = useRef(false);
   const gsiInitialized = useRef(false);
   const isRefreshFlowRef = useRef(false);
   const findAccountRef = useRef(null);
@@ -346,11 +442,6 @@ export default function WorkspacePage() {
     return () => clearInterval(interval);
   }, [isLoaded, accounts.length]);
 
-  // ─── Derived: all unique courses from all accounts (only selected ones) ───
-  const visibleCourses = accounts.flatMap(acc =>
-    (acc.courses || []).filter(c => acc.selectedCourseIds?.includes(c.id))
-  );
-
   // ─── Derived: all accounts with their counts ───
   const accountSummary = accounts.map(acc => ({
     ...acc,
@@ -359,7 +450,57 @@ export default function WorkspacePage() {
   }));
 
   // ─── Persist accounts whenever they change ───
-  useEffect(() => { saveAccounts(accounts); }, [accounts]);
+  useEffect(() => { saveAccounts(accounts); accountsRef.current = accounts; }, [accounts]);
+  useEffect(() => { saveOverview(overview); overviewRef.current = overview; }, [overview]);
+
+  // ─── Cross-course overview: coursework + states for every visible course.
+  // Uses only still-valid tokens (never opens a popup); cached for 10 min.
+  const refreshOverview = useCallback(async ({ force = false } = {}) => {
+    if (overviewBusyRef.current) return;
+    const now = Date.now();
+    const jobs = [];
+    for (const acc of accountsRef.current) {
+      if (!acc.accessToken || !acc.expiresAt || now >= acc.expiresAt - 300000) continue;
+      for (const c of acc.courses || []) {
+        if (!(acc.selectedCourseIds || []).includes(c.id)) continue;
+        const cached = overviewRef.current[c.id];
+        if (!force && cached && now - cached.fetchedAt < OVERVIEW_TTL) continue;
+        jobs.push({ token: acc.accessToken, courseId: c.id });
+      }
+    }
+    if (jobs.length === 0) return;
+    overviewBusyRef.current = true;
+    setLoadingOverview(true);
+    const results = {};
+    for (let i = 0; i < jobs.length; i += 4) {
+      await Promise.all(jobs.slice(i, i + 4).map(async ({ token, courseId }) => {
+        try {
+          const list = await fetchCourseWorkWithState(courseId, token);
+          results[courseId] = { fetchedAt: Date.now(), items: list.map(compactWork) };
+        } catch (err) {
+          console.warn('[Workspace] overview fetch failed for course', courseId, err.message);
+        }
+      }));
+    }
+    if (Object.keys(results).length) setOverview(prev => ({ ...prev, ...results }));
+    overviewBusyRef.current = false;
+    setLoadingOverview(false);
+  }, []);
+
+  const overviewKey = accounts
+    .map(a => `${a.accountId}:${a.expiresAt || 0}:${(a.selectedCourseIds || []).join(',')}`)
+    .join('|');
+  useEffect(() => { refreshOverview(); }, [overviewKey, refreshOverview]);
+
+  // ─── ⋮ menu: close on outside click / Escape ───
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); };
+    const onKey = (e) => { if (e.key === 'Escape') setMenuOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
+  }, [menuOpen]);
 
   // ─── Load GIS library ───
   useEffect(() => {
@@ -425,6 +566,7 @@ export default function WorkspacePage() {
   useEffect(() => {
     if (!pendingAuth) return;
     const { token, scopes, expiresIn } = pendingAuth;
+    const expiresAt = Date.now() + (expiresIn || 3600) * 1000;
     setPendingAuth(null);
 
     (async () => {
@@ -582,7 +724,7 @@ export default function WorkspacePage() {
     // Get a valid token — refresh if expired
     const token = await getValidToken(account);
     if (!token) {
-      setError('Session expired. Please re-authorize this account by clicking the red avatar.');
+      setError('Session expired. Use Reconnect in the Accounts card to sign in again.');
       setLoadingCourses(false);
       return;
     }
@@ -612,16 +754,9 @@ export default function WorkspacePage() {
   // ─── Refresh all accounts ───
   const handleRefreshAll = useCallback(() => {
     if (tokenClient && isAuthorizing) return;
-    accounts.forEach(acc => refreshAccount(acc.accountId));
-  }, [accounts, refreshAccount, tokenClient, isAuthorizing]);
-
-  // ─── Close material preview modal on Escape key ───
-  useEffect(() => {
-    if (!selectedMaterial) return;
-    const handler = (e) => { if (e.key === 'Escape') setSelectedMaterial(null); };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [selectedMaterial]);
+    Promise.all(accounts.map(acc => refreshAccount(acc.accountId)))
+      .then(() => refreshOverview({ force: true }));
+  }, [accounts, refreshAccount, refreshOverview, tokenClient, isAuthorizing]);
 
   // ─── Remove an account (by accountId or email) ───
   const removeAccount = useCallback((id) => {
@@ -639,7 +774,9 @@ export default function WorkspacePage() {
   // ─── Reset all workspace data ───
   const handleResetAll = useCallback(() => {
     localStorage.removeItem(ACCOUNTS_KEY);
+    localStorage.removeItem(OVERVIEW_KEY);
     setAccounts([]);
+    setOverview({});
     setConfirmResetAll(false);
     setSelectedCourse(null);
     setCoursework([]);
@@ -722,25 +859,17 @@ export default function WorkspacePage() {
       return;
     }
 
-    try {
-      const data = await fetchClassroom(`/courses/${course.id}/courseWork?pageSize=50&orderBy=dueDate`, token);
-      const items = data.courseWork || [];
-      const itemsWithStatus = await Promise.all(
-        items.map(async (cw) => {
-          try {
-            const subData = await fetchClassroom(
-              `/courses/${course.id}/courseWork/${cw.id}/studentSubmissions?states=NEW,TURNED_IN,RETURNED`,
-              token,
-            );
-            const subs = subData.studentSubmissions || [];
-            const latestState = subs.length > 0 ? subs[0].state : 'NEW';
-            return { ...cw, submissionState: latestState };
-          } catch { return { ...cw, submissionState: 'NEW' }; }
-        })
-      );
-      setCoursework(itemsWithStatus);
-    } catch { setCoursework([]); }
-    setLoadingCoursework(false);
+    // Coursework + all of this student's submissions in 2 parallel calls
+    // (was 1 + N sequential-ish calls), and materials start at the same time.
+    const courseworkTask = (async () => {
+      try {
+        const list = await fetchCourseWorkWithState(course.id, token);
+        setCoursework(list);
+        // Opening a course also refreshes its row in the overview
+        setOverview(prev => ({ ...prev, [course.id]: { fetchedAt: Date.now(), items: list.map(compactWork) } }));
+      } catch { setCoursework([]); }
+      setLoadingCoursework(false);
+    })();
 
     // Fetch materials & announcements with proper error logging
     // Token was already validated by getValidToken above
@@ -778,6 +907,7 @@ export default function WorkspacePage() {
       setMaterialsError(err.message || 'Unknown error fetching materials');
     }
     setLoadingMaterials(false);
+    await courseworkTask;
   }, [accounts, isManaging, toggleCourseSelection, getValidToken]);
 
   // ─── Auto-retry loading course data after re-auth completes ───
@@ -801,744 +931,789 @@ export default function WorkspacePage() {
 
   const needsConfig = GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
 
+  // ─── Derived: per-course stats + cross-course work list ───
+  const multiAccount = accounts.length > 1;
+  const courseEntries = accounts.flatMap(acc =>
+    (acc.courses || [])
+      .filter(c => (acc.selectedCourseIds || []).includes(c.id))
+      .map(course => ({ course, acc }))
+  );
+  const courseStats = new Map();
+  const allWork = [];
+  for (const { course, acc } of courseEntries) {
+    const ov = overview[course.id];
+    const s = { loaded: !!ov, total: 0, done: 0, missing: 0, assigned: 0, dueWeek: 0, next: null };
+    for (const it of ov?.items || []) {
+      const st = workState(it, now);
+      s.total++;
+      if (isFinished(st)) s.done++;
+      else if (st === 'missing') s.missing++;
+      else {
+        s.assigned++;
+        if (it.due && it.due <= now + 7 * DAY) s.dueWeek++;
+        if (it.due && (!s.next || it.due < s.next.due)) s.next = it;
+      }
+      allWork.push({ ...it, st, course, acc });
+    }
+    courseStats.set(course.id, s);
+  }
+  const hasOverview = courseEntries.some(e => overview[e.course.id]);
+  const upNext = allWork
+    .filter(w => w.st === 'assigned')
+    .sort((a, b) => (a.due ?? Infinity) - (b.due ?? Infinity));
+  const missingWork = allWork.filter(w => w.st === 'missing').sort((a, b) => b.due - a.due);
+  const doneCount = allWork.filter(w => isFinished(w.st)).length;
+  const dueWeekCount = upNext.filter(w => w.due && w.due <= now + 7 * DAY).length;
+  const donePct = allWork.length ? Math.round((doneCount / allWork.length) * 100) : 0;
+  const noDueCount = upNext.filter(w => !w.due).length;
+
+  const query = courseQuery.trim().toLowerCase();
+  const filteredEntries = courseEntries.filter(({ course }) => {
+    const s = courseStats.get(course.id);
+    if (courseFilter === 'due' && !(s?.dueWeek > 0)) return false;
+    if (courseFilter === 'missing' && !(s?.missing > 0)) return false;
+    if (query && !`${course.name} ${course.section || ''}`.toLowerCase().includes(query)) return false;
+    return true;
+  });
+  const courseCountFor = (key) => courseEntries.filter(({ course }) => {
+    const s = courseStats.get(course.id);
+    return key === 'due' ? s?.dueWeek > 0 : s?.missing > 0;
+  }).length;
+  const totalCourses = accounts.reduce((sum, a) => sum + (a.courses || []).length, 0);
+  const anyLimited = accounts.some(acc => !hasMaterialsAccess(acc));
+  const anyExpired = accounts.some(acc => isTokenExpired(acc));
+
+  const openCourse = (course) => {
+    setStreamTab('all');
+    handleCourseClick(course);
+  };
+
+  const startReconnect = () => {
+    if (!tokenClient) return;
+    setNeedsReauth(false);
+    setError(null);
+    setIsAuthorizing(true);
+    tokenClient.requestAccessToken({ prompt: 'consent' });
+  };
+
+  // ─── Pieces ───
+  const renderDueRow = (w) => {
+    const { day, mon } = dateParts(w.due);
+    const tone = w.st === 'missing' ? 'rose' : (w.due && w.due - now < 2 * DAY ? 'amber' : 'muted');
+    return (
+      <li key={`${w.course.id}-${w.id}`} className="ws-due-row">
+        <button type="button" className="ws-due-main" onClick={() => openCourse(w.course)}>
+          <span className="ws-date" aria-hidden="true">
+            <span className="ws-date-day">{day}</span>
+            <span className="ws-date-mon">{mon}</span>
+          </span>
+          <span className="ws-due-body">
+            <span className="ws-due-title">{w.title}</span>
+            <span className="ws-due-course">{w.course.name}</span>
+          </span>
+          <span className={`ws-chip is-${tone}`}>{relDue(w.due, now)}</span>
+        </button>
+        {w.link && (
+          <a className="ws-icon-link" href={w.link} target="_blank" rel="noopener noreferrer" aria-label={`Open “${w.title}” in Classroom`} title="Open in Classroom">
+            <ExternalLink size={12} />
+          </a>
+        )}
+      </li>
+    );
+  };
+
+  const renderCourseCard = ({ course, acc }) => {
+    const s = courseStats.get(course.id);
+    const hasNew = course.updateTime && course.lastViewTime
+      ? new Date(course.updateTime).getTime() > course.lastViewTime
+      : false;
+    const pct = s?.total ? Math.round((s.done / s.total) * 100) : 0;
+    return (
+      <button
+        type="button"
+        key={`${acc.accountId}-${course.id}`}
+        className="ws-course"
+        onClick={() => openCourse(course)}
+      >
+        <span className="ws-course-top">
+          <span className="ws-course-tile" aria-hidden="true">{courseInitials(course.name)}</span>
+          <span className="ws-course-head">
+            <span className="ws-course-name" title={course.name}>{course.name}</span>
+            <span className="ws-course-section">{course.section || course.descriptionHeading || 'Google Classroom'}</span>
+          </span>
+          {hasNew && <span className="ws-new-dot" title="New activity" aria-label="New activity" />}
+        </span>
+        {multiAccount && acc.email && (
+          <span className="ws-course-acc"><Mail size={10} /><span>{acc.email}</span></span>
+        )}
+        {s?.loaded ? (
+          <span className="ws-course-foot">
+            <span className="ws-bar" aria-hidden="true"><span style={{ width: `${pct}%` }} /></span>
+            <span className="ws-course-foot-row">
+              <span className="ws-course-counts">
+                {s.missing > 0 && <span className="is-rose">{s.missing} missing</span>}
+                {s.assigned > 0 && <span>{s.assigned} assigned</span>}
+                {s.missing === 0 && s.assigned === 0 && <span>{s.total ? 'All caught up' : 'No classwork yet'}</span>}
+              </span>
+              {s.next && <span className="ws-course-next"><Clock size={10} />{relDue(s.next.due, now)}</span>}
+            </span>
+          </span>
+        ) : (
+          <span className="ws-course-foot is-pending">
+            <span className="ws-course-foot-row">
+              <span className="ws-course-counts"><span>{loadingOverview ? 'Syncing classwork…' : 'Open to load classwork'}</span></span>
+              <ChevronRight size={13} />
+            </span>
+          </span>
+        )}
+      </button>
+    );
+  };
+
   return (
-    <div className="workspace-page animate-fadeIn">
-      {/* Masthead */}
-      <div className="schedule-masthead">
-        <div className="schedule-title-block">
-          <div className="schedule-icon-tile">
-            <ExternalLink size={20} strokeWidth={2.2} />
-          </div>
-          <div>
-            <span className="schedule-overline">Productivity</span>
-            <div className="schedule-title">Workspace</div>
-            <span className="schedule-subtitle">Connect multiple Google Classroom accounts and choose which courses to track.</span>
+    <div className="ws-widget workspace-page animate-fadeIn">
+      {/* ─── Masthead ─── */}
+      <header className={`dl-head pr-head${accounts.length > 0 ? ' has-actions' : ''}`}>
+        <div className="dl-head-title">
+          <div className="dl-head-tile" aria-hidden="true"><GraduationCap size={20} strokeWidth={2.1} /></div>
+          <div className="dl-head-text">
+            <span className="dl-head-overline">Productivity</span>
+            <h2 className="dl-head-name">Workspace</h2>
+            <span className="dl-head-subtitle">Every Google Classroom account, course and deadline in one place.</span>
           </div>
         </div>
-        <div className="schedule-masthead-center" />
-      </div>
-
-      <div className="schedule-dotted-divider" style={{ marginTop: 0 }} />
-
-      {/* Quick Stats Row */}
-      {accounts.length > 0 && (
-        <div className="workspace-stats-row animate-fadeInUp" style={{ animationDelay: '0.25s' }}>
-          <div className="workspace-quick-stat-card">
-            <div className="workspace-quick-stat-shine" aria-hidden="true" />
-            <div className="workspace-quick-stat-icon" style={{ background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)' }}>
-              <Users size={18} />
+        <dl className="dl-head-stats">
+          <div className="dl-head-stat"><dt>Due 7d</dt><dd>{hasOverview ? dueWeekCount : '–'}</dd></div>
+          <div className={`dl-head-stat${missingWork.length > 0 ? ' is-alert' : ''}`}><dt>Missing</dt><dd>{hasOverview ? missingWork.length : '–'}</dd></div>
+          <div className="dl-head-stat"><dt>Done</dt><dd>{hasOverview && allWork.length ? `${donePct}%` : '–'}</dd></div>
+          <div className="dl-head-stat"><dt>Courses</dt><dd>{courseEntries.length}</dd></div>
+        </dl>
+        {accounts.length > 0 && (
+          <div className="dl-head-actions">
+            <div className="ws-menu" ref={menuRef}>
+              <button
+                type="button"
+                className="dl-head-menu-btn"
+                aria-label="Workspace options"
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                onClick={() => setMenuOpen(v => !v)}
+              >
+                <MoreVertical size={17} />
+              </button>
+              {menuOpen && (
+                <div className="ws-menu-list" role="menu">
+                  <button type="button" role="menuitem" className="ws-menu-item" disabled={loadingCourses} onClick={() => { setMenuOpen(false); handleRefreshAll(); }}>
+                    <RefreshCw size={14} /> Refresh everything
+                  </button>
+                  <button type="button" role="menuitem" className="ws-menu-item" onClick={() => { setMenuOpen(false); handleBack(); setIsManaging(true); setCourseFilter('all'); }}>
+                    <Settings size={14} /> Choose courses
+                  </button>
+                  <button type="button" role="menuitem" className="ws-menu-item" disabled={!tokenClient || isAuthorizing} onClick={() => { setMenuOpen(false); handleConnect(); }}>
+                    <Plus size={14} /> Add account
+                  </button>
+                  <div className="ws-menu-sep" />
+                  <button type="button" role="menuitem" className="ws-menu-item is-danger" onClick={() => { setMenuOpen(false); setConfirmResetAll(true); }}>
+                    <Trash2 size={14} /> Reset workspace
+                  </button>
+                </div>
+              )}
             </div>
-            <div className="workspace-quick-stat-body">
-              <span className="workspace-quick-stat-value" style={{ color: 'var(--accent-amber)' }}>{accounts.length}</span>
-              <span className="workspace-quick-stat-label">Connected Accounts</span>
-            </div>
-            <div className="workspace-quick-stat-bar" style={{ background: 'var(--accent-amber)' }} aria-hidden="true" />
           </div>
-          <div className="workspace-quick-stat-card">
-            <div className="workspace-quick-stat-shine" aria-hidden="true" />
-            <div className="workspace-quick-stat-icon" style={{ background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)' }}>
-              <BookOpen size={18} />
-            </div>
-            <div className="workspace-quick-stat-body">
-              <span className="workspace-quick-stat-value" style={{ color: 'var(--accent-amber)' }}>{visibleCourses.length}</span>
-              <span className="workspace-quick-stat-label">Visible Courses</span>
-            </div>
-            <div className="workspace-quick-stat-bar" style={{ background: 'var(--accent-amber)' }} aria-hidden="true" />
-          </div>
-          <div className="workspace-quick-stat-card">
-            <div className="workspace-quick-stat-shine" aria-hidden="true" />
-            <div className="workspace-quick-stat-icon" style={{ background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)' }}>
-              <ExternalLink size={18} />
-            </div>
-            <div className="workspace-quick-stat-body">
-              <span className="workspace-quick-stat-value" style={{ color: 'var(--accent-amber)' }}>{accounts.reduce((sum, a) => sum + (a.courses || []).length, 0)}</span>
-              <span className="workspace-quick-stat-label">Total Courses</span>
-            </div>
-            <div className="workspace-quick-stat-bar" style={{ background: 'var(--accent-amber)' }} aria-hidden="true" />
-          </div>
-        </div>
-      )}
+        )}
+      </header>
 
+      {/* ─── Notices ─── */}
       {needsConfig && (
-        <div className="workspace-config-warning">
-          <AlertCircle size={18} />
-          <div>
-            <strong>Google Classroom API not configured.</strong>
-            <p>Set <code>VITE_GOOGLE_CLIENT_ID</code> in <code>.env</code>.</p>
+        <div className="ws-notice is-rose" role="alert">
+          <AlertCircle size={15} />
+          <div className="ws-notice-body">
+            <strong>Google Classroom isn’t configured.</strong>
+            <span>Set <code>VITE_GOOGLE_CLIENT_ID</code> in <code>.env</code>.</span>
           </div>
         </div>
       )}
 
-      {/* ─── Account Bar ─── */}
-      {accounts.length > 0 && (
-        <div className="workspace-account-bar">
-          <div className="workspace-account-avatars">
-            {accountSummary.map((acc) => (
-              <div key={acc.accountId} className="workspace-account-chip">
-                <div
-                  className="workspace-account-avatar"
-                  style={{
-                    background: !hasMaterialsAccess(acc)
-                      ? 'var(--accent-rose)'
-                      : isTokenExpired(acc)
-                        ? 'var(--accent-amber)'
-                        : generateAvatarColor(acc.email || acc.accountId),
-                    boxShadow: !hasMaterialsAccess(acc)
-                      ? '0 0 0 2px var(--accent-rose)'
-                      : isTokenExpired(acc)
-                        ? '0 0 0 2px var(--accent-amber)'
-                        : 'none',
-                  }}
-                  title={`${acc.name} — ${acc.selectedCount}/${acc.totalCourses} courses${!hasMaterialsAccess(acc) ? ' · ⚠️ No materials access' : isTokenExpired(acc) ? ' · 🔑 Session expired — click to re-authorize' : ''}`}
-                  onClick={() => {
-                    if (isTokenExpired(acc)) {
-                      // Re-authorize this account by re-triggering connect
-                      if (tokenClient) {
-                        setIsAuthorizing(true);
-                        setError(null);
-                        tokenClient.requestAccessToken({ prompt: 'consent' });
-                      }
-                    } else {
-                      refreshAccount(acc.accountId);
-                    }
-                  }}
-                >
-                  {hasMaterialsAccess(acc) ? (acc.name || '?').charAt(0).toUpperCase() : <X size={14} />}
-                </div>
-                <div className="workspace-account-chip-info">
-                  <span className="workspace-account-chip-name">{acc.name}</span>
-                  {acc.email && <span className="workspace-account-chip-email">{acc.email}</span>}
-                  <span className="workspace-account-chip-count" style={{ color: !hasMaterialsAccess(acc) ? 'var(--accent-rose)' : isTokenExpired(acc) ? 'var(--accent-amber)' : 'var(--accent-amber)' }}>
-                    {acc.selectedCount}/{acc.totalCourses} courses
-                    {!hasMaterialsAccess(acc) ? ` · ⚠️ No materials` : isTokenExpired(acc) ? ` · 🔑 Expired` : ''}
-                  </span>
-                </div>
-                <button
-                  className="workspace-account-remove-btn"
-                  onClick={() => setPendingRemoveEmail(acc.accountId)}
-                  title="Remove account"
-                >
-                  <X size={12} />
-                </button>
-              </div>
-            ))}
-            <button className="workspace-account-add-btn" onClick={handleConnect} disabled={!tokenClient || isAuthorizing}>
-              <Plus size={16} />
-              <span>Add Account</span>
-            </button>
-            {accounts.some(acc => !hasMaterialsAccess(acc)) && (
-              <button className="workspace-account-add-btn" onClick={handleReauthorize} disabled={!tokenClient || isAuthorizing} style={{ borderColor: 'var(--accent-rose)', color: 'var(--accent-rose)' }}>
-                <RefreshCw size={14} />
-                <span>Re-authorize for Materials</span>
-              </button>
-            )}
-            {accounts.some(acc => isTokenExpired(acc)) && (
-              <button className="workspace-account-add-btn" onClick={handleReauthorize} disabled={!tokenClient || isAuthorizing} style={{ borderColor: 'var(--accent-amber)', color: 'var(--accent-amber)' }}>
-                <RefreshCw size={14} />
-                <span>Refresh Expired Session</span>
-              </button>
-            )}
-          </div>
-          <div className="workspace-account-actions">
-            <button
-              className="workspace-btn workspace-btn-secondary"
-              onClick={handleRefreshAll}
-              disabled={loadingCourses}
-            >
-              <RefreshCw size={14} className={loadingCourses ? 'workspace-spin' : ''} />
-              Refresh All
-            </button>
-            <button
-              className={`workspace-btn ${isManaging ? 'workspace-btn-active' : 'workspace-btn-ghost'}`}
-              onClick={() => setIsManaging(v => !v)}
-            >
-              {isManaging ? <CheckSquare size={14} /> : <Settings size={14} />}
-              {isManaging ? 'Done' : 'Manage Courses'}
-            </button>
-          </div>
+      {error && (
+        <div className="ws-notice is-rose" role="alert">
+          <AlertCircle size={15} />
+          <div className="ws-notice-body"><span>{error}</span></div>
+          <button type="button" className="ws-notice-close" aria-label="Dismiss" onClick={() => setError(null)}><X size={13} /></button>
         </div>
       )}
 
-      {/* ─── Confirm Remove Dialog ─── */}
-      {pendingRemoveEmail && (() => {
-        const acc = accounts.find(a => a.accountId === pendingRemoveEmail);
+      {needsReauth && (
+        <div className="ws-notice is-amber">
+          <AlertCircle size={15} />
+          <div className="ws-notice-body">
+            <strong>Session expired.</strong>
+            <span>Sign in again to keep your courses and deadlines up to date.</span>
+          </div>
+          <button type="button" className="ws-btn ws-btn-primary" onClick={startReconnect} disabled={!tokenClient || isAuthorizing}>
+            <LogIn size={13} /> {isAuthorizing ? 'Connecting…' : 'Reconnect'}
+          </button>
+        </div>
+      )}
+
+      {anyLimited && (
+        <div className="ws-notice is-rose">
+          <AlertTriangle size={15} />
+          <div className="ws-notice-body">
+            <strong>Materials and announcements can’t load yet.</strong>
+            <span>Google hasn’t granted access to course materials for this account. To fix it:</span>
+            <ol className="ws-notice-steps">
+              <li>
+                Open{' '}
+                <a href="https://console.cloud.google.com/apis/credentials/consent" target="_blank" rel="noopener noreferrer">
+                  Google Cloud Console → OAuth consent screen
+                </a>
+              </li>
+              <li>Add <strong>{accounts.find(a => !hasMaterialsAccess(a))?.email || 'your AUST email'}</strong> as a <strong>Test user</strong></li>
+              <li>Re-authorize below and tick every permission</li>
+            </ol>
+          </div>
+          <button type="button" className="ws-btn ws-btn-ghost" onClick={handleReauthorize} disabled={!tokenClient || isAuthorizing}>
+            <RefreshCw size={13} /> Re-authorize
+          </button>
+        </div>
+      )}
+
+      {loadingCourses && (
+        <div className="ws-notice is-muted"><Loader2 size={15} className="ws-spin" /><div className="ws-notice-body"><span>Refreshing courses…</span></div></div>
+      )}
+
+      {/* ─── No accounts: connect ─── */}
+      {accounts.length === 0 && (
+        <section className="ws-card ws-connect">
+          <div className="ws-connect-intro">
+            <span className="ws-connect-tile" aria-hidden="true"><GraduationCap size={22} /></span>
+            <div className="ws-connect-text">
+              <span className="ws-overline">Google Classroom</span>
+              <h3 className="ws-connect-title">All your classes, one clear view</h3>
+              <p className="ws-connect-hint">
+                Sign in with your AUST Google account. Workspace only <strong>reads</strong> your courses, classwork and posts. It never posts or submits anything.
+              </p>
+            </div>
+          </div>
+          <ul className="ws-benefits">
+            <li>
+              <span className="ws-benefit-icon"><Users size={15} /></span>
+              <span><strong>Every account together</strong><span>AUST and personal Classroom accounts side by side.</span></span>
+            </li>
+            <li>
+              <span className="ws-benefit-icon"><CalendarClock size={15} /></span>
+              <span><strong>One deadline list</strong><span>Due dates from every course, sorted for you.</span></span>
+            </li>
+            <li>
+              <span className="ws-benefit-icon"><AlertTriangle size={15} /></span>
+              <span><strong>Missing work flagged</strong><span>Late assignments stand out before they pile up.</span></span>
+            </li>
+            <li>
+              <span className="ws-benefit-icon"><Eye size={15} /></span>
+              <span><strong>Only what matters</strong><span>Hide old or finished courses in one tap.</span></span>
+            </li>
+          </ul>
+          <div className="ws-connect-actions">
+            <button type="button" className="ws-btn ws-btn-primary ws-btn-lg" onClick={handleConnect} disabled={!isLoaded || isAuthorizing || needsConfig}>
+              {!isLoaded ? <><Loader2 size={14} className="ws-spin" /> Loading Google…</>
+                : isAuthorizing ? <><Loader2 size={14} className="ws-spin" /> Authorizing…</>
+                : <><LogIn size={14} /> Sign in with Google</>}
+            </button>
+            <span className="ws-connect-note">Read-only · you can disconnect anytime</span>
+          </div>
+        </section>
+      )}
+
+      {/* ─── Course detail ─── */}
+      {accounts.length > 0 && selectedCourse && (() => {
+        const owner = accounts.find(acc => (acc.courses || []).some(c => c.id === selectedCourse.id));
+        const work = coursework.map(cw => ({ ...compactWork(cw), st: workState(compactWork(cw), now) }));
+        const groups = [
+          { key: 'missing', label: 'Missing', items: work.filter(w => w.st === 'missing').sort((a, b) => b.due - a.due) },
+          { key: 'upcoming', label: 'Upcoming', items: work.filter(w => w.st === 'assigned' && w.due).sort((a, b) => a.due - b.due) },
+          { key: 'nodue', label: 'No due date', items: work.filter(w => w.st === 'assigned' && !w.due) },
+          { key: 'done', label: 'Turned in', items: work.filter(w => isFinished(w.st)).sort((a, b) => (b.due || 0) - (a.due || 0)) },
+        ].filter(g => g.items.length);
+        const doneN = work.filter(w => isFinished(w.st)).length;
+        const pct = work.length ? Math.round((doneN / work.length) * 100) : 0;
+        const announcements = courseMaterials.filter(m => m._itemType === 'announcement');
+        const materials = courseMaterials.filter(m => m._itemType !== 'announcement');
+        const stream = streamTab === 'materials' ? materials : streamTab === 'posts' ? announcements : courseMaterials;
+        const metaBits = [selectedCourse.section, selectedCourse.descriptionHeading, selectedCourse.room && `Room ${selectedCourse.room}`]
+          .filter(Boolean)
+          .filter((v, i, arr) => arr.indexOf(v) === i);
+
         return (
-          <div className="workspace-confirm-overlay" onClick={() => setPendingRemoveEmail(null)}>
-            <div className="workspace-confirm-dialog" onClick={e => e.stopPropagation()}>
-              <h3>Remove Account?</h3>
-              <p style={{ margin: '4px 0' }}>
-                <strong>{acc?.name || 'Unknown'}</strong>
-                {acc?.email && <> ({acc.email})</>}
-              </p>
-              <p>
-                Courses from this account will be hidden. You can re-add it anytime.
-              </p>
-              <div className="workspace-confirm-actions">
-                <button className="workspace-btn workspace-btn-secondary" onClick={() => setPendingRemoveEmail(null)}>
-                  Cancel
-                </button>
-                <button className="workspace-btn workspace-btn-danger" onClick={() => removeAccount(pendingRemoveEmail)}>
-                  Remove
-                </button>
+          <div className="ws-detail">
+            <section className="ws-card ws-context">
+              <div className="ws-context-top">
+                <button type="button" className="ws-back" onClick={handleBack}><ArrowLeft size={14} /> All courses</button>
+                {selectedCourse.alternateLink && (
+                  <a className="ws-btn ws-btn-ghost" href={selectedCourse.alternateLink} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink size={13} /> <span>Open in Classroom</span>
+                  </a>
+                )}
               </div>
+              <div className="ws-context-main">
+                <span className="ws-course-tile is-lg" aria-hidden="true">{courseInitials(selectedCourse.name)}</span>
+                <div className="ws-context-text">
+                  <span className="ws-overline">Course{owner?.email ? ` · ${owner.email}` : ''}</span>
+                  <h3 className="ws-context-title">{selectedCourse.name}</h3>
+                  {metaBits.length > 0 && <p className="ws-context-meta">{metaBits.join(' · ')}</p>}
+                </div>
+              </div>
+              <div className="ws-context-progress">
+                <span className="ws-bar" aria-hidden="true"><span style={{ width: `${loadingCoursework ? 0 : pct}%` }} /></span>
+                <span className="ws-context-pct">{loadingCoursework ? 'Loading…' : `${doneN}/${work.length} turned in`}</span>
+              </div>
+              <div className="ws-badges">
+                <span className="ws-badge is-muted">Assigned <strong>{loadingCoursework ? '–' : work.filter(w => w.st === 'assigned').length}</strong></span>
+                <span className={`ws-badge ${groups.some(g => g.key === 'missing') ? 'is-rose' : 'is-muted'}`}>Missing <strong>{loadingCoursework ? '–' : work.filter(w => w.st === 'missing').length}</strong></span>
+                <span className={`ws-badge ${materials.length ? 'is-amber' : 'is-muted'}`}>Materials <strong>{loadingMaterials ? '–' : materials.length}</strong></span>
+                <span className="ws-badge is-muted">Posts <strong>{loadingMaterials ? '–' : announcements.length}</strong></span>
+              </div>
+            </section>
+
+            <div className="ws-detail-grid">
+              {/* Assignments */}
+              <section className="ws-card ws-panel">
+                <div className="ws-card-head is-ruled">
+                  <h3 className="ws-card-title"><Clipboard size={14} /> Classwork</h3>
+                  {!loadingCoursework && <span className="ws-count">{work.length}</span>}
+                </div>
+                {loadingCoursework ? (
+                  <div className="ws-loading"><Loader2 size={15} className="ws-spin" /> Loading classwork…</div>
+                ) : work.length === 0 ? (
+                  <WsEmpty icon={FileText} hint="No assignments in this course yet." />
+                ) : (
+                  <div className="ws-groups">
+                    {groups.map(g => (
+                      <div key={g.key} className={`ws-group is-${g.key}`}>
+                        <span className="ws-group-label">{g.label} <span>{g.items.length}</span></span>
+                        <ul className="ws-list">
+                          {g.items.map(w => {
+                            const { day, mon } = dateParts(w.due);
+                            const StIcon = w.st === 'done' ? CheckCircle : w.st === 'returned' ? Award : w.st === 'missing' ? AlertTriangle : Clock;
+                            return (
+                              <li key={w.id} className={`ws-work-row is-${w.st}`}>
+                                <span className="ws-date" aria-hidden="true">
+                                  <span className="ws-date-day">{day}</span>
+                                  <span className="ws-date-mon">{mon}</span>
+                                </span>
+                                <span className="ws-work-body">
+                                  <span className="ws-work-title" title={w.title}>{w.title}</span>
+                                  <span className="ws-work-meta">
+                                    <span className={`ws-state is-${w.st}`}><StIcon size={11} /> {STATE_LABEL[w.st]}</span>
+                                    {w.due && <span>{fullDue(w.due)}</span>}
+                                    {w.maxPoints && <span>{w.maxPoints} pts</span>}
+                                  </span>
+                                </span>
+                                {w.link && (
+                                  <a className="ws-icon-link" href={w.link} target="_blank" rel="noopener noreferrer" aria-label={`Open “${w.title}” in Classroom`} title="Open in Classroom">
+                                    <ExternalLink size={13} />
+                                  </a>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              {/* Stream: materials + announcements */}
+              <section className="ws-card ws-panel">
+                <div className="ws-card-head is-ruled">
+                  <h3 className="ws-card-title"><Megaphone size={14} /> Stream</h3>
+                  <div className="ws-pills" role="tablist" aria-label="Stream filter">
+                    {[['all', 'All', courseMaterials.length], ['materials', 'Materials', materials.length], ['posts', 'Posts', announcements.length]].map(([key, label, n]) => (
+                      <button key={key} type="button" role="tab" aria-selected={streamTab === key} className={`ws-pill${streamTab === key ? ' is-active' : ''}`} onClick={() => setStreamTab(key)}>
+                        {label}{!loadingMaterials && <span className="ws-pill-n">{n}</span>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {loadingMaterials ? (
+                  <div className="ws-loading"><Loader2 size={15} className="ws-spin" /> Loading stream…</div>
+                ) : materialsError && courseMaterials.length === 0 ? (
+                  <div className="ws-empty is-rose">
+                    <span className="ws-empty-icon"><AlertCircle size={16} /></span>
+                    <p className="ws-empty-hint">Couldn’t load materials. This account may need extra permissions.</p>
+                    <button type="button" className="ws-empty-action" onClick={() => selectedCourse && handleCourseClick(selectedCourse)}>
+                      <RefreshCw size={13} /> Retry
+                    </button>
+                    {(owner?.grantedScopes || []).length > 0 && (
+                      <details className="ws-debug">
+                        <summary>Granted scopes</summary>
+                        <ul>{owner.grantedScopes.map((s, i) => <li key={i}>{s}</li>)}</ul>
+                      </details>
+                    )}
+                  </div>
+                ) : stream.length === 0 ? (
+                  <WsEmpty icon={BookOpen} hint={streamTab === 'posts' ? 'No announcements yet.' : streamTab === 'materials' ? 'No materials shared yet.' : 'Nothing posted in this course yet.'} />
+                ) : (
+                  <ul className="ws-list">
+                    {stream.map(item => {
+                      const isPost = item._itemType === 'announcement';
+                      const hasMats = item.materials && item.materials.length > 0;
+                      const MatIcon = isPost ? Megaphone : getMaterialIcon(item.materials);
+                      const typeLabel = isPost ? 'Announcement' : getMaterialTypeLabel(item.materials);
+                      const title = item.title || item.text?.substring(0, 90) || (hasMats ? getMaterialTitle(item.materials) : 'Untitled');
+                      const desc = item.title ? (item.description || item.text || '') : '';
+                      return (
+                        <li key={item.id}>
+                          <button type="button" className="ws-stream-row" onClick={() => setSelectedMaterial(item)}>
+                            <span className="ws-stream-icon"><MatIcon size={14} /></span>
+                            <span className="ws-stream-body">
+                              <span className="ws-stream-title">{title}</span>
+                              <span className="ws-stream-meta">
+                                <span className="ws-type">{typeLabel}</span>
+                                {item.creationTime && <span>{new Date(item.creationTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>}
+                                {hasMats && <span>{item.materials.length} attachment{item.materials.length > 1 ? 's' : ''}</span>}
+                              </span>
+                              {desc && <span className="ws-stream-desc">{desc}</span>}
+                            </span>
+                            <ChevronRight size={14} className="ws-stream-caret" />
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </section>
             </div>
           </div>
         );
       })()}
 
-      {/* ─── No Accounts: Connect Card ─── */}
-      {accounts.length === 0 && (
-        <div className="workspace-connect-card">
-          <div className="workspace-connect-icon"><ExternalLink size={36} /></div>
-          <h2 className="workspace-connect-title">Connect Google Classroom</h2>
-          <p className="workspace-connect-desc">
-            Sign in with your AUST Google accounts to see all your courses, assignments, and deadlines — unified in one place.
-          </p>
-          <button
-            className="workspace-connect-btn"
-            onClick={handleConnect}
-            disabled={!isLoaded || isAuthorizing || needsConfig}
-          >
-            {!isLoaded ? (
-              <><Loader2 size={18} className="workspace-spin" /> Loading Google API...</>
-            ) : isAuthorizing ? (
-              <><Loader2 size={18} className="workspace-spin" /> Authorizing...</>
-            ) : (
-              <><LogIn size={18} /> Sign in with Google Classroom</>
-            )}
-          </button>
-          {error && accounts.length > 0 && <p className="workspace-error">{error}</p>}
-        </div>
-      )}
-
-      {/* ─── Scope Warning Banner ─── */}
-      {accounts.some(acc => !hasMaterialsAccess(acc)) && (
-        <div className="workspace-manage-banner" style={{ background: 'var(--accent-rose-glow)', borderColor: 'var(--accent-rose)', color: 'var(--accent-rose)', flexWrap: 'wrap' }}>
-          <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '1px' }} />
-          <div style={{ flex: 1, minWidth: 0, lineHeight: '1.6' }}>
-            <strong>🔒 Materials &amp; announcements not loading.</strong>
-            <br />
-            Your Google account was not granted access to course materials because these are{' '}
-            <strong>restricted scopes</strong> required by Google.{' '}
-            To fix this:
-            <ol style={{ margin: '4px 0 0 18px', padding: 0, fontSize: 'var(--fs-xs)' }}>
-              <li>
-                Go to{' '}
-                <a
-                  href="https://console.cloud.google.com/apis/credentials/consent"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: 'inherit', textDecoration: 'underline' }}
-                >
-                  Google Cloud Console → OAuth consent screen
-                </a>
-              </li>
-              <li>Add your email (<strong>{accounts.find(a => !hasMaterialsAccess(a))?.email || 'your AUST email'}</strong>) as a <strong>Test User</strong></li>
-              <li>Then click{' '}
-                <button
-                  onClick={handleReauthorize}
-                  disabled={!tokenClient || isAuthorizing}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'inherit',
-                    textDecoration: 'underline',
-                    cursor: 'pointer',
-                    font: 'inherit',
-                    fontWeight: 'var(--fw-bold)',
-                    padding: 0,
-                  }}
-                >
-                  Re-authorize below
-                </button>
-                {' '}and check ALL permissions
-              </li>
-            </ol>
-          </div>
-        </div>
-      )}
-
-      {/* ─── Re-auth Needed Banner ─── */}
-      {needsReauth && (
-        <div className="workspace-manage-banner" style={{ background: 'var(--accent-amber-glow)', borderColor: 'var(--accent-amber)', color: 'var(--accent-amber)', flexWrap: 'wrap' }}>
-          <AlertCircle size={16} style={{ flexShrink: 0 }} />
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <strong>Session expired.</strong> Your Google Classroom session has timed out.
-            {' '}Click the button to sign in again and restore access to all your courses.
-          </span>
-          <button
-            className="workspace-btn"
-            style={{
-              background: 'var(--accent-amber)',
-              color: '#fff',
-              border: 'none',
-              fontWeight: 'var(--fw-bold)',
-              fontSize: 'var(--fs-sm)',
-            }}
-            onClick={() => {
-              setNeedsReauth(false);
-              setError(null);
-              setIsAuthorizing(true);
-              tokenClient?.requestAccessToken({ prompt: 'consent' });
-            }}
-            disabled={!tokenClient || isAuthorizing}
-          >
-            <LogIn size={14} />
-            {isAuthorizing ? 'Connecting...' : 'Re-authorize Now'}
-          </button>
-        </div>
-      )}
-
-      {/* ─── Manage Mode Banner ─── */}
-      {isManaging && accounts.length > 0 && (
-        <div className="workspace-manage-banner">
-          <EyeOff size={16} />
-          <span>Tap any course to toggle its visibility. Only visible courses appear in the grid.</span>
-        </div>
-      )}
-
-      {/* ─── Loading ─── */}
-      {loadingCourses && (
-        <div className="workspace-loading"><Loader2 size={20} className="workspace-spin" /><span>Refreshing courses...</span></div>
-      )}
-
-      {/* ─── Error ─── */}
-      {error && (
-        <div className="workspace-error-banner">
-          <AlertCircle size={16} />
-          <span>{error}</span>
-          <button onClick={() => setError(null)}><X size={14} /></button>
-        </div>
-      )}
-
-      {/* ─── Course Detail View (Split Pane) ─── */}
-      {selectedCourse ? (
-        <div className="workspace-course-detail">
-          <button className="workspace-back-btn" onClick={handleBack}>
-            <ChevronRight size={16} style={{ transform: 'rotate(180deg)' }} /> Back to Courses
-          </button>
-          <div className="workspace-course-header">
-            <div className="workspace-course-color" style={{ background: 'var(--accent-amber)' }} />
-            <div>
-              <h2 className="workspace-course-title">{selectedCourse.name}</h2>
-              <p className="workspace-course-meta">
-                {selectedCourse.section && `${selectedCourse.section} · `}
-                {selectedCourse.descriptionHeading || ''}
-              </p>
-            </div>
-          </div>
-
-          <div className="workspace-split-pane">
-            {/* ─── Left: Assignments ─── */}
-            <div className="workspace-pane workspace-pane-left">
-              <div className="workspace-pane-header">
-                <div className="workspace-pane-header-icon" style={{ background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)' }}>
-                  <Clipboard size={14} />
-                </div>
-                <span className="workspace-pane-header-title">Assignments</span>
-                {!loadingCoursework && <span className="workspace-pane-header-count">{coursework.length}</span>}
-              </div>
-
-              {loadingCoursework ? (
-                <div className="workspace-pane-loading"><Loader2 size={16} className="workspace-spin" /><span>Loading...</span></div>
-              ) : coursework.length === 0 ? (
-                <div className="workspace-pane-empty">
-                  <FileText size={24} />
-                  <span>No assignments yet</span>
-                </div>
-              ) : (
-                <div className="workspace-pane-scroll">
-                  {coursework.map((cw) => {
-                    const dueDate = cw.dueDate ? new Date(cw.dueDate.year, cw.dueDate.month - 1, cw.dueDate.day, cw.dueTime?.hours || 23, cw.dueTime?.minutes || 59) : null;
-                    return (
-                      <div key={cw.id} className="workspace-material-item workspace-material-item-assignment">
-                        <div className="workspace-material-item-badge" style={{ background: getStatusColor(cw.submissionState) }}>
-                          {cw.submissionState === 'TURNED_IN' ? <CheckCircle size={12} /> : cw.submissionState === 'RETURNED' ? <Award size={12} /> : <Clock size={12} />}
-                        </div>
-                        <div className="workspace-material-item-body">
-                          <span className="workspace-material-item-title">{cw.title}</span>
-                          <span className="workspace-material-item-meta">
-                            <span style={{ color: getStatusColor(cw.submissionState) }}>{getStatusLabel(cw.submissionState)}</span>
-                            {dueDate && (
-                              <>
-                                <span className="workspace-mat-sep">·</span>
-                                <span className={dueDate < new Date() && cw.submissionState !== 'TURNED_IN' ? 'workspace-overdue' : ''}>{formatDate(dueDate.toISOString())}</span>
-                              </>
-                            )}
-                            {cw.maxPoints && <><span className="workspace-mat-sep">·</span><span>{cw.maxPoints} pts</span></>}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+      {/* ─── Dashboard: courses · up next · progress · accounts ─── */}
+      {accounts.length > 0 && !selectedCourse && (
+        <div className="ws-main-grid">
+          <section className="ws-card ws-courses">
+            <div className="ws-card-head">
+              <h3 className="ws-card-title"><BookOpen size={14} /> {isManaging ? 'Choose courses' : 'My courses'}</h3>
+              <button
+                type="button"
+                className={`ws-btn ${isManaging ? 'ws-btn-primary' : 'ws-btn-ghost'}`}
+                onClick={() => { setIsManaging(v => !v); setCourseFilter('all'); }}
+              >
+                {isManaging ? <><CheckSquare size={13} /> Done</> : <><Settings size={13} /> Manage</>}
+              </button>
             </div>
 
-            {/* ─── Right: Materials ─── */}
-            <div className="workspace-pane workspace-pane-right">
-              <div className="workspace-pane-header">
-                <div className="workspace-pane-header-icon" style={{ background: 'var(--accent-amber-glow)', color: 'var(--accent-amber)' }}>
-                  <BookOpen size={14} />
-                </div>
-                <span className="workspace-pane-header-title">Materials</span>
-                {!loadingMaterials && <span className="workspace-pane-header-count">{courseMaterials.length}</span>}
-              </div>
-
-              {loadingMaterials ? (
-                <div className="workspace-pane-loading"><Loader2 size={16} className="workspace-spin" /><span>Loading...</span></div>
-              ) : materialsError && courseMaterials.length === 0 ? (
-                <div className="workspace-pane-empty">
-                  <AlertCircle size={24} style={{ color: 'var(--accent-rose)' }} />
-                  <span style={{ color: 'var(--accent-rose)', fontSize: 'var(--fs-sm)', textAlign: 'center', maxWidth: '280px' }}>
-                    Could not load materials. The API may require additional permissions.
-                  </span>
-                  <button
-                    className="workspace-btn workspace-btn-secondary"
-                    style={{ marginTop: 'var(--sp-2)' }}
-                    onClick={() => {
-                      if (selectedCourse && accounts.length > 0) {
-                        handleCourseClick(selectedCourse);
-                      }
-                    }}
-                  >
-                    <RefreshCw size={14} /> Retry
-                  </button>
-                  {(() => {
-                    // Show scopes for the account that owns this course
-                    const owner = accounts.find(acc =>
-                      (acc.courses || []).some(c => c.id === selectedCourse?.id)
-                    );
-                    const scopes = owner?.grantedScopes || [];
-                    if (scopes.length > 0) return (
-                      <div style={{ marginTop: 'var(--sp-3)', fontSize: '9px', color: 'var(--text-tertiary)', maxWidth: '300px', wordBreak: 'break-all', textAlign: 'center' }}>
-                        <details>
-                          <summary style={{ cursor: 'pointer', color: 'var(--accent-amber)' }}>Debug: granted scopes</summary>
-                          <ul style={{ textAlign: 'left', marginTop: '4px', paddingLeft: '16px', lineHeight: '1.6' }}>
-                            {scopes.map((s, i) => (
-                              <li key={i} style={{ fontSize: '8px' }}>{s}</li>
-                            ))}
-                          </ul>
-                        </details>
-                      </div>
-                    );
-                    return null;
-                  })()}
-                </div>
-              ) : courseMaterials.length === 0 ? (
-                <div className="workspace-pane-empty">
-                  <BookOpen size={24} />
-                  <span>No materials yet</span>
-                </div>
-              ) : (
-                <div className="workspace-pane-scroll">
-                  {courseMaterials.map((item) => {
-                    const MatIcon = item.materials && item.materials.length > 0 ? getMaterialIcon(item.materials) : Megaphone;
-                    const matColor = item.materials && item.materials.length > 0 ? getMaterialColor(item.materials) : 'var(--accent-amber)';
-                    const matLabel = item.materials && item.materials.length > 0 ? getMaterialTypeLabel(item.materials) : 'Announcement';
-                    const displayTitle = item.title || item.text?.substring(0, 80) || (item.materials ? getMaterialTitle(item.materials) : 'Untitled');
-                    return (
-                      <div
-                        key={item.id}
-                        className={`workspace-material-item ${item._itemType === 'announcement' ? 'workspace-material-item-announce' : ''} workspace-material-item-clickable`}
-                        onClick={() => setSelectedMaterial(item)}
-                      >
-                        <div className="workspace-material-item-badge" style={{ background: matColor }}>
-                          {item._itemType === 'announcement' ? <Megaphone size={14} /> : <MatIcon size={14} />}
-                        </div>
-                        <div className="workspace-material-item-body">
-                          <div className="workspace-material-item-header">
-                            <span className="workspace-material-item-title" title={displayTitle}>{displayTitle}</span>
-                            <span className="workspace-material-item-expand">
-                              <ExternalLink size={11} />
-                            </span>
-                          </div>
-                          <span className="workspace-material-item-meta">
-                            <span className="workspace-material-item-type-badge" style={{ background: `${matColor}18`, color: matColor }}>
-                              {item._itemType === 'announcement' ? 'Announcement' : matLabel}
-                            </span>
-                            {item.creationTime && (
-                              <>
-                                <span className="workspace-mat-sep">·</span>
-                                <span>{new Date(item.creationTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                              </>
-                            )}
-                          </span>
-                          {(item.text || item.description) && (
-                            <p className="workspace-material-item-desc">
-                              {(item.text || item.description || '').substring(0, 120)}
-                              {(item.text || item.description || '').length > 120 ? '...' : ''}
-                            </p>
-                          )}
-                          {item.materials && item.materials.length > 0 && (
-                            <span className="workspace-material-item-attachments">
-                              {item.materials.length} attachment{item.materials.length > 1 ? 's' : ''}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : (
-        /* ─── Course Grid (only visible/selected courses) ─── */
-        <>
-          {/* Manage mode: select-all per account */}
-          {isManaging && accountSummary.map(acc => {
-            const total = (acc.courses || []).length;
-            const selected = (acc.selectedCourseIds || []).length;
-            if (total === 0) return null;
-            const allSelected = total === selected;
-            const key = acc.accountId;
-            return (
-              <div key={key} className="workspace-manage-account-header">
-                <div className="workspace-manage-account-info">
-                  <div className="workspace-account-avatar-sm" style={{ background: generateAvatarColor(acc.email || key) }}>
-                    {(acc.name || '?').charAt(0).toUpperCase()}
-                  </div>
-                  <span>{acc.name}{acc.email && <span> ({acc.email})</span>}</span>
-                </div>
-                <button className="workspace-btn workspace-btn-ghost workspace-btn-sm" onClick={() => toggleSelectAllForAccount(key)}>
-                  {allSelected ? <EyeOff size={14} /> : <Eye size={14} />}
-                  {allSelected ? 'Deselect All' : 'Select All'}
-                </button>
-              </div>
-            );
-          })}
-
-          {isManaging && (
-            /* Show all courses in manage mode (even unselected ones so user can toggle them on) */              <div className="workspace-course-grid workspace-course-grid-manage">
-              {accounts.flatMap(acc =>
-                (acc.courses || []).map(course => {
-                  const isSelected = (acc.selectedCourseIds || []).includes(course.id);
-                  const accKey = acc.accountId;
-                  const hasNew = course.updateTime && course.lastViewTime
-                    ? new Date(course.updateTime).getTime() > course.lastViewTime
-                    : false;
+            {isManaging ? (
+              <>
+                <p className="ws-manage-hint"><EyeOff size={12} /> Tap a course to show or hide it. Hidden courses stay out of your stats.</p>
+                {accountSummary.map(acc => {
+                  const total = (acc.courses || []).length;
+                  const allSelected = total > 0 && total === acc.selectedCount;
                   return (
-                    <button
-                      key={`${accKey}-${course.id}`}
-                      className={`workspace-course-card${hasNew ? ' has-new' : ''} ${isSelected ? '' : 'workspace-course-card-hidden'}`}
-                      onClick={() => toggleCourseSelection(accKey, course.id)}
-                    >
-                      {hasNew && <span className="workspace-course-card-dot" />}
-                      <div className="workspace-course-card-color" style={{ background: isSelected ? 'var(--accent-amber)' : 'var(--border-primary)' }} />
-                      <div className="workspace-course-card-body">
-                        <div className="workspace-course-card-toggle">
-                          {isSelected ? <CheckSquare size={18} className="workspace-course-checked" /> : <Square size={18} className="workspace-course-unchecked" />}
-                          <span className="workspace-course-card-toggle-label">{isSelected ? 'Visible' : 'Hidden'}</span>
+                    <div key={acc.accountId} className="ws-manage-group">
+                      <div className="ws-manage-head">
+                        <span className="ws-avatar is-sm" aria-hidden="true">{(acc.name || acc.email || '?').charAt(0).toUpperCase()}</span>
+                        <span className="ws-manage-name">{acc.email || acc.name}</span>
+                        <span className="ws-count">{acc.selectedCount}/{total}</span>
+                        {total > 0 && (
+                          <button type="button" className="ws-btn ws-btn-ghost ws-btn-sm" onClick={() => toggleSelectAllForAccount(acc.accountId)}>
+                            {allSelected ? <><EyeOff size={12} /> Hide all</> : <><Eye size={12} /> Show all</>}
+                          </button>
+                        )}
+                      </div>
+                      {total === 0 ? (
+                        <WsEmpty icon={Layers} hint="No active courses in this account." />
+                      ) : (
+                        <div className="ws-course-grid">
+                          {(acc.courses || []).map(course => {
+                            const on = (acc.selectedCourseIds || []).includes(course.id);
+                            return (
+                              <button
+                                type="button"
+                                key={`${acc.accountId}-${course.id}`}
+                                className={`ws-course is-manage${on ? '' : ' is-off'}`}
+                                aria-pressed={on}
+                                onClick={() => toggleCourseSelection(acc.accountId, course.id)}
+                              >
+                                <span className="ws-course-top">
+                                  <span className="ws-course-tile" aria-hidden="true">{courseInitials(course.name)}</span>
+                                  <span className="ws-course-head">
+                                    <span className="ws-course-name" title={course.name}>{course.name}</span>
+                                    <span className="ws-course-section">{course.section || 'Google Classroom'}</span>
+                                  </span>
+                                  <span className="ws-check" aria-hidden="true">{on ? <CheckSquare size={17} /> : <Square size={17} />}</span>
+                                </span>
+                              </button>
+                            );
+                          })}
                         </div>
-                        <h3 className="workspace-course-card-title">{course.name}</h3>
-                        {course.section && <span className="workspace-course-card-section">{course.section}</span>}
-                        {acc.email && (
-                          <div className="workspace-course-card-account">
-                            <Mail size={10} />
-                            <span>{acc.email}</span>
-                          </div>
-                        )}
-                      </div>
-                    </button>
+                      )}
+                    </div>
                   );
-                })
-              )}
-            </div>
-          )}
+                })}
+              </>
+            ) : (
+              <>
+                {courseEntries.length > 0 && (
+                  <div className="ws-toolbar">
+                    <div className="ws-pills" role="tablist" aria-label="Filter courses">
+                      {[['all', 'All', courseEntries.length], ['due', 'Due this week', courseCountFor('due')], ['missing', 'Missing', courseCountFor('missing')]].map(([key, label, n]) => (
+                        <button key={key} type="button" role="tab" aria-selected={courseFilter === key} className={`ws-pill${courseFilter === key ? ' is-active' : ''}`} onClick={() => setCourseFilter(key)}>
+                          {label}<span className="ws-pill-n">{n}</span>
+                        </button>
+                      ))}
+                    </div>
+                    {courseEntries.length > 4 && (
+                      <label className="ws-search">
+                        <Search size={13} />
+                        <input
+                          type="search"
+                          className="ws-search-input"
+                          placeholder="Search courses"
+                          value={courseQuery}
+                          onChange={e => setCourseQuery(e.target.value)}
+                          aria-label="Search courses"
+                        />
+                      </label>
+                    )}
+                  </div>
+                )}
 
-          {!isManaging && (
-            /* Normal mode: only show selected courses */
-            <div className="workspace-course-grid">
-              {accounts.flatMap(acc =>
-                (acc.courses || [])
-                  .filter(course => (acc.selectedCourseIds || []).includes(course.id))
-                  .map(course => {
-                    const accKey = acc.accountId;
-                    const hasNew = course.updateTime && course.lastViewTime
-                      ? new Date(course.updateTime).getTime() > course.lastViewTime
-                      : false;
-                    return (
-                    <button
-                      key={`${accKey}-${course.id}`}
-                      className={`workspace-course-card${hasNew ? ' has-new' : ''}`}
-                      onClick={() => handleCourseClick(course)}
-                    >
-                      {hasNew && <span className="workspace-course-card-dot" />}
-                      <div className="workspace-course-card-color" style={{ background: 'var(--accent-amber)' }} />
-                      <div className="workspace-course-card-body">
-                        <h3 className="workspace-course-card-title">{course.name}</h3>
-                        {course.section && <span className="workspace-course-card-section">{course.section}</span>}
-                        {course.descriptionHeading && <p className="workspace-course-card-desc">{course.descriptionHeading}</p>}
-                        {acc.email && (
-                          <div className="workspace-course-card-account">
-                            <Mail size={10} />
-                            <span>{acc.email}</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="workspace-course-card-footer">
-                        <span className="workspace-course-card-link">View Assignments <ChevronRight size={14} /></span>
-                      </div>
-                    </button>
-                  )})
-              )}
+                {courseEntries.length === 0 && !loadingCourses ? (
+                  <WsEmpty
+                    icon={EyeOff}
+                    hint={totalCourses > 0 ? 'All your courses are hidden. Pick the ones you want to follow.' : 'No active courses found in your connected accounts.'}
+                    action={totalCourses > 0 ? <><Settings size={13} /> Choose courses</> : <><RefreshCw size={13} /> Refresh</>}
+                    onAction={totalCourses > 0 ? () => setIsManaging(true) : handleRefreshAll}
+                  />
+                ) : filteredEntries.length === 0 ? (
+                  <WsEmpty
+                    icon={courseFilter === 'missing' ? CheckCircle : Search}
+                    hint={query ? `No course matches “${courseQuery}”.` : courseFilter === 'missing' ? 'Nothing missing. Nice work.' : 'Nothing due in the next 7 days.'}
+                    action={<>Show all courses</>}
+                    onAction={() => { setCourseFilter('all'); setCourseQuery(''); }}
+                  />
+                ) : (
+                  <div className="ws-course-grid">{filteredEntries.map(renderCourseCard)}</div>
+                )}
+              </>
+            )}
+          </section>
 
-              {visibleCourses.length === 0 && !loadingCourses && (
-                <div className="workspace-empty">
-                  <BookOpen size={40} />
-                  <h3>No courses visible</h3>
-                  <p>
-                    {accounts.length > 0
-                      ? 'All courses are hidden. Click "Manage Courses" to show some courses.'
-                      : 'Connect a Google Classroom account to get started.'}
-                  </p>
+          <aside className="ws-rail">
+            {/* Up next / Missing */}
+            <section className="ws-card ws-upnext">
+              <div className="ws-card-head is-ruled">
+                <h3 className="ws-card-title">
+                  <CalendarClock size={14} /> Deadlines
+                  {loadingOverview && <Loader2 size={12} className="ws-spin ws-title-spin" />}
+                </h3>
+                <div className="ws-pills is-sm" role="tablist" aria-label="Deadline list">
+                  <button type="button" role="tab" aria-selected={railTab === 'next'} className={`ws-pill${railTab === 'next' ? ' is-active' : ''}`} onClick={() => setRailTab('next')}>
+                    Up next<span className="ws-pill-n">{upNext.length}</span>
+                  </button>
+                  <button type="button" role="tab" aria-selected={railTab === 'missing'} className={`ws-pill${railTab === 'missing' ? ' is-active' : ''}${missingWork.length ? ' has-alert' : ''}`} onClick={() => setRailTab('missing')}>
+                    Missing<span className="ws-pill-n">{missingWork.length}</span>
+                  </button>
                 </div>
+              </div>
+              {!hasOverview ? (
+                <WsEmpty
+                  icon={CalendarClock}
+                  hint={loadingOverview ? 'Collecting deadlines from your courses…' : anyExpired ? 'Reconnect your account to pull deadlines from every course.' : 'Deadlines from all your courses will show up here.'}
+                  action={!loadingOverview && anyExpired ? <><LogIn size={13} /> Reconnect</> : null}
+                  onAction={startReconnect}
+                />
+              ) : (railTab === 'next' ? upNext : missingWork).length === 0 ? (
+                <WsEmpty
+                  icon={CheckCircle}
+                  hint={railTab === 'next' ? 'Nothing assigned right now. You’re all caught up.' : 'No missing work. Keep it up.'}
+                />
+              ) : (
+                <>
+                  <ul className="ws-list ws-due-list">
+                    {(railTab === 'next' ? upNext : missingWork).slice(0, 6).map(renderDueRow)}
+                  </ul>
+                  {(railTab === 'next' ? upNext : missingWork).length > 6 && (
+                    <p className="ws-more">+{(railTab === 'next' ? upNext : missingWork).length - 6} more · open a course to see all</p>
+                  )}
+                </>
               )}
-            </div>
-          )}
-        </>
-      )}
+            </section>
 
-      {accounts.length > 0 && (
-        <div className="workspace-footer-note" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--sp-4)', flexWrap: 'wrap' }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
-            <Users size={12} />
-            {accounts.length} account{accounts.length > 1 ? 's' : ''} connected · {visibleCourses.length} course{visibleCourses.length !== 1 ? 's' : ''} visible
-          </span>
-          <button
-            className="workspace-btn workspace-btn-ghost workspace-btn-sm"
-            style={{ color: 'var(--text-tertiary)', fontSize: '10px' }}
-            onClick={() => setConfirmResetAll(true)}
-          >
-            Reset All Data
-          </button>
+            {/* Progress */}
+            <section className="ws-card ws-progress">
+              <h3 className="ws-card-title"><TrendingUp size={14} /> Progress</h3>
+              {hasOverview && allWork.length > 0 ? (
+                <>
+                  <div className="ws-progress-top">
+                    <span className="ws-progress-pct">{donePct}%</span>
+                    <span className="ws-progress-label">of classwork turned in<br /><strong>{doneCount}</strong> of <strong>{allWork.length}</strong> assignments</span>
+                  </div>
+                  <span className="ws-bar is-lg" aria-hidden="true"><span style={{ width: `${donePct}%` }} /></span>
+                  <dl className="ws-mini-stats">
+                    <div><dt>Assigned</dt><dd>{upNext.length - noDueCount}</dd></div>
+                    <div className={missingWork.length ? 'is-rose' : ''}><dt>Missing</dt><dd>{missingWork.length}</dd></div>
+                    <div><dt>Turned in</dt><dd>{doneCount}</dd></div>
+                    <div><dt>No due date</dt><dd>{noDueCount}</dd></div>
+                  </dl>
+                </>
+              ) : (
+                <WsEmpty icon={TrendingUp} hint={loadingOverview ? 'Working out your progress…' : 'Your completion rate appears once classwork syncs.'} />
+              )}
+            </section>
+
+            {/* Accounts */}
+            <section className="ws-card ws-accounts">
+              <div className="ws-card-head is-ruled">
+                <h3 className="ws-card-title"><Users size={14} /> Accounts <span className="ws-count">{accounts.length}</span></h3>
+                <button type="button" className="ws-add-icon-btn" onClick={handleConnect} disabled={!tokenClient || isAuthorizing} aria-label="Add account" title="Add account">
+                  <Plus size={15} />
+                </button>
+              </div>
+              <ul className="ws-list">
+                {accountSummary.map(acc => {
+                  const limited = !hasMaterialsAccess(acc);
+                  const expired = isTokenExpired(acc);
+                  return (
+                    <li key={acc.accountId} className="ws-acc-row">
+                      <span className={`ws-avatar${limited ? ' is-rose' : expired ? ' is-amber' : ''}`} aria-hidden="true">
+                        {acc.photoUrl
+                          ? <img src={acc.photoUrl} alt="" referrerPolicy="no-referrer" />
+                          : (acc.name || acc.email || '?').charAt(0).toUpperCase()}
+                      </span>
+                      <span className="ws-acc-body">
+                        <span className="ws-acc-name">{acc.name || acc.email || 'Classroom account'}</span>
+                        <span className="ws-acc-meta">
+                          {acc.email && <span className="ws-acc-email">{acc.email}</span>}
+                          <span className={limited ? 'is-rose' : expired ? 'is-amber' : ''}>
+                            {limited ? 'Limited access' : expired ? 'Session expired' : `${acc.selectedCount}/${acc.totalCourses} courses`}
+                          </span>
+                        </span>
+                      </span>
+                      {expired ? (
+                        <button type="button" className="ws-btn ws-btn-ghost ws-btn-sm" onClick={startReconnect} disabled={!tokenClient || isAuthorizing}>
+                          <LogIn size={12} /> Reconnect
+                        </button>
+                      ) : (
+                        <button type="button" className="ws-icon-btn" onClick={() => refreshAccount(acc.accountId)} disabled={loadingCourses} aria-label={`Refresh ${acc.email || acc.name}`} title="Refresh courses">
+                          <RefreshCw size={13} className={loadingCourses ? 'ws-spin' : ''} />
+                        </button>
+                      )}
+                      <button type="button" className="ws-icon-btn is-danger" onClick={() => setPendingRemoveEmail(acc.accountId)} aria-label={`Remove ${acc.email || acc.name}`} title="Remove account">
+                        <X size={13} />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          </aside>
         </div>
       )}
 
-      {/* ─── Confirm Reset All Dialog ─── */}
-      {confirmResetAll && (
-        <div className="workspace-confirm-overlay" onClick={() => setConfirmResetAll(false)}>
-          <div className="workspace-confirm-dialog" onClick={e => e.stopPropagation()}>
-            <h3>Reset All Workspace Data?</h3>
-            <p>
-              This will <strong>permanently remove</strong> all connected accounts, courses, and settings.
-              You will need to connect Google Classroom again.
+      {/* ─── Remove account ─── */}
+      {pendingRemoveEmail && (() => {
+        const acc = accounts.find(a => a.accountId === pendingRemoveEmail);
+        return (
+          <WsModal title="Remove account" icon={Users} onClose={() => setPendingRemoveEmail(null)}>
+            <div className="ws-modal-summary">
+              <span className="ws-badge is-muted">Courses <strong>{(acc?.courses || []).length}</strong></span>
+              {acc?.email && <span className="ws-badge is-amber">{acc.email}</span>}
+            </div>
+            <p className="ws-modal-text">
+              <strong>{acc?.name || 'This account'}</strong> and its courses will be hidden from Workspace. You can add it back anytime.
             </p>
-            <div className="workspace-confirm-actions">
-              <button className="workspace-btn workspace-btn-secondary" onClick={() => setConfirmResetAll(false)}>
-                Cancel
+            <div className="ws-modal-actions">
+              <button type="button" className="ws-btn ws-btn-danger" onClick={() => removeAccount(pendingRemoveEmail)}>
+                <Trash2 size={13} /> Remove
               </button>
-              <button className="workspace-btn workspace-btn-danger" onClick={handleResetAll}>
-                Reset Everything
-              </button>
+              <button type="button" className="ws-btn ws-btn-ghost" onClick={() => setPendingRemoveEmail(null)}>Cancel</button>
             </div>
+          </WsModal>
+        );
+      })()}
+
+      {/* ─── Reset everything ─── */}
+      {confirmResetAll && (
+        <WsModal title="Reset workspace" icon={Trash2} onClose={() => setConfirmResetAll(false)}>
+          <div className="ws-modal-summary">
+            <span className="ws-badge is-muted">Accounts <strong>{accounts.length}</strong></span>
+            <span className="ws-badge is-rose">Can’t be undone</span>
           </div>
-        </div>
+          <p className="ws-modal-text">
+            This removes every connected account, course choice and cached deadline from this device. You’ll need to sign in to Google Classroom again.
+          </p>
+          <div className="ws-modal-actions">
+            <button type="button" className="ws-btn ws-btn-danger" onClick={handleResetAll}><Trash2 size={13} /> Reset everything</button>
+            <button type="button" className="ws-btn ws-btn-ghost" onClick={() => setConfirmResetAll(false)}>Cancel</button>
+          </div>
+        </WsModal>
       )}
 
-      {/* ─── Material Preview Modal ─── */}
+      {/* ─── Material / announcement preview ─── */}
       {selectedMaterial && (() => {
         const item = selectedMaterial;
-        const MatIcon = item.materials && item.materials.length > 0 ? getMaterialIcon(item.materials) : Megaphone;
-        const matColor = item.materials && item.materials.length > 0 ? getMaterialColor(item.materials) : 'var(--accent-amber)';
-        const matLabel = item.materials && item.materials.length > 0 ? getMaterialTypeLabel(item.materials) : 'Announcement';
-        const displayTitle = item.title || item.text?.substring(0, 80) || (item.materials ? getMaterialTitle(item.materials) : 'Untitled');
+        const isPost = item._itemType === 'announcement';
+        const hasMats = item.materials && item.materials.length > 0;
+        const typeLabel = isPost ? 'Announcement' : getMaterialTypeLabel(item.materials);
+        const displayTitle = item.title || (hasMats ? getMaterialTitle(item.materials) : (isPost ? 'Announcement' : 'Untitled'));
         const fullText = item.text || item.description || '';
-
         return (
-          <div className="workspace-material-overlay" onClick={() => setSelectedMaterial(null)}>
-            <div className="workspace-material-modal" onClick={e => e.stopPropagation()}>
-              {/* Modal Header */}
-              <div className="workspace-material-modal-header">
-                <div className="workspace-material-modal-badge" style={{ background: matColor }}>
-                  <MatIcon size={18} />
-                </div>
-                <div className="workspace-material-modal-header-text">
-                  <h2 className="workspace-material-modal-title">{displayTitle}</h2>
-                  <div className="workspace-material-modal-meta">
-                    <span className="workspace-material-item-type-badge" style={{ background: `${matColor}18`, color: matColor }}>
-                      {item._itemType === 'announcement' ? 'Announcement' : matLabel}
-                    </span>
-                    {item.creationTime && (
-                      <>
-                        <span className="workspace-mat-sep">·</span>
-                        <span>{new Date(item.creationTime).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-                <button className="workspace-material-modal-close" onClick={() => setSelectedMaterial(null)}>
-                  <X size={18} />
-                </button>
-              </div>
-
-              {/* Modal Content */}
-              <div className="workspace-material-modal-body">
-                {fullText ? (
-                  <div className="workspace-material-modal-text">
-                    {fullText.split('\n').map((line, i) => (
-                      <p key={i}>{line || '\u00A0'}</p>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="workspace-material-modal-text workspace-material-modal-text-empty">
-                    <p>No additional text content.</p>
-                  </div>
-                )}
-
-                {/* Attached Materials */}
-                {item.materials && item.materials.length > 0 && (
-                  <div className="workspace-material-modal-attachments">
-                    <h3 className="workspace-material-modal-section-title">
-                      <FileText size={14} />
-                      Attachments ({item.materials.length})
-                    </h3>
-                    <div className="workspace-material-modal-attachment-list">
-                      {item.materials.map((mat, i) => {
-                        const mColor = getMaterialColor([mat]);
-                        const mTitle = getMaterialTitle([mat]);
-                        const mLink = getMaterialLink([mat]);
-                        const mType = getMaterialTypeLabel([mat]);
-                        return (
-                          <a
-                            key={i}
-                            href={mLink || '#'}
-                            target={mLink ? '_blank' : undefined}
-                            rel={mLink ? 'noopener noreferrer' : undefined}
-                            className="workspace-material-modal-attachment"
-                            style={{ borderLeftColor: mColor }}
-                            onClick={!mLink ? e => e.preventDefault() : undefined}
-                          >
-                            <div className="workspace-material-modal-attachment-icon" style={{ background: `${mColor}18`, color: mColor }}>
-                              <mIcon size={18} />
-                            </div>
-                            <div className="workspace-material-modal-attachment-info">
-                              <span className="workspace-material-modal-attachment-name">{mTitle}</span>
-                              <span className="workspace-material-modal-attachment-type">{mType}</span>
-                            </div>
-                            {mLink && <ExternalLink size={14} className="workspace-material-modal-attachment-link" />}
-                          </a>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Source course info */}
-                <div className="workspace-material-modal-footer">
-                  <BookOpen size={12} />
-                  <span>
-                    From: <strong>{selectedCourse?.name || 'Unknown course'}</strong>
-                    {item.creator?.userId && (
-                      <> · Posted by user ID: {item.creator.userId}</>
-                    )}
-                  </span>
-                </div>
-              </div>
+          <WsModal title={isPost ? 'Announcement' : 'Material'} icon={isPost ? Megaphone : BookOpen} onClose={() => setSelectedMaterial(null)} wide>
+            <div className="ws-modal-summary">
+              <span className="ws-badge is-amber">{typeLabel}</span>
+              {item.creationTime && (
+                <span className="ws-badge is-muted">
+                  {new Date(item.creationTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+              )}
+              {hasMats && <span className="ws-badge is-muted">Files <strong>{item.materials.length}</strong></span>}
             </div>
-          </div>
+            {(item.title || !isPost) && <h4 className="ws-modal-heading">{displayTitle}</h4>}
+            {fullText
+              ? <div className="ws-modal-body-text">{fullText}</div>
+              : <p className="ws-modal-text is-muted">No text with this post.</p>}
+
+            {hasMats && (
+              <div className="ws-modal-section">
+                <span className="ws-group-label">Attachments <span>{item.materials.length}</span></span>
+                <ul className="ws-list">
+                  {item.materials.map((mat, i) => {
+                    const AIcon = getMaterialIcon([mat]);
+                    const link = getMaterialLink([mat]);
+                    const inner = (
+                      <>
+                        <span className="ws-stream-icon"><AIcon size={14} /></span>
+                        <span className="ws-stream-body">
+                          <span className="ws-stream-title">{getMaterialTitle([mat])}</span>
+                          <span className="ws-stream-meta"><span className="ws-type">{getMaterialTypeLabel([mat])}</span></span>
+                        </span>
+                        {link && <ExternalLink size={13} className="ws-stream-caret" />}
+                      </>
+                    );
+                    return (
+                      <li key={i}>
+                        {link
+                          ? <a className="ws-stream-row" href={link} target="_blank" rel="noopener noreferrer">{inner}</a>
+                          : <span className="ws-stream-row is-static">{inner}</span>}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+
+            <div className="ws-modal-foot">
+              <BookOpen size={12} />
+              <span>From <strong>{selectedCourse?.name || 'this course'}</strong></span>
+              {item.alternateLink && (
+                <a className="ws-btn ws-btn-ghost ws-btn-sm" href={item.alternateLink} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink size={12} /> Open in Classroom
+                </a>
+              )}
+            </div>
+          </WsModal>
         );
       })()}
     </div>
