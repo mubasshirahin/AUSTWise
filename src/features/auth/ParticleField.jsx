@@ -176,7 +176,7 @@ export default function ParticleField({ theme, energized = false, intensity = 0,
       mouse.x = e.clientX - rect.left;
       mouse.y = e.clientY - rect.top;
       // Don't attract particles when hovering over the logo/brand area
-      const brand = document.querySelector('.auth-brand-outside');
+      const brand = document.querySelector('.auth-head');
       if (brand) {
         const br = brand.getBoundingClientRect();
         if (

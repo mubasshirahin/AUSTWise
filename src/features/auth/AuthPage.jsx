@@ -584,30 +584,26 @@ export default function AuthPage() {
         <div className="auth-page-noise" aria-hidden="true" />
       </div>
       <div className={`auth-shell ${sending ? 'is-sending' : ''}`}>
-        <div className="auth-brand-outside">
-          <div className="topbar-logo auth-topbar-logo">
-            <img src={brandMark} alt="AUSTWise" className="topbar-wordmark-img" />
-            <span className="topbar-brand-name">AUSTWise</span>
+        {/* Masthead (skill-style §2): brand tile, title, live member count + fixed product stats. */}
+        <header className="auth-head">
+          <div className="auth-head-title">
+            <div className="auth-head-tile" aria-hidden="true">
+              <img src={brandMark} alt="" />
+            </div>
+            <div className="auth-head-text">
+              <span className="auth-head-overline">Campus companion</span>
+              <h1 className="auth-head-name">AUSTWise</h1>
+              <span className="auth-head-subtitle">
+                {mode === 'login' ? 'Sign in to pick up where you left off' : 'Create your account in two steps'}
+              </span>
+            </div>
           </div>
-        </div>
-
-        {/* Live, rounded member count with fixed product stats. */}
-        <div className="auth-impact">
-          <div className="auth-impact-item">
-            <strong>{formatMemberCount(memberCount)}</strong>
-            <span>Members</span>
-          </div>
-          <div className="auth-impact-sep" />
-          <div className="auth-impact-item">
-            <strong>40+</strong>
-            <span>Features</span>
-          </div>
-          <div className="auth-impact-sep" />
-          <div className="auth-impact-item">
-            <strong>24/7</strong>
-            <span>Uptime</span>
-          </div>
-        </div>
+          <dl className="auth-head-stats">
+            <div className="auth-head-stat"><dt>Members</dt><dd>{formatMemberCount(memberCount)}</dd></div>
+            <div className="auth-head-stat"><dt>Features</dt><dd>40+</dd></div>
+            <div className="auth-head-stat"><dt>Uptime</dt><dd>24/7</dd></div>
+          </dl>
+        </header>
 
         <div
           className={`auth-card glass-card-static stagger-children ${sending ? 'auth-card--sending' : ''}`}
