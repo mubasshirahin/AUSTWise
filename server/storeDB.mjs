@@ -101,6 +101,31 @@ async function ensureTables() {
 
 // ── Per-user store ───────────────────────────────────────────────────────────
 
+/** Every user's stored value for one key → [{ userId, value }]. */
+export async function listUserStoreValuesForKey(key) {
+  if (!key) return [];
+  if (await isDbAvailable()) {
+    await ensureTables();
+    try {
+      const rows = await query(
+        'SELECT "userId", value FROM "UserStore" WHERE "key" = @key',
+        [{ name: 'key', type: sql.NVarChar(200), value: key }]
+      );
+      return rows.map((r) => {
+        let value;
+        try { value = JSON.parse(r.value); } catch { value = r.value; }
+        return { userId: r.userId, value };
+      });
+    } catch (err) {
+      console.warn('⚠️  listUserStoreValuesForKey DB error:', err.message);
+    }
+  }
+  const store = await readUserStoreFile();
+  return Object.entries(store)
+    .filter(([, data]) => data && data[key] !== undefined)
+    .map(([userId, data]) => ({ userId, value: data[key] }));
+}
+
 /** Get a user's stored value for a key. Returns parsed JSON or fallback. */
 export async function getUserStoreValue(userId, key, fallback = null) {
   if (!userId || !key) return fallback;

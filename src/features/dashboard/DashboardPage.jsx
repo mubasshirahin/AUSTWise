@@ -14,7 +14,6 @@ import GliderTabs from '../../components/GliderTabs';
 import MastheadAccessControl from '../../components/MastheadAccessControl';
 import FeatureAccessGate from '../admin/FeatureAccessGate';
 import { DashboardParentAccessPanel, DashboardChildAccessPanel } from '../admin/DashboardAccessPanel';
-import { leaderboardData } from '../../data/mockData';
 import {
   Gauge, Percent, BookOpen, CalendarDays, Zap, AlertTriangle, Calendar,
   Flame, X, Trophy, Medal, Award, Star, Target, Sparkles, Sun, BarChart3,
@@ -122,25 +121,25 @@ function StudyStreak() {
   };
 
   /* ─── Leaderboard modal ─── */
-  const { myRank, rankList } = useMemo(() => {
-    const joinedAt = user?.createdAt || new Date().toISOString();
+  const [board, setBoard] = useState({ top: [], me: null, loading: false });
+  useEffect(() => {
+    if (!showLeaderboard) return;
+    let cancelled = false;
+    setBoard((b) => ({ ...b, loading: true }));
+    fetch('/api/streak/leaderboard', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        setBoard({ top: data?.top || [], me: data?.me || null, loading: false });
+      })
+      .catch(() => { if (!cancelled) setBoard((b) => ({ ...b, loading: false })); });
+    return () => { cancelled = true; };
+  }, [showLeaderboard]);
 
-    const allEntries = [...leaderboardData, {
-      id: 'me', name: user?.name || 'You', dept: user?.department || '',
-      streak, joinedAt,
-    }];
-
-    allEntries.sort((a, b) => {
-      if (b.streak !== a.streak) return b.streak - a.streak;
-      return new Date(a.joinedAt || '2020-01-01') - new Date(b.joinedAt || '2020-01-01');
-    });
-
-    const myIdx = allEntries.findIndex(e => e.id === 'me');
-    const rank = myIdx !== -1 ? myIdx + 1 : null;
-    const top100 = allEntries.slice(0, 100);
-
-    return { myRank: rank, rankList: top100 };
-  }, [user, streak]);
+  const rankList = board.top;
+  const myRank = board.me?.rank ?? null;
+  const myBest = board.me?.streak ?? Math.max(Number(streakData?.maxCount) || 0, streak);
+  const myId = String(user?.id ?? '');
 
   const topThree = rankList.slice(0, 3);
 
@@ -172,7 +171,7 @@ function StudyStreak() {
                 </div>
                 <div>
                   <h3>Streak Leaderboard</h3>
-                  <p>Top 100 students by study streak</p>
+                  <p>Top 100 students by best study streak</p>
                 </div>
               </div>
               <button className="btn btn-icon btn-ghost" onClick={() => setShowLeaderboard(false)}>
@@ -201,7 +200,7 @@ function StudyStreak() {
             {/* ─── Rank List ─── */}
             <div className="leaderboard-list">
               {rankList.map((entry, i) => (
-                <div key={entry.id} className={`leaderboard-row${entry.name === user?.name ? ' leaderboard-row-me' : ''}`}>
+                <div key={entry.id} className={`leaderboard-row${entry.id === myId ? ' leaderboard-row-me' : ''}`}>
                   <span className="leaderboard-rank">#{i + 1}</span>
                   <div className="leaderboard-row-info">
                     <span className="leaderboard-row-name">{entry.name}</span>
@@ -212,6 +211,11 @@ function StudyStreak() {
                   </span>
                 </div>
               ))}
+              {!rankList.length && (
+                <div className="leaderboard-row-dept" style={{ padding: 'var(--sp-4)', textAlign: 'center' }}>
+                  {board.loading ? 'Loading…' : 'No streaks yet.'}
+                </div>
+              )}
             </div>
 
             {/* ─── My Position ─── */}
@@ -219,8 +223,8 @@ function StudyStreak() {
               <div className="leaderboard-my-rank-content">
                 <Sun size={16} style={{ color: getStreakColor() }} />
                 <div>
-                  <span className="leaderboard-my-rank-label">My Streak</span>
-                  <span className="leaderboard-my-rank-value" style={{ color: getStreakColor() }}>{streak} days</span>
+                  <span className="leaderboard-my-rank-label">My Best Streak</span>
+                  <span className="leaderboard-my-rank-value" style={{ color: getStreakColor() }}>{myBest} days</span>
                 </div>
               </div>
               <div className="leaderboard-my-rank-divider" />

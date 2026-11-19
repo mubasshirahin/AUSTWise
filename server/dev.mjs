@@ -164,7 +164,7 @@ import { createWSServer, closeWSServer, broadcastToAll, broadcastToUsers, broadc
 import {
   getUserStoreValue, setUserStoreValue, deleteUserStoreValue, listUserStoreKeys,
   getSharedStoreValue, setSharedStoreValue, deleteSharedStoreValue,
-  isUserStoreDeleted, isSharedStoreDeleted,
+  isUserStoreDeleted, isSharedStoreDeleted, listUserStoreValuesForKey,
 } from './storeDB.mjs';
 import { startTelegramScheduler, sendTelegramTestMessage } from './telegramSchedulerJob.mjs';
 import { startWebPushScheduler } from './webPushSchedulerJob.mjs';
@@ -3996,6 +3996,51 @@ async function handleApiRequest(req, res) {
   }
 
   // ========== Presence / Active Members ==========
+
+  // GET /api/streak/leaderboard — top 100 users by max study streak (>= 1),
+  // plus the caller's own rank among all ranked users.
+  if (req.method === 'GET' && new URL(req.url, 'http://localhost').pathname === '/api/streak/leaderboard') {
+    const auth = requireAuth(req, res);
+    if (!auth) return;
+    try {
+      const [rows, users] = await Promise.all([
+        listUserStoreValuesForKey('aust-study-streak'),
+        getAllUsersSafe(),
+      ]);
+      const userMap = new Map(users.map((u) => [String(u.id), u]));
+      const entries = [];
+      for (const { userId, value } of rows) {
+        const u = userMap.get(String(userId));
+        if (!u || u.id === 'guest') continue;
+        const maxStreak = Math.max(
+          Number(value?.maxCount ?? value?.best) || 0,
+          Number(value?.count ?? value?.currentStreak ?? value) || 0,
+        );
+        if (maxStreak < 1) continue;
+        entries.push({
+          id: String(u.id),
+          name: u.name || u.fullName || 'Student',
+          dept: u.department || '',
+          streak: maxStreak,
+          current: Number(value?.count) || 0,
+          joinedAt: u.createdAt || null,
+        });
+      }
+      entries.sort((a, b) => (b.streak - a.streak)
+        || (new Date(a.joinedAt || '2020-01-01') - new Date(b.joinedAt || '2020-01-01')));
+      const myId = String(auth.id ?? auth.userId ?? auth.sub ?? '');
+      const myIdx = entries.findIndex((e) => e.id === myId);
+      sendJson(res, 200, {
+        success: true,
+        total: entries.length,
+        top: entries.slice(0, 100),
+        me: myIdx === -1 ? null : { rank: myIdx + 1, ...entries[myIdx] },
+      });
+    } catch (err) {
+      sendJson(res, 500, { success: false, error: err.message });
+    }
+    return;
+  }
 
   // GET /api/presence/profiles/:id — authenticated profile summary for the member
   // directory. Activity values are counts of the selected user's own synced
