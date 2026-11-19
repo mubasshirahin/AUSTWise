@@ -84,7 +84,7 @@ import { handleGamingRoute } from './gaming/gamingRoutes.mjs';
 import { configureGamingBus } from './gaming/gamingBus.mjs';
 import { startGamingJobs } from './gaming/gamingJobs.mjs';
 import { rateLimit, extractRoutineRateLimiter } from './rateLimiter.mjs';
-import { getUserById, getUsersByIds, getUserByEmail, getAllUsersSafe, getUserByIdOrAwid, updateUserProfile, setUserPasswordHash, deleteUserById, countUsers, createUser, hashPassword, ADMIN_ASSIGNABLE_ROLES, FACULTY_DEPARTMENTS, facultyDepartmentRole } from './userStore.mjs';
+import { getUserById, getUsersByIds, getUserByEmail, getAllUsersSafe, getUserByIdOrAwid, updateUserProfile, setUserPasswordHash, deleteUserById, countUsers, getDbDataHealth, createUser, hashPassword, ADMIN_ASSIGNABLE_ROLES, FACULTY_DEPARTMENTS, facultyDepartmentRole } from './userStore.mjs';
 import {
   listMarketplace,
   addMarketplaceListing,
@@ -6886,7 +6886,28 @@ async function handleApiRequest(req, res) {
     if (!requireFeature('db', res, 'Database connection')) return;
     try {
       const ok = await testConnection();
-      sendJson(res, ok ? 200 : 503, { ok, db: FEATURES.db && ok });
+      const data = await getDbDataHealth();
+      // 503 when the DB is unreachable OR reachable but far below the
+      // configured account baseline (wrong/empty database).
+      const healthy = ok && data.ok;
+      sendJson(res, healthy ? 200 : 503, {
+        ok: healthy,
+        db: FEATURES.db && ok,
+        host: data.host,
+        users: data.users,
+        expectedMin: data.expectedMin,
+        dataOk: data.ok,
+        ...(data.reason ? { reason: data.reason } : {}),
+      });
+    } catch (e) {
+      sendJson(res, 503, { ok: false, error: e.message });
+    }
+    return;
+  }
+  if (hp === '/healthz/data' && req.method === 'GET') {
+    try {
+      const data = await getDbDataHealth();
+      sendJson(res, data.ok ? 200 : 503, data);
     } catch (e) {
       sendJson(res, 503, { ok: false, error: e.message });
     }

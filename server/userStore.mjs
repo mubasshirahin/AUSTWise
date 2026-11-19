@@ -37,14 +37,21 @@ CREATE INDEX IF NOT EXISTS ix_authusers_awid ON "AuthUsers" (awid);
 
 let _authTablesEnsured = false;
 let _dbAvailable = null; // null = untested → true/false
+let _dbCheckedAt = 0;
+// A transient boot-time failure must not pin the process to the JSON fallback
+// forever; re-test after a short cooldown. Once the DB is confirmed good we
+// keep the fast path (no repeated SELECT 1 on every request).
+const DB_RECHECK_MS = Number(process.env.DB_AVAILABILITY_RECHECK_MS || 30000);
 
 async function isDbAvailable() {
-  if (_dbAvailable !== null) return _dbAvailable;
+  if (_dbAvailable === true) return true;
+  if (_dbAvailable === false && Date.now() - _dbCheckedAt < DB_RECHECK_MS) return false;
   try {
     await query('SELECT 1');
     _dbAvailable = true;
   } catch {
     _dbAvailable = false;
+    _dbCheckedAt = Date.now();
   }
   return _dbAvailable;
 }
@@ -300,6 +307,14 @@ function generateAwid(users, role, department) {
  * every account ends up with a unique app ID distinct from the student ID.
  */
 export async function ensureAllAwids() {
+  // Cutover safety: the backfill rewrites EVERY AuthUsers row via writeUsers().
+  // On a large table that is a multi-minute stall and can churn AWIDs. Set
+  // SKIP_AWID_BACKFILL=1 for the first boot after repointing DATABASE_URL, then
+  // unset it once a sample of rows has been verified.
+  if (process.env.SKIP_AWID_BACKFILL === '1') {
+    console.log('ℹ️  userStore: AWID backfill skipped (SKIP_AWID_BACKFILL=1)');
+    return false;
+  }
   const users = await readUsers();
   let changed = false;
   for (const user of users) {
@@ -328,9 +343,24 @@ export async function ensureAllAwids() {
 
 /** Seed a default admin account if no admin exists */
 export async function seedDefaultAdmin() {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const expectedMin = Math.max(0, Number(process.env.EXPECTED_MIN_USERS || 0));
+  if (isProduction && expectedMin > 0) {
+    // Fail closed: never seed an admin into a database below the configured
+    // baseline. "Empty DB + boot-seeded admin" is exactly what made a wrong
+    // DATABASE_URL look like a healthy app whose data had vanished.
+    const count = await sqlAuthUserCount();
+    if (count === null) {
+      console.error(`❌ Refusing to seed the default admin: cannot verify the AuthUsers count (host: ${dbHostLabel()}). Check DATABASE_URL / DB connectivity.`);
+      return null;
+    }
+    if (count < expectedMin) {
+      console.error(`❌ Refusing to seed the default admin: AuthUsers has ${count} rows but EXPECTED_MIN_USERS=${expectedMin}. Check DATABASE_URL (host: ${dbHostLabel()}) — it likely points at an empty database.`);
+      return null;
+    }
+  }
   const users = await readUsers();
   if (users.some(u => u.role === 'admin')) return null;
-  const isProduction = process.env.NODE_ENV === 'production';
   const adminPassword = process.env.ADMIN_DEFAULT_PASSWORD;
   if (isProduction && (!adminPassword || adminPassword.length < 12)) {
     console.error('❌ Refusing to seed the default admin account: set a strong ADMIN_DEFAULT_PASSWORD (>= 12 characters) in production.');
@@ -1164,6 +1194,53 @@ export async function countUsers() {
   return users.length;
 }
 
+/**
+ * SQL-only AuthUsers count. Returns null when the DB is unavailable or the
+ * count fails — unlike countUsers() it never falls back to the JSON mirror,
+ * so a wrong/empty database cannot be masked by a local file.
+ */
+async function sqlAuthUserCount() {
+  if (!(await isDbAvailable())) return null;
+  await ensureAuthTables();
+  try {
+    const rows = await query('SELECT COUNT(*)::int AS cnt FROM "AuthUsers"');
+    return rows?.[0]?.cnt ?? 0;
+  } catch (err) {
+    console.warn('⚠️  userStore: AuthUsers count failed:', err.message);
+    return null;
+  }
+}
+
+/** Connection hostname (never credentials) for health/ops output. */
+function dbHostLabel() {
+  const url = process.env.DATABASE_URL;
+  if (url) {
+    try {
+      const parsed = new URL(url);
+      return `${parsed.hostname}${parsed.port ? `:${parsed.port}` : ''}`;
+    } catch { return 'unknown'; }
+  }
+  return String(process.env.PGHOST || process.env.DB_SERVER || 'localhost');
+}
+
+/**
+ * Data-readiness snapshot for health checks. EXPECTED_MIN_USERS is an opt-in
+ * baseline: when AuthUsers is far below it the server is almost certainly
+ * pointed at the wrong (usually empty) database — e.g. a fresh Render Postgres
+ * instead of Supabase — even though `SELECT 1` succeeds.
+ */
+export async function getDbDataHealth() {
+  const expectedMin = Math.max(0, Number(process.env.EXPECTED_MIN_USERS || 0));
+  const users = await sqlAuthUserCount();
+  const ok = users !== null && (expectedMin === 0 || users >= expectedMin);
+  const reason = users === null
+    ? 'AuthUsers count unavailable'
+    : expectedMin > 0 && users < expectedMin
+      ? `AuthUsers has ${users} rows; expected at least ${expectedMin} — check DATABASE_URL`
+      : null;
+  return { ok, host: dbHostLabel(), users, expectedMin, reason };
+}
+
 // Profile rows are stored as one JSON object. Serialize partial updates per
 // user so two near-simultaneous saves cannot write stale snapshots over fields
 // such as labSection.
@@ -1234,6 +1311,7 @@ export async function deleteUserById(id) {
   return true;
 }
 
-// Seed admin and backfill AWIDs on first import
+// Seed admin (baseline-guarded in production) and backfill AWIDs on first
+// import. SKIP_AWID_BACKFILL=1 skips the latter during a database cutover.
 seedDefaultAdmin().catch(() => {});
 ensureAllAwids().catch(() => {});
