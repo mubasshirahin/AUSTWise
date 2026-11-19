@@ -2,6 +2,7 @@ import { Code2, ExternalLink, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import './CPHubPage.css';
 import '../../components/PageHero.css';
+import '../daily-life/DailyMasthead.css';
 
 // Platform identity is carried by name/logo, not color — the dot uses the
 // brand accent so the grid reads as one system.
@@ -22,21 +23,19 @@ export default function CPHubPage() {
   return (
     <div className="cp-hub-page animate-fadeIn">
       {/* ── Masthead ── */}
-      <div className="schedule-masthead">
-        <div className="schedule-title-block">
-          <div className="schedule-icon-tile">
-            <Code2 size={20} strokeWidth={2.2} />
-          </div>
-          <div>
-            <span className="schedule-overline">Productivity</span>
-            <div className="schedule-title">Code Pulse</div>
-            <span className="schedule-subtitle">Your competitive programming launchpad — jump into contests, track progress, and level up.</span>
+      <header className="dl-head pr-head">
+        <div className="dl-head-title">
+          <div className="dl-head-tile" aria-hidden="true"><Code2 size={20} strokeWidth={2.1} /></div>
+          <div className="dl-head-text">
+            <span className="dl-head-overline">Productivity</span>
+            <h2 className="dl-head-name">Code Pulse</h2>
+            <span className="dl-head-subtitle">Your competitive programming launchpad.</span>
           </div>
         </div>
-        <div className="schedule-masthead-center" />
-      </div>
-
-      <div className="schedule-dotted-divider" style={{ marginTop: 0 }} />
+        <dl className="dl-head-stats">
+          <div className="dl-head-stat"><dt>Platforms</dt><dd>{PLATFORMS.length}</dd></div>
+        </dl>
+      </header>
 
       {/* ── Platform Cards ── */}
       <div className="cp-grid">

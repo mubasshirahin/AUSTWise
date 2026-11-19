@@ -38,6 +38,10 @@ import './MessagesPage.css';
 import { MemberAvatarPreview } from '../community/DirectoryShared';
 import { getMemberPreviewStats, mergeWithDirectory } from '../../utils/memberPreview';
 import { getCachedMembers } from '../../utils/memberDirectory';
+import { isDemoPeer } from '../../utils/messageDemo';
+
+// Demo chats (dev only) must never reach the live WebSocket server.
+const noopWs = () => {};
 
 /* ─── Emoji Reactions ─── */
 const REACTION_EMOJIS = getDefaultReactions();
@@ -1242,6 +1246,7 @@ export default function MessagesPage() {
     return list;
   }, [hydratedConversations, searchTerm, filterMode]);
 
+  const demoChat = isDemoPeer(activePeerId);
   const activePeer = (() => {
     const fromConversation = hydratedConversations.find((c) => c.peerId === activePeerId)?.peer;
     if (fromConversation) return fromConversation;
@@ -1513,9 +1518,9 @@ export default function MessagesPage() {
                 peerId={activePeerId}
                 peer={activePeer}
                 onSent={handleThreadEvent}
-                wsSendMessage={wsSendMessage}
-                wsSendTyping={wsSendTyping}
-                wsSendRead={wsSendRead}
+                wsSendMessage={demoChat ? noopWs : wsSendMessage}
+                wsSendTyping={demoChat ? noopWs : wsSendTyping}
+                wsSendRead={demoChat ? noopWs : wsSendRead}
                 peerTyping={peerTyping}
                 setPeerTyping={setPeerTyping}
                 wsReady={wsConnected}
@@ -1524,10 +1529,10 @@ export default function MessagesPage() {
                 onReactionChange={onReactionChange}
                 onDeleteEvent={onDeleteEvent}
                 onEditEvent={onEditEvent}
-                wsSendDelete={wsSendDelete}
-                wsSendEdit={wsSendEdit}
-                wsSendReaction={wsSendReaction}
-                queueMessage={queueMessage}
+                wsSendDelete={demoChat ? noopWs : wsSendDelete}
+                wsSendEdit={demoChat ? noopWs : wsSendEdit}
+                wsSendReaction={demoChat ? noopWs : wsSendReaction}
+                queueMessage={demoChat ? noopWs : queueMessage}
               />
             )}
           </section>

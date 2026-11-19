@@ -1,3 +1,4 @@
+import '../daily-life/DailyMasthead.css';
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   Copy, Check, BookOpen, Star, Plus, X, Trash2,
@@ -189,21 +190,20 @@ export default function Cheatsheets({ vaultContext }) {
   return (
     <div className="cheatsheets-container animate-fadeIn" style={cheatsheetsCard}>
       {/* ── Masthead header — Notebook style, merged into the top of this box ── */}
-      <div className="schedule-masthead" style={{ marginBottom: 0 }}>
-        <div className="schedule-title-block">
-          <div className="schedule-icon-tile">
-            <BookOpen size={20} strokeWidth={2.2} />
-          </div>
-          <div>
-            <span className="schedule-overline">Productivity</span>
-            <div className="schedule-title">Cheat Sheets</div>
-            <span className="schedule-subtitle">Quick-reference formula sheets across all departments and topics.</span>
+      <header className="dl-head pr-head">
+        <div className="dl-head-title">
+          <div className="dl-head-tile" aria-hidden="true"><BookOpen size={20} strokeWidth={2.1} /></div>
+          <div className="dl-head-text">
+            <span className="dl-head-overline">Productivity</span>
+            <h2 className="dl-head-name">Cheat Sheets</h2>
+            <span className="dl-head-subtitle">Quick-reference formula sheets across departments.</span>
           </div>
         </div>
-        <div className="schedule-masthead-center" />
-      </div>
-
-      <div className="schedule-dotted-divider" />
+        <dl className="dl-head-stats">
+          <div className="dl-head-stat"><dt>Sheets</dt><dd>{sheets.length}</dd></div>
+          <div className="dl-head-stat"><dt>Favourites</dt><dd>{favCount}</dd></div>
+        </dl>
+      </header>
 
       {/* ── Action buttons row ── */}
       <div className="flex items-center justify-end gap-2 flex-wrap" style={{ padding: 'var(--sp-3) 0 0', marginBottom: 'var(--sp-4)' }}>

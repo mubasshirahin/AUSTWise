@@ -1,3 +1,4 @@
+import { gzipSync } from 'node:zlib';
 import { drainBootLogs, rawConsole as rc } from './bootLog.mjs';
 import 'dotenv/config';
 import http from 'node:http';
@@ -81,7 +82,7 @@ import { handleGamingRoute } from './gaming/gamingRoutes.mjs';
 import { configureGamingBus } from './gaming/gamingBus.mjs';
 import { startGamingJobs } from './gaming/gamingJobs.mjs';
 import { rateLimit, extractRoutineRateLimiter } from './rateLimiter.mjs';
-import { getUserById, getUserByEmail, getAllUsersSafe, getUserByIdOrAwid, updateUserProfile, setUserPasswordHash, deleteUserById, countUsers, createUser, hashPassword, ADMIN_ASSIGNABLE_ROLES, FACULTY_DEPARTMENTS, facultyDepartmentRole } from './userStore.mjs';
+import { getUserById, getUsersByIds, getUserByEmail, getAllUsersSafe, getUserByIdOrAwid, updateUserProfile, setUserPasswordHash, deleteUserById, countUsers, createUser, hashPassword, ADMIN_ASSIGNABLE_ROLES, FACULTY_DEPARTMENTS, facultyDepartmentRole } from './userStore.mjs';
 import {
   listMarketplace,
   addMarketplaceListing,
@@ -665,6 +666,91 @@ function applySecurityHeaders(res, req) {
   if (process.env.ENABLE_HSTS === '1' || process.env.NODE_ENV === 'production') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }
+}
+
+// ── Member list cache ───────────────────────────────────────────────
+// Reading every AuthUsers row is slow (seconds on a remote DB). Keep the last
+// copy in memory, serve it instantly and refresh it in the background.
+const MEMBER_USERS_TTL_MS = 60_000;
+const memberUsersCache = { at: 0, users: null, pending: null };
+function refreshMemberUsers() {
+  if (!memberUsersCache.pending) {
+    memberUsersCache.pending = getAllUsersSafe()
+      .then((users) => { memberUsersCache.users = users; memberUsersCache.at = Date.now(); return users; })
+      .finally(() => { memberUsersCache.pending = null; });
+  }
+  return memberUsersCache.pending;
+}
+async function getMemberUsersCached() {
+  const c = memberUsersCache;
+  if (c.users) {
+    if (Date.now() - c.at > MEMBER_USERS_TTL_MS) refreshMemberUsers().catch(() => {});
+    return c.users;
+  }
+  return refreshMemberUsers();
+}
+// Warm the cache at startup so the first visitor doesn't wait.
+setTimeout(() => { refreshMemberUsers().catch(() => {}); }, 2000);
+
+// ── Streak leaderboard (cached) ─────────────────────────────────────
+const STREAK_BOARD_TTL_MS = 60_000;
+let streakBoardCache = { at: 0, entries: null, pending: null };
+
+async function buildStreakLeaderboard() {
+  const rows = await listUserStoreValuesForKey('aust-study-streak');
+  const scored = rows.map(({ userId, value }) => ({
+    userId: String(userId),
+    value,
+    streak: Math.max(
+      Number(value?.maxCount ?? value?.best) || 0,
+      Number(value?.count ?? value?.currentStreak ?? value) || 0,
+    ),
+  })).filter((r) => r.streak >= 1 && r.userId !== 'guest');
+  // Look up only the users who actually have a streak, not the whole table.
+  const found = await getUsersByIds(scored.map((r) => r.userId));
+  const byId = new Map(found.map((u) => [String(u.id), u]));
+  const users = scored.map((r) => byId.get(r.userId) || null);
+  const entries = [];
+  scored.forEach((r, i) => {
+    const u = users[i];
+    if (!u) return;
+    const roleList = [u.role, ...(Array.isArray(u.roles) ? u.roles : String(u.roles || '').split(/[,|]/))]
+      .map((x) => String(x || '').trim().toLowerCase());
+    if (roleList.some((x) => x.includes('admin'))) return;
+    entries.push({
+      id: String(u.id),
+      name: u.name || u.fullName || 'Student',
+      dept: u.department || '',
+      streak: r.streak,
+      current: Number(r.value?.count) || 0,
+      joinedAt: u.createdAt || null,
+      avatar: u.avatar || null,
+      awid: u.awid || null,
+      // Fields the member mini card shows (same as the members directory).
+      department: u.department || '',
+      role: u.role || 'student',
+      roles: u.roles || [],
+      batch: u.batch || '', batchNo: u.batchNo || '', batchName: u.batchName || '',
+      semester: u.semester || '', yearSemester: u.yearSemester || '',
+      section: u.section || '', labSection: u.labSection || '',
+      studentId: u.studentId || '',
+    });
+  });
+  entries.sort((x, y) => (y.streak - x.streak)
+    || (new Date(x.joinedAt || '2020-01-01') - new Date(y.joinedAt || '2020-01-01')));
+  return entries;
+}
+
+async function getStreakLeaderboard() {
+  const c = streakBoardCache;
+  if (c.entries && Date.now() - c.at < STREAK_BOARD_TTL_MS) return c.entries;
+  if (!c.pending) {
+    c.pending = buildStreakLeaderboard()
+      .then((entries) => { c.entries = entries; c.at = Date.now(); return entries; })
+      .finally(() => { c.pending = null; });
+  }
+  // Serve the stale list instantly while a refresh runs in the background.
+  return c.entries || c.pending;
 }
 
 function sendJson(res, status, payload) {
@@ -3998,38 +4084,16 @@ async function handleApiRequest(req, res) {
   // ========== Presence / Active Members ==========
 
   // GET /api/streak/leaderboard — top 100 users by max study streak (>= 1),
-  // plus the caller's own rank among all ranked users.
+  // plus the caller's own rank. The ranked list is cached briefly so opening
+  // the overlay doesn't re-read every streak + profile each time.
   if (req.method === 'GET' && new URL(req.url, 'http://localhost').pathname === '/api/streak/leaderboard') {
     const auth = requireAuth(req, res);
     if (!auth) return;
     try {
-      const [rows, users] = await Promise.all([
-        listUserStoreValuesForKey('aust-study-streak'),
-        getAllUsersSafe(),
-      ]);
-      const userMap = new Map(users.map((u) => [String(u.id), u]));
-      const entries = [];
-      for (const { userId, value } of rows) {
-        const u = userMap.get(String(userId));
-        if (!u || u.id === 'guest') continue;
-        const maxStreak = Math.max(
-          Number(value?.maxCount ?? value?.best) || 0,
-          Number(value?.count ?? value?.currentStreak ?? value) || 0,
-        );
-        if (maxStreak < 1) continue;
-        entries.push({
-          id: String(u.id),
-          name: u.name || u.fullName || 'Student',
-          dept: u.department || '',
-          streak: maxStreak,
-          current: Number(value?.count) || 0,
-          joinedAt: u.createdAt || null,
-        });
-      }
-      entries.sort((a, b) => (b.streak - a.streak)
-        || (new Date(a.joinedAt || '2020-01-01') - new Date(b.joinedAt || '2020-01-01')));
-      const myId = String(auth.id ?? auth.userId ?? auth.sub ?? '');
+      const entries = await getStreakLeaderboard();
+      const myId = String(auth.id ?? '');
       const myIdx = entries.findIndex((e) => e.id === myId);
+      res.setHeader('Cache-Control', 'private, max-age=30');
       sendJson(res, 200, {
         success: true,
         total: entries.length,
@@ -4234,7 +4298,7 @@ async function handleApiRequest(req, res) {
   // without an account. Academic grades and attendance are not included.
   if (req.url === '/api/presence/members' && req.method === 'GET') {
     try {
-      const users = await getAllUsersSafe();
+      const users = await getMemberUsersCached();
       const presence = getPresenceMap();
       const members = users
         .filter(u => u.id && u.name && u.id !== 'guest')
@@ -4279,7 +4343,15 @@ async function handleApiRequest(req, res) {
             orbit: u.orbit || null,
           };
         });
-      sendJson(res, 200, { success: true, members });
+      const body = JSON.stringify({ success: true, members });
+      if (/gzip/.test(String(req.headers['accept-encoding'] || ''))) {
+        const zipped = gzipSync(body);
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Content-Encoding': 'gzip', Vary: 'Accept-Encoding' });
+        res.end(zipped);
+      } else {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(body);
+      }
     } catch (error) {
       sendJson(res, 500, { success: false, error: error.message || 'Failed to load members.' });
     }

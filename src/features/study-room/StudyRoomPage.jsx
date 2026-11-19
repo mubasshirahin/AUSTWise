@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import './StudyRoomPage.css';
 import '../../components/PageHero.css';
+import '../daily-life/DailyMasthead.css';
 
 // All timer modes share the brand accent — mode is communicated by label, not color.
 const TIMER_MODES = [
@@ -145,30 +146,27 @@ export default function StudyRoomPage() {
   return (
     <div className="study-room-page animate-fadeIn">
       {/* ── Masthead ── */}
-      <div className="schedule-masthead">
-        <div className="schedule-title-block">
-          <div className="schedule-icon-tile">
-            <School size={20} strokeWidth={2.2} />
-          </div>
-          <div>
-            <span className="schedule-overline">Productivity</span>
-            <div className="schedule-title">Study Time</div>
-            <span className="schedule-subtitle">Your focused study sanctuary — timer, ambient sounds, and tips to boost productivity.</span>
+      <header className="dl-head pr-head has-actions">
+        <div className="dl-head-title">
+          <div className="dl-head-tile" aria-hidden="true"><School size={20} strokeWidth={2.1} /></div>
+          <div className="dl-head-text">
+            <span className="dl-head-overline">Productivity</span>
+            <h2 className="dl-head-name">Study Time</h2>
+            <span className="dl-head-subtitle">Focus timer, ambient sounds and study tips.</span>
           </div>
         </div>
-        <div className="schedule-masthead-center" />
-        <div className="schedule-actions">
-          <button
-            className="sr-zen-btn"
-            onClick={() => navigate('/zen')}
-          >
+        <dl className="dl-head-stats">
+          <div className="dl-head-stat"><dt>Sessions</dt><dd>{sessionsCompleted}</dd></div>
+          <div className="dl-head-stat"><dt>Mode</dt><dd>{currentMode?.label}</dd></div>
+          <div className="dl-head-stat"><dt>Sound</dt><dd>{soundEnabled && activeSound ? 'On' : 'Off'}</dd></div>
+        </dl>
+        <div className="dl-head-actions">
+          <button className="sr-zen-btn" onClick={() => navigate('/zen')}>
             <Maximize2 size={16} />
-            <span>Enter Zen Mode</span>
+            <span>Zen Mode</span>
           </button>
         </div>
-      </div>
-
-      <div className="schedule-dotted-divider" style={{ marginTop: 0 }} />
+      </header>
 
       <div className="sr-layout">
         {/* ── Left Column: Timer ── */}

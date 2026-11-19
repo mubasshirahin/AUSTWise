@@ -3,13 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import {
   Users, Search, X, ChevronDown, ChevronRight,
   BookOpen, WifiOff, Loader2, Lock, UserCog, Zap,
-  GraduationCap, School, Briefcase, UserRound,
+  GraduationCap, School, Briefcase, UserRound, Orbit,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getDisplayRoles, getRoleDisplayName } from '../../utils/authStorage';
-import { getAcademicLabels, getDisplayBatchText, getSemesterText } from '../../utils/batchIdentity';
 import useWebSocket from '../../hooks/useWebSocket';
 import { useStalk } from '../stalk-road/StalkContext';
+import { getMemberPreviewStats, mergeWithDirectory } from '../../utils/memberPreview';
+import { getCachedMembers } from '../../utils/memberDirectory';
+import '../community/MemberAvatarPreview.css';
 import './ActiveMembersSidebar.css';
 
 /* ─── Constants ─── */
@@ -282,7 +284,7 @@ function MemberPopover({ member, rect, onClose, onViewProfile }) {
     if (left > maxLeft) left = Math.max(12, maxLeft);
 
     // Clamp vertically so it never overflows the viewport
-    const estH = 430;
+    const estH = 300;
     let top = Math.min(rect.top, window.innerHeight - estH - 12);
     if (top < 12) top = 12;
 
@@ -305,92 +307,50 @@ function MemberPopover({ member, rect, onClose, onViewProfile }) {
 
   if (!member || !rect || !placed) return null;
 
-  const memberRoles = getDisplayRoles(member);
-  const roleClass = `am-role-${memberRoles.includes('admin') || memberRoles.includes('moderator') ? 'admin' : memberRoles.includes('faculty') || memberRoles.some((r) => r.startsWith('faculty_')) ? 'faculty' : (memberRoles.includes('cr') || memberRoles.includes('sr')) ? 'crsr' : 'student'}`;
+  // Same quick-stats card as the Student Directory (MemberAvatarPreview).
+  const card = mergeWithDirectory({ ...member }, getCachedMembers());
+  const stats = getMemberPreviewStats(card).filter(([, value]) => value);
+  const roleLabel = getDisplayRoles(member).map(getRoleDisplayName).join(' · ') || 'Member';
+  const initials = member.initials || String(member.name || '?').slice(0, 2).toUpperCase();
 
   return (
     <div
       ref={popRef}
-      className={`am-popover${placed.flip ? ' flip' : ''}`}
+      className="alumni-profile-preview is-floating am-stats-card"
+      role="dialog"
+      aria-label={`${member.name} quick stats`}
       style={{ left: placed.left, top: placed.top }}
     >
-      <div className={`am-pop-banner ${roleClass}`}>
-        <span className="am-pop-banner-fade" />
-      </div>
-      <div className="am-pop-avatar-wrap">
-        <span className={`am-pop-avatar ${roleClass}`}>
-          {member.avatar ? (
-            <img src={member.avatar} alt="" style={AVATAR_IMG_STYLE} />
-          ) : (
-            member.initials || member.name?.slice(0, 2).toUpperCase()
-          )}
+      <div className="alumni-profile-preview-head">
+        <span className="alumni-profile-preview-avatar">
+          {card.avatar ? <img src={card.avatar} alt="" /> : initials}
         </span>
-        <PresenceDot status={member.status} size={14} />
+        <span className="alumni-profile-preview-identity">
+          <strong>{member.name}</strong>
+          <span>{roleLabel}</span>
+        </span>
       </div>
-      <button type="button" className="am-pop-close" onClick={onClose} aria-label="Close profile">
-        <X size={15} />
-      </button>
-
-      <div className="am-pop-body">
-        <h3 className="am-pop-name">{member.name}</h3>
-        <div className="am-pop-badges">
-          {getDisplayRoles(member).map((roleKey) => (
-            <span key={roleKey} className="am-chip am-chip-role">{getRoleDisplayName(roleKey)}</span>
-          ))}
-          {getAcademicLabels(member, { hideSemester: memberRoles.includes('admin') }).map((label) => (
-            <span key={label} className="am-chip">{label}</span>
+      {stats.length > 0 && (
+        <div className="alumni-profile-preview-stats">
+          {stats.map(([label, value]) => (
+            <div key={label}><span>{label}</span><strong>{value}</strong></div>
           ))}
         </div>
-
-        <div className="am-pop-divider" />
-
-        <div className="am-pop-info">
-          <div className="am-pop-info-row">
-            <span className="am-pop-info-label">Department</span>
-            <span className="am-pop-info-value">{member.department || '—'}</span>
-          </div>
-          <div className="am-pop-info-row">
-            <span className="am-pop-info-label">Batch</span>
-            <span className="am-pop-info-value">{getDisplayBatchText(member) || member.batch || '—'}</span>
-          </div>
-          {!memberRoles.includes('admin') && (
-            <div className="am-pop-info-row">
-              <span className="am-pop-info-label">Semester</span>
-              <span className="am-pop-info-value">{getSemesterText(member) || '—'}</span>
-            </div>
-          )}
-          <div className="am-pop-info-row">
-            <span className="am-pop-info-label">Section</span>
-            <span className="am-pop-info-value">{member.section ? `Section ${member.section}` : '—'}</span>
-          </div>
-          <div className="am-pop-info-row">
-            <span className="am-pop-info-label">Lab</span>
-            <span className="am-pop-info-value">{member.labSection ? `Lab ${member.labSection}` : '—'}</span>
-          </div>
-        </div>
-
-        <div className="am-pop-divider" />
-
-        <div className="am-pop-actions">
-          <button
-            type="button"
-            className="am-pop-action"
-            onClick={() => onViewProfile(member)}
-            title={`View ${member.name}'s profile`}
-          >
-            <UserRound size={14} />
-            <span>View Profile</span>
-          </button>
-          <button
-            type="button"
-            className="am-pop-action am-pop-action-stalk"
-            onClick={() => { stalk(member); onClose(); }}
-            title={`Visit ${member.name}'s orbit`}
-          >
-            <span aria-hidden="true">🐾</span>
-            <span>Visit Orbit</span>
-          </button>
-        </div>
+      )}
+      <div className="alumni-profile-preview-actions">
+        <button type="button" className="alumni-profile-preview-cta" onClick={() => onViewProfile(member)}>
+          <UserRound size={13} aria-hidden="true" />
+          View profile
+        </button>
+        <button
+          type="button"
+          className="alumni-profile-preview-cta"
+          onClick={() => { stalk(member); onClose(); }}
+          aria-label={`Visit ${member.name}'s Orbit`}
+        >
+          <Orbit size={13} aria-hidden="true" />
+          Visit Orbit
+        </button>
       </div>
     </div>
   );

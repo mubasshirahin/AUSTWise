@@ -6,6 +6,7 @@
 import { getAccountById, getInitials } from './authStorage';
 import { sanitizeUserInput, MAX_TEXT_LENGTH } from './sanitize';
 import * as api from './messageApi';
+import { DEMO_PEERS, isDemoPeer, buildDemoMessages } from './messageDemo';
 
 const messagesKey = 'aust-messages-v1';
 
@@ -14,6 +15,7 @@ export function getConversationId(a, b) {
 }
 
 function resolvePeer(peerId) {
+  if (DEMO_PEERS[peerId]) return DEMO_PEERS[peerId];
   const account = getAccountById(peerId);
   if (account) {
     return {
@@ -43,11 +45,17 @@ function saveMessages(list) {
   try { localStorage.setItem(messagesKey, JSON.stringify(list)); } catch { /* full */ }
 }
 
+// Dev-only demo messages are merged on read, never saved.
+function withDemo(list, userId) {
+  const demo = buildDemoMessages(userId);
+  return demo.length ? list.concat(demo) : list;
+}
+
 // ── Sync cache reads (instant UI) ──────────────────────────────────────────────
 
 export function getThread(userId, peerId) {
   const convId = getConversationId(userId, peerId);
-  const sorted = loadMessages()
+  const sorted = withDemo(loadMessages(), userId)
     .filter((m) => m.conversationId === convId)
     .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
   // One-time cleanup: collapse accidental double-sends (same sender + text
@@ -62,7 +70,7 @@ export function getThread(userId, peerId) {
 }
 
 export function getConversations(userId) {
-  const list = loadMessages();
+  const list = withDemo(loadMessages(), userId);
   const map = new Map();
   for (const msg of list) {
     if (msg.fromId !== userId && msg.toId !== userId) continue;
@@ -146,7 +154,7 @@ export function sendMessage(fromId, toId, text, replyTo, existingId = null, exis
 
   // Persist to server (non-blocking — local cache is authoritative for instant UI).
   // WS-relayed messages (existingId) are already on the server — don't re-POST.
-  if (!existingId) {
+  if (!existingId && !isDemoPeer(toId)) {
     void api.sendMessage(fromId, toId, clean, replyTo, message.id).catch(() => {
       /* keep local copy; sync on next refresh */
     });

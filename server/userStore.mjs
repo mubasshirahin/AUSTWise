@@ -999,6 +999,24 @@ export async function getUserById(id) {
   return safe;
 }
 
+/** Batch lookup of several users in one query. Returns safe users (no password). */
+export async function getUsersByIds(ids) {
+  const keys = [...new Set((ids || []).map((id) => String(id || '')).filter(Boolean))];
+  if (!keys.length) return [];
+  if (await isDbAvailable()) {
+    await ensureAuthTables();
+    try {
+      const rows = await query('SELECT data FROM "AuthUsers" WHERE id = ANY(@ids)', [{ name: 'ids', value: keys }]);
+      return (rows || [])
+        .map((row) => normalizeLegacySenior(fromUserRow(row)))
+        .filter(Boolean)
+        .map(({ password: _, ...safe }) => safe);
+    } catch { /* fall through to JSON scan */ }
+  }
+  const wanted = new Set(keys);
+  return (await readUsers()).filter((u) => wanted.has(String(u.id))).map(({ password: _, ...safe }) => safe);
+}
+
 /**
  * Fast lookup by id OR awid via direct SQL (AuthUsers has an awid column).
  * Falls back to a full scan for legacy rows without the column value.

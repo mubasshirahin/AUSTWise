@@ -10,6 +10,7 @@ import WeekSchedule from './WeekSchedule';
 import NotificationBanner from './NotificationBanner';
 import RoutineAttendanceTracker from './RoutineAttendanceTracker';
 import AlumniTransferPrompt from './AlumniTransferPrompt';
+import { MemberIconPreview } from '../community/DirectoryShared';
 import GliderTabs from '../../components/GliderTabs';
 import MastheadAccessControl from '../../components/MastheadAccessControl';
 import FeatureAccessGate from '../admin/FeatureAccessGate';
@@ -42,12 +43,30 @@ const FOCUS_SECTIONS = {
 
 const storageKeyType = 'semesterResults';
 
+/* Module-level cache so reopening the leaderboard is instant. */
+let streakBoardCache = null;
+let streakBoardPending = null;
+function loadStreakBoard() {
+  if (!streakBoardPending) {
+    streakBoardPending = fetch('/api/streak/leaderboard', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.success) streakBoardCache = { top: data.top || [], me: data.me || null, loading: false };
+        return streakBoardCache || { top: [], me: null, loading: false };
+      })
+      .catch(() => streakBoardCache || { top: [], me: null, loading: false })
+      .finally(() => { streakBoardPending = null; });
+  }
+  return streakBoardPending;
+}
+
 /* ─── Study Streak Widget ─── */
 function StudyStreak() {
   const [streak, setStreak] = useState(0);
   const [displayStreak, setDisplayStreak] = useState(0);
   const [justUpdated, setJustUpdated] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [streakData, setStreakData] = useLiveValue('user', 'aust-study-streak', null);
 
@@ -121,18 +140,11 @@ function StudyStreak() {
   };
 
   /* ─── Leaderboard modal ─── */
-  const [board, setBoard] = useState({ top: [], me: null, loading: false });
+  const [board, setBoard] = useState(() => streakBoardCache || { top: [], me: null, loading: true });
+  // Prefetch on mount (so the overlay opens with data) and refresh on open.
   useEffect(() => {
-    if (!showLeaderboard) return;
     let cancelled = false;
-    setBoard((b) => ({ ...b, loading: true }));
-    fetch('/api/streak/leaderboard', { credentials: 'include' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (cancelled) return;
-        setBoard({ top: data?.top || [], me: data?.me || null, loading: false });
-      })
-      .catch(() => { if (!cancelled) setBoard((b) => ({ ...b, loading: false })); });
+    loadStreakBoard().then((data) => { if (!cancelled && data) setBoard(data); });
     return () => { cancelled = true; };
   }, [showLeaderboard]);
 
@@ -142,6 +154,21 @@ function StudyStreak() {
   const myId = String(user?.id ?? '');
 
   const topThree = rankList.slice(0, 3);
+  const openProfile = (entry) => {
+    setShowLeaderboard(false);
+    navigate(`/members/${encodeURIComponent(entry.awid || entry.studentId || entry.id)}`);
+  };
+  // Same floating quick-stats card as the Student Directory.
+  const renderAvatar = (entry, size = 'sm') => (
+    <MemberIconPreview
+      person={{ ...entry, userId: entry.id, batchLabel: entry.batchName || entry.batch }}
+      onOpenProfile={() => openProfile(entry)}
+      avatarClassName={`leaderboard-avatar is-${size}`}
+      avatarContent={entry.avatar
+        ? <img src={entry.avatar} alt="" loading="lazy" />
+        : <span>{String(entry.name || '?').trim().slice(0, 2).toUpperCase()}</span>}
+    />
+  );
 
   return (
     <>
@@ -187,6 +214,7 @@ function StudyStreak() {
                 return (
                   <div key={entry.id} className={`podium-item podium-${i + 1}`}>
                     <div className="podium-icon" style={{ color: colors[i] }}>{icons[i]}</div>
+                    {renderAvatar(entry, 'md')}
                     <div className="podium-name">{entry.name}</div>
                     <div className="podium-dept">{entry.dept}</div>
                     <div className="podium-streak" style={{ color: colors[i] }}>
@@ -199,9 +227,10 @@ function StudyStreak() {
 
             {/* ─── Rank List ─── */}
             <div className="leaderboard-list">
-              {rankList.map((entry, i) => (
+              {rankList.slice(3).map((entry, idx) => { const i = idx + 3; return (
                 <div key={entry.id} className={`leaderboard-row${entry.id === myId ? ' leaderboard-row-me' : ''}`}>
                   <span className="leaderboard-rank">#{i + 1}</span>
+                  {renderAvatar(entry)}
                   <div className="leaderboard-row-info">
                     <span className="leaderboard-row-name">{entry.name}</span>
                     <span className="leaderboard-row-dept">{entry.dept}</span>
@@ -210,10 +239,10 @@ function StudyStreak() {
                     <Sparkles size={11} /> {entry.streak}
                   </span>
                 </div>
-              ))}
-              {!rankList.length && (
+              ); })}
+              {rankList.length <= 3 && (
                 <div className="leaderboard-row-dept" style={{ padding: 'var(--sp-4)', textAlign: 'center' }}>
-                  {board.loading ? 'Loading…' : 'No streaks yet.'}
+                  {board.loading ? 'Loading…' : rankList.length ? 'No one else yet.' : 'No streaks yet.'}
                 </div>
               )}
             </div>
