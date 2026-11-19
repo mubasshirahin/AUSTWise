@@ -13,18 +13,38 @@
     }
   }
 
+  // Is a window of this app open and on screen right now?
+  function hasVisibleClient() {
+    return self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clients) {
+      for (var i = 0; i < clients.length; i += 1) {
+        if (clients[i].visibilityState === 'visible') return true;
+      }
+      return false;
+    }).catch(function () { return false; });
+  }
+
   self.addEventListener('push', function (event) {
     var data = parsePayload(event);
     var title = data.title || 'AUSTWise';
+    var silent = data.silent === true;
     var options = {
       body: data.body || '',
-      icon: data.icon || '/austwise_icon_final.svg',
-      badge: '/austwise_icon_final.svg',
+      icon: data.icon || '/icon-192x192.png',
+      badge: '/icon-192x192.png',
       tag: data.tag || 'austwise',
-      renotify: true,
+      renotify: !silent,
+      silent: silent,
+      vibrate: silent ? [] : (Array.isArray(data.vibrate) && data.vibrate.length ? data.vibrate : [200, 100, 200]),
+      timestamp: Date.now(),
       data: { url: data.url || '/' },
     };
-    event.waitUntil(self.registration.showNotification(title, options));
+    event.waitUntil(
+      (data.skipIfVisible ? hasVisibleClient() : Promise.resolve(false)).then(function (visible) {
+        // The open app already shows it (e.g. the chat you are reading).
+        if (visible) return undefined;
+        return self.registration.showNotification(title, options);
+      })
+    );
   });
 
   self.addEventListener('notificationclick', function (event) {

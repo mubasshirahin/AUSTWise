@@ -1,4 +1,5 @@
 import { getNotificationChannelEnabled } from './inAppNotifications';
+import { showDeviceNotification } from './deviceNotification';
 
 const STORAGE_KEY = 'aust-notifications-v1';
 const LAST_WRITE_KEY = 'aust-notifications-lastwrite-v1';
@@ -16,9 +17,11 @@ const defaultSettings = {
   notifyNotices: false,
   channels: {
     telegram: { notices: true, classSchedule: true, classReminders: true, attendance: true, deadlines: true },
-    browser: { notices: true, classReminders: true, deadlines: true, tasks: true, messages: true, applications: true },
-    bell: { notices: true, deadlines: true, tasks: true, messages: true, applications: true },
+    browser: { notices: true, classReminders: true, deadlines: true, tasks: true, messages: true, applications: true, gaming: true },
+    bell: { notices: true, deadlines: true, tasks: true, messages: true, applications: true, gaming: true },
   },
+  // Sound + vibration on device notifications (off = silent popups).
+  vibrate: true,
 };
 
 export function isNotificationSupported() {
@@ -147,23 +150,20 @@ function hasFired(key) {
   return loadFiredSet().has(key);
 }
 
+/**
+ * Fire a device notification. Goes through the service worker so it also
+ * works (and vibrates) on phones, where `new Notification()` is not allowed.
+ * Resolves to true when a notification was shown.
+ */
 export function sendNotification(title, body, opts = {}) {
-  if (opts.category && !getNotificationChannelEnabled('browser', opts.category)) return null;
-  if (!isNotificationSupported() || Notification.permission !== 'granted') return null;
-  try {
-    const n = new Notification(title, {
-      body,
-      icon: '/austwise-icon-final.svg',
-      badge: '/austwise-icon-final.svg',
-      tag: opts.tag || title,
-      requireInteraction: opts.requireInteraction || false,
-      ...opts,
-    });
-    n.onclick = () => { window.focus(); n.close(); };
-    return n;
-  } catch {
-    return null;
-  }
+  if (opts.category && !getNotificationChannelEnabled('browser', opts.category)) return Promise.resolve(false);
+  if (!isNotificationSupported() || Notification.permission !== 'granted') return Promise.resolve(false);
+  return showDeviceNotification(title, {
+    body,
+    tag: opts.tag || title,
+    url: opts.url,
+    requireInteraction: opts.requireInteraction || false,
+  }).catch(() => false);
 }
 
 function parseTime(timeStr) {

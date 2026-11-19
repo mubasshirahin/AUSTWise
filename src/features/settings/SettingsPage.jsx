@@ -9,6 +9,8 @@ import AboutUs from './AboutUs';
 import LinkedAccountsSection from './LinkedAccountsSection';
 import GliderTabs from '../../components/GliderTabs';
 import { useNotifications } from '../../hooks/useNotifications';
+import { requestPermission as requestNotificationPermission } from '../../utils/notificationService';
+import { showDeviceNotification } from '../../utils/deviceNotification';
 import useAdminMode from '../../hooks/useAdminMode';
 import MastheadAccessControl from '../../components/MastheadAccessControl';
 import FeatureAccessGate from '../admin/FeatureAccessGate';
@@ -1426,13 +1428,6 @@ export default function SettingsPage() {
       {/* ── 3. Main content box (own card) ── */}
       {isAdmin && activeSubTab !== 'invite' ? <SidebarPageAccessPanel pageKey="/settings" featureKey={`feature:settings:${activeSubTab}`} part="child" /> : <MastheadAccessControl pageKey="/settings">
         <div className="st-content-card" key={activeSubTab}>
-        {activeSubTab === 'about' && (
-          <div className="st-mac-chrome" aria-hidden="true">
-            <span className="st-mac-dot st-mac-dot--red" />
-            <span className="st-mac-dot st-mac-dot--amber" />
-            <span className="st-mac-dot st-mac-dot--green" />
-          </div>
-        )}
         <FeatureAccessGate featureKey={`feature:settings:${activeSubTab}`}>
         <div className="settings-panel">
           {activeSubTab === 'profile' && (
@@ -2004,6 +1999,7 @@ export default function SettingsPage() {
                         { label: 'Study task reminders', key: 'tasks', channels: ['browser', 'bell'] },
                         { label: 'New messages', key: 'messages', channels: ['browser', 'bell'] },
                         { label: 'Role application updates', key: 'applications', channels: ['browser', 'bell'] },
+                        { label: 'Gaming Zone alerts', key: 'gaming', channels: ['browser', 'bell'] },
                       ].map((row) => (
                         <div className="delivery-matrix-row" key={row.key}>
                           <span className="delivery-matrix-label">{row.label}</span>
@@ -2090,7 +2086,7 @@ export default function SettingsPage() {
                 <div className="cfg-section-head">
                   <h3 className="cfg-section-title">Mobile push notifications</h3>
                   <p className="cfg-section-desc">
-                    Get Notice Board alerts and Smart Reminders (30 min before class / 12 h before a deadline) on this device even when the app is closed — delivered through your browser's push service.
+                    Get the same updates as the bell (notices, messages, Smart Reminders, role applications, Gaming Zone) on this device even when the app is closed. Pick which ones in the Browser column above.
                   </p>
                   <p className="delivery-channel-status">
                     Device: <strong>
@@ -2146,6 +2142,56 @@ export default function SettingsPage() {
                     }}
                     style={{ opacity: (push.busy || !push.supported) ? 0.6 : 1, cursor: (push.busy || !push.supported) ? 'not-allowed' : 'pointer' }}
                   />
+                </div>
+
+                <div className="cfg-row">
+                  <div className="cfg-row-main">
+                    <span className={`cfg-row-icon ${notifSettings.vibrate !== false ? 'is-emerald' : ''}`}>
+                      {notifSettings.vibrate !== false ? <BellRing size={18} /> : <BellOff size={18} />}
+                    </span>
+                    <div className="cfg-row-text">
+                      <h4 className="cfg-row-title">Sound &amp; vibration</h4>
+                      <p className="cfg-row-desc">
+                        {notifSettings.vibrate !== false
+                          ? 'On — the phone vibrates and plays its notification sound.'
+                          : 'Off — notifications arrive silently.'}
+                      </p>
+                    </div>
+                  </div>
+                  <div
+                    role="switch"
+                    aria-checked={notifSettings.vibrate !== false}
+                    aria-label="Sound and vibration"
+                    className={`toggle-switch ${notifSettings.vibrate !== false ? 'active' : ''}`}
+                    onClick={() => updateSetting('vibrate', notifSettings.vibrate === false)}
+                  />
+                </div>
+
+                <div className="cfg-actions">
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    onClick={async () => {
+                      if (!supported) { setPushMsg('This browser does not support notifications.'); }
+                      else if (permission === 'denied') { setPushMsg('Notifications are blocked — allow them in your browser site settings.'); }
+                      else {
+                        const result = permission === 'granted' ? 'granted' : await requestNotificationPermission();
+                        if (result !== 'granted') setPushMsg('Notification permission was not granted.');
+                        else {
+                          const shown = await showDeviceNotification('AUSTWise test', {
+                            body: 'Notifications are working on this device.',
+                            tag: 'austwise-test',
+                            url: '/settings',
+                          });
+                          setPushMsg(shown ? 'Test sent — check your notification shade.' : 'Could not show a notification on this device.');
+                        }
+                      }
+                      setTimeout(() => setPushMsg(''), 5000);
+                    }}
+                  >
+                    <BellRing size={14} />
+                    Send a test notification
+                  </button>
                 </div>
 
                 {isIOSDevice && !isStandalonePWA && (

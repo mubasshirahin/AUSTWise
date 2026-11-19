@@ -3,9 +3,8 @@ import {
   isNotificationSupported,
   getPermissionStatus,
   requestPermission,
-  sendNotification,
 } from '../utils/notificationService';
-import { addNotification, makeNotifId } from '../utils/inAppNotifications';
+import { addNotification, makeNotifId, showNativeNotification } from '../utils/inAppNotifications';
 
 const STORAGE_KEY = 'aust-msg-notif-enabled';
 
@@ -48,10 +47,9 @@ export default function useMessageNotifications(_userId) {
 
     const preview = text.length > 120 ? text.slice(0, 117) + '...' : text;
 
-    // Always add an in-app notification
-    addNotification({
+    const item = {
       id: makeNotifId('msg'),
-      title: fromName,
+      title: `💬 ${fromName}`,
       body: preview,
       type: 'info',
       category: 'messages',
@@ -60,22 +58,17 @@ export default function useMessageNotifications(_userId) {
       timestamp: timestamp ? new Date(timestamp).getTime() : Date.now(),
       read: false,
       priority: 'high',
-    });
+    };
 
-    // Only show browser notification when the app is in the background
+    // Always add an in-app (bell) notification
+    addNotification(item);
+
+    // Pop it on the device right away when the app is in the background.
+    // showNativeNotification records the id, so the bell's poll won't repeat
+    // it, and it stays quiet when the server already pushed it here.
     if (!isHiddenRef.current) return;
     if (getPermissionStatus() !== 'granted') return;
-
-    sendNotification(
-      `💬 ${fromName}`,
-      preview,
-      {
-        tag: `msg-${fromId}-${timestamp || Date.now()}`,
-        category: 'messages',
-        requireInteraction: false,
-        data: { peerId: fromId, conversationId: fromId },
-      }
-    );
+    showNativeNotification(item);
   }, []);
 
   /** Toggle message notifications on/off */

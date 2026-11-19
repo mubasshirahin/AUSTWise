@@ -114,4 +114,29 @@ describe('webPush server module', () => {
     expect(result.removed).toBe(1);
     expect(await mod.getSubscriptions('u1')).toEqual([]);
   });
+  it('skips categories switched off in Settings and follows the vibrate switch', async () => {
+    await mod.saveSubscription('u1', sub('e1'));
+    getUserById.mockImplementation(async (id) => ({
+      id,
+      settings: { notifications: { vibrate: false, channels: { browser: { messages: false, gaming: true } } } },
+    }));
+    const off = await mod.sendPushToUser('u1', { title: 'dm', category: 'messages' });
+    expect(off.sent).toBe(0);
+    expect(mocks.store.sent).toHaveLength(0);
+
+    await mod.sendPushToUser('u1', { title: 'squad', category: 'gaming' });
+    const payload = JSON.parse(mocks.store.sent[0].payload);
+    expect(payload.silent).toBe(true);
+    expect(payload.vibrate).toEqual([]);
+  });
+
+  it('mirrors known realtime events as pushes and ignores the rest', async () => {
+    getUserById.mockImplementation(async (id) => ({ id, settings: { notifications: {} } }));
+    await mod.saveSubscription('u1', sub('e1'));
+    mod.pushRealtimeEvent(['u1'], { type: 'role-review', payload: { applicationId: 'a1', title: 'Application approved', body: 'ok' } });
+    mod.pushRealtimeEvent(['u1'], { type: 'store-change', payload: {} });
+    await vi.waitFor(() => expect(mocks.store.sent).toHaveLength(1));
+    const payload = JSON.parse(mocks.store.sent[0].payload);
+    expect(payload).toMatchObject({ title: 'Application approved', category: 'applications', vibrate: [200, 100, 200], silent: false });
+  });
 });

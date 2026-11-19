@@ -31,6 +31,8 @@ import {
   removeSubscription,
   getSubscriptionStatus,
   sendNoticeWebPush,
+  pushRealtimeEvent,
+  sendMessageWebPush,
 } from './webPush.mjs';
 import {
   unregisterUser,
@@ -606,13 +608,21 @@ const DEFAULT_USER_SETTINGS = {
     notifyDigest: true,
     channels: {
       telegram: { notices: true, classSchedule: true, classReminders: true, attendance: true, deadlines: true },
-      browser: { notices: true, classReminders: true, deadlines: true, tasks: true, messages: true, applications: true },
-      bell: { notices: true, deadlines: true, tasks: true, messages: true, applications: true },
+      browser: { notices: true, classReminders: true, deadlines: true, tasks: true, messages: true, applications: true, gaming: true },
+      bell: { notices: true, deadlines: true, tasks: true, messages: true, applications: true, gaming: true },
     },
+    // Sound + vibration on device notifications (off = silent popups).
+    vibrate: true,
   },
   telegram: { chatId: '', enabled: false },
   libraryTracking: false,
 };
+
+/** WebSocket fan-out plus the matching Web Push (bell + phone stay in step). */
+function broadcastAndPush(userIds, data) {
+  broadcastToUsers(userIds, data);
+  pushRealtimeEvent(userIds, data);
+}
 
 function normalizeUserSettings(raw) {
   const s = raw && typeof raw === 'object' ? raw : {};
@@ -625,6 +635,7 @@ function normalizeUserSettings(raw) {
   notif.notifyNotices = notif.notifyNotices === true;
   notif.notifyAttendance = notif.notifyAttendance !== false;
   notif.notifyDigest = notif.notifyDigest !== false;
+  notif.vibrate = notif.vibrate !== false;
   const channelDefaults = DEFAULT_USER_SETTINGS.notifications.channels;
   notif.channels = Object.fromEntries(Object.entries(channelDefaults).map(([channel, defaults]) => {
     const stored = s.notifications?.channels?.[channel] || {};
@@ -5713,6 +5724,7 @@ async function handleApiRequest(req, res) {
         toId: payload.toId,
         text: payload.text,
       });
+      void sendMessageWebPush({ fromId: auth.id, toId: payload.toId, text: payload.text }).catch(() => {});
       sendJson(res, 201, { success: true, message: msg });
     } catch (error) {
       sendJson(res, 400, { success: false, error: error.message });
@@ -6448,7 +6460,7 @@ async function handleApiRequest(req, res) {
 
       // Notify only admins/moderators (real-time over WebSocket).
       const admins = allUsers.filter(u => u.role === 'admin' || u.role === 'moderator');
-      broadcastToUsers(admins.map(a => a.id), {
+      broadcastAndPush(admins.map(a => a.id), {
         type: 'role-application',
         payload: {
           id: application.id,
@@ -6606,7 +6618,7 @@ async function handleApiRequest(req, res) {
       }
       // Notify the applicant with the decision.
       const approved = status === 'approved';
-      broadcastToUsers([app.userId], {
+      broadcastAndPush([app.userId], {
         type: 'role-review',
         payload: {
           id: app.id,
@@ -6985,7 +6997,15 @@ process.on('unhandledRejection', (err) => {
 
 // Initialize WebSocket server for real-time messaging
 createWSServer(server);
-configureGamingBus({ broadcastToUsers, getPresenceMap, isDbReady: () => dbConnected });
+configureGamingBus({
+  // Gaming events also go out as Web Push so they reach a closed app.
+  broadcastToUsers: (ids, data) => {
+    broadcastToUsers(ids, data);
+    pushRealtimeEvent(ids, data);
+  },
+  getPresenceMap,
+  isDbReady: () => dbConnected,
+});
 startGamingJobs({ isDbReady: () => dbConnected });
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));

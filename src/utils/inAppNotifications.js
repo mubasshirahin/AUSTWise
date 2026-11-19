@@ -1,9 +1,11 @@
+import { showDeviceNotification, isServerPushedOnThisDevice } from './deviceNotification';
+
 const NOTIFS_KEY = 'aust-inapp-notifs-v1';
 const NATIVE_SHOWN_KEY = 'aust-inapp-notifs-native-v1';
 const DEFAULT_CHANNELS = {
   telegram: { notices: true, classSchedule: true, classReminders: true, attendance: true, deadlines: true },
-  browser: { notices: true, classReminders: true, deadlines: true, tasks: true, messages: true, applications: true },
-  bell: { notices: true, deadlines: true, tasks: true, messages: true, applications: true },
+  browser: { notices: true, classReminders: true, deadlines: true, tasks: true, messages: true, applications: true, gaming: true },
+  bell: { notices: true, deadlines: true, tasks: true, messages: true, applications: true, gaming: true },
 };
 
 export function getNotificationChannelEnabled(channel, category) {
@@ -164,28 +166,27 @@ function saveNativeShownIds(ids) {
  * @param {Object} item - AppNotification shape ({ id, title, body })
  */
 export function showNativeNotification(item) {
-  if (!getNotificationChannelEnabled('browser', categoryForNotification(item))) return;
+  const category = categoryForNotification(item);
+  if (!getNotificationChannelEnabled('browser', category)) return;
+  // The server already pushed this one to this device (works with the app closed).
+  if (isServerPushedOnThisDevice(category)) return;
   if (typeof window === 'undefined' || !('Notification' in window)) return;
+  // A chat message while the app is on screen is already visible in the app.
+  if (category === 'messages' && document.visibilityState === 'visible') return;
   const shown = getNativeShownIds();
   if (shown.has(item.id)) return;
 
-  const title = item.title || 'AUSTWise';
-  const body = item.body || '';
-  const options = {
-    body,
-    tag: item.id,
-    icon: '/austwise-icon-final.svg',
-  };
-
   const fire = () => {
-    try {
-      new Notification(title, options);
-      const next = getNativeShownIds();
-      next.add(item.id);
-      saveNativeShownIds(next);
-    } catch {
-      // ignore – native notifications unavailable
-    }
+    // Mark first so the 5s poll can't fire the same item twice while the
+    // service worker is still resolving.
+    const next = getNativeShownIds();
+    next.add(item.id);
+    saveNativeShownIds(next);
+    showDeviceNotification(item.title || 'AUSTWise', {
+      body: item.body || '',
+      tag: item.id,
+      url: item.path || '/',
+    }).catch(() => { /* native notifications unavailable */ });
   };
 
   if (Notification.permission === 'granted') {

@@ -119,12 +119,25 @@ async function deliver(userId, sub, payload) {
   }
 }
 
-/** Send one payload to every device of a user. Always resolves; never throws. */
+const VIBRATE_PATTERN = [200, 100, 200];
+
+/**
+ * Send one payload to every device of a user. Always resolves; never throws.
+ * `payload.category` is matched against the user's Settings → Browser column,
+ * so a type switched off there never reaches their phone. The user's
+ * "Sound & vibration" switch decides between a vibrating and a silent popup.
+ */
 export async function sendPushToUser(userId, payload) {
-  if (!isWebPushConfigured) return { sent: 0, failed: 0, removed: 0 };
+  const none = { sent: 0, failed: 0, removed: 0 };
+  if (!isWebPushConfigured) return none;
   const subs = await getSubscriptions(userId);
-  if (!subs.length) return { sent: 0, failed: 0, removed: 0 };
-  const results = await Promise.all(subs.map((sub) => deliver(userId, sub, payload)));
+  if (!subs.length) return none;
+  let prefs = {};
+  try { prefs = (await getUserById(userId))?.settings?.notifications || {}; } catch { /* use defaults */ }
+  if (payload?.category && prefs.channels?.browser?.[payload.category] === false) return none;
+  const vibrate = prefs.vibrate !== false;
+  const body = { ...payload, vibrate: vibrate ? VIBRATE_PATTERN : [], silent: !vibrate };
+  const results = await Promise.all(subs.map((sub) => deliver(userId, sub, body)));
   return {
     sent: results.filter((r) => r === 'sent').length,
     failed: results.filter((r) => r === 'failed').length,
@@ -166,8 +179,7 @@ export async function sendNoticeWebPush(notice) {
     body: String(notice?.content || `Posted by ${notice?.postedByName || 'CR/SR'}`).slice(0, 160),
     tag: notice?.noticeId ? `notice-${notice.noticeId}` : `notice-${Date.now()}`,
     url: '/',
-    category: 'notice',
-    icon: '/austwise-icon-final.svg',
+    category: 'notices',
   };
 
   const results = await Promise.all(eligible.map((id) => sendPushToUser(id, payload)));
@@ -175,4 +187,89 @@ export async function sendNoticeWebPush(notice) {
   const failed = results.reduce((sum, r) => sum + r.failed, 0);
   const removed = results.reduce((sum, r) => sum + r.removed, 0);
   return { success: true, recipients: eligible.length, sent, failed, removed };
+}
+
+/**
+ * Mirror a realtime (WebSocket) event as a Web Push, so the same things that
+ * land in the notification bell also reach a phone with the app closed.
+ * Unknown event types are ignored. Fire-and-forget; never throws.
+ */
+const REALTIME_PUSH = {
+  'role-application': (p) => ({
+    title: p.title || 'New role application',
+    body: p.body || '',
+    tag: `roleapp-${p.id || Date.now()}`,
+    url: p.path || '/admin/applications',
+    category: 'applications',
+  }),
+  'role-review': (p) => ({
+    title: p.title || 'Application update',
+    body: p.body || '',
+    tag: `role-review-${p.applicationId || p.id || Date.now()}`,
+    url: p.path || '/settings',
+    category: 'applications',
+  }),
+  'gz-lfg-ping': (p) => p?.roomId && ({
+    title: `${p.game?.name || 'A squad'} needs ${p.missing} more`,
+    body: `${p.from?.name || 'Someone'}: "${p.title || ''}"`.slice(0, 160),
+    tag: `gz-ping-${p.roomId}`,
+    url: `/gaming/room/${p.roomId}`,
+    category: 'gaming',
+  }),
+  'gz-event-reminder': (p) => p?.eventId && ({
+    title: `${p.title || 'Your event'} starts soon`,
+    body: 'Check in and join the event chat.',
+    tag: `gz-remind-${p.eventId}`,
+    url: `/gaming/event/${p.eventId}`,
+    category: 'gaming',
+  }),
+  'gz-event-update': (p) => p?.eventId && ({
+    title: `${p.title || 'Event'} ${p.status === 'cancelled' ? 'was cancelled' : p.status === 'live' ? 'is live' : 'was updated'}`,
+    body: 'Open the event for details.',
+    tag: `gz-event-${p.eventId}`,
+    url: `/gaming/event/${p.eventId}`,
+    category: 'gaming',
+  }),
+  'gz-kicked': (p) => p?.roomId && ({
+    title: p.banned ? 'Removed and blocked from a room' : 'Removed from a room',
+    body: p.title || '',
+    tag: `gz-kick-${p.roomId}`,
+    url: '/gaming?view=rooms',
+    category: 'gaming',
+  }),
+  'gz-sanction': (p) => p?.type && ({
+    title: `${p.type === 'zone_ban' ? 'Gaming Zone suspension' : p.type === 'room_ban' ? 'Room ban' : 'Mute'} ${p.revoked ? 'lifted' : 'applied'}`,
+    body: p.revoked ? 'You can take part again.' : (p.reason || ''),
+    tag: `gz-sanction-${p.type}`,
+    url: '/gaming',
+    category: 'gaming',
+  }),
+};
+
+export function pushRealtimeEvent(userIds, data) {
+  if (!isWebPushConfigured || !data?.type) return;
+  const build = REALTIME_PUSH[data.type];
+  if (!build) return;
+  let payload;
+  try { payload = build(data.payload || {}); } catch { return; }
+  if (!payload) return;
+  const ids = [...new Set((Array.isArray(userIds) ? userIds : [userIds]).filter(Boolean).map(String))];
+  for (const id of ids) void sendPushToUser(id, payload).catch(() => {});
+}
+
+/** Push a new direct message to the recipient's devices. */
+export async function sendMessageWebPush({ fromId, toId, text }) {
+  if (!isWebPushConfigured || !fromId || !toId || !text) return;
+  let sender = null;
+  try { sender = await getUserById(fromId); } catch { /* name falls back */ }
+  const preview = String(text);
+  await sendPushToUser(toId, {
+    title: `💬 ${sender?.name || 'New message'}`,
+    body: preview.length > 140 ? `${preview.slice(0, 137)}...` : preview,
+    tag: `msg-${fromId}`,
+    url: `/messages?peer=${encodeURIComponent(fromId)}`,
+    category: 'messages',
+    // Don't pop a system alert over the chat the recipient is already reading.
+    skipIfVisible: true,
+  });
 }
