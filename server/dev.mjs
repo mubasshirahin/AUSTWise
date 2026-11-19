@@ -1090,6 +1090,7 @@ server.on('request', async (req, res) => {
     // (net::ERR_ABORTED on the module graph). Static requests always pass
     // straight through to handleApiRequest (which serves them / the SPA).
     const isApiRequest = req.url.startsWith('/api/');
+    if (isApiRequest) trackSlowApi(req, res);
     if (!isApiRequest || globalRateLimiter(req, res)) {
       // Pull the caller's current role from the DB (cached 60s) so a demotion
       // or ban applies without waiting for the 7-day JWT to expire.
@@ -1105,6 +1106,28 @@ server.on('request', async (req, res) => {
     }
   }
 });
+
+// ── Slow API log ──────────────────────────────────────────────────────
+// Logs every /api request slower than SLOW_API_MS (default 300ms) as
+//   [slow-api] 812ms GET /api/notices/:id 200
+// Query strings are dropped and numeric/uuid path parts become ":id", so
+// tokens never reach the log and the same route groups together.
+const SLOW_API_MS = Number(process.env.SLOW_API_MS || 300);
+function routeKey(url) {
+  return url.split('?')[0]
+    .replace(/\/[0-9a-f]{8}-[0-9a-f-]{27,}(?=\/|$)/gi, '/:id')
+    .replace(/\/[0-9a-f]{24}(?=\/|$)/gi, '/:id')
+    .replace(/\/\d+(?=\/|$)/g, '/:id');
+}
+function trackSlowApi(req, res) {
+  const start = process.hrtime.bigint();
+  res.once('finish', () => {
+    const ms = Number(process.hrtime.bigint() - start) / 1e6;
+    if (ms >= SLOW_API_MS) {
+      console.warn(`[slow-api] ${Math.round(ms)}ms ${req.method} ${routeKey(req.url)} ${res.statusCode}`);
+    }
+  });
+}
 
 // API + non-static request dispatch (run inside the global rate limiter).
 async function handleApiRequest(req, res) {
