@@ -8,6 +8,7 @@ import BatchDriveManager from './BatchDriveManager';
 import BatchDriveLockPanel from './BatchDriveLockPanel';
 import BatchDriveCodeGenerate from './BatchDriveCodeGenerate';
 import MaterialFolders from './MaterialFolders';
+import VaultMasthead from './VaultMasthead';
 import GliderTabs from '../../components/GliderTabs';
 import MastheadAccessControl from '../../components/MastheadAccessControl';
 import FeatureAccessGate from '../admin/FeatureAccessGate';
@@ -20,6 +21,7 @@ import { loadVaultSelection, saveVaultSelection } from './vaultSelectionStorage'
 import './VaultPage.css';
 import './VaultBatchSelector.css';
 import './vault-tokens.css';
+import './VaultHouse.css';
 
 function getSelectionStep(department, yearSem, batch) {
   if (!department) return 'dept';
@@ -149,6 +151,16 @@ export default function VaultPage() {
     />
   );
 
+  const renderComingSoon = (Icon, title, subtitle, hint) => (
+    <div className="vault-coming-soon-wrap">
+      <VaultMasthead icon={Icon} title={title} subtitle={subtitle} />
+      <div className="vl-empty">
+        <span className="vl-empty-icon"><Icon size={16} /></span>
+        <p className="vl-empty-hint">{hint}</p>
+      </div>
+    </div>
+  );
+
   const renderVaultContent = () => {
     if (activeTab === 'drive-links') {
       return (
@@ -170,55 +182,11 @@ export default function VaultPage() {
     }
 
     if (activeTab === 'carbon-vault') {
-      return (
-        <div className="vault-coming-soon-wrap">
-          <div className="schedule-masthead">
-            <div className="schedule-title-block">
-              <div className="schedule-icon-tile">
-                <Cpu size={22} />
-              </div>
-              <div>
-                <span className="schedule-overline">Resource Vault</span>
-                <p className="schedule-title">Carbon Vault</p>
-                <span className="schedule-subtitle">Organized notes</span>
-              </div>
-            </div>
-            <div className="schedule-masthead-center" />
-            <div className="schedule-actions" />
-          </div>
-          <div className="vault-coming-soon">
-            <Cpu size={48} strokeWidth={1.5} />
-            <h3>Carbon Vault</h3>
-            <p>Your carbon footprint tracker for semester resources — coming soon!</p>
-          </div>
-        </div>
-      );
+      return renderComingSoon(Cpu, 'Carbon Vault', 'Organized notes', 'Carbon Vault is coming soon - a carbon footprint tracker for your semester resources.');
     }
 
     if (activeTab === 'notebook') {
-      return (
-        <div className="vault-coming-soon-wrap">
-          <div className="schedule-masthead">
-            <div className="schedule-title-block">
-              <div className="schedule-icon-tile">
-                <NotebookPen size={22} />
-              </div>
-              <div>
-                <span className="schedule-overline">Resource Vault</span>
-                <p className="schedule-title">Notebook</p>
-                <span className="schedule-subtitle">Handwritten notes</span>
-              </div>
-            </div>
-            <div className="schedule-masthead-center" />
-            <div className="schedule-actions" />
-          </div>
-          <div className="vault-coming-soon">
-            <NotebookPen size={48} strokeWidth={1.5} />
-            <h3>Coming Soon</h3>
-            <p>A real pen-and-paper notebook — with Apple Pencil pressure, shapes, and paper templates. Coming soon!</p>
-          </div>
-        </div>
-      );
+      return renderComingSoon(NotebookPen, 'Notebook', 'Handwritten notes', 'Notebook is coming soon - a pen-and-paper notebook with pencil pressure, shapes and paper templates.');
     }
 
     if (activeTab === 'code-generate') {
@@ -235,7 +203,17 @@ export default function VaultPage() {
     }
 
     if (isBatchDriveLocked) {
-      return lockPanel;
+      return (
+        <div className="vault-locked-wrap">
+          <VaultMasthead
+            stats={[
+              { label: 'Status', value: 'Locked', alert: true, small: true },
+              { label: 'Semester', value: lock.status?.yearSemLabel || '—' },
+            ]}
+          />
+          {lockPanel}
+        </div>
+      );
     }
 
     if (!isReady) {

@@ -63,7 +63,14 @@ export default function VaultBatchSelector({ department, yearSem, onSelectBatch,
 
   return (
     <div className="vb-selector">
-      <VaultMasthead department={department} yearSem={yearSem} />
+      <VaultMasthead
+        subtitle={`Pick a batch Drive for ${department} · ${yearSem}`}
+        stats={[
+          { label: 'Dept', value: department },
+          { label: 'Semester', value: yearSem },
+          { label: 'Drives', value: batches.length },
+        ]}
+      />
 
       {progress}
 

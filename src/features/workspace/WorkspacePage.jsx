@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import './WorkspacePage.css';
 import '../daily-life/DailyMasthead.css';
+import { useAuth } from '../../context/AuthContext';
 
 // ─── Google Classroom OAuth Configuration ───
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
@@ -56,7 +57,64 @@ function compactWork(cw) {
     state: cw.submissionState || 'NEW',
     maxPoints: cw.maxPoints || null,
     link: cw.alternateLink || null,
+    // Teacher picked individual students and none of them is this one
+    notMine: cw.assigneeMode === 'INDIVIDUAL_STUDENTS' && cw.submissionsKnown && !cw.hasSubmission,
   };
+}
+
+// ─── Lab groups / sections ───
+// Every group's task is posted to the whole class; who it's for is written in
+// the title: "Online 3 - A2", "Quiz – B1", "Task -A1/A2", "Viva (C2)", "Lab 4 [B2]",
+// "Online 2 for B2. Upload here", "Proposal Submission - B sec", "Report (Section A)".
+// Lab tag: a standalone A1…H2 token anywhere ("A 2" only at the very end).
+const LAB_TOKEN_RE = /(?<![A-Za-z0-9])([A-H][12])(?![A-Za-z0-9])/gi;
+const LAB_SPACED_END_RE = /(?:^|[^A-Za-z0-9])([A-H]) ([12])[\s)\]}.,;:!*]*$/i;
+// Section tag: "B sec", "B-section", "sec B", "Section: A"
+const SEC_RE = /(?<![A-Za-z0-9])(?:([A-H])[\s.\-_]*sec(?:tion)?|sec(?:tion)?[\s.\-_:]*([A-H]))(?![A-Za-z0-9])/gi;
+
+function cleanTitle(title) {
+  // Unify odd dashes/spaces Classroom titles pick up from copy-paste
+  return String(title || '').normalize('NFKC').replace(/[‐-―−]/g, '-').replace(/\s+/g, ' ').trim();
+}
+
+// { labs: ['A2'], secs: ['B'] } — empty arrays when the title names nobody
+function scopeOf(title) {
+  const t = cleanTitle(title);
+  const labs = new Set([...t.matchAll(LAB_TOKEN_RE)].map(m => m[1].toUpperCase()));
+  const spaced = t.match(LAB_SPACED_END_RE);
+  if (spaced) labs.add(`${spaced[1]}${spaced[2]}`.toUpperCase());
+  const secs = new Set([...t.matchAll(SEC_RE)].map(m => (m[1] || m[2]).toUpperCase()));
+  return { labs: [...labs], secs: [...secs] };
+}
+
+function scopeLabel(title) {
+  const { labs, secs } = scopeOf(title);
+  if (labs.length) return `Lab ${labs.join('/')}`;
+  if (secs.length) return `Sec ${secs.join('/')}`;
+  return 'Not assigned';
+}
+
+function normLab(lab) {
+  const v = String(lab || '').toUpperCase().replace(/^\s*LAB\s*(GROUP)?\s*/, '').replace(/[\s-]/g, '');
+  return /^[A-H][12]$/.test(v) ? v : '';
+}
+
+function normSec(sec) {
+  const v = String(sec || '').toUpperCase().replace(/^\s*SEC(TION)?\s*/, '').trim();
+  return /^[A-H]$/.test(v) ? v : '';
+}
+
+// Untagged work is for everyone. A lab tag wins over a section tag:
+// "A2" counts only for lab A2; "B sec" counts for B1 and B2.
+function isForMe(item, myLab, mySec) {
+  if (item.notMine) return false;
+  const { labs, secs } = scopeOf(item.title);
+  if (labs.length) {
+    if (myLab) return labs.includes(myLab);
+    return !mySec || labs.some(l => l[0] === mySec);
+  }
+  if (secs.length && mySec) return secs.includes(mySec);
+  return true;
 }
 
 // 'done' | 'returned' | 'missing' | 'assigned' — Classroom's own words
@@ -119,10 +177,18 @@ async function fetchCourseWorkWithState(courseId, token) {
   const [data, subData] = await Promise.all([
     fetchClassroom(`/courses/${courseId}/courseWork?pageSize=50&orderBy=dueDate`, token),
     fetchClassroom(`/courses/${courseId}/courseWork/-/studentSubmissions?pageSize=100`, token)
-      .catch(() => ({ studentSubmissions: [] })),
+      .catch(() => null),
   ]);
-  const stateById = new Map((subData.studentSubmissions || []).map(sub => [sub.courseWorkId, sub.state]));
-  return (data.courseWork || []).map(cw => ({ ...cw, submissionState: stateById.get(cw.id) || 'NEW' }));
+  const subs = subData?.studentSubmissions || [];
+  // Only trust "no submission = not assigned to me" when the whole list came back.
+  const submissionsKnown = !!subData && !subData.nextPageToken;
+  const stateById = new Map(subs.map(sub => [sub.courseWorkId, sub.state]));
+  return (data.courseWork || []).map(cw => ({
+    ...cw,
+    submissionState: stateById.get(cw.id) || 'NEW',
+    hasSubmission: stateById.has(cw.id),
+    submissionsKnown,
+  }));
 }
 
 // ─── Material type helpers ───
@@ -274,6 +340,10 @@ function mergeCourses(courseList, existingCourses) {
 }
 
 export default function WorkspacePage() {
+  const { user } = useAuth() || {};
+  const myLab = normLab(user?.labSection);
+  // Section comes from the lab group (A2 → A); fall back to the profile section
+  const mySec = myLab ? myLab[0] : normSec(user?.section);
   const [accounts, setAccounts] = useState(loadAccounts);
   const [isLoaded, setIsLoaded] = useState(false);
   const [tokenClient, setTokenClient] = useState(null);
@@ -944,6 +1014,7 @@ export default function WorkspacePage() {
     const ov = overview[course.id];
     const s = { loaded: !!ov, total: 0, done: 0, missing: 0, assigned: 0, dueWeek: 0, next: null };
     for (const it of ov?.items || []) {
+      if (!isForMe(it, myLab, mySec)) continue;
       const st = workState(it, now);
       s.total++;
       if (isFinished(st)) s.done++;
@@ -1079,7 +1150,7 @@ export default function WorkspacePage() {
           <div className="dl-head-text">
             <span className="dl-head-overline">Productivity</span>
             <h2 className="dl-head-name">Workspace</h2>
-            <span className="dl-head-subtitle">Every Google Classroom account, course and deadline in one place.</span>
+            <span className="dl-head-subtitle">{myLab ? `Lab ${myLab} · only tasks assigned to you are counted` : 'Every Google Classroom account, course and deadline in one place.'}</span>
           </div>
         </div>
         <dl className="dl-head-stats">
@@ -1178,6 +1249,19 @@ export default function WorkspacePage() {
         </div>
       )}
 
+      {accounts.length > 0 && user && !myLab && (
+        <div className="ws-notice is-amber">
+          <Users size={15} />
+          <div className="ws-notice-body">
+            <strong>Showing every lab group’s tasks.</strong>
+            <span>Your profile has no lab group. Set it so tasks ending in “- A2”, “- B1”… only count for your group.</span>
+          </div>
+          <a className="ws-btn ws-btn-primary" href="/settings">
+            <Settings size={13} /> Set lab group
+          </a>
+        </div>
+      )}
+
       {loadingCourses && (
         <div className="ws-notice is-muted"><Loader2 size={15} className="ws-spin" /><div className="ws-notice-body"><span>Refreshing courses…</span></div></div>
       )}
@@ -1227,12 +1311,16 @@ export default function WorkspacePage() {
       {/* ─── Course detail ─── */}
       {accounts.length > 0 && selectedCourse && (() => {
         const owner = accounts.find(acc => (acc.courses || []).some(c => c.id === selectedCourse.id));
-        const work = coursework.map(cw => ({ ...compactWork(cw), st: workState(compactWork(cw), now) }));
+        const allItems = coursework.map(compactWork);
+        const work = allItems.filter(it => isForMe(it, myLab, mySec)).map(it => ({ ...it, st: workState(it, now) }));
+        // Other lab groups' tasks: listed last, never counted
+        const otherWork = allItems.filter(it => !isForMe(it, myLab, mySec)).map(it => ({ ...it, st: 'other' }));
         const groups = [
           { key: 'missing', label: 'Missing', items: work.filter(w => w.st === 'missing').sort((a, b) => b.due - a.due) },
           { key: 'upcoming', label: 'Upcoming', items: work.filter(w => w.st === 'assigned' && w.due).sort((a, b) => a.due - b.due) },
           { key: 'nodue', label: 'No due date', items: work.filter(w => w.st === 'assigned' && !w.due) },
           { key: 'done', label: 'Turned in', items: work.filter(w => isFinished(w.st)).sort((a, b) => (b.due || 0) - (a.due || 0)) },
+          { key: 'other', label: (myLab || mySec) ? 'Other groups' : 'Not assigned to you', items: otherWork.sort((a, b) => (b.due || 0) - (a.due || 0)) },
         ].filter(g => g.items.length);
         const doneN = work.filter(w => isFinished(w.st)).length;
         const pct = work.length ? Math.round((doneN / work.length) * 100) : 0;
@@ -1279,7 +1367,10 @@ export default function WorkspacePage() {
               <section className="ws-card ws-panel">
                 <div className="ws-card-head is-ruled">
                   <h3 className="ws-card-title"><Clipboard size={14} /> Classwork</h3>
-                  {!loadingCoursework && <span className="ws-count">{work.length}</span>}
+                  <span className="ws-head-meta">
+                    {myLab && <span className="ws-lab-chip" title="Only your lab group's tasks are counted">Lab {myLab}</span>}
+                    {!loadingCoursework && <span className="ws-count">{work.length}</span>}
+                  </span>
                 </div>
                 {loadingCoursework ? (
                   <div className="ws-loading"><Loader2 size={15} className="ws-spin" /> Loading classwork…</div>
@@ -1293,7 +1384,8 @@ export default function WorkspacePage() {
                         <ul className="ws-list">
                           {g.items.map(w => {
                             const { day, mon } = dateParts(w.due);
-                            const StIcon = w.st === 'done' ? CheckCircle : w.st === 'returned' ? Award : w.st === 'missing' ? AlertTriangle : Clock;
+                            const StIcon = w.st === 'other' ? Users : w.st === 'done' ? CheckCircle : w.st === 'returned' ? Award : w.st === 'missing' ? AlertTriangle : Clock;
+                            const stLabel = w.st === 'other' ? scopeLabel(w.title) : STATE_LABEL[w.st];
                             return (
                               <li key={w.id} className={`ws-work-row is-${w.st}`}>
                                 <span className="ws-date" aria-hidden="true">
@@ -1303,7 +1395,7 @@ export default function WorkspacePage() {
                                 <span className="ws-work-body">
                                   <span className="ws-work-title" title={w.title}>{w.title}</span>
                                   <span className="ws-work-meta">
-                                    <span className={`ws-state is-${w.st}`}><StIcon size={11} /> {STATE_LABEL[w.st]}</span>
+                                    <span className={`ws-state is-${w.st}`}><StIcon size={11} /> {stLabel}</span>
                                     {w.due && <span>{fullDue(w.due)}</span>}
                                     {w.maxPoints && <span>{w.maxPoints} pts</span>}
                                   </span>
@@ -1543,7 +1635,10 @@ export default function WorkspacePage() {
 
             {/* Progress */}
             <section className="ws-card ws-progress">
-              <h3 className="ws-card-title"><TrendingUp size={14} /> Progress</h3>
+              <h3 className="ws-card-title">
+                <TrendingUp size={14} /> Progress
+                {myLab && <span className="ws-lab-chip is-end" title="Only your lab group's tasks are counted">Lab {myLab}</span>}
+              </h3>
               {hasOverview && allWork.length > 0 ? (
                 <>
                   <div className="ws-progress-top">

@@ -112,7 +112,7 @@ export default function BatchDriveManager() {
   if (!department || !batchLabel) {
     return (
       <div className="bdm-wrap">
-        <VaultMasthead title="Drive Links" subtitle="CR / SR — semester links" />
+        <VaultMasthead icon={Link2} title="Drive Links" subtitle="CR / SR — semester links" />
         <div className="bdm-empty">
           <AlertTriangle size={26} />
           <p>Your profile is missing a department or batch.</p>
@@ -122,9 +122,20 @@ export default function BatchDriveManager() {
     );
   }
 
+  const linkedCount = semesters.filter((yearSem) => Boolean(entryFor(yearSem)?.driveUrl)).length;
+
   return (
     <div className="bdm-wrap">
-      <VaultMasthead title="Drive Links" subtitle="CR / SR — semester links" />
+      <VaultMasthead
+        icon={Link2}
+        title="Drive Links"
+        subtitle={`CR / SR — ${department} · ${batchLabel}`}
+        stats={[
+          { label: 'Linked', value: `${linkedCount}/${semesters.length}` },
+          { label: 'Missing', value: semesters.length - linkedCount },
+          { label: 'Editors', value: editors.length },
+        ]}
+      />
 
       <div className="bdm-batchbar">
         <div className="bdm-batch-id">

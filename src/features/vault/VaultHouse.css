@@ -1,0 +1,524 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESOURCE VAULT — house-style layer (.claude/skills/skill-style, ref TakaGeloKoi)
+   Loaded LAST by VaultPage.jsx, so it wins by order. Flat surfaces, theme
+   tokens only, one accent (--accent-amber). No gradients, glows or rails.
+
+   Layout breakpoints are container queries on the content card (`vl`), so
+   the tabs adapt to the space they get. The only fixed overlay (file preview)
+   is portaled to <body>, so the container cannot trap it.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Shell ── */
+.vault-page { gap: 16px; }
+.vault-page .vl-hero { box-shadow: none; }
+.vault-page .vl-content-card {
+  container: vl / inline-size;
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.vault-page .vl-content-card .vault-content-area { min-width: 0; }
+
+/* Every tab: masthead → steps → body, 16px apart (10px phone). */
+.vault-page :is(.vault-panel, .vb-selector, .mf-container, .bdm-wrap, .bc-wrap, .vault-coming-soon-wrap, .vault-locked-wrap) {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.vault-page .dl-head { margin: 0; }
+.vault-page .vault-masthead-divider,
+.vault-page .mf-container > .schedule-dotted-divider { display: none; }
+
+/* No second frame inside the content card. */
+.vault-page .vault-selection-box {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  gap: 16px;
+}
+.vault-page .vault-selection-box .vault-panel-content { display: flex; flex-direction: column; gap: 16px; }
+.vault-page .vl-content-card .vb-list { margin-bottom: 0; }
+
+/* ── 2. Masthead ⋮/refresh slot: bare icon (skill-style §2) ── */
+.vault-page .dl-head .dl-head-menu-btn:disabled { opacity: 0.45; cursor: default; }
+
+/* ── 3. Step progress — flat dots, solid accent line, card-header rule ── */
+.vault-page .vault-step-progress {
+  padding: 0 0 12px;
+  border-bottom: 1px solid var(--border-primary);
+  animation: none;
+}
+.vault-page .vault-step-item { gap: 6px; min-width: 64px; opacity: 1; animation: none; }
+.vault-page .vault-step-dot,
+.vault-page .vault-step-item.active .vault-step-dot,
+.vault-page .vault-step-item.done .vault-step-dot,
+.vault-page .vault-step-item.clickable:hover .vault-step-dot {
+  width: 28px;
+  height: 28px;
+  border-width: 1px;
+  transform: none;
+  box-shadow: none;
+}
+.vault-page .vault-step-dot {
+  background: var(--bg-tertiary);
+  border-color: var(--border-primary);
+  color: var(--text-tertiary);
+}
+.vault-page .vault-step-dot svg { width: 13px; height: 13px; }
+.vault-page .vault-step-item.done .vault-step-dot {
+  background: var(--accent-amber-glow);
+  border-color: color-mix(in srgb, var(--accent-amber) 45%, var(--border-primary));
+  color: var(--accent-amber);
+}
+.vault-page .vault-step-item.active .vault-step-dot {
+  background: var(--accent-amber);
+  border-color: var(--accent-amber);
+  color: var(--bg-card);
+}
+.vault-page .vault-step-item.clickable:hover .vault-step-dot { border-color: var(--accent-amber); }
+.vault-page .vault-step-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+}
+.vault-page .vault-step-item.done .vault-step-label { color: var(--text-secondary); }
+.vault-page .vault-step-item.active .vault-step-label,
+.vault-page .vault-step-item.clickable:hover .vault-step-label {
+  color: var(--accent-amber);
+  text-shadow: none;
+}
+.vault-page .vault-step-item.clickable:focus-visible { outline-color: var(--accent-amber); }
+.vault-page .vault-step-line {
+  height: 1px;
+  margin-bottom: 20px;
+  background: var(--border-primary);
+}
+.vault-page .vault-step-line.filled::after {
+  background: var(--accent-amber);
+  box-shadow: none;
+  animation: none;
+}
+
+/* ── 4. Rows / tiles (skill-style §3) — departments, semesters, batches ── */
+.vault-page :is(.vault-dept-card, .vault-sem-slide, .vb-card, .bdm-row, .mf-file-grid-item, .mf-file-list-item) {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: none;
+  transform: none;
+  animation: none;
+}
+.vault-page :is(.vault-dept-card, .vault-sem-slide, .vb-card, .bdm-row, .mf-file-grid-item, .mf-file-list-item):hover,
+.vault-page .vault-dept-card[class*='vault-dept-']:hover,
+.vault-page .mf-file-grid-item.mf-folder:hover {
+  border-color: color-mix(in srgb, var(--accent-amber) 25%, var(--border-primary));
+  background: var(--bg-tertiary);
+  box-shadow: none;
+  transform: none;
+}
+.vault-page :is(.vault-dept-card, .vault-sem-slide, .vb-card, .mf-file-grid-item, .mf-file-list-item):active { transform: none; }
+.vault-page :is(.vault-dept-card, .vault-sem-slide):focus-visible {
+  outline: 1px solid var(--accent-amber);
+  outline-offset: 0;
+}
+
+/* Departments */
+.vault-page .vault-dept-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(180px, 100%), 1fr));
+  gap: 10px;
+}
+.vault-page .vault-dept-card,
+.vault-page .vault-dept-card[class*='vault-dept-'] {
+  gap: 4px;
+  padding: 12px 14px;
+  border-color: var(--border-primary);
+}
+.vault-page .vault-dept-card-glow { display: none; }
+.vault-page .vault-dept-code,
+.vault-page .vault-dept-card[class*='vault-dept-'] .vault-dept-code {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--accent-amber);
+}
+.vault-page .vault-dept-name { font-size: 12px; line-height: 1.4; }
+.vault-page .vault-dept-meta { padding-top: 4px; font-size: 11px; }
+.vault-page .vault-dept-card:hover .vault-dept-meta svg { transform: none; }
+
+/* Semesters: one grid of tiles instead of a faded side-scroller */
+.vault-page .vault-sem-slider-wrap { margin: 0; padding: 0; }
+.vault-page .vault-sem-slider-wrap::before,
+.vault-page .vault-sem-slider-wrap::after { display: none; }
+.vault-page .vault-sem-slider {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  gap: 10px;
+  overflow: visible;
+  padding: 0;
+  scroll-snap-type: none;
+}
+.vault-page .vault-sem-slide {
+  min-width: 0;
+  gap: 2px;
+  padding: 12px 8px;
+}
+.vault-page .vault-sem-year {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+}
+.vault-page .vault-sem-term {
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--accent-amber);
+  font-variant-numeric: tabular-nums;
+}
+.vault-page .vault-sem-label { font-size: 11px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.vault-page .vault-sem-count { font-size: 10px; color: var(--text-tertiary); }
+
+/* Batches */
+.vault-page .vb-list { gap: 8px; }
+.vault-page .vb-card-main { padding: 9px 11px; }
+.vault-page .vb-card-icon {
+  width: 32px;
+  height: 32px;
+  background: var(--accent-amber-glow);
+  border: 0;
+  transform: none;
+  box-shadow: none;
+}
+.vault-page .vb-card:hover .vb-card-icon { transform: none; box-shadow: none; }
+.vault-page .vb-card-info { min-width: 0; }
+.vault-page .vb-card-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vault-page .vb-card-meta { font-size: 11px; color: var(--text-secondary); }
+.vault-page .vb-card-meta svg { color: var(--accent-amber); }
+.vault-page .vb-card-by { font-size: 10px; }
+.vault-page .vb-react,
+.vault-page .vb-card-open {
+  border: 1px solid var(--border-primary);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  box-shadow: none;
+}
+.vault-page .vb-react:hover { border-color: color-mix(in srgb, var(--accent-amber) 45%, var(--border-primary)); background: var(--bg-card); color: var(--accent-amber); }
+.vault-page .vb-react.is-on {
+  border-color: color-mix(in srgb, var(--accent-amber) 45%, var(--border-primary));
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
+  box-shadow: none;
+}
+.vault-page .vb-card-right { flex: none; }
+.vault-page .vb-card-left { min-width: 0; flex: 1 1 auto; }
+
+/* ── 5. Empty states (skill-style §6) ── */
+.vault-page :is(.vl-empty, .vb-empty, .bdm-empty, .mf-empty, .bc-empty) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 20px 12px;
+  border: 1px dashed var(--border-primary);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-tertiary) 45%, transparent);
+  box-shadow: none;
+  text-align: center;
+}
+.vault-page .vl-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+  color: var(--accent-amber);
+}
+.vault-page .vl-empty-hint,
+.vault-page :is(.vb-empty, .bdm-empty) span {
+  margin: 0;
+  max-width: 260px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  text-wrap: balance;
+}
+.vault-page :is(.vb-empty, .bdm-empty) p { margin: 0; font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.vault-page :is(.vb-empty, .bdm-empty) svg { width: 20px; height: 20px; opacity: 1; }
+
+/* ── 6. Drive Links (CR/SR) ── */
+.vault-page .bdm-batchbar,
+.vault-page .bdm-note {
+  margin: 0;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+  box-shadow: none;
+}
+.vault-page .bdm-note svg { color: var(--accent-amber); }
+.vault-page .bdm-list { gap: 8px; }
+.vault-page .bdm-row { padding: 9px 11px; gap: 6px; }
+.vault-page .bdm-row.is-set {
+  border-color: var(--border-primary);
+  box-shadow: none;
+}
+.vault-page .bdm-sem-chip { background: var(--accent-amber-glow); color: var(--accent-amber); border: 0; box-shadow: none; }
+.vault-page .bdm-sem-title { font-size: 13px; font-weight: 700; }
+.vault-page .bdm-sem-status.set { color: var(--text-secondary); }
+.vault-page .bdm-sem-status.set svg { color: var(--accent-amber); }
+.vault-page .bdm-url {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vault-page .bdm-text-btn,
+.vault-page .bdm-icon-btn {
+  height: 30px;
+  min-height: 30px;
+  border: 1px solid var(--border-primary);
+  background: var(--bg-card);
+  box-shadow: none;
+}
+.vault-page .bdm-text-btn { padding: 0 11px; font-size: 12px; }
+.vault-page .bdm-icon-btn { width: 30px; min-width: 30px; padding: 0; }
+.vault-page .bdm-input:focus,
+.vault-page .bdl-input:focus,
+.vault-page .mf-search-input:focus,
+.vault-page .mf-folder-input-field:focus {
+  border-color: var(--accent-amber);
+  box-shadow: none;
+  outline: none;
+}
+.vault-page .bdm-edit-actions { justify-content: flex-start; }
+.vault-page :is(.bdm-save, .bdm-cancel) {
+  flex: 0 0 auto;
+  height: 30px;
+  min-height: 30px;
+  padding: 0 13px;
+  font-size: 12px;
+  box-shadow: none;
+}
+
+/* ── 7. Share codes ── */
+.vault-page .bc-wrap { animation: none; }
+.vault-page .bc-grid,
+.vault-page .bc-col-main,
+.vault-page .bc-col-side { gap: 16px; }
+.vault-page .bc-card {
+  gap: 14px;
+  padding: 18px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.vault-page .bc-card:hover { border-color: color-mix(in srgb, var(--accent-amber) 20%, var(--border-primary)); }
+.vault-page .bc-card-head {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-primary);
+  align-items: center;
+}
+.vault-page .bc-card-title-block h3 { font-size: 14px; font-weight: 700; }
+.vault-page .bc-card-title-block p { margin-top: 2px; font-size: 12px; }
+.vault-page .bc-progress-head span:first-child {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+}
+.vault-page .bc-progress-track { height: 6px; background: var(--bg-tertiary); }
+.vault-page .bc-progress-fill { background: var(--accent-amber); }
+.vault-page .bc-actions { justify-content: flex-start; }
+.vault-page .bc-btn-primary {
+  flex: 0 0 auto;
+  height: 30px;
+  min-height: 30px;
+  padding: 0 13px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--accent-amber);
+  color: #fff;
+}
+.vault-page .bc-btn-primary:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: none;
+  box-shadow: none;
+}
+.vault-page .bc-btn-primary svg { width: 13px; height: 13px; }
+.vault-page .bc-code-row {
+  padding: 8px 10px;
+  background: var(--bg-tertiary);
+}
+.vault-page .bc-code-row:hover { border-color: color-mix(in srgb, var(--accent-amber) 25%, var(--border-primary)); }
+.vault-page .bc-code-row.is-used { border-color: var(--border-primary); }
+.vault-page .bc-code-state.is-used { color: var(--text-secondary); }
+.vault-page .bc-code-row.is-used .bc-code { color: var(--text-tertiary); }
+.vault-page .bc-code {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+}
+.vault-page .bc-copy-btn { height: 28px; min-height: 28px; padding: 0 10px; font-size: 11.5px; box-shadow: none; }
+.vault-page .bc-empty-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+  color: var(--accent-amber);
+  box-shadow: none;
+}
+.vault-page .bc-empty-icon svg { width: 16px; height: 16px; }
+.vault-page .bc-empty p { margin: 0; font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.vault-page .bc-empty span { font-size: 12px; color: var(--text-secondary); max-width: 260px; text-wrap: balance; }
+.vault-page .bc-users li { min-width: 0; }
+.vault-page .bc-user-info { min-width: 0; }
+.vault-page .bc-user-info strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── 8. Locked Batch Drive ── */
+.vault-page .vault-locked-wrap .bdl-wrap { margin: 0; }
+.vault-page .bdl-card { padding: 18px; box-shadow: none; }
+.vault-page .bdl-card.is-locked { border-color: var(--border-primary); }
+.vault-page .bdl-icon { background: var(--accent-amber-glow); border-radius: var(--radius-md); }
+
+/* ── 9. Materials (Drive browser) ── */
+.vault-page .mf-container { animation: none; }
+.vault-page .mf-view-btn.active {
+  background: var(--bg-card);
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 45%, var(--border-primary));
+  color: var(--accent-amber);
+  box-shadow: none;
+}
+.vault-page .mf-file-grid-item { overflow: hidden; }
+.vault-page .mf-file-grid-item.mf-folder .mf-file-grid-thumb,
+.vault-page .mf-file-grid-thumb { background: var(--bg-secondary); }
+.vault-page .mf-file-grid-item.mf-folder .mf-file-grid-thumb { color: var(--accent-amber); }
+.vault-page .mf-file-list { gap: 6px; }
+.vault-page .mf-file-list-item { padding: 8px 11px; }
+.vault-page .mf-file-list-item:hover { transform: none; }
+.vault-page .mf-header-icon {
+  background: var(--accent-amber-glow);
+  color: var(--accent-amber);
+  box-shadow: none;
+}
+.vault-page .mf-connect-sheet {
+  border: 1px dashed var(--border-primary);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-tertiary) 45%, transparent);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+.vault-page .mf-connect-sheet::before { display: none; }
+.vault-page .mf-connect-icon { background: var(--bg-tertiary); animation: none; }
+
+/* File preview (portaled to <body>, so not under .vault-page) — solid surface */
+.mf-preview-modal {
+  background: var(--bg-secondary);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-md);
+}
+.mf-preview-header { border-bottom-color: var(--border-primary); }
+
+/* ── 10. Tablet / phone (container: the content card) ── */
+@container vl (max-width: 700px) {
+  .vault-page .bc-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@container vl (max-width: 560px) {
+  .vault-page :is(.vault-panel, .vb-selector, .mf-container, .bdm-wrap, .bc-wrap, .vault-coming-soon-wrap, .vault-locked-wrap),
+  .vault-page .vault-selection-box,
+  .vault-page .vault-selection-box .vault-panel-content { gap: 10px; }
+
+  .vault-page .vault-step-progress { padding-bottom: 10px; }
+  .vault-page .vault-step-item { min-width: 0; flex: none; }
+  .vault-page .vault-step-dot,
+  .vault-page .vault-step-item.active .vault-step-dot,
+  .vault-page .vault-step-item.done .vault-step-dot,
+  .vault-page .vault-step-item.clickable:hover .vault-step-dot {
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    min-height: 24px;
+  }
+  .vault-page .vault-step-dot svg { width: 12px; height: 12px; }
+  .vault-page .vault-step-label { font-size: 8.5px; letter-spacing: 0.05em; }
+  .vault-page .vault-step-line { min-width: 12px; margin: 0 4px 18px; }
+
+  .vault-page .vault-dept-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .vault-page .vault-dept-card,
+  .vault-page .vault-dept-card[class*='vault-dept-'] { padding: 10px; }
+  .vault-page .vault-dept-code,
+  .vault-page .vault-dept-card[class*='vault-dept-'] .vault-dept-code { font-size: 14px; }
+  .vault-page .vault-dept-name { font-size: 11px; }
+
+  .vault-page .vault-sem-slider { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .vault-page .vault-sem-slide { padding: 8px 4px; }
+  .vault-page .vault-sem-term { font-size: 1.1rem; }
+
+  .vault-page .vb-list,
+  .vault-page .bdm-list { gap: 6px; }
+  .vault-page .vb-card-main { padding: 8px 10px; }
+  .vault-page .vb-card-icon { width: 28px; height: 28px; }
+  .vault-page .vb-card-name { font-size: 12.5px; }
+
+  .vault-page .bdm-row { padding: 8px 10px; }
+  .vault-page .bdm-row-head { flex-wrap: nowrap; }
+  .vault-page .bdm-sem { min-width: 0; }
+  .vault-page .bdm-sem-text { min-width: 0; }
+  .vault-page .bdm-sem-status { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .vault-page .bdm-row-actions { flex: none; }
+
+  .vault-page .bc-card { padding: 12px; gap: 10px; }
+  .vault-page .bc-card-head { padding-bottom: 10px; }
+  .vault-page .bc-card-title-block h3 { font-size: 12.5px; }
+
+  .vault-page :is(.vl-empty, .vb-empty, .bdm-empty, .mf-empty, .bc-empty) { padding: 10px; }
+  .vault-page :is(.vl-empty-icon, .bc-empty-icon) { width: 24px; height: 24px; }
+  .vault-page :is(.vl-empty-icon, .bc-empty-icon) svg { width: 13px; height: 13px; }
+}
+
+@media (max-width: 640px) {
+  .vault-page { gap: 10px; }
+  .vault-page .vl-content-card { padding: 16px; }
+}
+
+/* Phone density (after the touch rule): keep compact controls compact. */
+@media (pointer: coarse) {
+  .vault-page :is(.vault-dept-card, .vault-sem-slide, .vault-step-item) { min-width: 0; min-height: 0; }
+  .vault-page .vb-react { min-width: 0; min-height: 30px; }
+  .vault-page :is(.bdm-text-btn, .bdm-save, .bdm-cancel, .bc-btn-primary) { min-width: 0; min-height: 32px; height: 32px; }
+  .vault-page :is(.bdm-icon-btn) { min-width: 32px; min-height: 32px; width: 32px; height: 32px; }
+}
+
+/* Share codes on phone: chip stays beside its title, buttons stay compact
+   and left-aligned (the base file stretches them full width at 640px). */
+@container vl (max-width: 560px) {
+  .vault-page .bc-card-head { flex-wrap: nowrap; align-items: flex-start; gap: 10px; }
+  .vault-page .bc-card-title-block { min-width: 0; flex: 1 1 auto; }
+  .vault-page :is(.bc-slot-chip, .bc-count-pill) { flex: none; white-space: nowrap; }
+  .vault-page .bc-actions { flex-direction: row; align-items: center; }
+  .vault-page .bc-btn-primary { flex: 0 0 auto; width: auto; }
+  .vault-page .bc-code-row { align-items: center; flex-wrap: nowrap; gap: 8px; padding: 8px 10px; }
+  .vault-page .bc-code { flex: none; }
+  .vault-page .bc-code-meta { min-width: 0; flex: 1 1 0; }
+  .vault-page :is(.bc-code-state, .bc-code-date) { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .vault-page .bc-copy-btn { width: auto; flex: none; }
+}
+
+@container vl (max-width: 340px) {
+  .vault-page .bc-code { padding: 5px 8px; font-size: 12px; letter-spacing: 0.04em; }
+  .vault-page .bc-code-row { gap: 6px; padding: 8px; }
+  .vault-page .bc-copy-btn { padding: 0 8px; }
+}

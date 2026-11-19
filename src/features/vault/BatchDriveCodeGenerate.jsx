@@ -18,6 +18,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import './BatchDriveCodeGenerate.css';
 import { MemberIconPreview } from '../community/DirectoryShared';
+import VaultMasthead from './VaultMasthead';
 
 function formatDate(value) {
   if (!value) return '';
@@ -140,56 +141,22 @@ export default function BatchDriveCodeGenerate({ status, loading, onGenerate, on
 
   return (
     <div className="bc-wrap">
-      {/* ── Header ── */}
-      <div className="bc-masthead">
-        <div className="bc-title-block">
-          <div className="bc-icon-tile">
-            <KeyRound size={22} />
-          </div>
-          <div className="bc-title-text">
-            <span className="bc-overline">Batch Drive</span>
-            <p className="bc-title">Share Codes</p>
-            <span className="bc-subtitle">
-              {myDept ? `${myDept} · ` : ''}{mySem ? `Semester ${mySem}` : 'Semester 3.1+'}
-            </span>
-          </div>
-        </div>
-        <div className="bc-masthead-actions">
-          {!canShare && (
-            <span className="bc-status-pill is-locked">
-              <Lock size={12} /> 3.1 and above only
-            </span>
-          )}
-          {onRefresh && (
-            <button type="button" className="bc-icon-btn" onClick={handleRefresh} disabled={busy !== ''} title="Refresh" aria-label="Refresh">
-              <RefreshCw size={14} className={busyRefresh ? 'animate-spin' : ''} />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* ── Stats ── */}
-      <div className="bc-stats">
-        <div className="bc-stat">
-          <span className="bc-stat-label">Used</span>
-          <strong>{usedCount} / {maxUses}</strong>
-        </div>
-        <span className="bc-stat-sep" />
-        <div className="bc-stat">
-          <span className="bc-stat-label">Left</span>
-          <strong>{remaining}</strong>
-        </div>
-        <span className="bc-stat-sep" />
-        <div className="bc-stat">
-          <span className="bc-stat-label">Total codes</span>
-          <strong>{codes.length}</strong>
-        </div>
-        <span className="bc-stat-sep" />
-        <div className="bc-stat">
-          <span className="bc-stat-label">Redeemed</span>
-          <strong>{uses.length}</strong>
-        </div>
-      </div>
+      <VaultMasthead
+        icon={KeyRound}
+        title="Share Codes"
+        subtitle={`${myDept ? `${myDept} · ` : ''}${mySem ? `Semester ${mySem}` : 'Semester 3.1+'}`}
+        stats={[
+          { label: 'Used', value: `${usedCount}/${maxUses}` },
+          { label: 'Left', value: remaining, alert: canShare && remaining === 0 },
+          { label: 'Codes', value: codes.length },
+          { label: 'Redeemed', value: uses.length },
+        ]}
+        actions={onRefresh ? (
+          <button type="button" className="dl-head-menu-btn" onClick={handleRefresh} disabled={busy !== ''} title="Refresh" aria-label="Refresh">
+            <RefreshCw size={17} className={busyRefresh ? 'animate-spin' : ''} />
+          </button>
+        ) : null}
+      />
 
       {!canShare && (
         <div className="bc-note">

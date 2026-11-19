@@ -967,6 +967,28 @@
 .ws-state.is-done svg,
 .ws-state.is-returned svg { color: var(--accent-amber); }
 
+/* Other lab groups: shown for reference, never counted */
+.ws-state.is-other { color: var(--text-tertiary); }
+.ws-work-row.is-other .ws-work-title { color: var(--text-tertiary); font-weight: 500; }
+.ws-work-row.is-other .ws-date-day { color: var(--text-tertiary); }
+
+.ws-head-meta { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.ws-lab-chip.is-end { margin-left: auto; }
+.ws-lab-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-amber);
+  white-space: nowrap;
+}
+
 .ws-stream-row {
   display: flex;
   align-items: center;
@@ -1298,6 +1320,11 @@
   .ws-widget .ws-back { min-height: 28px; min-width: 0; }
   .ws-widget .ws-notice-close { width: 26px; height: 26px; min-width: 26px; min-height: 26px; }
   .ws-widget .ws-course, .ws-widget .ws-due-main, .ws-widget .ws-stream-row { min-height: 0; min-width: 0; }
+}
+
+/* Phone notices: icon + text share the first row, button wraps under the text */
+@container ws (max-width: 560px) {
+  .ws-notice-body { flex: 1 1 calc(100% - 30px); }
 }
 
 @media (prefers-reduced-motion: reduce) {

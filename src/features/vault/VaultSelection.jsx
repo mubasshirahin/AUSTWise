@@ -51,9 +51,15 @@ export default function VaultSelection({
     : [];
 
   if (!department) {
+    const totalPapers = heatmapDepartments.reduce((sum, dept) => sum + getDepartmentPaperCount(dept), 0);
     return (
       <section className="vault-panel vault-panel-enter">
-        <VaultMasthead department={department} yearSem={yearSem} />
+        <VaultMasthead
+          stats={[
+            { label: 'Departments', value: heatmapDepartments.length },
+            { label: 'Papers', value: totalPapers },
+          ]}
+        />
 
         {progress}
 
@@ -68,7 +74,6 @@ export default function VaultSelection({
                 style={{ animationDelay: `${index * 50}ms` }}
                 onClick={() => onSelectDepartment(dept)}
               >
-                <span className="vault-dept-card-glow" aria-hidden="true" />
                 <span className="vault-dept-code">{dept}</span>
                 <span className="vault-dept-name">{departmentLabels[dept] || dept}</span>
                 {paperCount > 0 && (
@@ -88,7 +93,14 @@ export default function VaultSelection({
   if (!yearSem) {
     return (
       <section className="vault-panel vault-panel-enter">
-        <VaultMasthead department={department} yearSem={yearSem} />
+        <VaultMasthead
+          subtitle={departmentLabels[department] || department}
+          stats={[
+            { label: 'Dept', value: department },
+            { label: 'Semesters', value: yearSemOptions.length },
+            { label: 'Papers', value: getDepartmentPaperCount(department) },
+          ]}
+        />
 
         {progress}
 

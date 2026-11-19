@@ -4,7 +4,7 @@ import {
   Folder, Plus, Loader2, AlertCircle, Link, X, Download, Eye, EyeOff,
   ChevronRight, Home, Search, Grid3X3, List, File,
   ExternalLink, Maximize2, Minimize2, ChevronLeft,
-  ChevronsLeft, Clock, HardDrive,
+  ChevronsLeft, Clock,
   ZoomIn, ZoomOut, StickyNote, Trash2, Edit3, Save,
   Square, Circle, Pencil, Minus,
   Music, Play, Pause, PlayCircle, Bot, Send, PanelRightOpen, PanelRightClose,
@@ -1611,7 +1611,7 @@ export default function MaterialFolders({ vaultContext, progress }) {
             onClick={() => handleFileClick(file)}
             style={{ animationDelay: '0s' }}
           >
-            <div className="mf-file-grid-thumb" style={{ background: isFolder ? meta.glow : 'var(--bg-secondary)' }}>
+            <div className="mf-file-grid-thumb">
               {category === 'image' && !imgErrors[file.id] ? (
                 <img
                   src={`https://drive.google.com/uc?id=${file.id}`}
@@ -1732,36 +1732,21 @@ export default function MaterialFolders({ vaultContext, progress }) {
      ═══════════════════════════════════════════════════════════════════ */
   return (
     <div className="mf-container animate-fadeInUp">
-      <VaultMasthead department={department} yearSem={yearSem} />
+      <VaultMasthead
+        subtitle={[department, yearSem && `Semester ${yearSem}`, batch?.batchName].filter(Boolean).join(' · ')}
+        stats={!isEditing && allFiles.length > 0
+          ? [
+            { label: 'Folders', value: stats.folders },
+            { label: 'Files', value: stats.files },
+            { label: 'Size', value: formatFileSize(stats.totalSize), small: true },
+          ]
+          : [
+            { label: 'Dept', value: department },
+            { label: 'Semester', value: yearSem },
+          ]}
+      />
 
       {progress}
-
-      <div className="schedule-dotted-divider" />
-
-      {/* ─── Stats Bar ─── */}
-      {!isEditing && allFiles.length > 0 && (
-        <div className="mf-stats-bar">
-          <div className="mf-stat">
-            <HardDrive size={14} />
-            <span><strong>{stats.folders}</strong> folders</span>
-          </div>
-          <div className="mf-stat-sep" />
-          <div className="mf-stat">
-            <File size={14} />
-            <span><strong>{stats.files}</strong> files</span>
-          </div>
-          <div className="mf-stat-sep" />
-          <div className="mf-stat">
-            <Download size={14} />
-            <span><strong>{formatFileSize(stats.totalSize)}</strong> total</span>
-          </div>
-          {Object.entries(stats.byCategory).filter(([_, count]) => count > 0).map(([cat, count]) => (
-            <span key={cat} className={`mf-stat-badge mf-stat-badge-${cat}`}>
-              {CATEGORY_META[cat]?.icon || '\u{1F4CE}'} {count}
-            </span>
-          ))}
-        </div>
-      )}
 
       {/* ─── Folder URL Input ─── */}
       {isEditing && (
