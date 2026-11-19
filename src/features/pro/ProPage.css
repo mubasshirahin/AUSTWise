@@ -140,16 +140,7 @@
   line-height: 1.15;
 }
 .pro-section-highlight {
-  background: linear-gradient(90deg, var(--accent-amber), var(--accent-orange) 50%, var(--accent-amber) 100%);
-  background-size: 200% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: proGradientShift 6s ease-in-out infinite;
-}
-@keyframes proGradientShift {
-  0%, 100% { background-position: 0% 50%; }
-  50%      { background-position: 100% 50%; }
+  color: var(--accent-amber);
 }
 .pro-section-desc {
   font-size: var(--fs-sm);
@@ -190,7 +181,7 @@
 /* Ribbon — full-width gold bar */
 .pro-plan-ribbon {
   padding: 6px 12px;
-  background: linear-gradient(90deg, var(--accent-amber), var(--accent-orange));
+  background: var(--accent-amber);
   color: var(--text-inverse);
   font-size: 10px;
   font-weight: var(--fw-black);
@@ -230,10 +221,7 @@
   letter-spacing: -0.02em;
 }
 .pro-plan.featured .pro-plan-name {
-  background: linear-gradient(90deg, var(--accent-amber), var(--accent-orange));
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--accent-amber);
 }
 .pro-plan-subtitle {
   font-size: 10px;
@@ -380,7 +368,7 @@
   background: var(--accent-amber-glow);
 }
 .pro-cta.helix {
-  background: linear-gradient(135deg, var(--accent-amber), var(--accent-orange));
+  background: var(--accent-amber);
   color: var(--text-inverse);
   box-shadow: 0 6px 18px -6px color-mix(in srgb, var(--accent-amber) 45%, transparent);
 }
@@ -389,7 +377,7 @@
   box-shadow: 0 10px 24px -8px color-mix(in srgb, var(--accent-amber) 55%, transparent);
 }
 .pro-cta.apex {
-  background: linear-gradient(135deg, var(--accent-emerald), var(--accent-cyan));
+  background: var(--accent-emerald);
   color: var(--text-inverse);
   box-shadow: 0 6px 18px -6px color-mix(in srgb, var(--accent-emerald) 45%, transparent);
 }
@@ -411,7 +399,7 @@
   font-size: var(--fs-md);
   font-weight: var(--fw-bold);
   color: var(--text-inverse);
-  background: linear-gradient(135deg, var(--accent-amber), var(--accent-orange));
+  background: var(--accent-amber);
   box-shadow: 0 10px 30px -10px color-mix(in srgb, var(--accent-amber) 55%, transparent);
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -524,7 +512,7 @@
 .pro-cmp-cell .highlight { color: var(--accent-amber); font-weight: var(--fw-semibold); }
 .pro-cmp-cell.plan-head { justify-content: center; }
 .pro-cmp-cell.reco {
-  background: linear-gradient(180deg, var(--accent-amber-glow), transparent);
+  background: none;
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-amber) 12%, transparent);
 }
 .pro-reco-pill {
@@ -564,12 +552,12 @@
 
 .pro-tm-wrapper::before {
   left: 0;
-  background: linear-gradient(to right, var(--bg-primary), transparent);
+  display: none;
 }
 
 .pro-tm-wrapper::after {
   right: 0;
-  background: linear-gradient(to left, var(--bg-primary), transparent);
+  display: none;
 }
 
 .pro-tm-track {
@@ -738,9 +726,7 @@
   max-width: 640px;
   width: 100%;
   padding: 44px 40px;
-  background:
-    radial-gradient(120% 90% at 50% -10%, color-mix(in srgb, var(--accent-amber) 9%, transparent), transparent 55%),
-    var(--bg-secondary);
+  background: var(--bg-secondary);
   border: 1px solid color-mix(in srgb, var(--accent-amber) 18%, transparent);
 }
 .pro-cta-crown {

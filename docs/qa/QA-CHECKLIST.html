@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AUSTWise – QA Checklist</title>
+<style>
+  :root {
+    --bg: #f6f6f4; --card: #ffffff; --border: #e2e1dc; --text: #1d1d1b;
+    --muted: #6b6a65; --accent: #d98a1c; --ok: #2f8a4c; --bad: #c2412d; --code: #f0efea;
+  }
+  [data-theme="dark"] {
+    --bg: #121212; --card: #1b1b1b; --border: #2e2e2e; --text: #ececec;
+    --muted: #9a9a9a; --accent: #f0a23a; --ok: #4fbf72; --bad: #ec6a55; --code: #262626;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  code { background: var(--code); border: 1px solid var(--border); border-radius: 4px;
+    padding: 0 4px; font: 0.88em ui-monospace, Consolas, monospace; overflow-wrap: anywhere; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 20px 16px 80px; }
+
+  /* masthead */
+  .head { background: var(--card); border: 1px solid var(--accent); border-radius: 14px;
+    padding: 18px 20px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .tile { width: 48px; height: 48px; border-radius: 12px; border: 1px solid var(--border);
+    display: grid; place-items: center; font-size: 22px; flex: none; }
+  .head-txt { flex: 1 1 240px; min-width: 0; }
+  .over { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  .head h1 { margin: 2px 0; font-size: 22px; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .stats { display: flex; gap: 10px; flex-wrap: wrap; }
+  .stat { border: 1px solid var(--border); border-radius: 10px; padding: 6px 12px; min-width: 78px; }
+  .stat b { display: block; font-size: 18px; }
+  .stat span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .bar { height: 6px; background: var(--code); border-radius: 99px; overflow: hidden; margin-top: 14px; width: 100%; }
+  .bar i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .2s; }
+
+  /* toolbar */
+  .tools { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 10px 0;
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+  .tools input[type=search] { flex: 1 1 200px; min-width: 0; }
+  button, select, input, textarea { font: inherit; color: var(--text); }
+  button, .btn { background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+    padding: 7px 12px; cursor: pointer; min-height: 36px; }
+  button:hover { border-color: var(--accent); }
+  button.primary { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  button.danger:hover { border-color: var(--bad); color: var(--bad); }
+  input[type=search], input[type=text], textarea, select {
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; min-height: 36px; }
+  input:focus, textarea:focus, select:focus, button:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+  label.toggle { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); cursor: pointer; }
+
+  .warn { border: 1px solid var(--border); background: var(--card);
+    border-radius: 10px; padding: 10px 14px; margin: 14px 0 0; font-size: 13px; }
+
+  /* sections */
+  .sec { background: var(--card); border: 1px solid var(--border); border-radius: 14px; margin: 14px 0; overflow: hidden; }
+  .sec-h { display: flex; align-items: center; gap: 12px; padding: 14px 18px; cursor: pointer; user-select: none; }
+  .sec-h h2 { margin: 0; font-size: 16px; flex: 1; min-width: 0; }
+  .sec-h .chev { color: var(--muted); transition: transform .15s; }
+  .sec.closed .chev { transform: rotate(-90deg); }
+  .sec.closed .sec-b { display: none; }
+  .count { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .count.done { color: var(--ok); font-weight: 600; }
+  .mini { width: 80px; height: 4px; background: var(--code); border-radius: 99px; overflow: hidden; flex: none; }
+  .mini i { display: block; height: 100%; background: var(--accent); }
+  .sec-b { border-top: 1px solid var(--border); padding: 6px 0; }
+  .intro { padding: 8px 18px; color: var(--muted); font-size: 13px; }
+
+  /* items */
+  .item { display: grid; grid-template-columns: 28px 1fr auto; gap: 4px 10px; align-items: start;
+    padding: 9px 18px; border-bottom: 1px solid var(--border); }
+  .item:last-child { border-bottom: 0; }
+  .item input[type=checkbox] { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--accent); cursor: pointer; }
+  .item .txt { min-width: 0; cursor: pointer; }
+  .item .route { font-weight: 600; display: block; }
+  .item .flow { color: var(--muted); font-size: 13.5px; display: block; }
+  .item.checked .txt { color: var(--muted); }
+  .item.checked .txt .route, .item.checked .txt > .plain { text-decoration: line-through; text-decoration-color: var(--muted); }
+  .item.fail .txt .route, .item.fail .txt > .plain { color: var(--bad); }
+  .item .acts { display: flex; gap: 4px; }
+  .item .acts button { min-height: 28px; padding: 2px 8px; font-size: 12px; }
+  .item .acts button.on-fail { border-color: var(--bad); color: var(--bad); }
+  .item .acts button.on-note { border-color: var(--accent); color: var(--accent); }
+  .item textarea { grid-column: 2 / 4; width: 100%; min-height: 54px; resize: vertical; font-size: 13px; }
+  .hide-done .item.checked { display: none; }
+  .item.nomatch { display: none; }
+
+  /* role matrix */
+  .matrix-wrap { overflow-x: auto; padding: 8px 18px 4px; }
+  table.matrix { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 13px; }
+  .matrix th, .matrix td { border: 1px solid var(--border); padding: 6px; text-align: center; }
+  .matrix th:first-child, .matrix td:first-child { text-align: left; white-space: nowrap; }
+  .matrix th { color: var(--muted); font-weight: 600; }
+  .cell { width: 100%; min-height: 32px; padding: 2px; border-radius: 6px; font-size: 15px; }
+  .cell[data-v="yes"] { color: var(--ok); border-color: var(--ok); }
+  .cell[data-v="no"] { color: var(--bad); border-color: var(--bad); }
+  .cell[data-v="q"] { color: var(--accent); border-color: var(--accent); }
+  .legend { font-size: 12px; color: var(--muted); padding: 6px 18px; }
+
+  /* bug log */
+  .bugs { padding: 10px 18px; display: grid; gap: 10px; }
+  .bug { border: 1px solid var(--border); border-radius: 10px; padding: 10px; display: grid;
+    grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .bug .num { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
+  .bug .wide { grid-column: 1 / -1; }
+  .bug label { display: grid; gap: 2px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; min-width: 0; }
+  .bug input, .bug textarea, .bug select { width: 100%; text-transform: none; letter-spacing: 0; font-size: 14px; }
+  .bug textarea { min-height: 54px; resize: vertical; }
+  .empty { color: var(--muted); font-size: 13px; text-align: center; padding: 16px; border: 1px dashed var(--border); border-radius: 10px; }
+
+  .saved { font-size: 12px; color: var(--muted); margin-left: auto; }
+
+  @media (max-width: 720px) {
+    .wrap { padding: 12px 10px 60px; }
+    .head { padding: 14px; }
+    .head h1 { font-size: 19px; }
+    .stat { flex: 1 1 0; min-width: 0; }
+    .sec-h { padding: 12px 14px; }
+    .mini { display: none; }
+    .item { padding: 10px 14px; grid-template-columns: 26px 1fr; }
+    .item .acts { grid-column: 2; }
+    .item textarea { grid-column: 1 / -1; }
+    .bug { grid-template-columns: 1fr 1fr; }
+    .matrix-wrap, .bugs, .intro, .legend { padding-left: 14px; padding-right: 14px; }
+    .saved { width: 100%; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="head">
+    <div class="tile">✓</div>
+    <div class="head-txt">
+      <div class="over">AUSTWise · QA</div>
+      <h1>Final QA Checklist</h1>
+      <div class="sub">Tick dile browser e (localStorage) save hoy. Bug pele item e <b>Fail</b> dao, niche Bug log e likho.</div>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="sDone">0</b><span>Done</span></div>
+      <div class="stat"><b id="sLeft">0</b><span>Left</span></div>
+      <div class="stat"><b id="sFail">0</b><span>Fail</span></div>
+      <div class="stat"><b id="sPct">0%</b><span>Progress</span></div>
+    </div>
+    <div class="bar"><i id="barAll"></i></div>
+  </header>
+
+  <div class="warn">⚠️ Local <code>.env</code> production DB te point kore. QA korar shomoy <b>test DB</b> use koro, real data te write korbe na.
+    Automated part: <code>npm run test:e2e</code> (dekho <code>docs/qa/AUTOMATION.md</code>).</div>
+
+  <div class="tools">
+    <input type="search" id="q" placeholder="Search route / item…">
+    <label class="toggle"><input type="checkbox" id="hideDone"> Hide done</label>
+    <button id="expandAll">Expand all</button>
+    <button id="collapseAll">Collapse all</button>
+    <button id="themeBtn">Dark</button>
+    <button id="exportMd" class="primary">Export .md</button>
+    <button id="exportJson">Export JSON</button>
+    <button id="importJson">Import JSON</button>
+    <input type="file" id="importFile" accept="application/json" hidden>
+    <button id="reset" class="danger">Reset</button>
+    <span class="saved" id="saved"></span>
+  </div>
+
+  <main id="root"></main>
+</div>
+
+<script>
+/* ---------- data (from docs/qa/QA-CHECKLIST.md) ---------- */
+const SECTIONS = [
+  { id: 's0', title: '0. Global (shob page e common)', items: [
+    'Page load hoy, console e red error nai',
+    'Loading state dekhay (skeleton/spinner), blank flash nai',
+    'Empty state ache (data na thakle sundor message)',
+    'Error state: network off kore try koro → bujhar moto message',
+    'Sidebar/nav theke page e jawa jay, active item highlight hoy',
+    'Browser back/forward thik moto kaj kore',
+    'Refresh dile same page/tab e thake (URL e `?tab=` thakle)',
+    'Old URL redirect kore (e.g. `/vault` → `/resource-vault`, `/pro` → `/see-plans`)',
+    'Masthead skill-style onujayi (icon tile, title, stats, ⋮ menu)',
+    'Profile icon e mini card ashe (click + hover), scroll e bondho hoy',
+    'Logout → `/` e jay, protected page e back dile login chay',
+  ]},
+  { id: 's1', title: '1. Public pages (logged-out)', items: [
+    ['`/` Landing', 'Open → hero → CTA "Login/Get started" → `/login`'],
+    ['`/cinematic`', 'Animation smooth, skip/scroll kaj kore'],
+    ['`/login`', 'Email+pass → login → `/dashboard/quickstats`. Wrong pass → error msg. Forgot → reset mail'],
+    ['`/reset-password`', 'Link theke open → new pass → login hoy; expired link → error'],
+    ['`/accept-invite`', 'Invite link → account create/join → dashboard'],
+    ['`/features`, `/pricing`, `/about-us`, `/docs`, `/blog`, `/changelog`', 'Content dekhay, link gula kaj kore'],
+    ['`/feedback`', 'Form submit → success; empty submit → validation'],
+    ['`/terms`, `/privacy`, `/cookie-policy`', 'Text porte jay, footer theke link ache'],
+    ['`/payment/success`, `/payment/cancel`', 'Sothik message + back button'],
+    ['Unknown URL', '`/` e redirect'],
+    ['`/admin-panel/*` logged-out', '`/login` e redirect'],
+  ]},
+  { id: 's2', title: '2. App pages (logged-in)',
+    intro: 'Protita page er jonno: **Open → main action → result → edit → delete → refresh e data thake?**', items: [
+    ['`/dashboard/quickstats`', 'Stats card load, notice board e notice dekha; swipe left=edit / right=delete (mobile)'],
+    ['`/dashboard/routine`', 'Routine dekha, class add/edit, today highlight'],
+    ['`/routine-templates`', 'Template choose → apply → routine e ashe'],
+    ['`/gradelab` (+ `/:section`)', 'Course/grade add → CGPA calc thik; section tab switch'],
+    ['`/resource-vault`', 'File/notes browse, search, upload (size limit), download'],
+    ['`/notebook`', 'Note create → save → reopen → edit → delete'],
+    ['`/cheat-sheets`', 'List, filter, open, download'],
+    ['`/insideaust`', 'Campus map/info, empty classroom, bhara-koto tabs'],
+    ['`/community`', 'Post create, comment, react, report'],
+    ['`/marketplace`', 'Item post (image), search/filter, contact seller, mark sold, delete'],
+    ['`/connectbox`', 'Conversation open, message send/receive realtime (2 browser e test), unread count'],
+    ['`/members/:id`', 'Profile dekha, mini card info match kore'],
+    ['`/workspace`', 'Project/task create, move, complete'],
+    ['`/study-time`', 'Room join/leave, timer, other members dekhay'],
+    ['`/zen-study-room`', 'Fullscreen mode, exit kaj kore'],
+    ['`/code-pulse`', 'CP profile link, stats load, contest list'],
+    ['`/takagelokoi`', 'Income/expense add, category, calendar switch, total thik'],
+    ['`/question-bank`', 'Upload/search question, analyzer result'],
+    ['`/cover-page-generator`', 'Form fill → preview → PDF download thik'],
+    ['`/downtime` (+ `?tab=gaming`)', 'Tabs switch; game hub, room create/join, event, `/gaming/mod` (mod only)'],
+    ['`/roast-cv`', 'CV upload → result; wrong file type → error'],
+    ['`/certificate`', 'Generate → download'],
+    ['`/wakemeup`', 'Alarm set → ring → stop/snooze'],
+    ['`/austeddit`', 'Post, upvote, comment'],
+    ['`/shadow`', 'Main flow kaj kore'],
+    ['`/daily-life`', 'Main flow kaj kore'],
+    ['`/productivity`', 'Main flow kaj kore'],
+    ['`/see-plans`', 'Plan dekha → checkout (test mode) → success/cancel page'],
+    ['`/settings`', 'Profile edit, password change, theme change persist, logout'],
+  ]},
+  { id: 's3', title: '3. Admin panel', items: [
+    ['`/admin-panel/overview`', 'Stats load'],
+    ['`/admin-panel/access-requests`', 'Approve / reject → user er role update'],
+    ['`/admin-panel/:section`', 'users, canteen, library, academic, attendance, templates, auditorium, cheatsheets, campus-map, applications, cr-sr-directory, bhara-koto, features, question-bank – protita section e list, add, edit, delete'],
+    ['`/admin-panel/role-preview`', 'Role matrix thik dekhay; **production e admin chara khule na**'],
+    ['`/admin-panel/flow-canvas`', 'Canvas load, zoom/pan'],
+    ['Legacy `/admin/*`', 'Notun `/admin-panel/...` e redirect'],
+  ]},
+  { id: 's4', title: '4. Role management', matrix: true,
+    intro: 'Protita role er ekta test account banao: **owner, admin, moderator, cr, gs, faculty, function, cohost, regular**. Expected value gula `/admin-panel/role-preview` er matrix theke fill koro.',
+    items: [
+    'UI te button lukano **ar** API o block kore (DevTools theke request pathale 401/403 ashe)',
+    'Nijer role nije promote korte pare na',
+    'Role change er por page refresh e notun permission apply hoy',
+    'Onner ID diye URL/API call kore onner data dekha/edit jay na (IDOR)',
+  ]},
+  { id: 's5', title: '5. Responsive (skill-style rules)',
+    intro: 'Device: **Mobile 375×812, Tablet 768×1024, Desktop 1440×900** (+ 320px choto phone, landscape). Protita page e:', items: [
+    'Horizontal scroll nai',
+    'Text overflow/truncate thik, kono kichu cut hoy na',
+    'Sidebar mobile e drawer hoy, close hoy',
+    'Modal/overlay screen e fit kore, scroll kore',
+    'Button/tap target ≥ 40px, swipe action kaj kore',
+    'Table gula mobile e card/scroll hoy',
+    'Keyboard open hole input dhaka pore na (real phone e)',
+  ]},
+  { id: 's6', title: '6. Themes',
+    intro: 'Theme gula: arcade, art-deco, bitcoindefi, blueprint, cricket, cyberpunk, dark, fire, forest, industrial, light, lofi, meshtopo, midnight, minimalist-monochrome, newsprint, nexus, obsidian, pastel, poster, prism, sakura, sketchbook, space, swiss, terminal, toon. Protita theme e (dashboard, ekta form page, ekta list page, modal, admin):', items: [
+    'Text porte jay (contrast), muted text o',
+    'Button/link/accent dekha jay',
+    'Input, dropdown, date picker theme follow kore (white box nai dark theme e)',
+    'Chart color thik',
+    '**Kono gradient/glow/tint nai** (CLAUDE.md rule; masthead exception chara)',
+    'Theme refresh e persist kore (`aust-theme`)',
+  ]},
+  { id: 's7', title: '7. Security', items: [
+    '`npm audit` – high/critical nai',
+    'Protita `/api/*` route e auth check (logged-out call → 401)',
+    'Role check backend e (Section 4)',
+    'Login rate limit / brute-force protection',
+    'Password bcrypt hash, response e kokhono password/hash ashe na',
+    'JWT secret strong, expiry ache, cookie `HttpOnly; Secure; SameSite`',
+    'Input e `<script>alert(1)<\/script>` dile execute hoy na (XSS) – post, comment, message, profile name',
+    'File upload: type + size limit, filename sanitize',
+    'CORS shudhu nijer domain',
+    'Security headers (CSP, X-Frame-Options, HSTS)',
+    'Client bundle e kono secret/API key nai (`dist/` e search)',
+    'Reset-password token one-time + expire hoy',
+    'Payment success page direct open kore pro pawa jay na (server verify kore)',
+    'WebSocket e auth check',
+  ]},
+  { id: 's8', title: '8. Others', items: [
+    'Lighthouse (Performance, Accessibility, SEO, Best practices) – main pages ≥ 80',
+    'Keyboard diye navigate (Tab, Enter, Esc modal bondho)',
+    'Chrome, Firefox, Safari/WebKit, Edge',
+    'Slow 3G te usable',
+    'Favicon, title, meta/OG tags',
+    'Bangla/long text e layout bhange na',
+    'Time zone/date format thik',
+  ]},
+];
+
+const ROLES = ['owner', 'admin', 'mod', 'cr', 'gs', 'faculty', 'function', 'cohost', 'regular'];
+const MATRIX_ROWS = [
+  { id: 'm0', label: 'Admin panel e dhukte pare', def: ['yes','yes','q','no','no','no','no','no','no'] },
+  { id: 'm1', label: 'Notice post korte pare', def: [] },
+  { id: 'm2', label: 'Onner post delete', def: [] },
+  { id: 'm3', label: '`/gaming/mod`', def: [] },
+  { id: 'm4', label: 'Role change korte pare', def: ['yes','q','no','no','no','no','no','no','no'] },
+];
+const CELL = { '': '·', yes: '✅', no: '❌', q: '?' };
+const CYCLE = ['', 'yes', 'no', 'q'];
+const BUG_STATUS = ['Open', 'In progress', 'Fixed', 'Won\'t fix'];
+
+/* ---------- state ---------- */
+const KEY = 'austwise-qa-v1';
+const blank = () => ({ checks: {}, fails: {}, notes: {}, matrix: {}, bugs: [], closed: {}, theme: 'light' });
+let S = load();
+function load() {
+  try { return Object.assign(blank(), JSON.parse(localStorage.getItem(KEY) || '{}')); }
+  catch { return blank(); }
+}
+let saveT;
+function save() {
+  const el = document.getElementById('saved');
+  try { localStorage.setItem(KEY, JSON.stringify(S)); el.textContent = 'Saved ' + new Date().toLocaleTimeString(); }
+  catch { el.textContent = 'Browser storage off – Export JSON diye save koro'; }
+  clearTimeout(saveT); saveT = setTimeout(() => el.textContent = '', 2500);
+  stats();
+}
+
+/* ---------- helpers ---------- */
+const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const md = s => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+const h = (tag, attrs = {}, html = '') => { const e = document.createElement(tag);
+  for (const k in attrs) k === 'class' ? e.className = attrs[k] : e.setAttribute(k, attrs[k]);
+  if (html) e.innerHTML = html; return e; };
+const itemId = (sec, i) => sec.id + '-' + i;
+const matrixVal = (row, r) => (S.matrix[row.id + ':' + r] ?? row.def[r] ?? '');
+
+/* ---------- render ---------- */
+function render() {
+  const root = document.getElementById('root'); root.innerHTML = '';
+  for (const sec of SECTIONS) root.appendChild(renderSection(sec));
+  root.appendChild(renderBugs());
+  stats();
+}
+
+function renderSection(sec) {
+  const box = h('section', { class: 'sec' + (S.closed[sec.id] ? ' closed' : ''), id: sec.id });
+  const head = h('div', { class: 'sec-h', role: 'button', tabindex: '0' },
+    `<span class="chev">▾</span><h2>${md(sec.title)}</h2><span class="mini"><i></i></span><span class="count"></span>`);
+  const toggle = () => { box.classList.toggle('closed'); S.closed[sec.id] = box.classList.contains('closed'); save(); };
+  head.onclick = toggle;
+  head.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } };
+  const body = h('div', { class: 'sec-b' });
+  if (sec.intro) body.appendChild(h('div', { class: 'intro' }, md(sec.intro)));
+  if (sec.matrix) body.appendChild(renderMatrix());
+  sec.items.forEach((it, i) => body.appendChild(renderItem(itemId(sec, i), it)));
+  box.append(head, body);
+  return box;
+}
+
+function renderItem(id, it) {
+  const row = h('div', { class: 'item', 'data-id': id });
+  const cb = h('input', { type: 'checkbox', id: 'cb-' + id });
+  cb.checked = !!S.checks[id];
+  const txt = h('label', { class: 'txt', for: 'cb-' + id },
+    Array.isArray(it) ? `<span class="route">${md(it[0])}</span><span class="flow">${md(it[1])}</span>`
+                      : `<span class="plain">${md(it)}</span>`);
+  row.dataset.search = (Array.isArray(it) ? it.join(' ') : it).toLowerCase();
+  const acts = h('div', { class: 'acts' });
+  const fail = h('button', { type: 'button', title: 'Mark as failing (bug found)' }, 'Fail');
+  const note = h('button', { type: 'button', title: 'Add a note' }, 'Note');
+  acts.append(fail, note);
+  row.append(cb, txt, acts);
+
+  let ta = null;
+  const showNote = (focus) => {
+    if (ta) return;
+    ta = h('textarea', { placeholder: 'Note / bug details…' });
+    ta.value = S.notes[id] || '';
+    ta.oninput = () => { S.notes[id] = ta.value; if (!ta.value) delete S.notes[id]; save(); paint(); };
+    row.appendChild(ta); if (focus) ta.focus();
+  };
+  const paint = () => {
+    row.classList.toggle('checked', cb.checked);
+    row.classList.toggle('fail', !!S.fails[id]);
+    fail.classList.toggle('on-fail', !!S.fails[id]);
+    note.classList.toggle('on-note', !!S.notes[id]);
+  };
+  cb.onchange = () => { cb.checked ? S.checks[id] = true : delete S.checks[id];
+    if (cb.checked) delete S.fails[id]; save(); paint(); };
+  fail.onclick = () => { S.fails[id] ? delete S.fails[id] : (S.fails[id] = true, delete S.checks[id], cb.checked = false);
+    save(); paint(); if (S.fails[id]) showNote(true); };
+  note.onclick = () => { if (ta && !ta.value) { ta.remove(); ta = null; } else showNote(true); };
+  if (S.notes[id]) showNote(false);
+  paint();
+  return row;
+}
+
+function renderMatrix() {
+  const wrap = h('div');
+  const tw = h('div', { class: 'matrix-wrap' });
+  const t = h('table', { class: 'matrix' });
+  t.innerHTML = `<thead><tr><th>Check</th>${ROLES.map(r => `<th>${r}</th>`).join('')}</tr></thead>`;
+  const tb = h('tbody');
+  for (const row of MATRIX_ROWS) {
+    const tr = h('tr'); tr.appendChild(h('td', {}, md(row.label)));
+    ROLES.forEach((role, r) => {
+      const td = h('td'); const b = h('button', { type: 'button', class: 'cell', title: role });
+      const set = v => { b.dataset.v = v; b.textContent = CELL[v]; };
+      set(matrixVal(row, r));
+      b.onclick = () => { const v = CYCLE[(CYCLE.indexOf(b.dataset.v) + 1) % CYCLE.length];
+        S.matrix[row.id + ':' + r] = v; set(v); save(); };
+      td.appendChild(b); tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  }
+  t.appendChild(tb); tw.appendChild(t);
+  wrap.append(tw, h('div', { class: 'legend' }, 'Cell e click korle ghure: · (blank) → ✅ allowed → ❌ blocked → ? unsure'));
+  return wrap;
+}
+
+const BUG_FIELDS = [['page','Page'],['role','Role'],['device','Device'],['theme','Theme']];
+function renderBugs() {
+  const box = h('section', { class: 'sec' + (S.closed.bugs ? ' closed' : ''), id: 'bugs' });
+  const head = h('div', { class: 'sec-h', role: 'button', tabindex: '0' },
+    `<span class="chev">▾</span><h2>Bug log</h2><span class="count" id="bugCount"></span>`);
+  head.onclick = () => { box.classList.toggle('closed'); S.closed.bugs = box.classList.contains('closed'); save(); };
+  const body = h('div', { class: 'sec-b' });
+  const list = h('div', { class: 'bugs' });
+  const draw = () => {
+    list.innerHTML = '';
+    if (!S.bugs.length) list.appendChild(h('div', { class: 'empty' }, 'Kono bug log nai ekhono.'));
+    S.bugs.forEach((bug, i) => {
+      const c = h('div', { class: 'bug' });
+      const top = h('div', { class: 'num' }, `<span>#${i + 1}</span>`);
+      const del = h('button', { type: 'button', class: 'danger' }, 'Delete');
+      del.onclick = () => { if (confirm('Bug #' + (i + 1) + ' delete korbe?')) { S.bugs.splice(i, 1); save(); draw(); } };
+      top.appendChild(del); c.appendChild(top);
+      for (const [k, lab] of BUG_FIELDS) {
+        const l = h('label', {}, lab); const inp = h('input', { type: 'text' });
+        inp.value = bug[k] || ''; inp.oninput = () => { bug[k] = inp.value; save(); };
+        l.appendChild(inp); c.appendChild(l);
+      }
+      for (const [k, lab] of [['steps','Steps'],['expected','Expected'],['actual','Actual']]) {
+        const l = h('label', { class: 'wide' }, lab); const ta = h('textarea');
+        ta.value = bug[k] || ''; ta.oninput = () => { bug[k] = ta.value; save(); };
+        l.appendChild(ta); c.appendChild(l);
+      }
+      const l = h('label', {}, 'Status'); const sel = h('select');
+      BUG_STATUS.forEach(s => { const o = h('option', {}, esc(s)); o.value = s; sel.appendChild(o); });
+      sel.value = bug.status || 'Open'; sel.onchange = () => { bug.status = sel.value; save(); };
+      l.appendChild(sel); c.appendChild(l);
+      list.appendChild(c);
+    });
+    stats();
+  };
+  const add = h('button', { type: 'button', class: 'primary', style: 'margin: 4px 18px 12px' }, '+ Add bug');
+  add.onclick = () => { S.bugs.push({ status: 'Open' }); save(); draw();
+    list.lastElementChild.querySelector('input').focus(); };
+  body.append(list, add);
+  box.append(head, body);
+  draw();
+  return box;
+}
+
+/* ---------- stats ---------- */
+function stats() {
+  let all = 0, done = 0, fails = 0;
+  for (const sec of SECTIONS) {
+    const n = sec.items.length; let d = 0, f = 0;
+    sec.items.forEach((_, i) => { const id = itemId(sec, i); if (S.checks[id]) d++; if (S.fails[id]) f++; });
+    all += n; done += d; fails += f;
+    const box = document.getElementById(sec.id); if (!box) continue;
+    const c = box.querySelector('.count');
+    c.textContent = `${d}/${n}` + (f ? ` · ${f} fail` : '');
+    c.classList.toggle('done', d === n);
+    box.querySelector('.mini i').style.width = (d / n * 100) + '%';
+  }
+  const pct = all ? Math.round(done / all * 100) : 0;
+  sDone.textContent = done; sLeft.textContent = all - done; sFail.textContent = fails; sPct.textContent = pct + '%';
+  barAll.style.width = pct + '%';
+  const bc = document.getElementById('bugCount');
+  if (bc) { const open = S.bugs.filter(b => (b.status || 'Open') !== 'Fixed' && b.status !== 'Won\'t fix').length;
+    bc.textContent = `${S.bugs.length} total · ${open} open`; }
+}
+
+/* ---------- toolbar ---------- */
+const $ = id => document.getElementById(id);
+$('q').oninput = e => {
+  const q = e.target.value.trim().toLowerCase();
+  document.querySelectorAll('.item').forEach(r => r.classList.toggle('nomatch', !!q && !r.dataset.search.includes(q)));
+  if (q) document.querySelectorAll('.sec').forEach(s => s.classList.remove('closed'));
+};
+$('hideDone').onchange = e => $('root').classList.toggle('hide-done', e.target.checked);
+$('expandAll').onclick = () => { document.querySelectorAll('.sec').forEach(s => s.classList.remove('closed')); S.closed = {}; save(); };
+$('collapseAll').onclick = () => { document.querySelectorAll('.sec').forEach(s => { s.classList.add('closed'); S.closed[s.id] = true; }); save(); };
+const applyTheme = () => { document.documentElement.dataset.theme = S.theme; $('themeBtn').textContent = S.theme === 'dark' ? 'Light' : 'Dark'; };
+$('themeBtn').onclick = () => { S.theme = S.theme === 'dark' ? 'light' : 'dark'; applyTheme(); save(); };
+
+const download = (name, text, type) => { const a = h('a', { href: URL.createObjectURL(new Blob([text], { type })), download: name });
+  document.body.appendChild(a); a.click(); a.remove(); };
+const stamp = () => new Date().toISOString().slice(0, 10);
+
+$('exportJson').onclick = () => download(`qa-progress-${stamp()}.json`, JSON.stringify(S, null, 2), 'application/json');
+$('importJson').onclick = () => $('importFile').click();
+$('importFile').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try { S = Object.assign(blank(), JSON.parse(await f.text())); save(); applyTheme(); render(); }
+  catch { alert('JSON file ta pora gelo na.'); }
+  e.target.value = '';
+};
+$('reset').onclick = () => { if (confirm('Shob tick, note, matrix ar bug log muche jabe. Sure?')) {
+  const theme = S.theme; S = blank(); S.theme = theme; save(); render(); } };
+
+$('exportMd').onclick = () => {
+  const cell = s => s.replace(/\|/g, '\\|').replace(/\n/g, ' ');
+  const L = ['# AUSTWise – Final QA Checklist', '', `_Exported ${new Date().toLocaleString()}_`, ''];
+  for (const sec of SECTIONS) {
+    L.push(`## ${sec.title}`); if (sec.intro) L.push(sec.intro, '');
+    if (sec.matrix) {
+      L.push(`| Check | ${ROLES.join(' | ')} |`, `|---|${ROLES.map(() => '---').join('|')}|`);
+      for (const row of MATRIX_ROWS) L.push(`| ${row.label} | ${ROLES.map((_, r) => { const v = matrixVal(row, r); return v ? CELL[v] : ''; }).join(' | ')} |`);
+      L.push('');
+    }
+    sec.items.forEach((it, i) => {
+      const id = itemId(sec, i);
+      const mark = S.checks[id] ? '[x]' : '[ ]';
+      const text = Array.isArray(it) ? `${it[0]} — ${it[1]}` : it;
+      L.push(`- ${mark} ${text}${S.fails[id] ? ' **❌ FAIL**' : ''}`);
+      if (S.notes[id]) L.push(`  - _Note:_ ${S.notes[id].replace(/\n/g, ' ')}`);
+    });
+    L.push('');
+  }
+  L.push('## Bug log', '| # | Page | Role | Device | Theme | Steps | Expected | Actual | Status |', '|---|---|---|---|---|---|---|---|---|');
+  if (!S.bugs.length) L.push('| 1 | | | | | | | | |');
+  S.bugs.forEach((b, i) => L.push(`| ${i + 1} | ${['page','role','device','theme','steps','expected','actual'].map(k => cell(b[k] || '')).join(' | ')} | ${b.status || 'Open'} |`));
+  download(`QA-CHECKLIST-${stamp()}.md`, L.join('\n') + '\n', 'text/markdown');
+};
+
+applyTheme();
+render();
+</script>
+</body>
+</html>

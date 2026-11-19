@@ -195,7 +195,7 @@
   padding: 18px 20px;
   border: 1px solid var(--admin-line);
   border-radius: var(--radius-xl, 20px);
-  background: linear-gradient(115deg, color-mix(in srgb, var(--admin-surface) 94%, var(--admin-accent) 6%), var(--admin-surface));
+  background: var(--admin-surface);
   box-shadow: var(--admin-shadow);
 }
 

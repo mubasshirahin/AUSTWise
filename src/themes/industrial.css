@@ -41,22 +41,22 @@
   /* Borders — the two halves of the neumorphic lighting equation */
   --border-primary: #babecc;                    /* shadow half */
   --border-secondary: rgba(163, 177, 198, 0.45);
-  --border-focus: rgba(255, 71, 87, 0.55);
+  --border-focus: rgba(224, 45, 60, 0.55);
 
   /* Accents — safety-orange is the emergency-stop button of the palette and maps
      to the primary interactive slot. The rest are muted workshop tones so the
      colour-coded category badges stay distinguishable without breaking the
      monochrome discipline. */
   --accent-blue: #ff4757;      /* Braun red / safety orange — PRIMARY */
-  --accent-blue-glow: rgba(255, 71, 87, 0.18);
+  --accent-blue-glow: rgba(224, 45, 60, 0.18);
   --accent-purple: #5b6472;    /* graphite */
   --accent-purple-glow: rgba(91, 100, 114, 0.16);
-  --accent-amber: #ff4757;     /* Braun red / safety orange — PRIMARY */
-  --accent-amber-glow: rgba(255, 71, 87, 0.18);
+  --accent-amber: #e02d3c;     /* Braun red / safety orange — PRIMARY */
+  --accent-amber-glow: rgba(224, 45, 60, 0.18);
   --accent-emerald: #3f8a6e;   /* status green */
   --accent-emerald-glow: rgba(63, 138, 110, 0.16);
   --accent-rose: #ff4757;      /* alert = the same red */
-  --accent-rose-glow: rgba(255, 71, 87, 0.16);
+  --accent-rose-glow: rgba(224, 45, 60, 0.16);
   --accent-cyan: #4f6f7d;      /* brushed steel-blue */
   --accent-cyan-glow: rgba(79, 111, 125, 0.16);
   --accent-orange: #b8791f;    /* warning amber */
@@ -82,7 +82,7 @@
   --shadow-md: 8px 8px 16px #babecc, -8px -8px 16px #ffffff;
   --shadow-lg: 12px 12px 24px #babecc, -12px -12px 24px #ffffff;
   --shadow-xl: 18px 18px 36px #aeb4c4, -14px -14px 32px #ffffff;
-  --shadow-glow-blue: 0 0 0 3px rgba(255, 71, 87, 0.18);
+  --shadow-glow-blue: 0 0 0 3px rgba(224, 45, 60, 0.18);
   --shadow-glow-purple: 8px 8px 16px #babecc, -8px -8px 16px #ffffff;
   --shadow-glow-amber: 8px 8px 16px #babecc, -8px -8px 16px #ffffff;
 
@@ -97,7 +97,7 @@
   --ind-accent: #ff4757;
   --ind-accent-dark: #a6323c;
   --ind-accent-light: #ff7a84;
-  --ind-led-glow: 0 0 8px 1px rgba(255, 71, 87, 0.55);
+  --ind-led-glow: 0 0 8px 1px rgba(224, 45, 60, 0.55);
   --ind-screw: #aab0be;
 
   --scrollbar-track: #d1d9e6;

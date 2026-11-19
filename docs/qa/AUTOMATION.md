@@ -1,5 +1,11 @@
 # AUSTWise – QA procedure & automation
 
+> **In-app QA page:** Admin sidebar → **QA Checklist** (`/admin-panel/qa-checklist`).
+> Page tour (protita page er UI / flow / data / role / edge item), user flows, role matrix,
+> bug log, go-live gate ar browser er auto test (env, API guard, headers, secret scan,
+> theme contrast, page smoke, redirect, role guard) shob ekhane. Progress admin account e
+> sync hoy. Data: `src/features/admin/qa/qaData.js`, auto test: `qaAutoTests.js`.
+
 ## Ki automate hoy, ki manual
 | Area | Automated (Playwright) | Manual (`QA-CHECKLIST.md`) |
 |---|---|---|

@@ -53,7 +53,7 @@ html[data-layout="studio"] .nav-item {
   border-radius: var(--radius-full);
 }
 html[data-layout="studio"] .nav-item.active {
-  background: linear-gradient(90deg, color-mix(in srgb, var(--accent-blue) 18%, transparent), color-mix(in srgb, var(--accent-blue) 5%, transparent));
+  background: var(--bg-tertiary);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-blue) 28%, transparent);
   color: var(--text-primary);
 }
@@ -143,8 +143,7 @@ html[data-layout="studio"] .page-wrapper .page-hero::before {
   inset: -56px auto auto -40px;
   width: min(620px, 80%);
   height: 260px;
-  background:
-    radial-gradient(60% 70% at 30% 40%, color-mix(in srgb, var(--accent-blue) 9%, transparent), transparent 70%);
+  display: none;
   pointer-events: none;
   z-index: 0;
 }
@@ -159,7 +158,7 @@ html[data-layout="studio"] .page-wrapper .page-hero::after {
   bottom: 0;
   height: 1px;
   opacity: 1;
-  background: linear-gradient(90deg, var(--border-primary), var(--border-secondary) 60%, transparent);
+  background: var(--border-primary);
   pointer-events: none;
 }
 html[data-layout="studio"] .page-wrapper [class*="-hero-content"] {
@@ -254,7 +253,7 @@ html[data-layout="studio"] .glider-tabs-track {
 }
 html[data-layout="studio"] .glider-tabs-glider {
   border-radius: var(--radius-full);
-  background: linear-gradient(180deg, var(--bg-tertiary), var(--bg-card));
+  background: var(--bg-tertiary);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-blue) 30%, transparent), 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 html[data-layout="studio"] .glider-tab {
@@ -306,7 +305,7 @@ html[data-layout="studio"] .schedule-masthead::after {
   left: 0;
   right: 0;
   opacity: 1;
-  background: linear-gradient(90deg, var(--border-primary), var(--border-secondary) 55%, transparent);
+  background: var(--border-primary);
 }
 html[data-layout="studio"] .schedule-dotted-divider { display: none; }
 html[data-layout="studio"] .schedule-icon-tile {
@@ -314,7 +313,7 @@ html[data-layout="studio"] .schedule-icon-tile {
   height: 44px;
   min-width: 44px;
   border-radius: 14px;
-  background: linear-gradient(160deg, color-mix(in srgb, var(--accent-blue) 22%, transparent), color-mix(in srgb, var(--accent-blue) 6%, transparent));
+  background: var(--bg-tertiary);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-blue) 28%, transparent);
   color: var(--accent-blue);
 }
@@ -342,7 +341,7 @@ html[data-layout="studio"] .schedule-day-card {
   border-radius: var(--radius-lg);
 }
 html[data-layout="studio"] .quick-stats-widget .quick-stat-cell {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--text-primary) 4.5%, transparent), color-mix(in srgb, var(--text-primary) 1%, transparent));
+  background: var(--bg-card);
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
   transition: border-color 180ms var(--st-ease), background 180ms var(--st-ease);
@@ -368,9 +367,7 @@ html[data-layout="studio"] .quick-stat-value {
     align-items: stretch;
   }
   html[data-layout="studio"] .quick-stats-grid > :first-child {
-    background:
-      radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--accent-blue) 16%, transparent), transparent 60%),
-      linear-gradient(180deg, color-mix(in srgb, var(--text-primary) 5%, transparent), color-mix(in srgb, var(--text-primary) 1%, transparent));
+    background: var(--bg-card);
     border-color: color-mix(in srgb, var(--accent-blue) 30%, transparent);
   }
   html[data-layout="studio"] .quick-stats-grid > :first-child .quick-stat-value {
@@ -422,9 +419,7 @@ html[data-layout="studio"] .status-dot.online::after {
 html[data-layout="studio"] .empty-state {
   border: 1px dashed color-mix(in srgb, var(--text-primary) 22%, transparent);
   border-radius: var(--radius-xl);
-  background:
-    linear-gradient(color-mix(in srgb, var(--text-primary) 4%, transparent) 1px, transparent 1px) 0 0 / 16px 16px,
-    linear-gradient(90deg, color-mix(in srgb, var(--text-primary) 4%, transparent) 1px, transparent 1px) 0 0 / 16px 16px;
+  background: var(--bg-card);
 }
 html[data-layout="studio"] .empty-state svg {
   opacity: 0.7;
@@ -483,7 +478,7 @@ html[data-layout="studio"] .page-wrapper > * > .schedule-masthead:first-child {
 html[data-layout="studio"] .page-wrapper > * > .schedule-masthead:first-child::after {
   height: 1px;
   bottom: 0;
-  background: linear-gradient(90deg, var(--border-primary), var(--border-secondary) 60%, transparent);
+  background: var(--border-primary);
 }
 html[data-layout="studio"] .page-wrapper > * > .schedule-masthead:first-child .schedule-title {
   font-size: clamp(1.8rem, 1.2rem + 2vw, 2.75rem);

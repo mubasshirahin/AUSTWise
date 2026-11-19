@@ -49,6 +49,7 @@ const MarketplacePage = lazy(() => import('./features/marketplace/index.jsx'));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
 const AdminPanelPage = lazy(() => import('./features/admin/AdminPanelPage'));
 const FlowCanvasPage = lazy(() => import('./features/admin/FlowCanvasPage'));
+const QAChecklistPage = lazy(() => import('./features/admin/qa/QAChecklistPage'));
 const MessagesPage = lazy(() => import('./features/messages/MessagesPage'));
 const WorkspacePage = lazy(() => import('./features/workspace/WorkspacePage'));
 const StudyRoomPage = lazy(() => import('./features/study-room/StudyRoomPage'));
@@ -305,6 +306,7 @@ function AppContent() {
                   <Route path="/admin-panel" element={<Navigate to="/admin-panel/overview" replace />} />
                   <Route path="/admin-panel/role-preview" element={import.meta.env.DEV ? <RoleMatrixPreview /> : <ProtectedAdminRoute><RoleMatrixPreview /></ProtectedAdminRoute>} />
                   <Route path="/admin-panel/flow-canvas" element={<ProtectedAdminRoute><FlowCanvasPage /></ProtectedAdminRoute>} />
+                  <Route path="/admin-panel/qa-checklist" element={<ProtectedAdminRoute><QAChecklistPage /></ProtectedAdminRoute>} />
                   <Route path="/admin-panel/:section" element={<ProtectedAdminRoute><AdminPanelPage /></ProtectedAdminRoute>} />
                   <Route path="/admin" element={<LegacyAdminRedirect />} />
                   <Route path="/admin/overview" element={<LegacyAdminRedirect />} />
@@ -421,6 +423,7 @@ function AppShell() {
     '/connectbox': 'ConnectBox',
     '/messages': 'ConnectBox',
     '/admin/role-preview': 'Live Role Access Preview',
+    '/admin-panel/qa-checklist': 'QA Checklist',
     '/admin-panel': 'Admin Panel',
     '/admin': 'Admin Panel',
     '/shadow': 'Shadow',
@@ -452,7 +455,9 @@ function AppShell() {
   // Show loading state while checking auth
   if (isLoading) {
     return (
-      <div style={{
+      // .app-boot-loading lets the QA probe wait for auth to resolve before it
+      // reads the URL (no routes render — and no guard redirects — until then).
+      <div className="app-boot-loading" style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -485,7 +490,7 @@ function AppShell() {
   if (!isAuthenticated) {
     return (
       <Suspense fallback={
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#08090a', color: '#a1a1aa', fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
+        <div className="app-boot-loading" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#08090a', color: '#a1a1aa', fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
           <div>Loading...</div>
         </div>
       }>

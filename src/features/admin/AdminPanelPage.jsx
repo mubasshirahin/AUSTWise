@@ -804,6 +804,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
             <button className={activeTab === 'cheatsheets' ? 'is-active' : ''} onClick={() => navigateToTab('cheatsheets')}><span>Cheatsheets</span><small>Manage shared study resources</small></button>
             <button className={activeTab === 'question-bank' ? 'is-active' : ''} onClick={() => navigateToTab('question-bank')}><span>Question bank</span><small>Manage shared past papers</small></button>
             <button onClick={() => navigate('/admin/role-preview')}><span>Role preview</span><small>Preview the app as each user role</small></button>
+            <button onClick={() => navigate('/admin-panel/qa-checklist')}><span>QA checklist</span><small>Final page-by-page test before release</small></button>
           </div>
         </section>
       </nav>}

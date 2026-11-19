@@ -92,7 +92,7 @@
   --bp-redline: #FF8A65;
   --bp-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   /* crop-mark ticks, drawn as background layers so no pseudo-element is used */
-  --bp-ticks: linear-gradient(180deg, rgba(160, 205, 255, 0.055), rgba(160, 205, 255, 0) 140px) no-repeat;
+  --bp-ticks: none; /* was a top fade; house style keeps cards flat */
 
   --scrollbar-track: #05070B;
   --scrollbar-thumb: #1E2633;
@@ -116,10 +116,7 @@
 /* ─── Canvas: calm tonal surface, one soft ambient glow at the top ─── */
 [data-theme="blueprint"] body {
   background-color: var(--bg-primary);
-  background-image:
-    radial-gradient(70% 50% at 60% -10%, rgba(124, 200, 255, 0.05) 0%, transparent 70%),
-    radial-gradient(50% 40% at 100% 0%, rgba(255, 138, 101, 0.03) 0%, transparent 70%);
-  background-attachment: fixed;
+  background-image: none;
 }
 [data-theme="blueprint"] .floating-bg { display: none; }
 
@@ -185,7 +182,7 @@
 
 [data-theme="blueprint"] .hero-panel,
 [data-theme="blueprint"] .page-hero {
-  background: var(--bp-ticks), var(--gradient-secondary);
+  background: var(--bg-card);
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
@@ -320,15 +317,12 @@
 
 /* ─── Progress: a measured line with ruler ticks in the track ─── */
 [data-theme="blueprint"] .progress-bar {
-  background:
-    repeating-linear-gradient(90deg, transparent 0 9px, rgba(160, 205, 255, 0.14) 9px 10px),
-    rgba(160, 205, 255, 0.06);
+  background: var(--bg-tertiary);
   border-radius: var(--radius-sm);
 }
 [data-theme="blueprint"] .progress-bar-fill {
   background: var(--accent-blue);
   border-radius: var(--radius-sm);
-  box-shadow: 0 0 10px rgba(124, 200, 255, 0.35);
 }
 
 /* ─── Toggle ─── */

@@ -506,6 +506,10 @@
   gap: 2px;
   z-index: var(--z-dropdown, 1000);
   transform-origin: top right;
+  /* 23 themes — keep the sheet reachable on short/mobile viewports. */
+  max-height: min(420px, calc(100vh - 96px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .landing-theme-menu.open {
@@ -4078,6 +4082,50 @@
     padding: 12px 16px;
   }
 
+  /* Three evenly-flexed columns squeezed the CTA off-screen on phones.
+     Let the logo take only what it needs and keep the theme centred. */
+  .landing-nav-inner {
+    gap: 8px;
+    position: relative;
+  }
+
+  .landing-nav-left {
+    flex: 0 1 auto;
+  }
+
+  .landing-nav-left .topbar-logo {
+    margin-left: 0;
+    gap: 6px;
+  }
+
+  .landing-nav-mid {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    flex: 0 0 auto;
+    z-index: 2;
+  }
+
+  .landing-nav-right {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .landing-nav-right .landing-btn {
+    padding: 9px 12px;
+    font-size: 0.78rem;
+    gap: 5px;
+  }
+
+  /* Centre the sheet under the theme button so it never runs off-screen. */
+  .landing-theme-menu {
+    left: 50%;
+    right: auto;
+    margin-left: -93px; /* half of min-width: 186px */
+    transform-origin: top center;
+  }
+
   .landing-hero {
     padding: 100px 16px 60px;
   }
@@ -4173,6 +4221,26 @@
 }
 
 @media (max-width: 480px) {
+  .landing-nav-left .topbar-wordmark-img {
+    width: 30px;
+    height: 30px;
+  }
+
+  .landing-nav-left .topbar-brand-name {
+    font-size: 14px;
+    letter-spacing: -0.04em;
+  }
+
+  .landing-nav-right .landing-btn {
+    padding: 8px 10px;
+    font-size: 0.72rem;
+  }
+
+  .landing-nav-right .landing-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+
   .landing-hero-title {
     font-size: 1.8rem;
   }

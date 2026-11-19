@@ -81,7 +81,6 @@ export default defineConfig({
       'd3', 'chart.js', 'react-chartjs-2',
       'leaflet', 'leaflet.heat',
       'pdfjs-dist', 'jspdf', 'html2canvas-pro',
-      'mermaid', 'markmap-lib', 'markmap-view',
       'gsap', 'framer-motion', 'lucide-react',
     ],
   },
@@ -94,7 +93,6 @@ export default defineConfig({
             if (/[\\/]three[\\/]/.test(id)) return 'vendor-three';
             if (/[\\/]pdfjs-dist[\\/]/.test(id)) return 'vendor-pdfjs';
             if (/[\\/](jspdf|html2canvas-pro|html2canvas)[\\/]/.test(id)) return 'vendor-pdfgen';
-            if (/[\\/](mermaid|markmap-)[\\/]/.test(id)) return 'vendor-diagram';
             if (/[\\/](react|react-dom|react-router|scheduler|use-sync-external-store)[\\/]/.test(id)) return 'vendor-react';
             if (/[\\/](d3|d3-)[\\/]/.test(id)) return 'vendor-d3';
             if (/[\\/](chart\.js|react-chartjs-2)[\\/]/.test(id)) return 'vendor-chartjs';
@@ -157,12 +155,6 @@ export default defineConfig({
             {
               name: 'vendor-pdfgen',
               test: /node_modules[\\/](jspdf|html2canvas-pro|html2canvas)[\\/]/,
-              priority: 20,
-            },
-            // Mermaid / markmap — notebook mindmaps
-            {
-              name: 'vendor-diagram',
-              test: /node_modules[\\/](mermaid|markmap-)[\\/]/,
               priority: 20,
             },
           ],

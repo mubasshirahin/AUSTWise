@@ -11,7 +11,7 @@ import {
   LogIn, Shield,
   ChevronLeft, ChevronRight, Crown,
   NotebookPen, Coffee, Gamepad2,
-  Zap, Home, Moon, FileSearch, Workflow
+  Zap, Home, Moon, FileSearch, Workflow, ClipboardCheck
 } from 'lucide-react';
 import './Sidebar.css';
 
@@ -129,6 +129,7 @@ export default function Sidebar({ collapsed: collapsedProp, onToggle, drawerOpen
     bottomList = [
       { path: '/settings', label: 'Settings', icon: Settings },
       { path: '/admin-panel/flow-canvas', label: 'Design Docs', icon: Workflow },
+      { path: '/admin-panel/qa-checklist', label: 'QA Checklist', icon: ClipboardCheck },
     ];
   }
 

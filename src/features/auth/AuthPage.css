@@ -116,34 +116,29 @@
 }
 
 /* ─── Back to Home Button ───
-   Placed outside auth-shell so it stays in normal flow — no overlap risk. */
+   Sits inside the card at top-left, mirroring the theme switcher. */
 .auth-back-home-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  margin-bottom: 12px;
-  font-size: 0.76rem;
-  font-weight: var(--fw-medium);
-  color: var(--text-secondary);
-  background: var(--bg-input);
+  position: absolute;
+  top: 32px;
+  left: 16px;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
   border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  transition: all var(--transition-fast);
-  font-family: inherit;
-  white-space: nowrap;
-  align-self: flex-start;
-  position: relative;
+  transition: all var(--transition-base);
   z-index: 2;
-  flex-shrink: 0;
 }
 
 .auth-back-home-btn:hover {
-  color: var(--accent-blue);
+  background: var(--bg-card-hover);
   border-color: var(--accent-blue);
-  background: var(--accent-blue-glow);
-  transform: translateX(-2px);
+  color: var(--accent-blue);
 }
 
 .auth-back-home-btn svg {
@@ -175,7 +170,8 @@
   box-shadow: var(--shadow-xl);
   position: relative;
   z-index: 1;
-  overflow: hidden;
+  /* Let the theme dropdown extend past the card; it scrolls on its own. */
+  overflow: visible;
 }
 
 .auth-card::before {
@@ -235,6 +231,13 @@
   top: calc(100% + 8px);
   right: 0;
   min-width: 176px;
+  /* 23 themes — cap the height and scroll the list (touch-friendly on phones). */
+  max-height: min(60vh, 440px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-primary) transparent;
   background: var(--bg-secondary);
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-md);
@@ -246,6 +249,13 @@
   z-index: var(--z-dropdown);
   transform-origin: top right;
   animation: authMenuIn 0.18s cubic-bezier(0.2, 0, 0, 1) forwards;
+}
+
+.auth-theme-menu::-webkit-scrollbar { width: 6px; }
+.auth-theme-menu::-webkit-scrollbar-track { background: transparent; }
+.auth-theme-menu::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+  border-radius: var(--radius-full);
 }
 
 /* Invisible hover bridge */
@@ -1577,121 +1587,6 @@
 }
 
 /* ═══════════════════════════════════════════════════════
-   FEATURE: Department easter eggs
-   ═══════════════════════════════════════════════════════ */
-.auth-card[data-dept] { --dept-accent: var(--accent-blue); }
-.auth-card[data-dept="CSE"]  { --dept-accent: #6fa386; }
-.auth-card[data-dept="EEE"]  { --dept-accent: #7cc4ff; }
-.auth-card[data-dept="ARCH"] { --dept-accent: #5b8bd0; }
-.auth-card[data-dept="BBA"]  { --dept-accent: #c9a66b; }
-.auth-card.has-dept-egg {
-  border-color: color-mix(in srgb, var(--dept-accent) 40%, transparent);
-  /* Reserve room so the FX strip never overlaps the bottom button. */
-  padding-bottom: 34px;
-}
-
-/* FX strip along the card's bottom edge */
-.auth-dept-fx {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 22px;
-  border-bottom-left-radius: inherit;
-  border-bottom-right-radius: inherit;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-/* CSE — scrolling binary ticker */
-.auth-dept-fx[data-dept="CSE"]::before {
-  content: '01000001 01010101 01010011 01010100 01110111 01101001 01110011 01100101 00100000 01100011 01110011 01100101 00100000 01100100 01100101 01110000 01110100 00101110 ';
-  position: absolute;
-  bottom: 4px;
-  left: 0;
-  white-space: nowrap;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 1px;
-  color: color-mix(in srgb, var(--dept-accent) 70%, transparent);
-  animation: deptBinary 18s linear infinite;
-}
-@keyframes deptBinary {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
-}
-
-/* EEE — neon circuit line with a pulse travelling through it */
-.auth-dept-fx[data-dept="EEE"]::before {
-  content: '';
-  position: absolute;
-  bottom: 8px;
-  left: 8px;
-  right: 8px;
-  height: 2px;
-  background:
-    linear-gradient(90deg,
-      transparent 0%,
-      color-mix(in srgb, var(--dept-accent) 90%, transparent) 50%,
-      transparent 100%),
-    repeating-linear-gradient(90deg,
-      color-mix(in srgb, var(--dept-accent) 40%, transparent) 0 14px,
-      transparent 14px 20px);
-  background-size: 40% 100%, 100% 100%;
-  background-repeat: no-repeat, repeat;
-  filter: drop-shadow(0 0 5px var(--dept-accent));
-  animation: deptCircuit 2.2s linear infinite;
-}
-@keyframes deptCircuit {
-  from { background-position: -40% 0, 0 0; }
-  to   { background-position: 140% 0, 0 0; }
-}
-
-/* ARCH — blueprint ruler with measurement ticks + scale label */
-.auth-dept-fx[data-dept="ARCH"] {
-  border-top: 1px solid color-mix(in srgb, var(--dept-accent) 45%, transparent);
-}
-.auth-dept-fx[data-dept="ARCH"]::before {
-  content: '';
-  position: absolute;
-  bottom: 10px;
-  left: 10px;
-  right: 46px;
-  height: 8px;
-  background-image: repeating-linear-gradient(90deg,
-    color-mix(in srgb, var(--dept-accent) 60%, transparent) 0 1px,
-    transparent 1px 16px);
-}
-.auth-dept-fx[data-dept="ARCH"]::after {
-  content: 'SCALE 1:100';
-  position: absolute;
-  bottom: 5px;
-  right: 10px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 8px;
-  letter-spacing: 1px;
-  color: color-mix(in srgb, var(--dept-accent) 75%, transparent);
-}
-
-/* BBA — stock-ticker slide */
-.auth-dept-fx[data-dept="BBA"]::before {
-  content: '▲ AUST 2450.75  +2.4%     ▲ CGPA 3.98  +0.12     ▲ PLACEMENTS  +18%     ▲ AUST 2450.75  +2.4%     ';
-  position: absolute;
-  bottom: 5px;
-  left: 0;
-  white-space: nowrap;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  font-weight: var(--fw-bold);
-  color: color-mix(in srgb, var(--dept-accent) 80%, transparent);
-  animation: deptTicker 16s linear infinite;
-}
-@keyframes deptTicker {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
-}
-
-/* ═══════════════════════════════════════════════════════
    FEATURE: "Drop the mic" origami success animation
    ═══════════════════════════════════════════════════════ */
 .auth-shell.is-sending {
@@ -1767,7 +1662,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .auth-dept-fx::before,
   .auth-email-suffix,
   .auth-card--sending,
   .auth-envelope,
@@ -2414,6 +2308,13 @@
     right: 12px;
   }
 
+  .auth-back-home-btn {
+    top: 24px;
+    left: 12px;
+    width: 34px;
+    height: 34px;
+  }
+
   .auth-theme-btn {
     width: 34px;
     height: 34px;
@@ -2513,5 +2414,181 @@
 
   .auth-input-eye .input {
     padding-right: 44px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   MOBILE — minimal + compact auth card. Kept last so it wins
+   over the theme-specific rules above. Control heights stay
+   >= 44px (tap targets); only the type scale comes down.
+   ═══════════════════════════════════════════════════════ */
+@media (max-width: 480px) {
+  /* Drop the busy background layers; keep the little mascot. */
+  .auth-page-bg .auth-page-grid,
+  .auth-page-bg .auth-page-orb,
+  .auth-page-bg .auth-page-noise,
+  .auth-page-bg .auth-particle-canvas,
+  .auth-shell::before {
+    display: none;
+  }
+
+  /* Center the card when it fits; top-align (scrollable) when the signup
+     form is taller than the viewport. Overrides the max-height:820px rule. */
+  .auth-page {
+    align-items: safe center;
+  }
+
+  .auth-card {
+    font-size: 13px;
+    /* A little narrower than the shell so there is breathing room around it. */
+    max-width: min(320px, 92%);
+    padding: 36px 16px 16px;
+    box-shadow: 0 10px 28px -22px rgba(0, 0, 0, 0.55);
+  }
+
+  /* Compact mascot — still watches the fields, just takes less space. */
+  .auth-mascot {
+    width: 38px;
+    height: 24px;
+    margin: -2px auto 12px;
+  }
+
+  .auth-mascot-face {
+    width: 38px;
+    height: 22px;
+  }
+
+  .auth-mascot-eye {
+    width: 10px;
+    height: 10px;
+    top: 6px;
+  }
+
+  .auth-mascot-eye.left { left: 7px; }
+  .auth-mascot-eye.right { right: 7px; }
+
+  .auth-mascot-pupil {
+    width: 4px;
+    height: 4px;
+  }
+
+  .auth-mascot-paw {
+    width: 12px;
+    height: 12px;
+  }
+
+  .auth-mascot-paw.left { left: 5px; }
+  .auth-mascot-paw.right { right: 5px; }
+
+  .auth-brand-outside {
+    margin-bottom: 8px;
+  }
+
+  .auth-brand-outside .topbar-brand-name {
+    font-size: 13px;
+  }
+
+  .auth-impact {
+    gap: 10px;
+    padding: 7px 12px;
+    margin-bottom: 10px;
+  }
+
+  .auth-impact-item strong {
+    font-size: 0.78rem;
+  }
+
+  .auth-impact-item span {
+    font-size: 0.5rem;
+    letter-spacing: 0.1em;
+  }
+
+  .auth-impact-sep {
+    height: 20px;
+  }
+
+  .auth-theme-switcher {
+    top: 12px;
+    right: 12px;
+  }
+
+  .auth-back-home-btn {
+    top: 12px;
+    left: 12px;
+    width: 32px;
+    height: 32px;
+  }
+
+  .auth-theme-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .auth-card .auth-tabs {
+    margin-bottom: 14px;
+    padding: 3px;
+  }
+
+  .auth-card .auth-tab {
+    padding: 8px 10px;
+    font-size: 0.72rem;
+  }
+
+  .auth-card .auth-field {
+    font-size: 0.62rem; /* Email / Password labels */
+    gap: 4px;
+  }
+
+  /* iOS/Android zoom the page when a focused input's computed font is under
+     16px. Keep it at 16px (no zoom) and scale the *rendered* text down; the
+     1/0.7 width/height compensate so the field still fills its row and keeps
+     a 44px visual touch target. */
+  .auth-card .auth-field .input {
+    font-size: 16px;
+    zoom: 0.7;
+    width: 142.857%;
+    min-height: 62.857px;
+    padding: 11px 14px;
+    padding-right: 56px;
+  }
+
+  /* Direct inputs (Full name / Batch) aren't inside a positioned wrapper, so
+     their zoom-adjusted percentage base differs — 100% is the correct fill. */
+  .auth-card .auth-field > .input {
+    width: 100%;
+    padding-right: 14px;
+  }
+
+  .auth-card .auth-role-card {
+    padding: 7px 4px;
+  }
+
+  .auth-card .auth-role-card span {
+    font-size: 0.66rem;
+  }
+
+  .auth-card .auth-btn-option {
+    padding: 6px 4px;
+    font-size: 0.64rem;
+  }
+
+  .auth-card .auth-step-label {
+    font-size: 0.68rem;
+    margin-bottom: 10px;
+  }
+
+  .auth-card .auth-social-divider,
+  .auth-card .btn-social {
+    font-size: 0.66rem;
+  }
+
+  .auth-card .auth-submit,
+  .auth-card .auth-back-btn {
+    font-size: 0.74rem;
+  }
+
+  .auth-card .auth-message {
+    font-size: 0.68rem;
+    padding: 10px 12px;
   }
 }

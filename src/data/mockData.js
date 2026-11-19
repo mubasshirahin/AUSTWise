@@ -1,7 +1,7 @@
 // Mock data for the AUSTWise application
 // All data is realistic but fictional
 
-import { getLiveValue, setLiveValue, ensureFetched } from '../utils/liveStore';
+import { getLiveValue, setLiveValue, ensureFetched, hasLiveSession } from '../utils/liveStore';
 
 export const currentUser = {
   id: '',
@@ -275,7 +275,9 @@ export const defaultAuditoriumEvent = {
 export function getAuditoriumEvent() {
   if (typeof window === 'undefined') return { ...defaultAuditoriumEvent };
   // Pull fresh server copy in the background so a new device sees the event.
-  ensureFetched('shared', 'aust-auditorium-event');
+  // Only with a session: this also runs at module load (demo floors below),
+  // before auth restores, and for guests, where the store answers 401.
+  if (hasLiveSession()) ensureFetched('shared', 'aust-auditorium-event');
   try {
     // Server-synced copy wins (liveStore cache); localStorage is the offline cache.
     const serverValue = getLiveValue('shared', 'aust-auditorium-event', null);

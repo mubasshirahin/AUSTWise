@@ -584,15 +584,6 @@ export default function AuthPage() {
         <div className="auth-page-noise" aria-hidden="true" />
       </div>
       <div className={`auth-shell ${sending ? 'is-sending' : ''}`}>
-        <button
-          type="button"
-          className="auth-back-home-btn"
-          onClick={() => navigate('/')}
-          aria-label="Back to home"
-        >
-          <ArrowLeft size={16} />
-          <span>Back to Home</span>
-        </button>
         <div className="auth-brand-outside">
           <div className="topbar-logo auth-topbar-logo">
             <img src={brandMark} alt="AUSTWise" className="topbar-wordmark-img" />
@@ -619,10 +610,16 @@ export default function AuthPage() {
         </div>
 
         <div
-          className={`auth-card glass-card-static stagger-children ${activeDept ? 'has-dept-egg' : ''} ${sending ? 'auth-card--sending' : ''}`}
-          data-dept={activeDept || undefined}
+          className={`auth-card glass-card-static stagger-children ${sending ? 'auth-card--sending' : ''}`}
         >
-          {activeDept && <span className="auth-dept-fx" aria-hidden="true" data-dept={activeDept} />}
+          <button
+            type="button"
+            className="auth-back-home-btn"
+            onClick={() => navigate('/')}
+            aria-label="Back to home"
+          >
+            <ArrowLeft size={18} />
+          </button>
           <div className="auth-theme-switcher">
             <button
               type="button"
@@ -755,7 +752,8 @@ export default function AuthPage() {
                 <button
                   type="button"
                   className="auth-eye-btn"
-                  onClick={() => setShowLoginPw((v) => !v)}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLoginPw((v) => !v); }}
+                  onMouseDown={(e) => e.preventDefault()}
                   tabIndex={-1}
                   aria-label={showLoginPw ? 'Hide password' : 'Show password'}
                 >
@@ -851,7 +849,8 @@ export default function AuthPage() {
                   <button
                     type="button"
                     className="auth-eye-btn"
-                    onClick={() => setShowSignupPw((v) => !v)}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowSignupPw((v) => !v); }}
+                    onMouseDown={(e) => e.preventDefault()}
                     tabIndex={-1}
                     aria-label={showSignupPw ? 'Hide password' : 'Show password'}
                   >
@@ -878,7 +877,8 @@ export default function AuthPage() {
                   <button
                     type="button"
                     className="auth-eye-btn"
-                    onClick={() => setShowConfirmPw((v) => !v)}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowConfirmPw((v) => !v); }}
+                    onMouseDown={(e) => e.preventDefault()}
                     tabIndex={-1}
                     aria-label={showConfirmPw ? 'Hide password' : 'Show password'}
                   >

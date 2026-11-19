@@ -7,7 +7,7 @@ import { watchErrors, expectNoHorizontalOverflow, settle } from './helpers.js';
 test.describe('public pages', () => {
   for (const route of PUBLIC_ROUTES) {
     test(`loads ${route}`, async ({ page }, info) => {
-      const errors = watchErrors(page);
+      const errors = watchErrors(page, { guest: true });
       await page.goto(route);
       await settle(page);
       await page.screenshot({ path: `qa-report/shots/${info.project.name}/public${slug(route)}.png`, fullPage: true });

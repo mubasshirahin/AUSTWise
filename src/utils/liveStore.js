@@ -400,6 +400,15 @@ export function initLiveStore(userId) {
   connect();
 }
 
+/**
+ * True once a signed-in user has opened the live store. Guests have no session,
+ * so store reads would only come back 401 — callers that fetch outside a React
+ * hook (e.g. at module load) can check this first.
+ */
+export function hasLiveSession() {
+  return !stopped && Boolean(wsUserId);
+}
+
 /** Close the channel and clear cached values (call on logout). */
 export function destroyLiveStore() {
   stopped = true;

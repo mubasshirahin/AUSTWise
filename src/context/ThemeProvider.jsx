@@ -1,31 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ThemeContext, THEMES } from './ThemeContext';
-import { THEME_ACCENTS, ACCENT_KEY, LAYOUT_KEY, LAYOUTS, applyAccentOverrides, clearAccentOverrides } from './themeConstants';
+import { THEME_ACCENTS, ACCENT_KEY, LAYOUT_KEY, LAYOUTS, applyAccentOverrides, clearAccentOverrides, THEME_STYLES as themeStyles } from './themeConstants';
 
 // Theme and layout styles are separate CSS chunks. Loading every visual system
 // in main.jsx made even the Quick Stats route download and parse styles it
-// could never use during that visit.
-const themeStyles = {
-  dark: () => import('../themes/dark-enhanced.css'),
-  midnight: () => import('../themes/minimalist-dark.css'),
-  industrial: () => import('../themes/industrial.css'),
-  swiss: () => import('../themes/swiss.css'),
-  terminal: () => import('../themes/terminal.css'),
-  'art-deco': () => import('../themes/artdeco.css'),
-  bitcoindefi: () => import('../themes/bitcoindefi.css'),
-  poster: () => import('../themes/poster.css'),
-  nexus: () => import('../themes/nexus.css'),
-  meshtopo: () => import('../themes/meshtopo.css'),
-  blueprint: () => import('../themes/blueprint.css'),
-  obsidian: () => import('../themes/vibes.css'),
-  pastel: () => import('../themes/vibes.css'),
-  prism: () => import('../themes/vibes.css'),
-  toon: () => import('../themes/vibes.css'),
-  lofi: () => import('../themes/vibes.css'),
-  sakura: () => import('../themes/vibes.css'),
-  arcade: () => import('../themes/vibes.css'),
-};
-
+// could never use during that visit. Theme loaders live in themeConstants.js.
 const layoutStyles = {
   bento: () => import('../layout/ProLayouts.css'),
   compact: () => import('../layout/ProLayouts.css'),

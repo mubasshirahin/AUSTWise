@@ -178,7 +178,7 @@
 }
 
 .glider-tabs-dashboard .glider-tabs-glider {
-  background: linear-gradient(135deg, var(--bg-card) 0%, color-mix(in srgb, var(--accent-amber) 8%, var(--bg-card)) 100%);
+  background: var(--bg-card);
   box-shadow:
     var(--shadow-md),
     0 0 0 1px color-mix(in srgb, var(--accent-amber) 20%, transparent);

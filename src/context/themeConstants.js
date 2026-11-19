@@ -5,7 +5,7 @@ export const THEME_ACCENTS = {
   dark: '#F5A623',
   light: '#7a653d',
   midnight: '#ff9f43',
-  industrial: '#ff4757',
+  industrial: '#e02d3c',
   swiss: '#FF3000',
   newsprint: '#cc0000',
   sketchbook: '#ff4d4d',
@@ -84,3 +84,26 @@ export function clearAccentOverrides() {
     root.style.removeProperty(key);
   }
 }
+
+// Lazy CSS for each theme (themes not listed live in index.css). Shared by
+// ThemeProvider and the admin QA theme-contrast test.
+export const THEME_STYLES = {
+  dark: () => import('../themes/dark-enhanced.css'),
+  midnight: () => import('../themes/minimalist-dark.css'),
+  industrial: () => import('../themes/industrial.css'),
+  swiss: () => import('../themes/swiss.css'),
+  terminal: () => import('../themes/terminal.css'),
+  'art-deco': () => import('../themes/artdeco.css'),
+  bitcoindefi: () => import('../themes/bitcoindefi.css'),
+  poster: () => import('../themes/poster.css'),
+  nexus: () => import('../themes/nexus.css'),
+  meshtopo: () => import('../themes/meshtopo.css'),
+  blueprint: () => import('../themes/blueprint.css'),
+  obsidian: () => import('../themes/vibes.css'),
+  pastel: () => import('../themes/vibes.css'),
+  prism: () => import('../themes/vibes.css'),
+  toon: () => import('../themes/vibes.css'),
+  lofi: () => import('../themes/vibes.css'),
+  sakura: () => import('../themes/vibes.css'),
+  arcade: () => import('../themes/vibes.css'),
+};

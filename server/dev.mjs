@@ -173,6 +173,7 @@ import { startTelegramScheduler, sendTelegramTestMessage } from './telegramSched
 import { startWebPushScheduler } from './webPushSchedulerJob.mjs';
 import { sendInvitationEmail } from './inviteEmail.mjs';
 import { previewSemesterMove, moveToNextSemester, saveAcademicResult, advanceAllStudents } from './academicEngine.mjs';
+import { buildCsp } from './csp.mjs';
 
 // ── SSE: member-count live stream ─────────────────────────────────────────
 const memberCountSSEClients = new Set();
@@ -407,6 +408,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.resolve(__dirname, '..', 'dist');
 
 const COVER_STATS_FILE = path.resolve(__dirname, 'data', 'coverStats.json');
+// Module level: the request handler reads role access (via readRoleAccess) in
+// routes that come before where this used to be declared, which hit the TDZ.
+const ROLE_ACCESS_STORE_KEY = 'system:role-access-config';
 async function readCoverStats() {
   try {
     const raw = await readFile(COVER_STATS_FILE, 'utf8');
@@ -656,8 +660,10 @@ function normalizeUserSettings(raw) {
   };
 }
 
-/** Minimal, safe security headers. CSP/HSTS are opt-in via env so we don't
- *  break the inline-styles + external-embed heavy SPA by default. */
+/** Security headers on every response. CSP comes from server/csp.mjs:
+ *  enforced in production, Report-Only in dev (violations show in the console
+ *  without breaking HMR). CSP_MODE=enforce|report|off overrides; CSP_HEADER
+ *  replaces the policy text. */
 function applySecurityHeaders(res, req) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   // The dev-only role matrix embeds this app's own pages in same-origin
@@ -670,9 +676,12 @@ function applySecurityHeaders(res, req) {
   // without this, nosniff + wrong MIME triggers CORB block on vercel→render rewrite.
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(self)');
-  if (process.env.ENABLE_CSP === '1') {
-    res.setHeader('Content-Security-Policy', process.env.CSP_HEADER || "default-src 'self'");
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self), payment=(self)');
+  const cspMode = process.env.CSP_MODE
+    || (process.env.ENABLE_CSP === '1' ? 'enforce' : isDevMode ? 'report' : 'enforce');
+  if (cspMode !== 'off') {
+    const policy = process.env.CSP_HEADER || buildCsp({ dev: isDevMode });
+    res.setHeader(cspMode === 'report' ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy', policy);
   }
   if (process.env.ENABLE_HSTS === '1' || process.env.NODE_ENV === 'production') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
@@ -1107,20 +1116,32 @@ async function ensurePrismaPush() {
 // The promise is awaited inside the listen callback so the boot logs settle
 // (and are drained) before the endpoint directory + env checkup print.
 let dbConnected = false;
-const dbInit = FEATURES.dbConfig
-  ? initializeDatabase()
-      .then(() => {
-        FEATURES.db = true;
-        dbConnected = true;
-        console.log('✅ PostgreSQL connected & tables ready');
-        return ensurePrismaPush();
-      })
-      .catch((err) => {
-        console.warn('⚠️  PostgreSQL init failed:', err.message);
+// A remote pooler's first connection can be slow (cold TLS/route), so one
+// failed attempt shouldn't strand the whole process on the JSON fallback.
+// Retry in the background; requests use the JSON fallback until it lands.
+const DB_INIT_RETRY_DELAYS_MS = [5000, 15000, 30000, 60000];
+async function initDbWithRetry() {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      await initializeDatabase();
+      FEATURES.db = true;
+      dbConnected = true;
+      console.log(`✅ PostgreSQL connected & tables ready${attempt ? ` (attempt ${attempt + 1})` : ''}`);
+      return ensurePrismaPush();
+    } catch (err) {
+      FEATURES.db = true;
+      const delay = DB_INIT_RETRY_DELAYS_MS[attempt];
+      if (delay === undefined) {
+        console.warn('⚠️  PostgreSQL init failed for good:', err.message);
         console.warn('ℹ️  Using local JSON file-based database fallback.');
-        FEATURES.db = true;
-      })
-  : Promise.resolve(false);
+        return;
+      }
+      console.warn(`⚠️  PostgreSQL init failed (attempt ${attempt + 1}): ${err.message} — retrying in ${delay / 1000}s, JSON fallback meanwhile.`);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+}
+const dbInit = FEATURES.dbConfig ? initDbWithRetry() : Promise.resolve(false);
 
 // Redirect HTTP → HTTPS in production behind a proxy that terminates TLS.
 // Relies on the standard `x-forwarded-proto` header set by the load balancer
@@ -2335,7 +2356,7 @@ async function handleApiRequest(req, res) {
     try {
       // per-page check for cover
       const all = await readRoleAccess();
-      const cfg = (all && all['cover']) || all['default'] || { statsAllowed: ['admin', 'moderator'] };
+      const cfg = getRoleAccessForKey(all || {}, 'cover');
       if (!hasAnyRole(payload, ...cfg.statsAllowed)) {
         res.writeHead(403, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: false, error: `Forbidden: ${cfg.statsAllowed.join(' or ')} role required.` }));
@@ -2360,7 +2381,7 @@ async function handleApiRequest(req, res) {
     }
     let all = {};
     try { all = await readRoleAccess(); } catch {}
-    const cfg = (all && all['cover']) || all['default'] || { statsAllowed: ['admin', 'moderator'] };
+    const cfg = getRoleAccessForKey(all || {}, 'cover');
     if (!hasAnyRole(payload, ...cfg.statsAllowed)) {
       res.writeHead(403, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: false, error: `Forbidden: ${cfg.statsAllowed.join(' or ')} role required.` }));
@@ -2379,7 +2400,6 @@ async function handleApiRequest(req, res) {
   }
 
   // ── Role Access per-page config (real enforcement) ──
-  const ROLE_ACCESS_STORE_KEY = 'system:role-access-config';
   async function readRoleAccess() {
     const stored = await getSharedStoreValue(ROLE_ACCESS_STORE_KEY, null);
     if (stored && typeof stored === 'object' && !Array.isArray(stored)) return stored;
@@ -7243,7 +7263,7 @@ const ENV_GROUPS = [
     { key: 'JWT_SECRET', desc: 'Auth cookie signing (set one in prod!)' },
     { key: 'CRYPTO_SECRET_KEY', desc: 'Password vault encryption' },
     { key: 'ADMIN_DEFAULT_PASSWORD', desc: 'Default admin seed (prod)', required: false },
-    { key: 'ENABLE_CSP', desc: 'Content-Security-Policy toggle', required: false },
+    { key: 'CSP_MODE', desc: 'CSP: enforce (prod default) / report (dev default) / off', required: false },
     { key: 'CSP_HEADER', desc: 'Custom CSP header', required: false },
     { key: 'ENABLE_HSTS', desc: 'HSTS header (prod)', required: false },
   ]},
