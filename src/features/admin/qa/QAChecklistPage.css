@@ -611,6 +611,61 @@
 .qa-dot.is-fail { border-color: var(--accent-rose); background: var(--accent-rose); }
 .qa-page-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .qa-page-count { flex: none; font-size: 10.5px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.qa-page-count.is-fail { color: var(--accent-rose); }
+
+/* Sidebar sections: header row → main page → Tabs → Onno page */
+.qa-page-list { gap: 2px; }
+.qa-page-group { gap: 0; }
+.qa-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.qa-group-head:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+.qa-group-head.is-current { color: var(--text-primary); }
+.qa-group-head.is-current .qa-group-icon { color: var(--accent-amber); }
+.qa-group-icon { flex: none; color: var(--text-tertiary); }
+.qa-group-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qa-group-chev { flex: none; color: var(--text-tertiary); transform: rotate(-90deg); transition: transform 0.15s ease; }
+.qa-page-group.is-open .qa-group-chev { transform: none; }
+.qa-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 2px 0 8px 14px;
+  padding-left: 8px;
+  border-left: 1px solid var(--border-primary);
+  min-width: 0;
+}
+.qa-sub-label {
+  padding: 6px 8px 2px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.qa-page-row.is-tab { padding-left: 14px; }
+
+.qa-area-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.qa-area-icon { flex: none; color: var(--text-tertiary); }
+
+.qa-add-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.qa-add-row .qa-btn { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qa-custom-form .qa-pop-row > .is-kind { flex: 0 0 140px; }
+.qa-custom-form .qa-pop-row > .is-text { flex: 1 1 240px; }
 
 .qa-tour-main { display: flex; flex-direction: column; gap: 16px; }
 .qa-page-select { display: none; }

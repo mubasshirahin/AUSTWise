@@ -22,21 +22,47 @@ export const PER_PAGE_BASICS = [
   'Dark + light duita theme e text pora jay',
 ];
 
-const page = (id, route, title, group, items, extra = {}) => ({ id, route, title, group, items, ...extra });
+// A checklist "page" is one stop on the tour. `type` places it inside its
+// sidebar section: 'main' = the page shell (masthead + tab switching),
+// 'tab' = one glider tab of that page, 'page' = a separate route that belongs
+// to the section (direct links, detail pages, legacy redirects).
+const page = (id, route, title, group, items, extra = {}) => ({ id, route, title, group, type: 'page', items, ...extra });
+const main = (id, route, title, group, items, extra = {}) => page(id, route, title, group, items, { type: 'main', ...extra });
+const tab = (id, route, title, group, items, extra = {}) => page(id, route, title, group, items, { type: 'tab', ...extra });
 const it = (id, kind, text) => ({ id, kind, text });
 
+export const PAGE_TYPES = {
+  main: { label: 'Main page' },
+  tab: { label: 'Tabs' },
+  page: { label: 'Onno page' },
+};
+
+// Same order as the app sidebar (admin view), with the pre-flight, public,
+// unlinked and cross-cutting stops around it. `sidebar` = has a sidebar link.
 export const GROUPS = [
   { id: 'start', label: 'Shuru korar age' },
   { id: 'public', label: 'Public pages (logged-out)' },
-  { id: 'core', label: 'Main app' },
-  { id: 'study', label: 'Study & productivity' },
-  { id: 'life', label: 'Daily life & fun' },
-  { id: 'account', label: 'Account & plans' },
-  { id: 'admin', label: 'Admin panel' },
+  { id: 'admin', label: 'Admin Panel', sidebar: true },
+  { id: 'dashboard', label: 'Dashboard', sidebar: true },
+  { id: 'dailylife', label: 'Daily Life', sidebar: true },
+  { id: 'gradelab', label: 'GradeLab', sidebar: true },
+  { id: 'insideaust', label: 'InsideAUST', sidebar: true },
+  { id: 'vault', label: 'Resource Vault', sidebar: true },
+  { id: 'qbank', label: 'Question Bank', sidebar: true },
+  { id: 'community', label: 'Community', sidebar: true },
+  { id: 'connectbox', label: 'ConnectBox', sidebar: true },
+  { id: 'productivity', label: 'Productivity', sidebar: true },
+  { id: 'marketplace', label: 'Marketplace', sidebar: true },
+  { id: 'downtime', label: 'DownTime', sidebar: true },
+  { id: 'shadow', label: 'Shadow', sidebar: true },
+  { id: 'settings', label: 'Settings', sidebar: true },
+  { id: 'plans', label: 'See Plans', sidebar: true },
+  { id: 'designdocs', label: 'Design Docs', sidebar: true },
+  { id: 'hidden', label: 'Sidebar e nai (direct link)' },
   { id: 'cross', label: 'Cross-cutting' },
 ];
 
-export const PAGES = [
+const PAGE_LIST = [
   // ── Before you start ────────────────────────────────────────────────────
   page('prep', null, 'Test setup', 'start', [
     it('prep-db', 'flow', 'Test korar jonno **test DB** chalu ache (production DB te test data likhbo na)'),
@@ -77,189 +103,13 @@ export const PAGES = [
     it('info-admin-out', 'role', 'Logged-out obosthay `/admin-panel/overview` → login/home e pathay'),
   ]),
 
-  // ── Core app ────────────────────────────────────────────────────────────
-  page('dashboard', '/dashboard/quickstats', 'Dashboard', 'core', [
-    it('dash-tabs', 'ui', 'Tab gula: Quick Stats, Routine, Semester View, Zero Hour, Attendance — URL bodlay, refresh e same tab'),
-    it('dash-stats', 'ui', 'Quick Stats card gulay nijer data (CGPA, class, streak) load hoy'),
-    it('dash-notice', 'flow', 'Notice board: notice porte jay; mobile e swipe left = edit, right = delete (nijer notice)'),
-    it('dash-routine', 'flow', 'Routine: class add / edit / delete, ajker din highlight'),
-    it('dash-template', 'flow', '`/routine-templates` theke template apply → Routine tab e class ashe'),
-    it('dash-semester', 'ui', 'Semester View calendar e exam/holiday thik date e'),
-    it('dash-zero', 'role', 'Zero Hour: CR/SR/admin/moderator edit korte pare; student shudhu dekhe'),
-    it('dash-attendance', 'data', 'Attendance: Telegram e deya attendance ekhane dekhay'),
-    it('dash-notice-data', 'data', 'CR er post kora notice oi batch er student er dashboard e ashe + bell notification'),
-    it('dash-empty', 'edge', 'Notun account (kono routine nai) → empty state + "add" button'),
-  ]),
-  page('gradelab', '/gradelab', 'GradeLab', 'core', [
-    it('gl-tabs', 'ui', 'Tab: CGPA Calculator, Semester Wise, Dept Heatmap, Best & Worst, Prerequisites'),
-    it('gl-calc', 'flow', 'Course + grade add → CGPA hisab thik (hate ekta hisab kore milao)'),
-    it('gl-edit', 'flow', 'Grade edit / delete korle CGPA sathe sathe update'),
-    it('gl-data', 'data', 'Save kora grade Semester Wise, Best & Worst e dekhay; onno device e login korleo thake'),
-    it('gl-heat', 'ui', 'Dept Heatmap load hoy, color legend bujha jay'),
-    it('gl-prereq', 'ui', 'Prerequisites tree thik course dekhay'),
-    it('gl-edge', 'edge', 'Credit 0 / onek boro number / khali grade dile crash kore na'),
-    it('gl-review', 'flow', 'Course review likha → onnora dekhte pay'),
-  ]),
-  page('vault', '/resource-vault', 'Resource Vault', 'core', [
-    it('vault-tabs', 'ui', 'Tab: Notebook, Batch Drive, Drive Links (CR/SR), Carbon Vault, Code Generate'),
-    it('vault-drive', 'flow', 'Batch Drive: folder browse, file open/download, search'),
-    it('vault-lock', 'flow', 'Batch drive lock: share code diye unlock → file dekha jay'),
-    it('vault-code', 'flow', 'Code Generate (3.1+): code banano → onno student oi code diye unlock korte pare'),
-    it('vault-links', 'role', 'Drive Links tab shudhu CR/SR/admin dekhe; student dekhe na'),
-    it('vault-links-data', 'data', 'CR er deya semester link oi batch er Batch Drive e dekhay'),
-    it('vault-upload', 'edge', 'Boro file / bhul file type upload → bujhar moto error'),
-    it('vault-notebook', 'flow', '`/notebook`: note create → save → reopen → edit → delete'),
-  ]),
-  page('qbank', '/question-bank', 'Question Bank', 'core', [
-    it('qb-search', 'flow', 'Course diye question paper search → open → download'),
-    it('qb-analyze', 'flow', 'Analyzer: paper select → topic/frequency result dekhay'),
-    it('qb-data', 'data', 'Admin panel → Question bank e add kora paper ekhane ashe'),
-    it('qb-edge', 'edge', 'Result na pele empty state, PDF load fail hole message'),
-  ]),
-  page('campus', '/insideaust', 'InsideAUST', 'core', [
-    it('campus-tabs', 'ui', 'Tab: Floor Map, Library Pulse, Canteen Menu, Bus Tracker, Free Rooms'),
-    it('campus-map', 'flow', 'Floor Map: floor switch, room search, zoom/pan mobile e'),
-    it('campus-library', 'data', 'Library Pulse: admin er deya capacity/occupancy dekhay'),
-    it('campus-canteen', 'data', 'Canteen Menu: admin er update kora menu, dam, khola-bondho time dekhay'),
-    it('campus-bus', 'ui', 'Bus Tracker route/time thik'),
-    it('campus-rooms', 'flow', 'Free Rooms: din + somoy select → khali room list'),
-    it('campus-bhara', 'flow', '`/aust-bhara` / `/empty-classroom` purono link thik jaygay niye jay'),
-  ]),
-  page('community', '/community', 'Community', 'core', [
-    it('com-tabs', 'ui', 'Tab: Student, Faculty, Alumni Directory, Mentor Requests, Clubs Hub'),
-    it('com-search', 'flow', 'Directory te name/department/batch diye search + filter'),
-    it('com-profile', 'flow', 'Card e click → `/members/:id` profile; mini card info match kore'),
-    it('com-mentor', 'flow', 'Mentor request pathano → onno user pay → accept/decline'),
-    it('com-clubs', 'flow', 'Club join / leave, club details'),
-    it('com-data', 'data', 'Settings e profile bodlale directory card + mini card e update'),
-    it('com-privacy', 'role', 'Private info (phone/email) shudhu allowed role/user dekhe'),
-  ]),
-  page('connectbox', '/connectbox', 'ConnectBox (messages)', 'core', [
-    it('cb-tabs', 'ui', 'All Chats / Unread filter kaj kore'),
-    it('cb-send', 'flow', 'Notun conversation → message send → onno browser e realtime ashe'),
-    it('cb-unread', 'data', 'Na pora message e sidebar badge + Unread tab count; porle kome'),
-    it('cb-offline', 'edge', 'Net off kore pathale fail message, net ashle abar try'),
-    it('cb-gali', 'edge', 'Gali dile message block hoy (422) + strike count barhe'),
-    it('cb-banned', 'role', 'Banned user message pathate pare na'),
-  ]),
-  page('austeddit', '/austeddit', 'AUSTeddit (Buzz)', 'core', [
-    it('buzz-tabs', 'ui', 'Category: General, Academic, Confession, Campus, Memes'),
-    it('buzz-post', 'flow', 'Post create → feed e ashe → upvote → comment'),
-    it('buzz-own', 'role', 'Nijer post edit/delete; onner post shudhu moderator/admin delete korte pare'),
-    it('buzz-xss', 'edge', 'Post e `<b>hi</b>` / script dile text hishebe dekhay, execute hoy na'),
-  ]),
-  page('marketplace', '/marketplace', 'Marketplace', 'core', [
-    it('mk-tabs', 'ui', 'Tab: AW Market, ToLet Mama, Lost & Found'),
-    it('mk-post', 'flow', 'Item post (chobi shoho) → list e ashe → details open'),
-    it('mk-filter', 'flow', 'Search, category filter, price sort'),
-    it('mk-contact', 'flow', 'Contact seller → ConnectBox e chat khule'),
-    it('mk-sold', 'flow', 'Mark as sold → badge; delete → list theke chole jay'),
-    it('mk-data', 'data', 'Onno user er feed e notun item dekhay'),
-    it('mk-edge', 'edge', 'Chobi chara / onek boro chobi / negative price → validation'),
-  ]),
-  page('members', '/members/:id', 'Member profile', 'core', [
-    it('mem-open', 'flow', 'Directory ba active members theke profile open'),
-    it('mem-info', 'ui', 'Name, role badge, batch, streak thik dekhay'),
-    it('mem-bad', 'edge', 'Bhul id → "not found", crash kore na'),
-  ], { openRoute: '/community' }),
-
-  // ── Study & productivity ────────────────────────────────────────────────
-  page('productivity', '/productivity', 'Productivity hub', 'study', [
-    it('prod-tabs', 'ui', 'Tab: Study Time, Cheat Sheets, Code Pulse, Workspace — masthead thik'),
-  ]),
-  page('studytime', '/study-time', 'Study Time', 'study', [
-    it('st-timer', 'flow', 'Focus timer start/pause/reset; tab bodlaleo timer chole'),
-    it('st-sound', 'flow', 'Rain / Forest / Café / White Noise sound play-stop'),
-    it('st-room', 'flow', 'Room join/leave, onno member dekhay'),
-    it('st-zen', 'flow', '`/zen-study-room` fullscreen, Esc/exit kaj kore'),
-    it('st-streak', 'data', 'Study session er por streak/leaderboard update'),
-  ]),
-  page('cheats', '/cheat-sheets', 'Cheat Sheets', 'study', [
-    it('cs-list', 'flow', 'List, filter, open, download'),
-    it('cs-data', 'data', 'Admin panel → Cheatsheets e add kora sheet ekhane ashe'),
-  ]),
-  page('codepulse', '/code-pulse', 'Code Pulse', 'study', [
-    it('cp-link', 'flow', 'Codeforces/CP handle link → stats load'),
-    it('cp-contest', 'ui', 'Upcoming contest list, time zone thik (Dhaka)'),
-    it('cp-bad', 'edge', 'Bhul handle → error message'),
-  ]),
-  page('workspace', '/workspace', 'Workspace', 'study', [
-    it('ws-filter', 'ui', 'Filter: Missing, Upcoming, No due date, Turned in'),
-    it('ws-task', 'flow', 'Project/task create → move → complete → delete'),
-    it('ws-due', 'edge', 'Due date par hole Missing e jay'),
-  ]),
-  page('cover', '/cover-page-generator', 'Cover Page', 'study', [
-    it('cov-fill', 'flow', 'Form fill → live preview update'),
-    it('cov-pdf', 'flow', 'PDF download → file e shob lekha thik, Bangla/long name bhange na'),
-    it('cov-stats', 'data', 'Generate korle cover stats counter barhe'),
-  ]),
-  page('roast', '/roast-cv', 'Roast CV', 'study', [
-    it('roast-up', 'flow', 'CV (PDF) upload → result ashe'),
-    it('roast-bad', 'edge', 'Bhul file type / boro file → error'),
-  ]),
-  page('certificate', '/certificate', 'Certificate', 'study', [
-    it('cert-gen', 'flow', 'Generate → preview → download'),
-  ]),
-
-  // ── Daily life & fun ────────────────────────────────────────────────────
-  page('dailylife', '/daily-life', 'Daily Life', 'life', [
-    it('dl-tabs', 'ui', 'Tab: Cover Page, Bhara Koto, TakaGeloKoi, Mess Meal, Life Planner, Footprint, Passwords — `?tab=` refresh e thake'),
-    it('dl-bhara', 'flow', 'Bhara Koto: jayga select → bhara/route dekhay'),
-    it('dl-bhara-data', 'data', 'Admin panel → Campus services e bodlano bhara ekhane dekhay'),
-    it('dl-mess', 'flow', 'Mess Meal: meal add, mash shesh e hisab thik'),
-    it('dl-planner', 'flow', 'Life Planner: goal/milestone/task add → complete → progress bar barhe'),
-    it('dl-footprint', 'ui', 'Digital Footprint load hoy'),
-    it('dl-pass', 'flow', 'Passwords: entry add → reload er por o thake → delete'),
-    it('dl-pass-role', 'role', 'Onno user er password kokhono dekha jay na (logout kore abar check)'),
-  ]),
-  page('taka', '/takagelokoi', 'TakaGeloKoi', 'life', [
-    it('tgk-add', 'flow', 'Income/expense add, category select'),
-    it('tgk-switch', 'flow', 'Daily / Weekly / Monthly switch, ‹ › date nav'),
-    it('tgk-budget', 'flow', 'Budget edit (masthead) → over hole rose color'),
-    it('tgk-data', 'data', 'Total + masthead stats thik; onno device e login korleo data thake'),
-    it('tgk-edge', 'edge', 'Negative / khali amount → validation'),
-  ]),
-  page('downtime', '/downtime', 'DownTime', 'life', [
-    it('dt-tabs', 'ui', 'Tab: Organizing Area, Media Tracker, Rumour or Real, Trivia, Gaming Zone'),
-    it('dt-media', 'flow', 'Media Tracker e movie/series add → status bodlano'),
-    it('dt-trivia', 'flow', 'Trivia khela → score dekhay'),
-    it('dt-gaming', 'flow', 'Gaming Zone (`?tab=gaming`): game hub → room create → onno user join'),
-    it('dt-event', 'flow', 'Gaming event open → register'),
-    it('dt-mod', 'role', '`/gaming/mod` shudhu gaming_mod/moderator/admin; student dhukte pare na'),
-  ]),
-  page('shadow', '/shadow', 'Shadow', 'life', [
-    it('sh-tabs', 'ui', 'Tab: Course Reviews, Shadow Chat, Buzz, Roast CV'),
-    it('sh-chat', 'flow', 'Shadow Chat e anonymous message → onno browser e ashe, nam dekhay na'),
-    it('sh-review', 'flow', 'Course review likha + rating'),
-  ]),
-  page('wakemeup', '/wakemeup', 'WakeMeUp', 'life', [
-    it('wk-set', 'flow', 'Alarm set → somoy hole bajje → stop / snooze'),
-    it('wk-notif', 'edge', 'Notification permission deny korle bujhar moto message'),
-  ]),
-
-  // ── Account ─────────────────────────────────────────────────────────────
-  page('settings', '/settings', 'Settings', 'account', [
-    it('set-profile', 'flow', 'Profile edit (name, chobi, section) → save → refresh e thake'),
-    it('set-theme', 'flow', 'Theme change → shob page e apply, refresh e thake (`aust-theme`)'),
-    it('set-pass', 'flow', 'Password change → purono password diye login hoy na, notun diye hoy'),
-    it('set-notif', 'flow', 'Push notification on/off, telegram connect'),
-    it('set-logout', 'flow', 'Logout → home; back button dile protected page khule na'),
-    it('set-data', 'data', 'Profile change directory, mini card, member profile e dekhay'),
-  ]),
-  page('plans', '/see-plans', 'See Plans & payment', 'account', [
-    it('pl-view', 'ui', 'Plan card, dam, feature list thik'),
-    it('pl-checkout', 'flow', 'Checkout (test mode) → `/payment/success` → Pro unlock'),
-    it('pl-cancel', 'flow', 'Cancel korle `/payment/cancel` + back button'),
-    it('pl-fake', 'role', '`/payment/success` direct open korle Pro pawa jay na (server verify kore)'),
-  ]),
-
-  // ── Admin ───────────────────────────────────────────────────────────────
-  page('adm-overview', '/admin-panel/overview', 'Admin: control menu', 'admin', [
+  // ── Admin Panel ─────────────────────────────────────────────────────────
+  main('adm-overview', '/admin-panel/overview', 'Control menu', 'admin', [
     it('ao-cards', 'ui', '4 ta card (Accounts, Academic, Campus operations, Platform) — protita button thik section e jay'),
     it('ao-role', 'role', 'Shudhu admin + moderator dhukte pare; baki shobai home e redirect'),
     it('ao-legacy', 'flow', 'Purono `/admin/...` link notun `/admin-panel/...` e jay'),
   ]),
-  page('adm-people', '/admin-panel/accounts', 'Admin: People & Roles', 'admin', [
+  tab('adm-people', '/admin-panel/accounts', 'People & Roles', 'admin', [
     it('ap-search', 'flow', 'Account search (name, email, batch, section)'),
     it('ap-edit', 'flow', 'User edit → save → user nije refresh dile notun info'),
     it('ap-role', 'flow', 'Role change → user er permission sathe sathe bodlay'),
@@ -269,18 +119,18 @@ export const PAGES = [
     it('ap-roles', 'ui', 'Roles tab e count + member list thik'),
     it('ap-usage', 'ui', 'Usage Analytics, Drive Coverage, Code Shares load hoy'),
   ]),
-  page('adm-requests', '/admin-panel/access-requests', 'Admin: Invitations', 'admin', [
+  tab('adm-requests', '/admin-panel/access-requests', 'Invitations', 'admin', [
     it('ar-invite', 'flow', 'Faculty/alumni invite pathano → mail ashe'),
     it('ar-approve', 'flow', 'Request approve / reject → user er role update'),
   ]),
-  page('adm-academic', '/admin-panel/academic', 'Admin: Academic', 'admin', [
+  tab('adm-academic', '/admin-panel/academic', 'Academic', 'admin', [
     it('aa-preview', 'flow', 'Semester transition preview → kara upore uthbe thik list'),
     it('aa-apply', 'data', 'Apply korle student er semester bodlay (test DB te!)'),
     it('aa-apps', 'flow', 'Role applications: CR/SR application approve → user CR hoy'),
     it('aa-apps-data', 'data', 'Approve er por CR/SR directory te dekhay + oi user Drive Links tab pay'),
     it('aa-reps', 'flow', 'CR/SR directory theke representative remove'),
   ]),
-  page('adm-campus', '/admin-panel/canteen', 'Admin: Campus operations', 'admin', [
+  tab('adm-campus', '/admin-panel/canteen', 'Campus operations', 'admin', [
     it('ac-canteen', 'data', 'Canteen menu/time bodlano → InsideAUST Canteen e dekhay'),
     it('ac-library', 'data', 'Library capacity bodlano → Library Pulse e dekhay'),
     it('ac-attendance', 'ui', 'Attendance record list + filter'),
@@ -290,14 +140,364 @@ export const PAGES = [
     it('ac-audi', 'flow', 'Auditorium event edit'),
     it('ac-map', 'data', 'Campus map info edit → Floor Map e dekhay'),
   ]),
-  page('adm-platform', '/admin-panel/features', 'Admin: Platform & content', 'admin', [
+  tab('adm-platform', '/admin-panel/features', 'Platform & content', 'admin', [
     it('apf-access', 'data', 'Access rules: kono role er jonno page hide → oi role er sidebar theke chole jay + page lock'),
     it('apf-avail', 'data', 'Page availability: page pause → user "paused" message dekhe'),
     it('apf-templates', 'data', 'Routine template add → `/routine-templates` e ashe'),
     it('apf-cheats', 'data', 'Cheatsheet add → Cheat Sheets page e ashe'),
     it('apf-qb', 'data', 'Question bank paper add → Question Bank e ashe'),
+  ]),
+  page('adm-rolepreview', '/admin-panel/role-preview', 'Role preview', 'admin', [
     it('apf-preview', 'role', 'Role preview: dev e kaj kore; production e mock role kaj kore na'),
+  ]),
+
+  // ── Dashboard ───────────────────────────────────────────────────────────
+  main('dashboard', '/dashboard/quickstats', 'Dashboard', 'dashboard', [
+    it('dash-tabs', 'ui', 'Tab gula: Quick Stats, Routine, Semester View, Zero Hour, Attendance — URL bodlay, refresh e same tab'),
+  ], { noBasics: true }),
+  tab('dash-t-stats', '/dashboard/quickstats', 'Quick Stats', 'dashboard', [
+    it('dash-stats', 'ui', 'Quick Stats card gulay nijer data (CGPA, class, streak) load hoy'),
+    it('dash-notice', 'flow', 'Notice board: notice porte jay; mobile e swipe left = edit, right = delete (nijer notice)'),
+    it('dash-notice-data', 'data', 'CR er post kora notice oi batch er student er dashboard e ashe + bell notification'),
+  ]),
+  tab('dash-t-routine', '/dashboard/routine', 'Routine', 'dashboard', [
+    it('dash-routine', 'flow', 'Routine: class add / edit / delete, ajker din highlight'),
+    it('dash-empty', 'edge', 'Notun account (kono routine nai) → empty state + "add" button'),
+  ]),
+  tab('dash-t-semester', '/dashboard/semester-view', 'Semester View', 'dashboard', [
+    it('dash-semester', 'ui', 'Semester View calendar e exam/holiday thik date e'),
+  ]),
+  tab('dash-t-zero', '/dashboard/zero-hour', 'Zero Hour', 'dashboard', [
+    it('dash-zero', 'role', 'Zero Hour: CR/SR/admin/moderator edit korte pare; student shudhu dekhe'),
+    it('dash-zero-data', 'data', 'CR er add kora quiz/mid/final oi batch er student er Zero Hour e dekhay'),
+  ]),
+  tab('dash-t-attendance', '/dashboard/attendance', 'Attendance', 'dashboard', [
+    it('dash-attendance', 'data', 'Attendance: Telegram e deya attendance ekhane dekhay'),
+  ]),
+  page('dash-templates', '/routine-templates', 'Routine Templates', 'dashboard', [
+    it('dash-template', 'flow', '`/routine-templates` theke template apply → Routine tab e class ashe'),
+    it('rt-list', 'ui', 'Template list load hoy, apply er age preview dekhay'),
+  ]),
+
+  // ── Daily Life ──────────────────────────────────────────────────────────
+  main('dailylife', '/daily-life', 'Daily Life', 'dailylife', [
+    it('dl-tabs', 'ui', 'Tab: Cover Page, Bhara Koto, TakaGeloKoi, Mess Meal, Life Planner, Footprint, Passwords — `?tab=` refresh e thake'),
+  ], { noBasics: true }),
+  tab('cover', '/daily-life?tab=cover-page-generator', 'Cover Page', 'dailylife', [
+    it('cov-fill', 'flow', 'Form fill → live preview update'),
+    it('cov-pdf', 'flow', 'PDF download → file e shob lekha thik, Bangla/long name bhange na'),
+    it('cov-stats', 'data', 'Generate korle cover stats counter barhe'),
+  ]),
+  tab('dl-t-bhara', '/daily-life?tab=bhara-koto', 'Bhara Koto', 'dailylife', [
+    it('dl-bhara', 'flow', 'Bhara Koto: jayga select → bhara/route dekhay'),
+    it('dl-bhara-data', 'data', 'Admin panel → Campus services e bodlano bhara ekhane dekhay'),
+  ]),
+  tab('taka', '/daily-life?tab=money-tracker', 'TakaGeloKoi', 'dailylife', [
+    it('tgk-add', 'flow', 'Income/expense add, category select'),
+    it('tgk-switch', 'flow', 'Daily / Weekly / Monthly switch, ‹ › date nav'),
+    it('tgk-budget', 'flow', 'Budget edit (masthead) → over hole rose color'),
+    it('tgk-data', 'data', 'Total + masthead stats thik; onno device e login korleo data thake'),
+    it('tgk-edge', 'edge', 'Negative / khali amount → validation'),
+  ]),
+  tab('dl-t-mess', '/daily-life?tab=mess-meal', 'Mess Meal', 'dailylife', [
+    it('dl-mess', 'flow', 'Mess Meal: meal add, mash shesh e hisab thik'),
+  ]),
+  tab('dl-t-planner', '/daily-life?tab=life-planner', 'Life Planner', 'dailylife', [
+    it('dl-planner', 'flow', 'Life Planner: goal/milestone/task add → complete → progress bar barhe'),
+  ]),
+  tab('dl-t-footprint', '/daily-life?tab=digital-footprint', 'Footprint', 'dailylife', [
+    it('dl-footprint', 'ui', 'Digital Footprint load hoy'),
+  ]),
+  tab('dl-t-pass', '/daily-life?tab=password-manager', 'Passwords', 'dailylife', [
+    it('dl-pass', 'flow', 'Passwords: entry add → reload er por o thake → delete'),
+    it('dl-pass-role', 'role', 'Onno user er password kokhono dekha jay na (logout kore abar check)'),
+  ]),
+  page('cover-direct', '/cover-page-generator', 'Cover Page (direct link)', 'dailylife', [
+    it('cov-direct', 'flow', '`/cover-page-generator` direct link e same generator khule, tab er moto kaj kore'),
+  ]),
+  page('taka-direct', '/takagelokoi', 'TakaGeloKoi (direct link)', 'dailylife', [
+    it('tgk-direct', 'flow', '`/takagelokoi` (+ purono `/money-tracker`) direct link kaj kore, same data dekhay'),
+  ]),
+
+  // ── GradeLab ────────────────────────────────────────────────────────────
+  main('gradelab', '/gradelab', 'GradeLab', 'gradelab', [
+    it('gl-tabs', 'ui', 'Tab: CGPA Calculator, Semester Wise, Dept Heatmap, Best & Worst, Prerequisites'),
+  ], { noBasics: true }),
+  tab('gl-t-calc', '/gradelab/cgpa-calculator', 'CGPA Calculator', 'gradelab', [
+    it('gl-calc', 'flow', 'Course + grade add → CGPA hisab thik (hate ekta hisab kore milao)'),
+    it('gl-edit', 'flow', 'Grade edit / delete korle CGPA sathe sathe update'),
+    it('gl-edge', 'edge', 'Credit 0 / onek boro number / khali grade dile crash kore na'),
+  ]),
+  tab('gl-t-semester', '/gradelab/semester-wise', 'Semester Wise', 'gradelab', [
+    it('gl-data', 'data', 'Save kora grade Semester Wise, Best & Worst e dekhay; onno device e login korleo thake'),
+  ]),
+  tab('gl-t-heat', '/gradelab/dept-heatmap', 'Dept Heatmap', 'gradelab', [
+    it('gl-heat', 'ui', 'Dept Heatmap load hoy, color legend bujha jay'),
+  ]),
+  tab('gl-t-bestworst', '/gradelab/best-worst', 'Best & Worst', 'gradelab', [
+    it('gl-poll', 'flow', 'Course poll e vote → result update, ekjon ekbar e vote dite pare'),
+  ]),
+  tab('gl-t-prereq', '/gradelab/prerequisites', 'Prerequisites', 'gradelab', [
+    it('gl-prereq', 'ui', 'Prerequisites tree thik course dekhay'),
+  ]),
+
+  // ── InsideAUST ──────────────────────────────────────────────────────────
+  main('campus', '/insideaust', 'InsideAUST', 'insideaust', [
+    it('campus-tabs', 'ui', 'Tab: Floor Map, Library Pulse, Canteen Menu, Bus Tracker, Free Rooms'),
+  ], { noBasics: true }),
+  tab('ia-t-map', '/insideaust?tab=map', 'Floor Map', 'insideaust', [
+    it('campus-map', 'flow', 'Floor Map: floor switch, room search, zoom/pan mobile e'),
+  ]),
+  tab('ia-t-library', '/insideaust?tab=library', 'Library Pulse', 'insideaust', [
+    it('campus-library', 'data', 'Library Pulse: admin er deya capacity/occupancy dekhay'),
+  ]),
+  tab('ia-t-canteen', '/insideaust?tab=canteen', 'Canteen Menu', 'insideaust', [
+    it('campus-canteen', 'data', 'Canteen Menu: admin er update kora menu, dam, khola-bondho time dekhay'),
+  ]),
+  tab('ia-t-bus', '/insideaust?tab=bus', 'Bus Tracker', 'insideaust', [
+    it('campus-bus', 'ui', 'Bus Tracker route/time thik'),
+  ]),
+  tab('ia-t-rooms', '/insideaust?tab=classroom', 'Free Rooms', 'insideaust', [
+    it('campus-rooms', 'flow', 'Free Rooms: din + somoy select → khali room list'),
+  ]),
+  page('ia-legacy', '/aust-bhara', 'Purono link', 'insideaust', [
+    it('campus-bhara', 'flow', '`/aust-bhara` / `/empty-classroom` / `/campus` purono link thik jaygay niye jay'),
+  ], { noBasics: true }),
+
+  // ── Resource Vault ──────────────────────────────────────────────────────
+  main('vault', '/resource-vault', 'Resource Vault', 'vault', [
+    it('vault-tabs', 'ui', 'Tab: Notebook, Batch Drive, Drive Links (CR/SR), Carbon Vault, Code Generate'),
+  ], { noBasics: true }),
+  tab('rv-t-notebook', '/resource-vault?tab=notebook', 'Notebook', 'vault', [
+    it('vault-nb-tab', 'ui', 'Notebook tab e "Coming soon" / note list thik dekhay'),
+  ]),
+  tab('rv-t-drive', '/resource-vault?tab=batch-drive', 'Batch Drive', 'vault', [
+    it('vault-drive', 'flow', 'Batch Drive: folder browse, file open/download, search'),
+    it('vault-lock', 'flow', 'Batch drive lock: share code diye unlock → file dekha jay'),
+    it('vault-upload', 'edge', 'Boro file / bhul file type upload → bujhar moto error'),
+  ]),
+  tab('rv-t-links', '/resource-vault?tab=drive-links', 'Drive Links', 'vault', [
+    it('vault-links', 'role', 'Drive Links tab shudhu CR/SR/admin dekhe; student dekhe na'),
+    it('vault-links-data', 'data', 'CR er deya semester link oi batch er Batch Drive e dekhay'),
+  ]),
+  tab('rv-t-carbon', '/resource-vault?tab=carbon-vault', 'Carbon Vault', 'vault', [
+    it('vault-carbon', 'ui', 'Carbon Vault "Coming soon" state thik, crash nai'),
+  ]),
+  tab('rv-t-code', '/resource-vault?tab=code-generate', 'Code Generate', 'vault', [
+    it('vault-code', 'flow', 'Code Generate (3.1+): code banano → onno student oi code diye unlock korte pare'),
+  ]),
+  page('notebook', '/notebook', 'Notebook page', 'vault', [
+    it('vault-notebook', 'flow', '`/notebook`: note create → save → reopen → edit → delete'),
+  ]),
+
+  // ── Question Bank ───────────────────────────────────────────────────────
+  main('qbank', '/question-bank', 'Question Bank', 'qbank', [
+    it('qb-tabs', 'ui', 'Tab: Analyzer, Saved, History — tab label e count thik'),
+  ], { noBasics: true }),
+  tab('qb-t-analyzer', '/question-bank', 'Analyzer', 'qbank', [
+    it('qb-search', 'flow', 'Course diye question paper search → open → download'),
+    it('qb-analyze', 'flow', 'Analyzer: paper select → topic/frequency result dekhay'),
+    it('qb-data', 'data', 'Admin panel → Question bank e add kora paper ekhane ashe'),
+    it('qb-edge', 'edge', 'Result na pele empty state, PDF load fail hole message'),
+  ]),
+  tab('qb-t-saved', '/question-bank', 'Saved', 'qbank', [
+    it('qb-save', 'flow', 'Paper save → Saved tab e ashe, count barhe; unsave korle chole jay'),
+  ]),
+  tab('qb-t-history', '/question-bank', 'History', 'qbank', [
+    it('qb-history', 'ui', 'Dekha paper History te ashe, notun gula upore'),
+  ]),
+
+  // ── Community ───────────────────────────────────────────────────────────
+  main('community', '/community', 'Community', 'community', [
+    it('com-tabs', 'ui', 'Tab: Student, Faculty, Alumni Directory, Mentor Requests, Clubs Hub'),
+    it('com-data', 'data', 'Settings e profile bodlale directory card + mini card e update'),
+  ], { noBasics: true }),
+  tab('com-t-students', '/community?tab=students', 'Student Directory', 'community', [
+    it('com-search', 'flow', 'Directory te name/department/batch diye search + filter'),
+    it('com-profile', 'flow', 'Card e click → `/members/:id` profile; mini card info match kore'),
+  ]),
+  tab('com-t-faculty', '/community?tab=faculty', 'Faculty Directory', 'community', [
+    it('com-faculty', 'ui', 'Faculty card e designation, department thik dekhay'),
+  ]),
+  tab('com-t-alumni', '/community?tab=alumni', 'Alumni Directory', 'community', [
+    it('com-alumni', 'flow', 'Alumni directory te batch / graduation year diye filter'),
+  ]),
+  tab('com-t-mentor', '/community?tab=mentorRequests', 'Mentor Requests', 'community', [
+    it('com-mentor', 'flow', 'Mentor request pathano → onno user pay → accept/decline'),
+  ]),
+  tab('com-t-clubs', '/community?tab=clubs', 'Clubs Hub', 'community', [
+    it('com-clubs', 'flow', 'Club join / leave, club details'),
+  ]),
+  page('members', '/members/:id', 'Member profile', 'community', [
+    it('mem-open', 'flow', 'Directory ba active members theke profile open'),
+    it('mem-info', 'ui', 'Name, role badge, batch, streak thik dekhay'),
+    it('com-privacy', 'role', 'Private info (phone/email) shudhu allowed role/user dekhe'),
+    it('mem-bad', 'edge', 'Bhul id → "not found", crash kore na'),
+  ], { openRoute: '/community' }),
+
+  // ── ConnectBox ──────────────────────────────────────────────────────────
+  main('connectbox', '/connectbox', 'ConnectBox', 'connectbox', [
+    it('cb-tabs', 'ui', 'All Chats / Unread filter kaj kore'),
+  ], { noBasics: true }),
+  tab('cb-t-all', '/connectbox', 'All Chats', 'connectbox', [
+    it('cb-send', 'flow', 'Notun conversation → message send → onno browser e realtime ashe'),
+    it('cb-offline', 'edge', 'Net off kore pathale fail message, net ashle abar try'),
+    it('cb-gali', 'edge', 'Gali dile message block hoy (422) + strike count barhe'),
+    it('cb-banned', 'role', 'Banned user message pathate pare na'),
+  ]),
+  tab('cb-t-unread', '/connectbox', 'Unread', 'connectbox', [
+    it('cb-unread', 'data', 'Na pora message e sidebar badge + Unread tab count; porle kome'),
+  ]),
+
+  // ── Productivity ────────────────────────────────────────────────────────
+  main('productivity', '/productivity', 'Productivity', 'productivity', [
+    it('prod-tabs', 'ui', 'Tab: Study Time, Cheat Sheets, Code Pulse, Workspace — masthead thik'),
+  ], { noBasics: true }),
+  tab('studytime', '/productivity?tab=study-room', 'Study Time', 'productivity', [
+    it('st-timer', 'flow', 'Focus timer start/pause/reset; tab bodlaleo timer chole'),
+    it('st-sound', 'flow', 'Rain / Forest / Café / White Noise sound play-stop'),
+    it('st-room', 'flow', 'Room join/leave, onno member dekhay'),
+    it('st-streak', 'data', 'Study session er por streak/leaderboard update'),
+  ]),
+  tab('cheats', '/productivity?tab=cheatsheets', 'Cheat Sheets', 'productivity', [
+    it('cs-list', 'flow', 'List, filter, open, download'),
+    it('cs-data', 'data', 'Admin panel → Cheatsheets e add kora sheet ekhane ashe'),
+  ]),
+  tab('codepulse', '/productivity?tab=cp-hub', 'Code Pulse', 'productivity', [
+    it('cp-link', 'flow', 'Codeforces/CP handle link → stats load'),
+    it('cp-contest', 'ui', 'Upcoming contest list, time zone thik (Dhaka)'),
+    it('cp-bad', 'edge', 'Bhul handle → error message'),
+  ]),
+  tab('workspace', '/productivity?tab=workspace', 'Workspace', 'productivity', [
+    it('ws-filter', 'ui', 'Filter: Missing, Upcoming, No due date, Turned in'),
+    it('ws-task', 'flow', 'Project/task create → move → complete → delete'),
+    it('ws-due', 'edge', 'Due date par hole Missing e jay'),
+  ]),
+  page('zen', '/zen-study-room', 'Zen Study Room', 'productivity', [
+    it('st-zen', 'flow', '`/zen-study-room` fullscreen, Esc/exit kaj kore'),
+  ]),
+  page('prod-direct', '/study-time', 'Direct links', 'productivity', [
+    it('prod-direct-links', 'flow', '`/study-time`, `/cheat-sheets`, `/code-pulse`, `/workspace` direct link kaj kore; purono `/study-room`, `/cheatsheets`, `/cp-hub` redirect hoy'),
+  ], { noBasics: true }),
+
+  // ── Marketplace ─────────────────────────────────────────────────────────
+  main('marketplace', '/marketplace', 'Marketplace', 'marketplace', [
+    it('mk-tabs', 'ui', 'Tab: AW Market, ToLet Mama, Lost & Found'),
+    it('mk-filter', 'flow', 'Search, category filter, price sort'),
+  ], { noBasics: true }),
+  tab('mk-t-exchange', '/marketplace?tab=exchange', 'AW Market', 'marketplace', [
+    it('mk-post', 'flow', 'Item post (chobi shoho) → list e ashe → details open'),
+    it('mk-contact', 'flow', 'Contact seller → ConnectBox e chat khule'),
+    it('mk-sold', 'flow', 'Mark as sold → badge; delete → list theke chole jay'),
+    it('mk-data', 'data', 'Onno user er feed e notun item dekhay'),
+    it('mk-edge', 'edge', 'Chobi chara / onek boro chobi / negative price → validation'),
+  ]),
+  tab('mk-t-tolet', '/marketplace?tab=tolet', 'ToLet Mama', 'marketplace', [
+    it('mk-tolet', 'flow', 'ToLet post (location, bhara) → list e ashe, contact kaj kore'),
+  ]),
+  tab('mk-t-lost', '/marketplace?tab=lost', 'Lost & Found', 'marketplace', [
+    it('mk-lost', 'flow', 'Lost/Found post → list e ashe, "found" mark kora jay'),
+  ]),
+
+  // ── DownTime ────────────────────────────────────────────────────────────
+  main('downtime', '/downtime', 'DownTime', 'downtime', [
+    it('dt-tabs', 'ui', 'Tab: Organizing Area, Media Tracker, Rumour or Real, Trivia, Gaming Zone'),
+  ], { noBasics: true }),
+  tab('dt-t-org', '/downtime?tab=organizing', 'Organizing Area', 'downtime', [
+    it('dt-org', 'flow', 'Item/board add → edit → delete, reload er por thake'),
+  ]),
+  tab('dt-t-media', '/downtime?tab=media', 'Media Tracker', 'downtime', [
+    it('dt-media', 'flow', 'Media Tracker e movie/series add → status bodlano'),
+  ]),
+  tab('dt-t-rumour', '/downtime?tab=rumour', 'Rumour or Real', 'downtime', [
+    it('dt-rumour', 'flow', 'Rumour post → Real/Fake vote → result update'),
+  ]),
+  tab('dt-t-trivia', '/downtime?tab=trivia', 'Trivia', 'downtime', [
+    it('dt-trivia', 'flow', 'Trivia khela → score dekhay'),
+  ]),
+  tab('dt-t-gaming', '/downtime?tab=gaming', 'Gaming Zone', 'downtime', [
+    it('dt-gaming', 'flow', 'Gaming Zone (`?tab=gaming`): game hub → room create → onno user join'),
+  ]),
+  page('gaming-event', '/gaming/event/:id', 'Gaming event', 'downtime', [
+    it('dt-event', 'flow', 'Gaming event open → register'),
+  ], { openRoute: '/downtime?tab=gaming' }),
+  page('gaming-mod', '/gaming/mod', 'Gaming mod', 'downtime', [
+    it('dt-mod', 'role', '`/gaming/mod` shudhu gaming_mod/moderator/admin; student dhukte pare na'),
+  ]),
+
+  // ── Shadow ──────────────────────────────────────────────────────────────
+  main('shadow', '/shadow', 'Shadow', 'shadow', [
+    it('sh-tabs', 'ui', 'Tab: Course Reviews, Shadow Chat, Buzz, Roast CV'),
+  ], { noBasics: true }),
+  tab('sh-t-reviews', '/shadow?tab=reviews', 'Course Reviews', 'shadow', [
+    it('sh-review', 'flow', 'Course review likha + rating'),
+    it('gl-review', 'data', 'Likha review onnora dekhte pay, nam dekhay na'),
+  ]),
+  tab('sh-t-chat', '/shadow?tab=chat', 'Shadow Chat', 'shadow', [
+    it('sh-chat', 'flow', 'Shadow Chat e anonymous message → onno browser e ashe, nam dekhay na'),
+  ]),
+  tab('austeddit', '/shadow?tab=buzz', 'Buzz', 'shadow', [
+    it('buzz-tabs', 'ui', 'Category: General, Academic, Confession, Campus, Memes'),
+    it('buzz-post', 'flow', 'Post create → feed e ashe → upvote → comment'),
+    it('buzz-own', 'role', 'Nijer post edit/delete; onner post shudhu moderator/admin delete korte pare'),
+    it('buzz-xss', 'edge', 'Post e `<b>hi</b>` / script dile text hishebe dekhay, execute hoy na'),
+  ]),
+  tab('roast', '/shadow?tab=roast-cv', 'Roast CV', 'shadow', [
+    it('roast-up', 'flow', 'CV (PDF) upload → result ashe'),
+    it('roast-bad', 'edge', 'Bhul file type / boro file → error'),
+  ]),
+  page('shadow-direct', '/austeddit', 'Direct links', 'shadow', [
+    it('shadow-direct-links', 'flow', '`/austeddit` ar `/roast-cv` direct page e same feature kaj kore'),
+  ], { noBasics: true }),
+
+  // ── Settings ────────────────────────────────────────────────────────────
+  main('settings', '/settings', 'Settings', 'settings', [
+    it('set-tabs', 'ui', 'Tab: Identity, My Orbits, UI, Configure, Credits (+ admin: Invite Member) — `?tab=` refresh e thake'),
+    it('set-logout', 'flow', 'Logout → home; back button dile protected page khule na'),
+  ], { noBasics: true }),
+  tab('set-t-profile', '/settings', 'Identity', 'settings', [
+    it('set-profile', 'flow', 'Profile edit (name, chobi, section) → save → refresh e thake'),
+    it('set-pass', 'flow', 'Password change → purono password diye login hoy na, notun diye hoy'),
+    it('set-data', 'data', 'Profile change directory, mini card, member profile e dekhay'),
+  ]),
+  tab('set-t-orbits', '/settings?tab=orbits', 'My Orbits', 'settings', [
+    it('set-orbits', 'ui', 'My Orbits journey / checkpoint load hoy, nijer data dekhay'),
+  ]),
+  tab('set-t-theme', '/settings?tab=theme', 'UI', 'settings', [
+    it('set-theme', 'flow', 'Theme change → shob page e apply, refresh e thake (`aust-theme`)'),
+  ]),
+  tab('set-t-notif', '/settings?tab=notifications', 'Configure', 'settings', [
+    it('set-notif', 'flow', 'Push notification on/off, telegram connect'),
+  ]),
+  tab('set-t-credits', '/settings?tab=about', 'Credits', 'settings', [
+    it('set-credits', 'ui', 'Credits content thik, link kaj kore'),
+  ]),
+  tab('set-t-invite', '/settings?tab=invite', 'Invite Member', 'settings', [
+    it('set-invite', 'role', 'Shudhu admin ei tab dekhe; invite pathale list e ashe'),
+  ]),
+
+  // ── See Plans ───────────────────────────────────────────────────────────
+  main('plans', '/see-plans', 'See Plans', 'plans', [
+    it('pl-view', 'ui', 'Plan card, dam, feature list thik'),
+    it('pl-checkout', 'flow', 'Checkout (test mode) → `/payment/success` → Pro unlock'),
+  ]),
+  page('pay-result', '/payment/success', 'Payment success / cancel', 'plans', [
+    it('pl-cancel', 'flow', 'Cancel korle `/payment/cancel` + back button'),
+    it('pl-fake', 'role', '`/payment/success` direct open korle Pro pawa jay na (server verify kore)'),
+  ]),
+
+  // ── Design Docs ─────────────────────────────────────────────────────────
+  main('designdocs', '/admin-panel/flow-canvas', 'Design Docs', 'designdocs', [
     it('apf-docs', 'ui', 'Design Docs (flow canvas) load hoy, zoom/pan'),
+  ]),
+
+  // ── Not in the sidebar ──────────────────────────────────────────────────
+  page('certificate', '/certificate', 'Certificate', 'hidden', [
+    it('cert-gen', 'flow', 'Generate → preview → download'),
+  ]),
+  page('wakemeup', '/wakemeup', 'WakeMeUp', 'hidden', [
+    it('wk-set', 'flow', 'Alarm set → somoy hole bajje → stop / snooze'),
+    it('wk-notif', 'edge', 'Notification permission deny korle bujhar moto message'),
   ]),
 
   // ── Cross-cutting ───────────────────────────────────────────────────────
@@ -340,6 +540,30 @@ export const PAGES = [
     it('q-time', 'ui', 'Time zone + date format Dhaka onujayi'),
   ], { noBasics: true }),
 ];
+
+const TYPE_ORDER = { main: 0, tab: 1, page: 2 };
+const byGroupThenType = (list) => GROUPS.flatMap((g) => list
+  .filter((p) => p.group === g.id)
+  .map((p, i) => ({ p, i }))
+  .sort((a, b) => TYPE_ORDER[a.p.type] - TYPE_ORDER[b.p.type] || a.i - b.i)
+  .map(({ p }) => p));
+
+// Tour order: sidebar section → main page → its tabs → its other pages.
+export const PAGES = byGroupThenType(PAGE_LIST);
+
+// Built-in pages plus the admin's own pages and items (saved in QA state as
+// `custom: { pages, items }`). Custom items join their page under their kind.
+export function withCustom(custom) {
+  const extraPages = (custom?.pages || [])
+    .filter((p) => p && GROUPS.some((g) => g.id === p.group))
+    .map((p) => ({ ...p, type: p.type === 'tab' ? 'tab' : 'page', items: [], custom: true }));
+  const extraItems = (custom?.items || []).filter((i) => i && ITEM_KINDS[i.kind] && i.text);
+  if (!extraPages.length && !extraItems.length) return PAGES;
+  return byGroupThenType([...PAGE_LIST, ...extraPages]).map((p) => {
+    const mine = extraItems.filter((i) => i.pageId === p.id).map((i) => ({ ...i, custom: true }));
+    return mine.length ? { ...p, items: [...p.items, ...mine] } : p;
+  });
+}
 
 // End-to-end journeys that touch several pages. Each step is a checkbox.
 export const USER_FLOWS = [

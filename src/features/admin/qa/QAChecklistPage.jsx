@@ -4,13 +4,17 @@ import {
   ClipboardCheck, LayoutGrid, Route, Workflow, Users, FlaskConical, Bug, Rocket, ExternalLink,
   ChevronLeft, ChevronRight, Check, X, Minus, MessageSquare, Play, Square, Download, Upload,
   RotateCcw, MoreVertical, Search, Plus, Trash2, Pencil, Copy, CheckCircle2, XCircle, AlertCircle,
-  MinusCircle, Loader2, Terminal, ShieldCheck,
+  MinusCircle, Loader2, Terminal, ShieldCheck, ChevronDown, Shield, LayoutDashboard, Home,
+  BarChart3, MapPin, BookOpen, FileSearch, Zap, ShoppingBag, Coffee, Moon, Settings, Crown,
+  Globe, Link2, Layers,
 } from 'lucide-react';
+import { useAuth } from '../../../context/AuthContext';
 import '../../daily-life/DailyMasthead.css';
 import './QAChecklistPage.css';
 import useQaState from './useQaState';
 import {
-  GROUPS, PAGES, ITEM_KINDS, PER_PAGE_BASICS, USER_FLOWS, MATRIX_ROLES, MATRIX_ROWS, GO_LIVE,
+  GROUPS, ITEM_KINDS, PAGE_TYPES, PER_PAGE_BASICS, USER_FLOWS, MATRIX_ROLES, MATRIX_ROWS, GO_LIVE,
+  withCustom,
 } from './qaData';
 import { AUTO_TESTS, CLI_COMMANDS, DEVICES, IS_DEV, closeProbe } from './qaAutoTests';
 
@@ -23,6 +27,14 @@ const TABS = [
   { id: 'bugs', label: 'Bugs', icon: Bug },
   { id: 'golive', label: 'Go-live', icon: Rocket },
 ];
+
+// Same icons as the app sidebar, so each tour section reads like its nav link.
+const GROUP_ICONS = {
+  start: ClipboardCheck, public: Globe, admin: Shield, dashboard: LayoutDashboard, dailylife: Home,
+  gradelab: BarChart3, insideaust: MapPin, vault: BookOpen, qbank: FileSearch, community: Users,
+  connectbox: MessageSquare, productivity: Zap, marketplace: ShoppingBag, downtime: Coffee,
+  shadow: Moon, settings: Settings, plans: Crown, designdocs: Workflow, hidden: Link2, cross: Layers,
+};
 
 const SEVERITIES = ['Critical', 'High', 'Medium', 'Low'];
 const BUG_STATUS = ['Open', 'In progress', 'Fixed', "Won't fix"];
@@ -88,7 +100,7 @@ function Bar({ pct, bad }) {
 
 // ── one checklist row ───────────────────────────────────────────────────────
 
-function ItemRow({ id, text, mark, note, onMark, onNote, onBug }) {
+function ItemRow({ id, text, mark, note, onMark, onNote, onBug, onEdit, onDelete }) {
   const [noteOpen, setNoteOpen] = useState(false);
   const set = (value) => onMark(id, mark === value ? null : value);
   const showNote = noteOpen || (mark === 'fail' && !note && noteOpen !== false);
@@ -108,6 +120,8 @@ function ItemRow({ id, text, mark, note, onMark, onNote, onBug }) {
         <button type="button" title="N/A (ei page e lage na)" aria-label="Not applicable" data-on={mark === 'na' || undefined} onClick={() => set('na')}><Minus size={13} /></button>
         <button type="button" title="Note" aria-label="Note" data-on={noteOpen || undefined} onClick={() => setNoteOpen((o) => !o)}><MessageSquare size={12} /></button>
         {onBug && <button type="button" title="Bug log e tolo" aria-label="Add to bug log" onClick={() => onBug(id, text)}><Bug size={12} /></button>}
+        {onEdit && <button type="button" title="Edit" aria-label="Edit item" onClick={onEdit}><Pencil size={12} /></button>}
+        {onDelete && <button type="button" title="Delete" aria-label="Delete item" className="is-fail" onClick={onDelete}><Trash2 size={12} /></button>}
       </div>
       {showNote && (
         <textarea
@@ -123,14 +137,77 @@ function ItemRow({ id, text, mark, note, onMark, onNote, onBug }) {
   );
 }
 
+// ── admin add / edit panels ─────────────────────────────────────────────────
+
+function CustomItemForm({ title, initial, onSave, onCancel }) {
+  const [kind, setKind] = useState(initial?.kind || 'flow');
+  const [text, setText] = useState(initial?.text || '');
+  const save = () => { if (text.trim()) onSave({ kind, text: text.trim().slice(0, 400) }); };
+  return (
+    <div className="qa-pop qa-custom-form" role="group" aria-label={title}
+      onKeyDown={(e) => { if (e.key === 'Escape') onCancel(); }}>
+      <span className="qa-pop-title">{initial ? <Pencil size={11} /> : <Plus size={11} />} {title}</span>
+      <div className="qa-pop-row">
+        <select className="input qa-pop-input is-kind" value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Item type">
+          {Object.entries(ITEM_KINDS).map(([id, k]) => <option key={id} value={id}>{k.label}</option>)}
+        </select>
+        <input className="input qa-pop-input is-title is-text" placeholder="Ki check korte hobe? (`code`, **bold** chole)" value={text} autoFocus
+          onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); }} />
+      </div>
+      <div className="qa-pop-actions">
+        <button type="button" className="qa-btn is-primary is-small" disabled={!text.trim()} onClick={save}><Check size={12} /> {initial ? 'Save' : 'Add'}</button>
+        <button type="button" className="qa-btn is-small is-ghost" onClick={onCancel}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+function CustomPageForm({ groupId, onSave, onCancel }) {
+  const [group, setGroup] = useState(groupId);
+  const [type, setType] = useState('tab');
+  const [title, setTitle] = useState('');
+  const [route, setRoute] = useState('');
+  const save = () => {
+    if (!title.trim()) return;
+    const r = route.trim();
+    onSave({ group, type, title: title.trim().slice(0, 80), route: r ? (r.startsWith('/') ? r : `/${r}`).slice(0, 200) : null });
+  };
+  return (
+    <div className="qa-pop qa-custom-form" role="group" aria-label="Add page"
+      onKeyDown={(e) => { if (e.key === 'Escape') onCancel(); }}>
+      <span className="qa-pop-title"><Plus size={11} /> Notun page / tab</span>
+      <input className="input qa-pop-input is-title" placeholder="Nam (e.g. Exam Planner)" value={title} autoFocus
+        onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); }} />
+      <div className="qa-pop-row">
+        <select className="input qa-pop-input" value={group} onChange={(e) => setGroup(e.target.value)} aria-label="Section">
+          {GROUPS.map((g) => <option key={g.id} value={g.id}>{g.label}</option>)}
+        </select>
+        <select className="input qa-pop-input" value={type} onChange={(e) => setType(e.target.value)} aria-label="Type">
+          <option value="tab">Tab</option>
+          <option value="page">Onno page</option>
+        </select>
+      </div>
+      <input className="input qa-pop-input" placeholder="Route (optional, e.g. /daily-life?tab=exam)" value={route}
+        onChange={(e) => setRoute(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); }} />
+      <div className="qa-pop-actions">
+        <button type="button" className="qa-btn is-primary is-small" disabled={!title.trim()} onClick={save}><Check size={12} /> Add</button>
+        <button type="button" className="qa-btn is-small is-ghost" onClick={onCancel}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
 // ── main page ───────────────────────────────────────────────────────────────
 
 export default function QAChecklistPage() {
   const navigate = useNavigate();
+  const { hasRole } = useAuth() || {};
+  const isAdmin = !!hasRole?.('admin');
   const { state, update, replace, sync } = useQaState();
+  const pages = useMemo(() => withCustom(state.custom), [state.custom]);
   const [params, setParams] = useSearchParams();
   const tab = TABS.some((t) => t.id === params.get('tab')) ? params.get('tab') : 'overview';
-  const pageId = PAGES.some((p) => p.id === params.get('page')) ? params.get('page') : PAGES[0].id;
+  const pageId = pages.some((p) => p.id === params.get('page')) ? params.get('page') : pages[0].id;
   const [menuOpen, setMenuOpen] = useState(false);
   const [toast, setToast] = useState('');
   const menuRef = useRef(null);
@@ -172,9 +249,51 @@ export default function QAChecklistPage() {
   });
   const addBug = (bug) => update((s) => ({ ...s, bugs: [...s.bugs, { id: `bug-${Date.now()}`, status: 'Open', severity: 'Medium', createdAt: Date.now(), ...bug }] }));
 
+  // ── admin's own checklist additions ───────────────────────────────────────
+  const withCustomState = (s, fn) => {
+    const cur = { pages: [], items: [], ...(s.custom || {}) };
+    return { ...s, custom: fn(cur) };
+  };
+  const dropKeys = (obj, keys) => {
+    const next = { ...obj };
+    keys.forEach((k) => delete next[k]);
+    return next;
+  };
+  const customApi = isAdmin ? {
+    addItem: (pgId, data) => update((s) => withCustomState(s, (c) => ({
+      ...c, items: [...c.items, { id: `c-${Date.now().toString(36)}`, pageId: pgId, ...data, createdAt: Date.now() }],
+    }))),
+    editItem: (id, data) => update((s) => withCustomState(s, (c) => ({
+      ...c, items: c.items.map((i) => (i.id === id ? { ...i, ...data } : i)),
+    }))),
+    removeItem: (id) => update((s) => ({
+      ...withCustomState(s, (c) => ({ ...c, items: c.items.filter((i) => i.id !== id) })),
+      marks: dropKeys(s.marks, [id]),
+      notes: dropKeys(s.notes, [id]),
+    })),
+    addPage: (data) => {
+      const id = `cp-${Date.now().toString(36)}`;
+      update((s) => withCustomState(s, (c) => ({ ...c, pages: [...c.pages, { id, ...data, createdAt: Date.now() }] })));
+      go('tour', { page: id });
+    },
+    removePage: (pg) => {
+      if (!window.confirm(`"${pg.title}" page ar er shob custom item delete korbe?`)) return;
+      update((s) => {
+        const itemIds = (s.custom?.items || []).filter((i) => i.pageId === pg.id).map((i) => i.id);
+        const keys = [...itemIds, ...PER_PAGE_BASICS.map((_, i) => basicKey(pg.id, i))];
+        return {
+          ...withCustomState(s, (c) => ({ pages: c.pages.filter((p) => p.id !== pg.id), items: c.items.filter((i) => i.pageId !== pg.id) })),
+          marks: dropKeys(s.marks, keys),
+          notes: dropKeys(s.notes, keys),
+        };
+      });
+      go('tour', { page: pages[0].id });
+    },
+  } : null;
+
   // ── derived numbers ───────────────────────────────────────────────────────
-  const pageStats = useMemo(() => Object.fromEntries(PAGES.map((p) => [p.id, tally(pageKeys(p), marks)])), [marks]);
-  const allPageKeys = useMemo(() => PAGES.flatMap(pageKeys), []);
+  const pageStats = useMemo(() => Object.fromEntries(pages.map((p) => [p.id, tally(pageKeys(p), marks)])), [pages, marks]);
+  const allPageKeys = useMemo(() => pages.flatMap(pageKeys), [pages]);
   const flowKeys = useMemo(() => USER_FLOWS.flatMap((f) => f.steps.map((_, i) => flowKey(f.id, i))), []);
   const manual = useMemo(() => tally([...allPageKeys, ...flowKeys], marks), [allPageKeys, flowKeys, marks]);
   const goStats = useMemo(() => tally(GO_LIVE.map((g) => goKey(g.id)), marks), [marks]);
@@ -220,11 +339,14 @@ export default function QAChecklistPage() {
       `- Bugs open: ${openBugs.length} (${blockerBugs.length} critical/high)`,
       `- Go-live: ${goStats.done}/${goStats.total}`, '', '`[x]` pass · `[!]` fail · `[-]` n/a · `[ ]` baki', ''];
     GROUPS.forEach((g) => {
+      const inGroup = pages.filter((p) => p.group === g.id);
+      if (!inGroup.length) return;
       L.push(`## ${g.label}`, '');
-      PAGES.filter((p) => p.group === g.id).forEach((p) => {
-        L.push(`### ${p.title}${p.route ? ` (\`${p.route}\`)` : ''} — ${pageStats[p.id].pct}%`);
+      inGroup.forEach((p) => {
+        const type = p.type === 'page' && !g.sidebar ? '' : `${p.type === 'tab' ? 'Tab' : p.type === 'main' ? 'Main' : 'Page'}: `;
+        L.push(`### ${type}${p.title}${p.route ? ` (\`${p.route}\`)` : ''} — ${pageStats[p.id].pct}%`);
         p.items.forEach((i) => {
-          L.push(`- ${sym(marks[i.id])} ${ITEM_KINDS[i.kind].label}: ${i.text}`);
+          L.push(`- ${sym(marks[i.id])} ${ITEM_KINDS[i.kind].label}${i.custom ? ' (custom)' : ''}: ${i.text}`);
           if (notes[i.id]) L.push(`  - Note: ${notes[i.id].replace(/\n/g, ' ')}`);
         });
         if (!p.noBasics) L.push(`- Basics: ${PER_PAGE_BASICS.map((b, i) => `${sym(marks[basicKey(p.id, i)])} ${b}`).join(' · ')}`);
@@ -327,15 +449,15 @@ export default function QAChecklistPage() {
 
       {tab === 'overview' && (
         <Overview
-          manual={manual} pageStats={pageStats} marks={marks} notes={notes} auto={auto}
+          pages={pages} manual={manual} pageStats={pageStats} marks={marks} notes={notes} auto={auto}
           openBugs={openBugs} goStats={goStats} go={go}
         />
       )}
       {tab === 'tour' && (
         <Tour
-          pageId={pageId} pageStats={pageStats} marks={marks} notes={notes}
+          pages={pages} pageId={pageId} pageStats={pageStats} marks={marks} notes={notes}
           onMark={mark} onNote={setNote} bugFromItem={bugFromItem} smokeByRoute={smokeByRoute}
-          go={go}
+          go={go} customApi={customApi}
         />
       )}
       {tab === 'flows' && <Flows marks={marks} notes={notes} onMark={mark} onNote={setNote} addBug={(t, role) => { addBug({ title: t, role }); setToast('Bug log e add hoyeche'); }} />}
@@ -357,10 +479,10 @@ export default function QAChecklistPage() {
 
 // ── Overview ────────────────────────────────────────────────────────────────
 
-function Overview({ manual, pageStats, marks, notes, auto, openBugs, goStats, go }) {
-  const next = PAGES.find((p) => pageStats[p.id].left > 0);
+function Overview({ pages, manual, pageStats, marks, notes, auto, openBugs, goStats, go }) {
+  const next = pages.find((p) => pageStats[p.id].left > 0);
   const fails = [];
-  PAGES.forEach((p) => p.items.forEach((i) => { if (marks[i.id] === 'fail') fails.push({ page: p, text: i.text, note: notes[i.id] }); }));
+  pages.forEach((p) => p.items.forEach((i) => { if (marks[i.id] === 'fail') fails.push({ page: p, text: i.text, note: notes[i.id] }); }));
   const autoFails = AUTO_TESTS.filter((t) => auto[t.id]?.status === 'fail');
 
   return (
@@ -385,16 +507,19 @@ function Overview({ manual, pageStats, marks, notes, auto, openBugs, goStats, go
           <h3 className="qa-card-title is-ruled"><Route size={14} /> Area onujayi progress</h3>
           <div className="qa-area-list">
             {GROUPS.map((g) => {
-              const pages = PAGES.filter((p) => p.group === g.id);
-              const t = pages.reduce((acc, p) => {
+              const inGroup = pages.filter((p) => p.group === g.id);
+              if (!inGroup.length) return null;
+              const Icon = GROUP_ICONS[g.id] || Route;
+              const tabs = inGroup.filter((p) => p.type === 'tab').length;
+              const t = inGroup.reduce((acc, p) => {
                 const s = pageStats[p.id];
                 return { done: acc.done + s.done, total: acc.total + s.total, fail: acc.fail + s.fail };
               }, { done: 0, total: 0, fail: 0 });
               const pct = t.total ? Math.round((t.done / t.total) * 100) : 0;
               return (
-                <button key={g.id} type="button" className="qa-area" onClick={() => go('tour', { page: (pages.find((p) => pageStats[p.id].left > 0) || pages[0]).id })}>
-                  <span className="qa-area-name">{g.label}</span>
-                  <span className="qa-area-meta">{pages.length} page{t.fail ? <em> · {t.fail} fail</em> : null}</span>
+                <button key={g.id} type="button" className="qa-area" onClick={() => go('tour', { page: (inGroup.find((p) => pageStats[p.id].left > 0) || inGroup[0]).id })}>
+                  <span className="qa-area-name"><Icon size={13} className="qa-area-icon" /> {g.label}</span>
+                  <span className="qa-area-meta">{tabs ? `${tabs} tab · ${inGroup.length - tabs} page` : `${inGroup.length} page`}{t.fail ? <em> · {t.fail} fail</em> : null}</span>
                   <Bar pct={pct} bad={t.fail > 0} />
                   <span className="qa-area-pct">{pct}%</span>
                 </button>
@@ -446,25 +571,40 @@ function Overview({ manual, pageStats, marks, notes, auto, openBugs, goStats, go
 
 // ── Page tour ───────────────────────────────────────────────────────────────
 
-function Tour({ pageId, pageStats, marks, notes, onMark, onNote, bugFromItem, smokeByRoute, go }) {
+function Tour({ pages, pageId, pageStats, marks, notes, onMark, onNote, bugFromItem, smokeByRoute, go, customApi }) {
   const [query, setQuery] = useState('');
-  const index = PAGES.findIndex((p) => p.id === pageId);
-  const p = PAGES[index];
+  const [openGroups, setOpenGroups] = useState({});
+  // null | `new:<pageId>` | custom item id | 'page'
+  const [editing, setEditing] = useState(null);
+  const index = pages.findIndex((pg) => pg.id === pageId);
+  const p = pages[index];
   const stats = pageStats[p.id];
   const group = GROUPS.find((g) => g.id === p.group);
   const openRoute = p.openRoute || p.route;
   const smoke = p.route ? smokeByRoute[p.route] : null;
   const q = query.trim().toLowerCase();
-  const visible = PAGES.filter((pg) => !q || `${pg.title} ${pg.route || ''} ${pg.items.map((i) => i.text).join(' ')}`.toLowerCase().includes(q));
-  const prev = PAGES[index - 1];
-  const next = PAGES[index + 1];
+  const visible = pages.filter((pg) => !q || `${pg.title} ${pg.route || ''} ${pg.items.map((i) => i.text).join(' ')}`.toLowerCase().includes(q));
+  const prev = pages[index - 1];
+  const next = pages[index + 1];
   const kinds = Object.keys(ITEM_KINDS).filter((k) => p.items.some((i) => i.kind === k));
+  const where = group.sidebar ? `${group.label} › ${PAGE_TYPES[p.type].label}` : group.label;
 
   const openAs = (role) => {
     if (!openRoute || !role) return;
     const url = new URL(openRoute, window.location.origin);
     url.searchParams.set('mockRole', role);
     window.open(`${url.pathname}${url.search}`, '_blank', 'noopener');
+  };
+
+  const pageRow = (pg) => {
+    const s = pageStats[pg.id];
+    return (
+      <button key={pg.id} type="button" className={`qa-page-row${pg.type === 'tab' ? ' is-tab' : ''}${pg.id === p.id ? ' is-active' : ''}`} onClick={() => go('tour', { page: pg.id })}>
+        <span className={`qa-dot ${s.fail ? 'is-fail' : s.left === 0 ? 'is-done' : s.done ? 'is-part' : ''}`} />
+        <span className="qa-page-name">{pg.title}</span>
+        <span className="qa-page-count">{s.done}/{s.total}</span>
+      </button>
+    );
   };
 
   return (
@@ -476,21 +616,32 @@ function Tour({ pageId, pageStats, marks, notes, onMark, onNote, bugFromItem, sm
         </label>
         <div className="qa-page-list">
           {GROUPS.map((g) => {
-            const pages = visible.filter((pg) => pg.group === g.id);
-            if (!pages.length) return null;
+            const inGroup = visible.filter((pg) => pg.group === g.id);
+            if (!inGroup.length) return null;
+            const Icon = GROUP_ICONS[g.id] || Route;
+            const expanded = q ? true : (openGroups[g.id] ?? g.id === p.group);
+            const t = inGroup.reduce((acc, pg) => ({ done: acc.done + pageStats[pg.id].done, total: acc.total + pageStats[pg.id].total, fail: acc.fail + pageStats[pg.id].fail }), { done: 0, total: 0, fail: 0 });
+            const byType = (type) => inGroup.filter((pg) => pg.type === type);
+            const tabs = byType('tab');
+            const others = byType('page');
             return (
-              <div key={g.id} className="qa-page-group">
-                <span className="qa-label">{g.label}</span>
-                {pages.map((pg) => {
-                  const s = pageStats[pg.id];
-                  return (
-                    <button key={pg.id} type="button" className={`qa-page-row${pg.id === p.id ? ' is-active' : ''}`} onClick={() => go('tour', { page: pg.id })}>
-                      <span className={`qa-dot ${s.fail ? 'is-fail' : s.left === 0 ? 'is-done' : s.done ? 'is-part' : ''}`} />
-                      <span className="qa-page-name">{pg.title}</span>
-                      <span className="qa-page-count">{s.done}/{s.total}</span>
-                    </button>
-                  );
-                })}
+              <div key={g.id} className={`qa-page-group${expanded ? ' is-open' : ''}`}>
+                <button type="button" className={`qa-group-head${g.id === p.group ? ' is-current' : ''}`} aria-expanded={expanded}
+                  onClick={() => setOpenGroups((o) => ({ ...o, [g.id]: !expanded }))}>
+                  <Icon size={13} className="qa-group-icon" />
+                  <span className="qa-group-name">{g.label}</span>
+                  <span className={`qa-page-count${t.fail ? ' is-fail' : ''}`}>{t.done}/{t.total}</span>
+                  <ChevronDown size={13} className="qa-group-chev" />
+                </button>
+                {expanded && (
+                  <div className="qa-group-body">
+                    {byType('main').map(pageRow)}
+                    {tabs.length > 0 && g.sidebar && <span className="qa-sub-label">{PAGE_TYPES.tab.label}</span>}
+                    {tabs.map(pageRow)}
+                    {others.length > 0 && g.sidebar && <span className="qa-sub-label">{PAGE_TYPES.page.label}</span>}
+                    {others.map(pageRow)}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -499,19 +650,29 @@ function Tour({ pageId, pageStats, marks, notes, onMark, onNote, bugFromItem, sm
 
       <section className="qa-card qa-tour-main">
         <select className="input qa-page-select" value={p.id} onChange={(e) => go('tour', { page: e.target.value })} aria-label="Page">
-          {GROUPS.map((g) => (
-            <optgroup key={g.id} label={g.label}>
-              {PAGES.filter((pg) => pg.group === g.id).map((pg) => (
-                <option key={pg.id} value={pg.id}>{pg.title} ({pageStats[pg.id].done}/{pageStats[pg.id].total})</option>
-              ))}
-            </optgroup>
-          ))}
+          {GROUPS.map((g) => {
+            const inGroup = pages.filter((pg) => pg.group === g.id);
+            if (!inGroup.length) return null;
+            return (
+              <optgroup key={g.id} label={g.label}>
+                {inGroup.map((pg) => (
+                  <option key={pg.id} value={pg.id}>{pg.type === 'tab' ? '· ' : ''}{pg.title} ({pageStats[pg.id].done}/{pageStats[pg.id].total})</option>
+                ))}
+              </optgroup>
+            );
+          })}
         </select>
 
         <div className="qa-context">
           <div className="qa-context-top">
-            <span className="qa-label">{group.label} · {index + 1}/{PAGES.length}</span>
-            {stats.fail > 0 && <span className="qa-chip is-fail">{stats.fail} fail</span>}
+            <span className="qa-label">{where} · {index + 1}/{pages.length}</span>
+            <div className="qa-head-actions">
+              {p.custom && <span className="qa-chip">Custom</span>}
+              {stats.fail > 0 && <span className="qa-chip is-fail">{stats.fail} fail</span>}
+              {p.custom && customApi && (
+                <button type="button" className="qa-icon-btn is-danger" aria-label="Delete page" title="Page delete" onClick={() => customApi.removePage(p)}><Trash2 size={13} /></button>
+              )}
+            </div>
           </div>
           <h3 className="qa-context-title">{p.title}</h3>
           <div className="qa-context-meta">
@@ -555,12 +716,37 @@ function Tour({ pageId, pageStats, marks, notes, onMark, onNote, bugFromItem, sm
           <div key={k} className="qa-kind">
             <div className="qa-kind-head"><span className={`qa-kind-tag is-${k}`}>{ITEM_KINDS[k].label}</span><span className="qa-kind-hint">{ITEM_KINDS[k].hint}</span></div>
             <div className="qa-items">
-              {p.items.filter((i) => i.kind === k).map((i) => (
-                <ItemRow key={i.id} id={i.id} text={i.text} mark={marks[i.id]} note={notes[i.id]} onMark={onMark} onNote={onNote} onBug={bugFromItem(p)} />
-              ))}
+              {p.items.filter((i) => i.kind === k).map((i) => (editing === i.id && customApi ? (
+                <CustomItemForm key={i.id} title="Item edit" initial={i}
+                  onSave={(data) => { customApi.editItem(i.id, data); setEditing(null); }} onCancel={() => setEditing(null)} />
+              ) : (
+                <ItemRow key={i.id} id={i.id} text={i.text} mark={marks[i.id]} note={notes[i.id]} onMark={onMark} onNote={onNote} onBug={bugFromItem(p)}
+                  onEdit={i.custom && customApi ? () => setEditing(i.id) : undefined}
+                  onDelete={i.custom && customApi ? () => { if (window.confirm('Ei custom item delete korbe?')) customApi.removeItem(i.id); } : undefined} />
+              )))}
             </div>
           </div>
         ))}
+
+        {!p.items.length && (
+          <div className="qa-empty">
+            <span className="qa-empty-icon"><ClipboardCheck size={16} /></span>
+            <p className="qa-empty-hint">Ei page e ekhono kono checklist item nai.</p>
+          </div>
+        )}
+
+        {customApi && editing === `new:${p.id}` && (
+          <CustomItemForm title={`Item add · ${p.title}`} onSave={(data) => { customApi.addItem(p.id, data); setEditing(null); }} onCancel={() => setEditing(null)} />
+        )}
+        {customApi && editing === 'page' && (
+          <CustomPageForm groupId={p.group} onSave={(data) => { customApi.addPage(data); setEditing(null); }} onCancel={() => setEditing(null)} />
+        )}
+        {customApi && editing !== `new:${p.id}` && editing !== 'page' && (
+          <div className="qa-add-row">
+            <button type="button" className="qa-btn is-small" onClick={() => setEditing(`new:${p.id}`)}><Plus size={12} /> Checklist item add</button>
+            <button type="button" className="qa-btn is-small is-ghost" onClick={() => setEditing('page')}><Plus size={12} /> {group.label} e page / tab add</button>
+          </div>
+        )}
 
         <div className="qa-tour-nav">
           <button type="button" className="qa-btn" disabled={!prev} onClick={() => prev && go('tour', { page: prev.id })}><ChevronLeft size={14} /> {prev ? prev.title : 'Prothom'}</button>

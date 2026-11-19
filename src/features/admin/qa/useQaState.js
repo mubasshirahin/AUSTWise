@@ -6,7 +6,8 @@ import { userStore } from '../../../utils/storageService';
 // between laptop and phone. The newer copy (updatedAt) wins on load.
 export const QA_STORE_KEY = 'aust-qa-checklist-v1';
 
-export const blankQaState = () => ({ v: 1, updatedAt: 0, marks: {}, notes: {}, matrix: {}, bugs: [], auto: {} });
+// `custom` holds the admin's own checklist additions: { pages: [], items: [] }.
+export const blankQaState = () => ({ v: 1, updatedAt: 0, marks: {}, notes: {}, matrix: {}, bugs: [], auto: {}, custom: { pages: [], items: [] } });
 
 function readLocal() {
   try {
