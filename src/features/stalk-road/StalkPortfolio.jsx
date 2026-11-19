@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useTheme } from '../../context/ThemeContext';
 import gsap from 'gsap';
 import {
   X, PawPrint, Flag, Star, Clapperboard, Gamepad2, Trophy, Eye, Music4, Headphones,
@@ -240,7 +241,8 @@ export { ThisOrThatSection };
 
 /* ─── Root portfolio ─── */
 export default function StalkPortfolio({ portfolio, onClose }) {
-  const accent = portfolio.favoriteColor;
+  const { accent: themeAccent } = useTheme() || {};
+  const accent = themeAccent || '#F5A623';
   const roleLabel = getDisplayRoles(portfolio).map(getRoleDisplayName).join(' · ');
 
   return (
@@ -270,8 +272,7 @@ export default function StalkPortfolio({ portfolio, onClose }) {
           <div className="sp-hero-eyebrow"><Sparkles size={12} /> ROAD TRIP COMPLETE</div>
           <h2 className="sp-hero-title">{portfolio.name}&apos;s <span>Vibe Universe</span></h2>
           <p className="sp-hero-sub">
-            You drove {portfolio.miles} miles to reach {portfolio.name.split(' ')[0]}&apos;s corner of the community.
-            Favorite color everywhere: <b style={{ color: accent }}>#{accent.slice(1).toUpperCase()}</b>.
+            You drove {portfolio.miles} miles to reach {portfolio.name.split(' ')[0]}&apos;s corner of the community.
           </p>
         </div>
         <div className="sp-stat-chips">

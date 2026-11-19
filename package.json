@@ -7,16 +7,21 @@
     "node": ">=20"
   },
   "scripts": {
+    "docs:gen": "node public/prototype/tools/build-erd.mjs && node public/prototype/tools/build-api.mjs",
+    "predev": "npm run docs:gen",
     "dev": "node scripts/dev.mjs",
     "dev:static": "npm run build && node server/dev.mjs",
     "start": "node server/dev.mjs",
     "dev:vite": "vite",
+    "prebuild": "npm run docs:gen",
     "build": "vite build",
     "postinstall": "prisma generate --schema server/prisma/schema.prisma",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:e2e": "playwright test",
+    "qa:report": "playwright show-report qa-report/html"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",
@@ -52,7 +57,9 @@
     "ws": "^8.21.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.65.1",
     "@types/leaflet": "^1.9.22",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

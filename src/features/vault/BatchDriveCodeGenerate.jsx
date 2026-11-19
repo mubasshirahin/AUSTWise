@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import './BatchDriveCodeGenerate.css';
+import { MemberIconPreview } from '../community/DirectoryShared';
 
 function formatDate(value) {
   if (!value) return '';
@@ -358,20 +359,18 @@ export default function BatchDriveCodeGenerate({ status, loading, onGenerate, on
               <ul className="bc-users">
                 {uses.map((entry) => (
                   <li key={`${entry.userId || entry.studentId || entry.name}-${entry.code}`}>
-                    <button
-                      type="button"
-                      className="bc-user-avatar"
-                      onClick={() => {
+                    <MemberIconPreview
+                      person={{ ...entry, department: entry.department || myDept }}
+                      avatarClassName="bc-user-avatar"
+                      onOpenProfile={() => {
                         window.location.href = `/members/${encodeURIComponent(entry.studentId || entry.userId || '')}`;
                       }}
-                      title={entry.name}
-                    >
-                      {entry.avatar ? (
+                      avatarContent={entry.avatar ? (
                         <img src={entry.avatar} alt="" />
                       ) : (
                         (entry.name || '?').slice(0, 2).toUpperCase()
                       )}
-                    </button>
+                    />
                     <div className="bc-user-info">
                       <strong>{entry.name}</strong>
                       <span>

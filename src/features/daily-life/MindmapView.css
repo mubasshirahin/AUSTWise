@@ -187,6 +187,26 @@
 
 .lp-widget .lp-mm .lp-mm-node.is-locked { border-style: dashed; }
 
+/* ── Tablet / phone: canvas follows the screen height ─────────────────── */
+@media (max-width: 768px) {
+  .lp-widget .lp-mm .lp-mm-canvas { height: min(460px, 62vh); min-height: 300px; }
+  .lp-widget .lp-mm .pb-mm-bar { gap: 8px; padding: 8px 10px; }
+  .lp-widget .lp-mm .pb-mm-hint { align-items: flex-start; line-height: 1.4; }
+  .lp-widget .lp-mm .pb-mm-hint svg { margin-top: 2px; }
+  /* Toolbar stays on one row: actions left, zoom right */
+  .lp-widget .lp-mm .pb-mm-bar { flex-wrap: nowrap; }
+  .lp-widget .lp-mm .pb-mm-group { flex-wrap: nowrap; gap: 4px; flex: none; }
+  .lp-widget .lp-mm .pb-mm-group .pb-btn-soft { padding: 0 8px; min-width: 0; }
+  .lp-widget .lp-mm .pb-zoom { margin-left: auto; flex: none; gap: 0; padding: 2px 4px; }
+  .lp-widget .lp-mm .pb-zoom .pb-icon { width: 28px; height: 28px; }
+  .lp-widget .lp-mm .pb-zoom-value { min-width: 36px; }
+}
+.lp-widget .lp-mm.lp-mm-fullscreen { display: flex; flex-direction: column; gap: 8px; }
+@media (max-width: 640px) {
+  .lp-widget .lp-mm.lp-mm-fullscreen { padding: 10px; }
+  .lp-widget .lp-mm.lp-mm-fullscreen .lp-mm-canvas { height: auto; flex: 1; }
+}
+
 /* ── Phone ───────────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .lp-widget .lp-mm .lp-mm-branches-root { padding-left: 60px; }

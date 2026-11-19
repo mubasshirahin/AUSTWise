@@ -195,6 +195,9 @@
 .member-profile-identity-item > .member-profile-email,
 .member-profile-identity-item.is-email > button { display: inline-flex; align-items: center; justify-content: flex-end; gap: 5px; padding: 0; border: 0; background: transparent; color: var(--text-primary); font: inherit; font-size: var(--fs-xs); font-weight: var(--fw-semibold); text-align: right; cursor: pointer; overflow: visible; overflow-wrap: anywhere; text-overflow: clip; white-space: normal; }
 .member-profile-inline-input { width: 100%; min-width: 0; min-height: 36px; padding: 6px 9px; font-size: var(--fs-xs); }
+/* Beat the global mobile 16px input rule so text inputs match the selects */
+input.input.member-profile-inline-input,
+select.input.member-profile-inline-input { font-size: var(--fs-xs); }
 .member-profile-name-input { width: min(100%, 420px); min-height: 36px; color: var(--text-primary); font-size: clamp(18px, 2.4vw, 22px); font-weight: var(--fw-bold); }
 .identity-preview-avatar-upload { position: absolute; z-index: 2; right: -6px; bottom: -6px; display: grid; place-items: center; width: 30px; height: 30px; border: 3px solid var(--profile-surface); border-radius: 50%; background: var(--accent-blue); color: #fff; cursor: pointer; }
 .identity-preview-avatar-upload input { position: absolute; width: 1px; height: 1px; opacity: 0; }
@@ -217,9 +220,31 @@
   padding: 10px 4px;
   border-bottom: 1px solid var(--border-primary);
 }
+.member-profile-metric.is-editable { position: relative; padding-right: 24px; }
+.member-profile-metric.is-hidden > :not(.member-profile-metric-toggle) { opacity: 0.4; }
+.member-profile-metric-toggle {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--border-primary);
+  border-radius: 999px;
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+.member-profile-metric-toggle.is-on {
+  border-color: var(--accent-emerald);
+  background: var(--accent-emerald-glow);
+  color: var(--accent-emerald);
+}
 .member-profile-metric-icon { display: grid; place-items: center; grid-row: span 2; width: 38px; height: 38px; border-radius: 12px; background: var(--bg-secondary); color: var(--text-secondary); }
 .member-profile-metric strong { color: var(--text-primary); font-size: 22px; font-variant-numeric: tabular-nums; line-height: 1; }
-.member-profile-metric > span:last-child { min-width: 0; color: var(--text-secondary); font-size: var(--fs-xs); line-height: 1.35; }
+.member-profile-metric > .member-profile-metric-label { min-width: 0; color: var(--text-secondary); font-size: var(--fs-xs); line-height: 1.35; }
 .member-profile-metric.is-amber .member-profile-metric-icon { color: var(--accent-amber); background: var(--accent-amber-glow); }
 .member-profile-metric.is-blue .member-profile-metric-icon { color: var(--accent-blue); background: var(--accent-blue-glow); }
 .member-profile-metric.is-purple .member-profile-metric-icon { color: var(--accent-purple); background: var(--accent-purple-glow); }
@@ -568,7 +593,7 @@
   font-weight: 800;
   letter-spacing: -0.02em;
 }
-.mp-view .member-profile-metric > span:last-child {
+.mp-view .member-profile-metric > .member-profile-metric-label {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -631,7 +656,7 @@
   .mp-view .member-profile-heading {
     grid-template-columns: auto minmax(0, 1fr);
     gap: 10px 12px;
-    padding: 0 12px 12px;
+    padding: 0 12px 0;
   }
   .mp-view .avatar.member-profile-avatar {
     width: 68px;
@@ -649,18 +674,18 @@
   .mp-view .member-profile-name-block h1 { font-size: 1.1rem; }
   .mp-view .member-profile-name-block p { font-size: 11.5px; }
 
-  /* Actions: own row — Orbit left, joined date right */
+  /* Actions: own row, Orbit on the right */
   .mp-view .member-profile-hero-actions {
     grid-column: 1 / -1;
     flex-direction: row;
     flex-wrap: nowrap;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 10px;
-    padding-top: 10px;
+    padding: 6px 0 8px;
     border-top: 1px dashed var(--border-primary);
   }
-  .mp-view .member-profile-orbit { min-height: 32px; padding: 0 12px; font-size: 12px; }
+  .mp-view .member-profile-orbit { min-height: 30px; padding: 0 10px; font-size: 11.5px; white-space: nowrap; }
   .mp-view .member-profile-joined {
     min-width: 0;
     overflow: hidden;
@@ -687,6 +712,8 @@
 
   .mp-view .member-profile-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
   .mp-view .member-profile-metric { padding: 8px; }
+  .mp-view .member-profile-metric.is-editable { padding-right: 22px; }
+  .mp-view .member-profile-metric-toggle { top: 4px; right: 4px; width: 16px; height: 16px; }
   .mp-view .member-profile-metric strong { font-size: 16px; }
 
   .mp-empty { padding: 10px; }

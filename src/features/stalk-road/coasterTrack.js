@@ -36,10 +36,36 @@ function cubicPt(p0, p1, p2, p3, t) {
   ];
 }
 
-// The element that follows each checkpoint gate, cycled.
-const ELEMENTS = ['loop', 'camel', 'corkscrew', 'hops', 'dive', 'loop2'];
+/* Each ride theme has its own layout: the element after every checkpoint
+   gate (cycled), the lift-hill height, how deep the first drop goes and how
+   the structure is built (steel: sparse columns; wood: dense lattice). */
+export const LAYOUTS = {
+  // steel looper over the city
+  city: { elements: ['loop', 'camel', 'corkscrew', 'hops', 'dive', 'loop2'], liftTop: 112, valley: 528, step: 44 },
+  // plunges into the lava valley, a top-hat spike, one fiery loop
+  fire: { elements: ['plunge', 'spike', 'corkscrew', 'plunge2', 'loop', 'hops'], liftTop: 76, valley: 548, step: 44 },
+  // classic wooden coaster: no inversions, all airtime hills
+  forest: { elements: ['bunny', 'camel2', 'wave', 'camel', 'bunny', 'wave'], liftTop: 150, valley: 522, step: 26, wooden: true },
+  // giant loop, zero-g rolls and a double corkscrew
+  space: { elements: ['bigloop', 'zerog', 'corkscrew2', 'loop2', 'zerog', 'dive'], liftTop: 64, valley: 500, step: 56 },
+  // interest themes (interestThemes.js) — each with its own run of elements
+  gamer: { elements: ['hops', 'loop', 'spike', 'zerog', 'bunny', 'loop2'], liftTop: 96, valley: 530, step: 44 },
+  football: { elements: ['camel', 'loop', 'hops', 'corkscrew', 'camel2', 'dive'], liftTop: 104, valley: 530, step: 44 },
+  cricket: { elements: ['camel2', 'bunny', 'spike', 'wave', 'camel', 'hops'], liftTop: 120, valley: 524, step: 26, wooden: true },
+  tech: { elements: ['bigloop', 'hops', 'corkscrew2', 'camel', 'loop2', 'dive'], liftTop: 70, valley: 505, step: 56 },
+  coder: { elements: ['loop', 'camel', 'zerog', 'hops', 'loop2', 'dive'], liftTop: 100, valley: 528, step: 44 },
+  hacker: { elements: ['plunge', 'corkscrew', 'spike', 'zerog', 'plunge2', 'loop'], liftTop: 76, valley: 548, step: 44 },
+  music: { elements: ['wave', 'loop', 'bunny', 'corkscrew', 'hops', 'loop2'], liftTop: 104, valley: 528, step: 44 },
+  artist: { elements: ['camel', 'wave', 'loop', 'bunny', 'camel2', 'hops'], liftTop: 110, valley: 526, step: 44 },
+  bookworm: { elements: ['camel2', 'loop', 'wave', 'zerog', 'bunny', 'dive'], liftTop: 104, valley: 528, step: 44 },
+  foodie: { elements: ['bunny', 'loop', 'camel', 'hops', 'spike', 'wave'], liftTop: 100, valley: 528, step: 44 },
+  fitness: { elements: ['spike', 'hops', 'plunge2', 'loop', 'camel', 'bunny'], liftTop: 84, valley: 540, step: 44 },
+  travel: { elements: ['camel', 'wave', 'bigloop', 'bunny', 'camel2', 'dive'], liftTop: 70, valley: 505, step: 56 },
+};
 
-export function buildTrack(stopCount) {
+export function buildTrack(stopCount, layoutId = 'city') {
+  const layout = LAYOUTS[layoutId] || LAYOUTS.city;
+  const ELEMENTS = layout.elements;
   const segs = []; // { type: 'L'|'C', pts: [...] }
   let x = 0;
   let y = BASE;
@@ -69,14 +95,14 @@ export function buildTrack(stopCount) {
   // ── chain lift hill (45°) + crest ──
   marks.liftStart = segs.length;
   cubic([x + 50, y], [x + 80, y - 18], [x + 110, y - 48]);
-  const liftTop = 112;
+  const { liftTop } = layout;
   const climb = y - (liftTop + 40);
   line(x + climb, y - climb);
   marks.liftEnd = segs.length;
   cubic([x + 30, y - 30], [x + 62, y - 40], [x + 92, y - 40]);
 
   // ── first drop into a valley, then up to gate level ──
-  sTo(250, 528, 0.36);
+  sTo(250, layout.valley, 0.36);
   flat(30);
   sTo(230, BASE, 0.4);
 
@@ -88,8 +114,8 @@ export function buildTrack(stopCount) {
 
     // ── ride element ──
     const el = ELEMENTS[i % ELEMENTS.length];
-    if (el === 'loop' || el === 'loop2') {
-      const r = el === 'loop' ? 118 : 104;
+    if (el === 'loop' || el === 'loop2' || el === 'bigloop') {
+      const r = { loop: 118, loop2: 104, bigloop: 150 }[el];
       const off = r * 0.42;
       flat(30);
       const x0 = x;
@@ -118,6 +144,41 @@ export function buildTrack(stopCount) {
       hump(150, BASE - 74);
       hump(150, BASE - 74);
       hump(150, BASE - 74);
+    } else if (el === 'corkscrew2' || el === 'zerog') {
+      // zero-g roll: one slow roll over a tall crest; corkscrew2: two rolls
+      const two = el === 'corkscrew2';
+      sTo(150, two ? 300 : 280, 0.42);
+      flat(20);
+      const startSeg = segs.length;
+      hump(two ? 420 : 340, two ? 230 : 190, 0.4);
+      rolls.push({ startSeg, endSeg: segs.length, turns: two ? 2 : 1 });
+      flat(20);
+      sTo(150, BASE, 0.42);
+    } else if (el === 'plunge' || el === 'plunge2') {
+      // climb, then a steep plunge that skims the valley floor
+      const deep = el === 'plunge' ? 548 : 540;
+      sTo(150, el === 'plunge' ? 190 : 230, 0.42);
+      flat(16);
+      sTo(190, deep, 0.28);
+      flat(40);
+      sTo(230, BASE, 0.4);
+    } else if (el === 'spike') {
+      // top hat: tall, narrow crest
+      flat(20);
+      hump(220, 88, 0.3);
+      flat(30);
+    } else if (el === 'camel2') {
+      hump(340, 150, 0.4);
+      flat(16);
+      hump(260, 260, 0.42);
+      flat(16);
+      hump(200, 330, 0.42);
+    } else if (el === 'bunny') {
+      for (let k = 0; k < 4; k += 1) hump(130, BASE - 56 - (k % 2) * 14);
+    } else if (el === 'wave') {
+      hump(220, 300, 0.42);
+      hump(190, 340, 0.42);
+      hump(160, 370, 0.42);
     } else if (el === 'dive') {
       sTo(170, 214, 0.42);
       flat(20);
@@ -226,14 +287,15 @@ export function buildTrack(stopCount) {
   const footings = [];
   const supportPts = []; // raw { x, top, len } for the 3D view
   let prev = null;
-  for (let L = 20; L < total - 10; L += 44) {
+  const braceMin = layout.wooden ? 10 : 20;
+  for (let L = 20; L < total - 10; L += layout.step) {
     const [px, py] = pointAt(L);
     if (inLoopUpper(L, py) || GROUND - py < 26) { prev = null; continue; }
     const top = py + 10;
     supports.push(`M${px.toFixed(1)} ${top.toFixed(1)}V${GROUND}`);
     supportPts.push({ x: px, top, len: L });
     footings.push(`M${(px - 6).toFixed(1)} ${GROUND - 4}h12v6h-12z`);
-    if (prev && px - prev[0] > 20 && px - prev[0] < 70) {
+    if (prev && px - prev[0] > braceMin && px - prev[0] < 70) {
       const lo = Math.max(top, prev[1]);
       if (GROUND - lo > 40) {
         braces.push(`M${prev[0].toFixed(1)} ${prev[1].toFixed(1)}L${px.toFixed(1)} ${GROUND - 4}`);
@@ -275,6 +337,8 @@ export function buildTrack(stopCount) {
   return {
     // open ground past the buffer stop so the camera can keep following
     width: trackEndX + 900,
+    layout: layoutId in LAYOUTS ? layoutId : 'city',
+    wooden: Boolean(layout.wooden),
     trackEnd: trackEndX,
     total,
     pointAt,

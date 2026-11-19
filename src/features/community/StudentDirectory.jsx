@@ -13,6 +13,7 @@ import { useAuth } from '../../context/AuthContext';
 import { formatSemesterLabel, getSemesterCountForDepartment } from '../../utils/semester';
 import { DirectoryDepartmentHeader, DirectoryMemberCard, MemberAvatarPreview } from './DirectoryShared';
 import { getDepartmentLabel } from './directoryUtils';
+import { extractStudentId, getMemberPreviewStats } from '../../utils/memberPreview';
 import '../daily-life/DailyMasthead.css';
 
 // Role pill shown next to a student's name (and their label in the hover card).
@@ -22,17 +23,6 @@ const ROLE_TAGS = {
   sr: { short: 'SR', label: 'Student Representative' },
   cr: { short: 'CR', label: 'Class Representative' },
 };
-
-// Extract student ID from @aust.edu email the same way the profile does
-function extractStudentId(student) {
-  const email = student.email || '';
-  if (email.includes('@aust.edu')) {
-    const prefix = email.split('@')[0] || '';
-    const id = prefix.replace(/^[a-z.]+/i, '');
-    if (id) return id;
-  }
-  return student.id || '';
-}
 
 // Same alphabetical order as the Alumni Directory (ARCH, BBA, CE, CSE, …).
 const DEPARTMENTS = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA']
@@ -71,18 +61,7 @@ function getLabSortKey(labSection) {
 }
 
 // Mini-stats rows shown in a student's hover/click card (list rows and slots).
-function getStudentPreviewStats(student) {
-  const sem = Number(student.semester) || 0;
-  return [
-    ['Department', getDepartmentLabel(student.department)],
-    ['AUST ID', extractStudentId(student)],
-    ['AWID', student.awid || createAwid(student.department)],
-    ['Semester', sem ? `Year ${formatSemesterLabel(sem)} (Semester ${sem})` : ''],
-    ['Lab', student.labSection || student.section],
-    ['Batch', student.batch || student.batchName || student.batchNo],
-    ['Blood', student.bloodGroup],
-  ];
-}
+const getStudentPreviewStats = getMemberPreviewStats;
 
 // Role-slot avatar (VP/GS/SR/CR) — same photo/initials tile and the same
 // hover/click mini stats card (View profile · Visit Orbit) as the rows below.

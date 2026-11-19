@@ -10,6 +10,7 @@ import {
 } from './userStore.mjs';
 import { authRateLimiter, loginRateLimiter } from './rateLimiter.mjs';
 import { rolesOf, isBannedAccount } from './roleGuards.mjs';
+import { activeBanUntil, tempBanBody } from './strikes.mjs';
 
 export { handleDevSwitchUser, handleDevSeedUsers, handleDevUsers };
 
@@ -189,6 +190,8 @@ async function handleLogin(req, res) {
   try {
     const user = await validateLogin(body.email, body.password);
     loginRateLimiter.success(req, body?.email);
+    const tempBan = activeBanUntil(String(user.id));
+    if (tempBan) return sendJson(res, 403, tempBanBody(tempBan));
     const token = signToken(user);
     setAuthCookie(res, token);
     return sendJson(res, 200, { success: true, user: sanitizeUser(user) });
@@ -453,6 +456,8 @@ async function handleGoogle(req, res) {
     if (isBannedAccount(user)) {
       return sendJson(res, 403, { success: false, banned: true, error: bannedMessage(user) });
     }
+    const tempBan = activeBanUntil(String(user.id));
+    if (tempBan) return sendJson(res, 403, tempBanBody(tempBan));
     const token = signToken(user);
     setAuthCookie(res, token);
     return sendJson(res, 200, { success: true, user: sanitizeUser(user), existing: !created });

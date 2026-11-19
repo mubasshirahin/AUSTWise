@@ -242,8 +242,16 @@ export default function WeekSchedule() {
     
     if (batchFilter !== 'all') {
       filteredTasks = filteredTasks.filter(task => task.batchGroup === batchFilter);
+    } else {
+      // "All": strict lab-group order A1, A2, B1, B2, C1, C2, D1, D2
+      // (stable sort; tasks without a known group go last).
+      const rank = (task) => {
+        const i = batchGroups.indexOf(String(task.batchGroup || '').toUpperCase());
+        return i === -1 ? batchGroups.length : i;
+      };
+      filteredTasks = [...filteredTasks].sort((a, b) => rank(a) - rank(b));
     }
-    
+
     return filteredTasks;
   };
 

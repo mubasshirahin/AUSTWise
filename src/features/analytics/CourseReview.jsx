@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Star, MessageSquare, ThumbsUp, ArrowUpDown, Send, Plus, X, Search } from 'lucide-react';
 import CourseAutocomplete from '../../components/CourseAutocomplete';
+import '../daily-life/DailyMasthead.css';
 import './CourseReview.css';
 import { sanitizeUserInput, MAX_TEXT_LENGTH, MAX_TITLE_LENGTH } from '../../utils/sanitize';
 import { useLiveRefresh } from '../../utils/liveStore';
@@ -87,6 +88,9 @@ export default function CourseReview() {
     });
   }, [reviews, searchTerm, sortMode]);
 
+  const totalRatings = reviews.reduce((n, r) => n + (r.reviews || 0), 0);
+  const totalComments = reviews.reduce((n, r) => n + r.comments.length, 0);
+
   const selectedCourse = useMemo(
     () => reviews.find((review) => review.id === selectedCourseId) || null,
     [reviews, selectedCourseId],
@@ -167,65 +171,62 @@ export default function CourseReview() {
 
   return (
     <div className={`cr${selectedCourse ? ' has-selection' : ''}`}>
-      <div className="schedule-masthead cr-masthead">
-        <div className="schedule-title-block">
-          <div className="schedule-icon-tile">
-            <Star size={20} strokeWidth={2.2} />
-          </div>
-          <div>
-            <span className="schedule-overline">Shadow</span>
-            <div className="schedule-title">Course Reviews</div>
-            <span className="schedule-subtitle">
-              Live student ratings — averages update when you and others submit reviews.
-            </span>
+      <header className="dl-head cr-head">
+        <div className="dl-head-title">
+          <div className="dl-head-tile" aria-hidden="true"><Star size={20} strokeWidth={2.1} /></div>
+          <div className="dl-head-text">
+            <span className="dl-head-overline">Shadow</span>
+            <h2 className="dl-head-name">Course Reviews</h2>
+            <span className="dl-head-subtitle">Live anonymous student ratings</span>
           </div>
         </div>
+        <dl className="dl-head-stats">
+          <div className="dl-head-stat"><dt>Courses</dt><dd>{reviews.length}</dd></div>
+          <div className="dl-head-stat"><dt>Ratings</dt><dd>{totalRatings}</dd></div>
+          <div className="dl-head-stat"><dt>Comments</dt><dd>{totalComments}</dd></div>
+        </dl>
+      </header>
 
-        <div className="schedule-masthead-center" />
-
-        <div className="schedule-actions cr-actions">
-          <div className="search-box cr-search">
-            <Search aria-hidden="true" />
-            <input
-              type="text"
-              placeholder="Search reviews..."
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              aria-label="Search course reviews"
-            />
-          </div>
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm cr-sort-btn"
-            onClick={() => {
-              setSortMode((mode) => {
-                if (mode === 'rating') return 'difficulty';
-                if (mode === 'difficulty') return 'workload';
-                if (mode === 'workload') return 'comments';
-                return 'rating';
-              });
-            }}
-            title="Change sort order"
-          >
-            <ArrowUpDown size={14} />
-            <span className="cr-sort-label">{SORT_LABELS[sortMode]}</span>
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary btn-sm cr-add-btn"
-            onClick={() => {
-              setShowAddForm((open) => !open);
-              setFormError('');
-              setFormMessage('');
-            }}
-          >
-            {showAddForm ? <X size={14} /> : <Plus size={14} />}
-            {showAddForm ? 'Close' : 'Add Review'}
-          </button>
+      <div className="cr-toolbar">
+        <div className="search-box cr-search">
+          <Search aria-hidden="true" />
+          <input
+            type="text"
+            placeholder="Search reviews..."
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            aria-label="Search course reviews"
+          />
         </div>
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm cr-sort-btn"
+          onClick={() => {
+            setSortMode((mode) => {
+              if (mode === 'rating') return 'difficulty';
+              if (mode === 'difficulty') return 'workload';
+              if (mode === 'workload') return 'comments';
+              return 'rating';
+            });
+          }}
+          title="Change sort order"
+        >
+          <ArrowUpDown size={14} />
+          <span className="cr-sort-label">{SORT_LABELS[sortMode]}</span>
+        </button>
+        <button
+          type="button"
+          className="btn btn-primary btn-sm cr-add-btn"
+          onClick={() => {
+            setShowAddForm((open) => !open);
+            setFormError('');
+            setFormMessage('');
+          }}
+        >
+          {showAddForm ? <X size={14} /> : <Plus size={14} />}
+          {showAddForm ? 'Close' : 'Add Review'}
+        </button>
       </div>
-
-      <div className="schedule-dotted-divider shadow-repeat-divider" />
 
       <div className="cr-body animate-fadeInUp">
 
@@ -327,12 +328,12 @@ export default function CourseReview() {
       <div className="cr-layout">
         <div className="cr-list">
           {filteredReviews.length === 0 ? (
-            <div className="empty-state cr-empty">
-              <MessageSquare size={36} />
-              <h3>No reviews yet</h3>
-              <p>
-                Be the first to rate a course. Use <strong>Add Review</strong> or import a course from your CGPA Calculator.
-              </p>
+            <div className="cr-empty">
+              <span className="cr-empty-icon"><MessageSquare size={16} /></span>
+              <p className="cr-empty-hint">No reviews yet - be the first to rate a course.</p>
+              <button type="button" className="cr-empty-action" onClick={() => setShowAddForm(true)}>
+                <Plus size={13} /> Add review
+              </button>
             </div>
           ) : (
             filteredReviews.map((review) => {
@@ -473,9 +474,9 @@ export default function CourseReview() {
               </div>
             </div>
           ) : (
-            <div className="empty-state cr-detail-empty">
-              <MessageSquare size={36} />
-              <p>Select a course review from the list to see detailed comments and ratings.</p>
+            <div className="cr-empty cr-detail-empty">
+              <span className="cr-empty-icon"><MessageSquare size={16} /></span>
+              <p className="cr-empty-hint">Pick a course to see its ratings and comments.</p>
             </div>
           )}
         </aside>

@@ -7,6 +7,10 @@ import useWebSocket from '../../hooks/useWebSocket';
 import { loadSharedSync, loadSharedAsync, saveShared } from '../../utils/storageService';
 import { getLiveValue } from '../../utils/liveStore';
 import { removeNotificationById, removeNotificationsByTitle } from '../../utils/inAppNotifications';
+import { useNavigate } from 'react-router-dom';
+import { MemberAvatarPreview } from '../community/DirectoryShared';
+import { getMemberPreviewStats, resolveNoticePoster } from '../../utils/memberPreview';
+import { getCachedMembers, refreshMemberDirectory } from '../../utils/memberDirectory';
 
 const CRSR_KEY = 'aust-cr-sr-notices';
 const NOTICE_TITLE_MAX = 80;
@@ -44,6 +48,14 @@ function formatNoticePosted(notice) {
 
 export default function NoticeBoard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  // Directory records fill the poster's mini stats card (dept, ID, batch…).
+  const [members, setMembers] = useState(() => getCachedMembers());
+  useEffect(() => {
+    let alive = true;
+    refreshMemberDirectory().then((list) => { if (alive && Array.isArray(list)) setMembers(list); });
+    return () => { alive = false; };
+  }, []);
   const [expandedNotice, setExpandedNotice] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [formTitle, setFormTitle] = useState('');
@@ -326,6 +338,7 @@ export default function NoticeBoard() {
           const isExpanded = expandedNotice === notice.id;
           const accent = notice.pinned ? 'var(--accent-amber)' : 'var(--accent-blue)';
           const isOwn = isCrSr && notice.postedBy === user.id;
+          const poster = resolveNoticePoster(notice, members);
 
           const dx = swipe?.id === notice.id ? swipe.dx : 0;
           const swipeHandlers = isOwn ? {
@@ -362,10 +375,19 @@ export default function NoticeBoard() {
             >
               <div className="notice-card-head">
                 <div className="schedule-day-num-wrap">
-                  {notice.postedByName ? (
-                    <div className="notice-author-avatar" aria-hidden="true">
-                      {(notice.postedByName || 'A').charAt(0).toUpperCase()}
-                    </div>
+                  {poster ? (
+                    <MemberAvatarPreview
+                      floating
+                      member={poster}
+                      roleLabel={poster.role ? String(poster.role).toUpperCase() : 'Member'}
+                      previewStats={getMemberPreviewStats(poster)}
+                      onOpenProfile={poster.id ? () => navigate(`/members/${encodeURIComponent(poster.studentId || poster.id)}`) : undefined}
+                      avatarClassName="notice-author-avatar"
+                      avatarStyle={{}}
+                      avatarContent={poster.avatar
+                        ? <img src={poster.avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                        : (poster.name || 'A').charAt(0).toUpperCase()}
+                    />
                   ) : (
                     <UserRound size={14} className="notice-author-avatar-fallback" />
                   )}

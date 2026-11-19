@@ -5,6 +5,8 @@ import { buildCityWorld } from './nightCity';
 import { buildFireWorld } from './worldFire';
 import { buildForestWorld } from './worldForest';
 import { buildSpaceWorld } from './worldSpace';
+import { buildInterestWorld, decorateInterestCar } from './worldInterest';
+import { INTEREST_THEMES, INTEREST_BY_ID } from './interestThemes';
 
 /* ─── Orbit Express — first-person (front seat) view ───
    The same procedural track as the side view, lifted into 3D:
@@ -21,30 +23,53 @@ const HEART = 10; // heartline height — corkscrews roll around it
 const EYE = 13; // rider's eye above the rail centre
 const LOOP_SHIFT = 28;
 
-/* Backgrounds the rider can pick. elev = height of the ground the supports
-   stand on (city: a sky-deck ~110 floors up, 7 units per floor). */
+/* Ride themes (rideThemes.js). elev = height of the ground the supports
+   stand on (city: a sky-deck ~110 floors up, 7 units per floor). The track
+   layout comes from coasterTrack LAYOUTS (the scene builds it per theme);
+   here each theme picks its world, structure colours and front-seat car. */
 const THEMES = {
   city: {
     elev: 770, sky: 0x070b14, fog: [900, 7600], far: 16000,
     hemi: [0x46587c, 0x080c15, 1.5], sun: [0xc8d4ff, 1.1], sunDir: [0.35, 0.5, -0.79],
-    steel: 0x33405a, brace: 0x2a3650, footing: 0x3a4152, build: buildCityWorld,
+    steel: 0x33405a, brace: 0x2a3650, footing: 0x3a4152, build: buildCityWorld, car: 'city',
   },
   fire: {
     elev: 230, sky: 0x1c0a07, fog: [700, 6400], far: 16000,
     hemi: [0x5a2a1c, 0xff6a2a, 1.35], sun: [0xff9a6a, 0.55], sunDir: [-0.45, 0.32, -0.83],
-    steel: 0x3b2d2b, brace: 0x2e2220, footing: 0x2a1f1d, build: buildFireWorld,
+    steel: 0x3b2d2b, brace: 0x2e2220, footing: 0x2a1f1d, build: buildFireWorld, car: 'fire',
   },
   forest: {
     elev: 0, sky: 0xa9cfe0, fog: [700, 9500], far: 16000,
     hemi: [0xe4f3ff, 0x4d6b35, 1.45], sun: [0xfff0d2, 1.7], sunDir: [0.42, 0.3, -0.86],
-    steel: 0xe7e3d8, brace: 0xcfcabd, footing: 0x8f8a7e, build: buildForestWorld,
+    // wooden coaster: timber lattice, steel strap rails
+    steel: 0x8a5a34, brace: 0x6e4526, footing: 0x8f8a7e, spine: 0x5c3a20, build: buildForestWorld, car: 'forest',
   },
   space: {
     elev: 0, sky: 0x02030a, fog: null, far: 42000,
     hemi: [0x3a4a70, 0x0a0a14, 0.75], sun: [0xffffff, 2.4], sunDir: [0.55, 0.38, -0.74],
-    steel: 0x9aa4b8, brace: 0x6b7488, footing: 0x59627a, build: buildSpaceWorld,
+    steel: 0x9aa4b8, brace: 0x6b7488, footing: 0x59627a, build: buildSpaceWorld, car: 'space',
   },
 };
+/* interest themes (gamer, football, coder …): one generic world builder
+   reading the theme's spec, ground level, track colours from its palette */
+const hexNum = (c) => parseInt(c.slice(1), 16);
+INTEREST_THEMES.forEach((t) => {
+  THEMES[t.id] = {
+    elev: 0,
+    sky: hexNum(t.pal.sky),
+    fog: t.fpp.fog,
+    far: 16000,
+    hemi: [hexNum(t.fpp.hemi[0]), hexNum(t.fpp.hemi[1]), t.fpp.hemi[2]],
+    sun: [hexNum(t.fpp.sun[0]), t.fpp.sun[1]],
+    sunDir: t.fpp.sunDir,
+    steel: hexNum(t.pal.steel),
+    brace: hexNum(t.pal.steel2),
+    footing: hexNum(t.pal.footing || t.pal.steel),
+    spine: hexNum(t.pal.spine),
+    build: (args) => buildInterestWorld(t, args),
+    car: t.id,
+  };
+});
 const UP = new THREE.Vector3(0, 1, 0);
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
@@ -222,6 +247,62 @@ function chainTexture() {
   return tex;
 }
 
+/* Front-seat car, in camera space (−Z forward, +Y up). Same seat geometry for
+   every theme so the view stays familiar; shell, details and lap bar differ. */
+function buildCar(rig, kind, accentCol) {
+  const lam = (c) => new THREE.MeshLambertMaterial({ color: c });
+  const flat = (c) => new THREE.MeshBasicMaterial({ color: c });
+  const add = (geo, mat, x, y, z, rx = 0, ry = 0, rz = 0) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    m.rotation.set(rx, ry, rz);
+    rig.add(m);
+    return m;
+  };
+  const box = (w, h, d, mat, x, y, z, rx = 0) => add(new THREE.BoxGeometry(w, h, d), mat, x, y, z, rx);
+
+  const spec = INTEREST_BY_ID[kind];
+  const shellCol = spec ? hexNum(spec.car.shell) : ({ city: accentCol, fire: 0x231a18, forest: 0x7b4b2a, space: 0xe3e8f0 }[kind] ?? accentCol);
+  const shell = lam(shellCol);
+  const dark = lam(spec ? hexNum(spec.car.seat) : 0x141b29);
+  const barMat = lam(spec ? hexNum(spec.car.trim) : (kind === 'forest' ? 0xc9a24a : 0xc7d0df));
+
+  box(20, 3, 13, shell, 0, -11.2, -16); // cowl
+  box(20, 2.4, 6, shell, 0, -12.4, -24.5, 0.35); // nose
+  box(17, 1.2, 7, dark, 0, -9.4, -11, -0.25); // dash
+  add(new THREE.CylinderGeometry(0.35, 0.35, 10, 8), barMat, 0, -6.9, -11, 0, 0, Math.PI / 2); // lap bar
+  [-5.5, 5.5].forEach((x) => add(new THREE.CylinderGeometry(0.35, 0.35, 4, 8), barMat, x, -8.9, -11));
+
+  if (spec) {
+    // interest car: trim seam, twin lamps, a name badge on the cowl
+    decorateInterestCar(rig, spec, box);
+  } else if (kind === 'city') {
+    // Neon Bullet: dark seam + twin headlamps on the nose
+    box(20.2, 0.4, 0.5, dark, 0, -9.75, -21.5);
+    [-6.5, 6.5].forEach((x) => box(3, 0.9, 0.5, flat(0xffd27a), x, -12.6, -27.6, 0.35));
+  } else if (kind === 'fire') {
+    // Magma Runner: ember vents on the cowl, two horns at the nose
+    const ember = flat(0xff6a2a);
+    [-6, 0, 6].forEach((x) => box(3.6, 0.3, 1.1, ember, x, -9.62, -18));
+    [-8.6, 8.6].forEach((x) => add(new THREE.ConeGeometry(1.1, 6, 6), lam(0x3a2a26), x, -10.4, -27, -Math.PI / 2 + 0.25));
+    box(20.2, 0.4, 0.5, ember, 0, -10.1, -26.2, 0.35);
+  } else if (kind === 'forest') {
+    // Timber Classic: plank seams, brass trim, round brass headlamp
+    const seam = lam(0x4a2c18);
+    [-12.5, -16.5, -20.5].forEach((z) => box(20.2, 0.25, 0.4, seam, 0, -9.66, z));
+    box(20.4, 0.5, 0.6, barMat, 0, -9.8, -22.4);
+    add(new THREE.CylinderGeometry(2, 2, 0.8, 16), barMat, 0, -12, -27.4, Math.PI / 2 + 0.35);
+    add(new THREE.CylinderGeometry(1.4, 1.4, 0.9, 16), flat(0xffd27a), 0, -12, -27.6, Math.PI / 2 + 0.35);
+  } else if (kind === 'space') {
+    // Orbit Pod: canopy frame over the rider, accent screen on the dash
+    const frame = lam(0xc7d0df);
+    add(new THREE.TorusGeometry(11.5, 0.32, 6, 28, Math.PI), frame, 0, -10.5, -21);
+    box(0.5, 0.5, 18, frame, 0, 1, -12);
+    box(5, 0.2, 2.6, flat(accentCol), 0, -8.75, -11.4, -0.25);
+    box(20.2, 0.4, 0.5, flat(accentCol), 0, -9.75, -21.5);
+  }
+}
+
 function disposeScene(scene) {
   scene.traverse((o) => {
     if (o.geometry) o.geometry.dispose();
@@ -233,7 +314,9 @@ function disposeScene(scene) {
   });
 }
 
-export default function CoasterFPP({ track, accent, labels, apiRef, theme = 'city' }) {
+export default function CoasterFPP({
+  track, accent, labels, apiRef, theme = 'city', rideName = 'ORBIT EXPRESS',
+}) {
   const hostRef = useRef(null);
 
   useEffect(() => {
@@ -275,7 +358,7 @@ export default function CoasterFPP({ track, accent, labels, apiRef, theme = 'cit
 
     // ── track ──
     const railMat = new THREE.MeshBasicMaterial({ color: accentCol });
-    const spineMat = new THREE.MeshLambertMaterial({ color: new THREE.Color(0x182133).lerp(accentCol, 0.34) });
+    const spineMat = new THREE.MeshLambertMaterial({ color: th.spine ? new THREE.Color(th.spine) : new THREE.Color(0x182133).lerp(accentCol, 0.34) });
     const steelMat = new THREE.MeshLambertMaterial({ color: th.steel });
     scene.add(new THREE.Mesh(sweep(fr, 0, last, ring(-GAUGE, 0, 0.9, 6)), railMat));
     scene.add(new THREE.Mesh(sweep(fr, 0, last, ring(GAUGE, 0, 0.9, 6)), railMat));
@@ -381,7 +464,7 @@ export default function CoasterFPP({ track, accent, labels, apiRef, theme = 'cit
       );
       scene.add(facing(sign, signLen, 40));
     };
-    station(160, 'ORBIT EXPRESS', -1);
+    station(160, rideName, -1);
     station(track.endLen - 20, 'ARRIVAL', track.endLen - 150);
 
     // ── checkpoint gates: the arch waits just ahead of the front seat ──
@@ -438,29 +521,7 @@ export default function CoasterFPP({ track, accent, labels, apiRef, theme = 'cit
 
     // ── rider rig (lives in camera space: −Z forward, +Y up) ──
     const rig = new THREE.Group();
-    const shellMat = new THREE.MeshLambertMaterial({ color: accentCol });
-    const darkMat = new THREE.MeshLambertMaterial({ color: 0x141b29 });
-    const cowl = new THREE.Mesh(new THREE.BoxGeometry(20, 3, 13), shellMat);
-    cowl.position.set(0, -11.2, -16);
-    rig.add(cowl);
-    const nose = new THREE.Mesh(new THREE.BoxGeometry(20, 2.4, 6), shellMat);
-    nose.position.set(0, -12.4, -24.5);
-    nose.rotation.x = 0.35;
-    rig.add(nose);
-    const dash = new THREE.Mesh(new THREE.BoxGeometry(17, 1.2, 7), darkMat);
-    dash.position.set(0, -9.4, -11);
-    dash.rotation.x = -0.25;
-    rig.add(dash);
-    const barMat = new THREE.MeshLambertMaterial({ color: 0xc7d0df });
-    const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 10, 8), barMat);
-    bar.rotation.z = Math.PI / 2;
-    bar.position.set(0, -6.9, -11);
-    rig.add(bar);
-    [-5.5, 5.5].forEach((x) => {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 4, 8), barMat);
-      leg.position.set(x, -8.9, -11);
-      rig.add(leg);
-    });
+    buildCar(rig, th.car, accentCol);
     const sleeveMat = new THREE.MeshLambertMaterial({ color: 0x3a4a6c });
     const skinMat = new THREE.MeshLambertMaterial({ color: 0xc9987a });
     const armGeo = new THREE.CylinderGeometry(0.38, 0.5, 1, 8);
@@ -578,7 +639,7 @@ export default function CoasterFPP({ track, accent, labels, apiRef, theme = 'cit
       renderer.forceContextLoss();
       if (renderer.domElement.parentNode === host) host.removeChild(renderer.domElement);
     };
-  }, [track, accent, labels, apiRef, theme]);
+  }, [track, accent, labels, apiRef, theme, rideName]);
 
   return <div className="sr-fpp-canvas" ref={hostRef} />;
 }

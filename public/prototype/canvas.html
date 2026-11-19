@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AUSTWise — Flow Canvas</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="canvas.css">
+</head>
+<body>
+<header class="cbar">
+  <div class="cl"><b>AUSTWise</b><span>/ Flow Canvas</span></div>
+  <div class="cm">
+    <label class="layer u"><input type="checkbox" id="lu" checked><i></i>User flow</label>
+    <label class="layer d"><input type="checkbox" id="ld" checked><i></i>Data flow</label>
+    <label class="layer"><input type="checkbox" id="ll" checked>Labels</label>
+  </div>
+  <div class="cr">
+    <button class="cbtn" id="zout" title="Zoom out (-)">−</button><span class="zv" id="zv">10%</span><button class="cbtn" id="zin" title="Zoom in (+)">+</button>
+    <select class="cbtn" id="jump" title="Jump to a section"><option value="">Jump to…</option></select>
+    <button class="cbtn" id="fit" title="Fit all (Shift+1)">Fit</button>
+    <button class="cbtn" id="tour" title="Play the main user journey">▶ Play journey</button>
+    <a class="cbtn primary" href="index.html#/welcome" title="Open the clickable prototype">Open prototype</a>
+  </div>
+</header>
+<div class="stage" id="stage">
+  <div class="world" id="world"><svg class="edges" id="edges"></svg></div>
+</div>
+<aside class="insp" id="insp">
+  <div class="insp-empty"><b>Click a screen</b><p>See where users come from, where they go next, and which data comes in and goes out.</p>
+  <div class="legend"><div><i class="lu"></i>User flow: a click takes you to that page</div><div><i class="ld"></i>Data flow: data from one page shows up on another</div></div>
+  <p class="hint">Drag to move · Scroll to zoom · Double-click a screen to open it in the prototype</p></div>
+</aside>
+<div class="mini" id="mini"><canvas id="minic" width="220" height="130"></canvas></div>
+<script src="canvas-data.js"></script>
+<script src="canvas.js"></script>
+</body>
+</html>

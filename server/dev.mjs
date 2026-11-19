@@ -62,6 +62,19 @@ import { handleOAuthRequest } from './socialOAuth.mjs';
 import { handleCleanerRequest } from './googleCleaner.mjs';
 import { handleAuthRoute, readTokenCookie, handleDevSwitchUser, handleDevSeedUsers, handleDevUsers, issueAuthCookie, refreshAuthState, invalidateAuthState, issueWsTicket } from './auth.mjs';
 import { requireRole, requireAuth } from './middleware.mjs';
+import { containsProfanity, newStrings } from '../src/utils/profanity.js';
+import { loadStrikes, recordStrike, resetStrikes } from './strikes.mjs';
+
+// Gali filter for store writes: judges only new/edited strings. Returns true
+// (and sends 422 with the strike result) when the write must be rejected.
+async function rejectProfaneWrite(auth, prev, next, res) {
+  const hit = newStrings(prev, next).find((t) => containsProfanity(t).hit);
+  if (!hit) return false;
+  const strike = await recordStrike(auth.id, hit);
+  sendJson(res, 422, { success: false, profanity: true, ...strike, error: 'Gali deya allowed na.' });
+  return true;
+}
+loadStrikes();
 import { hasAnyRole, isStaff, isProtectedSharedKey, canManageAccount, canAssignRoles } from './roleGuards.mjs';
 import { ensureGamingSeed } from './gaming/gameCatalog.mjs';
 import { handleGamingRoute } from './gaming/gamingRoutes.mjs';
@@ -633,11 +646,13 @@ function normalizeUserSettings(raw) {
 
 /** Minimal, safe security headers. CSP/HSTS are opt-in via env so we don't
  *  break the inline-styles + external-embed heavy SPA by default. */
-function applySecurityHeaders(res) {
+function applySecurityHeaders(res, req) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   // The dev-only role matrix embeds this app's own pages in same-origin
   // iframes. Keep production protected from framing by default.
-  res.setHeader('X-Frame-Options', isDevMode ? 'SAMEORIGIN' : 'DENY');
+  // The admin Flow Canvas (public/prototype) frames its own static screens.
+  const isPrototype = req?.url?.startsWith('/prototype/');
+  res.setHeader('X-Frame-Options', isDevMode || isPrototype ? 'SAMEORIGIN' : 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   // CORB fix: allow cross-origin images (Google avatars) and API JSON to be read —
   // without this, nosniff + wrong MIME triggers CORB block on vercel→render rewrite.
@@ -1034,7 +1049,7 @@ server.on('request', async (req, res) => {
     if (requireHttps(req, res)) return;
 
     // Security headers on every response, then CORS if origin is whitelisted
-    applySecurityHeaders(res);
+    applySecurityHeaders(res, req);
     applyCorsHeaders(req, res);
 
     // CORS preflight
@@ -1075,6 +1090,7 @@ server.on('request', async (req, res) => {
     // (net::ERR_ABORTED on the module graph). Static requests always pass
     // straight through to handleApiRequest (which serves them / the SPA).
     const isApiRequest = req.url.startsWith('/api/');
+    if (isApiRequest) trackSlowApi(req, res);
     if (!isApiRequest || globalRateLimiter(req, res)) {
       // Pull the caller's current role from the DB (cached 60s) so a demotion
       // or ban applies without waiting for the 7-day JWT to expire.
@@ -1090,6 +1106,28 @@ server.on('request', async (req, res) => {
     }
   }
 });
+
+// ── Slow API log ──────────────────────────────────────────────────────
+// Logs every /api request slower than SLOW_API_MS (default 300ms) as
+//   [slow-api] 812ms GET /api/notices/:id 200
+// Query strings are dropped and numeric/uuid path parts become ":id", so
+// tokens never reach the log and the same route groups together.
+const SLOW_API_MS = Number(process.env.SLOW_API_MS || 300);
+function routeKey(url) {
+  return url.split('?')[0]
+    .replace(/\/[0-9a-f]{8}-[0-9a-f-]{27,}(?=\/|$)/gi, '/:id')
+    .replace(/\/[0-9a-f]{24}(?=\/|$)/gi, '/:id')
+    .replace(/\/\d+(?=\/|$)/g, '/:id');
+}
+function trackSlowApi(req, res) {
+  const start = process.hrtime.bigint();
+  res.once('finish', () => {
+    const ms = Number(process.hrtime.bigint() - start) / 1e6;
+    if (ms >= SLOW_API_MS) {
+      console.warn(`[slow-api] ${Math.round(ms)}ms ${req.method} ${routeKey(req.url)} ${res.statusCode}`);
+    }
+  });
+}
 
 // API + non-static request dispatch (run inside the global rate limiter).
 async function handleApiRequest(req, res) {
@@ -4408,6 +4446,20 @@ async function handleApiRequest(req, res) {
     return;
   }
 
+  // POST /api/admin/strikes/:userId/reset — clear a user's gali strikes / temp ban
+  if (req.url.startsWith('/api/admin/strikes/') && req.url.endsWith('/reset') && req.method === 'POST') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    const userId = decodeURIComponent(req.url.slice('/api/admin/strikes/'.length, -'/reset'.length));
+    try {
+      await resetStrikes(userId);
+      sendJson(res, 200, { success: true });
+    } catch (err) {
+      sendJson(res, 500, { success: false, error: err.message || 'Failed to reset strikes.' });
+    }
+    return;
+  }
+
   // ── Generic KV Store API ──────────────────────────────────────────────
   // GET /api/store/user/:key — read a per-user stored value
   if (req.url.startsWith('/api/store/user/') && req.method === 'GET') {
@@ -4551,6 +4603,7 @@ async function handleApiRequest(req, res) {
     }
     try {
       const body = await readJsonBody(req);
+      if (await rejectProfaneWrite(auth, await getSharedStoreValue(key, null), body.value, res)) return;
       if (key.startsWith('aust-semester-tasks:')) {
         if (!hasAnyRole(auth, 'cr')) {
           sendJson(res, 403, { success: false, error: 'Only CRs can publish semester tasks.' });

@@ -19,6 +19,21 @@ export const MASTER_CHECKPOINTS = [
   { id: 'cp-08', type: 'achievements', label: 'Achievements', isVisible: true, order: 8, fields: { items: [{ title: '', year: '', certificate_url: '' }] } },
   { id: 'cp-09', type: 'travel_log', label: 'Travel Log', isVisible: true, order: 9, fields: { logs: [{ destination: '', year: '', experience: '' }] } },
   { id: 'cp-10', type: 'bucket_list', label: 'Bucket List & Goals', isVisible: true, order: 10, fields: { items: [] } },
+  { id: 'cp-11', type: 'campus_life', label: 'Campus Life', isVisible: true, order: 11, fields: { favourite_course: '', toughest_course: '', favourite_spot: '', canteen_order: '', study_style: '', best_memory: '' } },
+  { id: 'cp-12', type: 'skills_stack', label: 'Skills & Tech Stack', isVisible: true, order: 12, fields: { languages: [], frameworks: [], tools: [], currently_learning: [] } },
+  { id: 'cp-13', type: 'projects', label: 'Projects', isVisible: true, order: 13, fields: { items: [{ title: '', year: '', description: '', url: '' }] } },
+  { id: 'cp-14', type: 'day_in_life', label: 'A Day in My Life', isVisible: true, order: 14, fields: { wake_up_time: '', sleep_time: '', most_productive: '', commute: '', daily_rituals: [] } },
+  { id: 'cp-15', type: 'personality', label: 'Personality', isVisible: true, order: 15, fields: { mbti: '', zodiac: '', social_battery: '', three_words: [], green_flags: [], pet_peeves: [] } },
+  { id: 'cp-16', type: 'currently', label: 'Currently', isVisible: true, order: 16, fields: { reading: '', watching: '', playing: '', listening_to: '', learning: '', working_on: '' } },
+  { id: 'cp-17', type: 'languages_spoken', label: 'Languages I Speak', isVisible: true, order: 17, fields: { items: [{ language: '', level: '' }] } },
+  { id: 'cp-18', type: 'life_timeline', label: 'Life Timeline', isVisible: true, order: 18, fields: { events: [{ year: '', title: '', description: '' }] } },
+  { id: 'cp-19', type: 'career', label: 'Career & Future', isVisible: true, order: 19, fields: { dream_job: '', dream_company: '', role_model: '', five_year_plan: '' } },
+  { id: 'cp-20', type: 'my_setup', label: 'My Setup', isVisible: true, order: 20, fields: { device: '', os: '', editor: '', phone: '', headphones: '', setup_note: '' } },
+  { id: 'cp-21', type: 'hangouts', label: 'Hangout Spots', isVisible: true, order: 21, fields: { places: [{ name: '', area: '', note: '' }] } },
+  { id: 'cp-22', type: 'pets', label: 'Pets', isVisible: true, order: 22, fields: { items: [{ name: '', species: '', note: '' }] } },
+  { id: 'cp-23', type: 'fun_facts', label: 'Fun Facts', isVisible: true, order: 23, fields: { items: [] } },
+  { id: 'cp-24', type: 'ask_me_about', label: 'Ask Me About', isVisible: true, order: 24, fields: { topics: [] } },
+  { id: 'cp-25', type: 'note_to_visitors', label: 'A Note to You', isVisible: true, order: 25, fields: { message: '', signature: '' } },
 ];
 
 // Orbit data is stored per user so each account's configured orbit survives
@@ -93,6 +108,17 @@ export function getFieldKind(type, key) {
   return 'string';
 }
 
+/** True when a checkpoint has at least one filled-in value (0 counts as empty). */
+export function hasOrbitContent(fields) {
+  const filled = (v) => {
+    if (Array.isArray(v)) return v.some(filled);
+    if (v && typeof v === 'object') return Object.values(v).some(filled);
+    if (typeof v === 'number') return v !== 0;
+    return String(v ?? '').trim() !== '';
+  };
+  return Object.values(fields || {}).some(filled);
+}
+
 export function getListItemTemplate(type, key) {
   const cp = MASTER_CHECKPOINTS.find((c) => c.type === type);
   const arr = cp?.fields?.[key];
@@ -103,11 +129,12 @@ export function getListItemTemplate(type, key) {
 function prefillUserDetails(fields, user) {
   if (!user) return fields;
   const next = { ...fields };
-  if (!next.name) next.name = user.name || '';
-  if (!next.id) next.id = user.awid || user.id || '';
-  if (!next.dept) next.dept = user.department || '';
-  if (!next.batch) next.batch = user.batchName || user.batchNo || '';
-  if (!next.blood_group) next.blood_group = user.bloodGroup || '';
+  // Profile-owned fields always mirror the live profile; only about_me is user-edited.
+  next.name = user.name || '';
+  next.id = user.awid || user.id || '';
+  next.dept = user.department || '';
+  next.batch = user.batchName || user.batchNo || '';
+  next.blood_group = user.bloodGroup || '';
   return next;
 }
 
@@ -144,8 +171,10 @@ export function OrbitsProvider({ user, children }) {
   const lastUserId = useRef(null);
   useEffect(() => {
     const uid = user?.id;
-    if (uid && uid !== 'guest' && lastUserId.current !== uid) {
-      lastUserId.current = uid;
+    // Re-sync whenever the account or any profile-owned value changes.
+    const sig = [uid, user?.name, user?.awid, user?.department, user?.batchName, user?.batchNo, user?.bloodGroup].join('|');
+    if (uid && uid !== 'guest' && lastUserId.current !== sig) {
+      lastUserId.current = sig;
       setCheckpoints((prev) => prev.map((cp) => (
         cp.id === 'cp-01' ? { ...cp, fields: prefillUserDetails(cp.fields, user) } : cp
       )));

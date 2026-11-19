@@ -27,6 +27,7 @@ import useWebSocket from '../../hooks/useWebSocket';
 import useMessageNotifications from '../../hooks/useMessageNotifications';
 import { getAccountById, getDisplayRoles, getRoleDisplayName } from '../../utils/authStorage';
 import { sanitizeUserInput, MAX_TEXT_LENGTH } from '../../utils/sanitize';
+import { containsProfanity } from '../../utils/profanity';
 import useAdminMode from '../../hooks/useAdminMode';
 import MastheadAccessControl from '../../components/MastheadAccessControl';
 import FeatureAccessGate from '../admin/FeatureAccessGate';
@@ -34,6 +35,9 @@ import SidebarPageAccessPanel, { SidebarPageAccessHeader } from '../admin/Sideba
 import '../campus/SemesterViewWidget.css';
 import '../daily-life/DailyMasthead.css';
 import './MessagesPage.css';
+import { MemberAvatarPreview } from '../community/DirectoryShared';
+import { getMemberPreviewStats, mergeWithDirectory } from '../../utils/memberPreview';
+import { getCachedMembers } from '../../utils/memberDirectory';
 
 /* ─── Emoji Reactions ─── */
 const REACTION_EMOJIS = getDefaultReactions();
@@ -344,6 +348,13 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
       fromId: replyTarget.fromId,
     } : null;
 
+    // Gali: send so the server issues the warning/ban, but don't keep it locally.
+    if (containsProfanity(text).hit) {
+      if (wsReady) wsSendMessage(userId, peerId, text, String(Date.now()), new Date().toISOString(), null);
+      setDraft('');
+      return;
+    }
+
     const saved = storeMessage(userId, peerId, text, replyData);
     if (!saved) return;
 
@@ -537,6 +548,8 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
   };
 
   const menuMessage = actionMenu ? thread.find((msg) => msg.id === actionMenu.id) : null;
+  // Mini stats card data: the peer, filled in from the member directory.
+  const peerCard = mergeWithDirectory({ ...(peer || {}), id: peerId, name: peer?.name || 'Member' }, getCachedMembers());
 
   return (
     <>
@@ -550,15 +563,16 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
           <ArrowLeft size={18} />
         </button>
         <div className="avatar-wrapper">
-          <button
-            type="button"
-            className="avatar chat-avatar-btn"
-            onClick={() => navigate(`/members/${peerId}`)}
-            title={peer?.name ? `View ${peer.name}'s profile / ID` : 'View profile'}
-            aria-label="View profile"
-          >
-            {peer?.avatar ? <img src={peer.avatar} alt="" referrerPolicy="no-referrer" onError={(event) => { event.currentTarget.style.display = 'none'; }} /> : peer?.initials}
-          </button>
+          <MemberAvatarPreview
+            floating
+            member={peerCard}
+            roleLabel={peer?.role ? getRoleDisplayName(peer.role) : 'Member'}
+            previewStats={getMemberPreviewStats(peerCard)}
+            onOpenProfile={() => navigate(`/members/${peerId}`)}
+            avatarClassName="avatar chat-avatar-btn"
+            avatarStyle={{}}
+            avatarContent={peer?.avatar ? <img src={peer.avatar} alt="" referrerPolicy="no-referrer" onError={(event) => { event.currentTarget.style.display = 'none'; }} /> : peer?.initials}
+          />
           <span className={`avatar-status-dot ${connected ? 'online' : 'offline'}`} />
         </div>
         <div className="chat-peer-info">

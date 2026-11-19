@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { MemberIconPreview } from '../community/DirectoryShared';
 import { Shield, ShieldCheck, ShieldX, Coffee, Activity, Users, Trash2, Plus, AlertCircle, Eye, EyeOff, Edit3, Search, X, Save, Check, CheckCircle2, XCircle, ClipboardList, CalendarDays, Mic, CalendarClock, Ban, Banknote, FileText, Percent, PanelsTopLeft, HardDrive, Clock } from 'lucide-react';
 import { getAuditoriumEvent, setAuditoriumEvent, defaultAuditoriumEvent } from '../../data/mockData';
 import { loadSharedSync, loadSharedAsync, saveShared } from '../../utils/storageService';
@@ -17,6 +18,7 @@ import AcademicManagementPanel from './AcademicManagementPanel';
 import PageAvailabilityPanel from './PageAvailabilityPanel';
 import FeatureAccessPanel from './FeatureAccessPanel';
 import QuestionBankPanel from './QuestionBankPanel';
+import ModerationStrikesPanel from './ModerationStrikesPanel';
 import SidebarPageAccessPanel, { SidebarPageAccessHeader } from './SidebarPageAccessPanel';
 import { useAuth } from '../../context/AuthContext';
 import { PROVIDER_MAP } from '../../utils/socialOAuth.jsx';
@@ -171,6 +173,7 @@ export default function AdminPanelPage() {
       'bhara-koto': '/admin-panel/bhara-koto',
       'attendance': '/admin-panel/attendance',
       'telegram-connections': '/admin-panel/telegram-connections',
+      'moderation': '/admin-panel/moderation',
       'features': '/admin-panel/features',
       'question-bank': '/admin-panel/question-bank',
       'access-requests': '/admin-panel/access-requests'
@@ -786,6 +789,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
             <button className={activeTab === 'library' ? 'is-active' : ''} onClick={() => navigateToTab('library')}><span>Library</span><small>Seat capacity and occupancy</small></button>
             <button className={activeTab === 'attendance' ? 'is-active' : ''} onClick={() => navigateToTab('attendance')}><span>Attendance</span><small>Review Telegram attendance records</small></button>
             <button className={activeTab === 'telegram-connections' ? 'is-active' : ''} onClick={() => navigateToTab('telegram-connections')}><span>Telegram connections</span><small>Search linked accounts and Chat IDs</small></button>
+            <button className={activeTab === 'moderation' ? 'is-active' : ''} onClick={() => navigateToTab('moderation')}><span>Gali strikes</span><small>Warnings, temp bans and resets</small></button>
             <button className={activeTab === 'bhara-koto' ? 'is-active' : ''} onClick={() => navigateToTab('bhara-koto')}><span>Campus services</span><small>Manage Bhara Koto listings</small></button>
             <button className={activeTab === 'auditorium' ? 'is-active' : ''} onClick={() => navigateToTab('auditorium')}><span>Auditorium</span><small>Manage campus event details</small></button>
             <button className={activeTab === 'campus-map' ? 'is-active' : ''} onClick={() => navigateToTab('campus-map')}><span>Campus map</span><small>Update campus map information</small></button>
@@ -1985,18 +1989,16 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                 {filteredCodeShares.map((sharer) => (
                   <article key={sharer.userId} className="glass-card-static admin-code-share-card">
                     <div className="admin-code-share-head">
-                      <button
-                        type="button"
-                        className="admin-code-avatar"
-                        onClick={() => navigate(`/members/${encodeURIComponent(sharer.studentId || sharer.userId)}`)}
-                        title={`View ${sharer.name}'s profile`}
-                      >
-                        {sharer.avatar ? (
+                      <MemberIconPreview
+                        person={sharer}
+                        avatarClassName="admin-code-avatar"
+                        onOpenProfile={() => navigate(`/members/${encodeURIComponent(sharer.studentId || sharer.userId)}`)}
+                        avatarContent={sharer.avatar ? (
                           <img src={sharer.avatar} alt="" referrerPolicy="no-referrer" />
                         ) : (
                           (sharer.name || '?').slice(0, 2).toUpperCase()
                         )}
-                      </button>
+                      />
                       <div>
                         <strong>{sharer.name}</strong>
                         <span>{sharer.department || '—'}{sharer.batchLabel ? ` · ${sharer.batchLabel}` : ''}{sharer.yearSemLabel ? ` · ${sharer.yearSemLabel}` : ''}</span>
@@ -2022,18 +2024,16 @@ if (!res.ok || !Array.isArray(data.applications)) return;
                         <ul>
                           {sharer.uses.map((entry) => (
                             <li key={`${entry.userId}-${entry.code}`}>
-                              <button
-                                type="button"
-                                className="admin-code-recipient-avatar"
-                                onClick={() => navigate(`/members/${encodeURIComponent(entry.studentId || entry.userId)}`)}
-                                title={`View ${entry.name}'s profile`}
-                              >
-                                {entry.avatar ? (
+                              <MemberIconPreview
+                                person={entry}
+                                avatarClassName="admin-code-recipient-avatar"
+                                onOpenProfile={() => navigate(`/members/${encodeURIComponent(entry.studentId || entry.userId)}`)}
+                                avatarContent={entry.avatar ? (
                                   <img src={entry.avatar} alt="" referrerPolicy="no-referrer" />
                                 ) : (
                                   (entry.name || '?').slice(0, 2).toUpperCase()
                                 )}
-                              </button>
+                              />
                               <span><strong>{entry.name}</strong> · {entry.department || '—'}{entry.batchLabel ? ` · ${entry.batchLabel}` : ''}{entry.yearSemLabel ? ` · ${entry.yearSemLabel}` : ''} · <code>{entry.code}</code></span>
                             </li>
                           ))}
@@ -2736,6 +2736,8 @@ if (!res.ok || !Array.isArray(data.applications)) return;
 
         {/* TELEGRAM CONNECTIONS DIRECTORY */}
         {activeTab === 'telegram-connections' && <TelegramConnectionsPanel />}
+
+        {activeTab === 'moderation' && <ModerationStrikesPanel />}
       </div>
     </div>
   );

@@ -14,6 +14,9 @@ import {
 import { sendMessage } from '../../utils/messageStorage';
 import { sanitizeUserInput, MAX_TITLE_LENGTH, MAX_SHORT_TEXT_LENGTH } from '../../utils/sanitize';
 import ConfirmDialog from '../marketplace/ConfirmDialog';
+import { MemberAvatarPreview } from './DirectoryShared';
+import { getMemberPreviewStats, mergeWithDirectory } from '../../utils/memberPreview';
+import { getCachedMembers } from '../../utils/memberDirectory';
 
 function AvatarImage({ src, name }) {
   const [failed, setFailed] = useState(false);
@@ -99,6 +102,7 @@ export default function MentorRequests() {
   };
 
   const navigate = useNavigate();
+  const members = getCachedMembers();
 
   const handleRespondAsMentor = (req) => {
     if (user?.isGuest) {
@@ -292,15 +296,24 @@ export default function MentorRequests() {
             return (
             <article key={req.id} className="community-cell mentor-req-card">
               <header className="mentor-card-head">
-                <button
-                  type="button"
-                  className="mentor-card-avatar"
-                  onClick={() => navigate(`/members/${req.contributorId}`)}
-                  title={`View ${req.requesterName}'s profile / ID`}
-                  aria-label={`View ${req.requesterName}'s profile`}
-                >
-                  <AvatarImage src={req.avatar} name={req.requesterName} />
-                </button>
+                {(() => {
+                  const card = mergeWithDirectory(
+                    { id: req.contributorId, name: req.requesterName, avatar: req.avatar, department: req.department, batch: req.batch },
+                    members,
+                  );
+                  return (
+                    <MemberAvatarPreview
+                      floating
+                      member={card}
+                      roleLabel={card.role ? String(card.role).toUpperCase() : 'Member'}
+                      previewStats={getMemberPreviewStats(card)}
+                      onOpenProfile={() => navigate(`/members/${req.contributorId}`)}
+                      avatarClassName="mentor-card-avatar"
+                      avatarStyle={{}}
+                      avatarContent={<AvatarImage src={req.avatar} name={req.requesterName} />}
+                    />
+                  );
+                })()}
                 <div className="mentor-card-who">
                   <h3 className="mentor-card-name">{req.requesterName}</h3>
                   <p className="mentor-card-meta">Batch {req.batch} · {req.department} · {formatPostedDate(req.postedAt)}</p>

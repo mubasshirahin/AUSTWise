@@ -155,7 +155,12 @@ export default function PasswordManagerPage() {
     const dx = touch.clientX - start.x;
     const dy = touch.clientY - start.y;
     if (Math.abs(dx) < 42 || Math.abs(dx) < Math.abs(dy) * 1.25) return;
-    setSwipeState({ id, direction: dx < 0 ? 'left' : 'right' });
+    const direction = dx < 0 ? 'left' : 'right';
+    setSwipeState((prev) => {
+      // Open row + swipe the other way → settle back in the middle (closed)
+      if (prev?.id === id && prev.direction !== direction) return null;
+      return { id, direction };
+    });
   };
 
   const load = useCallback(async () => {

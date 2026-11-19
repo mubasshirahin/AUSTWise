@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AUSTWise — Design Docs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="docs/docs.css">
+</head>
+<body>
+<aside class="side" id="side">
+  <div class="brand"><b>AUSTWise</b><span>Design Docs</span></div>
+  <nav id="nav"></nav>
+  <div class="side-foot"><a href="index.html" target="_blank">Clickable prototype ↗</a><a href="README.md" target="_blank">README ↗</a></div>
+</aside>
+<main class="main">
+  <header class="top">
+    <button class="cbtn menu" id="menu" title="Diagrams">☰</button>
+    <div class="ttl"><h1 id="title">—</h1><p id="sub"></p></div>
+    <div class="tools" id="tools">
+      <input class="cbtn find" id="find" placeholder="Find…" list="findlist"><datalist id="findlist"></datalist>
+      <button class="cbtn" id="zout" title="Zoom out (-)">−</button><span class="zv" id="zv">100%</span><button class="cbtn" id="zin" title="Zoom in (+)">+</button>
+      <button class="cbtn" id="fit" title="Fit (Shift+1)">Fit</button>
+      <button class="cbtn primary" id="dl" title="Download as SVG">Download SVG</button>
+    </div>
+  </header>
+  <div class="stage" id="stage"><svg id="svg" xmlns="http://www.w3.org/2000/svg"></svg><iframe id="frame" title="Diagram" hidden></iframe>
+    <div class="legend" id="legend"></div>
+    <div class="about" id="about"></div>
+  </div>
+</main>
+<div class="tip" id="tip"></div>
+<script src="canvas-data.js"></script>
+<script src="docs/diagram.js"></script>
+<script src="docs/d-erd.js"></script>
+<script src="docs/d-uml.js"></script>
+<script src="docs/d-behaviour.js"></script>
+<script src="docs/d-system.js"></script>
+<script src="docs/d-api-data.js"></script>
+<script src="docs/d-reference.js"></script>
+<script src="docs/docs.js"></script>
+</body>
+</html>
