@@ -27,6 +27,7 @@ import useWebSocket from '../../hooks/useWebSocket';
 import useMessageNotifications from '../../hooks/useMessageNotifications';
 import { getAccountById, getDisplayRoles, getRoleDisplayName } from '../../utils/authStorage';
 import { sanitizeUserInput, MAX_TEXT_LENGTH } from '../../utils/sanitize';
+import { containsProfanity } from '../../utils/profanity';
 import useAdminMode from '../../hooks/useAdminMode';
 import MastheadAccessControl from '../../components/MastheadAccessControl';
 import FeatureAccessGate from '../admin/FeatureAccessGate';
@@ -346,6 +347,13 @@ function ChatThread({ userId, peerId, peer, onSent, wsSendMessage, wsSendTyping,
       text: replyTarget.text.slice(0, 120),
       fromId: replyTarget.fromId,
     } : null;
+
+    // Gali: send so the server issues the warning/ban, but don't keep it locally.
+    if (containsProfanity(text).hit) {
+      if (wsReady) wsSendMessage(userId, peerId, text, String(Date.now()), new Date().toISOString(), null);
+      setDraft('');
+      return;
+    }
 
     const saved = storeMessage(userId, peerId, text, replyData);
     if (!saved) return;

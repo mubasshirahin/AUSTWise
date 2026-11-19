@@ -6,8 +6,9 @@ import {
   Play, Pause, RotateCcw, Check, TrainFront, Gauge, ScanEye, Map as MapIcon,
 } from 'lucide-react';
 import { useStalk } from './StalkContext';
-import { useAuth } from '../../context/AuthContext';
-import { loadUserFavoriteColor, hasOrbitContent } from '../orbits/OrbitsContext';
+import { createPortal } from 'react-dom';
+import { hasOrbitContent } from '../orbits/OrbitsContext';
+import { useTheme } from '../../context/ThemeContext';
 import { MoviesSection, GamingSection, AnimeSection, MusicSection, ThisOrThatSection } from './StalkPortfolio';
 import OrbitsCheckpointPreview from '../orbits/OrbitsPreview';
 import { withDevFakeFields, DEV_FAKE_STOPS } from './devFakeStops';
@@ -113,8 +114,7 @@ function shortLabel(label) {
 }
 
 export default function StalkRoadScene() {
-  const { target, portfolio, customStops, favoriteColor: tripFavoriteColor, close } = useStalk();
-  const { user } = useAuth();
+  const { target, portfolio, customStops, close } = useStalk();
   const scrollerRef = useRef(null);
   const stageRef = useRef(null);
   const bandRef = useRef(null);
@@ -132,6 +132,10 @@ export default function StalkRoadScene() {
   const stopLabelRef = useRef(null);
   const autoRef = useRef({ on: false, pauseUntil: 0, pauseMs: 0, pos: -1, dwelled: new Set() });
   const countRef = useRef(null);
+  // Mobile gas pedal: hold to accelerate, release to coast to a stop.
+  const gasRef = useRef({ down: false, vel: 0, pos: -1 });
+  const [gasDown, setGasDown] = useState(false);
+  const gasBtnRef = useRef(null);
   const stopsLenRef = useRef(0);
   const [autoOn, setAutoOn] = useState(false);
   const fppApiRef = useRef(null);
@@ -153,6 +157,7 @@ export default function StalkRoadScene() {
   const [bg, setBg] = useState(readBg);
   const bgOpen = bgOpenRaw;
   const bgRef = useRef(null);
+  const bgMenuRef = useRef(null);
   const bgInfo = themeById(bg);
   useEffect(() => {
     try { localStorage.setItem('stalk-fpp-bg', bg); } catch { /* ignore */ }
@@ -162,7 +167,7 @@ export default function StalkRoadScene() {
   }, []);
   useEffect(() => {
     if (!bgOpen) return undefined;
-    const onDown = (e) => { if (!bgRef.current?.contains(e.target)) setBgOpen(false); };
+    const onDown = (e) => { if (!bgRef.current?.contains(e.target) && !bgMenuRef.current?.contains(e.target)) setBgOpen(false); };
     const onEsc = (e) => {
       if (e.key !== 'Escape') return;
       e.stopPropagation();
@@ -213,13 +218,9 @@ export default function StalkRoadScene() {
     track.stations.end.x - 100,
   ], [track]);
 
-  // The accent rides the user's chosen favorite color for self-visits and
-  // orbit drives; everyone else keeps their deterministic portfolio color.
-  const isSelf = Boolean(user && (target?.id === user.id || target?.id === user.awid || target?.awid === user.id));
-  const savedFav = isSelf ? (() => { try { return loadUserFavoriteColor(user?.id); } catch { return ''; } })() : '';
-  const accent = isOrbitDrive
-    ? (tripFavoriteColor || savedFav || '#00ffcc')
-    : (savedFav || portfolio?.favoriteColor || '#00ffcc');
+  // The ride follows the active theme's accent (no per-user favourite color).
+  const { accent: themeAccent } = useTheme() || {};
+  const accent = themeAccent || '#F5A623';
 
   const stars = useMemo(() => {
     const r = mulberry(2026);
@@ -398,6 +399,24 @@ export default function StalkRoadScene() {
         }
       }
 
+      // gas pedal (mobile): ease up to cruise speed while held, glide to a stop on release
+      const g = gasRef.current;
+      if (g.down || g.vel > 0) {
+        const max = scroller.scrollHeight - scroller.clientHeight;
+        const top = max / ((STOP_COUNT + 1) * 2.4);
+        // ~2.5s to reach full speed; ~1s to coast from full speed to a stop
+        g.vel = g.down ? Math.min(top, g.vel + top * 0.4 * dt) : Math.max(0, g.vel - top * 1.0 * dt);
+        if (g.pos < 0 || Math.abs(g.pos - scroller.scrollTop) > 2) g.pos = scroller.scrollTop;
+        if (g.pos >= max) g.vel = 0;
+        g.pos = Math.min(max, g.pos + g.vel * dt);
+        scroller.scrollTop = g.pos;
+        const btn = gasBtnRef.current;
+        if (btn) {
+          btn.style.setProperty('--gas', (top > 0 ? g.vel / top : 0).toFixed(3));
+          btn.classList.toggle('is-moving', g.vel > 0);
+        }
+      }
+
       // station countdown: how long the card stays before the ride moves on
       const cd = countRef.current;
       if (cd) {
@@ -497,7 +516,8 @@ export default function StalkRoadScene() {
       // checkpoint panels
       let idx = -1;
       for (let i = 0; i < STOP_COUNT; i += 1) {
-        if (curP >= gateCentres[i] - CP_LEAD && curP < gateCentres[i] + CP_TRAIL) idx = i;
+        const gap = 1 / (SEGMENTS - 1);
+        if (curP >= gateCentres[i] - Math.min(CP_LEAD, gap * 0.12) && curP < gateCentres[i] + Math.min(CP_TRAIL, gap * 0.3)) idx = i;
       }
       // auto ride: the card is up only while the train waits at the station
       if (a.on) idx = now < a.pauseUntil ? a.stopIdx : -1;
@@ -777,8 +797,8 @@ export default function StalkRoadScene() {
                   <span>{bgInfo.label}</span>
                   <ChevronDown size={13} className="sr-bg-chev" />
                 </button>
-                {bgOpen && (
-                  <div className="sr-bg-menu" role="menu" aria-label="Ride theme">
+                {bgOpen && ((menu) => (stageRef.current && window.matchMedia('(max-width: 768px), (pointer: coarse)').matches ? createPortal(menu, stageRef.current) : menu))(
+                  <div className="sr-bg-menu" ref={bgMenuRef} role="menu" aria-label="Ride theme">
                     <div className="sr-bg-head">Ride theme · both views</div>
                     <div className="sr-bg-scroll">
                       {THEME_GROUPS.map(([group, title]) => (
@@ -842,6 +862,24 @@ export default function StalkRoadScene() {
             </div>
           </div>
 
+          <button
+            ref={gasBtnRef}
+            type="button"
+            className={`sr-gas${gasDown ? ' is-down' : ''}`}
+            aria-label="Hold to ride forward"
+            onPointerDown={(e) => { e.preventDefault(); stopAuto(); gasRef.current.down = true; gasRef.current.pos = -1; setGasDown(true); try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ } }}
+            onPointerUp={() => { gasRef.current.down = false; setGasDown(false); }}
+            onPointerCancel={() => { gasRef.current.down = false; setGasDown(false); }}
+            onContextMenu={(e) => e.preventDefault()}
+          >
+            <svg className="sr-gas-ring" viewBox="0 0 100 100" aria-hidden="true">
+              <circle className="sr-gas-track" cx="50" cy="50" r="46" />
+              <circle className="sr-gas-spin" cx="50" cy="50" r="46" />
+              <circle className="sr-gas-fill" cx="50" cy="50" r="40" pathLength="100" />
+            </svg>
+            <Gauge size={22} className="sr-gas-icon" />
+          </button>
+
           {/* ride HUD: stop label, track mini-map, speed */}
           <div className="sr-ride">
             <span className="sr-stop-label" ref={stopLabelRef}>{STOP_COUNT} stops</span>
@@ -856,19 +894,6 @@ export default function StalkRoadScene() {
               <span className="sr-mini-dot" ref={miniDotRef} />
             </div>
             <span className="sr-speed"><Gauge size={13} /><b ref={speedRef}>0</b><small>km/h</small></span>
-          </div>
-
-          {/* intro card */}
-          <div className="sr-intro">
-            <span className="sr-intro-over">Now boarding</span>
-            <h2 className="sr-intro-title">{portfolio.name}&apos;s Orbit</h2>
-            <p className="sr-intro-sub">{STOP_COUNT} stops on the {bgInfo.car} · {bgInfo.blurb}. Keep your hands inside the car.</p>
-            <div className="sr-intro-actions">
-              <button type="button" className="sr-intro-btn" onClick={toggleAuto}>
-                <Play size={14} /> Auto ride
-              </button>
-              <span className="sr-intro-hint"><ChevronDown size={15} /> or scroll to ride</span>
-            </div>
           </div>
 
           {/* checkpoint panels */}
@@ -903,7 +928,6 @@ export default function StalkRoadScene() {
               <div className="sr-done-chips">
                 <span className="sr-done-chip"><Route size={12} /> {portfolio.miles} mi</span>
                 <span className="sr-done-chip"><Flag size={12} /> {STOP_COUNT} stops</span>
-                <span className="sr-done-chip"><span className="sr-done-swatch" /> #{String(accent).replace('#', '').toUpperCase()}</span>
               </div>
               <div className="sr-done-actions">
                 <button type="button" className="sr-done-btn" onClick={close}>Done</button>

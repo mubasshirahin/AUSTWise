@@ -30,6 +30,17 @@
 
 import { readTokenCookie } from './auth.mjs';
 import { hasAnyRole, isBannedAccount } from './roleGuards.mjs';
+import { activeBanUntil, tempBanBody } from './strikes.mjs';
+
+/** Sends 403 for a gali temp-ban (staff are exempt). Returns true if blocked. */
+function blockTempBan(payload, res) {
+  if (hasAnyRole(payload, 'admin', 'moderator')) return false;
+  const until = activeBanUntil(payload.id);
+  if (!until) return false;
+  res.writeHead(403, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(tempBanBody(until)));
+  return true;
+}
 
 /**
  * Factory returning a middleware function that:
@@ -59,6 +70,7 @@ export function requireRole(...allowedRoles) {
       res.end(JSON.stringify({ success: false, banned: true, error: 'This account is suspended.' }));
       return null;
     }
+    if (!allowedRoles.includes('banned') && blockTempBan(payload, res)) return null;
     if (!hasAnyRole(payload, ...allowedRoles)) {
       res.writeHead(403, {
         'Content-Type': 'application/json',
@@ -87,5 +99,6 @@ export function requireAuth(req, res) {
     res.end(JSON.stringify({ success: false, banned: true, error: 'This account is suspended.' }));
     return null;
   }
+  if (blockTempBan(payload, res)) return null;
   return payload;
 }

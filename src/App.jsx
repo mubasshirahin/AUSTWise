@@ -9,6 +9,7 @@ import TopNavbar from './layout/TopNavbar';
 import SearchModal from './layout/SearchModal';
 import MobileNav from './layout/MobileNav';
 import ErrorBoundary from './components/ErrorBoundary';
+import ModerationNotice from './components/ModerationNotice';
 import RoleAccessControlCard from './features/admin/RoleAccessControlCard';
 import { ADMIN_PAGE_CONFIG } from './features/admin/SidebarPageAccessPanel';
 import { useRoleAccess } from './hooks/useRoleAccess';
@@ -527,6 +528,7 @@ function App() {
         <AuthProvider>
           <PomodoroProvider>
             <AppShell />
+            <ModerationNotice />
           </PomodoroProvider>
         </AuthProvider>
       </ThemeProvider>

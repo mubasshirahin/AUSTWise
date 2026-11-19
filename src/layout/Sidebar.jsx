@@ -128,7 +128,7 @@ export default function Sidebar({ collapsed: collapsedProp, onToggle, drawerOpen
     ];
     bottomList = [
       { path: '/settings', label: 'Settings', icon: Settings },
-      { path: '/admin-panel/flow-canvas', label: 'Flow Canvas', icon: Workflow },
+      { path: '/admin-panel/flow-canvas', label: 'Design Docs', icon: Workflow },
     ];
   }
 

@@ -62,6 +62,19 @@ import { handleOAuthRequest } from './socialOAuth.mjs';
 import { handleCleanerRequest } from './googleCleaner.mjs';
 import { handleAuthRoute, readTokenCookie, handleDevSwitchUser, handleDevSeedUsers, handleDevUsers, issueAuthCookie, refreshAuthState, invalidateAuthState, issueWsTicket } from './auth.mjs';
 import { requireRole, requireAuth } from './middleware.mjs';
+import { containsProfanity, newStrings } from '../src/utils/profanity.js';
+import { loadStrikes, recordStrike, resetStrikes } from './strikes.mjs';
+
+// Gali filter for store writes: judges only new/edited strings. Returns true
+// (and sends 422 with the strike result) when the write must be rejected.
+async function rejectProfaneWrite(auth, prev, next, res) {
+  const hit = newStrings(prev, next).find((t) => containsProfanity(t).hit);
+  if (!hit) return false;
+  const strike = await recordStrike(auth.id, hit);
+  sendJson(res, 422, { success: false, profanity: true, ...strike, error: 'Gali deya allowed na.' });
+  return true;
+}
+loadStrikes();
 import { hasAnyRole, isStaff, isProtectedSharedKey, canManageAccount, canAssignRoles } from './roleGuards.mjs';
 import { ensureGamingSeed } from './gaming/gameCatalog.mjs';
 import { handleGamingRoute } from './gaming/gamingRoutes.mjs';
@@ -4410,6 +4423,20 @@ async function handleApiRequest(req, res) {
     return;
   }
 
+  // POST /api/admin/strikes/:userId/reset — clear a user's gali strikes / temp ban
+  if (req.url.startsWith('/api/admin/strikes/') && req.url.endsWith('/reset') && req.method === 'POST') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    const userId = decodeURIComponent(req.url.slice('/api/admin/strikes/'.length, -'/reset'.length));
+    try {
+      await resetStrikes(userId);
+      sendJson(res, 200, { success: true });
+    } catch (err) {
+      sendJson(res, 500, { success: false, error: err.message || 'Failed to reset strikes.' });
+    }
+    return;
+  }
+
   // ── Generic KV Store API ──────────────────────────────────────────────
   // GET /api/store/user/:key — read a per-user stored value
   if (req.url.startsWith('/api/store/user/') && req.method === 'GET') {
@@ -4553,6 +4580,7 @@ async function handleApiRequest(req, res) {
     }
     try {
       const body = await readJsonBody(req);
+      if (await rejectProfaneWrite(auth, await getSharedStoreValue(key, null), body.value, res)) return;
       if (key.startsWith('aust-semester-tasks:')) {
         if (!hasAnyRole(auth, 'cr')) {
           sendJson(res, 403, { success: false, error: 'Only CRs can publish semester tasks.' });

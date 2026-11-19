@@ -4,6 +4,7 @@ import {
   Activity, ArrowLeft, Award, BookOpen, CalendarDays, CheckCircle2, Coffee, Droplets, FileText, Flame, GraduationCap, Handshake, Mail,
   MessageCircle, MessageSquare, Orbit, Phone, UserRound, Users, Vote,
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import { useStalk } from '../stalk-road/StalkContext';
 import { getAllAccounts, getDisplayRoles, getRoleDisplayName } from '../../utils/authStorage';
 import { getDisplayBatchText } from '../../utils/batchIdentity';
@@ -69,13 +70,14 @@ function Metric({ icon: Icon, label, value, tone }) {
     <div className={`member-profile-metric ${tone || ''}`}>
       <span className="member-profile-metric-icon"><Icon size={17} /></span>
       <strong>{displayValue ?? 0}</strong>
-      <span>{label}</span>
+      <span className="member-profile-metric-label">{label}</span>
     </div>
   );
 }
 
 export default function MemberProfilePage() {
   const { memberId } = useParams();
+  const { user: currentUser } = useAuth();
   const navigate = useNavigate();
   const { stalk } = useStalk();
   const [profile, setProfile] = useState(null);
@@ -183,7 +185,8 @@ export default function MemberProfilePage() {
   const lastSeenDate = profile.lastSeenAt
     ? new Date(profile.lastSeenAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
     : '';
-  const lastActiveText = profile.status === 'online'
+  const isSelf = Boolean(currentUser?.id) && String(currentUser.id) === String(profile.id);
+  const lastActiveText = (isSelf || profile.status === 'online')
     ? 'Active now'
     : lastSeenDate ? `Last active ${lastSeenDate}` : '';
   const identity = [
@@ -255,7 +258,6 @@ export default function MemberProfilePage() {
             <button type="button" className="member-profile-orbit" onClick={() => stalk(profile)} aria-label={`Visit ${profile.name}'s Orbit`}>
               <Orbit size={15} /> Visit Orbit <span aria-hidden="true">↗</span>
             </button>
-            <span className="member-profile-joined"><CalendarDays size={13} />{joinedDate ? `Member since ${joinedDate}` : 'AUSTWise member'}</span>
           </div>
         </div>
       </section>

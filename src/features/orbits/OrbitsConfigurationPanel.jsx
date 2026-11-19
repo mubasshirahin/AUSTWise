@@ -195,7 +195,12 @@ function ObjectListEditor({ items, template, onChange }) {
   );
 }
 
+const PROFILE_FIELDS = new Set(['name', 'id', 'dept', 'batch', 'blood_group']);
+
 function FieldEditor({ type, fieldKey, value, onChange }) {
+  if (type === 'user_details' && PROFILE_FIELDS.has(fieldKey)) {
+    return <input className="orb-input" value={value ?? ''} readOnly title="Synced from your profile" />;
+  }
   const kind = getFieldKind(type, fieldKey);
   if (kind === 'number') {
     return <input type="number" className="orb-input" value={value} onChange={(e) => onChange(Number(e.target.value))} />;

@@ -1,0 +1,66 @@
+// Builds docs/d-erd.js from server/prisma/schema.prisma so the ERD always matches the real database.
+// Run: node public/prototype/tools/build-erd.mjs
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const root = path.resolve(here, '../../..');
+const src = fs.readFileSync(path.join(root, 'server/prisma/schema.prisma'), 'utf8');
+
+const models = {};
+for (const m of src.matchAll(/^model (\w+) \{([\s\S]*?)^\}/gm)) {
+  const fields = []; const rels = []; let table = m[1];
+  for (const raw of m[2].split('\n')) {
+    const l = raw.trim(); if (!l || l.startsWith('//')) continue;
+    const map = l.match(/^@@map\("([^"]+)"\)/); if (map) { table = map[1]; continue; }
+    const uniq = l.match(/^@@(unique|id)\(\[([^\]]+)\]/); if (uniq) { uniq[2].split(',').map((x) => x.trim()).forEach((n) => { const f = fields.find((x) => x.n === n); if (f) f[uniq[1] === 'id' ? 'pk' : 'uq'] = true; }); continue; }
+    if (l.startsWith('@@')) continue;
+    const [n, t] = l.split(/\s+/); const rest = l.slice(l.indexOf(t) + t.length);
+    const base = t.replace(/[?[\]]/g, '');
+    const rel = rest.match(/@relation\((?:"[^"]+",\s*)?fields:\s*\[([^\]]+)\],\s*references:\s*\[([^\]]+)\]/);
+    if (rel) { rels.push({ field: rel[1].trim(), to: base, ref: rel[2].trim(), name: n }); continue; }
+    if (/^[A-Z]/.test(base) && !['String', 'Int', 'Float', 'Boolean', 'DateTime', 'Bytes', 'Json', 'BigInt', 'Decimal'].includes(base)) continue; // back-relation list
+    fields.push({ n, t, pk: rest.includes('@id'), uq: rest.includes('@unique') });
+  }
+  models[m[1]] = { table, fields, rels };
+}
+for (const [name, m] of Object.entries(models)) for (const r of m.rels) { const f = m.fields.find((x) => x.n === r.field); if (f) f.fk = r.to; }
+
+const GROUPS = [
+  ['Accounts & access', ['User', 'StudentDetails', 'Invitation', 'RoleApplication', 'UserStore', 'SharedStore']],
+  ['Academics', ['Routine', 'RoutineTemplate', 'SharedRoutine', 'SemesterResult', 'TranscriptTemplate', 'Course', 'QuestionPaper', 'Cheatsheet']],
+  ['Social & messaging', ['Message', 'MessageReaction', 'Notice', 'MentorRequest', 'MarketplaceListing', 'Club', 'ClubMembership']],
+  ['Campus', ['CanteenMenuItem', 'CanteenFeedback', 'LibraryCheckin', 'CampusLocation']],
+  ['Telegram bot', ['TelegramUser', 'TelegramAttendance']],
+  ['Gaming', ['Game', 'GameRoom', 'GameRoomMember', 'GameRoomMessage', 'GamerProfile', 'GameEvent', 'EventEntry', 'TournamentMatch', 'GamingReport', 'GamingSanction']],
+];
+const seen = new Set(GROUPS.flatMap((g) => g[1])); const extra = Object.keys(models).filter((k) => !seen.has(k)); if (extra.length) GROUPS.push(['Other', extra]);
+
+const W = 340, ROW = 22, HEAD = 40, GAPX = 120, GAPY = 70;
+const hOf = (m) => HEAD + m.fields.length * ROW + 14;
+const nodes = []; const groups = [];
+// Accounts in the middle column (User has the most links); others around it.
+const place = { 'Accounts & access': [1, 0], Academics: [0, 0], 'Social & messaging': [2, 0], Campus: [3, 0], 'Telegram bot': [3, 1], Gaming: [4, 0], Other: [5, 0] };
+const colX = (c) => c * (2 * W + GAPX + 260);
+const colY = {};
+for (const [g, list] of GROUPS) {
+  const [c] = place[g] || [5]; const x0 = colX(c); const y0 = (colY[c] || 0) + 80;
+  const cols = [[], []]; const ch = [0, 0];
+  for (const n of list) { if (!models[n]) continue; const k = ch[0] <= ch[1] ? 0 : 1; cols[k].push(n); ch[k] += hOf(models[n]) + GAPY; }
+  if (list.length === 1) { cols[0] = list; cols[1] = []; }
+  cols.forEach((cl, k) => { let y = y0 + 60; for (const n of cl) { const m = models[n]; nodes.push({ id: n, type: 'entity', x: x0 + 40 + k * (W + GAPX / 2), y, w: W, title: n, sub: m.table !== n ? m.table : '', rows: m.fields.map((f) => [f.pk ? 'PK' : f.fk ? 'FK' : f.uq ? 'UQ' : '', f.n, f.t]), group: g }); y += hOf(m) + GAPY; } });
+  const h = Math.max(...ch) + 60; const w = (cols[1].length ? 2 * W + GAPX / 2 : W) + 80;
+  groups.push({ title: g, x: x0, y: y0, w, h });
+  colY[c] = y0 + h + 120;
+}
+const edges = [];
+for (const [name, m] of Object.entries(models)) for (const r of m.rels) {
+  const f = m.fields.find((x) => x.n === r.field); const one = f && (f.uq || f.pk);
+  edges.push({ from: name, to: r.to, fromRow: r.field, toRow: r.ref, tail: one ? 'one' : 'many', head: 'one', label: `${r.field} → ${r.to}.${r.ref}`, detail: `${one ? 'One' : 'Many'} ${name} → one ${r.to} (${name}.${r.field} references ${r.to}.${r.ref})` });
+}
+const total = Object.values(models).reduce((a, m) => a + m.fields.length, 0);
+const out = { title: 'Entity Relationship Diagram', sub: `${Object.keys(models).length} tables · ${total} columns · ${edges.length} relations · generated from server/prisma/schema.prisma`, nodes, groups, edges,
+  legend: [['PK', 'Primary key'], ['FK', 'Foreign key'], ['UQ', 'Unique'], ['crow', 'Many side (crow’s foot)'], ['bar', 'One side']] };
+fs.writeFileSync(path.join(here, '../docs/d-erd.js'), `/* Generated by tools/build-erd.mjs — do not edit by hand. */\nDOCS.add('erd', ${JSON.stringify(out)});\n`);
+console.log('ERD:', Object.keys(models).length, 'tables,', edges.length, 'relations');

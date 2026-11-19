@@ -2296,3 +2296,110 @@ a.sr-orbit-link:hover { border-color: color-mix(in srgb, var(--sa, var(--stalk-a
   .sr-bg-grid .sr-bg-text small { display: none; }
   .sr-bg-grid .sr-bg-check { display: none; }
 }
+
+/* ── Mobile gas pedal: game-style hold button (desktop keeps scrolling) ──
+   Outer dashed ring spins while the ride moves; inner ring fills with speed. */
+.sr-gas { display: none; }
+@media (max-width: 768px), (pointer: coarse) {
+  .sr-gas {
+    --gas: 0;
+    position: absolute;
+    left: 50%;
+    bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+    z-index: 30;
+    display: grid;
+    place-items: center;
+    width: 68px;
+    height: 68px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--bg-card);
+    color: var(--stalk-accent);
+    transform: translateX(-50%);
+    transition: transform 0.12s ease;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    cursor: pointer;
+  }
+  .sr-gas.is-down { transform: translateX(-50%) scale(0.92); }
+  .sr-gas-ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+  .sr-gas-ring circle { fill: none; }
+  .sr-gas-track { stroke: var(--border-primary); stroke-width: 3; }
+  .sr-gas-spin {
+    stroke: var(--stalk-accent);
+    stroke-width: 3;
+    stroke-dasharray: 10 8;
+    stroke-linecap: round;
+    opacity: 0;
+    transform-origin: 50% 50%;
+    transition: opacity 0.25s ease;
+  }
+  .sr-gas.is-moving .sr-gas-spin { opacity: 1; animation: sr-gas-spin 0.9s linear infinite; }
+  .sr-gas-fill {
+    stroke: var(--stalk-accent);
+    stroke-width: 5;
+    stroke-linecap: round;
+    stroke-dasharray: 100;
+    stroke-dashoffset: calc(100 - var(--gas) * 100);
+  }
+  .sr-gas-icon { position: relative; transform: rotate(calc(var(--gas) * 120deg - 60deg)); }
+}
+@keyframes sr-gas-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .sr-gas.is-moving .sr-gas-spin { animation: none; }
+}
+
+/* mobile: hide stop/speed chips, solid top bar */
+@media (max-width: 768px), (pointer: coarse) {
+  .sr-stop-label, .sr-speed { display: none; }
+  .sr-stage .sr-hud, .sr-stage[data-mode] .sr-hud {
+    top: 0; left: 0; right: 0;
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 12px 8px;
+    background: var(--bg-primary, #0E0E10);
+    opacity: 1;
+    border-bottom: 1px solid var(--border-primary);
+  }
+}
+
+/* Theme picker: app theme tokens, centered sheet on mobile */
+.sr-bg-menu {
+  background: var(--bg-primary, #0E0E10);
+  opacity: 1;
+  backdrop-filter: none;
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+.sr-bg-head { color: var(--text-secondary); border-bottom: 1px solid var(--border-primary); margin-bottom: 4px; }
+.sr-bg-sub { color: var(--accent-amber); }
+.sr-bg-group + .sr-bg-group, .sr-bg-foot { border-color: var(--border-primary); }
+.sr-bg-opt { color: var(--text-primary); }
+.sr-bg-opt:hover { background: var(--bg-hover, rgba(127, 127, 127, 0.08)); }
+.sr-bg-opt.is-on { border-color: var(--accent-amber); }
+.sr-bg-opt.is-on strong { color: var(--accent-amber); }
+.sr-bg-text small, .sr-bg-foot { color: var(--text-tertiary); }
+.sr-bg-swatch { border-color: var(--border-primary); }
+@media (max-width: 768px), (pointer: coarse) {
+  .sr-bg-menu {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    right: auto;
+    width: min(420px, calc(100vw - 24px));
+    max-height: calc(100% - 48px);
+    display: flex;
+    flex-direction: column;
+    transform: translate(-50%, -50%);
+    animation: sr-bg-pop 0.16s ease both;
+    z-index: 60;
+  }
+  .sr-bg-scroll { max-height: none; flex: 1; min-height: 0; }
+}
+@keyframes sr-bg-pop {
+  from { opacity: 0; transform: translate(-50%, -48%); }
+  to { opacity: 1; transform: translate(-50%, -50%); }
+}

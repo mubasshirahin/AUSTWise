@@ -407,3 +407,19 @@
 .orb-media-txt b { font-size: 12.5px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .orb-media-txt small { font-size: 10.5px; color: var(--text-tertiary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .orb-media-none { padding: 10px; font-size: 11.5px; color: var(--text-tertiary); text-align: center; }
+
+/* ── Mobile: compact fields (beats global 16px input rule) ── */
+@media (max-width: 640px) {
+  .orb-panel { padding: 12px 12px 14px; }
+  .orb-panel-actions { gap: 8px; }
+  .orb-panel-actions .orb-btn { padding: 6px 10px; font-size: 11.5px; }
+  .orb-count-badge { padding: 3px 8px; font-size: 10px; }
+  .orb-cp-fields { grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 10px 0 2px; }
+  .orb-field { gap: 4px; }
+  .orb-field-label { font-size: 9.5px; }
+  .orb-panel input.orb-input,
+  .orb-panel textarea.orb-input,
+  .orb-panel select.orb-input { min-height: 32px; padding: 6px 9px; font-size: 12px !important; line-height: 1.3; }
+  .orb-tag { padding: 3px 7px; font-size: 11px; }
+  .orb-btn { padding: 6px 10px; font-size: 11.5px; }
+}

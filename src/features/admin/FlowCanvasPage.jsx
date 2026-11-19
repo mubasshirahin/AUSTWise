@@ -7,12 +7,12 @@ export default function FlowCanvasPage() {
   return (
     <div className="flow-canvas-page">
       <div className="flow-canvas-head">
-        <h1>Flow Canvas</h1>
-        <a className="flow-canvas-open" href="/prototype/canvas.html" target="_blank" rel="noreferrer">
+        <h1>Design Docs</h1>
+        <a className="flow-canvas-open" href="/prototype/docs.html" target="_blank" rel="noreferrer">
           <Maximize2 size={15} /> Open full screen
         </a>
       </div>
-      <iframe className="flow-canvas-frame" src="/prototype/canvas.html" title="AUSTWise flow canvas" />
+      <iframe className="flow-canvas-frame" src="/prototype/docs.html" title="AUSTWise design docs" />
     </div>
   );
 }

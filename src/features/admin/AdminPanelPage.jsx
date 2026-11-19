@@ -18,6 +18,7 @@ import AcademicManagementPanel from './AcademicManagementPanel';
 import PageAvailabilityPanel from './PageAvailabilityPanel';
 import FeatureAccessPanel from './FeatureAccessPanel';
 import QuestionBankPanel from './QuestionBankPanel';
+import ModerationStrikesPanel from './ModerationStrikesPanel';
 import SidebarPageAccessPanel, { SidebarPageAccessHeader } from './SidebarPageAccessPanel';
 import { useAuth } from '../../context/AuthContext';
 import { PROVIDER_MAP } from '../../utils/socialOAuth.jsx';
@@ -172,6 +173,7 @@ export default function AdminPanelPage() {
       'bhara-koto': '/admin-panel/bhara-koto',
       'attendance': '/admin-panel/attendance',
       'telegram-connections': '/admin-panel/telegram-connections',
+      'moderation': '/admin-panel/moderation',
       'features': '/admin-panel/features',
       'question-bank': '/admin-panel/question-bank',
       'access-requests': '/admin-panel/access-requests'
@@ -787,6 +789,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
             <button className={activeTab === 'library' ? 'is-active' : ''} onClick={() => navigateToTab('library')}><span>Library</span><small>Seat capacity and occupancy</small></button>
             <button className={activeTab === 'attendance' ? 'is-active' : ''} onClick={() => navigateToTab('attendance')}><span>Attendance</span><small>Review Telegram attendance records</small></button>
             <button className={activeTab === 'telegram-connections' ? 'is-active' : ''} onClick={() => navigateToTab('telegram-connections')}><span>Telegram connections</span><small>Search linked accounts and Chat IDs</small></button>
+            <button className={activeTab === 'moderation' ? 'is-active' : ''} onClick={() => navigateToTab('moderation')}><span>Gali strikes</span><small>Warnings, temp bans and resets</small></button>
             <button className={activeTab === 'bhara-koto' ? 'is-active' : ''} onClick={() => navigateToTab('bhara-koto')}><span>Campus services</span><small>Manage Bhara Koto listings</small></button>
             <button className={activeTab === 'auditorium' ? 'is-active' : ''} onClick={() => navigateToTab('auditorium')}><span>Auditorium</span><small>Manage campus event details</small></button>
             <button className={activeTab === 'campus-map' ? 'is-active' : ''} onClick={() => navigateToTab('campus-map')}><span>Campus map</span><small>Update campus map information</small></button>
@@ -2733,6 +2736,8 @@ if (!res.ok || !Array.isArray(data.applications)) return;
 
         {/* TELEGRAM CONNECTIONS DIRECTORY */}
         {activeTab === 'telegram-connections' && <TelegramConnectionsPanel />}
+
+        {activeTab === 'moderation' && <ModerationStrikesPanel />}
       </div>
     </div>
   );

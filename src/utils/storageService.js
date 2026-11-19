@@ -39,6 +39,8 @@ async function apiPut(url, value) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ value }),
     });
+    // 422 = rejected by the gali filter; callers roll back their optimistic copy.
+    if (res.status === 422) return 'moderated';
     return res.ok;
   } catch {
     return false;

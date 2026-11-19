@@ -224,11 +224,22 @@ export async function setLiveValue(scope, key, value) {
   const k = cacheKey(scope, key);
   rememberUserLocalKey(scope, key);
   markLocalWrite(k);
+  const hadPrev = cache.has(k);
+  const prev = cache.get(k);
   cache.set(k, value);
   try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
   emit(k, true);
   try {
-    await storeFor(scope).set(key, value);
+    const result = await storeFor(scope).set(key, value);
+    if (result === 'moderated') {
+      // Server refused the text (gali filter): undo the optimistic write.
+      if (hadPrev) cache.set(k, prev); else cache.delete(k);
+      try {
+        if (hadPrev) localStorage.setItem(key, JSON.stringify(prev)); else localStorage.removeItem(key);
+      } catch { /* ignore */ }
+      emit(k, true);
+      return hadPrev ? prev : null;
+    }
   } catch { /* offline-safe: cache + localStorage keep the value */ }
   return value;
 }

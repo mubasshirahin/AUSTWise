@@ -7,10 +7,13 @@
     "node": ">=20"
   },
   "scripts": {
+    "docs:gen": "node public/prototype/tools/build-erd.mjs && node public/prototype/tools/build-api.mjs",
+    "predev": "npm run docs:gen",
     "dev": "node scripts/dev.mjs",
     "dev:static": "npm run build && node server/dev.mjs",
     "start": "node server/dev.mjs",
     "dev:vite": "vite",
+    "prebuild": "npm run docs:gen",
     "build": "vite build",
     "postinstall": "prisma generate --schema server/prisma/schema.prisma",
     "lint": "eslint .",

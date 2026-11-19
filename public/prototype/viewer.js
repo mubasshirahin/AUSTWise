@@ -1,15 +1,6 @@
 /* Prototype viewer: device frames, page list, flow map, keyboard nav. */
-const FLOW = [
-  ['Public', [['/welcome', 'Landing'], ['/login', 'Login'], ['/p/features', 'Features'], ['/p/pricing', 'Pricing'], ['/p/about', 'About us'], ['/p/feedback', 'Feedback']]],
-  ['Main', [['/dashboard/quickstats', 'Dashboard · Quick Stats'], ['/dashboard/routine', 'Dashboard · Routine'], ['/dashboard/calendar', 'Dashboard · Semester View'], ['/dashboard/exams', 'Dashboard · Zero Hour'], ['/dashboard/attendance', 'Dashboard · Attendance'], ['/dashboard/notices', 'Dashboard · Notice Board'], ['/routine-templates', 'Routine Templates']]],
-  ['Daily Life', [['/daily-life/money-tracker', 'TakaGeloKoi'], ['/daily-life/cover-page-generator', 'Cover Page'], ['/daily-life/bhara-koto', 'Bhara Koto'], ['/daily-life/mess-meal', 'Mess Meal'], ['/daily-life/life-planner', 'Life Planner'], ['/daily-life/digital-footprint', 'Digital Footprint'], ['/daily-life/password-manager', 'Password Manager']]],
-  ['Academics', [['/gradelab/cgpagraph', 'GradeLab · CGPA'], ['/gradelab/semestertracker', 'GradeLab · Semester Wise'], ['/gradelab/heatmap', 'GradeLab · Dept Heatmap'], ['/gradelab/bestworst', 'GradeLab · Best & Worst'], ['/gradelab/prereqs', 'GradeLab · Prerequisites'], ['/resource-vault/materials', 'Vault · Materials'], ['/resource-vault/notebook', 'Vault · Notebook'], ['/resource-vault/carbon-vault', 'Vault · Carbon Vault'], ['/question-bank', 'Question Bank']]],
-  ['Campus', [['/insideaust/map', 'InsideAUST · Floor Map'], ['/insideaust/library', 'InsideAUST · Library'], ['/insideaust/canteen', 'InsideAUST · Canteen'], ['/insideaust/bus', 'InsideAUST · Bus'], ['/insideaust/classroom', 'InsideAUST · Free Rooms']]],
-  ['Social', [['/connectbox', 'ConnectBox'], ['/community/students', 'Community · Students'], ['/community/faculty', 'Community · Faculty'], ['/community/alumni', 'Community · Alumni'], ['/community/clubs', 'Community · Clubs'], ['/members/m1', 'Member Profile'], ['/marketplace', 'Marketplace'], ['/austeddit', 'Austeddit']]],
-  ['Shadow & Fun', [['/shadow/reviews', 'Shadow · Reviews'], ['/shadow/chat', 'Shadow · Chat'], ['/shadow/roast-cv', 'Shadow · Roast CV'], ['/downtime/organizing', 'DownTime · Pinboard'], ['/downtime/media', 'DownTime · Media'], ['/downtime/rumour', 'DownTime · Rumour'], ['/downtime/trivia', 'DownTime · Trivia'], ['/downtime/gaming', 'DownTime · Gaming'], ['/gaming/room/ludo-king', 'Game Room']]],
-  ['Productivity', [['/productivity/study-room', 'Study Time'], ['/productivity/cheatsheets', 'Cheat Sheets'], ['/productivity/cp-hub', 'Code Pulse'], ['/productivity/workspace', 'Workspace'], ['/certificate', 'Certificate'], ['/wakemeup', 'WakeMeUp']]],
-  ['Account', [['/settings/profile', 'Settings · Profile'], ['/settings/appearance', 'Settings · Appearance'], ['/settings/notifications', 'Settings · Notifications'], ['/see-plans', 'See Plans'], ['/payment/success', 'Payment Success'], ['/admin-panel/overview', 'Admin · Overview'], ['/admin-panel/users', 'Admin · Users']]],
-];
+// Same page list as the Flow Canvas: one group per sidebar section, one entry per glider tab.
+const FLOW = window.FLOW.COLUMNS.map(([g, , rows]) => [g, rows.map(([, p, t]) => [p, t])]);
 const ALL = FLOW.flatMap(([g, list]) => list.map(([p, t]) => ({ p, t, g })));
 const SIZES = { desktop: [1440, 900, 'Desktop 1440'], tablet: [768, 1024, 'Tablet 768'], mobile: [375, 812, 'Mobile 375'] };
 const st = { device: 'desktop', theme: 'dark', path: '/welcome' };

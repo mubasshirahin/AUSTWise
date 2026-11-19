@@ -4,7 +4,7 @@ import QRCode from 'qrcode';
 import { useTheme, getThemeAccent } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useRoutine } from '../../context/RoutineContext';
-import { Activity, Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, ShieldAlert, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, SquareTerminal, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2, Orbit, DraftingCompass, PawPrint, Palette, Sparkles, ExternalLink, CalendarDays, Mail, Phone, Droplets, BookOpen, Award, Flame, FileText, Handshake, Vote, Coffee, MessageCircle, MessageSquare, Gem, WandSparkles, Gamepad2, Cloud, Smile, Flower2, Smartphone } from 'lucide-react';
+import { Activity, Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, ShieldAlert, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, SquareTerminal, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2, Orbit, DraftingCompass, PawPrint, Palette, Sparkles, ExternalLink, CalendarDays, Mail, Phone, Droplets, BookOpen, Award, Flame, FileText, Handshake, Vote, Coffee, MessageCircle, MessageSquare, Gem, WandSparkles, Gamepad2, Cloud, Smile, Flower2, Smartphone, Check, X } from 'lucide-react';
 import AboutUs from './AboutUs';
 import LinkedAccountsSection from './LinkedAccountsSection';
 import GliderTabs from '../../components/GliderTabs';
@@ -319,27 +319,6 @@ function DriveOrbitButton({ user }) {
   );
 }
 
-// Favorite color picker — the road-trip accent follows this live.
-function FavoriteColorInput() {
-  const { favoriteColor, setFavoriteColor } = useOrbits();
-  const color = favoriteColor || '#00ffcc';
-  return (
-    <div className="orbits-color-row">
-      <span>Favorite color</span>
-      <input
-        type="color"
-        id="orbits-favorite-color"
-        name="favoriteColor"
-        className="orbits-color-input"
-        value={color}
-        onChange={(e) => setFavoriteColor(e.target.value)}
-        aria-label="Choose favorite color"
-      />
-      <span className="orbits-swatch" style={{ background: color }} />
-      <code>{color.toUpperCase()}</code>
-    </div>
-  );
-}
 
 export default function SettingsPage() {
   const { isAdmin } = useAdminMode();
@@ -531,7 +510,7 @@ export default function SettingsPage() {
   const memberSinceLabel = user?.createdAt
     ? new Date(user.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
     : 'Not set';
-  const profileLastActiveText = publicProfileSummary?.status === 'online'
+  const profileLastActiveText = (user?.id || publicProfileSummary?.status === 'online')
     ? 'Active now'
     : publicProfileSummary?.lastSeenAt
       ? `Last active ${new Date(publicProfileSummary.lastSeenAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
@@ -1517,7 +1496,6 @@ export default function SettingsPage() {
                         <button type="button" className="member-profile-orbit" onClick={() => stalk(user)} aria-label="Visit your Orbit">
                           <Orbit size={15} /> Visit Orbit <span aria-hidden="true">↗</span>
                         </button>
-                        <span className="member-profile-joined"><CalendarDays size={13} /> Member since {memberSinceLabel}</span>
                       </div>
                     </div>
                   </section>
@@ -1544,14 +1522,20 @@ export default function SettingsPage() {
                   <section className="member-profile-section glass-card-static" aria-labelledby="identity-preview-activity-title">
                     <div className="member-profile-section-heading"><span className="member-profile-section-icon is-activity"><Award size={18} /></span><div><h2 id="identity-preview-activity-title">Contributions</h2><p>Verified resources and community activity{profileLastActiveText ? ` · ${profileLastActiveText}` : ''}</p></div></div>
                     <div className="member-profile-metrics">
-                      {visibleProfileActivityStats.map(({ id, icon: Icon, label, value, tone }) => (
-                        <div className={`member-profile-metric ${tone || ''}`} key={id}><span className="member-profile-metric-icon"><Icon size={17} /></span><strong>{Number(value || 0).toLocaleString()}</strong><span>{label}</span></div>
-                      ))}
+                      {(isEditingProfile ? profileActivityStats : visibleProfileActivityStats).map(({ id, icon: Icon, label, value, tone }) => {
+                        const shown = profileActivityVisible === null || profileActivityVisible.includes(id);
+                        return (
+                          <div className={`member-profile-metric ${tone || ''}${isEditingProfile ? ' is-editable' : ''}${isEditingProfile && !shown ? ' is-hidden' : ''}`} key={id}>
+                            <span className="member-profile-metric-icon"><Icon size={17} /></span><strong>{Number(value || 0).toLocaleString()}</strong><span className="member-profile-metric-label">{label}</span>
+                            {isEditingProfile && (
+                              <button type="button" className={`member-profile-metric-toggle${shown ? ' is-on' : ''}`} onClick={() => toggleProfileActivityStat(id)} aria-pressed={shown} aria-label={`${shown ? 'Hide' : 'Show'} ${label}`} title={shown ? 'Visible - tap to hide' : 'Hidden - tap to show'}>
+                                {shown ? <Check size={10} strokeWidth={3} /> : <X size={10} strokeWidth={3} />}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                    {isEditingProfile && <div className="identity-contribution-options">
-                      <h3>Choose visible stats</h3>
-                      <div>{profileActivityStats.map(({ id, label }) => <label key={id}><input type="checkbox" checked={profileActivityVisible === null || profileActivityVisible.includes(id)} onChange={() => toggleProfileActivityStat(id)} /><span>{label}</span></label>)}</div>
-                    </div>}
                   </section>
 
                   <RecentContributionsCard
@@ -1811,7 +1795,7 @@ export default function SettingsPage() {
                       <h3 id="identity-austwise-activity-title">AUSTWise Activity</h3>
                       <p>The contribution stats shown on your public profile.</p>
                     </div>
-                    {profileLastActiveText && <span className={`identity-activity-status${publicProfileSummary?.status === 'online' ? '' : ' is-idle'}`}>{profileLastActiveText}</span>}
+                    {profileLastActiveText && <span className={`identity-activity-status${(user?.id || publicProfileSummary?.status === 'online') ? '' : ' is-idle'}`}>{profileLastActiveText}</span>}
                   </div>
                   {publicProfileLoading ? (
                     <p className="identity-activity-empty" role="status">Loading your activity…</p>
@@ -2401,7 +2385,6 @@ export default function SettingsPage() {
                       {user?.department}
                       {user?.yearSemester ? ` · ${getYearSemesterShortName(user.yearSemester)}` : ''}
                     </p>
-                    <FavoriteColorInput />
                   </div>
                   <div className="orbits-start">
                     <DriveOrbitButton user={user} />

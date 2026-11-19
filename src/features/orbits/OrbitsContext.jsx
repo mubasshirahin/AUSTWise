@@ -129,11 +129,12 @@ export function getListItemTemplate(type, key) {
 function prefillUserDetails(fields, user) {
   if (!user) return fields;
   const next = { ...fields };
-  if (!next.name) next.name = user.name || '';
-  if (!next.id) next.id = user.awid || user.id || '';
-  if (!next.dept) next.dept = user.department || '';
-  if (!next.batch) next.batch = user.batchName || user.batchNo || '';
-  if (!next.blood_group) next.blood_group = user.bloodGroup || '';
+  // Profile-owned fields always mirror the live profile; only about_me is user-edited.
+  next.name = user.name || '';
+  next.id = user.awid || user.id || '';
+  next.dept = user.department || '';
+  next.batch = user.batchName || user.batchNo || '';
+  next.blood_group = user.bloodGroup || '';
   return next;
 }
 
@@ -170,8 +171,10 @@ export function OrbitsProvider({ user, children }) {
   const lastUserId = useRef(null);
   useEffect(() => {
     const uid = user?.id;
-    if (uid && uid !== 'guest' && lastUserId.current !== uid) {
-      lastUserId.current = uid;
+    // Re-sync whenever the account or any profile-owned value changes.
+    const sig = [uid, user?.name, user?.awid, user?.department, user?.batchName, user?.batchNo, user?.bloodGroup].join('|');
+    if (uid && uid !== 'guest' && lastUserId.current !== sig) {
+      lastUserId.current = sig;
       setCheckpoints((prev) => prev.map((cp) => (
         cp.id === 'cp-01' ? { ...cp, fields: prefillUserDetails(cp.fields, user) } : cp
       )));

@@ -14,6 +14,10 @@
 import { WebSocketServer } from 'ws';
 import { readTokenCookie, resolveSocketUser, hasValidWsTicket } from './auth.mjs';
 import { handleGamingSocket, dropGamingSocket } from './gaming/gamingRealtime.mjs';
+import { containsProfanity } from '../src/utils/profanity.js';
+import { recordStrike, activeBanUntil } from './strikes.mjs';
+
+const MODERATED_TYPES = new Set(['message', 'edit-message', 'shadow-message']);
 
 // Allowed cross-origin WS origins (same-origin + dev localhost are always OK).
 const ALLOWED_WS_ORIGINS = (process.env.ALLOWED_ORIGIN || '')
@@ -202,7 +206,9 @@ function sendShadowStatus(ws) {
 }
 
 function broadcastShadowStatus() {
-  broadcastToAll({ type: 'shadow-status', payload: { ...getShadowStatus(), serverTime: Date.now() } });
+  if (!wss) return;
+  const msg = ({ type: 'shadow-status', payload: { ...getShadowStatus(), serverTime: Date.now() } });
+  for (const ws of wss.clients) sendTo(ws, msg);
 }
 
 let wss = null;
@@ -229,7 +235,7 @@ export function createWSServer(httpServer) {
       }
       // Identity comes from the session cookie, never from client payloads.
       const auth = await resolveSocketUser(request);
-      if (auth?.banned) {
+      if (auth?.banned || (auth?.id && activeBanUntil(auth.id))) {
         socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
         socket.destroy();
         return;
@@ -309,6 +315,15 @@ export function createWSServer(httpServer) {
       try {
         const { type, payload } = JSON.parse(raw.toString());
         if (!type || !payload) return;
+
+        // Gali filter: drop the message; signed-in senders get a strike.
+        if (MODERATED_TYPES.has(type) && containsProfanity(payload.text).hit) {
+          if (!authUserId) { sendTo(ws, { type: 'moderation', payload: { level: 'blocked' } }); return; }
+          recordStrike(authUserId, payload.text)
+            .then((strike) => sendTo(ws, { type: 'moderation', payload: strike }))
+            .catch(() => sendTo(ws, { type: 'moderation', payload: { level: 'blocked' } }));
+          return;
+        }
 
         switch (type) {
           case 'subscribe':
