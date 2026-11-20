@@ -3897,6 +3897,16 @@
 }
 
 .landing-footer-col button:hover,
+.landing-footer-col .landing-footer-link.has-icon {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  text-decoration: none;
+}
+.landing-footer-col .landing-footer-link.has-icon svg { flex: none; }
+.landing-footer-col .landing-footer-link.is-pending { cursor: default; }
+.landing-footer-col .landing-footer-link.is-pending:hover { color: var(--text-tertiary); transform: none; }
+
 .landing-footer-col .landing-footer-link:hover {
   color: var(--accent-blue);
   transform: translateX(4px);

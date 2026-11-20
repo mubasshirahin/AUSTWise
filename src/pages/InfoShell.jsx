@@ -82,7 +82,7 @@ export default function InfoShell({ icon: Icon, overline, title, subtitle, stats
               <span className="tos-dd-current">
                 {current
                   ? <>{numbered && <span className="tos-num">{pad(current.n)}</span>}{current.title}</>
-                  : `${sections.length} sections`}
+                  : `${sections.length} section${sections.length === 1 ? '' : 's'}`}
               </span>
               <ChevronDown size={15} className="tos-dd-caret" />
             </button>

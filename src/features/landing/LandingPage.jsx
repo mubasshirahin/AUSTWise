@@ -1,4 +1,5 @@
-import { DISCORD_URL } from '../../constants/social';
+import { DISCORD_URL, FACEBOOK_URL } from '../../constants/social';
+import { DiscordIcon, FacebookIcon, RedditIcon } from '../../components/SocialIcons';
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -1259,7 +1260,7 @@ export default function LandingPage() {
             {[
               { title: 'Terms', items: ['Terms of Service', 'Privacy Policy', 'Cookie Policy'] },
               { title: 'Resources', items: ['Docs', 'Blog', 'Changelog'] },
-              { title: 'Connect', items: ['Feedback', 'Discord', 'Reddit'] },
+              { title: 'Connect', items: ['Feedback', 'Discord', 'Facebook', 'Reddit'] },
               { title: 'Why AUSTWise', items: ['Features', 'Pricing', 'About Us'] },
             ].map((col, i) => (
               <ScrollReveal key={i} delay={i * 100} direction="up">
@@ -1278,14 +1279,19 @@ export default function LandingPage() {
                     Pricing: '/pricing',
                     'About Us': '/about',
                   };
-                  const external = {
-                    Discord: DISCORD_URL,
-                    Reddit: 'https://reddit.com/r/austwise',
+                  const social = {
+                    Discord: { url: DISCORD_URL, Icon: DiscordIcon },
+                    Facebook: { url: FACEBOOK_URL, Icon: FacebookIcon },
+                    Reddit: { url: 'https://reddit.com/r/austwise', Icon: RedditIcon },
                   };
                   const route = routes[item];
-                  const ext = external[item];
-                  if (ext) {
-                    return <a key={j} href={ext} target="_blank" rel="noopener noreferrer" className="landing-footer-link">{item}</a>;
+                  const s = social[item];
+                  if (s) {
+                    const label = <><s.Icon size={14} /><span>{item}</span></>;
+                    // No URL yet (e.g. Facebook) → show the name, not a dead link.
+                    return s.url
+                      ? <a key={j} href={s.url} target="_blank" rel="noopener noreferrer" className="landing-footer-link has-icon">{label}</a>
+                      : <span key={j} className="landing-footer-link has-icon is-pending">{label}</span>;
                   }
                   const handleNav = () => {
                     sessionStorage.setItem('landingScrollY', window.scrollY);
@@ -1298,8 +1304,11 @@ export default function LandingPage() {
           </div>
         </div>
         <div className="landing-footer-bottom">
-          <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="landing-footer-social" aria-label="Facebook">
+          <a href={FACEBOOK_URL || 'https://facebook.com'} target="_blank" rel="noopener noreferrer" className="landing-footer-social" aria-label="Facebook">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+          </a>
+          <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer" className="landing-footer-social" aria-label="Discord">
+            <DiscordIcon size={20} />
           </a>
         </div>
       </footer>

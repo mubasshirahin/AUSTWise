@@ -138,6 +138,15 @@
   color: var(--text-primary);
 }
 .tos-section-title .tos-num { color: var(--accent-amber); width: auto; }
+.tos-group + .tos-group {
+  margin-top: 12px; padding-top: 12px;
+  border-top: 1px dashed var(--border-primary);
+}
+.tos-group-title {
+  margin: 0 0 6px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-tertiary);
+}
 .tos-section-meta {
   margin: -6px 0 10px;
   font-size: 11px; font-weight: 600; letter-spacing: 0.04em;

@@ -1,12 +1,47 @@
+import { Link } from 'react-router-dom';
 import { Newspaper } from 'lucide-react';
+import { DISCORD_URL } from '../constants/social';
 import InfoShell from './InfoShell';
 
-const SECTIONS = [
-  { id: 'campus-life', title: 'Campus Life, Fully Covered', meta: 'August 2026 · 3 min read', body: <p>AUSTWise is no longer just a dashboard — it&apos;s a full campus companion. New additions like the Mess Meal Tracker with cost splitting, BharaKoto fare estimates, Pomodoro and Zen study modes, anonymous Shadow spaces, and Google Classroom integration mean there&apos;s now a home for every part of your day, from morning mess meals to late-night study sessions.</p> },
-  { id: 'v2', title: 'Introducing AUSTWise v2.0', meta: 'January 2025 · 3 min read', body: <><p>We are thrilled to announce AUSTWise v2.0 — a complete redesign focused on performance, accessibility and user experience. New features include the Campus Hub with interactive floor maps, enhanced Grade Lab analytics, and a rebuilt messaging system.</p><p>Read the full <a href="/changelog">changelog</a> for details.</p></> },
-  { id: 'heatmaps', title: 'Study Smarter with Topic Heatmaps', meta: 'December 2024 · 2 min read', body: <p>Ever wondered which topics appear most often in your exams? The topic heatmap in the Resource Vault analyses past question papers to show you what to focus on. Spend less time guessing and more time studying what matters.</p> },
-  { id: 'new-semester', title: 'A Fresh Start: New Semester, New Features', meta: 'November 2024 · 4 min read', body: <p>As a new semester begins, we are rolling out features to make academic life easier — from the improved CGPA Calculator to the new marketplace for textbooks and housing.</p> },
-  { id: 'behind-build', title: 'Behind the Build: Engineering AUSTWise', meta: 'October 2024 · 5 min read', body: <p>A look at how AUSTWise is built — real-time notifications, a theme system that switches without a reload, and serving students across campus without breaking a sweat.</p> },
+// Newest post first. To publish, add an object at the top.
+const POSTS = [
+  {
+    id: 'v1-launch',
+    title: 'AUSTWise v1.0 is live',
+    meta: '20 November 2026 · 2 min read',
+    body: (
+      <>
+        <p>After five months of building since June, AUSTWise is open to every AUST student, faculty member and alumnus. It brings the things you used to juggle across WhatsApp groups, spreadsheets and notebooks into one place.</p>
+        <ul className="tos-list">
+          <li><strong>Academics</strong> — dashboard, Grade Lab, Resource Vault and Google Classroom in Workspace.</li>
+          <li><strong>Daily life</strong> — Life Planner, TakaGeloKoi, BharaKoto and the Study Room.</li>
+          <li><strong>Community</strong> — ConnectBox chats, clubs, Shadow and DownTime.</li>
+        </ul>
+        <p>Everything that shipped is listed in the <Link to="/changelog">changelog</Link>. Sign up with your @aust.edu email to get started.</p>
+      </>
+    ),
+  },
+  {
+    id: 'plans',
+    title: 'Node, Helix and Apex: how our plans work',
+    meta: '20 November 2026 · 1 min read',
+    body: (
+      <>
+        <p>AUSTWise is built and run by one student, and servers cost money. So the core stays free on <strong>Node</strong>, and two optional plans help pay for it:</p>
+        <ul className="tos-list">
+          <li><strong>Helix</strong> — ৳50 for 30 days: no ads, premium themes, exports and 5GB Vault storage.</li>
+          <li><strong>Apex</strong> — ৳500 a year: everything in Helix plus the AI study assistant and unlimited storage.</li>
+        </ul>
+        <p>Nothing renews on its own — when a plan ends you go back to Node and keep your data. Details on <Link to="/pricing">Pricing</Link>.</p>
+      </>
+    ),
+  },
+  {
+    id: 'community',
+    title: 'Join the AUSTWise Discord',
+    meta: '20 November 2026 · 1 min read',
+    body: <p>We now have a Discord server for questions, bug reports and feature ideas. <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer">Join here</a> — or send feedback any time through the <Link to="/feedback">Feedback</Link> form.</p>,
+  },
 ];
 
 export default function BlogPage() {
@@ -15,9 +50,9 @@ export default function BlogPage() {
       icon={Newspaper}
       overline="Resources"
       title="Blog"
-      subtitle="Updates, tips and stories from the AUSTWise team"
-      stats={[{ label: 'Posts', value: SECTIONS.length }, { label: 'Latest', value: 'Aug 2026' }]}
-      sections={SECTIONS}
+      subtitle="News and updates from the AUSTWise team"
+      stats={[{ label: 'Posts', value: POSTS.length }, { label: 'Latest', value: 'Nov 2026' }]}
+      sections={POSTS}
       numbered={false}
     />
   );
