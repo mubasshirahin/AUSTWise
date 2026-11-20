@@ -1,4 +1,5 @@
 import { Info } from 'lucide-react';
+import { DISCORD_URL } from '../constants/social';
 import InfoShell from './InfoShell';
 
 const EMAIL = 'austwise59@gmail.com';
@@ -25,7 +26,7 @@ const SECTIONS = [
       <li><strong>Community-driven</strong> — shaped by feedback from the AUST community</li>
     </ul>
   ) },
-  { id: 'contact', title: 'Contact', body: <p>Questions or suggestions? Use the <a href="/feedback">Feedback</a> form or email <a href={`mailto:${EMAIL}`}>{EMAIL}</a>.</p> },
+  { id: 'contact', title: 'Contact', body: <p>Questions or suggestions? Use the <a href="/feedback">Feedback</a> form or email <a href={`mailto:${EMAIL}`}>{EMAIL}</a>, or join us on <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer">Discord</a>.</p> },
 ];
 
 export default function AboutUsPage() {

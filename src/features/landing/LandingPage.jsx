@@ -1,3 +1,4 @@
+import { DISCORD_URL } from '../../constants/social';
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -1278,7 +1279,7 @@ export default function LandingPage() {
                     'About Us': '/about',
                   };
                   const external = {
-                    Discord: 'https://discord.gg/austwise',
+                    Discord: DISCORD_URL,
                     Reddit: 'https://reddit.com/r/austwise',
                   };
                   const route = routes[item];

@@ -1,4 +1,5 @@
 import { BookOpen } from 'lucide-react';
+import { DISCORD_URL } from '../constants/social';
 import InfoShell from './InfoShell';
 
 const EMAIL = 'austwise59@gmail.com';
@@ -17,7 +18,7 @@ const SECTIONS = [
   { id: 'market', title: 'Marketplace', body: <p>Buy and sell used textbooks, find bachelor rentals near campus, report lost items, and request mentorship from seniors — free, with no commissions.</p> },
   { id: 'downtime', title: 'DownTime & Shadow', body: <p>Recharge with media trackers, gaming and trivia in DownTime. In Shadow, post anonymously to the AUST forum or chat with a stranger for 10 minutes.</p> },
   { id: 'workspace', title: 'Workspace', body: <p>Connect your Google Classroom account to track courses, assignments and materials in one organised grid.</p> },
-  { id: 'help', title: 'Need Help?', body: <p>Reach out via the <a href="/feedback">Feedback</a> form or email <a href={`mailto:${EMAIL}`}>{EMAIL}</a>.</p> },
+  { id: 'help', title: 'Need Help?', body: <p>Reach out via the <a href="/feedback">Feedback</a> form or email <a href={`mailto:${EMAIL}`}>{EMAIL}</a>, or join us on <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer">Discord</a>.</p> },
 ];
 
 export default function DocsPage() {

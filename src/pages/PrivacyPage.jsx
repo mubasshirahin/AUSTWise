@@ -1,3 +1,4 @@
+import { DISCORD_URL } from '../constants/social';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ChevronDown, ListOrdered, ShieldCheck } from 'lucide-react';
@@ -106,7 +107,7 @@ const SECTIONS = [
   {
     id: 'contact',
     title: 'Contact',
-    body: <p>Privacy questions or requests: email <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> or use the <Link to="/feedback">Feedback form</Link>.</p>,
+    body: <p>Privacy questions or requests: email <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>, use the <Link to="/feedback">Feedback form</Link>, or ask on <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer">Discord</a>.</p>,
   },
 ];
 

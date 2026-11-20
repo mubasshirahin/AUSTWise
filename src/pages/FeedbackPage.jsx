@@ -1,3 +1,4 @@
+import { DISCORD_URL } from '../constants/social';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Check, MessageSquare, Send } from 'lucide-react';
@@ -115,7 +116,7 @@ export default function FeedbackPage() {
                 <button type="submit" className="fb-submit" disabled={sending}>
                   <Send size={13} /> {sending ? 'Sending...' : 'Send feedback'}
                 </button>
-                <span className="fb-alt">or email <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a></span>
+                <span className="fb-alt">or email <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> · <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer">Discord</a></span>
               </div>
             </form>
           )}

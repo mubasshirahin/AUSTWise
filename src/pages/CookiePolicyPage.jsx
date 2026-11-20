@@ -1,4 +1,5 @@
 import { Cookie } from 'lucide-react';
+import { DISCORD_URL } from '../constants/social';
 import InfoShell from './InfoShell';
 
 const EMAIL = 'austwise59@gmail.com';
@@ -16,7 +17,7 @@ const SECTIONS = [
   { id: 'third', title: 'Third-party services', body: <p>If you choose to sign in with Google, connect Google Classroom, or pay through PipraPay, those services may set their own cookies on their own pages. Their policies apply there.</p> },
   { id: 'manage', title: 'Managing cookies', body: <p>You can clear or block cookies and site data in your browser settings. Blocking the session cookie signs you out and stops most features from working.</p> },
   { id: 'updates', title: 'Updates', body: <p>If how we use cookies changes, we&apos;ll update this page and its date. See also our <a href="/privacy">Privacy Policy</a>.</p> },
-  { id: 'contact', title: 'Contact', body: <p>Questions? Email <a href={`mailto:${EMAIL}`}>{EMAIL}</a>.</p> },
+  { id: 'contact', title: 'Contact', body: <p>Questions? Email <a href={`mailto:${EMAIL}`}>{EMAIL}</a>, or join us on <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer">Discord</a>.</p> },
 ];
 
 export default function CookiePolicyPage() {
