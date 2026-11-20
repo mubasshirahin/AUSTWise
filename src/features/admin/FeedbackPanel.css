@@ -1,0 +1,82 @@
+/* Admin › Feedback inbox. Flat, theme tokens only. */
+.fbp-panel { padding: 20px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.fbp-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.fbp-head h2 { margin: 0; font-size: 16px; }
+.fbp-head p { margin: 4px 0 0; font-size: 12px; color: var(--text-secondary); }
+.fbp-head .btn, .fbp-actions .btn { display: inline-flex; align-items: center; gap: 6px; }
+
+.fbp-filters {
+  display: flex; gap: 3px; padding: 3px; align-self: flex-start; max-width: 100%;
+  background: var(--bg-tertiary); border-radius: var(--radius-full);
+  overflow-x: auto; scrollbar-width: none;
+}
+.fbp-filters button {
+  flex: none; height: 28px; padding: 0 12px;
+  border: 1px solid transparent; border-radius: var(--radius-full);
+  background: transparent; color: var(--text-secondary);
+  font: inherit; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  white-space: nowrap; cursor: pointer;
+}
+.fbp-filters button:hover { color: var(--text-primary); }
+.fbp-filters button.is-on {
+  background: var(--bg-card); color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--accent-amber) 45%, transparent);
+}
+
+.fbp-muted { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; color: var(--text-secondary); }
+.fbp-error { margin: 0; padding: 8px 12px; border: 1px solid var(--border-primary); border-radius: var(--radius-md); font-size: 12px; color: var(--accent-rose); }
+
+.fbp-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center;
+  padding: 20px 12px;
+  border: 1px dashed var(--border-primary); border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-tertiary) 45%, transparent);
+}
+.fbp-empty-icon {
+  width: 36px; height: 36px; display: grid; place-items: center;
+  border-radius: var(--radius-md); background: var(--bg-tertiary); color: var(--accent-amber);
+}
+.fbp-empty p { margin: 0; font-size: 12px; color: var(--text-secondary); max-width: 260px; text-wrap: balance; }
+
+.fbp-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.fbp-item {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 12px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  min-width: 0;
+}
+.fbp-item.is-unread { border-color: color-mix(in srgb, var(--accent-amber) 45%, var(--border-primary)); }
+
+.fbp-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; min-width: 0; font-size: 12px; }
+.fbp-type {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 2px 8px; border-radius: var(--radius-full);
+  background: var(--bg-tertiary); color: var(--text-secondary);
+}
+.fbp-type.is-bug { color: var(--accent-rose); }
+.fbp-type.is-idea { color: var(--accent-amber); }
+.fbp-name { color: var(--text-primary); font-weight: 600; }
+.fbp-email { color: var(--accent-amber); text-decoration: none; overflow-wrap: anywhere; }
+.fbp-email:hover { text-decoration: underline; }
+.fbp-date { margin-left: auto; color: var(--text-tertiary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fbp-item.is-unread .fbp-name::after {
+  content: ''; display: inline-block; width: 6px; height: 6px; margin-left: 6px; vertical-align: middle;
+  border-radius: 50%; background: var(--accent-amber);
+}
+
+.fbp-message {
+  margin: 0; font-size: 13px; line-height: 1.6; color: var(--text-secondary);
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+
+.fbp-actions { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 8px; border-top: 1px dashed var(--border-primary); }
+.fbp-actions .btn { height: 28px; font-size: 12px; text-decoration: none; }
+.fbp-delete:hover { color: var(--accent-rose); }
+
+@media (max-width: 560px) {
+  .fbp-panel { padding: 12px; }
+  .fbp-item { padding: 10px; }
+  .fbp-date { margin-left: 0; flex-basis: 100%; }
+}

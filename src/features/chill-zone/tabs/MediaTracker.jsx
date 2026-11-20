@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Film, Tv, Gamepad2, Ghost, Plus, X, Star, Search,
   Edit3, Trash2, Save, ListVideo, ExternalLink,
@@ -6,16 +7,17 @@ import {
 } from 'lucide-react';
 import { liveLoad, liveSave } from '../../../utils/liveStorage';
 import { useLiveRefresh } from '../../../utils/liveStore';
-import './MediaTracker.css';
+import '../../daily-life/DailyMasthead.css';
 import './ChillMasthead.css';
+import './MediaTracker.css';
 
 /* ─── Constants ─── */
 
 const CATEGORIES = [
-  { id: 'movies', label: 'Movies',     icon: Film,     color: 'blue'    },
-  { id: 'series', label: 'Web Series',  icon: Tv,       color: 'purple'  },
-  { id: 'anime',  label: 'Anime',       icon: Ghost,    color: 'rose'    },
-  { id: 'games',  label: 'Games',       icon: Gamepad2, color: 'emerald' },
+  { id: 'movies', label: 'Movies',     icon: Film     },
+  { id: 'series', label: 'Web Series', icon: Tv       },
+  { id: 'anime',  label: 'Anime',      icon: Ghost    },
+  { id: 'games',  label: 'Games',      icon: Gamepad2 },
 ];
 
 const STATUSES = ['all', 'watching', 'planning', 'completed', 'on-hold', 'dropped'];
@@ -119,7 +121,31 @@ function StarRating({ value, onChange }) {
   );
 }
 
-/* ─── Api Key Settings Panel ─── */
+/* ─── Modal shell (skill-style §7: portal on <body>, day-modal look) ─── */
+function MtModal({ icon: Icon, title, label, onClose, summary, children }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return createPortal(
+    <div className="modal-overlay mt-overlay" onClick={onClose}>
+      <div className="modal mt-modal" role="dialog" aria-modal="true" aria-label={label || title}
+        onClick={(e) => e.stopPropagation()}>
+        <div className="mt-modal-head">
+          <span className="mt-modal-title"><Icon size={13} /> {title}</span>
+          <button type="button" className="mt-modal-close" aria-label="Close" onClick={onClose}><X size={12} /></button>
+        </div>
+        {summary && <div className="mt-modal-summary">{summary}</div>}
+        {children}
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+/* ─── Api Key Settings ─── */
 function ApiKeySettings({ apiKeys, onSave, onClose }) {
   const [omdb, setOmdb] = useState(apiKeys.omdb);
   const [rawg, setRawg] = useState(apiKeys.rawg);
@@ -131,58 +157,38 @@ function ApiKeySettings({ apiKeys, onSave, onClose }) {
   };
 
   return (
-    <div className="media-form-overlay" onClick={onClose}>
-      <div className="media-form" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
-        <div className="media-form-header">
-          <div className="media-form-title">
-            <Key size={18} />
-            API Keys
-          </div>
-          <button type="button" className="media-form-close" onClick={onClose}><X size={16} /></button>
+    <MtModal icon={Key} title="API keys" onClose={onClose}
+      summary={<>
+        <span className={`mt-badge ${omdb.trim() ? 'is-amber' : 'is-rose'}`}>OMDb: {omdb.trim() ? 'Set' : 'Missing'}</span>
+        <span className={`mt-badge ${rawg.trim() ? 'is-amber' : 'is-rose'}`}>RAWG: {rawg.trim() ? 'Set' : 'Missing'}</span>
+      </>}>
+      <form className="mt-form" onSubmit={handleSubmit}>
+        <p className="mt-form-note">Free API keys auto-fill movie, series and game details when you add items.</p>
+
+        <label className="mt-field">
+          <span className="mt-label">OMDb key <em>movies, series &amp; anime</em></span>
+          <input id="media-omdb-key" name="omdbKey" className="input mt-input" value={omdb}
+            onChange={(e) => setOmdb(e.target.value)} placeholder="Paste your OMDb API key..." />
+          <a className="mt-link" href="http://www.omdbapi.com/apikey.aspx" target="_blank" rel="noopener noreferrer">
+            <ExternalLink size={10} /> Get a free OMDb key
+          </a>
+        </label>
+
+        <label className="mt-field">
+          <span className="mt-label">RAWG key <em>games</em></span>
+          <input id="media-rawg-key" name="rawgKey" className="input mt-input" value={rawg}
+            onChange={(e) => setRawg(e.target.value)} placeholder="Paste your RAWG API key..." />
+          <a className="mt-link" href="https://rawg.io/apidocs" target="_blank" rel="noopener noreferrer">
+            <ExternalLink size={10} /> Get a free RAWG key
+          </a>
+        </label>
+
+        <div className="mt-actions">
+          <button type="submit" className="btn btn-primary"><Save size={13} /> Save keys</button>
+          <button type="button" className="btn btn-ghost" onClick={onClose}>Close</button>
         </div>
-
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
-          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
-            Free API keys auto-fill movie/series/game details when adding items.
-          </p>
-
-          <div className="media-field">
-            <label className="media-label">
-              OMDb API Key
-              <span style={{ fontWeight: 400, textTransform: 'none', marginLeft: 6, opacity: 0.6 }}>(movies, series &amp; anime)</span>
-            </label>
-            <input id="media-omdb-key" name="omdbKey" className="media-input" value={omdb}
-              onChange={(e) => setOmdb(e.target.value)}
-              placeholder="Paste your OMDb API key..."
-            />
-            <a href="http://www.omdbapi.com/apikey.aspx" target="_blank" rel="noopener noreferrer"
-              style={{ fontSize: 10, color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-              <ExternalLink size={10} /> Get free OMDb key →
-            </a>
-          </div>
-
-          <div className="media-field">
-            <label className="media-label">
-              RAWG API Key
-              <span style={{ fontWeight: 400, textTransform: 'none', marginLeft: 6, opacity: 0.6 }}>(games)</span>
-            </label>
-            <input id="media-rawg-key" name="rawgKey" className="media-input" value={rawg}
-              onChange={(e) => setRawg(e.target.value)}
-              placeholder="Paste your RAWG API key..."
-            />
-            <a href="https://rawg.io/apidocs" target="_blank" rel="noopener noreferrer"
-              style={{ fontSize: 10, color: 'var(--accent-emerald)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-              <ExternalLink size={10} /> Get free RAWG key →
-            </a>
-          </div>
-
-          <button type="submit" className="media-submit" data-cat="movies"
-            style={{ background: 'var(--accent-blue)', color: '#fff' }}>
-            <Save size={14} /> Save Keys
-          </button>
-        </form>
-      </div>
-    </div>
+      </form>
+    </MtModal>
   );
 }
 
@@ -201,7 +207,7 @@ function MediaFormModal({ category, item, onSave, onClose, apiKeys }) {
   const searchTimer = useRef(null);
 
   const catInfo = CATEGORIES.find((c) => c.id === category);
-  const useApi = (category === 'movies' || category === 'series' || category === 'anime' || category === 'games') && !item;
+  const useApi = !item;
 
   // Debounced API search
   const doSearch = useCallback(async (q) => {
@@ -258,123 +264,106 @@ function MediaFormModal({ category, item, onSave, onClose, apiKeys }) {
   );
 
   return (
-    <div className="media-form-overlay" onClick={onClose}>
-      <div className="media-form" onClick={(e) => e.stopPropagation()}>
-        <div className="media-form-header">
-          <div className="media-form-title">
-            <catInfo.icon size={20} />
-            {item ? 'Edit' : 'Add'} {singularLabel(category)}
+    <MtModal icon={catInfo.icon} title={`${item ? 'Edit' : 'Add'} ${singularLabel(category).toLowerCase()}`} onClose={onClose}
+      summary={<>
+        <span className="mt-badge is-muted">Status: <strong>{STATUS_LABELS[status]}</strong></span>
+        <span className="mt-badge is-amber">Progress: {Math.min(100, Math.max(0, progress || 0))}%</span>
+      </>}>
+      <form className="mt-form" onSubmit={handleSubmit}>
+        {/* API Search */}
+        {useApi && (
+          <div className="media-api-search">
+            <label className="mt-field">
+              <span className="mt-label">
+                Search {catInfo.label.toLowerCase()}
+                {needsKey && <em className="is-warn">set an API key first</em>}
+              </span>
+              <span className="media-search-input-wrap">
+                <Search size={13} />
+                <input id="media-api-search" name="apiSearch" className="input mt-input"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder={`Search ${catInfo.label.toLowerCase()} by name...`}
+                  autoFocus
+                  onFocus={() => searchResults.length > 0 && setShowResults(true)}
+                  onBlur={() => setTimeout(() => setShowResults(false), 200)}
+                />
+                {searching && <Loader2 size={13} className="media-spinner" />}
+              </span>
+            </label>
+
+            {showResults && searchResults.length > 0 && (
+              <div className="media-api-results">
+                {searchResults.map((r) => (
+                  <button key={r.id} type="button" className="media-api-result"
+                    onClick={() => selectResult(r)} onMouseDown={(e) => e.preventDefault()}>
+                    <span className="media-api-result-poster">
+                      {r.poster ? <img src={r.poster} alt="" /> : <Film size={14} />}
+                    </span>
+                    <span className="media-api-result-info">
+                      <span className="media-api-result-title">{r.title}</span>
+                      <span className="media-api-result-meta">{r.year}{r.genres ? ` • ${r.genres}` : ''}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          <button type="button" className="media-form-close" onClick={onClose}><X size={16} /></button>
+        )}
+
+        <div className="mt-form-row">
+          <label className="mt-field is-title">
+            <span className="mt-label">Title</span>
+            <input id="media-title" name="title" className="input mt-input" value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={`${singularLabel(category)} name`}
+              autoFocus={!useApi}
+            />
+          </label>
+          <label className="mt-field is-year">
+            <span className="mt-label">Year</span>
+            <input id="media-year" name="year" className="input mt-input" value={year}
+              onChange={(e) => setYear(e.target.value)} placeholder="2024" inputMode="numeric" />
+          </label>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
-          {/* API Search */}
-          {useApi && (
-            <div className={`media-api-search ${showResults && searchResults.length > 0 ? 'has-results-open' : ''}`}>
-              <div className="media-field">
-                <label className="media-label">
-                  Search via API
-                  {needsKey && (
-                    <span style={{ fontWeight: 400, textTransform: 'none', color: 'var(--accent-amber)', marginLeft: 6 }}>
-                      (set API key above)
-                    </span>
-                  )}
-                </label>
-                <div className="media-search-input-wrap">
-                  <Search size={14} />
-                  <input id="media-api-search" name="apiSearch" className="media-input"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder={`Search ${catInfo.label.toLowerCase()} by name...`}
-                    autoFocus={!item}
-                    onFocus={() => searchResults.length > 0 && setShowResults(true)}
-                    onBlur={() => setTimeout(() => setShowResults(false), 200)}
-                  />
-                  {searching && <Loader2 size={14} className="media-spinner" />}
-                </div>
-              </div>
+        <div className="mt-form-row">
+          <label className="mt-field">
+            <span className="mt-label">Status</span>
+            <select id="media-status" name="status" className="input mt-input" value={status} onChange={(e) => setStatus(e.target.value)}>
+              {['watching', 'planning', 'completed', 'on-hold', 'dropped'].map((s) => (
+                <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+              ))}
+            </select>
+          </label>
+          <label className="mt-field">
+            <span className="mt-label">Progress (%)</span>
+            <input id="media-progress" name="progress" className="input mt-input" type="number" min="0" max="100"
+              value={progress} onChange={(e) => setProgress(Number(e.target.value))} />
+          </label>
+        </div>
 
-              {/* Search results dropdown */}
-              {showResults && searchResults.length > 0 && (
-                <div className="media-api-results">
-                  {searchResults.map((r) => (
-                    <button key={r.id} type="button" className="media-api-result"
-                      onClick={() => selectResult(r)} onMouseDown={(e) => e.preventDefault()}>
-                      <div className="media-api-result-poster">
-                        {r.poster
-                          ? <img src={r.poster} alt="" />
-                          : <Film size={16} style={{ opacity: 0.3 }} />
-                        }
-                      </div>
-                      <div className="media-api-result-info">
-                        <span className="media-api-result-title">{r.title}</span>
-                        <span className="media-api-result-meta">
-                          {r.year}{r.genres ? ` • ${r.genres}` : ''}
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+        <div className="mt-field">
+          <span className="mt-label">Rating</span>
+          <StarRating value={rating} onChange={setRating} />
+        </div>
 
-          {/* Manual fields */}
-          <div className="media-input-row">
-            <div className="media-field" style={{ flex: 2 }}>
-              <label className="media-label">Title *</label>
-              <input id="media-title" name="title" className="media-input" value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder={`Enter ${singularLabel(category).toLowerCase()} name...`}
-                autoFocus={!!item || !useApi}
-              />
-            </div>
-            <div className="media-field" style={{ flex: 1 }}>
-              <label className="media-label">Year</label>
-              <input id="media-year" name="year" className="media-input" value={year}
-                onChange={(e) => setYear(e.target.value)}
-                placeholder="2024"
-              />
-            </div>
-          </div>
+        <label className="mt-field">
+          <span className="mt-label">Notes</span>
+          <textarea id="media-notes" name="notes" className="input mt-input mt-textarea" value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Thoughts, episode count, playtime..." rows={3} />
+        </label>
 
-          <div className="media-input-row">
-            <div className="media-field">
-              <label className="media-label">Status</label>
-              <select id="media-status" name="status" className="media-select" value={status} onChange={(e) => setStatus(e.target.value)}>
-                {['watching', 'planning', 'completed', 'on-hold', 'dropped'].map((s) => (
-                  <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-                ))}
-              </select>
-            </div>
-            <div className="media-field">
-              <label className="media-label">Progress (%)</label>
-              <input id="media-progress" name="progress" className="media-input" type="number" min="0" max="100"
-                value={progress} onChange={(e) => setProgress(Number(e.target.value))} />
-            </div>
-          </div>
-
-          <div className="media-field">
-            <label className="media-label">Rating</label>
-            <StarRating value={rating} onChange={setRating} />
-          </div>
-
-          <div className="media-field">
-            <label className="media-label">Notes</label>
-            <textarea id="media-notes" name="notes" className="media-input" value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Your thoughts, episode count, playtime..."
-              rows={3} />
-          </div>
-
-          <button type="submit" className="media-submit" data-cat={category} disabled={!title.trim()}>
-            <Save size={16} />
-            {item ? 'Update' : 'Add to List'}
+        <div className="mt-actions">
+          <button type="submit" className="btn btn-primary" disabled={!title.trim()}>
+            {item ? <Save size={13} /> : <Plus size={13} />}
+            {item ? 'Update' : 'Add to list'}
           </button>
-        </form>
-      </div>
-    </div>
+          <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+        </div>
+      </form>
+    </MtModal>
   );
 }
 
@@ -463,190 +452,164 @@ export default function MediaTracker() {
     }));
   };
 
-  const hasApiKeys = apiKeys.omdb || apiKeys.rawg;
   const needsApiKey = (!apiKeys.omdb && (activeCat === 'movies' || activeCat === 'series' || activeCat === 'anime'))
     || (!apiKeys.rawg && activeCat === 'games');
 
+  const openAdd = () => { setEditingItem(null); setShowForm(true); };
+  const filtered = Boolean(searchQuery) || statusFilter !== 'all';
+
   return (
-    <div className="media-tracker cz-mst">
-      {/* ── Masthead (matches Mess Meal Tracker header) ── */}
-      <div className="schedule-masthead">
-        <div className="schedule-title-block">
-          <div className="schedule-icon-tile">
-            <Film size={20} strokeWidth={2.2} />
-          </div>
-          <div>
-            <span className="schedule-overline">DownTime</span>
-            <p className="schedule-title">Media Tracker</p>
-            <span className="schedule-subtitle">Movies, series, anime &amp; games</span>
+    <div className="media-tracker cz-tab">
+      {/* ── Masthead (skill-style §2) ── */}
+      <header className="dl-head has-actions">
+        <div className="dl-head-title">
+          <div className="dl-head-tile" aria-hidden="true"><Film size={20} strokeWidth={2.1} /></div>
+          <div className="dl-head-text">
+            <span className="dl-head-overline">DownTime</span>
+            <h2 className="dl-head-name">Media Tracker</h2>
+            <span className="dl-head-subtitle">Movies, series, anime &amp; games</span>
           </div>
         </div>
-
-        <div className="schedule-masthead-center">
-          <div className="media-stats">
-            <span className="media-stat">
-              <span className="media-stat-dot" style={{ background: 'var(--accent-blue)' }} />
-              {stats.watching} watching
-            </span>
-            <span className="media-stat">
-              <span className="media-stat-dot" style={{ background: 'var(--accent-emerald)' }} />
-              {stats.completed} done
-            </span>
-            <span className="media-stat">
-              <span className="media-stat-dot" style={{ background: 'var(--accent-amber)' }} />
-              {stats.planning} planned
-            </span>
-            <span className="media-stat">Total: {stats.total}</span>
-          </div>
-        </div>
-
-        <div className="schedule-actions">
-          <button type="button" className="schedule-nav-btn" title="Set API Keys"
+        <dl className="dl-head-stats">
+          <div className="dl-head-stat"><dt>Watching</dt><dd>{stats.watching}</dd></div>
+          <div className="dl-head-stat"><dt>Done</dt><dd>{stats.completed}</dd></div>
+          <div className="dl-head-stat"><dt>Planned</dt><dd>{stats.planning}</dd></div>
+          <div className="dl-head-stat"><dt>Total</dt><dd>{stats.total}</dd></div>
+        </dl>
+        <div className="dl-head-actions">
+          <button type="button" className="dl-head-menu-btn" title="API keys" aria-label="API keys"
             onClick={() => setShowApiSettings(true)}>
-            <Key size={14} />
-          </button>
-          <button type="button" className="media-add-btn" data-cat={activeCat}
-            onClick={() => { setEditingItem(null); setShowForm(true); }}>
-            <Plus size={16} />
-            Add {singularLabel(activeCat)}
+            <Key />
           </button>
         </div>
-      </div>
+      </header>
 
-      <div className="schedule-dotted-divider" />
-
-      {/* ── Category sub-tabs ── */}
-      <div className="media-category-tabs">
+      {/* ── Category switcher (§4, scrolls sideways on phone) ── */}
+      <div className="mt-switch" role="tablist" aria-label="Media category">
         {CATEGORIES.map((cat) => {
           const Icon = cat.icon;
           const count = (data[cat.id] || []).length;
           return (
-            <button key={cat.id} type="button"
-              className={`media-cat-tab ${activeCat === cat.id ? 'active' : ''}`}
-              data-cat={cat.id}
+            <button key={cat.id} type="button" role="tab" aria-selected={activeCat === cat.id}
+              className={`mt-switch-pill${activeCat === cat.id ? ' is-active' : ''}`}
               onClick={() => { setActiveCat(cat.id); setStatusFilter('all'); setSearchQuery(''); }}>
-              <Icon size={16} /> {cat.label}
-              <span className="media-cat-count">({count})</span>
+              <Icon size={13} /> {cat.label}
+              <span className="mt-switch-count">{count}</span>
             </button>
           );
         })}
       </div>
 
-      {/* ── API Key banner (shown when no key set for active category) ── */}
+      {/* ── API key notice ── */}
       {needsApiKey && (
-        <div className="media-api-banner">
+        <div className="mt-notice">
           <AlertCircle size={14} />
-          <span>Set API keys to auto-fill details from OMDb &amp; RAWG</span>
-          <button type="button" onClick={() => setShowApiSettings(true)}>
-            <Key size={12} /> Set Keys
-          </button>
+          <span>Set API keys to auto-fill details from OMDb &amp; RAWG.</span>
+          <button type="button" onClick={() => setShowApiSettings(true)}><Key size={12} /> Set keys</button>
         </div>
       )}
 
-      {/* ── Filter & Search ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)', flexWrap: 'wrap' }}>
-        <div className="media-filter-bar">
-          {STATUSES.map((s) => (
-            <button key={s} type="button"
-              className={`media-filter-btn ${statusFilter === s ? 'active' : ''}`}
-              data-status={s}
-              onClick={() => setStatusFilter(s)}>
-              {s === 'all' ? 'All' : STATUS_LABELS[s]}
-            </button>
-          ))}
+      {/* ── List card ── */}
+      <section className="mt-card">
+        <div className="mt-card-head-row">
+          <h3 className="mt-card-title">
+            <CatIcon size={14} /> {catInfo?.label}
+            <span className="mt-card-count">{filtered ? `${sortedItems.length} / ${stats.total}` : stats.total}</span>
+          </h3>
+          <button type="button" className="mt-add-icon-btn" onClick={openAdd}
+            title={`Add ${singularLabel(activeCat).toLowerCase()}`} aria-label={`Add ${singularLabel(activeCat).toLowerCase()}`}>
+            <Plus size={15} />
+          </button>
         </div>
-        <div className="media-search">
-          <Search size={13} />
-          <input type="text"
-            placeholder={`Search ${catInfo?.label.toLowerCase()}...`}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)} />
-        </div>
-      </div>
 
-      {/* ── Items List ── */}
-      <div className="media-list">
+        <div className="mt-toolbar">
+          <div className="mt-filter" role="tablist" aria-label="Status filter">
+            {STATUSES.map((s) => (
+              <button key={s} type="button" role="tab" aria-selected={statusFilter === s}
+                className={`mt-filter-pill${statusFilter === s ? ' is-active' : ''}`}
+                onClick={() => setStatusFilter(s)}>
+                {s === 'all' ? 'All' : STATUS_LABELS[s]}
+              </button>
+            ))}
+          </div>
+          <label className="mt-search">
+            <Search size={13} />
+            <input type="text" aria-label={`Search ${catInfo?.label.toLowerCase()}`}
+              placeholder={`Search ${catInfo?.label.toLowerCase()}...`}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)} />
+          </label>
+        </div>
+
         {sortedItems.length === 0 ? (
-          <div className="media-empty">
-            <div className="media-item-icon" style={{ width: 48, height: 48, background: 'var(--bg-input)', color: 'var(--text-tertiary)' }}>
-              <ListVideo size={24} />
-            </div>
-            <p>
-              {searchQuery || statusFilter !== 'all'
-                ? 'No items match your filters.'
-                : `Your ${catInfo?.label.toLowerCase()} list is empty.`}
+          <div className="cz-empty">
+            <span className="cz-empty-icon"><ListVideo size={16} /></span>
+            <p className="cz-empty-hint">
+              {filtered
+                ? 'Nothing matches these filters.'
+                : `No ${catInfo?.label.toLowerCase()} yet - track what you're watching, finished or planning next.`}
             </p>
-            {!searchQuery && statusFilter === 'all' && (
-              <button type="button" className="media-add-btn" data-cat={activeCat}
-                onClick={() => { setEditingItem(null); setShowForm(true); }}
-                style={{ marginTop: 'var(--sp-2)' }}>
-                <Plus size={14} />
-                Add your first {singularLabel(activeCat).toLowerCase()}
+            {!filtered && (
+              <button type="button" className="cz-empty-action" onClick={openAdd}>
+                <Plus size={13} /> Add {singularLabel(activeCat).toLowerCase()}
               </button>
             )}
           </div>
         ) : (
-          sortedItems.map((item, idx) => {
-            const itemCatId = item.category || activeCat;
-            const ItemIcon = (CATEGORIES.find((c) => c.id === itemCatId)?.icon) || CatIcon;
-            return (
-            <div key={item.id} className="media-item" data-cat={itemCatId}
-              style={{ animationDelay: `${idx * 0.04}s` }}>
-              <div className={`media-item-icon ${item.poster ? 'has-poster' : ''}`}>
-                {item.poster ? (
-                  <img
-                    src={item.poster}
-                    alt=""
-                    className="media-item-poster"
-                    loading="lazy"
-                    onError={(e) => { e.currentTarget.parentElement.classList.remove('has-poster'); e.currentTarget.remove(); }}
-                  />
-                ) : null}
-                <ItemIcon size={18} className="media-item-fallback-icon" />
-              </div>
-              <div className="media-item-body">
-                <div className="media-item-top">
-                  <span className="media-item-title">{item.title}</span>
-                  {item.year && <span className="media-item-year">{item.year}</span>}
-                  <span className={`media-badge ${item.status}`}>
-                    {STATUS_LABELS[item.status] || item.status}
+          <ul className="mt-list">
+            {sortedItems.map((item) => {
+              const itemCatId = item.category || activeCat;
+              const ItemIcon = (CATEGORIES.find((c) => c.id === itemCatId)?.icon) || CatIcon;
+              const pct = Math.min(100, Math.max(0, item.progress || 0));
+              return (
+                <li key={item.id} className="mt-row">
+                  <span className={`mt-row-thumb${item.poster ? ' has-poster' : ''}`}>
+                    {item.poster ? (
+                      <img src={item.poster} alt="" loading="lazy"
+                        onError={(e) => { e.currentTarget.parentElement.classList.remove('has-poster'); e.currentTarget.remove(); }} />
+                    ) : null}
+                    <ItemIcon size={16} className="mt-row-fallback" />
                   </span>
-                  <StarRating value={item.rating || 0}
-                    onChange={(r) => handleQuickRating(item.id, r)} />
-                </div>
-                {item.notes && <div className="media-item-notes">{item.notes}</div>}
-                <div className="media-progress">
-                  <div className="media-progress-bar">
-                    <div className="media-progress-fill" style={{ width: `${item.progress || 0}%` }} />
-                  </div>
-                  <span className="media-progress-text">{item.progress || 0}%</span>
-                  <select className="media-select"
-                    value={item.status}
-                    onChange={(e) => handleQuickStatus(item.id, e.target.value)}
-                    style={{ padding: '2px 24px 2px 8px', fontSize: '10px', minWidth: 0, width: 'auto', backgroundSize: '8px', backgroundPosition: 'right 6px center' }}>
-                    {['watching', 'planning', 'completed', 'on-hold', 'dropped'].map((s) => (
-                      <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="media-item-actions">
-                <button type="button" className="media-action-btn edit" title="Edit"
-                  onClick={() => { setEditingItem(item); setShowForm(true); }}>
-                  <Edit3 size={14} />
-                </button>
-                <button type="button" className="media-action-btn delete" title="Delete"
-                  onClick={() => handleDelete(item.id)}>
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            </div>
-            );
-          })
-        )}
-      </div>
 
-      {/* ── Add/Edit Form ── */}
+                  <div className="mt-row-body">
+                    <div className="mt-row-top">
+                      <span className="mt-row-title" title={item.title}>{item.title}</span>
+                      {item.year && <span className="mt-row-year">{item.year}</span>}
+                    </div>
+                    <div className="mt-row-meta">
+                      <span className={`mt-status is-${item.status}`}>{STATUS_LABELS[item.status] || item.status}</span>
+                      <StarRating value={item.rating || 0} onChange={(r) => handleQuickRating(item.id, r)} />
+                    </div>
+                    {item.notes && <div className="mt-row-notes">{item.notes}</div>}
+                    <div className="mt-row-progress">
+                      <span className="mt-bar"><span className="mt-bar-fill" style={{ width: `${pct}%` }} /></span>
+                      <span className="mt-row-pct">{pct}%</span>
+                      <select className="mt-row-select" aria-label="Status" value={item.status}
+                        onChange={(e) => handleQuickStatus(item.id, e.target.value)}>
+                        {['watching', 'planning', 'completed', 'on-hold', 'dropped'].map((s) => (
+                          <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="mt-row-actions">
+                    <button type="button" className="mt-icon-btn" title="Edit" aria-label={`Edit ${item.title}`}
+                      onClick={() => { setEditingItem(item); setShowForm(true); }}>
+                      <Edit3 size={13} />
+                    </button>
+                    <button type="button" className="mt-icon-btn is-delete" title="Delete" aria-label={`Delete ${item.title}`}
+                      onClick={() => handleDelete(item.id)}>
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
       {showForm && (
         <MediaFormModal
           category={activeCat}
@@ -657,7 +620,6 @@ export default function MediaTracker() {
         />
       )}
 
-      {/* ── API Settings ── */}
       {showApiSettings && (
         <ApiKeySettings
           apiKeys={apiKeys}

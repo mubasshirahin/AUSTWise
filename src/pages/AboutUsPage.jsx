@@ -38,7 +38,7 @@ export default function AboutUsPage() {
         </ul>
 
         <h2>Contact</h2>
-        <p>Have questions or suggestions? We would love to hear from you. Reach out via <a href="/feedback">Feedback</a> or email <a href="mailto:hello@austwise.com">hello@austwise.com</a>.</p>
+        <p>Have questions or suggestions? We would love to hear from you. Reach out via <a href="/feedback">Feedback</a> or email <a href="mailto:austwise59@gmail.com">austwise59@gmail.com</a>.</p>
       </div>
       <div className="info-page-footer">&copy; {new Date().getFullYear()} AUSTWise. All rights reserved.</div>
     </div>

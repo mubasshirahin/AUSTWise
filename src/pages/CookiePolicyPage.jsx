@@ -37,7 +37,7 @@ export default function CookiePolicyPage() {
         <p>We may update this policy as our cookie usage evolves. Changes will be posted on this page.</p>
 
         <h2>Contact</h2>
-        <p>Questions about our cookie usage? Reach us at <a href="mailto:support@austwise.com">support@austwise.com</a>.</p>
+        <p>Questions about our cookie usage? Reach us at <a href="mailto:austwise59@gmail.com">austwise59@gmail.com</a>.</p>
       </div>
       <div className="info-page-footer">&copy; {new Date().getFullYear()} AUSTWise. All rights reserved.</div>
     </div>

@@ -56,7 +56,7 @@ export default function DocsPage() {
         <p>Connect your Google Classroom account to track courses, assignments, and materials in a single organised grid.</p>
 
         <h2>Need Help?</h2>
-        <p>Reach out via the <a href="/feedback">Feedback</a> form or contact <a href="mailto:support@austwise.com">support@austwise.com</a>.</p>
+        <p>Reach out via the <a href="/feedback">Feedback</a> form or contact <a href="mailto:austwise59@gmail.com">austwise59@gmail.com</a>.</p>
       </div>
       <div className="info-page-footer">&copy; {new Date().getFullYear()} AUSTWise. All rights reserved.</div>
     </div>

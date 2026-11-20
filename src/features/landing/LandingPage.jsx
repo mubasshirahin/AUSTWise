@@ -20,7 +20,7 @@ import LandingNav from './LandingNav';
 import brandMark from '../../assets/austwise-icon-final.svg';
 import { useTheme } from '../../context/ThemeContext';
 import './LandingPage.css';
-import { topTestimonials, bottomTestimonials } from '../../data/testimonials';
+import TestimonialRail from '../../components/TestimonialRail';
 import { modules, stackingHighlights, cursorSpotlight, tickerFeatures } from '../../data/features';
 
 // ─── PAIN POINTS → SOLUTIONS ───
@@ -1240,41 +1240,7 @@ export default function LandingPage() {
           </div>
         </ScrollReveal>
 
-        {/* Top Slider (Right to Left) */}
-        <div className="testimonials-slider-wrapper" onMouseEnter={(e) => e.currentTarget.querySelector('.testimonials-slider').style.animationPlayState = 'paused'} onMouseLeave={(e) => e.currentTarget.querySelector('.testimonials-slider').style.animationPlayState = 'running'}>
-          <div className="testimonials-slider track-right">
-            {[...topTestimonials, ...topTestimonials, ...topTestimonials].map((t, i) => (
-              <div key={i} className="testimonial-card">
-                <p className="testimonial-quote">{t.quote}</p>
-                <div className="testimonial-user">
-                  <img src={t.avatar} alt={t.name} className="testimonial-avatar" />
-                  <div className="testimonial-user-info">
-                    <div className="testimonial-name">{t.name}</div>
-                    <div className="testimonial-role">{t.role}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Bottom Slider (Left to Right) */}
-        <div className="testimonials-slider-wrapper" onMouseEnter={(e) => e.currentTarget.querySelector('.testimonials-slider').style.animationPlayState = 'paused'} onMouseLeave={(e) => e.currentTarget.querySelector('.testimonials-slider').style.animationPlayState = 'running'}>
-          <div className="testimonials-slider track-left">
-            {[...bottomTestimonials, ...bottomTestimonials, ...bottomTestimonials].map((t, i) => (
-              <div key={i} className="testimonial-card">
-                <p className="testimonial-quote">{t.quote}</p>
-                <div className="testimonial-user">
-                  <img src={t.avatar} alt={t.name} className="testimonial-avatar" />
-                  <div className="testimonial-user-info">
-                    <div className="testimonial-name">{t.name}</div>
-                    <div className="testimonial-role">{t.role}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <TestimonialRail />
       </section>
 
       {/* ─── CTA ─── */}
@@ -1283,7 +1249,7 @@ export default function LandingPage() {
         <div className="landing-footer-inner">
           <ScrollReveal direction="left">
             <div className="landing-footer-brand">
-              <div className="landing-logo"><img src={footerLogo} alt="" className="landing-logo-img" /><span className="landing-logo-text">AUSTWise</span></div>
+              <div className="landing-logo"><img src={footerLogo} alt="AUSTWise" className="landing-logo-img" /></div>
               <p className="landing-footer-desc"></p>
               <p className="landing-footer-copy">&copy; {currentYear} AUSTWise. All rights reserved.</p>
             </div>

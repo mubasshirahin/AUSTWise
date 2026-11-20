@@ -1,0 +1,111 @@
+/* Testimonial rail — shared by the Landing and See Plans pages so both
+   scroll at the same speed with the same cards. Colours come from the
+   active theme's tokens. */
+
+.testimonial-rail {
+  display: flex;
+  flex-direction: column;
+}
+
+.testimonials-slider-wrapper {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 40px;
+}
+.testimonial-rail .testimonials-slider-wrapper:last-child { margin-bottom: 0; }
+
+.testimonials-slider {
+  display: flex;
+  gap: 24px;
+  padding: 20px 0;
+  width: max-content;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* ~140px/s — the slow pace the See Plans rail had before. */
+.track-right { animation: scrollRight 56s linear infinite; }
+.track-left { animation: scrollLeft 56s linear infinite; }
+
+@keyframes scrollRight {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-33.3333%); }
+}
+@keyframes scrollLeft {
+  0% { transform: translateX(-33.3333%); }
+  100% { transform: translateX(0); }
+}
+
+.testimonial-card {
+  flex-shrink: 0;
+  width: 360px;
+  max-width: 85vw;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.testimonial-card:hover {
+  border-color: color-mix(in srgb, var(--accent-amber) 20%, var(--border-primary));
+  box-shadow: var(--shadow-md);
+}
+
+.testimonial-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: auto;
+}
+
+.testimonial-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--accent-blue);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.testimonial-avatar-initial {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.testimonial-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.testimonial-name {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.testimonial-role {
+  color: var(--text-tertiary);
+  font-size: 0.9rem;
+}
+
+.testimonial-quote {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track-right,
+  .track-left { animation: none; }
+}

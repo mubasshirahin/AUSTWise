@@ -2520,115 +2520,7 @@
   position: relative;
 }
 
-.testimonials-slider-wrapper {
-  position: relative;
-  overflow: hidden;
-  margin-bottom: 40px;
-}
-
-.testimonials-slider-wrapper::before,
-.testimonials-slider-wrapper::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 120px;
-  z-index: 2;
-  pointer-events: none;
-}
-
-.testimonials-slider-wrapper::before {
-  left: 0;
-  background: linear-gradient(to right, var(--bg-primary), transparent);
-}
-
-.testimonials-slider-wrapper::after {
-  right: 0;
-  background: linear-gradient(to left, var(--bg-primary), transparent);
-}
-
-.testimonials-slider {
-  display: flex;
-  gap: 24px;
-  padding: 20px 0;
-  will-change: transform;
-  backface-visibility: hidden;
-}
-
-.track-right {
-  animation: scrollRight 25s linear infinite;
-}
-
-.track-left {
-  animation: scrollLeft 25s linear infinite;
-}
-
-@keyframes scrollRight {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-33.3333%); }
-}
-
-@keyframes scrollLeft {
-  0% { transform: translateX(-33.3333%); }
-  100% { transform: translateX(0); }
-}
-
-.testimonial-card {
-  flex-shrink: 0;
-  width: 360px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg);
-  padding: 28px;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  transition: all var(--transition-base);
-}
-
-.testimonial-card:hover {
-  border-color: var(--accent-blue);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
-}
-
-.testimonial-user {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.testimonial-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: var(--accent-blue);
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
-.testimonial-user-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.testimonial-name {
-  color: var(--text-primary);
-  font-weight: 600;
-  font-size: 1rem;
-}
-
-.testimonial-role {
-  color: var(--text-tertiary);
-  font-size: 0.9rem;
-}
-
-.testimonial-quote {
-  color: var(--text-secondary);
-  font-size: 0.95rem;
-  line-height: 1.6;
-  margin: 0;
-}
+/* Rail cards live in src/components/TestimonialRail.css */
 
 /* ─── CTA Section ─── */
 .landing-cta {
@@ -3943,6 +3835,18 @@
   display: grid;
   grid-template-columns: 1.5fr 2fr;
   gap: 60px;
+}
+
+.landing-footer-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: fit-content;
+}
+
+.landing-footer-brand .landing-logo {
+  position: relative;
+  top: -12px; /* lift logo only */
 }
 
 .landing-footer-brand .landing-logo-img {

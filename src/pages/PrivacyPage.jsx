@@ -13,7 +13,7 @@ export default function PrivacyPage() {
             <h1>Privacy Policy</h1>
             <button className="info-page-back" onClick={() => navigate('/')}>← Back to Home</button>
           </div>
-          <p className="info-page-subtitle">Last updated: January 2025</p>
+          <p className="info-page-subtitle">Last updated: November 2026</p>
         </div>
 
         <h2>1. Information We Collect</h2>
@@ -34,7 +34,8 @@ export default function PrivacyPage() {
         <p>We do not sell your personal data. Information may be shared with:</p>
         <ul className="info-list">
           <li>Other AUSTWise users only as needed for platform features (e.g., student directory, community posts, marketplace listings)</li>
-          <li>Service providers who help operate the platform</li>
+          <li>Service providers who help operate the platform, such as hosting, Google sign-in and push notifications</li>
+          <li>PipraPay, when you buy a Pro plan. Payments are completed on PipraPay and we do not store your card or mobile-wallet details</li>
           <li>Legal authorities if required by law</li>
         </ul>
 
@@ -51,7 +52,7 @@ export default function PrivacyPage() {
         <p>We use essential cookies to maintain your session and preferences. See our <a href="/cookie-policy">Cookie Policy</a> for details.</p>
 
         <h2>8. Contact</h2>
-        <p>For privacy-related inquiries, contact <a href="mailto:privacy@austwise.com">privacy@austwise.com</a>.</p>
+        <p>For privacy-related inquiries, contact <a href="mailto:austwise59@gmail.com">austwise59@gmail.com</a>.</p>
       </div>
       <div className="info-page-footer">&copy; {new Date().getFullYear()} AUSTWise. All rights reserved.</div>
     </div>

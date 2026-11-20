@@ -19,6 +19,8 @@ import PageAvailabilityPanel from './PageAvailabilityPanel';
 import FeatureAccessPanel from './FeatureAccessPanel';
 import QuestionBankPanel from './QuestionBankPanel';
 import ModerationStrikesPanel from './ModerationStrikesPanel';
+import TestimonialsPanel from './TestimonialsPanel';
+import FeedbackPanel from './FeedbackPanel';
 import SidebarPageAccessPanel, { SidebarPageAccessHeader } from './SidebarPageAccessPanel';
 import { useAuth } from '../../context/AuthContext';
 import { PROVIDER_MAP } from '../../utils/socialOAuth.jsx';
@@ -176,6 +178,8 @@ export default function AdminPanelPage() {
       'moderation': '/admin-panel/moderation',
       'features': '/admin-panel/features',
       'question-bank': '/admin-panel/question-bank',
+      'testimonials': '/admin-panel/testimonials',
+      'feedback': '/admin-panel/feedback',
       'access-requests': '/admin-panel/access-requests'
     };
     navigate(paths[tab] || '/admin-panel/overview');
@@ -803,6 +807,8 @@ if (!res.ok || !Array.isArray(data.applications)) return;
             <button className={activeTab === 'templates' ? 'is-active' : ''} onClick={() => navigateToTab('templates')}><span>Routine templates</span><small>Manage shared class schedules</small></button>
             <button className={activeTab === 'cheatsheets' ? 'is-active' : ''} onClick={() => navigateToTab('cheatsheets')}><span>Cheatsheets</span><small>Manage shared study resources</small></button>
             <button className={activeTab === 'question-bank' ? 'is-active' : ''} onClick={() => navigateToTab('question-bank')}><span>Question bank</span><small>Manage shared past papers</small></button>
+            <button className={activeTab === 'testimonials' ? 'is-active' : ''} onClick={() => navigateToTab('testimonials')}><span>Testimonials</span><small>Name, batch, photo and text on review cards</small></button>
+            <button className={activeTab === 'feedback' ? 'is-active' : ''} onClick={() => navigateToTab('feedback')}><span>Feedback</span><small>Read messages from the Feedback page</small></button>
             <button onClick={() => navigate('/admin/role-preview')}><span>Role preview</span><small>Preview the app as each user role</small></button>
             <button onClick={() => navigate('/admin-panel/qa-checklist')}><span>QA checklist</span><small>Final page-by-page test before release</small></button>
           </div>
@@ -2739,6 +2745,9 @@ if (!res.ok || !Array.isArray(data.applications)) return;
         {activeTab === 'telegram-connections' && <TelegramConnectionsPanel />}
 
         {activeTab === 'moderation' && <ModerationStrikesPanel />}
+
+        {activeTab === 'testimonials' && <TestimonialsPanel />}
+        {activeTab === 'feedback' && <FeedbackPanel />}
       </div>
     </div>
   );

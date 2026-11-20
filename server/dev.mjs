@@ -865,6 +865,45 @@ function getPublicBaseUrl(req) {
   return `${protocol}://${host}`;
 }
 
+// ── Feedback (public /feedback form, read by admins) ────
+const FEEDBACK_KEY = 'system:feedback';
+const FEEDBACK_MAX_ITEMS = 1000;
+const FEEDBACK_TYPES = ['Idea', 'Bug', 'Other'];
+const feedbackLimiter = rateLimit({ windowMs: 10 * 60_000, max: Number(process.env.RATE_LIMIT_FEEDBACK_MAX) || 5 });
+// Strip ASCII control characters except tab, newline and carriage return.
+const FEEDBACK_CONTROL_CHARS = new RegExp('[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]', 'g');
+function cleanFeedbackText(v, max) {
+  return String(v ?? '').replace(FEEDBACK_CONTROL_CHARS, '').trim().slice(0, max);
+}
+async function loadFeedbackList() {
+  const list = await getSharedStoreValue(FEEDBACK_KEY, []);
+  return Array.isArray(list) ? list : [];
+}
+
+// ── Testimonials (Landing + See Plans review rails, edited by admins) ────
+const TESTIMONIALS_KEY = 'system:testimonials';
+const TESTIMONIAL_AVATAR_RE = /^(https:\/\/[^\s"'<>]{1,500}|data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]{1,200000})$/;
+
+function sanitizeTestimonialRow(row) {
+  if (!Array.isArray(row) || row.length < 1 || row.length > 40) return null;
+  const out = [];
+  for (const item of row) {
+    if (!item || typeof item !== 'object') return null;
+    const name = String(item.name || '').trim().slice(0, 60);
+    const quote = String(item.quote || '').trim().slice(0, 400);
+    if (!name || !quote) return null;
+    const avatar = String(item.avatar || '').trim();
+    out.push({
+      quote,
+      name,
+      role: String(item.role || '').trim().slice(0, 60),
+      avatar: TESTIMONIAL_AVATAR_RE.test(avatar) ? avatar : '',
+      rating: Math.min(5, Math.max(1, Math.round(Number(item.rating) || 5))),
+    });
+  }
+  return out;
+}
+
 // ── Batch Drive lock (8-digit code, max 5 people per sharer) ────
 // Junior viewers (semester 1.1–2.2) are locked regardless of CR/SR; a
 // one-time 8-digit code from a semester-5+ (3.1+) student unlocks one
@@ -2473,6 +2512,105 @@ async function handleApiRequest(req, res) {
         return { allowed: true };
       },
     });
+    return;
+  }
+
+  // Feedback form. Public submit (rate-limited); admins read, mark read, delete.
+  if (req.url === '/api/feedback' && req.method === 'POST') {
+    if (!feedbackLimiter(req, res)) return;
+    try {
+      const body = await readJsonBody(req, 32 * 1024);
+      const message = cleanFeedbackText(body.message, 4000);
+      if (message.length < 3) {
+        sendJson(res, 400, { success: false, error: 'Please write a message.' });
+        return;
+      }
+      const email = cleanFeedbackText(body.email, 200);
+      const item = {
+        id: `fb_${Date.now().toString(36)}_${crypto.randomBytes(4).toString('hex')}`,
+        type: FEEDBACK_TYPES.includes(body.type) ? body.type : 'Other',
+        name: cleanFeedbackText(body.name, 100),
+        email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : '',
+        message,
+        device: cleanFeedbackText(req.headers['user-agent'], 300),
+        createdAt: new Date().toISOString(),
+        read: false,
+      };
+      const list = await loadFeedbackList();
+      list.unshift(item);
+      await setSharedStoreValue(FEEDBACK_KEY, list.slice(0, FEEDBACK_MAX_ITEMS), 'feedback');
+      sendJson(res, 201, { success: true });
+    } catch (e) {
+      sendJson(res, 500, { success: false, error: 'Could not send feedback. Please try again.' });
+    }
+    return;
+  }
+  if (req.url === '/api/admin/feedback' && req.method === 'GET') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      sendJson(res, 200, { success: true, items: await loadFeedbackList() });
+    } catch (e) {
+      sendJson(res, 500, { success: false, error: e.message || 'Failed to load feedback' });
+    }
+    return;
+  }
+  if (req.url === '/api/admin/feedback' && (req.method === 'PATCH' || req.method === 'DELETE')) {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const body = await readJsonBody(req, 64 * 1024);
+      const ids = new Set((Array.isArray(body.ids) ? body.ids : [body.id]).filter((x) => typeof x === 'string'));
+      if (!ids.size) {
+        sendJson(res, 400, { success: false, error: 'No feedback selected.' });
+        return;
+      }
+      let list = await loadFeedbackList();
+      if (req.method === 'DELETE') list = list.filter((x) => !ids.has(x.id));
+      else list = list.map((x) => (ids.has(x.id) ? { ...x, read: body.read !== false } : x));
+      await setSharedStoreValue(FEEDBACK_KEY, list, auth.id);
+      sendJson(res, 200, { success: true, items: list });
+    } catch (e) {
+      sendJson(res, 500, { success: false, error: e.message || 'Failed to update feedback' });
+    }
+    return;
+  }
+
+  // Review cards on the Landing and See Plans pages. Public read; null means
+  // "never edited", so the client keeps its bundled default list.
+  if (req.url === '/api/testimonials' && req.method === 'GET') {
+    try {
+      const value = await getSharedStoreValue(TESTIMONIALS_KEY, null);
+      sendJson(res, 200, { success: true, value: value && Array.isArray(value.top) && Array.isArray(value.bottom) ? value : null });
+    } catch (e) {
+      sendJson(res, 500, { success: false, error: e.message || 'Failed to load testimonials' });
+    }
+    return;
+  }
+  if (req.url === '/api/admin/testimonials' && (req.method === 'PUT' || req.method === 'DELETE')) {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      if (req.method === 'DELETE') {
+        await deleteSharedStoreValue(TESTIMONIALS_KEY);
+        try { broadcastToAll({ type: 'testimonials', payload: null }); } catch {}
+        sendJson(res, 200, { success: true, value: null });
+        return;
+      }
+      const body = await readJsonBody(req, 4 * 1024 * 1024);
+      const top = sanitizeTestimonialRow(body.top);
+      const bottom = sanitizeTestimonialRow(body.bottom);
+      if (!top || !bottom) {
+        sendJson(res, 400, { success: false, error: 'Each row needs 1 to 40 cards, and every card needs a name and text.' });
+        return;
+      }
+      const value = { top, bottom };
+      await setSharedStoreValue(TESTIMONIALS_KEY, value, auth.id);
+      try { broadcastToAll({ type: 'testimonials', payload: value }); } catch {}
+      sendJson(res, 200, { success: true, value });
+    } catch (e) {
+      sendJson(res, 500, { success: false, error: e.message || 'Failed to save testimonials' });
+    }
     return;
   }
 
@@ -4407,7 +4545,7 @@ async function handleApiRequest(req, res) {
           };
         });
       const body = JSON.stringify({ success: true, members });
-      if (/gzip/.test(String(req.headers['accept-encoding'] || ''))) {
+      if (/\bgzip\b/.test(String(req.headers['accept-encoding'] || ''))) {
         const zipped = gzipSync(body);
         res.writeHead(200, { 'Content-Type': 'application/json', 'Content-Encoding': 'gzip', Vary: 'Accept-Encoding' });
         res.end(zipped);

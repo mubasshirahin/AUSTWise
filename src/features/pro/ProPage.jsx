@@ -1,352 +1,353 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
-  Sparkles, Check, X, Crown, Star, Zap,
-  ArrowRight, Gift, Shield, Infinity as InfinityIcon,
-  BarChart3, Archive, Brain, Palette,
-  Cloud, ChevronDown,
+  Check, Crown, ArrowRight, Minus,
+  BarChart3, Archive, Brain, Cloud, Ban, ChevronDown, Paintbrush,
 } from 'lucide-react';
 import './ProPage.css';
-import { topTestimonials, bottomTestimonials } from '../../data/testimonials';
+import TestimonialRail from '../../components/TestimonialRail';
 import { API_URL, wakeBackend } from '../../utils/api';
+import { useTheme } from '../../context/ThemeContext';
+import { THEME_ACCENTS, THEME_LAYOUT, PRO_LAYOUTS, THEME_STYLES } from '../../context/themeConstants';
 
-// ─── Plan Definitions ───
-const PLANS = [
-  {
-    id: 'free',
-    name: 'Node',
-    subtitle: 'The foundation',
-    price: { monthly: 0, yearly: 0 },
-    period: 'forever',
-    originalPrice: null,
-    icon: Star,
-    iconClass: 'node',
-    ctaClass: 'node',
-    ctaText: 'Get Started',
-    features: [
-      { text: 'Dashboard & CGPA tracking', included: true },
-      { text: 'Class routine management', included: true },
-      { text: 'Resource Vault (500MB)', included: true },
-      { text: 'Basic analytics', included: true },
-      { text: 'Community access', included: true },
-      { text: 'Ads supported', included: true, highlight: true },
-      { text: 'Premium themes', included: false },
-      { text: 'AI-powered study tools', included: false },
-      { text: 'Priority support', included: false },
-      { text: 'Data export', included: false },
-      { text: 'Ad-free experience', included: false },
-    ],
-  },
+// ─── Plans ───
+const NODE = {
+  id: 'free',
+  name: 'Node',
+  includes: ['Dashboard & CGPA tracking', 'Class routine', 'Resource Vault (500MB)', 'Basic analytics', 'Community'],
+};
+
+const PAID_PLANS = [
   {
     id: 'pro',
     name: 'Helix',
     subtitle: 'The toolkit',
-    price: { monthly: 50 },
-    period: '/month',
-    originalPrice: null,
-    note: '1-month access, then back to Node (free)',
-    icon: Crown,
-    iconClass: 'helix',
-    ctaClass: 'helix',
+    price: 50,
+    period: 'month',
+    days: 30,
+    note: 'One month of access, then back to Node. Nothing renews.',
     ctaText: 'Get Helix',
-    badge: 'Most Popular',
+    badge: 'Most popular',
     featured: true,
     features: [
-      { text: 'Everything in Node', included: true },
-      { text: 'Ad-free experience', included: true },
-      { text: 'All premium themes', included: true },
-      { text: 'Advanced analytics', included: true },
-      { text: 'Export (PDF, Excel)', included: true },
-      { text: 'Priority email support', included: true },
-      { text: 'Extended Vault (5GB)', included: true, highlight: true },
-      { text: 'AI chat assistant', included: false },
-      { text: 'Custom branding', included: false },
+      { text: 'Everything in Node' },
+      { text: 'No ads on any page' },
+      { text: 'Premium themes' },
+      { text: 'Advanced analytics' },
+      { text: 'Export to PDF and Excel' },
+      { text: 'Priority email support' },
+      { text: 'Vault storage up to 5GB', key: true },
     ],
   },
   {
     id: 'premium',
     name: 'Apex',
     subtitle: 'The full suite',
-    price: { yearly: 500 },
-    period: '/year',
-    originalPrice: { yearly: 600 },
-    icon: Zap,
-    iconClass: 'apex',
-    ctaClass: 'apex',
-    ctaText: 'Go Apex',
+    price: 500,
+    original: 600,
+    period: 'year',
+    days: 365,
+    note: 'A full year from the day you pay.',
+    ctaText: 'Get Apex',
     features: [
-      { text: 'Everything in Helix', included: true },
-      { text: 'AI-powered study assistant', included: true, highlight: true },
-      { text: 'Custom branding & themes', included: true },
-      { text: 'Priority 24/7 support', included: true },
-      { text: 'Unlimited Vault storage', included: true },
-      { text: 'Early access features', included: true },
-      { text: 'Direct mentorship access', included: true },
-      { text: 'Exclusive community badges', included: true },
-      { text: 'Beta feature access', included: true },
+      { text: 'Everything in Helix' },
+      { text: 'AI study assistant', key: true },
+      { text: 'Unlimited Vault storage' },
+      { text: 'Priority 24/7 support' },
+      { text: 'Direct mentorship access' },
+      { text: 'Early and beta features' },
+      { text: 'Exclusive community badges' },
     ],
   },
 ];
 
-// ─── Feature Comparison Data ───
-const COMPARISON_FEATURES = [
-  {
-    category: 'Core Experience',
-    features: [
-      { name: 'Dashboard & CGPA Tracking', free: true, pro: true, premium: true },
-      { name: 'Class Routine Management', free: true, pro: true, premium: true },
-      { name: 'Resource Vault Access', free: '500MB', pro: '5GB', premium: '∞' },
-      { name: 'Community Access', free: true, pro: true, premium: true },
-      { name: 'Ad-Free Experience', free: false, pro: true, premium: true },
-      { name: 'Premium Themes', free: false, pro: true, premium: true },
-      { name: 'Advanced Analytics', free: false, pro: true, premium: true },
-      { name: 'Data Export (PDF/Excel)', free: false, pro: true, premium: true },
-      { name: 'Priority Support', free: false, pro: 'Email', premium: '24/7' },
-      { name: 'AI Study Assistant', free: false, pro: false, premium: true },
-      { name: 'Custom Branding', free: false, pro: false, premium: true },
-      { name: 'Exclusive Badges', free: false, pro: false, premium: true },
-    ],
-  },
+const ALL_PLANS = [{ ...NODE, price: 0 }, ...PAID_PLANS];
+
+// ─── Comparison ───
+const COMPARISON = [
+  { name: 'Dashboard & CGPA tracking', free: true, pro: true, premium: true },
+  { name: 'Class routine management', free: true, pro: true, premium: true },
+  { name: 'Resource Vault', free: '500MB', pro: '5GB', premium: 'Unlimited' },
+  { name: 'Community access', free: true, pro: true, premium: true },
+  { name: 'No ads', free: false, pro: true, premium: true },
+  { name: 'Premium themes', free: false, pro: true, premium: true },
+  { name: 'Advanced analytics', free: false, pro: true, premium: true },
+  { name: 'Export (PDF, Excel)', free: false, pro: true, premium: true },
+  { name: 'Priority support', free: false, pro: 'Email', premium: '24/7' },
+  { name: 'AI study assistant', free: false, pro: false, premium: true },
+  { name: 'Exclusive badges', free: false, pro: false, premium: true },
 ];
+
+// ─── Premium themes. Tile colours are content (other themes' own palettes).
+const THEME_LIST = [
+  ['midnight', 'Midnight', '#0A0A0F'],
+  ['nexus', 'Nexus', '#0A0A0C'],
+  ['cyberpunk', 'Cyberpunk', '#0a0a0f'],
+  ['terminal', 'Terminal', '#0a0a0a'],
+  ['bitcoindefi', 'Bitcoin DeFi', '#1a1b1e'],
+  ['art-deco', 'Art Deco', '#0A0A0A'],
+  ['poster', 'Bold Type', '#0A0A0A'],
+  ['meshtopo', 'Mesh Topology', '#050505'],
+  ['obsidian', 'Obsidian', '#0B0B0C'],
+  ['prism', 'Prism', '#0E0F13'],
+  ['lofi', 'Lo-fi', '#151412'],
+  ['arcade', 'Arcade', '#090A0F'],
+  ['light', 'Light', '#f8f7f4'],
+  ['swiss', 'Swiss', '#ffffff'],
+  ['newsprint', 'Newsprint', '#f9f9f7'],
+  ['sketchbook', 'Sketchbook', '#fdfbf7'],
+  ['industrial', 'Industrial', '#e0e5ec'],
+  ['minimalist-monochrome', 'Monochrome', '#ffffff'],
+  ['pastel', 'Pastel', '#F8F7F5'],
+  ['toon', 'Toon', '#FBF8F3'],
+  ['sakura', 'Sakura', '#FBF8F9'],
+].filter(([id]) => PRO_LAYOUTS.includes(THEME_LAYOUT[id]));
+
+const LAYOUT_NAMES = { hud: 'HUD' };
+const layoutName = (id) => LAYOUT_NAMES[id] || id.charAt(0).toUpperCase() + id.slice(1);
+const isLightHex = (hex) => {
+  const n = parseInt(hex.slice(1), 16);
+  return (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 150;
+};
 
 // ─── Benefits ───
 const BENEFITS = [
-  {
-    icon: BarChart3,
-    title: 'Advanced Analytics',
-    desc: 'Predictive CGPA tracking with department heatmaps and syllabus insights.',
-    color: 'var(--accent-amber)',
-    glow: 'var(--accent-amber-glow)',
-  },
-  {
-    icon: Archive,
-    title: 'Unlimited Vault',
-    desc: 'Store unlimited resources, notes, and past papers without any limits.',
-    color: 'var(--accent-emerald)',
-    glow: 'var(--accent-emerald-glow)',
-  },
-  {
-    icon: Brain,
-    title: 'AI Study Assistant',
-    desc: 'Apex exclusive — AI-powered explanations, quiz generation, and revision plans.',
-    color: 'var(--accent-cyan)',
-    glow: 'var(--accent-cyan-glow)',
-  },
-  {
-    icon: Sparkles,
-    title: 'Zero Distractions',
-    desc: 'Clean, ad-free interface. Pure focus on what matters — your studies.',
-    color: 'var(--accent-amber)',
-    glow: 'var(--accent-amber-glow)',
-  },
-  {
-    icon: Cloud,
-    title: 'Cloud Sync',
-    desc: 'Access your vault and progress from any device, anytime, anywhere.',
-    color: 'var(--accent-purple)',
-    glow: 'var(--accent-purple-glow)',
-  },
-  {
-    icon: Palette,
-    title: 'Premium Themes',
-    desc: 'Choose from 6 exclusive themes including Nexus, Cyberpunk, and Art Deco.',
-    color: 'var(--accent-amber)',
-    glow: 'var(--accent-amber-glow)',
-  },
+  { icon: Paintbrush, title: 'Premium themes', desc: `${THEME_LIST.length} designs, each with its own colours, type and layout.` },
+  { icon: Ban, title: 'No ads', desc: 'Both paid plans remove ads from every page.' },
+  { icon: BarChart3, title: 'Advanced analytics', desc: 'Predictive CGPA tracking, department heatmaps and syllabus insights.' },
+  { icon: Archive, title: 'More Vault storage', desc: '5GB on Helix and unlimited on Apex, for notes and past papers.' },
+  { icon: Brain, title: 'AI study assistant', desc: 'Apex only. Explanations, quizzes and revision plans.' },
+  { icon: Cloud, title: 'Cloud sync', desc: 'Your vault and progress on any device.' },
 ];
 
-// ─── Testimonials ───
-// ─── FAQ Data ───
+// ─── FAQ ───
 const FAQ_DATA = [
   {
-    question: 'Can I cancel anytime?',
-    answer: 'Yes. Cancel anytime from Settings. Premium features stay active until the end of your billing period. Helix auto-reverts to Node (free) after 1 month.',
+    question: 'What happens when Helix ends?',
+    answer: 'Helix lasts 30 days. After that your account goes back to Node (free) on its own. Nothing renews and you are not charged again.',
   },
   {
     question: 'What if I don\'t upgrade?',
-    answer: 'Your free Node plan stays active with all core features. You just miss ad-free, advanced analytics, and AI tools.',
+    answer: 'Node stays free with all core features. You just won\'t get ad-free pages, premium themes, advanced analytics or the AI tools.',
   },
   {
     question: 'Is there a student discount?',
-    answer: 'Our pricing is already student-first. Helix is ৳50/month (1-month access, then back to Node free), Apex is ৳500/year (normally ৳600). No promo codes needed.',
+    answer: 'Pricing is already set for students. Helix is ৳50 for one month and Apex is ৳500 a year (normally ৳600). There are no promo codes.',
   },
   {
-    question: 'Can I switch between Helix and Apex?',
-    answer: 'Absolutely. Upgrade or downgrade anytime — we prorate the difference automatically.',
+    question: 'Can I move from Helix to Apex?',
+    answer: 'Yes. You can buy Apex at any time, even while Helix is active. Unused Helix days are not refunded or credited.',
   },
   {
-    question: 'Is there a free trial?',
-    answer: 'Yes — 7 days free on any premium plan. Full access, no credit card required.',
+    question: 'How do I pay?',
+    answer: 'You pick a plan here and finish the payment on PipraPay. The plan turns on once the payment is confirmed.',
   },
 ];
 
-// ─── FAQ Accordion ───
-function FaqAccordion() {
-  const [openId, setOpenId] = useState(null);
+const perDay = (price, days) => (price / days).toFixed(1);
 
+// ─── Pieces ───
+/* The ৳ sign: theme fonts fall back to Segoe UI, whose ৳ renders tiny. */
+const Tk = () => <span className="pro-tk">৳</span>;
+
+function SectionHeader({ title, desc, id }) {
   return (
-    <div className="pro-faq">
-      {FAQ_DATA.map((item, idx) => (
-        <div key={idx} className="pro-faq-item">
-          <button
-            className={`pro-faq-question ${openId === idx ? 'open' : ''}`}
-            onClick={() => setOpenId(openId === idx ? null : idx)}
-          >
-            <span>{item.question}</span>
-            <ChevronDown size={18} />
-          </button>
-          <div className={`pro-faq-answer ${openId === idx ? 'open' : ''}`}>
-            <p>{item.answer}</p>
-          </div>
-        </div>
-      ))}
+    <div className="pro-sh">
+      <h2 className="pro-sh-title" id={id}>{title}</h2>
+      {desc && <p className="pro-sh-desc">{desc}</p>}
     </div>
   );
 }
 
-// ─── Sliding Testimonials (dual marquee — same as the landing page) ───
-function TestimonialMarquee() {
-  const pauseTrack = (e, state) => {
-    e.currentTarget.querySelector('.pro-tm-track').style.animationPlayState = state;
-  };
-
-  const renderCard = (t, i) => (
-    <div key={i} className="pro-tm-card">
-      <div className="pro-tm-stars">★★★★★</div>
-      <p className="pro-tm-quote">"{t.quote}"</p>
-      <div className="pro-tm-user">
-        <img src={t.avatar} alt={t.name} className="pro-tm-avatar" />
-        <div className="pro-tm-user-info">
-          <div className="pro-tm-name">{t.name}</div>
-          <div className="pro-tm-role">{t.role}</div>
-        </div>
-      </div>
-    </div>
-  );
-
+function PlanCard({ plan, isCurrent, onSelect }) {
   return (
-    <div className="pro-tm">
-      <div
-        className="pro-tm-wrapper"
-        onMouseEnter={(e) => pauseTrack(e, 'paused')}
-        onMouseLeave={(e) => pauseTrack(e, 'running')}
-      >
-        <div className="pro-tm-track track-right">
-          {[...topTestimonials, ...topTestimonials, ...topTestimonials].map(renderCard)}
+    <article className={`glass-card-static pro-card ${plan.featured ? 'is-featured' : ''}`} aria-labelledby={`plan-${plan.id}`}>
+      <header className="pro-card-head">
+        <div className="pro-card-name-row">
+          <h3 className="pro-card-name" id={`plan-${plan.id}`}>{plan.name}</h3>
+          {plan.badge && <span className="pro-card-badge">{plan.badge}</span>}
         </div>
+        <p className="pro-card-sub">{plan.subtitle}</p>
+      </header>
+
+      <div className="pro-card-price">
+        <div className="pro-price">
+          <span className="pro-price-cur pro-tk">৳</span>
+          <span className="pro-price-num">{plan.price}</span>
+          <span className="pro-price-per">/ {plan.period}</span>
+        </div>
+        <p className="pro-price-meta pro-mono">
+          ≈ <Tk />{perDay(plan.price, plan.days)} a day
+          {plan.original && (
+            <>
+              <span aria-hidden="true"> · </span>
+              <s><Tk />{plan.original}</s> save <Tk />{plan.original - plan.price}
+            </>
+          )}
+        </p>
       </div>
 
-      <div
-        className="pro-tm-wrapper"
-        onMouseEnter={(e) => pauseTrack(e, 'paused')}
-        onMouseLeave={(e) => pauseTrack(e, 'running')}
-      >
-        <div className="pro-tm-track track-left">
-          {[...bottomTestimonials, ...bottomTestimonials, ...bottomTestimonials].map(renderCard)}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Pricing Card ───
-function PricingCard({ plan, isCurrent, onSelect }) {
-  const Icon = plan.icon;
-  const activePrice = plan.price.monthly || plan.price.yearly;
-  const originalPrice = plan.originalPrice
-    ? plan.originalPrice.monthly || plan.originalPrice.yearly
-    : null;
-  const isFree = plan.id === 'free';
-  const periodLabel = plan.price.monthly ? '/month' : '/year';
-
-  return (
-    <div className={`pro-plan ${plan.featured ? 'featured' : ''}`}>
-      {plan.badge && (
-        <div className="pro-plan-ribbon">
-          <Gift size={11} />
-          {plan.badge}
-        </div>
-      )}
-
-      <div className="pro-plan-header">
-        <div className={`pro-plan-icon ${plan.iconClass}`}>
-          <Icon size={24} />
-        </div>
-        <div className="pro-plan-name">{plan.name}</div>
-        <div className="pro-plan-subtitle">{plan.subtitle}</div>
-        {plan.note && (
-          <div className="pro-plan-note">{plan.note}</div>
-        )}
-      </div>
-
-      <div className="pro-plan-price">
-        {isFree ? (
-          <div className="pro-plan-amount free-amount">Free</div>
-        ) : (
-          <>
-            <div className="pro-plan-amount">
-              <span className="cur">৳</span>
-              <span className="num">{activePrice}</span>
-              <span className="per">{periodLabel}</span>
-            </div>
-            {originalPrice && (
-              <div className="pro-plan-original">
-                <span className="pro-strike">৳{originalPrice}{periodLabel}</span>
-                <span className="pro-save">Save ৳{originalPrice - activePrice}</span>
-              </div>
-            )}
-            <div className="pro-plan-perday">≈ ৳{(activePrice / (plan.price.monthly ? 30 : 365)).toFixed(1)}/day</div>
-          </>
-        )}
-      </div>
-
-      <div className="pro-plan-features">
-        {plan.features.map((feature, i) => (
-          <div
-            key={i}
-            className={`pro-plan-feature ${!feature.included ? 'off' : ''} ${feature.highlight ? 'hl' : ''}`}
-          >
-            {feature.included ? (
-              <Check size={14} className="on" />
-            ) : (
-              <X size={14} className="off" />
-            )}
-            <span>
-              {feature.text}
-              {feature.highlight && <em> ★</em>}
-            </span>
-          </div>
+      <ul className="pro-card-list">
+        {plan.features.map((f) => (
+          <li key={f.text} className={f.key ? 'is-key' : ''}>
+            <Check size={16} strokeWidth={1.75} aria-hidden="true" />
+            <span>{f.text}</span>
+          </li>
         ))}
-      </div>
+      </ul>
 
-      <div className="pro-plan-cta">
+      <div className="pro-card-foot">
         <button
-          className={`pro-cta ${plan.ctaClass}`}
+          type="button"
+          className={`pro-btn ${plan.featured ? 'pro-btn-accent' : 'pro-btn-ink'}`}
           onClick={() => onSelect(plan.id)}
           disabled={isCurrent}
         >
-          {isCurrent ? (
-            <>
-              <Check size={16} />
-              Current Plan
-            </>
-          ) : isFree ? (
-            <>
-              Get Started
-              <ArrowRight size={16} />
-            </>
-          ) : (
-            <>
-              {plan.ctaText}
-              <ArrowRight size={16} />
-            </>
-          )}
+          {isCurrent ? 'Current plan' : plan.ctaText}
+          {!isCurrent && <ArrowRight size={16} strokeWidth={1.75} />}
         </button>
+        <p className="pro-card-note">{plan.note}</p>
       </div>
+    </article>
+  );
+}
+
+function NodeRow({ isCurrent }) {
+  return (
+    <div className="glass-card-static pro-node">
+      <div className="pro-node-id">
+        <span className="pro-node-name">Node</span>
+        <span className="pro-node-price pro-mono"><Tk />0 forever</span>
+      </div>
+      <p className="pro-node-list">
+        {NODE.includes.join(' · ')}
+        <span className="pro-node-ads"> · with ads</span>
+      </p>
+      <span className={`pro-node-state ${isCurrent ? 'is-current' : ''}`}>
+        {isCurrent ? <><Check size={16} strokeWidth={1.75} /> Your plan</> : 'Free'}
+      </span>
     </div>
   );
 }
 
-// ─── Main Page ───
+// Live theme preview: the stage carries data-theme, so every token inside it
+// (colours, radii, fonts) comes from that theme's own stylesheet.
+function ThemeStudio() {
+  const { theme, setTheme } = useTheme();
+  const paidIds = THEME_LIST.map(([id]) => id);
+  const [sel, setSel] = useState(() => (paidIds.includes(theme) ? theme : 'newsprint'));
+  const current = THEME_LIST.find(([id]) => id === sel) || THEME_LIST[0];
+
+  useEffect(() => { THEME_STYLES[sel]?.().catch(() => {}); }, [sel]);
+  const prefetch = (id) => THEME_STYLES[id]?.().catch(() => {});
+
+  return (
+    <div className="glass-card-static pro-studio">
+      <div className="pro-studio-stage-wrap">
+        <div className="pro-stage" data-theme={sel} aria-label={`${current[1]} theme preview`}>
+          <div className="pro-stage-bar">
+            <span className="pro-stage-brand">AUSTWise</span>
+            <span className="pro-stage-pill">Routine</span>
+          </div>
+          <div className="pro-stage-body">
+            <span className="pro-stage-over">Thursday, 20 November</span>
+            <div className="pro-stage-title">Good morning, <span>Nabila</span></div>
+            <div className="pro-stage-grid">
+              <div className="pro-stage-card pro-stage-today">
+                <div className="pro-stage-card-head">
+                  <span>Today</span>
+                  <span className="pro-stage-chip">3 classes</span>
+                </div>
+                <ul>
+                  <li className="is-now"><b>08:00</b><span>CSE 3101 · Database Systems</span><i>7A01</i></li>
+                  <li><b>09:40</b><span>CSE 3103 · Microprocessors</span><i>7A04</i></li>
+                  <li><b>11:20</b><span>HUM 3101 · Economics</span><i>5B02</i></li>
+                </ul>
+              </div>
+              <div className="pro-stage-side">
+                <div className="pro-stage-card pro-stage-stat">
+                  <span>CGPA</span>
+                  <strong>3.62</strong>
+                </div>
+                <div className="pro-stage-card pro-stage-stat">
+                  <span>Study streak</span>
+                  <strong>12 days</strong>
+                </div>
+                <span className="pro-stage-btn">Load routine</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="pro-studio-caption">
+          <div>
+            <span className="pro-studio-name">{current[1]}</span>
+            <span className="pro-studio-layout pro-mono">{layoutName(THEME_LAYOUT[sel])} layout</span>
+          </div>
+          <button
+            type="button"
+            className="pro-btn pro-btn-quiet"
+            onClick={() => setTheme(sel)}
+            disabled={theme === sel}
+          >
+            {theme === sel ? 'In use' : 'Use this theme'}
+          </button>
+        </div>
+      </div>
+
+      <ul className="pro-studio-list" role="listbox" aria-label="Premium themes">
+        {THEME_LIST.map(([id, label, bg]) => {
+          const ink = isLightHex(bg) ? 'rgba(0,0,0,0.72)' : 'rgba(255,255,255,0.82)';
+          return (
+            <li key={id} role="none">
+              <button
+                type="button"
+                role="option"
+                aria-selected={sel === id}
+                className={`pro-swatch ${sel === id ? 'is-on' : ''}`}
+                onClick={() => setSel(id)}
+                onMouseEnter={() => prefetch(id)}
+                onFocus={() => prefetch(id)}
+              >
+                <span className="pro-swatch-chip" style={{ background: bg }} aria-hidden="true">
+                  <span style={{ background: ink }} />
+                  <span style={{ background: THEME_ACCENTS[id] }} />
+                </span>
+                <span className="pro-swatch-name">{label}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function FaqList() {
+  const [openId, setOpenId] = useState(0);
+  return (
+    <div className="glass-card-static pro-faq">
+      {FAQ_DATA.map((item, idx) => {
+        const open = openId === idx;
+        return (
+          <div key={item.question} className={`pro-faq-item ${open ? 'is-open' : ''}`}>
+            <button
+              type="button"
+              className="pro-faq-q"
+              onClick={() => setOpenId(open ? null : idx)}
+              aria-expanded={open}
+            >
+              <span>{item.question}</span>
+              <ChevronDown size={16} strokeWidth={1.75} />
+            </button>
+            <div className="pro-faq-a"><p>{item.answer}</p></div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Page ───
 export default function ProPage() {
   const [showModal, setShowModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
@@ -356,9 +357,7 @@ export default function ProPage() {
     const stored = localStorage.getItem('austwise_plan');
     const storedDate = localStorage.getItem('austwise_plan_date');
     if (stored === 'pro' && storedDate) {
-      const subDate = new Date(storedDate);
-      const now = new Date();
-      const diffDays = (now - subDate) / (1000 * 60 * 60 * 24);
+      const diffDays = (new Date() - new Date(storedDate)) / (1000 * 60 * 60 * 24);
       if (diffDays > 30) {
         localStorage.setItem('austwise_plan', 'free');
         localStorage.removeItem('austwise_plan_date');
@@ -377,21 +376,17 @@ export default function ProPage() {
   };
 
   const handleUpgrade = async () => {
-    if (!selectedPlan) return;
-    const plan = PLANS.find((p) => p.id === selectedPlan);
+    const plan = PAID_PLANS.find((p) => p.id === selectedPlan);
     if (!plan) return;
-
     setUpgradeState('loading');
     wakeBackend();
-
     try {
-      const amount = plan.price.monthly || plan.price.yearly;
       const res = await fetch(`${API_URL}/api/payment/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          amount,
+          amount: plan.price,
           purpose: `pro-${selectedPlan}`,
           description: `AUSTWise ${plan.name} plan`,
         }),
@@ -400,7 +395,7 @@ export default function ProPage() {
       if (data.success && data.ppUrl) {
         window.location.href = data.ppUrl;
       } else {
-        alert(data.error || 'Payment creation failed. Please try again.');
+        alert(data.error || 'Payment could not be created. Please try again.');
         setUpgradeState('pick');
       }
     } catch {
@@ -416,277 +411,192 @@ export default function ProPage() {
     setUpgradeState('pick');
   };
 
-  const renderCheck = (value) => {
-    if (value === true) return <Check size={14} className="check" />;
-    if (value === false) return <X size={14} className="cross" />;
-    return <span className="highlight">{value}</span>;
+  useEffect(() => {
+    if (!showModal) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') closeModal(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
+  const cell = (value) => {
+    if (value === true) return <Check size={16} strokeWidth={1.75} className="pro-yes" aria-label="Included" />;
+    if (value === false) return <Minus size={16} strokeWidth={1.5} className="pro-no" aria-label="Not included" />;
+    return <span className="pro-val pro-mono">{value}</span>;
   };
+
+  const chosen = PAID_PLANS.find((p) => p.id === selectedPlan);
 
   return (
     <div className="pro-page">
-      {/* ═══════════ MASTHEAD ═══════════ */}
+      {/* Masthead */}
       <header className="glass-card-static pro-masthead">
         <div className="schedule-masthead">
           <div className="schedule-title-block">
-            <div className="schedule-icon-tile">
-              <Crown size={22} strokeWidth={2.2} />
+            <div className="schedule-icon-tile" aria-hidden="true">
+              <Crown size={20} strokeWidth={1.75} />
             </div>
             <div>
-              <span className="schedule-overline">See Plans</span>
-              <p className="schedule-title">Premium Subscriptions</p>
-              <span className="schedule-subtitle">Node gets you started, Helix unlocks the toolkit, Apex adds AI mastery.</span>
+              <span className="schedule-overline">See plans</span>
+              <h1 className="schedule-title">Plans and pricing</h1>
+              <span className="schedule-subtitle">Node is free. Helix and Apex add premium themes, more storage and better tools.</span>
             </div>
           </div>
-          <div className="pro-stats">
-            <div className="pro-stat">
-              <strong>2,400+</strong>
-              <span>Students</span>
-            </div>
-            <div className="pro-stat">
-              <strong>7-day</strong>
-              <span>Free trial</span>
-            </div>
-            <div className="pro-stat">
-              <strong>৳50</strong>
-              <span>From /month</span>
-            </div>
-          </div>
+          <dl className="pro-stats">
+            <div><dt>Students</dt><dd>2,400+</dd></div>
+            <div><dt>Premium themes</dt><dd>{THEME_LIST.length}</dd></div>
+            <div><dt>From</dt><dd><Tk />50</dd></div>
+          </dl>
         </div>
       </header>
 
-      {/* ═══════════ PRICING ═══════════ */}
-      <section id="pricing" className="pro-section">
-        <div className="pro-pricing-grid">
-          {PLANS.map((plan) => (
-            <PricingCard
-              key={plan.id}
-              plan={plan}
-              isCurrent={currentPlan === plan.id}
-              onSelect={handleSelectPlan}
-            />
+      {/* Plans */}
+      <section className="pro-section" id="pricing" aria-label="Plans">
+        <div className="pro-cards">
+          {PAID_PLANS.map((plan) => (
+            <PlanCard key={plan.id} plan={plan} isCurrent={currentPlan === plan.id} onSelect={handleSelectPlan} />
           ))}
         </div>
+        <NodeRow isCurrent={currentPlan === 'free'} />
       </section>
 
-      {/* ═══════════ WHY PREMIUM ═══════════ */}
-      <section className="pro-section">
-        <div className="pro-section-header">
-          <div className="pro-section-badge">
-            <Crown size={12} />
-            <span>Why Upgrade</span>
-          </div>
-          <h2 className="pro-section-title">
-            More Than Just <span className="pro-section-highlight">Removing Ads</span>
-          </h2>
-          <p className="pro-section-desc">
-            Premium plans remove every friction between you and academic success.
-          </p>
-        </div>
-        <div className="pro-benefits-grid">
-          {BENEFITS.map((b, i) => {
-            const Icon = b.icon;
-            return (
-              <div key={i} className="pro-benefit">
-                <div className="pro-benefit-icon" style={{ background: b.glow, color: b.color }}>
-                  <Icon size={24} />
-                </div>
-                <h3 className="pro-benefit-title">{b.title}</h3>
-                <p className="pro-benefit-desc">{b.desc}</p>
+      {/* Theme studio */}
+      <section className="pro-section" aria-labelledby="pro-themes-title">
+        <SectionHeader
+          id="pro-themes-title"
+          title="Every theme is a full design"
+          desc="Each premium theme brings its own colours, type and page layout. Pick one to preview it."
+        />
+        <ThemeStudio />
+      </section>
+
+      {/* Benefits */}
+      <section className="pro-section" aria-labelledby="pro-adds-title">
+        <SectionHeader id="pro-adds-title" title="What the paid plans add" />
+        <ul className="pro-adds">
+          {BENEFITS.map(({ icon: Icon, title, desc }) => (
+            <li key={title}>
+              <Icon size={16} strokeWidth={1.75} aria-hidden="true" />
+              <div>
+                <h3>{title}</h3>
+                <p>{desc}</p>
               </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ═══════════ COMPARISON ═══════════ */}
-      <section id="comparison" className="pro-section">
-        <div className="pro-section-header">
-          <div className="pro-section-badge">
-            <BarChart3 size={12} />
-            <span>Compare Features</span>
-          </div>
-          <h2 className="pro-section-title">
-            Side-by-Side <span className="pro-section-highlight">Comparison</span>
-          </h2>
-          <p className="pro-section-desc">
-            See exactly what each plan offers — all built for AUST students.
-          </p>
-        </div>
-
-        <div className="glass-card-static pro-comparison">
-          <div className="pro-cmp-row header">
-            <div className="pro-cmp-cell">Feature</div>
-            <div className="pro-cmp-cell plan-head">
-              <Star size={12} />
-              <span>Node</span>
-            </div>
-            <div className="pro-cmp-cell plan-head reco">
-              <Crown size={12} />
-              <span>Helix</span>
-              <span className="pro-reco-pill">Popular</span>
-            </div>
-            <div className="pro-cmp-cell plan-head">
-              <Zap size={12} />
-              <span>Apex</span>
-            </div>
-          </div>
-          {COMPARISON_FEATURES[0].features.map((feature, i) => (
-            <div key={i} className="pro-cmp-row">
-              <div className="pro-cmp-cell">{feature.name}</div>
-              <div className="pro-cmp-cell">{renderCheck(feature.free)}</div>
-              <div className="pro-cmp-cell reco">{renderCheck(feature.pro)}</div>
-              <div className="pro-cmp-cell">{renderCheck(feature.premium)}</div>
-            </div>
+            </li>
           ))}
+        </ul>
+      </section>
+
+      {/* Comparison */}
+      <section className="pro-section" id="comparison" aria-labelledby="pro-cmp-title">
+        <SectionHeader id="pro-cmp-title" title="Compare plans" desc="Every feature, plan by plan" />
+        <div className="glass-card-static pro-table-wrap">
+          <table className="pro-table">
+            <thead>
+              <tr>
+                <th scope="col">Feature</th>
+                <th scope="col">Node</th>
+                <th scope="col" className="is-featured">Helix</th>
+                <th scope="col">Apex</th>
+              </tr>
+            </thead>
+            <tbody>
+              {COMPARISON.map((row) => (
+                <tr key={row.name}>
+                  <th scope="row">{row.name}</th>
+                  <td>{cell(row.free)}</td>
+                  <td className="is-featured">{cell(row.pro)}</td>
+                  <td>{cell(row.premium)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <th scope="row">Price</th>
+                {ALL_PLANS.map((p) => (
+                  <td key={p.id} className={p.featured ? 'is-featured' : ''}>
+                    <span className="pro-val pro-mono"><Tk />{p.price}{p.period ? ` / ${p.period}` : ''}</span>
+                  </td>
+                ))}
+              </tr>
+            </tfoot>
+          </table>
         </div>
       </section>
 
-      {/* ═══════════ TESTIMONIALS ═══════════ */}
-      <section className="pro-section">
-        <div className="pro-section-header">
-          <div className="pro-section-badge">
-            <Sparkles size={12} />
-            <span>Student Stories</span>
-          </div>
-          <h2 className="pro-section-title">
-            What <span className="pro-section-highlight">Students</span> Are Saying
-          </h2>
-          <p className="pro-section-desc">
-            Join 2,400+ premium users who've upgraded their academic game.
-          </p>
-        </div>
-        <TestimonialMarquee />
+      {/* Testimonials */}
+      <section className="pro-section" aria-labelledby="pro-tm-title">
+        <SectionHeader id="pro-tm-title" title="What students say" desc="From 2,400+ AUST students using AUSTWise" />
+        <TestimonialRail />
       </section>
 
-      {/* ═══════════ FAQ ═══════════ */}
-      <section className="pro-section">
-        <div className="pro-section-header">
-          <div className="pro-section-badge">
-            <Shield size={12} />
-            <span>Questions?</span>
-          </div>
-          <h2 className="pro-section-title">
-            Frequently Asked <span className="pro-section-highlight">Questions</span>
-          </h2>
-          <p className="pro-section-desc">
-            Everything you need to know before upgrading.
-          </p>
-        </div>
-        <FaqAccordion />
+      {/* FAQ */}
+      <section className="pro-section pro-faq-section" aria-labelledby="pro-faq-title">
+        <SectionHeader id="pro-faq-title" title="Questions" desc="Before you pay" />
+        <FaqList />
       </section>
 
-      {/* ═══════════ BOTTOM CTA ═══════════ */}
-      <section className="pro-bottom">
-        <div className="glass-card-static pro-cta-card">
-          <div className="pro-cta-crown" aria-hidden="true">
-            <Crown size={40} />
-          </div>
-          <h3 className="pro-cta-title">Ready to Go Premium?</h3>
-          <p className="pro-cta-desc">
-            Your support keeps AUSTWise running and improving. Every subscription
-            funds new features that make education better for every AUST student.
-          </p>
-          <div className="pro-cta-chips">
-            <span className="pro-cta-chip">
-              <Shield size={12} />
-              7-day money-back guarantee
-            </span>
-            <span className="pro-cta-chip">
-              <InfinityIcon size={12} />
-              Cancel anytime
-            </span>
-            <span className="pro-cta-chip">
-              <Gift size={12} />
-              Built for AUST students
-            </span>
-          </div>
-          <button
-            className="pro-btn-primary"
-            onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
-          >
-            Choose Your Plan <ArrowRight size={16} />
+      {/* Closing */}
+      <section className="glass-card-static pro-close">
+        <div className="pro-close-text">
+          <h2>Pick a plan</h2>
+          <p>Every payment keeps AUSTWise running and pays for new features for AUST students.</p>
+          <span className="pro-mono">One-time payment · nothing renews</span>
+        </div>
+        <div className="pro-close-actions">
+          <button type="button" className="pro-btn pro-btn-accent" onClick={() => handleSelectPlan('pro')}>
+            Get Helix · <Tk />50
+          </button>
+          <button type="button" className="pro-btn pro-btn-quiet" onClick={() => handleSelectPlan('premium')}>
+            Get Apex · <Tk />500
           </button>
         </div>
       </section>
 
-      {/* ═══════════ PAYMENT MODAL ═══════════ */}
-      {showModal && selectedPlan && (
-        <div className="pro-payment-overlay" onClick={closeModal}>
-          <div className="pro-payment-modal" onClick={(e) => e.stopPropagation()}>
+      {/* Payment modal */}
+      {showModal && chosen && createPortal(
+        <div className="pro-overlay" onClick={closeModal}>
+          <div className="pro-modal" role="dialog" aria-modal="true" aria-labelledby="pro-modal-title" onClick={(e) => e.stopPropagation()}>
             {upgradeState === 'pick' && (
               <>
-                <div className="pro-modal-header">
-                  <div className="pro-modal-icon upgrade">
-                    <Crown size={30} />
-                  </div>
-                  <h3>Upgrade Your Plan</h3>
-                  <p>Choose your subscription to unlock premium features.</p>
+                <div className="pro-modal-head">
+                  <h3 id="pro-modal-title">Choose a plan</h3>
+                  <p>You'll finish the payment on PipraPay.</p>
                 </div>
-
-                <div className="pro-modal-plans">
-                  {PLANS.filter((p) => p.id !== 'free').map((plan) => {
-                    const Icon = plan.icon;
-                    const price = plan.price.monthly || plan.price.yearly;
-                    const period = plan.price.monthly ? '/month' : '/year';
-                    return (
-                      <label
-                        key={plan.id}
-                        className={`pro-modal-plan ${selectedPlan === plan.id ? 'selected' : ''}`}
-                      >
-                        <input
-                          type="radio"
-                          name="plan"
-                          value={plan.id}
-                          checked={selectedPlan === plan.id}
-                          onChange={() => setSelectedPlan(plan.id)}
-                        />
-                        <div className="pro-modal-plan-left">
-                          <Icon size={20} style={{ color: plan.id === 'pro' ? 'var(--accent-amber)' : 'var(--accent-emerald)' }} />
-                          <div>
-                            <div className="pro-modal-plan-name">{plan.name}</div>
-                            <div className="pro-modal-plan-price">৳{price}{period}</div>
-                          </div>
-                        </div>
-                        <div className="pro-modal-plan-tag">{plan.ctaText}</div>
-                      </label>
-                    );
-                  })}
+                <div className="pro-modal-plans" role="radiogroup">
+                  {PAID_PLANS.map((plan) => (
+                    <label key={plan.id} className={`pro-modal-plan ${selectedPlan === plan.id ? 'is-on' : ''}`}>
+                      <input
+                        type="radio"
+                        name="plan"
+                        value={plan.id}
+                        checked={selectedPlan === plan.id}
+                        onChange={() => setSelectedPlan(plan.id)}
+                      />
+                      <span className="pro-modal-plan-text">
+                        <b>{plan.name}</b>
+                        <i>for one {plan.period}</i>
+                      </span>
+                      <span className="pro-mono"><Tk />{plan.price}</span>
+                    </label>
+                  ))}
                 </div>
-
                 <div className="pro-modal-actions">
-                  <button className="pro-btn-secondary" onClick={closeModal}>Cancel</button>
-                  <button className="pro-btn-primary" onClick={handleUpgrade}>
-                    <Crown size={16} />
-                    Upgrade Now
+                  <button type="button" className="pro-btn pro-btn-quiet" onClick={closeModal}>Cancel</button>
+                  <button type="button" className="pro-btn pro-btn-accent" onClick={handleUpgrade}>
+                    Continue to payment <ArrowRight size={16} strokeWidth={1.75} />
                   </button>
                 </div>
               </>
             )}
-
             {upgradeState === 'loading' && (
               <div className="pro-modal-state">
-                <div className="pro-spinner-ring" />
-                <h3>Activating {PLANS.find((p) => p.id === selectedPlan)?.name}…</h3>
-                <p>Wiring up your premium features.</p>
-                <div className="pro-loading-bar"><span /></div>
-              </div>
-            )}
-
-            {upgradeState === 'success' && (
-              <div className="pro-modal-state">
-                <div className="pro-modal-icon success">
-                  <Crown size={28} />
-                </div>
-                <h3>Welcome to {PLANS.find((p) => p.id === selectedPlan)?.name}!</h3>
-                <p>You're all set. Enjoy your premium AUSTWise experience.</p>
-                <button className="pro-btn-primary" onClick={closeModal}>
-                  <Check size={16} />
-                  Done
-                </button>
+                <div className="pro-spinner" />
+                <h3>Opening payment</h3>
+                <p>Taking you to PipraPay for {chosen.name}</p>
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

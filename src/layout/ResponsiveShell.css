@@ -191,13 +191,3 @@ img, video { max-width: 100%; }
   }
   .page-wrapper .member-profile-orbit { min-width: 0; }
 }
-@media (max-width: 640px) {
-  /* Plans comparison table: let columns shrink instead of spilling 5px */
-  .page-wrapper .pro-cmp-row {
-    grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr));
-  }
-  .page-wrapper .pro-cmp-cell {
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
-}
