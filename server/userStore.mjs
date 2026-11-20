@@ -948,6 +948,7 @@ export async function createUser(payload, { invitationAuthorized = false, passwo
     semester: semesterNum,
     avatar: payload.avatar || null,
     openForTalk: false,
+    termsAcceptedAt: typeof payload.termsAcceptedAt === 'string' ? payload.termsAcceptedAt : '',
     linkedSocial: payload.linkedSocial || {},
     linkedAccounts: [],
     cgpa: payload.cgpa ?? 0,

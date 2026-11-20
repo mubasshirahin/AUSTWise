@@ -169,8 +169,11 @@ async function handleSignup(req, res) {
   if (!authRateLimiter(req, res)) return;
   const body = await readJsonBody(req);
   if (!loginRateLimiter(req, res, body?.email)) return;
+  if (body?.acceptedTerms !== true) {
+    return sendJson(res, 400, { success: false, error: 'You must accept the Terms of Service and Privacy Policy.' });
+  }
   try {
-    const user = await createUser(body);
+    const user = await createUser({ ...body, termsAcceptedAt: new Date().toISOString() });
     if (user.status === 'PENDING_APPROVAL') {
       const { password: _password, ...safe } = user;
       return sendJson(res, 202, { success: true, pendingApproval: true, user: safe, message: 'Your account was created and is waiting for admin approval.' });
@@ -376,6 +379,10 @@ async function handleGoogle(req, res) {
         if (!canSelectSignupRole || !['student', 'faculty'].includes(requestedRole)) {
           return sendJson(res, 400, { success: false, error: 'Role can only be selected during new account setup.' });
         }
+        if (profilePatch.acceptedTerms !== true) {
+          return sendJson(res, 400, { success: false, error: 'You must accept the Terms of Service and Privacy Policy.' });
+        }
+        patch.termsAcceptedAt = new Date().toISOString();
         if (requestedRole === 'faculty' && !String(profilePatch.designation || '').trim()) {
           return sendJson(res, 400, { success: false, error: 'Designation is required for faculty accounts.' });
         }

@@ -43,6 +43,7 @@ export async function addAccessRequest(payload) {
     company: String(payload.company || '').trim(),
     previousEmail: String(payload.previousEmail || '').trim().toLowerCase(),
     note: String(payload.note || '').trim().slice(0, 1000),
+    termsAcceptedAt: String(payload.termsAcceptedAt || ''),
     status: 'pending',
     createdAt: new Date().toISOString(),
   };

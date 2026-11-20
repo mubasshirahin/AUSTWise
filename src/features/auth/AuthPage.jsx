@@ -9,6 +9,7 @@ import { getAllAccounts } from '../../utils/authStorage';
 import ParticleField from './ParticleField';
 import brandMark from '../../assets/austwise-icon-final.svg';
 import './AuthPage.css';
+import TermsConsent from '../../components/TermsConsent';
 
 const EMAIL_DOMAIN = '@aust.edu';
 
@@ -93,6 +94,8 @@ export default function AuthPage() {
 
   const [mode, setMode] = useState('login');
   const [signupStep, setSignupStep] = useState(1);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [termsInvalid, setTermsInvalid] = useState(false);
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [signupForm, setSignupForm] = useState(defaultSignup);
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
@@ -374,6 +377,11 @@ export default function AuthPage() {
       setError(batchFormatHint);
       return;
     }
+    if (!acceptedTerms) {
+      setTermsInvalid(true);
+      setError('Please accept the Terms of Service and Privacy Policy to create your account.');
+      return;
+    }
 
     // Google signup: no password needed, just update the account with remaining fields
     if (pendingGoogleAccount) {
@@ -400,6 +408,7 @@ export default function AuthPage() {
           designation: signupForm.designation,
           company: signupForm.company,
           graduationYear: signupForm.graduationYear,
+          acceptedTerms: true,
         };
 
         const credential = pendingCredentialRef.current;
@@ -456,6 +465,7 @@ export default function AuthPage() {
             graduationYear: signupForm.graduationYear,
             company: signupForm.company,
             previousEmail: signupForm.previousEmail,
+            acceptedTerms: true,
           }),
         });
         const data = await response.json().catch(() => ({}));
@@ -496,6 +506,7 @@ export default function AuthPage() {
         designation: signupForm.designation,
         company: signupForm.company,
         graduationYear: signupForm.graduationYear,
+        acceptedTerms: true,
       });
       if (signupResult?.pendingApproval) {
         setAccessRequestSent(true);
@@ -1076,6 +1087,13 @@ export default function AuthPage() {
                 Your account will be created and held for admin approval before you can sign in.
               </div>
             )}
+
+            <TermsConsent
+              id="signup-terms"
+              checked={acceptedTerms}
+              onChange={(v) => { setAcceptedTerms(v); setTermsInvalid(false); }}
+              invalid={termsInvalid}
+            />
 
             <div className="auth-step-nav">
               <button

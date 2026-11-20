@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import TermsConsent from '../../components/TermsConsent';
 
 export default function AcceptInvitePage() {
   const [searchParams] = useSearchParams();
@@ -13,6 +14,8 @@ export default function AcceptInvitePage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [created, setCreated] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [termsInvalid, setTermsInvalid] = useState(false);
   const departments = ['CSE', 'EEE', 'CE', 'ME', 'IPE', 'TE', 'ARCH', 'BBA'];
 
   useEffect(() => {
@@ -44,13 +47,18 @@ export default function AcceptInvitePage() {
     };
     if (password.length < 8) { setError('Use a password with at least 8 characters.'); return; }
     if (password !== confirm) { setError('Passwords do not match.'); return; }
+    if (!acceptedTerms) {
+      setTermsInvalid(true);
+      setError('Please accept the Terms of Service and Privacy Policy to continue.');
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch('/api/invite/accept', {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, name, password, profile }),
+        body: JSON.stringify({ token, name, password, profile, acceptedTerms: true }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) throw new Error(data.error || 'Could not create your account.');
@@ -92,6 +100,7 @@ export default function AcceptInvitePage() {
               {invite?.role === 'alumni' && <><label className="auth-field">Batch name &amp; number<input className="input" name="batch" defaultValue={invite?.profile?.batch || ''} required /></label><label className="auth-field">Graduation year<input className="input" name="graduationYear" defaultValue={invite?.profile?.graduationYear || ''} /></label><label className="auth-field">Designation (optional)<input className="input" name="designation" defaultValue={invite?.profile?.designation || ''} placeholder="e.g. Software Engineer" /></label><label className="auth-field">Company (optional)<input className="input" name="company" defaultValue={invite?.profile?.company || ''} placeholder="Where you work" /></label></>}
               <label className="auth-field">Password<input className="input" type="password" name="password" autoComplete="new-password" minLength={8} required /></label>
               <label className="auth-field">Confirm password<input className="input" type="password" name="confirm" autoComplete="new-password" minLength={8} required /></label>
+              <TermsConsent checked={acceptedTerms} onChange={(v) => { setAcceptedTerms(v); setTermsInvalid(false); }} invalid={termsInvalid} />
               {error && <p role="alert" style={{ color: 'var(--accent-rose)', margin: 0 }}>{error}</p>}
               <button className="btn btn-primary" disabled={submitting}>{submitting ? 'Creating account…' : 'Accept invitation'}</button>
             </form>

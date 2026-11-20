@@ -3445,6 +3445,11 @@ async function handleApiRequest(req, res) {
         sendJson(res, 400, { success: false, error: 'Only Faculty and Alumni may use the access request form.' });
         return;
       }
+      if (body.acceptedTerms !== true) {
+        sendJson(res, 400, { success: false, error: 'You must accept the Terms of Service and Privacy Policy.' });
+        return;
+      }
+      body.termsAcceptedAt = new Date().toISOString();
       if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
         sendJson(res, 400, { success: false, error: 'Enter a valid contact email address.' });
         return;
@@ -3563,6 +3568,7 @@ async function handleApiRequest(req, res) {
               batchName: request.batch,
               graduationYear: request.graduationYear,
               company: request.company,
+              termsAcceptedAt: request.termsAcceptedAt || '',
             }, { invitationAuthorized: true, passwordHash: request.passwordHash });
           } else {
           const token = crypto.randomBytes(32).toString('hex');
@@ -3736,9 +3742,13 @@ async function handleApiRequest(req, res) {
 
   if (req.url === '/api/invite/accept' && req.method === 'POST') {
     try {
-      const { token, name, password, profile = {} } = await readJsonBody(req);
+      const { token, name, password, profile = {}, acceptedTerms } = await readJsonBody(req);
       if (!token || !name || String(password || '').length < 8) {
         sendJson(res, 400, { success: false, error: 'Invitation token, name, and an 8-character password are required.' });
+        return;
+      }
+      if (acceptedTerms !== true) {
+        sendJson(res, 400, { success: false, error: 'You must accept the Terms of Service and Privacy Policy.' });
         return;
       }
       const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
@@ -3751,7 +3761,7 @@ async function handleApiRequest(req, res) {
       for (const field of ['department', 'designation', 'batch', 'batchNo', 'batchName', 'graduationYear', 'company']) {
         if (typeof profile[field] === 'string' && profile[field].trim()) allowedProfile[field] = profile[field].trim();
       }
-      const user = await createUser({ ...invite.profile, ...allowedProfile, email: invite.email, name, password, role: invite.role }, { invitationAuthorized: true });
+      const user = await createUser({ ...invite.profile, ...allowedProfile, email: invite.email, name, password, role: invite.role, termsAcceptedAt: new Date().toISOString() }, { invitationAuthorized: true });
       await updateInvitation(invite.id, { status: 'accepted', acceptedAt: new Date().toISOString() });
       issueAuthCookie(res, user);
       sendJson(res, 201, {
