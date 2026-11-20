@@ -144,6 +144,47 @@ function LayoutDashboard(props) {
   );
 }
 
+// ─── Rotating hero headline ───
+// Every phrase sits in the same grid cell, so the line keeps the width of the
+// longest one and the headline never jumps sideways while it rotates.
+const HERO_PHRASES = [
+  'to Ace Your Semester',
+  'to Track Your CGPA',
+  'to Find Past Papers',
+  'to Plan Your Week',
+  'to Manage Your Money',
+  'to Stay Ahead',
+];
+
+function RotatingPhrase({ phrases = HERO_PHRASES, interval = 3200 }) {
+  const [index, setIndex] = useState(0);
+  const [prev, setPrev] = useState(null);
+
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
+    const id = setInterval(() => {
+      if (document.hidden) return;
+      setIndex((i) => { setPrev(i); return (i + 1) % phrases.length; });
+    }, interval);
+    return () => clearInterval(id);
+  }, [phrases.length, interval]);
+
+  return (
+    <span className="hero-rotator">
+      <span className="sr-only">{phrases[index]}</span>
+      {phrases.map((p, i) => (
+        <span
+          key={p}
+          aria-hidden="true"
+          className={`hero-rotator-word${i === index ? ' is-in' : i === prev ? ' is-out' : ''}`}
+        >
+          {p}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 // ─── Interactive Particle Canvas ───
 function ParticleCanvas() {
   const canvasRef = useRef(null);
@@ -964,6 +1005,11 @@ export default function LandingPage() {
 
       {/* ─── SHUTTER LAYER — slides up to reveal the fixed background ─── */}
       <div className="landing-shutter-layer">
+      {/* Slow drifting dot field — sits behind every section, pinned to the viewport */}
+      <div className="landing-drift" aria-hidden="true">
+        <span className="landing-drift-dots is-fine" />
+        <span className="landing-drift-dots is-coarse" />
+      </div>
 
       {/* ─── HERO ─── */}
       <section className="landing-hero" ref={heroRef}>
@@ -972,7 +1018,7 @@ export default function LandingPage() {
           <div className="landing-badge pulse-badge"><Sparkles size={12} className="sparkle-icon" /><span>Your All-in-One Campus Companion</span></div>
           <h1 className="landing-hero-title">
             <span className="title-line">Everything You Need</span><br />
-            <span className="landing-hero-highlight title-line-accent">to Ace Your Semester</span>
+            <span className="landing-hero-highlight title-line-accent"><RotatingPhrase /></span>
           </h1>
           <p className="landing-hero-desc">
             <span className="typewriter-text">
