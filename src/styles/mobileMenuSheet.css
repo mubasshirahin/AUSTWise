@@ -1,0 +1,308 @@
+/* Mobile bottom sheets (≤640px).
+   1. Menus: every ⋮ menu and header dropdown slides up from the bottom of the
+      screen instead of opening next to its button.
+   2. Overlays: every add/edit/confirm modal sits at the bottom of the screen
+      as a sheet instead of floating in the middle.
+   Desktop keeps dropdowns and centred modals. Touch/close behaviour for menus
+   lives in src/utils/mobileMenuSheet.js - keep its SHEET_SELECTOR in sync
+   with the menu list below. Overlays already close on a backdrop tap.
+
+   House style (skill-style): flat surfaces, theme tokens only, no glows.
+   `:not(#_):not(#_)` only raises specificity above the per-page rules (some
+   use #root selectors and hard-coded colours with !important).
+
+   Not sheets on purpose: full-screen viewers (paper/PDF preview, lightbox,
+   question-bank original, search, zen mode) and the message long-press menu. */
+
+/* ───────────────────────── 1. Menus ───────────────────────── */
+/* Menu panels:
+     .export-dropdown .export-menu  Routine, Week view, GradeLab, CGPA, Prereq,
+                                    Heatmap, Canteen, Map, Notebook, Library
+     .lp-menu-list                  Life Planner, Gaming (gmz)
+     .pb-menu                       Goals rows
+     .cpgen-menu-list               Cover Page generator (portal)
+     .ws-menu-list                  Workspace
+     .qa-menu                       QA checklist
+     .cb-menu-list                  Messages header
+     .profile-dropdown              Top bar avatar menu
+     .notif-dropdown                Top bar notifications
+     .theme-switcher.open .theme-menu   Top bar theme / layout pickers
+     .auth-theme-menu, .landing-theme-menu.open   Theme pickers (login, landing)
+     .prereq-dept-menu              Prerequisite tree department picker
+     .sr-bg-menu                    Stalk Road ride theme */
+
+@media (max-width: 640px) {
+  :is(.export-dropdown .export-menu, .lp-menu-list, .pb-menu, .cpgen-menu-list,
+      .ws-menu-list, .qa-menu, .cb-menu-list, .profile-dropdown, .notif-dropdown,
+      .theme-switcher.open .theme-menu, .auth-theme-menu, .landing-theme-menu.open,
+      .prereq-dept-menu, .sr-bg-menu):not(#_):not(#_) {
+    position: fixed !important;
+    inset: auto 0 0 0 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: 75dvh !important;
+    margin: 0 !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    padding: 4px 10px calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+    border: 0 !important;
+    border-top: 1px solid var(--border-primary) !important;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+    background: var(--bg-secondary) !important;
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary);
+    /* Base menu rules may position with transform; the slide uses `translate`
+       so it is not blocked by this. */
+    transform: none !important;
+    /* Dims the page behind the sheet (same scrim as .modal-overlay). */
+    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.55) !important;
+    z-index: 100000 !important;
+    animation: sheet-up 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+  }
+
+  /* Header panels (notifications) keep their inner padding. */
+  .notif-dropdown:not(#_):not(#_) {
+    padding: 0 0 env(safe-area-inset-bottom, 0px) !important;
+  }
+
+  /* While a menu is open, its ancestors must not trap a fixed element: a
+     transform/filter makes them the containing block (sheet sticks to the
+     card). Stacking contexts that can't be removed (a fixed/sticky top bar
+     always makes one) are lifted to the top so the sheet and its scrim
+     paint over the page and the bottom nav. */
+  *:has(:is(.export-dropdown .export-menu, .lp-menu-list, .pb-menu, .cpgen-menu-list,
+            .ws-menu-list, .qa-menu, .cb-menu-list, .profile-dropdown, .notif-dropdown,
+            .theme-switcher.open .theme-menu, .auth-theme-menu, .landing-theme-menu.open,
+            .prereq-dept-menu, .sr-bg-menu)) {
+    transform: none !important;
+    /* A filled transform animation (e.g. .animate-fadeInUp) still makes the
+       element the containing block, even with transform overridden. */
+    animation: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    perspective: none !important;
+    contain: none !important;
+    container-type: normal !important;
+    will-change: auto !important;
+    isolation: auto !important;
+    z-index: 99999 !important;
+  }
+
+  /* Grab handle (replaces any hover-bridge/arrow ::before the menu had) */
+  :is(.export-dropdown .export-menu, .lp-menu-list, .pb-menu, .cpgen-menu-list,
+      .ws-menu-list, .qa-menu, .cb-menu-list, .profile-dropdown, .notif-dropdown,
+      .theme-switcher.open .theme-menu, .auth-theme-menu, .landing-theme-menu.open,
+      .prereq-dept-menu, .sr-bg-menu):not(#_):not(#_)::before {
+    content: '' !important;
+    display: block !important;
+    position: static !important;
+    inset: auto !important;
+    flex: none;
+    width: 36px !important;
+    height: 4px !important;
+    margin: 6px auto 10px !important;
+    border: 0 !important;
+    border-radius: var(--radius-full) !important;
+    background: var(--border-primary) !important;
+    box-shadow: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+
+  /* Items: same as .lp-menu-item, sized for touch */
+  :is(.export-menu-item, .lp-menu-item, .gmz-menu-item, .pb-menu-item, .cpgen-menu-item,
+      .ws-menu-item, .qa-menu-item, .cb-menu-item, .profile-dropdown-item,
+      .theme-menu-item, .auth-theme-menu-item, .landing-theme-menu-item):not(#_):not(#_) {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: none;
+    width: 100%;
+    min-height: 44px;
+    height: auto;
+    margin: 0;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent !important;
+    color: var(--text-primary) !important;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: left;
+    white-space: normal;
+  }
+
+  :is(.export-menu-item, .lp-menu-item, .gmz-menu-item, .pb-menu-item, .cpgen-menu-item,
+      .ws-menu-item, .qa-menu-item, .cb-menu-item, .profile-dropdown-item,
+      .theme-menu-item, .auth-theme-menu-item, .landing-theme-menu-item):not(#_):not(#_) svg {
+    flex-shrink: 0;
+    color: var(--text-tertiary);
+  }
+
+  :is(.export-menu-item, .lp-menu-item, .gmz-menu-item, .pb-menu-item, .cpgen-menu-item,
+      .ws-menu-item, .qa-menu-item, .cb-menu-item, .profile-dropdown-item,
+      .theme-menu-item, .auth-theme-menu-item, .landing-theme-menu-item):not(#_):not(#_):is(:hover, :active):not(:disabled) {
+    background: var(--bg-tertiary) !important;
+  }
+
+  /* Selected / toggled-on item */
+  :is(.export-menu-item, .lp-menu-item, .gmz-menu-item, .pb-menu-item, .cpgen-menu-item,
+      .ws-menu-item, .qa-menu-item, .cb-menu-item, .profile-dropdown-item,
+      .theme-menu-item, .auth-theme-menu-item, .landing-theme-menu-item):not(#_):not(#_):is(.menu-active, .is-active, .active) {
+    background: var(--accent-amber-glow) !important;
+    color: var(--accent-amber) !important;
+    font-weight: 600;
+  }
+
+  :is(.export-menu-item, .lp-menu-item, .gmz-menu-item, .pb-menu-item, .cpgen-menu-item,
+      .ws-menu-item, .qa-menu-item, .cb-menu-item, .profile-dropdown-item,
+      .theme-menu-item, .auth-theme-menu-item, .landing-theme-menu-item):not(#_):not(#_):is(.menu-active, .is-active, .active) svg,
+  :is(.menu-check, .cb-menu-check):not(#_):not(#_) {
+    color: var(--accent-amber);
+  }
+
+  /* Check marks and tags sit at the far right */
+  :is(.menu-check, .cb-menu-check, .menu-tag):not(#_):not(#_) {
+    margin-left: auto;
+  }
+
+  /* Destructive item */
+  :is(.export-menu-item, .lp-menu-item, .gmz-menu-item, .pb-menu-item, .cpgen-menu-item,
+      .ws-menu-item, .qa-menu-item, .cb-menu-item, .profile-dropdown-item):not(#_):not(#_):is(.is-danger, .export-menu-item-danger, .profile-dropdown-danger),
+  :is(.export-menu-item, .lp-menu-item, .gmz-menu-item, .pb-menu-item, .cpgen-menu-item,
+      .ws-menu-item, .qa-menu-item, .cb-menu-item, .profile-dropdown-item):not(#_):not(#_):is(.is-danger, .export-menu-item-danger, .profile-dropdown-danger) svg {
+    color: var(--accent-rose) !important;
+  }
+
+  :is(.export-menu-item, .lp-menu-item, .gmz-menu-item, .pb-menu-item, .cpgen-menu-item,
+      .ws-menu-item, .qa-menu-item, .cb-menu-item):not(#_):not(#_):disabled {
+    opacity: 0.55;
+  }
+
+  :is(.export-menu-sep, .lp-menu-sep, .gmz-menu-sep, .cpgen-menu-sep,
+      .ws-menu-sep, .qa-menu-sep, .cb-menu-sep, .profile-dropdown-divider,
+      .auth-theme-menu-divider):not(#_):not(#_) {
+    flex: none;
+    height: 1px;
+    margin: 6px 4px;
+    border: 0;
+    background: var(--border-primary);
+  }
+
+  /* Small heading inside a menu */
+  :is(.export-menu-title, .theme-menu-heading, .auth-theme-menu-heading):not(#_):not(#_) {
+    padding: 4px 12px 6px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+}
+
+/* ───────────────────────── 2. Overlays ───────────────────────── */
+/* Backdrop -> panel pairs:
+     .modal-overlay > .modal | .modal-content | .routine-edit-modal   (most pages)
+     .qb-add-modal-backdrop > .qb-add-form          Vault add paper / course
+     .bhara-details-overlay > .bhara-details-panel  Bhara details (admin)
+     .telegram-unregister-overlay > .telegram-unregister-dialog   Settings
+     .st-modal-overlay > .st-modal                  Semester tracker confirm
+     .profile-linked-modal-overlay > .profile-linked-modal        Settings
+     .pro-overlay > .pro-modal                      Pro upgrade
+     .pm-modal > .pm-modal-box                      Password manager
+     .bk-overlay > .bk-panel                        Dhaka routes / Bhara Koto
+     .ecf-schedule-backdrop > .ecf-schedule-dialog  Empty classroom schedule
+     .mod-overlay > .mod-card                       Moderation notice
+     .sheet-overlay > .sheet-panel                  Generic hook for inline-styled dialogs
+   (.gsp-overlay, the guest sign-up prompt, is already a sheet.) */
+
+@media (max-width: 640px) {
+  :is(.modal-overlay, .qb-add-modal-backdrop, .bhara-details-overlay,
+      .telegram-unregister-overlay, .st-modal-overlay, .profile-linked-modal-overlay,
+      .pro-overlay, .pm-modal, .bk-overlay, .ecf-schedule-backdrop, .mod-overlay,
+      .sheet-overlay):not(#_):not(#_) {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-end !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  :is(.modal-overlay, .qb-add-modal-backdrop, .bhara-details-overlay,
+      .telegram-unregister-overlay, .st-modal-overlay, .profile-linked-modal-overlay,
+      .pro-overlay, .pm-modal, .bk-overlay, .ecf-schedule-backdrop, .mod-overlay,
+      .sheet-overlay):not(#_):not(#_)
+  > :is(.modal, .modal-content, .routine-edit-modal, .qb-add-form, .bhara-details-panel,
+        .telegram-unregister-dialog, .st-modal, .profile-linked-modal, .pro-modal,
+        .pm-modal-box, .bk-panel, .ecf-schedule-dialog, .mod-card, .sheet-panel) {
+    position: relative !important;
+    inset: auto !important;
+    flex: none !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: 90dvh !important;
+    margin: 0 !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+    border-width: 1px 0 0 !important;
+    border-style: solid !important;
+    border-color: var(--border-primary) !important;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+    box-shadow: none !important;
+    transform: none !important;
+    animation: sheet-up 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+  }
+
+  /* Grab handle on top of every overlay sheet. Replaces any decorative
+     ::before a theme drew on the panel (Art Deco, Meshtopo). */
+  :is(.modal-overlay, .qb-add-modal-backdrop, .bhara-details-overlay,
+      .telegram-unregister-overlay, .st-modal-overlay, .profile-linked-modal-overlay,
+      .pro-overlay, .pm-modal, .bk-overlay, .ecf-schedule-backdrop, .mod-overlay,
+      .sheet-overlay):not(#_):not(#_)
+  > :is(.modal, .modal-content, .routine-edit-modal, .qb-add-form, .bhara-details-panel,
+        .telegram-unregister-dialog, .st-modal, .profile-linked-modal, .pro-modal,
+        .pm-modal-box, .bk-panel, .ecf-schedule-dialog, .mod-card, .sheet-panel)::before {
+    content: '' !important;
+    display: block !important;
+    /* Absolute, so it sits on the top edge whatever padding the panel has. */
+    position: absolute !important;
+    inset: 6px auto auto 50% !important;
+    width: 36px !important;
+    height: 4px !important;
+    margin: 0 0 0 -18px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: var(--radius-full) !important;
+    background: var(--border-primary) !important;
+    box-shadow: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+    pointer-events: none;
+  }
+}
+
+@keyframes sheet-up {
+  from { translate: 0 100%; }
+  to { translate: 0 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.export-dropdown .export-menu, .lp-menu-list, .pb-menu, .cpgen-menu-list,
+      .ws-menu-list, .qa-menu, .cb-menu-list, .profile-dropdown, .notif-dropdown,
+      .theme-switcher.open .theme-menu, .auth-theme-menu, .landing-theme-menu.open,
+      .prereq-dept-menu, .sr-bg-menu):not(#_):not(#_),
+  :is(.modal-overlay, .qb-add-modal-backdrop, .bhara-details-overlay,
+      .telegram-unregister-overlay, .st-modal-overlay, .profile-linked-modal-overlay,
+      .pro-overlay, .pm-modal, .bk-overlay, .ecf-schedule-backdrop, .mod-overlay,
+      .sheet-overlay):not(#_):not(#_) > * {
+    animation: none !important;
+  }
+}

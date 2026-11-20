@@ -30,6 +30,32 @@
   opacity: 0.8;
 }
 
+.dash-profile-warning-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.dash-profile-warning-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  margin: -4px -6px -4px 0;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.75;
+}
+
+.dash-profile-warning-close:hover {
+  opacity: 1;
+}
+
 /* ─── Glider tabs bar (own card) ─── */
 .das-tabs-card {
   padding: var(--sp-2);

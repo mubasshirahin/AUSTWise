@@ -240,7 +240,9 @@ export function createWSServer(httpServer) {
       }
       // Identity comes from the session cookie, never from client payloads.
       const auth = await resolveSocketUser(request);
-      if (auth?.banned || (auth?.id && activeBanUntil(auth.id))) {
+      // Signed-out visitors (incl. guests) get no socket: chats, presence and
+      // live rooms are for AUST accounts only.
+      if (!auth?.id || auth?.banned || activeBanUntil(auth.id)) {
         socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
         socket.destroy();
         return;

@@ -17,7 +17,7 @@ export default function NavPomodoro() {
       <button className="nav-pom-ctrl" onClick={pomToggle} title={pomRunning ? 'Pause' : 'Start'}>
         {pomRunning ? <Pause size={15} /> : <Play size={15} />}
       </button>
-      <button className="nav-pom-ctrl" onClick={pomReset} title="Reset">
+      <button className="nav-pom-ctrl" onClick={pomReset} title="Reset" data-guest-allow>
         <RotateCcw size={14} />
       </button>
       <button

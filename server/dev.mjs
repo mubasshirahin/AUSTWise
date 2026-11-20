@@ -63,6 +63,7 @@ import {
 } from './liveLibraryDB.mjs';
 import { initializeDatabase, resetDatabase, query, sql, testConnection } from './db.mjs';
 import { handleOAuthRequest } from './socialOAuth.mjs';
+import { isPublicApiPath } from './publicApi.mjs';
 import { handleCleanerRequest } from './googleCleaner.mjs';
 import { handleAuthRoute, readTokenCookie, handleDevSwitchUser, handleDevSeedUsers, handleDevUsers, issueAuthCookie, refreshAuthState, invalidateAuthState, issueWsTicket } from './auth.mjs';
 import { requireRole, requireAuth } from './middleware.mjs';
@@ -175,6 +176,10 @@ import { startWebPushScheduler } from './webPushSchedulerJob.mjs';
 import { sendInvitationEmail } from './inviteEmail.mjs';
 import { previewSemesterMove, moveToNextSemester, saveAcademicResult, advanceAllStudents } from './academicEngine.mjs';
 import { buildCsp } from './csp.mjs';
+import {
+  isValidVisitId, recordGuestVisit, recordGuestPing, recordGuestLeave,
+  recordGuestConversion, getGuestVisitStats,
+} from './guestVisits.mjs';
 
 // ── SSE: member-count live stream ─────────────────────────────────────────
 const memberCountSSEClients = new Set();
@@ -1266,6 +1271,11 @@ server.on('request', async (req, res) => {
       // Pull the caller's current role from the DB (cached 60s) so a demotion
       // or ban applies without waiting for the 7-day JWT to expire.
       if (isApiRequest) await refreshAuthState(req);
+      // Signed-out callers only get the public allowlist — no real data.
+      if (isApiRequest && !isPublicApiPath(req.url) && !readTokenCookie(req)) {
+        sendJson(res, 401, { success: false, error: 'Authentication required.' });
+        return;
+      }
       await handleApiRequest(req, res);
     }
   } catch (err) {
@@ -1349,6 +1359,41 @@ async function handleApiRequest(req, res) {
       clearInterval(ka);
       memberCountSSEClients.delete(res);
     });
+    return;
+  }
+
+  // ── Guest visits ("Take a Visit") ───────────────────────────────────
+  // POST /api/guest/{visit|ping|leave|convert}  body: { id, kind? }
+  // Public (guests have no account); ids are random per browser tab.
+  {
+    const guestMatch = req.method === 'POST' && /^\/api\/guest\/(visit|ping|leave|convert)$/.exec(req.url);
+    if (guestMatch) {
+      try {
+        const { id, kind } = await readJsonBody(req, 1024);
+        if (!isValidVisitId(id)) { sendJson(res, 400, { success: false, error: 'Invalid visit id.' }); return; }
+        const action = guestMatch[1];
+        if (action === 'visit') await recordGuestVisit(id);
+        else if (action === 'ping') recordGuestPing(id);
+        else if (action === 'leave') recordGuestLeave(id);
+        else await recordGuestConversion(id, kind === 'signup' ? 'signup' : 'login');
+        sendJson(res, 200, { success: true });
+      } catch (error) {
+        sendJson(res, 400, { success: false, error: error.message || 'Bad request.' });
+      }
+      return;
+    }
+  }
+
+  // GET /api/admin/guest-visits — live + total guest visit counters (admin)
+  if (req.url === '/api/admin/guest-visits' && req.method === 'GET') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      res.setHeader('Cache-Control', 'no-store');
+      sendJson(res, 200, { success: true, ...(await getGuestVisitStats()) });
+    } catch (error) {
+      sendJson(res, 500, { success: false, error: error.message || 'Failed to load guest visits.' });
+    }
     return;
   }
 

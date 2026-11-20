@@ -8,6 +8,7 @@ import {
   getAllAccounts,
 } from '../utils/authStorage';
 import { runMigrationOnLogin } from '../utils/storageService';
+import { installGuestSandbox, uninstallGuestSandbox } from '../guest/guestSandbox';
 import { initLiveStore, destroyLiveStore } from '../utils/liveStore';
 import { getBatchLabel, getBatchRole } from '../utils/batchIdentity';
 
@@ -91,11 +92,60 @@ function hydrateUser(raw) {
   };
 }
 
+const GUEST_VISIT_KEY = 'aust-guest-visit';
+const GUEST_VISIT_ID_KEY = 'aust-guest-visit-id';
+
+function readGuestVisitId() {
+  try { return sessionStorage.getItem(GUEST_VISIT_ID_KEY); } catch { return null; }
+}
+
+/** Fire-and-forget report to the guest-visit counters (admin panel). */
+function reportGuestVisit(action, id, extra = {}) {
+  if (!id) return;
+  const body = JSON.stringify({ id, ...extra });
+  try {
+    if (action === 'leave' && navigator.sendBeacon) {
+      navigator.sendBeacon(`/api/guest/${action}`, body);
+      return;
+    }
+    fetch(`/api/guest/${action}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      keepalive: true,
+      body,
+    }).catch(() => {});
+  } catch { /* best effort */ }
+}
+
 export function AuthProvider({ children }) {
   const location = useLocation();
   const [sessionUser, setSessionUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  // "Take a Visit": a signed-out visitor browsing the app as a guest. Kept per
+  // browser tab (sessionStorage), so a fresh visit starts at the landing page.
+  const [guestVisit, setGuestVisit] = useState(() => {
+    try { return sessionStorage.getItem(GUEST_VISIT_KEY) === '1'; } catch { return false; }
+  });
   const profileWriteRevisionRef = useRef(0);
+
+  // While a guest is browsing: heartbeat every 30s so the admin panel can show
+  // "guests online now"; tell the server when the tab goes away.
+  const guestBrowsing = guestVisit && !sessionUser;
+  useEffect(() => {
+    if (!guestBrowsing) return undefined;
+    const ping = () => reportGuestVisit('ping', readGuestVisitId());
+    ping();
+    const timer = setInterval(ping, 30_000);
+    const onHide = () => reportGuestVisit('leave', readGuestVisitId());
+    window.addEventListener('pagehide', onHide);
+    window.addEventListener('pageshow', ping);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('pagehide', onHide);
+      window.removeEventListener('pageshow', ping);
+    };
+  }, [guestBrowsing]);
 
   useEffect(() => {
     const expireSession = () => {
@@ -184,6 +234,8 @@ export function AuthProvider({ children }) {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
+    // Leave the guest sandbox before the real account touches localStorage.
+    if (readGuestVisitId()) endGuestVisit('login');
     // Sync to localStorage for backward compat with existing features
     try {
       const accounts = getAllAccounts().filter(a => a.id !== 'guest');
@@ -231,6 +283,8 @@ export function AuthProvider({ children }) {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+    // Account created (even if it still awaits approval) → the guest signed up.
+    if (readGuestVisitId()) endGuestVisit('signup');
     if (data.pendingApproval) return { pendingApproval: true, message: data.message };
     const hydrated = hydrateUser(data.user);
     setSessionUser(hydrated);
@@ -281,6 +335,7 @@ export function AuthProvider({ children }) {
       avatar: account.avatar || data.user.avatar,
       linkedSocial: account.linkedSocial || data.user.linkedSocial,
     });
+    if (readGuestVisitId()) endGuestVisit('login');
     setSessionUser(hydrated);
     localStorage.setItem(userStorageKey, JSON.stringify(hydrated));
     initLiveStore(hydrated.id);
@@ -290,13 +345,40 @@ export function AuthProvider({ children }) {
   const loginGuest = () => {
     setSessionUser(null);
     destroyLiveStore();
+    // Guests browse a demo sandbox: no real API data, empty tab-only storage.
+    installGuestSandbox();
     localStorage.setItem('aust-auth-session-v1', JSON.stringify({
       userId: 'guest', role: 'guest', startedAt: new Date().toISOString(),
     }));
     localStorage.setItem(userStorageKey, JSON.stringify(guestUser));
+    let visitId = readGuestVisitId();
+    if (!visitId) {
+      visitId = (crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`).replace(/[^A-Za-z0-9_-]/g, '');
+      try { sessionStorage.setItem(GUEST_VISIT_ID_KEY, visitId); } catch { /* storage blocked */ }
+    }
+    try { sessionStorage.setItem(GUEST_VISIT_KEY, '1'); } catch { /* storage blocked */ }
+    reportGuestVisit('visit', visitId);
+    setGuestVisit(true);
+  };
+
+  // outcome: 'leave' (exit as guest) | 'login' | 'signup'
+  const endGuestVisit = (outcome = 'leave') => {
+    const visitId = readGuestVisitId();
+    if (visitId) {
+      if (outcome === 'leave') reportGuestVisit('leave', visitId);
+      else reportGuestVisit('convert', visitId, { kind: outcome });
+    }
+    try {
+      sessionStorage.removeItem(GUEST_VISIT_KEY);
+      sessionStorage.removeItem(GUEST_VISIT_ID_KEY);
+    } catch { /* storage blocked */ }
+    // Drop the sandbox and everything the guest did in it.
+    uninstallGuestSandbox();
+    setGuestVisit(false);
   };
 
   const logout = async () => {
+    endGuestVisit('leave');
     try { await api('/api/auth/logout', { method: 'POST' }); } catch { /* best effort */ }
     clearSession();
     destroyLiveStore();
@@ -404,10 +486,12 @@ export function AuthProvider({ children }) {
       user,
       isAuthenticated,
       isGuest: !isAuthenticated,
+      isGuestVisit: guestVisit && !isAuthenticated,
       isLoading,
       login,
       loginDirect,
       loginGuest,
+      endGuestVisit,
       signup,
       logout,
       updateUser,

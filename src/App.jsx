@@ -18,6 +18,7 @@ import { prefetchRoutesIdle } from './utils/routePrefetch';
 import { getAccessRole } from './utils/accessRole';
 import { StalkProvider } from './features/stalk-road/StalkContext';
 import useUsageTracking from './hooks/useUsageTracking';
+import GuestSignupPrompt from './guest/GuestSignupPrompt';
 const StalkRoadOverlay = lazy(() => import('./features/stalk-road/StalkRoadOverlay'));
 const AuthPage = lazy(() => import('./features/auth/AuthPage'));
 const LandingPage = lazy(() => import('./features/landing/LandingPage'));
@@ -256,6 +257,7 @@ function AppContent() {
           <FloatingBackground />
         </Suspense>
         <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+        <GuestSignupPrompt />
         <div className="app-layout">
           <Sidebar
             collapsed={sidebarCollapsed}
@@ -398,7 +400,7 @@ function AppContent() {
 
 // Root App Shell with Auth Check — no BrowserRouter here, uses parent's single instance
 function AppShell() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isGuestVisit, isLoading } = useAuth();
   const location = useLocation();
 
   const pageTitles = {
@@ -488,8 +490,13 @@ function AppShell() {
     );
   }
 
+  // Guests on a visit ("Take a Visit") browse the app, but the sign-in pages
+  // stay reachable so they can log in or sign up from inside it.
+  const GUEST_AUTH_PATHS = ['/login', '/reset-password', '/accept-invite'];
+  const guestInApp = isGuestVisit && !GUEST_AUTH_PATHS.includes(location.pathname);
+
   // If not authenticated, show landing page at / and auth page at /login
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !guestInApp) {
     return (
       <Suspense fallback={
         <div className="app-boot-loading" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#08090a', color: '#a1a1aa', fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>

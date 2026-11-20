@@ -44,7 +44,7 @@ export default function PomodoroTimer() {
       </div>
 
       <div className="pom-ctrls">
-        <button className="pom-ctrl pom-ctrl-sm" onClick={reset} title="Reset">
+        <button className="pom-ctrl pom-ctrl-sm" onClick={reset} title="Reset" data-guest-allow>
           <RotateCcw size={14} />
         </button>
         <button className={`pom-ctrl pom-ctrl-play ${isRunning ? 'pom-ctrl-pause' : ''}`} onClick={toggle}>

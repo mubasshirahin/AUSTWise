@@ -5,6 +5,7 @@ import { getUserStorageItem, setUserStorageItem, getUserStorageKey } from '../ut
 import { userStore } from '../utils/storageService';
 import useWebSocket from '../hooks/useWebSocket';
 import { useAuth } from './AuthContext';
+import { blockIfGuest } from '../guest/guestSandbox';
 
 const storageKeyTypes = {
   routine: 'userRoutine',
@@ -154,12 +155,15 @@ export function RoutineProvider({ children }) {
   };
 
   const saveRoutine = (nextRoutine) => {
+    // Guests see the demo routine only; adding/editing classes needs an account.
+    if (blockIfGuest('routine')) return;
     setRoutine(nextRoutine);
     setUserStorageItem(storageKeyTypes.routine, nextRoutine);
     userStore.set(ROUTINE_KEY, nextRoutine);
   };
 
   const replaceRoutine = async (nextRoutine, nextWeekDays, { keepSharedSource = false } = {}) => {
+    if (blockIfGuest('routine')) throw new Error('Sign up to load a routine.');
     // A routine loaded from a CR must be committed to the account store before
     // presenting it as successfully loaded. This keeps other devices in sync.
     if (isAuthenticated) {
@@ -219,6 +223,7 @@ export function RoutineProvider({ children }) {
   };
 
   const resetRoutine = () => {
+    if (blockIfGuest('routine')) return;
     setRoutine(defaultRoutine);
     setWeekDays(defaultWeekDays);
     const routineKey = getUserStorageKey(storageKeyTypes.routine);

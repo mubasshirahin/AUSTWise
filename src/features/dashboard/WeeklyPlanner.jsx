@@ -11,6 +11,7 @@ import brandMark from '../../assets/austwise-icon-final.svg';
 import { useAuth } from '../../context/AuthContext';
 import useWebSocket from '../../hooks/useWebSocket';
 import { userStore } from '../../utils/storageService';
+import { blockIfGuest } from '../../guest/guestSandbox';
 
 const isGeneratedRoutineFixture = (routine) => String(routine?.id || '').startsWith('dev-rt-');
 
@@ -301,11 +302,18 @@ export default function WeeklyPlanner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, routine, weekDays]);
 
+  // Guests see the demo routine read-only: opening Add/Edit Class shows the
+  // sign-up prompt instead.
+  const startEditing = (next) => {
+    if (blockIfGuest('routine')) return;
+    setEditing(next);
+  };
+
   const openAddModal = (day = weekDays[0] || 'Sunday', slotIdx = 0) => {
     const start = slotBoundaries[slotIdx] || '08:00';
     const end = slotBoundaries[slotIdx + 1] || '08:50';
 
-    setEditing({
+    startEditing({
       mode: 'add',
       day,
       form: {
@@ -316,7 +324,7 @@ export default function WeeklyPlanner() {
   };
 
   const openEditModal = (day, cls) => {
-    setEditing({
+    startEditing({
       mode: 'edit',
       originalDay: day,
       day,
@@ -392,6 +400,7 @@ export default function WeeklyPlanner() {
 
   const openLoadModal = async () => {
     if (isFaculty) return;
+    if (blockIfGuest('routine')) return;
     setSelectedTemplate(null);
     setLoadSearch('');
     setLoadDept('all');
@@ -414,6 +423,7 @@ export default function WeeklyPlanner() {
 
   const handleShareRoutine = async () => {
     if (shareBusy) return;
+    if (blockIfGuest('routine')) return;
     unshareRequestedRef.current = false;
     setShareBusy(true);
     setShareMsg(null);
@@ -799,7 +809,7 @@ export default function WeeklyPlanner() {
                                   onClick={() => {
                                     const start = slotBoundaries[idx] || '08:00';
                                     const end = slotBoundaries[idx + colSpan] || calculateEndTime(start, colSpan);
-                                    setEditing({
+                                    startEditing({
                                       mode: 'add',
                                       day,
                                       form: {
@@ -866,7 +876,7 @@ export default function WeeklyPlanner() {
                                   onClick={() => {
                                     const start = slotBoundaries[idx] || '08:00';
                                     const end = slotBoundaries[idx + colSpan] || calculateEndTime(start, colSpan);
-                                    setEditing({
+                                    startEditing({
                                       mode: 'add',
                                       day,
                                       form: {

@@ -470,6 +470,12 @@
   transform: rotate(15deg) scale(1.05);
 }
 
+/* Touch keeps :hover after a tap, and an open menu shouldn't tilt the button. */
+.landing-theme-btn[aria-expanded='true'] { transform: none; }
+@media (hover: none) {
+  .landing-theme-btn:hover { transform: none; }
+}
+
 .landing-theme-btn::after {
   content: '';
   position: absolute;
@@ -4052,11 +4058,14 @@
     gap: 6px;
   }
 
+  /* Centred with auto margins, not a transform: the mobile theme sheet strips
+     transforms from its ancestors, which used to shove this button aside. */
   .landing-nav-mid {
     position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
+    inset: 0;
+    margin: auto;
+    width: max-content;
+    height: max-content;
     flex: 0 0 auto;
     z-index: 2;
   }
@@ -4672,4 +4681,486 @@
     .landing-problem-card svg, .landing-timeline-dot, .landing-step-number, .landing-footer-social) {
     animation: none;
   }
+}
+
+/* ═══ Tablet + phone: minimal, compact layout ═══
+   Kept last so it wins. Flat house style only — the changes are layout,
+   spacing, type and sizing. */
+
+/* Sticky switch, one column (≤900px): the whole block is pinned by GSAP
+   (StickyContentSwitch.jsx) and the four cards crossfade in one slot. */
+@media (max-width: 900px) {
+  .landing-page .landing-switch-section {
+    height: calc(var(--switch-count) * 70vh + 100vh);
+    height: calc(var(--switch-count) * 70svh + 100svh);
+  }
+  .landing-page .landing-switch-layout {
+    height: 100vh;
+    height: 100svh;
+    grid-template-rows: auto minmax(0, 1fr);
+    align-content: start;
+    padding-top: var(--switch-pin-offset, 60px);
+  }
+  .landing-page .landing-switch-left {
+    height: auto;
+    padding: 28px 24px 0;
+    text-align: center;
+    align-items: center;
+  }
+  .landing-page .landing-switch-left .landing-badge { margin-bottom: 14px; }
+  .landing-page .landing-switch-sub { min-height: 3.3em; margin: 10px auto 0; }
+  .landing-page .landing-switch-meta { margin-top: 16px; justify-content: center; }
+  .landing-page .landing-switch-right {
+    display: grid;
+    align-items: start;
+    align-content: start;
+    justify-items: center;
+    padding: clamp(28px, 7vh, 72px) 24px 40px;
+  }
+  .landing-page .landing-switch-panel {
+    grid-area: 1 / 1;
+    height: auto;
+    width: 100%;
+    padding: 0;
+    opacity: 0;
+    visibility: hidden;
+    translate: 0 10px;
+    transition: opacity 0.35s ease, translate 0.35s ease, visibility 0s linear 0.35s;
+  }
+  .landing-page .landing-switch-panel.active {
+    opacity: 1;
+    visibility: visible;
+    translate: 0 0;
+    transition: opacity 0.35s ease, translate 0.35s ease, visibility 0s;
+  }
+  .landing-page .landing-switch-card { width: min(420px, 100%); margin: 0 auto; }
+}
+
+/* Tablet (641–1024px) */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .landing-page .landing-section { padding: 64px 28px; }
+  .landing-page .landing-section-header { margin-bottom: 32px; }
+  .landing-page .landing-hero { padding: 112px 28px 56px; }
+  .landing-page .landing-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .landing-page .landing-step { padding: 20px 8px; }
+  .landing-page .landing-features-grid,
+  .landing-page .landing-problems-grid,
+  .landing-page .landing-value-grid { gap: 14px; }
+  .landing-page .landing-feature-card-inner { padding: 18px; }
+  .landing-page .landing-hscroll-track .landing-feature-card { width: 300px; height: auto; max-height: 62vh; }
+  .landing-page .landing-hscroll-benefits { margin-top: 16px; }
+  .landing-page .stacking-card { --deck-top: 96px; height: auto; min-height: 200px; padding: 24px 26px; }
+  .landing-page .stacking-card + .stacking-card { margin-top: 18px; }
+  .landing-page .stacking-card-benefits:empty { display: none; }
+  .landing-page .stacking-card-benefits { margin-top: 8px; }
+}
+
+/* Cursor-trail demo needs a mouse — hide it on touch screens */
+@media (hover: none) {
+  .landing-page .landing-trail-section { display: none; }
+}
+
+/* Phone (≤640px) */
+@media (max-width: 640px) {
+  /* Rhythm: tighter sections, smaller headings */
+  .landing-page .landing-section { padding: 44px 16px; }
+  .landing-page .landing-section-header { margin-bottom: 22px; }
+  .landing-page .landing-section-header .landing-badge { margin-bottom: 12px; }
+  .landing-page .landing-section-title,
+  .landing-page .landing-switch-heading { font-size: 1.5rem; line-height: 1.18; margin-bottom: 10px; }
+  .landing-page .landing-section-desc { font-size: 13px; line-height: 1.6; max-width: 34ch; margin: 0 auto; }
+  .landing-page .landing-badge { padding: 4px 10px; font-size: 9.5px; }
+
+  /* Hero */
+  .landing-page .landing-hero { padding: 92px 18px 40px; }
+  .landing-page .landing-hero-title { font-size: 1.9rem; line-height: 1.12; }
+  .landing-page .landing-hero-desc { font-size: 13.5px; line-height: 1.6; }
+  .landing-page .landing-hero-actions { gap: 10px; }
+  .landing-page .landing-hero-actions .landing-btn { min-height: 46px; }
+
+  /* Problems: quote + answer, no chip */
+  .landing-page .landing-problems-grid { gap: 10px; }
+  .landing-page .landing-problem-card { padding: 14px; }
+  .landing-page .landing-problem-statement span {
+    padding: 0;
+    background: none;
+    border: 0;
+    font-size: 13.5px;
+  }
+  .landing-page .landing-solution-statement { font-size: 12.5px; margin-top: 8px; }
+
+  /* Feature modules: icon-left list rows */
+  .landing-page .landing-features-grid { gap: 10px; }
+  .landing-page .landing-feature-card-inner { padding: 14px; }
+  .landing-page .landing-feature-card-main {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    column-gap: 12px;
+    align-items: start;
+  }
+  .landing-page .landing-feature-card-main > * { grid-column: 2; }
+  .landing-page .landing-feature-card-main > .landing-feature-icon {
+    grid-column: 1;
+    grid-row: 1 / span 3;
+    width: 38px;
+    height: 38px;
+    margin: 0;
+  }
+  .landing-page .landing-feature-icon svg { width: 18px; height: 18px; }
+  .landing-page .landing-feature-card-main .landing-feature-tagline { display: none; }
+  .landing-page .landing-feature-card-main .landing-feature-title { font-size: 15px; margin-bottom: 4px; }
+  .landing-page .landing-feature-card-main .landing-feature-desc {
+    font-size: 12.5px;
+    line-height: 1.55;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .landing-page .landing-feature-card-main .landing-feature-expand-btn {
+    justify-self: start;
+    margin-top: 6px;
+    padding: 4px 0;
+    min-height: 0;
+    font-size: 12px;
+  }
+  .landing-page .landing-feature-details { padding-left: 50px; }
+
+  /* Rolling band: cards hug their content */
+  .landing-page .landing-hscroll-track { gap: 12px; padding: 0 18px; }
+  .landing-page .landing-hscroll-track .landing-feature-card { width: min(78vw, 290px); height: auto; }
+  .landing-page .landing-hscroll-track .landing-feature-card-inner { padding: 16px; }
+  .landing-page .landing-hscroll-track .landing-feature-icon { width: 38px; height: 38px; margin-bottom: 12px; }
+  .landing-page .landing-hscroll-benefits { margin-top: 14px; padding-top: 12px; gap: 8px; border-top: 1px dashed var(--border-primary); }
+  .landing-page .landing-hscroll-benefit { font-size: 12.5px; }
+  .landing-page .landing-hscroll-header { padding: 24px 18px 4px; }
+
+  /* Stacking deck: shorter cards that fan just under the nav */
+  .landing-page .stacking-card {
+    --deck-top: 76px;
+    --deck-peek: 12px;
+    height: auto;
+    min-height: 0;
+    padding: 16px;
+    gap: 12px;
+  }
+  .landing-page .stacking-card-icon { width: 38px; height: 38px; }
+  .landing-page .stacking-card-title { font-size: 15px; }
+  .landing-page .stacking-card-index { font-size: 1.3rem; }
+  .landing-page .stacking-card-desc { font-size: 13px; line-height: 1.6; }
+  .landing-page .stacking-card { min-height: 172px; }
+  .landing-page .stacking-card + .stacking-card { margin-top: 14px; }
+  .landing-page .stacking-card-benefits { margin-top: 0; padding-top: 12px; gap: 8px; border-top: 1px dashed var(--border-primary); }
+  .landing-page .stacking-card-benefits:empty { display: none; }
+  .landing-page .stacking-card-benefit { font-size: 12.5px; }
+
+  /* Why AUSTWise: icon-left rows */
+  .landing-page .landing-value-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .landing-page .landing-value-card {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    column-gap: 12px;
+    align-items: start;
+    text-align: left;
+    padding: 14px;
+  }
+  .landing-page .landing-value-icon { grid-row: 1 / span 2; width: 38px; height: 38px; margin: 0; }
+  .landing-page .landing-value-icon svg { width: 18px; height: 18px; }
+  .landing-page .landing-value-title { font-size: 15px; margin: 0 0 4px; }
+  .landing-page .landing-value-desc { font-size: 12.5px; line-height: 1.55; margin: 0; }
+
+  /* 3 steps: numbered rows on a dashed rail */
+  .landing-page .landing-steps { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .landing-page .landing-step {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr);
+    column-gap: 14px;
+    text-align: left;
+    padding: 14px 0;
+  }
+  .landing-page .landing-steps > * + * .landing-step { border-top: 1px dashed var(--border-primary); }
+  .landing-page .landing-step-number { grid-row: 1 / span 2; width: 30px; height: 30px; margin: 0; font-size: 12px; }
+  .landing-page .landing-step-icon-wrapper { display: none; }
+  .landing-page .landing-step-title { font-size: 15px; margin: 4px 0 4px; }
+  .landing-page .landing-step-desc { font-size: 12.5px; line-height: 1.55; }
+
+  /* Timeline + before/after */
+  .landing-page .landing-timeline-card { padding: 12px; }
+  .landing-page .landing-timeline-title { font-size: 14px; }
+  .landing-page .landing-timeline-desc { font-size: 12.5px; line-height: 1.55; }
+
+  /* Testimonials */
+  .landing-page .landing-testimonials-section { padding: 44px 0; }
+}
+
+@media (max-width: 640px) {
+  .landing-page .landing-hero-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+  .landing-page .landing-hero-stat,
+  .landing-page .landing-hero-stat:first-child { padding: 2px 6px; min-width: 0; text-align: center; }
+  .landing-page .landing-hero-stat-label { font-size: 9px; letter-spacing: 0.06em; }
+}
+@media (max-width: 360px) {
+  .landing-page .landing-hero-stat-label { font-size: 8px; letter-spacing: 0.04em; }
+  .landing-page .landing-hero-title { font-size: 1.65rem; }
+  .landing-page .landing-section-title,
+  .landing-page .landing-switch-heading { font-size: 1.35rem; }
+}
+
+/* ═══ Phone: quieter type, more air ═══
+   Smaller type and wider spacing so the phone view reads calm, not crowded. */
+@media (max-width: 640px) {
+  /* Nav */
+  .landing-page .landing-nav { padding: 10px 18px; }
+  .landing-page .landing-nav-right .landing-btn { min-height: 34px; padding: 0 12px; font-size: 12px; }
+  .landing-page .landing-nav-right .landing-btn svg { width: 13px; height: 13px; }
+
+  /* Hero */
+  .landing-page .landing-hero { padding: 104px 28px 64px; }
+  .landing-page .landing-badge { padding: 4px 9px; font-size: 8.5px; letter-spacing: 0.09em; gap: 5px; }
+  .landing-page .landing-badge svg { width: 10px; height: 10px; }
+  .landing-page .landing-hero .landing-badge { margin-bottom: 20px; }
+  .landing-page .landing-hero-title { font-size: 1.45rem; line-height: 1.22; margin-bottom: 16px; }
+  .landing-page .landing-hero-desc { font-size: 12.5px; line-height: 1.75; max-width: 32ch; margin: 0 auto; color: var(--text-secondary); }
+  /* Both hero buttons share one row on phones */
+  .landing-page .landing-hero-actions { flex-direction: row; flex-wrap: nowrap; gap: 6px; margin-top: 28px; width: 100%; max-width: 280px; margin-left: auto; margin-right: auto; }
+  .landing-page .landing-hero-actions .landing-btn { flex: 1 1 0; min-width: 0; width: auto; min-height: 34px; padding: 0 8px; gap: 5px; font-size: 12px; border-radius: var(--radius-md); white-space: nowrap; }
+  .landing-page .landing-hero-actions .landing-btn svg { width: 12px; height: 12px; }
+  .landing-page .landing-hero-stats { margin-top: 44px; max-width: 300px; margin-left: auto; margin-right: auto; }
+  .landing-page .landing-hero-stat-value { font-size: 1rem; }
+  .landing-page .landing-hero-stat-label { font-size: 8px; letter-spacing: 0.06em; margin-top: 2px; }
+
+  /* Section rhythm */
+  .landing-page .landing-section { padding: 72px 24px; }
+  .landing-page .landing-section-header { margin-bottom: 36px; }
+  .landing-page .landing-section-header .landing-badge { margin-bottom: 16px; }
+  .landing-page .landing-section-title,
+  .landing-page .landing-switch-heading,
+  .landing-page .landing-hscroll-title { font-size: 1.2rem; line-height: 1.3; margin-bottom: 12px; }
+  .landing-page .landing-section-desc,
+  .landing-page .landing-switch-sub,
+  .landing-page .landing-hscroll-sub { font-size: 12px; line-height: 1.7; max-width: 32ch; margin-left: auto; margin-right: auto; }
+
+  /* Cards: smaller text, more padding and gap */
+  .landing-page .landing-problems-grid,
+  .landing-page .landing-features-grid,
+  .landing-page .landing-value-grid { gap: 14px; }
+  .landing-page .landing-problem-card,
+  .landing-page .landing-feature-card-inner,
+  .landing-page .landing-value-card,
+  .landing-page .landing-timeline-card { padding: 18px; }
+  .landing-page .landing-problem-statement span { font-size: 12.5px; }
+  .landing-page .landing-solution-statement { font-size: 11.5px; line-height: 1.65; margin-top: 10px; }
+  .landing-page .landing-feature-card-main .landing-feature-title,
+  .landing-page .landing-value-title,
+  .landing-page .landing-step-title,
+  .landing-page .stacking-card-title { font-size: 13.5px; }
+  .landing-page .landing-feature-card-main .landing-feature-desc,
+  .landing-page .landing-value-desc,
+  .landing-page .landing-step-desc,
+  .landing-page .stacking-card-desc,
+  .landing-page .landing-timeline-desc { font-size: 11.5px; line-height: 1.65; }
+  .landing-page .landing-feature-card-main .landing-feature-expand-btn { font-size: 11px; margin-top: 8px; }
+  .landing-page .landing-timeline-title { font-size: 13px; }
+  .landing-page .landing-step { padding: 18px 0; }
+  .landing-page .stacking-card { padding: 18px; }
+  .landing-page .stacking-card-index { font-size: 1.1rem; }
+
+  /* Rolling band */
+  .landing-page .landing-hscroll-header { padding: 32px 24px 4px; }
+  .landing-page .landing-hscroll-track .landing-feature-card-inner { padding: 18px; }
+  .landing-page .landing-hscroll-track .landing-feature-title { font-size: 13.5px; }
+  .landing-page .landing-hscroll-track .landing-feature-desc { font-size: 11.5px; line-height: 1.65; }
+  .landing-page .landing-hscroll-benefit { font-size: 11.5px; }
+
+  /* Testimonials + footer */
+  .landing-page .landing-testimonials-section { padding: 72px 0; }
+  .landing-page .landing-footer-inner { padding: 48px 24px 28px; }
+}
+/* Hero fills the first screen on tablet/phone, so the next section
+   only appears once you scroll. */
+@media (max-width: 1024px) {
+  .landing-page .landing-hero {
+    min-height: 100vh;
+    min-height: 100svh;
+    padding-top: 88px;
+    padding-bottom: 48px;
+  }
+}
+@media (max-width: 360px) {
+  .landing-page .landing-hero { padding-left: 22px; padding-right: 22px; }
+  .landing-page .landing-hero-title { font-size: 1.32rem; }
+  .landing-page .landing-section { padding-left: 20px; padding-right: 20px; }
+  .landing-page .landing-section-title,
+  .landing-page .landing-switch-heading { font-size: 1.12rem; }
+  .landing-page .landing-hero-stat-label { font-size: 7.5px; }
+}
+
+/* ═══ CTA buttons (Start for Free · Jump Right In · Take a Visit) ═══
+   skill-style §11 primary action: flat --radius-full pill, solid accent,
+   compact type, no lift/shadow. Kept last so it wins. */
+:is(.landing-page, body) :is(.landing-nav-right, .landing-hero-actions) .landing-btn {
+  border-radius: var(--radius-full);
+  font-weight: 700;
+  letter-spacing: 0;
+  box-shadow: none;
+  transform: none;
+  filter: none;
+}
+:is(.landing-page, body) :is(.landing-nav-right, .landing-hero-actions) .landing-btn-primary {
+  background: var(--accent-amber);
+  border-color: var(--accent-amber);
+}
+:is(.landing-page, body) :is(.landing-nav-right, .landing-hero-actions) .landing-btn-primary:hover { opacity: 0.9; }
+
+/* Nav: 30px pill, 11.5px text, 13px icon */
+:is(.landing-page, body) .landing-nav-right .landing-btn-primary {
+  min-height: 30px;
+  height: 30px;
+  min-width: 0;
+  padding: 0 13px;
+  gap: 5px;
+  font-size: 11.5px;
+}
+:is(.landing-page, body) .landing-nav-right .landing-btn-primary svg { width: 13px; height: 13px; }
+
+/* Hero: 38px pills on desktop */
+:is(.landing-page, body) .landing-hero-actions .landing-btn {
+  min-height: 38px;
+  height: 38px;
+  padding: 0 18px;
+  gap: 6px;
+  font-size: 13px;
+}
+:is(.landing-page, body) .landing-hero-actions .landing-btn svg { width: 14px; height: 14px; }
+
+@media (max-width: 640px) {
+  :is(.landing-page, body) .landing-nav-right .landing-btn-primary { min-height: 28px; height: 28px; padding: 0 11px; font-size: 11px; }
+  :is(.landing-page, body) .landing-nav-right .landing-btn-primary svg { width: 12px; height: 12px; }
+  :is(.landing-page, body) .landing-hero-actions .landing-btn { min-height: 34px; height: 34px; padding: 0 8px; gap: 5px; font-size: 12px; }
+  :is(.landing-page, body) .landing-hero-actions .landing-btn svg { width: 12px; height: 12px; }
+}
+
+/* Hero stats on phone: three equal cells, content centred in each, row
+   matches the CTA row width so the two line up. */
+@media (max-width: 640px) {
+  .landing-page .landing-hero-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    max-width: 280px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .landing-page .landing-hero-stat {
+    justify-content: center;
+    min-width: 0;
+    padding: 2px 4px;
+  }
+  .landing-page .landing-hero-stat > div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+    max-width: 100%;
+    text-align: center;
+  }
+  .landing-page .landing-hero-stat-label {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* ═══ Phone: minimal, clean, smaller type everywhere ═══
+   One notch down on every section: tighter section rhythm, smaller titles,
+   body copy and cards. Flat - layout, spacing and type only. Kept last. */
+@media (max-width: 640px) {
+  /* Hero */
+  .landing-page .landing-hero { padding-left: 24px; padding-right: 24px; }
+  .landing-page .landing-hero .landing-badge { margin-bottom: 16px; }
+  .landing-page .landing-hero-title { font-size: 1.3rem; line-height: 1.25; margin-bottom: 12px; }
+  .landing-page .landing-hero-desc { font-size: 11.5px; line-height: 1.7; max-width: 34ch; }
+  .landing-page .landing-hero-actions { margin-top: 24px; }
+  .landing-page .landing-hero-stats { margin-top: 32px; }
+  .landing-page .landing-hero-stat-value { font-size: 0.92rem; }
+
+  /* Section rhythm */
+  .landing-page .landing-section { padding: 52px 20px; }
+  .landing-page .landing-testimonials-section { padding-left: 0; padding-right: 0; }
+  .landing-page .landing-section-header { margin-bottom: 24px; }
+  .landing-page .landing-section-header .landing-badge,
+  .landing-page .landing-badge { margin-bottom: 12px; font-size: 8px; padding: 3px 8px; }
+  .landing-page .landing-section-title,
+  .landing-page .landing-switch-heading,
+  .landing-page .landing-hscroll-title,
+  .landing-page .landing-trail-title { font-size: 1.05rem; line-height: 1.3; margin-bottom: 8px; }
+  .landing-page .landing-section-desc,
+  .landing-page .landing-switch-sub,
+  .landing-page .landing-hscroll-sub,
+  .landing-page .landing-trail-sub { font-size: 11.5px; line-height: 1.6; }
+
+  /* Cards: smaller padding, gaps and type */
+  .landing-page .landing-features-grid,
+  .landing-page .landing-problems-grid { gap: 8px; }
+  .landing-page :is(.landing-problem-card, .landing-value-card, .landing-timeline-card, .landing-feature-card-inner, .stacking-card) { padding: 12px; }
+  .landing-page .stacking-card { gap: 8px; }
+  .landing-page :is(.landing-feature-card-main, .landing-hscroll-track, .landing-section, section) :is(.landing-feature-title, .stacking-card-title, .landing-value-title, .landing-step-title, .landing-timeline-title) { font-size: 12.5px; }
+  .landing-page :is(.landing-feature-card-main, .landing-hscroll-track, .landing-section, section) :is(.landing-feature-desc, .stacking-card-desc, .landing-timeline-desc, .landing-value-desc, .landing-step-desc) { font-size: 11px; line-height: 1.55; }
+  .landing-page :is(.landing-feature-card-main, .landing-hscroll-track, .landing-section) .landing-feature-icon { width: 30px; height: 30px; }
+  .landing-page :is(.landing-feature-card-main, .landing-hscroll-track, .landing-section) .landing-feature-icon svg { width: 15px; height: 15px; }
+  .landing-page :is(.landing-feature-tagline, .stacking-card-tagline) { font-size: 9px; }
+  .landing-page .stacking-card-index { font-size: 0.9rem; }
+  .landing-page :is(.landing-feature-benefits-title, .before-after-item-text, .landing-inline-link) { font-size: 12px; }
+  .landing-page .before-after-item { padding: 8px 10px; gap: 10px; }
+  .landing-page .landing-step { padding: 12px 0; }
+  .landing-page .landing-feature-expand-btn { font-size: 10.5px; }
+
+  /* Reveal word — same solid look as desktop, centred. The offset glitch
+     copies smear at this size, so paint the fill colour directly instead. */
+  .landing-page .landing-reveal-inner { padding: 0 16px; text-align: center; }
+  .landing-page .landing-reveal-text { display: inline-block; font-size: 22cqi; padding-left: 0; text-align: center; color: var(--text-primary); }
+  .landing-page .landing-reveal-text .glitch-char::before,
+  .landing-page .landing-reveal-text .glitch-char::after { content: none; }
+
+  /* Sticky switch cards */
+  .landing-page .landing-switch-card { width: min(340px, 100%); }
+  .landing-page .landing-switch-panel-index { font-size: 44px; }
+  .landing-page .landing-switch-screen-head { padding: 10px 12px; }
+  .landing-page .landing-switch-screen-name { font-size: 11.5px; }
+  .landing-page .landing-switch-stat { font-size: 1.3rem; }
+  .landing-page .landing-switch-count { font-size: 11px; }
+
+  /* Testimonials */
+  .landing-page .testimonials-slider-wrapper { margin-bottom: 0; }
+  .landing-page .testimonials-slider { gap: 10px; padding: 5px 0; }
+  .landing-page .testimonial-card { padding: 12px 14px; gap: 10px; width: 210px; border-radius: var(--radius-md); }
+  .landing-page .testimonial-quote {
+    font-size: 11.5px; line-height: 1.5;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .landing-page .testimonial-user { gap: 8px; }
+  .landing-page .testimonial-user-info { gap: 1px; }
+  .landing-page .testimonial-name { font-size: 11.5px; }
+  .landing-page .testimonial-role { font-size: 10px; }
+  .landing-page .testimonial-avatar { width: 24px; height: 24px; }
+
+  /* Footer */
+  .landing-page .landing-footer-inner { padding: 36px 20px 24px; gap: 28px; }
+  .landing-page .landing-footer-desc { font-size: 11.5px; }
+  .landing-page .landing-footer-col h4 { font-size: 11px; }
+  .landing-page .landing-footer-link { font-size: 11.5px; }
+  .landing-page .landing-footer-copy { font-size: 10.5px; margin-top: 4px; text-align: center; }
+  .landing-page .landing-footer-brand { width: 100%; justify-self: center; text-align: center; }
+  .landing-page .landing-footer-brand .landing-logo { top: 0; display: flex; justify-content: center; }
+}
+@media (max-width: 360px) {
+  .landing-page .landing-hero-title { font-size: 1.2rem; }
+  .landing-page .landing-section { padding-left: 16px; padding-right: 16px; }
+  .landing-page .landing-section-title,
+  .landing-page .landing-switch-heading { font-size: 1rem; }
 }

@@ -4,7 +4,7 @@ import QRCode from 'qrcode';
 import { useTheme, getThemeAccent } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useRoutine } from '../../context/RoutineContext';
-import { Activity, Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, ShieldAlert, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, SquareTerminal, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2, Orbit, DraftingCompass, PawPrint, Palette, Sparkles, ExternalLink, CalendarDays, Mail, Phone, Droplets, BookOpen, Award, Flame, FileText, Handshake, Vote, Coffee, MessageCircle, MessageSquare, Gem, WandSparkles, Gamepad2, Cloud, Smile, Flower2, Smartphone, Check, X } from 'lucide-react';
+import { Activity, Camera, CheckCircle, Pencil, Settings, User, Bell, Info, Save, BellOff, BellRing, Clock, AlertTriangle, ShieldCheck, ShieldAlert, GraduationCap, Users, Send, CheckCircle2, Clock3, Moon, Sun, Newspaper, Terminal, SquareTerminal, Gauge, MoonStar, Pen, PenTool, Building2, Type, Zap, Grid2x2, Cpu, MapPin, Trash2, Orbit, DraftingCompass, PawPrint, Palette, Sparkles, ExternalLink, CalendarDays, Mail, Phone, Droplets, BookOpen, Award, Flame, FileText, Handshake, Vote, Coffee, MessageCircle, MessageSquare, Gem, WandSparkles, Gamepad2, Cloud, Smile, Flower2, Smartphone, Check, X, Highlighter, NotebookPen } from 'lucide-react';
 import AboutUs from './AboutUs';
 import LinkedAccountsSection from './LinkedAccountsSection';
 import GliderTabs from '../../components/GliderTabs';
@@ -170,6 +170,7 @@ const darkThemes = [
   { id: 'prism', label: 'Prism', desc: 'Animated · coral, teal and sun', icon: WandSparkles },
   { id: 'lofi', label: 'Lo-fi', desc: 'Study vibe · warm walnut and lamp amber', icon: Coffee },
   { id: 'arcade', label: 'Arcade', desc: 'Gamer · void black, cyan and red', icon: Gamepad2 },
+  { id: 'nightowl', label: 'Night Owl', desc: 'Student · black desk, highlighter yellow', icon: Highlighter },
 ];
 
 const lightThemes = [
@@ -182,6 +183,7 @@ const lightThemes = [
   { id: 'pastel', label: 'Pastel', desc: 'Aesthetic · lilac, peach and mint', icon: Cloud },
   { id: 'toon', label: 'Toon', desc: 'Cartoon · cream paper, bold ink', icon: Smile },
   { id: 'sakura', label: 'Sakura', desc: 'Anime · cherry blossom and indigo', icon: Flower2 },
+  { id: 'notebook', label: 'Notebook', desc: 'Student · white paper, ink and highlighter', icon: NotebookPen },
 ];
 
 const themeOptions = [...darkThemes, ...lightThemes];

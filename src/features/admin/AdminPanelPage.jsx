@@ -10,6 +10,7 @@ import { getDisplayBatchText, getSemesterText } from '../../utils/batchIdentity'
 import { buildRoleDirectory, getAccountRoleEntries, matchesRoleSearch, normalizeRoleSearchText } from '../../utils/roleDirectory';
 import { sendMessage } from '../../utils/messageStorage';
 import RoutineTemplatesPanel from './RoutineTemplatesPanel';
+import GuestVisitsCard from './GuestVisitsCard';
 import BharaKotoPanel from './BharaKotoPanel';
 import RoleAccessControlCard from './RoleAccessControlCard';
 import AdminAttendancePanel from './AdminAttendancePanel';
@@ -765,6 +766,8 @@ if (!res.ok || !Array.isArray(data.applications)) return;
         <div className="admin-control-brand"><span className="admin-control-mark"><Shield size={19} /></span><div><p className="admin-control-eyebrow">AUSTWISE · CONTROL CENTER</p><h1>Admin workspace</h1></div></div>
         <div className="admin-control-header-actions"><span className="admin-session-pill"><span /> Admin session</span>{activeTab === 'overview' ? <span className="admin-home-hint">Choose a control to get started</span> : <button type="button" className="admin-quiet-action" onClick={() => navigateToTab('overview')}><PanelsTopLeft size={16} /> Control menu</button>}</div>
       </header>
+
+      {activeTab === 'overview' && <GuestVisitsCard />}
 
       {activeTab === 'overview' && <nav className="admin-control-nav" aria-label="Admin control categories">
         <section className="admin-nav-card">

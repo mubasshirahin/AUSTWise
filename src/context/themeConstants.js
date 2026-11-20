@@ -25,6 +25,8 @@ export const THEME_ACCENTS = {
   lofi: '#D9A05B',
   sakura: '#BE3A66',
   arcade: '#36D3F2',
+  notebook: '#2747C9',
+  nightowl: '#F5D24A',
 };
 
 export const ACCENT_KEY = 'aust-accent';
@@ -65,6 +67,8 @@ export const THEME_LAYOUT = {
   lofi: 'desk',
   sakura: 'manga',
   arcade: 'hud',
+  notebook: 'studio',
+  nightowl: 'studio',
 };
 
 export const layoutForTheme = (theme) => THEME_LAYOUT[theme] || 'classic';
@@ -151,4 +155,6 @@ export const THEME_STYLES = {
   lofi: () => import('../themes/vibes.css'),
   sakura: () => import('../themes/vibes.css'),
   arcade: () => import('../themes/vibes.css'),
+  notebook: () => import('../themes/notebook.css'),
+  nightowl: () => import('../themes/notebook.css'),
 };

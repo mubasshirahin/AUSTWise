@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Moon, MoonStar, Cpu, Terminal, SquareTerminal, Zap, Building2,
-  Type, Orbit, DraftingCompass, Grid2x2, Newspaper, PenTool, Gauge, Pen, Sun, Check, ArrowRight, Gem, WandSparkles, Coffee, Gamepad2, Cloud, Smile, Flower2 } from 'lucide-react';
+  Type, Orbit, DraftingCompass, Grid2x2, Newspaper, PenTool, Gauge, Pen, Sun, Check, ArrowRight, Gem, WandSparkles, Coffee, Gamepad2, Cloud, Smile, Flower2, Highlighter, NotebookPen } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import brandMark from '../../assets/austwise-icon-final.svg';
 import './LandingPage.css';
@@ -22,6 +22,7 @@ const darkThemeOptions = [
   { id: 'prism', label: 'Prism', icon: WandSparkles },
   { id: 'lofi', label: 'Lo-fi', icon: Coffee },
   { id: 'arcade', label: 'Arcade', icon: Gamepad2 },
+  { id: 'nightowl', label: 'Night Owl', icon: Highlighter },
 ];
 
 const lightThemeOptions = [
@@ -34,6 +35,7 @@ const lightThemeOptions = [
   { id: 'pastel', label: 'Pastel', icon: Cloud },
   { id: 'toon', label: 'Toon', icon: Smile },
   { id: 'sakura', label: 'Sakura', icon: Flower2 },
+  { id: 'notebook', label: 'Notebook', icon: NotebookPen },
 ];
 
 const allThemeOptions = [...darkThemeOptions, ...lightThemeOptions];
@@ -45,9 +47,19 @@ export default function LandingNav() {
   const themeSwitcherRef = useRef(null);
   const [logoClicked, setLogoClicked] = useState(false);
 
-  const toggleLogo = () => {
+  const { pathname } = useLocation();
+
+  // Logo or name → top of the landing page (scroll there if already on it).
+  const goHome = () => {
     setLogoClicked(true);
     setTimeout(() => setLogoClicked(false), 600);
+    sessionStorage.removeItem('landingScrollY');
+    if (pathname === '/') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      navigate('/');
+      window.scrollTo(0, 0);
+    }
   };
 
   // Click-outside closes theme menu
@@ -69,17 +81,20 @@ export default function LandingNav() {
     <nav className="landing-nav">
       <div className="landing-nav-inner">
         <div className="landing-nav-left">
-          <div className="topbar-logo">
+          <div
+            className="topbar-logo"
+            onClick={goHome}
+            role="link"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === 'Enter' && goHome()}
+            title="AUSTWise home"
+            aria-label="AUSTWise home"
+            style={{ cursor: 'pointer' }}
+          >
             <img
               src={wordmarkSrc}
-              alt="AUSTWise"
+              alt=""
               className={`topbar-wordmark-img ${logoClicked ? 'clicked' : ''}`}
-              onClick={toggleLogo}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === 'Enter' && toggleLogo()}
-              title="AUSTWise"
-              aria-label="AUSTWise logo"
             />
             <span className="topbar-brand-name">AUSTWise</span>
             <div className="logo-burst" aria-hidden="true">

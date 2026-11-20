@@ -1,0 +1,492 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   STUDENT DESK THEMES  —  #24 Notebook (light) · #25 Night Owl (dark)
+   ────────────────────────────────────────────────────────────────────────────
+   A student's desk at night: plain paper or pure black, a yellow highlighter
+   on the word that matters, code-comment labels (// like this), handwritten
+   side notes, folder-tab cards and a terminal-yellow caret.
+   Reference: docs/design/codingfoding-style.md
+
+   Rules
+   · flat surfaces (CLAUDE.md) — no gradients, glows or tinted overlays; the
+     highlighter is a text-decoration stroke, not a gradient
+   · no transform on containers at rest or on :hover (pages render fixed
+     modals inside cards); cards signal hover with their border instead
+   · every animation is short, runs once, and is off under reduced motion
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── #24 Notebook — white paper, ink blue, highlighter yellow ─── */
+html[data-theme="notebook"] {
+  color-scheme: light;
+  --font-primary: 'Inter', 'Noto Sans Bengali', system-ui, sans-serif;
+  --font-display: 'Inter Tight', 'Inter', 'Noto Sans Bengali', sans-serif;
+  --font-body: 'Inter', 'Noto Sans Bengali', system-ui, sans-serif;
+  --font-label: 'JetBrains Mono', 'SFMono-Regular', monospace;
+  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  --font-code: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  --font-hand: 'Kalam', 'Patrick Hand', cursive;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --sd-mark: #FFE066;          /* highlighter */
+  --sd-on-mark: #1A1A1A;
+  --sd-btn: #0A0A0A;           /* primary button: ink black on paper */
+  --sd-on-btn: #FFFFFF;
+  --sd-note: #2747C9;          /* handwritten notes, // marks */
+  --sd-lift: 0 22px 40px -26px rgba(10, 10, 10, 0.28);
+
+  --bg-primary: #F6F6F6;
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #F0F0F0;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #FFFFFF;
+  --bg-glass: rgba(255, 255, 255, 0.92);
+  --bg-glass-heavy: rgba(255, 255, 255, 0.97);
+  --bg-input: #FFFFFF;
+  --text-primary: #0A0A0A;
+  --text-secondary: #5C5C5C;
+  --text-tertiary: #6B6B6B;
+  --text-inverse: #FFFFFF;
+  --border-primary: #E6E6E6;
+  --border-secondary: #EFEFEF;
+  --border-focus: rgba(39, 71, 201, 0.55);
+  --accent-blue: #2747C9;
+  --accent-blue-glow: rgba(39, 71, 201, 0.1);
+  --accent-purple: #6B4FC9;
+  --accent-purple-glow: rgba(107, 79, 201, 0.1);
+  --accent-amber: #9A6B00;
+  --accent-amber-glow: rgba(154, 107, 0, 0.1);
+  --accent-orange: #9A6B00;
+  --accent-orange-glow: rgba(154, 107, 0, 0.1);
+  --accent-emerald: #1D7A3E;
+  --accent-emerald-glow: rgba(29, 122, 62, 0.1);
+  --accent-rose: #D1342F;
+  --accent-rose-glow: rgba(209, 52, 47, 0.1);
+  --accent-cyan: #2747C9;
+  --accent-cyan-glow: rgba(39, 71, 201, 0.1);
+  --gradient-primary: linear-gradient(180deg, #2747C9 0%, #2747C9 100%);
+  --gradient-secondary: linear-gradient(180deg, #F0F0F0 0%, #F0F0F0 100%);
+  --gradient-accent: linear-gradient(180deg, #2747C9 0%, #2747C9 100%);
+  --gradient-warm: linear-gradient(180deg, #9A6B00 0%, #9A6B00 100%);
+  --gradient-success: linear-gradient(180deg, #1D7A3E 0%, #1D7A3E 100%);
+  --gradient-glass: linear-gradient(180deg, transparent 0%, transparent 100%);
+  --shadow-sm: none;
+  --shadow-md: 0 1px 2px rgba(10, 10, 10, 0.05);
+  --shadow-lg: 0 12px 28px -14px rgba(10, 10, 10, 0.18);
+  --shadow-xl: 0 24px 48px -20px rgba(10, 10, 10, 0.22);
+  --shadow-popper: 0 12px 32px -12px rgba(10, 10, 10, 0.2);
+  --shadow-lift: var(--sd-lift);
+  --shadow-glow-blue: 0 0 0 1px #2747C9;
+  --shadow-glow-purple: 0 0 0 1px #6B4FC9;
+  --shadow-glow-amber: 0 0 0 1px #9A6B00;
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(10, 10, 10, 0.16);
+  --scrollbar-thumb-hover: rgba(10, 10, 10, 0.3);
+  --status-online: #1D7A3E;
+  --status-away: #9A6B00;
+  --status-offline: #6B6B6B;
+  --status-busy: #D1342F;
+  --danger: #D1342F;
+  --warning: #9A6B00;
+  --success: #1D7A3E;
+  --info: #2747C9;
+}
+
+/* ─── #25 Night Owl — pure black, highlighter yellow, periwinkle notes ─── */
+html[data-theme="nightowl"] {
+  color-scheme: dark;
+  --font-primary: 'Inter', 'Noto Sans Bengali', system-ui, sans-serif;
+  --font-display: 'Inter Tight', 'Inter', 'Noto Sans Bengali', sans-serif;
+  --font-body: 'Inter', 'Noto Sans Bengali', system-ui, sans-serif;
+  --font-label: 'JetBrains Mono', 'SFMono-Regular', monospace;
+  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  --font-code: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  --font-hand: 'Kalam', 'Patrick Hand', cursive;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --sd-mark: #F5D24A;
+  --sd-on-mark: #141517;
+  --sd-btn: #F5D24A;           /* primary button: highlighter yellow at night */
+  --sd-on-btn: #141517;
+  --sd-note: #8FA8FF;
+  --sd-lift: 0 22px 40px -26px rgba(0, 0, 0, 0.75);
+
+  --bg-primary: #000000;
+  --bg-secondary: #0A0A0A;
+  --bg-tertiary: #181818;
+  --bg-card: #0E0E0E;
+  --bg-card-hover: #111111;
+  --bg-glass: rgba(14, 14, 14, 0.92);
+  --bg-glass-heavy: rgba(0, 0, 0, 0.96);
+  --bg-input: #0A0A0A;
+  --text-primary: #F5F5F5;
+  --text-secondary: #A3A3A3;
+  --text-tertiary: #8A8A8A;
+  --text-inverse: #141517;
+  --border-primary: #262626;
+  --border-secondary: #1C1C1C;
+  --border-focus: rgba(245, 210, 74, 0.6);
+  --accent-blue: #F5D24A;
+  --accent-blue-glow: rgba(245, 210, 74, 0.12);
+  --accent-purple: #8FA8FF;
+  --accent-purple-glow: rgba(143, 168, 255, 0.12);
+  --accent-amber: #F5D24A;
+  --accent-amber-glow: rgba(245, 210, 74, 0.12);
+  --accent-orange: #F0B54A;
+  --accent-orange-glow: rgba(240, 181, 74, 0.12);
+  --accent-emerald: #5FD38A;
+  --accent-emerald-glow: rgba(95, 211, 138, 0.12);
+  --accent-rose: #FF7369;
+  --accent-rose-glow: rgba(255, 115, 105, 0.12);
+  --accent-cyan: #8FA8FF;
+  --accent-cyan-glow: rgba(143, 168, 255, 0.12);
+  --gradient-primary: linear-gradient(180deg, #F5D24A 0%, #F5D24A 100%);
+  --gradient-secondary: linear-gradient(180deg, #181818 0%, #181818 100%);
+  --gradient-accent: linear-gradient(180deg, #F5D24A 0%, #F5D24A 100%);
+  --gradient-warm: linear-gradient(180deg, #F0B54A 0%, #F0B54A 100%);
+  --gradient-success: linear-gradient(180deg, #5FD38A 0%, #5FD38A 100%);
+  --gradient-glass: linear-gradient(180deg, transparent 0%, transparent 100%);
+  --shadow-sm: none;
+  --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 12px 28px -14px rgba(0, 0, 0, 0.7);
+  --shadow-xl: 0 24px 48px -20px rgba(0, 0, 0, 0.8);
+  --shadow-popper: 0 12px 32px -12px rgba(0, 0, 0, 0.8);
+  --shadow-lift: var(--sd-lift);
+  --shadow-glow-blue: 0 0 0 1px #F5D24A;
+  --shadow-glow-purple: 0 0 0 1px #8FA8FF;
+  --shadow-glow-amber: 0 0 0 1px #F5D24A;
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(245, 245, 245, 0.14);
+  --scrollbar-thumb-hover: rgba(245, 245, 245, 0.26);
+  --status-online: #5FD38A;
+  --status-away: #F0B54A;
+  --status-offline: #8A8A8A;
+  --status-busy: #FF7369;
+  --danger: #FF7369;
+  --warning: #F0B54A;
+  --success: #5FD38A;
+  --info: #8FA8FF;
+}
+
+/* ════════════════════════ SHARED STUDENT-DESK RULES ════════════════════════ */
+
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) body {
+  background: var(--bg-primary);
+  background-image: none;
+  font-family: var(--font-body);
+  caret-color: var(--sd-mark);          /* terminal-yellow caret */
+}
+html[data-theme="notebook"] body { caret-color: var(--text-primary); }
+
+/* highlighter selection */
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) ::selection {
+  background: var(--sd-mark);
+  color: var(--sd-on-mark);
+}
+
+/* ─── Type: tight display headings, tabular numbers ─── */
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) :is(h1, h2, .page-title, .section-title, [class$="-hero-title"], .dl-head-name) {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) h3 { letter-spacing: -0.015em; }
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) :is(.stat-value, .quick-stat-value, .countdown-value, .dl-head-stat dd, table) {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Highlighter stroke on page titles — draws in once on load ───
+   Paper: a fat marker band behind the lower half of the words.
+   Night: a marker underline just under the baseline, so white text stays crisp. */
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) :is([class$="-hero-title"], .page-title, .dl-head-name) {
+  text-decoration-line: underline;
+  text-decoration-color: var(--sd-mark);
+  text-decoration-skip-ink: none;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  animation: sd-highlight 0.75s cubic-bezier(0.55, 0.1, 0.25, 1) 0.3s backwards;
+}
+html[data-theme="notebook"] :is([class$="-hero-title"], .page-title, .dl-head-name) {
+  text-decoration-thickness: 0.36em;
+  text-underline-offset: -0.24em;
+}
+html[data-theme="nightowl"] :is([class$="-hero-title"], .page-title, .dl-head-name) {
+  text-decoration-thickness: 0.14em;
+  text-underline-offset: 0.12em;
+}
+@keyframes sd-highlight {
+  from { text-decoration-color: transparent; text-decoration-thickness: 0; }
+}
+/* the in-title accent word reads as ink, not a second colour */
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .page-hero-title-highlight {
+  color: var(--accent-blue);
+  -webkit-text-fill-color: currentColor;
+  background: none;
+}
+
+/* ─── Code-comment labels: "// overline" in mono ─── */
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) :is(.dl-head-overline, .schedule-overline) {
+  font-family: var(--font-label);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-tertiary);
+}
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) :is(.dl-head-overline, .schedule-overline)::before {
+  content: "// ";
+  color: var(--sd-note);
+}
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) :is(.stat-label, .quick-stat-name, .dl-head-stat dt) {
+  font-family: var(--font-label);
+  letter-spacing: 0.02em;
+}
+
+/* ─── Cards: folder-tab corner, flat, border darkens on hover ─── */
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) :is(.glass-card, .glass-card-static) {
+  border-radius: 4px var(--radius-lg) var(--radius-lg) var(--radius-lg);
+  box-shadow: none;
+  background: var(--bg-card);
+}
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .glass-card {
+  transition: border-color 0.2s ease, box-shadow 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .glass-card:hover {
+  background: var(--bg-card-hover);
+  border-color: color-mix(in srgb, var(--text-primary) 55%, transparent);
+  box-shadow: var(--sd-lift);
+}
+
+/* masthead keeps its §2 accent frame, folder corner to match the cards */
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .dl-head {
+  border-radius: 4px var(--radius-lg) var(--radius-lg) var(--radius-lg);
+}
+
+/* ─── Buttons: pills; primary is the highlighter (night) or ink (paper) ─── */
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .btn {
+  border-radius: 999px;
+  font-weight: 600;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
+}
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .btn-primary {
+  background: var(--sd-btn);
+  color: var(--sd-on-btn);
+  border: 1px solid var(--sd-btn);
+  box-shadow: none;
+}
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .btn-primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--sd-btn) 86%, var(--text-primary));
+  border-color: color-mix(in srgb, var(--sd-btn) 86%, var(--text-primary));
+  box-shadow: none;
+}
+html[data-theme="notebook"] .btn-primary:hover:not(:disabled) {
+  background: #2A2A2A;
+  border-color: #2A2A2A;
+}
+/* landing page buttons + step dots hard-code white text on the accent; give
+   them the theme's button ink so yellow (night) and black (paper) both read */
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) :is(.landing-btn-primary, .landing-step-number) {
+  background: var(--sd-btn);
+  border-color: var(--sd-btn);
+  color: var(--sd-on-btn);
+}
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .landing-btn-primary :is(svg, span) { color: inherit; }
+/* other spots that paint the accent with hard-coded white text: at night the
+   accent is yellow, so they need dark ink (paper's ink-blue accent is fine) */
+html[data-theme="nightowl"] :is(.avatar, .sr-btn-primary) { color: var(--text-inverse); }
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .btn-secondary {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+}
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .btn-secondary:hover:not(:disabled) {
+  border-color: var(--sd-note);
+  background: var(--bg-card);
+}
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .btn-ghost:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) :is(.btn:disabled, .btn[disabled]) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── Inputs: quiet until focused, then a crisp 1px ink ring ─── */
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) :is(.input, .search-box input) {
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) :is(.input, .search-box input):hover {
+  border-color: color-mix(in srgb, var(--text-primary) 25%, transparent);
+}
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) :is(.input, .search-box input):focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 1px var(--accent-blue);
+  outline: none;
+}
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) :is(.input, .search-box input)::placeholder {
+  color: var(--text-tertiary);
+}
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) :focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
+/* ─── Tags & badges: mark tag + hand-drawn pill ─── */
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .badge {
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: color-mix(in srgb, var(--sd-mark) 22%, transparent);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .tag {
+  border-radius: 999px 900px 999px 860px;
+  border: 1.5px solid var(--border-primary);
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+/* ─── Sidebar: "/" marks the page you're on, like a path ─── */
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .nav-item.active {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  box-shadow: none;
+}
+html[data-theme="nightowl"] .nav-item.active { color: var(--sd-mark); }
+html[data-theme="notebook"] .nav-item.active svg { color: var(--accent-blue); }
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .nav-item:not(.collapsed)::before {
+  content: "/";
+  position: absolute;
+  left: 3px;
+  top: 50%;
+  width: auto;
+  height: auto;
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+  font: 600 12px/1 var(--font-label);
+  color: var(--sd-note);
+  opacity: 0;
+  transform: translate(3px, -50%);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .nav-item:not(.collapsed):is(:hover, .active)::before {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+html[data-theme="nightowl"] .nav-item.active:not(.collapsed)::before { color: var(--sd-mark); }
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .nav-item.collapsed.active::before { display: none; }
+
+/* "See Plans": a quiet outline instead of a gradient slab + sparkles */
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .nav-item-premium {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+  box-shadow: none;
+}
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) :is(.nav-item-premium::before, .nav-item-premium .sparkle) { display: none; }
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .nav-item-premium:hover {
+  border-color: var(--sd-mark);
+  background: transparent;
+  transform: none;
+}
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .nav-item-premium svg { color: var(--accent-amber); }
+
+/* status banners: neutral surface, no colour flood */
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) :is(.dash-profile-warning, .info-banner) {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+}
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .dash-profile-warning a { color: var(--accent-blue); font-weight: 600; }
+
+/* ─── Empty states: a handwritten note in the margin ─── */
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .empty-state p {
+  font-family: var(--font-hand);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--sd-note);
+  rotate: -1.5deg;
+  animation: sd-note-in 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.2) 0.15s backwards;
+}
+@keyframes sd-note-in {
+  from { opacity: 0; translate: 0 -10px; rotate: -6deg; }
+}
+
+/* ─── Segmented switcher (Daily-recall / pricing toggle): pill track,
+       active option is a card with a 1px ring, labels in mono ─── */
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .glider-tabs-wrap {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .glider-tabs-track {
+  background: transparent;
+  border-radius: 999px;
+}
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .glider-tabs-glider {
+  border-radius: 999px;
+  background: var(--bg-card);
+  box-shadow: 0 0 0 1px var(--border-primary);
+}
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .glider-tab {
+  border-radius: 999px;
+  color: var(--text-secondary);
+}
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .glider-tab.active { color: var(--text-primary); }
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) .glider-tab-label { font-weight: 600; }
+
+/* ─── Tables: quiet uppercase headers, row hover fill (leaderboard) ─── */
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) th {
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) tbody tr { transition: background-color 0.2s ease; }
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) tbody tr:hover { background: var(--bg-tertiary); }
+
+/* checkboxes, radios and ranges follow the ink */
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) { accent-color: var(--accent-blue); }
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) :is(.input, .search-box input, select.input) { border-radius: 12px; }
+
+/* ─── Inline code reads like the editor ─── */
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) :not(pre) > code {
+  font-family: var(--font-code);
+  font-size: 0.88em;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+}
+
+/* ─── Scrollbars ─── */
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) ::-webkit-scrollbar { width: 10px; height: 10px; }
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) ::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+:is(html[data-theme="notebook"], html[data-theme="nightowl"]) ::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: content-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(html[data-theme="notebook"], html[data-theme="nightowl"]) :is([class$="-hero-title"], .page-title, .dl-head-name, .empty-state p) {
+    animation: none;
+  }
+  :is(html[data-theme="notebook"], html[data-theme="nightowl"]) .nav-item::before { transition: none; }
+}

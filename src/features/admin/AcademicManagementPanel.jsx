@@ -33,8 +33,8 @@ export default function AcademicManagementPanel({ compact = false }) {
     } catch (err) { setError(err.message); }
     finally { setBusy(false); }
   };
-  const startDateDialog = showStartDate && <div role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !busy) setShowStartDate(false); }} style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(8, 12, 20, .62)', display: 'grid', placeItems: 'center', padding: 20 }}>
-    <form role="dialog" aria-modal="true" aria-labelledby="semester-start-title" onSubmit={advanceAll} style={{ width: 'min(100%, 430px)', padding: 24, borderRadius: 18, border: '1px solid var(--border-color)', background: 'var(--surface-elevated, var(--bg-secondary))', boxShadow: '0 24px 80px rgba(0,0,0,.32)' }}>
+  const startDateDialog = showStartDate && <div className="sheet-overlay" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !busy) setShowStartDate(false); }} style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(8, 12, 20, .62)', display: 'grid', placeItems: 'center', padding: 20 }}>
+    <form className="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="semester-start-title" onSubmit={advanceAll} style={{ width: 'min(100%, 430px)', padding: 24, borderRadius: 18, border: '1px solid var(--border-color)', background: 'var(--surface-elevated, var(--bg-secondary))', boxShadow: '0 24px 80px rgba(0,0,0,.32)' }}>
       <h2 id="semester-start-title" style={{ marginTop: 0 }}>Set next semester start date</h2>
       <p style={{ color: 'var(--text-secondary)' }}>Students will advance one semester and the semester view will restart at Week 1 on this date.</p>
       <label style={{ display: 'grid', gap: 7, margin: '18px 0' }}>Semester start date<input autoFocus required type="date" value={semesterStartDate} onChange={event => setSemesterStartDate(event.target.value)} style={{ minHeight: 44, padding: '8px 10px' }} /></label>

@@ -104,24 +104,45 @@ export default function StickyContentSwitch() {
         return nav ? nav.getBoundingClientRect().height : 0;
       };
 
-      const pinOffset = navH() + 50;
-      section.style.setProperty('--switch-pin-offset', `${pinOffset}px`);
+      const onUpdate = (self) => {
+        const idx = Math.min(steps.length - 1, Math.max(0, Math.floor(self.progress * steps.length)));
+        if (idx !== currentRef.current) {
+          currentRef.current = idx;
+          swapTo(idx);
+        }
+        gsap.set('.landing-switch-progress-fill', { scaleY: self.progress });
+      };
 
-      ScrollTrigger.create({
-        trigger: section,
-        start: () => `top top+=${pinOffset}`,
-        end: 'bottom bottom',
-        pin: left,
-        anticipatePin: 0,
-        invalidateOnRefresh: true,
-        onUpdate: (self) => {
-          const idx = Math.min(steps.length - 1, Math.max(0, Math.floor(self.progress * steps.length)));
-          if (idx !== currentRef.current) {
-            currentRef.current = idx;
-            swapTo(idx);
-          }
-          gsap.set('.landing-switch-progress-fill', { scaleY: self.progress });
-        },
+      const mm = gsap.matchMedia();
+
+      // Desktop: two columns — pin the heading, the panels scroll past it.
+      mm.add('(min-width: 901px)', () => {
+        const pinOffset = navH() + 50;
+        section.style.setProperty('--switch-pin-offset', `${pinOffset}px`);
+        ScrollTrigger.create({
+          trigger: section,
+          start: () => `top top+=${pinOffset}`,
+          end: 'bottom bottom',
+          pin: left,
+          anticipatePin: 0,
+          invalidateOnRefresh: true,
+          onUpdate,
+        });
+      });
+
+      // Tablet/phone: one column — pin the whole block (heading + card) and
+      // crossfade the cards in place, so the visual never drops below the run.
+      mm.add('(max-width: 900px)', () => {
+        section.style.setProperty('--switch-pin-offset', `${navH()}px`);
+        ScrollTrigger.create({
+          trigger: section,
+          start: 'top top',
+          end: 'bottom bottom',
+          pin: section.querySelector('.landing-switch-layout'),
+          pinSpacing: false,
+          invalidateOnRefresh: true,
+          onUpdate,
+        });
       });
     }, section);
 

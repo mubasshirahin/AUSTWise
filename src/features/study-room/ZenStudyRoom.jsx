@@ -256,7 +256,7 @@ export default function ZenStudyRoom({ onExit }) {
 
         {/* Controls */}
         <div className="zen-controls">
-          <button className="zen-ctrl-btn zen-ctrl-btn-icon" onClick={resetTimer} title="Reset">
+          <button className="zen-ctrl-btn zen-ctrl-btn-icon" onClick={resetTimer} title="Reset" data-guest-allow>
             <RotateCcw size={18} />
           </button>
           <button

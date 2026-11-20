@@ -16,7 +16,7 @@ import MastheadAccessControl from '../../components/MastheadAccessControl';
 import FeatureAccessGate from '../admin/FeatureAccessGate';
 import { DashboardParentAccessPanel, DashboardChildAccessPanel } from '../admin/DashboardAccessPanel';
 import {
-  Gauge, Percent, BookOpen, CalendarDays, Zap, AlertTriangle, Calendar,
+  Gauge, Percent, BookOpen, CalendarDays, Zap, AlertTriangle, Calendar, X as XIcon,
   Flame, X, Trophy, Medal, Award, Star, Target, Sparkles, Sun, BarChart3,
 } from 'lucide-react';
 import { getUserStorageItemWithGuestFallback, getCurrentUserId } from '../../utils/authStorage';
@@ -703,6 +703,14 @@ export default function DashboardPage() {
   }, [urlTab, availableFocusModes, location.pathname]);
 
   const profileIncomplete = user && (!user.department || !user.yearSemester || !user.section || !user.labSection);
+  // The banner can be closed; it stays hidden for the rest of this browser session.
+  const [profileWarningClosed, setProfileWarningClosed] = useState(() => {
+    try { return sessionStorage.getItem('aust-profile-warning-closed') === '1'; } catch { return false; }
+  });
+  const closeProfileWarning = () => {
+    setProfileWarningClosed(true);
+    try { sessionStorage.setItem('aust-profile-warning-closed', '1'); } catch { /* storage blocked */ }
+  };
 
   const isVisible = (key) => FOCUS_SECTIONS[focusMode].includes(key);
 
@@ -765,10 +773,13 @@ export default function DashboardPage() {
         </div>
       </header>}
 
-      {profileIncomplete && user?.role !== 'admin' && (
+      {profileIncomplete && !profileWarningClosed && user?.role !== 'admin' && (
         <div className="dash-profile-warning animate-fadeIn">
           <AlertTriangle size={16} />
-          <span>Your profile is incomplete. <a href="/settings">Complete it here</a> to unlock all features.</span>
+          <span className="dash-profile-warning-text">Your profile is incomplete. <a href="/settings">Complete it here</a> to unlock all features.</span>
+          <button type="button" className="dash-profile-warning-close" onClick={closeProfileWarning} aria-label="Dismiss" data-guest-allow>
+            <XIcon size={14} />
+          </button>
         </div>
       )}
 

@@ -1,10 +1,15 @@
+import './guest/bootGuestSandbox'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { registerSW } from 'virtual:pwa-register'
 import './index.css'
 import './layout/StudioLayout.css'
 import './layout/ResponsiveShell.css'
+import './styles/mobileMenuSheet.css'
+import { installMobileMenuSheet } from './utils/mobileMenuSheet'
 import App from './App.jsx'
+
+installMobileMenuSheet()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

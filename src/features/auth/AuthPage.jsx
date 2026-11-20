@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { GraduationCap, Briefcase, BookOpen, Moon, Sun, Newspaper, Terminal, SquareTerminal, Gauge, MoonStar, Pen, PenTool, Building2, Check, Eye, EyeOff, Zap, Type, Grid2x2, Cpu, ArrowLeft, Orbit, DraftingCompass, Gem, WandSparkles, Coffee, Gamepad2, Cloud, Smile, Flower2 } from 'lucide-react';
+import { GraduationCap, Briefcase, BookOpen, Moon, Sun, Newspaper, Terminal, SquareTerminal, Gauge, MoonStar, Pen, PenTool, Building2, Check, Eye, EyeOff, Zap, Type, Grid2x2, Cpu, ArrowLeft, ArrowRight, Mail, Lock, User, Orbit, DraftingCompass, Gem, WandSparkles, Coffee, Gamepad2, Cloud, Smile, Flower2, Highlighter, NotebookPen } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { getYearSemOptions } from '../../utils/semester';
@@ -36,6 +36,7 @@ const darkThemeOptions = [
   { id: 'prism', label: 'Prism', icon: WandSparkles },
   { id: 'lofi', label: 'Lo-fi', icon: Coffee },
   { id: 'arcade', label: 'Arcade', icon: Gamepad2 },
+  { id: 'nightowl', label: 'Night Owl', icon: Highlighter },
 ];
 
 const lightThemeOptions = [
@@ -48,6 +49,7 @@ const lightThemeOptions = [
   { id: 'pastel', label: 'Pastel', icon: Cloud },
   { id: 'toon', label: 'Toon', icon: Smile },
   { id: 'sakura', label: 'Sakura', icon: Flower2 },
+  { id: 'notebook', label: 'Notebook', icon: NotebookPen },
 ];
 
 const themeOptions = [...darkThemeOptions, ...lightThemeOptions];
@@ -595,26 +597,17 @@ export default function AuthPage() {
         <div className="auth-page-noise" aria-hidden="true" />
       </div>
       <div className={`auth-shell ${sending ? 'is-sending' : ''}`}>
-        {/* Masthead (skill-style §2): brand tile, title, live member count + fixed product stats. */}
-        <header className="auth-head">
-          <div className="auth-head-title">
-            <div className="auth-head-tile" aria-hidden="true">
-              <img src={brandMark} alt="" />
-            </div>
-            <div className="auth-head-text">
-              <span className="auth-head-overline">Campus companion</span>
-              <h1 className="auth-head-name">AUSTWise</h1>
-              <span className="auth-head-subtitle">
-                {mode === 'login' ? 'Sign in to pick up where you left off' : 'Create your account in two steps'}
-              </span>
-            </div>
+        <div className="auth-brand">
+          <div className="auth-brand-id">
+            <img className="auth-brand-logo" src={brandMark} alt="" />
+            <h1 className="auth-brand-name">AUSTWise</h1>
           </div>
-          <dl className="auth-head-stats">
-            <div className="auth-head-stat"><dt>Members</dt><dd>{formatMemberCount(memberCount)}</dd></div>
-            <div className="auth-head-stat"><dt>Features</dt><dd>40+</dd></div>
-            <div className="auth-head-stat"><dt>Uptime</dt><dd>24/7</dd></div>
+          <dl className="auth-brand-stats">
+            <div className="auth-brand-stat"><dt>Members</dt><dd>{formatMemberCount(memberCount)}</dd></div>
+            <div className="auth-brand-stat"><dt>Features</dt><dd>40+</dd></div>
+            <div className="auth-brand-stat"><dt>Uptime</dt><dd>24/7</dd></div>
           </dl>
-        </header>
+        </div>
 
         <div
           className={`auth-card glass-card-static stagger-children ${sending ? 'auth-card--sending' : ''}`}
@@ -692,6 +685,13 @@ export default function AuthPage() {
             </div>
           </div>
 
+        <div className="auth-greet">
+          <h2 className="auth-greet-title">{mode === 'login' ? 'Welcome back' : 'Create your account'}</h2>
+          <p className="auth-greet-sub">
+            {mode === 'login' ? 'Sign in to pick up where you left off.' : 'Two quick steps and you are in.'}
+          </p>
+        </div>
+
         <div className="auth-tabs">
           <button
             type="button"
@@ -718,7 +718,8 @@ export default function AuthPage() {
           <form className="auth-form" onSubmit={handleLogin} key="login">
             <label className="auth-field">
               Email
-              <div className="auth-email-wrap">
+              <div className="auth-email-wrap has-icon">
+                <Mail className="auth-input-icon" size={15} aria-hidden="true" />
                 <input
                   id="login-email"
                   name="email"
@@ -742,7 +743,8 @@ export default function AuthPage() {
             </label>
             <label className="auth-field">
               Password
-              <div className="auth-input-eye">
+              <div className="auth-input-eye has-icon">
+                <Lock className="auth-input-icon" size={15} aria-hidden="true" />
                 <input
                   id="login-password"
                   name="password"
@@ -769,7 +771,7 @@ export default function AuthPage() {
               </div>
             </label>
             <button type="submit" className="btn btn-primary auth-submit" disabled={submitting}>
-              {submitting ? 'Signing in...' : 'Login'}
+              {submitting ? 'Signing in...' : <>Login <ArrowRight size={16} aria-hidden="true" /></>}
             </button>
             <div className="auth-social-divider"><span>or</span></div>
             <div className="auth-social-buttons">
@@ -797,6 +799,8 @@ export default function AuthPage() {
             <div className="auth-step-panel">
             <label className="auth-field">
               Full name
+              <div className="auth-icon-wrap has-icon">
+              <User className="auth-input-icon" size={15} aria-hidden="true" />
               <input
                 id="signup-name"
                 name="name"
@@ -809,11 +813,13 @@ export default function AuthPage() {
                 placeholder="Your name"
                 required
               />
+              </div>
             </label>
 
             <label className="auth-field">
               Email
-              <div className="auth-email-wrap">
+              <div className="auth-email-wrap has-icon">
+                <Mail className="auth-input-icon" size={15} aria-hidden="true" />
                 <input
                   id="signup-email"
                   name="email"
@@ -839,7 +845,8 @@ export default function AuthPage() {
             <div style={{ display: 'grid', gap: '10px' }}>
               <label className="auth-field">
                 Password
-                <div className="auth-input-eye">
+                <div className="auth-input-eye has-icon">
+                  <Lock className="auth-input-icon" size={15} aria-hidden="true" />
                   <input
                     id="signup-password"
                     name="password"
@@ -867,7 +874,8 @@ export default function AuthPage() {
               </label>
               <label className="auth-field">
                 Confirm Password
-                <div className="auth-input-eye">
+                <div className="auth-input-eye has-icon">
+                  <Lock className="auth-input-icon" size={15} aria-hidden="true" />
                   <input
                     id="signup-confirm-password"
                     name="confirmPassword"
@@ -910,6 +918,8 @@ export default function AuthPage() {
               </div>
             )}
 
+            <div className="auth-field auth-role-field">
+            I am a
             <div className="auth-role-grid">
               {roleOptions.map((option) => (
                 <button
@@ -923,9 +933,10 @@ export default function AuthPage() {
                 </button>
               ))}
             </div>
+            </div>
 
             <button type="button" className="btn btn-primary auth-submit" onClick={handleContinue}>
-              Continue →
+              Continue <ArrowRight size={16} aria-hidden="true" />
             </button>
             </div>
             )}
@@ -1101,7 +1112,7 @@ export default function AuthPage() {
                 className="btn btn-secondary auth-back-btn"
                 onClick={() => { setError(''); setSignupStep(1); }}
               >
-                ← Back
+                <ArrowLeft size={15} aria-hidden="true" /> Back
               </button>
               <button type="submit" className="btn btn-primary auth-submit" disabled={submitting}>
                 {submitting ? (isAccessRequest ? 'Sending request...' : 'Creating account...') : isAccessRequest ? 'Request access' : `Sign up as ${roleOptions.find((r) => r.id === signupForm.role)?.label}`}
@@ -1113,13 +1124,16 @@ export default function AuthPage() {
         )}
         </div>
 
-        <button
-          type="button"
-          className="btn btn-secondary auth-submit"
-          onClick={() => { loginGuest(); navigate('/'); }}
-        >
-          Guest Mode
-        </button>
+        <div className="auth-guest-row">
+          <span>Just looking around?</span>
+          <button
+            type="button"
+            className="auth-guest-link"
+            onClick={() => { loginGuest(); navigate('/'); }}
+          >
+            Continue as guest <ArrowRight size={13} aria-hidden="true" />
+          </button>
+        </div>
         </div>
         {sending && (
           <div className="auth-envelope" aria-hidden="true">

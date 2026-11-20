@@ -5,12 +5,12 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight, Sparkles, GraduationCap, Users, Map, Archive, TrendingUp, MessageSquare,
   ShoppingBag, Settings, Zap,
-  ChevronDown, Check, Star, Layers, Clock, Award, BarChart3,
+  Check, Star, Layers, Clock, Award, BarChart3,
   ChevronRight, ChevronUp, Target, AlertCircle,
   Coffee, Sun as SunIcon, Book, Bell,
   Smartphone, Eye, Activity, List,
   ChevronLeft, MessageCircle,
-  X, Search, Hash,
+  X, Search, Hash, Compass,
 } from 'lucide-react';
 import { THEMES } from '../../context/ThemeContext';
 // GSAP-powered sections are below the fold, so they load in their own async
@@ -21,6 +21,7 @@ const ImageTrailShowcase = lazy(() => import('./ImageTrailShowcase'));
 import LandingNav from './LandingNav';
 import brandMark from '../../assets/austwise-icon-final.svg';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 import './LandingPage.css';
 import TestimonialRail from '../../components/TestimonialRail';
 import { modules, stackingHighlights, cursorSpotlight, tickerFeatures } from '../../data/features';
@@ -906,6 +907,8 @@ function BeforeAfterSection() {
 export default function LandingPage() {
   const navigate = useNavigate();
   const { theme } = useTheme();
+  const { loginGuest } = useAuth();
+  const takeAVisit = () => { loginGuest(); navigate('/dashboard/quickstats'); };
   const [mounted, setMounted] = useState(false);
   const [heroLoaded, setHeroLoaded] = useState(false);
   const [activeMembers, setActiveMembers] = useState(null);
@@ -977,7 +980,6 @@ export default function LandingPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  const scrollTo = (id) => { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }); };
   const currentYear = new Date().getFullYear();
 
   return (
@@ -1029,7 +1031,7 @@ export default function LandingPage() {
           </p>
           <div className="landing-hero-actions">
             <button className="landing-btn landing-btn-primary landing-btn-lg ripple-btn" onClick={() => navigate('/login')}>Jump Right In <ArrowRight size={18} /><span className="ripple-overlay" aria-hidden="true" /></button>
-            <button className="landing-btn landing-btn-secondary landing-btn-lg" onClick={() => scrollTo('landing-features')}>Explore Features <ChevronDown size={16} className="chevron-bounce" /></button>
+            <button className="landing-btn landing-btn-secondary landing-btn-lg" onClick={takeAVisit}><Compass size={15} /> Take a Visit</button>
           </div>
           <div className="landing-hero-stats">
             {stats.map((stat, i) => {

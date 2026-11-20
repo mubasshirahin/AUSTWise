@@ -9,7 +9,7 @@ import {
   Settings, LogOut, Gauge, MoonStar, Pen, PenTool, Zap,
   Building2, Type, Grid2x2, Cpu, Users, Orbit, DraftingCompass, Menu, X, LayoutGrid, PanelsTopLeft, LayoutDashboard as BentoIcon,
   Rows3, Sparkles, Leaf, Crown, NotebookPen, Gem, WandSparkles, Coffee, Gamepad2, Cloud, Smile, Flower2, GraduationCap,
-  Grid3x3, Scissors, Frame, Cog, Megaphone, Network, Diamond, Radio } from 'lucide-react';
+  Grid3x3, Scissors, Frame, Cog, Megaphone, Network, Diamond, Radio, Highlighter } from 'lucide-react';
 import { PRO_LAYOUTS } from '../context/themeConstants';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
@@ -87,6 +87,7 @@ const darkThemeOptions = [
   { id: 'prism', label: 'Prism', icon: WandSparkles },
   { id: 'lofi', label: 'Lo-fi', icon: Coffee },
   { id: 'arcade', label: 'Arcade', icon: Gamepad2 },
+  { id: 'nightowl', label: 'Night Owl', icon: Highlighter },
 ];
 
 // Page layouts — independent of the colour theme (see src/layout/*Layout*.css).
@@ -126,6 +127,7 @@ const lightThemeOptions = [
   { id: 'pastel', label: 'Pastel', icon: Cloud },
   { id: 'toon', label: 'Toon', icon: Smile },
   { id: 'sakura', label: 'Sakura', icon: Flower2 },
+  { id: 'notebook', label: 'Notebook', icon: NotebookPen },
 ];
 
 export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMembersToggle, drawerOpen = false }) {
@@ -620,14 +622,71 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
             )}
           </div>
         ) : (
-          <button
-            type="button"
-            className="topbar-icon-btn"
-            onClick={() => navigate('/login')}
-            aria-label="Login"
-          >
-            <User size={18} />
-          </button>
+          /* Guest (Take a Visit): same avatar button + dropdown, with sign-in and logout */
+          <div className="profile-wrapper" ref={profileRef}>
+            <button
+              type="button"
+              className={`topbar-profile-btn ${profileMenuOpen ? 'open' : ''}`}
+              onClick={() => setProfileMenuOpen((o) => !o)}
+              title="Guest"
+              aria-label="Guest menu"
+              aria-haspopup="true"
+              aria-expanded={profileMenuOpen}
+            >
+              <div className="avatar" style={{ width: 32, height: 32 }}>
+                <User size={16} />
+              </div>
+              <div className="profile-info">
+                <span className="profile-info-name">Guest</span>
+                <span className="profile-info-role">Visiting</span>
+              </div>
+            </button>
+
+            {profileMenuOpen && (
+              <div className="profile-dropdown" role="menu" aria-label="Guest menu">
+                <div className="profile-dropdown-header">
+                  <div className="avatar" style={{ width: 40, height: 40 }}>
+                    <User size={18} />
+                  </div>
+                  <div className="profile-dropdown-info">
+                    <span className="profile-dropdown-name">Guest</span>
+                    <span className="profile-dropdown-email">Browsing without an account</span>
+                  </div>
+                </div>
+
+                <div className="profile-dropdown-body">
+                  <button
+                    type="button"
+                    className="profile-dropdown-item"
+                    role="menuitem"
+                    onClick={() => {
+                      setProfileMenuOpen(false);
+                      navigate('/login');
+                    }}
+                  >
+                    <User size={16} />
+                    <span>Log in / Sign up</span>
+                  </button>
+
+                  <div className="profile-dropdown-divider" />
+
+                  <button
+                    type="button"
+                    className="profile-dropdown-item profile-dropdown-danger"
+                    role="menuitem"
+                    onClick={async () => {
+                      setProfileMenuOpen(false);
+                      await logout();
+                      navigate('/');
+                    }}
+                  >
+                    <LogOut size={16} />
+                    <span>Logout</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
 

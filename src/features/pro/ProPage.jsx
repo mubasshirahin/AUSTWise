@@ -92,6 +92,7 @@ const THEME_LIST = [
   ['prism', 'Prism', '#0E0F13'],
   ['lofi', 'Lo-fi', '#151412'],
   ['arcade', 'Arcade', '#090A0F'],
+  ['nightowl', 'Night Owl', '#000000'],
   ['light', 'Light', '#f8f7f4'],
   ['swiss', 'Swiss', '#ffffff'],
   ['newsprint', 'Newsprint', '#f9f9f7'],
@@ -101,6 +102,7 @@ const THEME_LIST = [
   ['pastel', 'Pastel', '#F8F7F5'],
   ['toon', 'Toon', '#FBF8F3'],
   ['sakura', 'Sakura', '#FBF8F9'],
+  ['notebook', 'Notebook', '#F6F6F6'],
 ].filter(([id]) => PRO_LAYOUTS.includes(THEME_LAYOUT[id]));
 
 const LAYOUT_NAMES = { hud: 'HUD' };

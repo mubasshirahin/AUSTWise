@@ -831,4 +831,22 @@
 .admin-code-share-uses li span { min-width: 0; overflow-wrap: anywhere; }
 .admin-code-share-uses code { color: var(--text-primary); font-weight: 700; letter-spacing: .06em; }
 
+/* Guest visits (overview) */
+.admin-guest-card { min-width: 0; margin-bottom: 10px; padding: 12px; border: 1px solid var(--admin-line); border-radius: var(--radius-lg, 14px); background: var(--admin-surface); box-shadow: var(--shadow-sm, 0 2px 8px rgba(0,0,0,.08)); }
+.admin-guest-card .admin-nav-card-heading { min-height: 0; }
+.admin-guest-stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: 0; padding-top: 10px; }
+.admin-guest-stats > div { display: grid; min-width: 0; gap: 4px; padding: 2px 12px; }
+.admin-guest-stats > div + div { border-left: 1px solid var(--admin-line); }
+.admin-guest-stats dt { overflow: hidden; color: var(--text-tertiary); font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; text-overflow: ellipsis; white-space: nowrap; }
+.admin-guest-stats dd { margin: 0; color: var(--text-primary); font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.admin-guest-stats > .is-live dd { color: var(--admin-accent); }
+@media (max-width: 700px) {
+  .admin-guest-card { padding: 10px; }
+  .admin-guest-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 10px; }
+  .admin-guest-stats > .is-live { grid-column: 1 / -1; padding-bottom: 10px; border-bottom: 1px dashed var(--admin-line); }
+  .admin-guest-stats > div + div { border-left: 0; }
+  .admin-guest-stats > div:nth-child(odd):not(.is-live) { border-left: 1px solid var(--admin-line); }
+  .admin-guest-stats dd { font-size: 1.1rem; }
+}
+
 

@@ -224,7 +224,7 @@ export default function StudyRoomPage() {
 
           {/* Timer Controls */}
           <div className="sr-timer-controls">
-            <button className="sr-btn sr-btn-icon" onClick={resetTimer} title="Reset">
+            <button className="sr-btn sr-btn-icon" onClick={resetTimer} title="Reset" data-guest-allow>
               <RotateCcw size={18} />
             </button>
             <button
