@@ -1,5 +1,6 @@
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ListOrdered, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ListOrdered, ShieldCheck } from 'lucide-react';
 import './InfoPage.css';
 import './TermsPage.css';
 import LandingNav from '../features/landing/LandingNav';
@@ -113,10 +114,32 @@ const pad = (n) => String(n).padStart(2, '0');
 
 export default function PrivacyPage() {
   const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const [currentId, setCurrentId] = useState(null);
+  const ddRef = useRef(null);
+
   const jump = (id) => (e) => {
     e.preventDefault();
+    setOpen(false);
+    setCurrentId(id);
     document.getElementById(`tos-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+
+  // Close on outside click or Escape.
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDown = (e) => { if (!ddRef.current?.contains(e.target)) setOpen(false); };
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const idx = SECTIONS.findIndex((s) => s.id === currentId);
+  const current = idx >= 0 ? { ...SECTIONS[idx], n: idx + 1 } : null;
 
   return (
     <div className="info-page has-landing-nav">
@@ -140,19 +163,38 @@ export default function PrivacyPage() {
           </button>
         </header>
 
-        <div className="tos-main-grid">
-          <nav className="tos-card tos-toc" aria-label="Contents">
-            <h2 className="tos-card-title"><ListOrdered size={14} /> Contents</h2>
-            <ol className="tos-toc-list">
-              {SECTIONS.map((s, i) => (
-                <li key={s.id}>
-                  <a href={`#tos-${s.id}`} onClick={jump(s.id)}>
-                    <span className="tos-num">{pad(i + 1)}</span>
-                    <span className="tos-toc-name">{s.title}</span>
-                  </a>
-                </li>
-              ))}
-            </ol>
+        <div className="tos-main-grid is-dd">
+          <nav className="tos-dd" ref={ddRef} aria-label="Contents">
+            <button
+              type="button"
+              className="tos-dd-btn"
+              aria-expanded={open}
+              aria-controls="tos-dd-menu"
+              onClick={() => setOpen((v) => !v)}
+            >
+              <ListOrdered size={14} className="tos-dd-icon" />
+              <span className="tos-dd-label">Contents</span>
+              <span className="tos-dd-current">
+                {current ? <><span className="tos-num">{pad(current.n)}</span>{current.title}</> : `${SECTIONS.length} sections`}
+              </span>
+              <ChevronDown size={15} className="tos-dd-caret" />
+            </button>
+            {open && (
+              <ol className="tos-toc-list tos-dd-menu" id="tos-dd-menu">
+                {SECTIONS.map((s, i) => (
+                  <li key={s.id}>
+                    <a
+                      href={`#tos-${s.id}`}
+                      onClick={jump(s.id)}
+                      aria-current={current?.id === s.id ? 'true' : undefined}
+                    >
+                      <span className="tos-num">{pad(i + 1)}</span>
+                      <span className="tos-toc-name">{s.title}</span>
+                    </a>
+                  </li>
+                ))}
+              </ol>
+            )}
           </nav>
 
           <div className="tos-sections">
