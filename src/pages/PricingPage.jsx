@@ -1,48 +1,61 @@
-import { useNavigate } from 'react-router-dom';
-import './InfoPage.css';
-import LandingNav from '../features/landing/LandingNav';
+import { Tag } from 'lucide-react';
+import InfoShell from './InfoShell';
+
+const Tk = () => <span className="tos-tk">৳</span>;
+
+const SECTIONS = [
+  { id: 'overview', title: 'Plans at a glance', body: (
+    <ul className="tos-list">
+      <li><strong>Node</strong> — free. The core of AUSTWise, no card needed.</li>
+      <li><strong>Helix</strong> — <Tk />50 for 30 days. Unlocks the premium tools for a month.</li>
+      <li><strong>Apex</strong> — <Tk />500 per year. Everything in Helix for a full year, at a lower monthly cost.</li>
+    </ul>
+  ) },
+  { id: 'node', title: 'Node (Free)', body: (
+    <ul className="tos-list">
+      <li>Dashboard &amp; CGPA tracking</li>
+      <li>Class routine</li>
+      <li>Resource Vault (500MB)</li>
+      <li>Basic analytics</li>
+      <li>Community</li>
+    </ul>
+  ) },
+  { id: 'helix', title: 'Helix — ৳50 / 30 days', body: (
+    <ul className="tos-list">
+      <li>Everything in Node</li>
+      <li>No ads on any page</li>
+      <li>Premium themes and advanced analytics</li>
+      <li>Export to PDF and Excel</li>
+      <li>Priority email support</li>
+      <li><strong>Vault storage up to 5GB</strong></li>
+    </ul>
+  ) },
+  { id: 'apex', title: 'Apex — ৳500 / year', body: (
+    <>
+      <p>Normally <Tk />600 — a full year from the day you pay.</p>
+      <ul className="tos-list">
+        <li>Everything in Helix</li>
+        <li><strong>AI study assistant</strong></li>
+        <li>Unlimited Vault storage</li>
+        <li>Priority 24/7 support and direct mentorship access</li>
+        <li>Early and beta features, exclusive community badges</li>
+      </ul>
+    </>
+  ) },
+  { id: 'payment', title: 'Payment & renewal', body: <p>Payments are handled by <strong>PipraPay</strong>; AUSTWise never stores your payment details. Nothing renews automatically — when a plan ends your account goes back to Node and keeps its data. You can buy Apex any time, even while Helix is active (unused Helix days aren&apos;t refunded). Full comparison on <a href="/see-plans">See Plans</a>.</p> },
+  { id: 'why', title: 'Why paid plans?', body: <p>AUSTWise is an independent, solo-built project. Paid plans cover server and storage costs so the free Node plan can stay free for everyone.</p> },
+  { id: 'start', title: 'Get started', body: <p><a href="/login">Create your free account</a>, or compare plans on <a href="/see-plans">See Plans</a>.</p> },
+];
 
 export default function PricingPage() {
-  const navigate = useNavigate();
   return (
-    <div className="info-page has-landing-nav">
-      <LandingNav />
-      <div className="info-page-body">
-        <div className="info-page-title-block">
-          <div className="info-page-title-row">
-            <h1>Pricing</h1>
-            <button className="info-page-back" onClick={() => navigate('/')}>← Back to Home</button>
-          </div>
-          <p className="info-page-subtitle">AUSTWise is and always will be free for AUST students.</p>
-        </div>
-
-        <h2>Free Plan</h2>
-        <p>All core features are completely free for AUST students, faculty, and staff:</p>
-        <ul>
-          <li>Dashboard with CGPA Calculator and schedule view</li>
-          <li>Daily Life — Mess Meal Tracker and BharaKoto fare estimates</li>
-          <li>Grade Lab with interactive analytics</li>
-          <li>InsideAUST with floor maps, bus schedules, and live campus data</li>
-          <li>Resource Vault with 1,200+ past papers</li>
-          <li>Notebook for your own study notes</li>
-          <li>Community features including directories, clubs, and mentors</li>
-          <li>ConnectBox messaging with course and lab groups</li>
-          <li>Productivity tools — Pomodoro, Study Room, and Zen mode</li>
-          <li>Marketplace for textbooks, housing, and more</li>
-          <li>All 12 visual themes</li>
-          <li>Push notifications for deadlines and classes</li>
-        </ul>
-
-        <h2>Why Free?</h2>
-        <p>AUSTWise is an independent, solo-built project. We believe that academic tools should never be a financial burden. Our mission is to make campus life easier for every AUST student — regardless of their financial situation.</p>
-
-        <h2>Future Plans</h2>
-        <p>If we introduce premium features in the future, they will be optional additions that enhance the experience without limiting access to core functionality. Core features will remain free.</p>
-
-        <h2>Get Started</h2>
-        <p>Ready to simplify your academic life? <a href="/login">Create your free account</a> today.</p>
-      </div>
-      <div className="info-page-footer">&copy; {new Date().getFullYear()} AUSTWise. All rights reserved.</div>
-    </div>
+    <InfoShell
+      icon={Tag}
+      overline="Why AUSTWise"
+      title="Pricing"
+      subtitle="Free to start — upgrade only if you want more"
+      stats={[{ label: 'Plans', value: 3 }, { label: 'From', value: 'Free' }]}
+      sections={SECTIONS}
+    />
   );
 }

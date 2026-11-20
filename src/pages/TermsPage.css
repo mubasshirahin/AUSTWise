@@ -138,6 +138,11 @@
   color: var(--text-primary);
 }
 .tos-section-title .tos-num { color: var(--accent-amber); width: auto; }
+.tos-section-meta {
+  margin: -6px 0 10px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+}
 .tos-section-body p {
   margin: 0;
   font-size: 13.5px; line-height: 1.75;
