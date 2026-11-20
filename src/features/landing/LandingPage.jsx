@@ -239,7 +239,6 @@ function TiltCard({ children, className = '', maxTilt = 8 }) {
   return (
     <div ref={cardRef} className={`tilt-card ${className}`} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
       {children}
-      <div className="tilt-card-shine" aria-hidden="true" />
     </div>
   );
 }
@@ -866,7 +865,6 @@ export default function LandingPage() {
   const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [heroLoaded, setHeroLoaded] = useState(false);
-  const [cursorPos, setCursorPos] = useState({ x: -100, y: -100 });
   const [activeMembers, setActiveMembers] = useState(null);
   const footerLogo = brandMark;
 
@@ -936,12 +934,6 @@ export default function LandingPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  useEffect(() => {
-    const handleMouseMove = (e) => { setCursorPos({ x: e.clientX, y: e.clientY }); };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
-
   const scrollTo = (id) => { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }); };
   const currentYear = new Date().getFullYear();
 
@@ -957,9 +949,6 @@ export default function LandingPage() {
           </span>
         </div>
       </div>
-
-      {/* Cursor Glow — outside shutter so position:fixed stays viewport-relative */}
-      <div className="landing-cursor-glow" style={{ left: `${cursorPos.x}px`, top: `${cursorPos.y}px` }} aria-hidden="true" />
 
       {/* Background particles / grid — outside shutter to keep position:fixed */}
       <div className="landing-bg" aria-hidden="true">
@@ -1166,7 +1155,7 @@ export default function LandingPage() {
             return (
               <ScrollReveal key={i} delay={i * 100} direction={i % 2 === 0 ? 'left' : 'right'}>
                 <div className="landing-timeline-item">
-                  <div className="landing-timeline-dot" style={{ background: item.color, boxShadow: `0 0 12px ${item.color}33` }} />
+                  <div className="landing-timeline-dot" style={{ background: item.color }} />
                   <div className="landing-timeline-time">{item.time}</div>
                   <div className="landing-timeline-card" style={{ '--tl-color': item.color }}>
                     <div className="landing-timeline-icon" style={{ background: `${item.color}1A`, color: item.color }}><Icon size={18} /></div>

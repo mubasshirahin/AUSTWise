@@ -4284,3 +4284,326 @@
     padding: 12px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════
+   HOUSE STYLE (.claude/skills/skill-style) — kept LAST so it
+   wins over the layers above. Flat surfaces + theme tokens:
+   no gradients, glows, glow rings, shine, tinted overlays or
+   accent stripes. --accent-amber is the page accent (themes
+   remap it, e.g. Blueprint → blue).
+   ═══════════════════════════════════════════════════════ */
+
+/* 1 · Decorative layers off */
+.landing-page .landing-grid,
+.landing-page .landing-noise,
+.landing-page .landing-orb,
+.landing-page .floating-shape,
+.landing-page .landing-cursor-glow,
+.landing-page .tilt-card-shine,
+.landing-page .ripple-overlay,
+.landing-page .ripple-btn::after,
+.landing-page .landing-feature-card-inner::before,
+.landing-page .landing-feature-card-inner::after,
+.landing-page .stacking-card::before,
+.landing-page .landing-switch-card-glow,
+.landing-page .landing-step-icon-pulse,
+.landing-page .social-proof-ticker::before,
+.landing-page .testimonials-slider-wrapper::before,
+.landing-page .testimonials-slider-wrapper::after,
+.landing-theme-btn::after {
+  display: none;
+}
+
+/* Section grids (gradient line patterns) → plain page background */
+.landing-page .landing-hero,
+.landing-page .landing-section,
+.landing-page .landing-section-alt,
+.landing-page .landing-hscroll-section,
+.landing-page .landing-trail-section,
+.landing-page .landing-switch-section,
+.landing-page .landing-footer {
+  background-image: none;
+}
+
+/* Gradient text → solid accent / text colour */
+.landing-page .landing-hero-highlight {
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  -webkit-text-fill-color: currentColor;
+  color: var(--accent-amber);
+  animation: none;
+}
+.landing-nav-left .wc,
+.landing-nav-left .wm-ise .wc {
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  -webkit-text-fill-color: currentColor;
+}
+.landing-page .landing-reveal-text {
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  -webkit-text-fill-color: currentColor;
+  color: rgba(0, 0, 0, 0.82);
+  animation: none;
+  filter: none;
+}
+.landing-page .glitch-char::before,
+.landing-page .glitch-char::after { text-shadow: none; }
+.landing-theme-icon[class] { filter: none; }
+
+/* 2 · Overline badge (section kicker) */
+.landing-page .landing-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-full);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  box-shadow: none;
+  animation: none;
+}
+.landing-page .landing-badge svg { color: var(--accent-amber); animation: none; }
+
+/* 3 · Section header typography */
+.landing-page .landing-section-header { max-width: 620px; margin-bottom: 40px; }
+.landing-page .landing-section-header .landing-badge { margin-bottom: 14px; }
+.landing-page .landing-section-title,
+.landing-page .landing-hscroll-title,
+.landing-page .landing-trail-title,
+.landing-page .landing-switch-heading {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.landing-page .landing-section-desc,
+.landing-page .landing-hscroll-sub,
+.landing-page .landing-trail-sub,
+.landing-page .landing-switch-sub {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+
+/* 4 · Buttons: flat, no lift, no shadow */
+.landing-btn,
+.landing-btn:hover,
+.landing-btn:active {
+  box-shadow: none;
+  transform: none;
+  filter: none;
+}
+.landing-btn { min-height: 40px; border-radius: var(--radius-md); font-weight: 700; }
+.landing-btn-lg { min-height: 46px; padding: 0 24px; font-size: 14.5px; }
+.landing-btn-primary {
+  background: var(--accent-amber);
+  border-color: var(--accent-amber);
+}
+.landing-btn-primary:hover { opacity: 0.9; }
+.landing-btn-secondary {
+  background: var(--bg-tertiary);
+  border-color: var(--border-primary);
+  color: var(--text-primary);
+}
+.landing-btn-secondary:hover {
+  background: var(--bg-tertiary);
+  border-color: color-mix(in srgb, var(--accent-amber) 45%, var(--border-primary));
+}
+.landing-page .chevron-bounce,
+.landing-page .sparkle-icon { animation: none; }
+.landing-page .landing-inline-link { color: var(--accent-amber); }
+.landing-page .landing-inline-link:hover { color: var(--accent-amber); }
+
+/* Hero description: clip-path on an inline span only paints the first line
+   in Chromium, so the paragraph showed one line. Block box = all lines. */
+.landing-page .typewriter-text { display: block; }
+
+/* 5 · Hero stats: plain stat row, hairline separators (masthead-style) */
+.landing-page .landing-hero-stats { gap: 0; }
+.landing-page .landing-hero-stat {
+  padding: 2px 22px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  transform: none;
+}
+.landing-page .landing-hero-stat:first-child { padding-left: 0; }
+.landing-page .landing-hero-stat + .landing-hero-stat { border-left: 1px solid var(--border-primary); }
+.landing-page .landing-hero-stat svg,
+.landing-page .landing-hero-stat:hover svg { color: var(--accent-amber); transform: none; }
+.landing-page .landing-hero-stat-value {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.landing-page .landing-hero-stat-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* 6 · Cards: one flat card everywhere */
+.landing-page .landing-problem-card,
+.landing-page .landing-feature-card-inner,
+.landing-page .landing-value-card,
+.landing-page .landing-timeline-card,
+.landing-page .testimonial-card,
+.landing-page .stacking-card,
+.landing-page .landing-switch-card,
+.landing-page .app-preview-mockup,
+.landing-page .landing-trail-frame,
+.landing-page .landing-hero-card,
+.landing-page .before-after-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-sm);
+}
+.landing-page .landing-problem-card,
+.landing-page .landing-feature-card-inner,
+.landing-page .landing-value-card,
+.landing-page .landing-timeline-card,
+.landing-page .testimonial-card,
+.landing-page .stacking-card,
+.landing-page .landing-switch-card,
+.landing-page .app-preview-mockup,
+.landing-page .landing-trail-frame { border-radius: var(--radius-lg); }
+.landing-page .landing-problem-card:hover,
+.landing-page .landing-feature-card:hover .landing-feature-card-inner,
+.landing-page .landing-hscroll-track .landing-feature-card:hover .landing-feature-card-inner,
+.landing-page .landing-value-card:hover,
+.landing-page .landing-timeline-card:hover,
+.landing-page .testimonial-card:hover,
+.landing-page .app-preview-mockup:hover,
+.landing-page .landing-switch-panel.active .landing-switch-card {
+  border-color: color-mix(in srgb, var(--accent-amber) 20%, var(--border-primary));
+  box-shadow: var(--shadow-md);
+  transform: none;
+}
+.landing-page .landing-problem-card,
+.landing-page .landing-value-card,
+.landing-page .landing-timeline-card { padding: 18px; }
+.landing-page .landing-feature-card-inner { padding: 20px; }
+.landing-page .landing-hero-card.card-1 { box-shadow: var(--shadow-sm); }
+/* Feature cards stay still (no 3D tilt) so the grid reads as one set. */
+.landing-page .landing-feature-card.tilt-card,
+.landing-page .landing-feature-card.tilt-card:hover { transform: none; }
+
+/* Mini trail cards: flat surface tinted only by their icon tile */
+.landing-page .trail-card { box-shadow: var(--shadow-sm); }
+.landing-page .trail-card-inner {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+}
+.landing-page .trail-card-icon { box-shadow: none; }
+.landing-page .landing-trail-variant.active {
+  background: var(--bg-card);
+  border-color: color-mix(in srgb, var(--accent-amber) 45%, transparent);
+  color: var(--text-primary);
+  box-shadow: none;
+}
+
+/* Problem chips: neutral chip instead of an accent tint */
+.landing-page .landing-problem-statement span {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+}
+.landing-page .landing-problem-statement .problem-icon,
+.landing-page .landing-solution-statement .solution-arrow { color: var(--accent-amber); }
+
+/* Card titles + overlines */
+.landing-page .landing-feature-title,
+.landing-page .landing-value-title,
+.landing-page .landing-step-title,
+.landing-page .landing-timeline-title,
+.landing-page .stacking-card-title {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.landing-page .landing-feature-tagline,
+.landing-page .stacking-card-tagline {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.landing-page .landing-feature-divider { background: none; border-top: 1px dashed var(--border-primary); height: 0; }
+.landing-page .landing-value-icon { background: var(--accent-amber-glow); color: var(--accent-amber); box-shadow: none; }
+
+/* Steps: flat number chip, no pulse halo */
+.landing-page .landing-step:hover { transform: none; }
+.landing-page .landing-step-number { background: var(--accent-amber); box-shadow: none; animation: none; }
+.landing-page .landing-step-connector { background: none; border-top: 1px dashed var(--border-primary); height: 0; }
+
+/* Progress rails: solid accent fill */
+.landing-page .landing-hscroll-progress-fill,
+.landing-page .landing-switch-progress-fill { background: var(--accent-amber); }
+.landing-page .landing-switch-dot.active { box-shadow: none; }
+.landing-page .ticker-live-dot { box-shadow: none; }
+
+/* Before/after: dashed header rule like card separators */
+.landing-page .before-after-header { border-bottom: 1px dashed var(--border-primary); }
+
+/* Theme menu: one flat surface */
+.landing-theme-menu { background: var(--bg-secondary); border: 1px solid var(--border-primary); box-shadow: var(--shadow-md); }
+
+/* 7 · Responsive (tablet ~768–1024, phone ≤640 / ≤400) */
+@media (max-width: 1024px) {
+  .landing-page .landing-features-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .landing-page .landing-value-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .landing-page .landing-hero-stats { justify-content: center; }
+  .landing-page .landing-hero-stat:first-child { padding-left: 22px; }
+}
+@media (max-width: 768px) {
+  .landing-page .landing-section { padding: 56px 16px; }
+  .landing-page .landing-section-header { margin-bottom: 28px; }
+  /* Tablet keeps two columns and inline hero buttons; phones stack (≤640). */
+  .landing-page .landing-problems-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .landing-page .landing-hero-actions { flex-direction: row; justify-content: center; width: auto; }
+  .landing-page .landing-hero-actions .landing-btn { width: auto; }
+}
+@media (max-width: 640px) {
+  .landing-page .landing-features-grid,
+  .landing-page .landing-problems-grid { grid-template-columns: minmax(0, 1fr); }
+  .landing-page .landing-hero-actions { flex-direction: column; width: 100%; }
+  .landing-page .landing-hero-actions .landing-btn { width: 100%; }
+  .landing-page .landing-section-desc,
+  .landing-page .landing-hscroll-sub,
+  .landing-page .landing-trail-sub,
+  .landing-page .landing-switch-sub { font-size: 13px; }
+  .landing-page .landing-problem-card,
+  .landing-page .landing-value-card,
+  .landing-page .landing-timeline-card,
+  .landing-page .landing-feature-card-inner { padding: 14px; }
+  .landing-page .stacking-card { padding: 18px; gap: 12px; }
+  .landing-page .landing-hero-stat { padding: 2px 12px; }
+  .landing-page .landing-hero-stat:first-child { padding-left: 12px; }
+  .landing-page .landing-hero-actions .landing-btn { min-height: 46px; }
+  /* Long problem quotes wrap inside their chip instead of pushing the card wide. */
+  .landing-page .landing-problem-statement { align-items: flex-start; }
+  .landing-page .landing-problem-statement span { border-radius: var(--radius-md); }
+  .landing-page .landing-solution-statement { padding-left: 0; }
+}
+@media (max-width: 480px) {
+  .landing-page .landing-footer-links { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 16px; }
+}
+@media (pointer: coarse) {
+  .landing-page .landing-feature-expand-btn { min-height: 40px; }
+  .landing-page .landing-inline-link { display: inline-block; padding: 11px 0; }
+}
+@media (max-width: 400px) {
+  .landing-page .landing-hero-stat { padding: 2px 8px; }
+  .landing-page .landing-hero-stat:first-child { padding-left: 8px; }
+  .landing-page .landing-hero-stat svg { display: none; }
+}

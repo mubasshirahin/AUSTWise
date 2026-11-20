@@ -3016,30 +3016,6 @@ select.input {
   --radius-2xl: 12px;
 }
 
-[data-theme="sketchbook"] {
-  --bg-primary: #faf8f0;
-  --bg-secondary: #fff;
-  --bg-tertiary: #f5f0e6;
-  --bg-card: #fff;
-  --bg-card-hover: #f5f0e6;
-  --bg-glass: rgba(255, 255, 255, 0.9);
-  --bg-input: #f5f0e6;
-  --text-primary: #2a1a0a;
-  --text-secondary: #6b5a46;
-  --text-tertiary: #8c7a66;
-  --text-inverse: #faf8f0;
-  --border-primary: #d4c0a1;
-  --border-secondary: #e8dcc9;
-  --border-focus: #a67c4a;
-  --accent-blue: #a67c4a;
-  --accent-blue-glow: rgba(166, 124, 74, 0.15);
-  --radius-sm: 2px;
-  --radius-md: 4px;
-  --radius-lg: 6px;
-  --radius-xl: 8px;
-  --radius-2xl: 12px;
-}
-
 /* ─── Minimalist Monochrome — Auth page overrides ─── */
 [data-theme="minimalist-monochrome"] .auth-page-grid {
   background-image:

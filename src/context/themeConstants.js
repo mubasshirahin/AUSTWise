@@ -29,11 +29,56 @@ export const THEME_ACCENTS = {
 
 export const ACCENT_KEY = 'aust-accent';
 
-// Page layout, independent of the colour theme.
+// Page layout. Every theme ships with ONE fixed layout (THEME_LAYOUT) so each
+// theme is a finished product: colour + structure. Picking a theme applies its
+// layout; the navbar Layout menu can still override it until the theme changes.
 export const LAYOUT_KEY = 'aust-layout';
-export const LAYOUTS = ['classic', 'studio', 'bento', 'compact', 'aurora', 'zen', 'luxe', 'soft', 'motion', 'comic', 'desk', 'manga', 'hud'];
+export const LAYOUTS = [
+  'classic', 'studio', 'bento', 'compact', 'aurora', 'zen',
+  'luxe', 'soft', 'motion', 'comic', 'desk', 'manga', 'hud',
+  'grid', 'press', 'sketch', 'gallery', 'panel', 'billboard', 'mesh', 'console', 'deco', 'neon',
+];
 // Layouts intended for the paid plan (shown with a PRO tag in the picker).
 export const PRO_LAYOUTS = LAYOUTS.filter((id) => id !== 'classic' && id !== 'studio');
+
+export const THEME_LAYOUT = {
+  dark: 'classic',
+  light: 'zen',
+  midnight: 'aurora',
+  industrial: 'panel',
+  swiss: 'grid',
+  newsprint: 'press',
+  sketchbook: 'sketch',
+  'minimalist-monochrome': 'gallery',
+  terminal: 'console',
+  'art-deco': 'deco',
+  bitcoindefi: 'bento',
+  poster: 'billboard',
+  nexus: 'compact',
+  cyberpunk: 'neon',
+  meshtopo: 'mesh',
+  blueprint: 'studio',
+  obsidian: 'luxe',
+  pastel: 'soft',
+  prism: 'motion',
+  toon: 'comic',
+  lofi: 'desk',
+  sakura: 'manga',
+  arcade: 'hud',
+};
+
+export const layoutForTheme = (theme) => THEME_LAYOUT[theme] || 'classic';
+
+// A manual pick from the Layout menu is remembered only for the theme it was
+// made under ("theme:layout"); any other theme falls back to its own layout.
+export const LAYOUT_PICK_KEY = 'aust-layout-pick';
+export function readLayoutPick(theme) {
+  try {
+    const [pickTheme, pickLayout] = String(localStorage.getItem(LAYOUT_PICK_KEY) || '').split(':');
+    if (pickTheme === theme && LAYOUTS.includes(pickLayout)) return pickLayout;
+  } catch { /* storage unavailable */ }
+  return null;
+}
 
 function hexToRgb(hex) {
   const int = parseInt(hex.replace('#', ''), 16);

@@ -668,6 +668,27 @@ html[data-layout="zen"] .page-wrapper > * > :nth-child(n+3) { animation-delay: 1
   html[data-layout="zen"] .glass-card-static { padding: 18px; border-radius: 22px; }
 }
 
+/* ─── Paired theme · Midnight ships with Aurora ───────────────────────────────
+   Midnight is amber on slate: one warm light, solid headline and glider, no
+   teal/violet from the generic aurora mix. */
+html[data-theme="midnight"][data-layout="aurora"] { --au-grad: var(--accent-blue); }
+html[data-theme="midnight"][data-layout="aurora"] body::before {
+  background:
+    radial-gradient(30% 35% at 22% 26%, color-mix(in srgb, var(--accent-blue) 14%, transparent), transparent 70%),
+    radial-gradient(30% 34% at 70% 80%, color-mix(in srgb, var(--accent-blue) 8%, transparent), transparent 70%);
+}
+html[data-theme="midnight"][data-layout="aurora"] .page-wrapper h1[class*="-hero-title"],
+html[data-theme="midnight"][data-layout="aurora"] .page-wrapper .page-hero-title {
+  background: none;
+  color: var(--text-primary);
+  -webkit-text-fill-color: currentColor;
+}
+html[data-theme="midnight"][data-layout="aurora"] .page-wrapper h1[class*="-hero-title"] *,
+html[data-theme="midnight"][data-layout="aurora"] .page-wrapper .page-hero-title * { color: inherit; -webkit-text-fill-color: currentColor; }
+html[data-theme="midnight"][data-layout="aurora"] .page-wrapper h1[class*="-hero-title"] [class*="-hero-name"] { color: var(--accent-blue); }
+html[data-theme="midnight"][data-layout="aurora"] .glider-tabs-glider { background: var(--accent-blue); box-shadow: none; }
+html[data-theme="midnight"][data-layout="aurora"] .schedule-masthead::after { background: var(--accent-blue); }
+
 /* ─── Reduced motion (all pro layouts) ─── */
 @media (prefers-reduced-motion: reduce) {
   html[data-layout="aurora"] body::before,

@@ -296,6 +296,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  flex: 0 1 auto;
   min-width: 0;
   max-width: 100%;
   padding: 2px 7px;
@@ -310,7 +311,11 @@
   color: var(--text-secondary);
   background: var(--bg-tertiary);
 }
-.exam-source-badge.cr { color: var(--accent-amber); background: var(--accent-amber-glow); }
+/* `is-` prefix on purpose: a bare `.cr` collides with Course Review's
+   `.cr { container-type: inline-size }`, which collapses this pill to 0 width. */
+.exam-source-badge svg { flex: none; }
+.exam-source-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.exam-source-badge.is-cr { color: var(--accent-amber); background: var(--accent-amber-glow); }
 
 /* Exam rows: a list with solid hairlines between rows */
 .exam-slot-list { display: flex; flex-direction: column; }

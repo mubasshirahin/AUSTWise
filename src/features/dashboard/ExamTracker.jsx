@@ -263,9 +263,9 @@ export default function ExamTracker() {
           <div className="exam-cell-titles">
             <div className="exam-cell-code-row">
               <span className="exam-cell-code">{course.code}</span>
-              <span className={`exam-source-badge ${course.source === 'personal' ? 'personal' : 'cr'}`} title={course.source === 'personal' ? 'Added to your own routine' : `Shared by your lab group CR${course.crName ? `, ${course.crName}` : ''}`}>
+              <span className={`exam-source-badge ${course.source === 'personal' ? 'is-personal' : 'is-cr'}`} title={course.source === 'personal' ? 'Added to your own routine' : `Shared by your lab group CR${course.crName ? `, ${course.crName}` : ''}`}>
                 {course.source === 'personal' ? <User size={10} /> : <Users size={10} />}
-                {course.source === 'personal' ? 'You' : (course.crName ? `CR · ${course.crName}` : 'No CR')}
+                <span className="exam-source-label">{course.source === 'personal' ? 'You' : (course.crName ? `CR · ${course.crName}` : 'No CR')}</span>
               </span>
             </div>
             <div className="exam-cell-name" title={course.name}>{course.name}</div>

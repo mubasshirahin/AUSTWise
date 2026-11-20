@@ -58,7 +58,15 @@ export default function GliderTabs({
     if (document.fonts?.ready) document.fonts.ready.then(place).catch(() => {});
     const t1 = setTimeout(place, 150);
     const t2 = setTimeout(place, 500);
+    // Theme/layout switches restyle the tabs without a window resize — watch
+    // the track and every tab so the glider follows the new geometry.
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(place) : null;
+    if (ro) {
+      ro.observe(track);
+      Array.from(track.children).forEach((el) => ro.observe(el));
+    }
     return () => {
+      ro?.disconnect();
       window.removeEventListener('resize', onResize);
       clearTimeout(t1);
       clearTimeout(t2);

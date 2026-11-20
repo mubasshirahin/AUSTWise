@@ -8,7 +8,8 @@ import {
   Clock, Hourglass, AlertTriangle, CalendarCheck, Info, CheckCheck, Trash2,
   Settings, LogOut, Gauge, MoonStar, Pen, PenTool, Zap,
   Building2, Type, Grid2x2, Cpu, Users, Orbit, DraftingCompass, Menu, X, LayoutGrid, PanelsTopLeft, LayoutDashboard as BentoIcon,
-  Rows3, Sparkles, Leaf, Crown, NotebookPen, Gem, WandSparkles, Coffee, Gamepad2, Cloud, Smile, Flower2, GraduationCap } from 'lucide-react';
+  Rows3, Sparkles, Leaf, Crown, NotebookPen, Gem, WandSparkles, Coffee, Gamepad2, Cloud, Smile, Flower2, GraduationCap,
+  Grid3x3, Scissors, Frame, Cog, Megaphone, Network, Diamond, Radio } from 'lucide-react';
 import { PRO_LAYOUTS } from '../context/themeConstants';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
@@ -103,6 +104,16 @@ const layoutOptions = [
   { id: 'desk', label: 'Desk', desc: 'Study vibe · notebook paper', icon: NotebookPen, group: 'Vibes' },
   { id: 'manga', label: 'Manga', desc: 'Anime · speed lines, panels', icon: Flower2, group: 'Vibes' },
   { id: 'hud', label: 'HUD', desc: 'Gamer · brackets, scanlines', icon: Gamepad2, group: 'Vibes' },
+  { id: 'grid', label: 'Grid', desc: 'Swiss · flush-left type, black rules', icon: Grid3x3, group: 'Signature' },
+  { id: 'press', label: 'Press', desc: 'Newsprint · broadsheet rules, serif', icon: Newspaper, group: 'Signature' },
+  { id: 'sketch', label: 'Sketch', desc: 'Sketchbook · taped notes, marker tabs', icon: Scissors, group: 'Signature' },
+  { id: 'gallery', label: 'Gallery', desc: 'Monochrome · whitespace, hairlines', icon: Frame, group: 'Signature' },
+  { id: 'panel', label: 'Panel', desc: 'Industrial · machine modules, keys', icon: Cog, group: 'Signature' },
+  { id: 'billboard', label: 'Billboard', desc: 'Bold Type · giant headlines', icon: Megaphone, group: 'Signature' },
+  { id: 'mesh', label: 'Mesh', desc: 'Mesh · node rail, linked tabs', icon: Network, group: 'Signature' },
+  { id: 'console', label: 'Console', desc: 'Terminal · prompts, bracket tabs', icon: SquareTerminal, group: 'Signature' },
+  { id: 'deco', label: 'Deco', desc: 'Art Deco · symmetric gilded frames', icon: Diamond, group: 'Signature' },
+  { id: 'neon', label: 'Neon', desc: 'Cyberpunk · cut corners, signal tabs', icon: Radio, group: 'Signature' },
 ];
 
 const lightThemeOptions = [

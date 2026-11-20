@@ -2750,7 +2750,7 @@
 }
 .auth-page .auth-back-home-btn { top: 14px; left: 12px; }
 .auth-page .auth-theme-switcher { top: 14px; right: 12px; }
-.auth-page .auth-theme-btn { position: relative; }
+.auth-page .auth-theme-btn { position: relative; top: 0; }
 .auth-page .auth-back-home-btn:hover,
 .auth-page .auth-theme-btn:hover,
 .auth-page .auth-theme-btn[aria-expanded='true'] {
