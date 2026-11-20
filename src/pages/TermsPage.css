@@ -235,3 +235,5 @@
 
 /* ৳ at its true size (index.html loads Noto Sans Bengali) */
 span.tos-tk { font-family: 'Noto Sans Bengali', 'Nirmala UI', 'Vrinda', sans-serif; margin-right: -0.06em; }
+
+.tos-section-body strong { color: var(--text-primary); font-weight: 600; }
