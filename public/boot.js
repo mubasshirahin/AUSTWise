@@ -19,7 +19,7 @@ document.querySelectorAll('link[data-async-css]').forEach(function(l) {
     var t = localStorage.getItem('aust-theme');
     var ok = ['light','dark','midnight','industrial','swiss','newsprint','sketchbook','minimalist-monochrome','terminal','art-deco','bitcoindefi','poster','nexus','cyberpunk','meshtopo','blueprint','obsidian','pastel','prism','toon','lofi','sakura','arcade'];
     if (t && ok.indexOf(t) !== -1) document.documentElement.setAttribute('data-theme', t);
-    else document.documentElement.setAttribute('data-theme', 'blueprint');
+    else document.documentElement.setAttribute('data-theme', 'dark');
     var l = localStorage.getItem('aust-layout');
     if (['classic','studio','bento','compact','aurora','zen','luxe','soft','motion','comic','desk','manga','hud'].indexOf(l) === -1) l = document.documentElement.getAttribute('data-theme') === 'blueprint' ? 'studio' : 'classic';
     document.documentElement.setAttribute('data-layout', l);

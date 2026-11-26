@@ -62,6 +62,18 @@
     animation: sheet-up 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
   }
 
+  /* Top bar theme / layout pickers stay mounted and also open on :hover /
+     :focus-within for desktop. On touch the tapped button keeps focus (and a
+     sticky hover) after the sheet closes, which would reveal the desktop
+     dropdown behind it. On phones only `.open` may show the menu. */
+  .theme-switcher:not(.open) .theme-menu:not(#_):not(#_) {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    animation: none !important;
+    transition: none !important;
+  }
+
   /* Header panels (notifications) keep their inner padding. */
   .notif-dropdown:not(#_):not(#_) {
     padding: 0 0 env(safe-area-inset-bottom, 0px) !important;

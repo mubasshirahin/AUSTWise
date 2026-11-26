@@ -1235,12 +1235,19 @@ body:has(.leaderboard-overlay) .alumni-profile-preview.is-floating { z-index: 10
   grid-template-columns: 1fr auto;
 }
 .notice-widget .notice-list {
-  max-height: 600px;
+  position: relative; /* offsetParent for measuring the first two rows */
+  /* Two notices in view (measured in NoticeBoard.jsx); the rest scroll. */
+  max-height: var(--notice-list-max, 600px);
   min-height: 0; /* fit the notices; only the empty state keeps a min height */
   overflow-y: auto;
   overscroll-behavior: contain;
   padding-right: 4px;
   scrollbar-width: thin;
+}
+/* Fade the bottom edge while more notices sit below the fold */
+.notice-widget .notice-list.has-more {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
 }
 .notice-widget .notice-list > .schedule-empty {
   min-height: 220px;

@@ -34,7 +34,7 @@ const initialTheme = () => {
     const saved = localStorage.getItem('aust-theme');
     if (saved && THEMES.includes(saved)) return saved;
   } catch { /* storage unavailable */ }
-  return 'blueprint';
+  return 'dark';
 };
 
 // Start fetching the saved appearance before React mounts so its stylesheet is

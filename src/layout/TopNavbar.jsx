@@ -183,6 +183,20 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // When a picker closes, drop focus from inside it: otherwise :focus-within
+  // keeps the hover-reveal dropdown open (on touch screens after the mobile
+  // bottom sheet is dismissed, the tapped button still holds focus).
+  useEffect(() => {
+    if (themeMenuOpen) return;
+    const el = themeSwitcherRef.current;
+    if (el && el.contains(document.activeElement)) document.activeElement.blur();
+  }, [themeMenuOpen]);
+  useEffect(() => {
+    if (layoutMenuOpen) return;
+    const el = layoutSwitcherRef.current;
+    if (el && el.contains(document.activeElement)) document.activeElement.blur();
+  }, [layoutMenuOpen]);
+
   // Click-outside closes the menus
   useEffect(() => {
     const handleClick = (e) => {

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { BellRing, Pin, ChevronDown, ChevronUp, Sparkles, Plus, X, Trash2, UserRound, Pencil } from 'lucide-react';
 import { notices } from '../../data/mockData';
@@ -19,6 +19,7 @@ const NOTICE_RATE_KEY = 'aust-notice-last-post';
 const NOTICE_RATE_MS = 30000; // 1 post per 30s client-side throttle
 const SWIPE_TRIGGER = 72; // px of horizontal drag that fires edit/delete
 const SWIPE_MAX = 110;
+const NOTICES_IN_VIEW = 2; // rows shown before the list starts scrolling
 
 /**
  * "14 Nov 2026 · 11:05 AM" when the exact post time is known — from
@@ -276,6 +277,36 @@ export default function NoticeBoard() {
     }
   };
 
+  // Cap the list at the first NOTICES_IN_VIEW rows; the rest scroll. Measured
+  // only while nothing is expanded, so opening a notice scrolls inside the same
+  // box instead of growing it.
+  const listRef = useRef(null);
+  const [listMax, setListMax] = useState(null);
+  const [listAtEnd, setListAtEnd] = useState(true);
+  const loading = adminLoading || crsrLoading;
+  const updateAtEnd = useCallback(() => {
+    const el = listRef.current;
+    if (!el) return;
+    setListAtEnd(el.scrollHeight - el.scrollTop - el.clientHeight < 4);
+  }, []);
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    if (!list || loading) return undefined;
+    const measure = () => {
+      if (expandedNotice) return;
+      const rows = list.querySelectorAll(':scope > .notice-swipe');
+      if (rows.length <= NOTICES_IN_VIEW) { setListMax(null); return; }
+      const last = rows[NOTICES_IN_VIEW - 1];
+      // offsetTop/Height ignore the entrance animation's transform.
+      setListMax(Math.ceil(last.offsetTop + last.offsetHeight));
+    };
+    measure();
+    updateAtEnd();
+    const ro = new ResizeObserver(() => { measure(); updateAtEnd(); });
+    list.querySelectorAll(':scope > .notice-swipe').forEach((r, i) => { if (i < NOTICES_IN_VIEW) ro.observe(r); });
+    return () => ro.disconnect();
+  }, [loading, visibleNotices.length, expandedNotice, updateAtEnd]);
+
   const isNewNotice = (dateStr) => {
     if (!dateStr) return false;
     const noticeDate = new Date(dateStr);
@@ -312,8 +343,13 @@ export default function NoticeBoard() {
 
       <div className="schedule-dotted-divider" />
 
-      <div className="notice-list">
-        {(adminLoading || crsrLoading) ? (
+      <div
+        ref={listRef}
+        className={`notice-list${listMax && !listAtEnd ? ' has-more' : ''}`}
+        style={listMax ? { '--notice-list-max': `${listMax}px` } : undefined}
+        onScroll={updateAtEnd}
+      >
+        {loading ? (
           <div className="notice-skeleton">
             {[0,1,2].map(i => (
               <div key={i} className="schedule-day-card skeleton-row" style={{ animationDelay: `${i*80}ms` }}>
