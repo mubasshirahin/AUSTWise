@@ -1000,3 +1000,21 @@
   html.qbi-printing-paper .qbi-band,
   html.qbi-printing-paper .qbi-trend { border: 1px solid #999; background: none; }
 }
+
+.qbi-crop-hint { flex-wrap: wrap; }
+
+.qbi-crop-fix {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--qbi-accent);
+  border-radius: var(--radius-full, 999px);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.qbi-crop-fix:hover { background: var(--qbi-accent-soft); }
+.qbi-crop-fix:focus-visible { outline: 2px solid var(--qbi-accent); outline-offset: 2px; }

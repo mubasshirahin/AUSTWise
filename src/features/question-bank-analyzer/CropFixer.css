@@ -1,0 +1,368 @@
+/* Fix original — the whole paper with this question's box on it.
+   Lives inside the shared Original modal shell (OriginalPanel.css). */
+
+.qba-original-modal.qcf {
+  --qcf-accent: var(--accent-amber);
+  width: min(1040px, 100%);
+  height: min(94vh, 1000px);
+  max-height: none;
+}
+
+.qcf-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.qcf-head-text { min-width: 0; }
+
+.qcf-kicker {
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.qcf-question {
+  display: -webkit-box;
+  margin: 4px 0 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+
+.qcf-bar,
+.qcf-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px 0;
+}
+
+.qcf-tools { justify-content: space-between; }
+
+.qcf-file { width: auto; max-width: 100%; min-height: 32px; padding-block: 4px; font-size: 0.8125rem; }
+
+.qcf-file-name {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qcf-pages { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.qcf-page {
+  position: relative;
+  min-width: 36px;
+  min-height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md, 8px);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.qcf-page:hover { color: var(--text-primary); border-color: var(--text-tertiary); }
+.qcf-page.is-current { border-color: var(--qcf-accent); color: var(--text-primary); background: var(--bg-input); }
+
+/* a page that holds one of this question's boxes */
+.qcf-page.has-box::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--qcf-accent);
+}
+
+.qcf-seg,
+.qcf-zoom {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-full, 999px);
+}
+
+.qcf-seg button,
+.qcf-zoom button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-full, 999px);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.qcf-zoom button { padding: 0 9px; }
+.qcf-zoom .qcf-zoom-value { min-width: 54px; justify-content: center; font-variant-numeric: tabular-nums; }
+.qcf-seg button:hover:not(:disabled),
+.qcf-zoom button:hover:not(:disabled) { color: var(--text-primary); }
+.qcf-seg button.is-on { background: var(--bg-input); color: var(--text-primary); }
+.qcf-seg button.is-on svg { color: var(--qcf-accent); }
+.qcf-seg button:disabled,
+.qcf-zoom button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.qcf-seg button:focus-visible,
+.qcf-zoom button:focus-visible,
+.qcf-page:focus-visible,
+.qcf-elsewhere:focus-visible {
+  outline: 2px solid var(--qcf-accent);
+  outline-offset: 2px;
+}
+
+.qcf-hint {
+  margin: 6px 16px 8px;
+  color: var(--text-tertiary);
+  font-size: 0.75rem;
+}
+
+/* the page: scrolls and pans inside, zooms by growing the stage */
+.qcf-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0 16px;
+  overflow: auto;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md, 10px);
+  background: var(--bg-input);
+  overscroll-behavior: contain;
+  touch-action: pan-x pan-y;
+}
+
+.qcf-stage {
+  position: relative;
+  min-height: 200px;
+  margin: 0 auto;
+  background: #fff;
+  user-select: none;
+}
+
+.qcf-stage.is-move { cursor: grab; }
+.qcf-stage.is-move:active { cursor: grabbing; }
+.qcf-stage.is-draw,
+.qcf-stage.is-add { cursor: crosshair; touch-action: none; }
+.qcf-stage img { display: block; width: 100%; height: auto; pointer-events: none; }
+
+.qcf-loading,
+.qcf-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 260px;
+  margin: 0;
+  color: #5b6170;
+  font-size: 0.875rem;
+}
+
+.qcf-error { color: var(--accent-rose); }
+
+/* other questions on this page, for orientation */
+.qcf-other {
+  position: absolute;
+  border: 1px dashed rgba(60, 70, 90, 0.45);
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.qcf-other em {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  padding: 0 5px;
+  border-radius: 3px;
+  background: rgba(60, 70, 90, 0.7);
+  color: #fff;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+/* this question's box */
+.qcf-box {
+  position: absolute;
+  border: 2px solid var(--qcf-accent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--qcf-accent) 12%, transparent);
+  box-shadow: 0 0 0 9999px rgba(15, 18, 28, 0.28);
+  cursor: move;
+  touch-action: none;
+}
+
+.qcf-stage:not(.is-move) .qcf-box { cursor: inherit; pointer-events: none; }
+.qcf-box.is-selected { background: color-mix(in srgb, var(--qcf-accent) 6%, transparent); }
+.qcf-box:focus-visible { outline: 2px solid var(--qcf-accent); outline-offset: 3px; }
+
+.qcf-box em {
+  position: absolute;
+  bottom: 100%;
+  left: -2px;
+  padding: 1px 7px;
+  border-radius: 4px 4px 0 0;
+  background: var(--qcf-accent);
+  color: #1b1405;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.qcf-handle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--qcf-accent);
+  border-radius: 50%;
+  background: #fff;
+  touch-action: none;
+}
+
+.qcf-handle-nw { top: -8px; left: -8px; cursor: nwse-resize; }
+.qcf-handle-ne { top: -8px; right: -8px; cursor: nesw-resize; }
+.qcf-handle-sw { bottom: -8px; left: -8px; cursor: nesw-resize; }
+.qcf-handle-se { bottom: -8px; right: -8px; cursor: nwse-resize; }
+.qcf-handle-n,
+.qcf-handle-s { left: calc(50% - 7px); cursor: ns-resize; }
+.qcf-handle-n { top: -8px; }
+.qcf-handle-s { bottom: -8px; }
+.qcf-handle-e,
+.qcf-handle-w { top: calc(50% - 7px); cursor: ew-resize; }
+.qcf-handle-e { right: -8px; }
+.qcf-handle-w { left: -8px; }
+
+.qcf-box-remove {
+  position: absolute;
+  top: -12px;
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent-rose);
+  color: #fff;
+  cursor: pointer;
+}
+
+.qcf-draft {
+  position: absolute;
+  border: 2px dashed var(--qcf-accent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--qcf-accent) 14%, transparent);
+  pointer-events: none;
+}
+
+.qcf-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px 14px;
+}
+
+.qcf-result {
+  display: flex;
+  flex: 1 1 320px;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.qcf-result-title { color: var(--text-secondary); font-size: 0.75rem; font-weight: 700; }
+.qcf-result-empty { color: var(--text-tertiary); font-size: 0.8125rem; }
+
+.qcf-result-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px;
+  max-height: 140px;
+  padding: 1px;
+  overflow: auto;
+}
+
+.qcf-preview-cut {
+  position: relative;
+  display: block;
+  flex: none;
+  width: min(100%, 360px);
+  overflow: hidden;
+  /* a shadow, not a border: the cut must be exactly the box's shape */
+  box-shadow: 0 0 0 1px var(--border-primary);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.qcf-preview-cut img { position: absolute; max-width: none; height: auto; }
+
+.qcf-elsewhere {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px dashed var(--border-primary);
+  border-radius: var(--radius-md, 8px);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.qcf-coords {
+  color: var(--text-tertiary);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.qcf-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+@media (max-width: 640px) {
+  .qba-original-modal.qcf { height: 100dvh; }
+  .qcf-head { padding: 12px 12px 8px; }
+  .qcf-bar,
+  .qcf-tools { padding-inline: 12px; }
+  .qcf-hint { margin-inline: 12px; }
+  .qcf-scroll { margin: 0 8px; }
+  .qcf-foot { padding: 10px 12px 12px; }
+  .qcf-actions { width: 100%; }
+  .qcf-actions .btn-primary { flex: 1; justify-content: center; }
+  .qcf-seg button { padding: 0 10px; }
+  .qcf-handle { width: 18px; height: 18px; }
+  .qcf-handle-nw, .qcf-handle-ne, .qcf-handle-n { top: -10px; }
+  .qcf-handle-sw, .qcf-handle-se, .qcf-handle-s { bottom: -10px; }
+  .qcf-handle-nw, .qcf-handle-sw, .qcf-handle-w { left: -10px; }
+  .qcf-handle-ne, .qcf-handle-se, .qcf-handle-e { right: -10px; }
+  .qcf-handle-n, .qcf-handle-s { left: calc(50% - 9px); }
+  .qcf-handle-e, .qcf-handle-w { top: calc(50% - 9px); }
+}
+
+.qcf-actions .btn:disabled { opacity: 0.45; cursor: not-allowed; }

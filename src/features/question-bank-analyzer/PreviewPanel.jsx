@@ -22,7 +22,9 @@ import {
   PRIORITIES,
 } from './previewAnalytics';
 import OriginalPanel from './OriginalPanel';
+import CropFixer from './CropFixer';
 import { resetCropOverrides } from './InsightsShared';
+import { getOverrides } from './qbaOriginal';
 import './OriginalPanel.css';
 import { semesterImageKey } from './qbaImageStore';
 import { splitSemesterList } from './parseQuestionBank';
@@ -372,6 +374,8 @@ export default function PreviewPanel({
   const [lightbox, setLightbox] = useState(null);
   const [originalTarget, setOriginalTarget] = useState(null); // { qid, questionText }
   const [cropRefresh, setCropRefresh] = useState(0);
+  const [cropOverrides, setCropOverrides] = useState({});
+  const [fixTarget, setFixTarget] = useState(null);
   const [highlightKey, setHighlightKey] = useState('');
   const pictureInputRef = useRef(null);
   const pendingKeyRef = useRef({ imageKey: '', kind: 'question' });
@@ -421,6 +425,15 @@ export default function PreviewPanel({
     await onAttachImage?.(imageKey, files, kind);
   };
 
+  // The crop fixes the student saved, read again after every change.
+  useEffect(() => {
+    let cancelled = false;
+    getOverrides()
+      .then((all) => { if (!cancelled) setCropOverrides(all); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [cropRefresh]);
+
   // QID -> paper rows, for the crops and the Original modal.
   const qidRows = useMemo(() => {
     const map = new Map();
@@ -429,7 +442,15 @@ export default function PreviewPanel({
         if (!question.qid) return;
         const key = String(question.qid).toUpperCase();
         if (!map.has(key)) map.set(key, []);
-        map.get(key).push({ semester: paper.semester, n: question.number ?? index + 1, exam: question.exam, marks: question.marks, sourceRegions: question.sourceRegions || [], source: question.source || '' });
+        map.get(key).push({
+          semester: paper.semester,
+          n: question.number ?? index + 1,
+          part: String(question.part || '').toLowerCase(),
+          exam: question.exam,
+          marks: question.marks,
+          sourceRegions: question.sourceRegions || [],
+          source: question.source || '',
+        });
       });
     });
     return map;
@@ -539,8 +560,14 @@ export default function PreviewPanel({
   };
 
   const originalContext = useMemo(
-    () => ({ qidRows, sourceFiles: sourceFiles || [], refreshKey: cropRefresh }),
-    [qidRows, sourceFiles, cropRefresh],
+    () => ({
+      qidRows,
+      sourceFiles: sourceFiles || [],
+      refreshKey: cropRefresh,
+      overrides: cropOverrides,
+      openFixer: (sourceFiles || []).length ? setFixTarget : null,
+    }),
+    [qidRows, sourceFiles, cropRefresh, cropOverrides],
   );
 
   const originalData = useMemo(() => {
@@ -659,6 +686,19 @@ export default function PreviewPanel({
           </div>
         </div>,
         document.body,
+      ) : null}
+
+      {fixTarget ? (
+        <CropFixer
+          target={fixTarget}
+          sourceFiles={sourceFiles || []}
+          data={data}
+          onClose={() => setFixTarget(null)}
+          onSaved={() => {
+            resetCropOverrides();
+            setCropRefresh((value) => value + 1);
+          }}
+        />
       ) : null}
 
       {originalData ? (

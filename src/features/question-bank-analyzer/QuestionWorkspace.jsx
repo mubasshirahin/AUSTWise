@@ -2,9 +2,9 @@ import { useContext, useMemo, useState } from 'react';
 import {
   Camera,
   Check,
+  Crop,
   FileText,
   Image as ImageIcon,
-  Maximize2,
   Merge,
   Search,
   Unlink2,
@@ -12,7 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import { CropImage } from './InsightsShared';
-import { matchSourceFile } from './qbaOriginal';
+import { isWholePageRegion, matchSourceFile, questionFixKey, resolveRegions } from './qbaOriginal';
 import { questionImageKey, semesterImageKey } from './qbaImageStore';
 import { anchorIdForKey, partImageKey } from './qbaQuestionMatch';
 import { PRIORITIES } from './previewAnalytics';
@@ -61,12 +61,17 @@ function mergeAttachmentLists(...lists) {
 /** "0.05,0.16,0.95,0.41" → "x 5–95%, y 16–41%" is harder to read; keep the raw fractions. */
 function regionLabel(region) {
   if (!region) return '';
-  if (region.kind === 'box') {
+  if (region.kind === 'box' && !isWholePageRegion(region)) {
     const [x1, y1, x2, y2] = region.box || [0, 0, 1, 1];
     const f = (value) => Number(value).toFixed(2);
     return `${region.file} · page ${region.page} · ${f(x1)}, ${f(y1)} to ${f(x2)}, ${f(y2)}`;
   }
-  return region.file;
+  return `${region.file}${region.page ? ` · page ${region.page}` : ''} · whole page`;
+}
+
+/** Clicks on buttons, links and fields inside a card do not select the card. */
+function isControl(target) {
+  return Boolean(target?.closest?.('button, a, input, label, select, textarea'));
 }
 
 // ── attachments ──────────────────────────────────────────────────────────────
@@ -154,16 +159,48 @@ function AttachmentBox({ title, hint, list, canEdit, onOpen, onPick, onRemove, o
 
 // ── one single question ──────────────────────────────────────────────────────
 
-/** The paper row that holds this question's crop: its own row first, then any row with the QID. */
+/**
+ * Where this question's original is and who it is: the paper row (semester,
+ * number, part) and its Source regions. A topic row borrows the identity of
+ * the paper row with its QID, so a fix made in either view shows in both.
+ */
 function useOriginalRow(original) {
-  const { qidRows } = useContext(OriginalContext);
+  const { qidRows, sourceFiles, overrides } = useContext(OriginalContext);
   if (!original) return null;
-  if ((original.regions || []).some(isBoxRegion)) {
-    return { semester: original.semester || '', n: original.number, sourceRegions: original.regions };
-  }
   const key = String(original.qid || '').trim().toUpperCase();
   const rows = (key && qidRows?.get(key)) || [];
-  return rows.find(hasCropRegion) || null;
+  const own = Array.isArray(original.regions) ? original.regions : [];
+  // Asked in several papers: the one the student already fixed, then one
+  // whose file is uploaded, then any with a box.
+  const fixedRow = rows.find((row) => overrides?.[questionFixKey({
+    semester: row.semester,
+    number: row.n,
+    part: row.part || original.part || '',
+  })]);
+  const uploadedRow = rows.find((row) => hasCropRegion(row)
+    && row.sourceRegions.some((region) => matchSourceFile(region.file, sourceFiles)));
+  const withCrop = fixedRow || uploadedRow || rows.find(hasCropRegion);
+
+  if (!original.fromTopic) {
+    return {
+      semester: original.semester || '',
+      n: original.number,
+      part: original.part || '',
+      printedPart: original.printedPart || '',
+      sourceRegions: own.some(isBoxRegion) ? own : (withCrop?.sourceRegions || own),
+    };
+  }
+  const paper = withCrop || rows[0];
+  if (paper) {
+    return {
+      semester: paper.semester || '',
+      n: paper.n,
+      part: paper.part || original.part || '',
+      printedPart: paper.part || '',
+      sourceRegions: hasCropRegion(paper) ? paper.sourceRegions : own,
+    };
+  }
+  return { semester: '', n: '', part: original.part || '', printedPart: '', sourceRegions: own };
 }
 
 export function SingleCard({
@@ -189,17 +226,44 @@ export function SingleCard({
   anchorId,
   highlighted = false,
 }) {
-  const { sourceFiles, refreshKey } = useContext(OriginalContext);
+  const { sourceFiles, refreshKey, overrides, openFixer } = useContext(OriginalContext);
   const row = useOriginalRow(original);
   const [showOriginal, setShowOriginal] = useState(Boolean(needsFigure));
   const [showPictures, setShowPictures] = useState(false);
+  const [active, setActive] = useState(false);
+  const ident = row ? {
+    semester: row.semester,
+    number: row.n,
+    part: row.part,
+    printedPart: row.printedPart,
+    fallbackKey: original?.fallbackKey || '',
+  } : null;
+  const effective = row ? resolveRegions(row.sourceRegions, overrides, ident) : [];
+  const boxRegions = effective.filter(isBoxRegion);
+  const tightRegions = boxRegions.filter((region) => region.kind === 'box' && !isWholePageRegion(region));
+  const wholeOnly = boxRegions.length > 0 && !tightRegions.length;
+  const fixedByStudent = boxRegions.some((region) => region.fixed);
+  const fixKey = ident ? questionFixKey(ident) : '';
+  const canFix = Boolean(openFixer && fixKey);
+  const openFix = () => {
+    if (!canFix) return;
+    openFixer({
+      label: number,
+      text: [stem, text].filter(Boolean).join('\n'),
+      semester: ident.semester,
+      number: ident.number,
+      part: ident.part,
+      fixKey,
+      regions: boxRegions,
+      hasFix: Boolean(overrides?.[fixKey]),
+    });
+  };
   const prio = priorityValue(priority).toLowerCase();
   const pictureList = pictures?.list || [];
   const questionFiles = pictureList.filter((item) => item.kind !== 'answer');
   const answerFiles = pictureList.filter((item) => item.kind === 'answer');
   const canEdit = Boolean(pictures?.canEdit);
-  const boxRegions = row ? row.sourceRegions.filter(isBoxRegion) : [];
-  const fileReady = row ? row.sourceRegions.some((region) => matchSourceFile(region.file, sourceFiles)) : false;
+  const fileReady = boxRegions.some((region) => matchSourceFile(region.file, sourceFiles));
   const showPictureButton = canEdit || pictureList.length > 0;
 
   const className = [
@@ -207,6 +271,7 @@ export function SingleCard({
     solved ? 'is-solved' : '',
     selected ? 'is-selected' : '',
     highlighted ? 'is-target' : '',
+    active ? 'is-active' : '',
   ].filter(Boolean).join(' ');
 
   return (
@@ -216,7 +281,8 @@ export function SingleCard({
         {solved ? <Check size={14} className="qbs-margin-check" /> : null}
       </div>
 
-      <div className="qbs-body">
+      {/* Clicking the question shows its Fix button (buttons inside keep their own job). */}
+      <div className="qbs-body" onClick={(event) => { if (!isControl(event.target)) setActive((value) => !value); }}>
         <div className="qbs-meta">
           <span className="qbs-sr">Question {number}.</span>
           {topic ? (
@@ -243,7 +309,7 @@ export function SingleCard({
         <p className="qbs-text">{text || '—'}</p>
 
         <div className="qbs-actions">
-          {row ? (
+          {boxRegions.length ? (
             <button
               type="button"
               className={`qbs-act${showOriginal ? ' is-on' : ''}`}
@@ -252,6 +318,11 @@ export function SingleCard({
             >
               <Camera size={14} aria-hidden="true" />
               Original
+            </button>
+          ) : canFix ? (
+            <button type="button" className="qbs-act" onClick={openFix}>
+              <Camera size={14} aria-hidden="true" />
+              Mark original
             </button>
           ) : onOpenFull ? (
             <button type="button" className="qbs-act" onClick={onOpenFull}>
@@ -270,19 +341,28 @@ export function SingleCard({
               {pictureList.length ? `Pictures ${pictureList.length}` : 'Add picture'}
             </button>
           ) : null}
-          {needsFigure && !row && !questionFiles.length ? (
+          {canFix && boxRegions.length && (active || showOriginal) ? (
+            <button type="button" className="qbs-act is-fix" onClick={openFix} title="Open the whole paper and move, resize or redraw this question's box">
+              <Crop size={14} aria-hidden="true" />
+              Fix
+            </button>
+          ) : null}
+          {needsFigure && !boxRegions.length && !questionFiles.length ? (
             <span className="qbs-tag is-warn">Has a diagram</span>
           ) : null}
         </div>
 
-        {showOriginal && row ? (
+        {showOriginal && boxRegions.length ? (
           <div className="qbs-original">
             <CropImage
-              regions={row.sourceRegions}
+              regions={wholeOnly ? boxRegions : tightRegions}
               sourceFiles={sourceFiles}
               semester={row.semester}
               number={row.n}
+              part={row.part}
               refreshKey={refreshKey}
+              resolved
+              onFix={canFix && fileReady ? openFix : undefined}
               alt={`Original of question ${number}${row.semester ? ` from ${row.semester}` : ''}`}
             />
             <div className="qbs-coords">
@@ -290,13 +370,8 @@ export function SingleCard({
                 {boxRegions.map((region, index) => (
                   <li key={`${region.raw || region.file}-${index}`}>{regionLabel(region)}</li>
                 ))}
+                {fixedByStudent ? <li className="qbs-coords-fixed">Box set by you</li> : null}
               </ul>
-              {fileReady && onOpenFull ? (
-                <button type="button" className="qbs-act is-quiet" onClick={onOpenFull}>
-                  <Maximize2 size={13} aria-hidden="true" />
-                  Fix crop
-                </button>
-              ) : null}
             </div>
           </div>
         ) : null}
@@ -619,7 +694,13 @@ export function TopicWorkspace({
                     else next.add(item.originalIndex);
                     return next;
                   })}
-                  original={{ qid: question.qid || '', regions: question.sourceRegions || [], semester: question.semester || '', number: question.number }}
+                  original={{
+                    qid: question.qid || '',
+                    regions: question.sourceRegions || [],
+                    part: single.idLabel || '',
+                    fromTopic: true,
+                    fallbackKey: item.imageKey,
+                  }}
                   onOpenFull={onOpenOriginal ? () => onOpenOriginal(question.qid || '', question.question) : undefined}
                   pictures={pictureProps(item.imageKey, '', images, pictureHandlers)}
                   anchorId={anchorIdForKey(item.imageKey)}
@@ -769,7 +850,15 @@ export function PaperWorkspace({
                     solved={solved}
                     checklistEnabled={checklistEnabled && Boolean(topic)}
                     onToggleSolved={() => onSetChecklist?.(singleToggleChanges(checklistItems, single, item.siblings))}
-                    original={{ qid: question.qid || '', regions: question.sourceRegions || [], semester: current.semester, number: question.number }}
+                    original={{
+                      qid: question.qid || '',
+                      regions: question.sourceRegions || [],
+                      semester: current.semester,
+                      number: question.number,
+                      part: String(question.part || '').toLowerCase() || single.idLabel || '',
+                      printedPart: String(question.part || '').toLowerCase(),
+                      fallbackKey: item.imageKey,
+                    }}
                     onOpenFull={onOpenOriginal ? () => onOpenOriginal(question.qid || '', question.question) : undefined}
                     pictures={pictureProps(item.imageKey, item.legacyKey, images, pictureHandlers)}
                   />

@@ -145,13 +145,98 @@ export async function saveOverride(key, box) {
   });
 }
 
+/**
+ * The key of one single question's own fix (2a and 2b get different keys).
+ * A question with no paper row falls back to its picture key.
+ */
+export function questionFixKey({ semester, number, part, fallbackKey } = {}) {
+  const sem = String(semester ?? '').trim();
+  const n = String(number ?? '').trim();
+  if (sem && n) return `fix|${sem}|${n}|${String(part || '').trim().toLowerCase()}`;
+  return fallbackKey ? `fix|key|${fallbackKey}` : '';
+}
+
+/** Save the boxes the student drew for one question. They replace the AI's boxes. */
+export async function saveQuestionFix(key, regions) {
+  if (!key) return null;
+  const clean = (Array.isArray(regions) ? regions : [])
+    .filter((region) => region?.file && Array.isArray(region.box))
+    .map((region) => ({
+      file: region.file,
+      page: Math.max(1, Number(region.page) || 1),
+      box: region.box.map((value) => Math.round(Math.min(1, Math.max(0, Number(value) || 0)) * 10000) / 10000),
+    }));
+  if (!clean.length) return null;
+  const entry = { key, regions: clean, savedAt: Date.now() };
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction(STORE_OVERRIDES, 'readwrite').objectStore(STORE_OVERRIDES).put(entry);
+    request.onsuccess = () => resolve(entry);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+/**
+ * True when a region is the whole page (or close to it) rather than one
+ * question: a file with no box, a broken box, or a box over 80% of the page.
+ * Such a crop is not shown; the student is asked to fix it instead.
+ */
+export function isWholePageRegion(region) {
+  if (!region) return false;
+  if (region.fixed) return false;
+  if (region.kind === 'bare') return true;
+  if (region.kind !== 'box') return false;
+  if (region.invalidBox || !Array.isArray(region.box)) return true;
+  const [x1, y1, x2, y2] = region.box.map(Number);
+  return (x2 - x1) * (y2 - y1) >= 0.8;
+}
+
+/**
+ * The regions to cut for one question: the student's own fix first, then
+ * the older one-box-per-region corrections, then the AI's boxes.
+ *
+ * @param {object[]} regions   the Source regions of the paper row
+ * @param {object} overrides   everything getOverrides() returned
+ * @param {{ semester, number, part, printedPart, fallbackKey }} ident
+ */
+export function resolveRegions(regions, overrides, ident = {}) {
+  const list = Array.isArray(regions) ? regions : [];
+  const key = questionFixKey(ident);
+  const fix = key ? overrides?.[key] : null;
+  if (fix && Array.isArray(fix.regions) && fix.regions.length) {
+    return fix.regions.map((region) => ({
+      file: region.file,
+      kind: 'box',
+      page: Math.max(1, Number(region.page) || 1),
+      box: region.box.map(Number),
+      fixed: true,
+      raw: '',
+    }));
+  }
+  // Older corrections were saved per paper row number. A row printed as
+  // "2a" cannot tell which part such a correction was for, so it skips them.
+  if (ident.printedPart) return list;
+  let boxIndex = -1;
+  return list.map((region) => {
+    if (!region || (region.kind !== 'box' && region.kind !== 'bare')) return region;
+    boxIndex += 1;
+    const legacy = overrides?.[overrideKey(ident.semester, ident.number, boxIndex)];
+    return Array.isArray(legacy)
+      ? { ...region, kind: 'box', page: region.page || 1, box: legacy, fixed: true }
+      : region;
+  });
+}
+
 export async function getOverrides() {
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const request = db.transaction(STORE_OVERRIDES, 'readonly').objectStore(STORE_OVERRIDES).getAll();
     request.onsuccess = () => {
       const out = {};
-      (request.result || []).forEach((entry) => { if (entry?.key) out[entry.key] = entry.box; });
+      (request.result || []).forEach((entry) => {
+        if (!entry?.key) return;
+        out[entry.key] = Array.isArray(entry.regions) ? { regions: entry.regions } : entry.box;
+      });
       resolve(out);
     };
     request.onerror = () => reject(request.error);
@@ -365,7 +450,7 @@ export async function extractFileText(rawFile, maxPages = 30) {
 }
 
 /** Render a whole page (for Adjust mode) at a readable scale. */
-export async function renderPagePreview(file, page) {
+export async function renderPagePreview(file, page, targetWidth = 900) {
   const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
   if (isPdf) {
     const { pdf } = await getPdfDocument(file);
@@ -373,7 +458,7 @@ export async function renderPagePreview(file, page) {
     const safePage = Math.min(Math.max(1, page), pageCount);
     const pdfPage = await pdf.getPage(safePage);
     const viewport = pdfPage.getViewport({ scale: 1 });
-    const scale = Math.min(2, Math.max(0.6, 900 / Math.max(1, viewport.width)));
+    const scale = Math.min(3, Math.max(0.6, targetWidth / Math.max(1, viewport.width)));
     const canvas = document.createElement('canvas');
     const scaled = pdfPage.getViewport({ scale });
     canvas.width = Math.round(scaled.width);
@@ -388,7 +473,7 @@ export async function renderPagePreview(file, page) {
   }
   const bitmap = await createImageBitmap(file.blob);
   const canvas = document.createElement('canvas');
-  const scale = Math.min(1, 900 / Math.max(1, bitmap.width));
+  const scale = Math.min(1, targetWidth / Math.max(1, bitmap.width));
   canvas.width = Math.round(bitmap.width * scale);
   canvas.height = Math.round(bitmap.height * scale);
   const ctx = canvas.getContext('2d');
@@ -415,6 +500,7 @@ export function collectQidRows(data, qid) {
           n: question.number ?? index + 1,
           exam: question.exam || '-',
           marks: question.marks ?? null,
+          part: String(question.part || '').toLowerCase(),
           source: question.source || '',
           sourceRegions: Array.isArray(question.sourceRegions) ? question.sourceRegions : [],
         });

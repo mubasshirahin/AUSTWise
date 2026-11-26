@@ -743,3 +743,28 @@
 @media (prefers-reduced-motion: reduce) {
   .qbs-card, .qbs-margin, .qbs-rail-bar > span, .qbs-tick-box, .qbs-nav-btn { transition: none; }
 }
+
+/* ── click a question → its Fix button ───────────────────────────────────── */
+
+.qbs-card.is-active .qbs-body { cursor: default; }
+.qbs-card.is-active { border-color: color-mix(in srgb, var(--qbs-accent) 45%, var(--border-primary)); }
+
+.qbs-act.is-fix {
+  border-color: color-mix(in srgb, var(--qbs-accent) 60%, var(--border-primary));
+  color: var(--text-primary);
+  animation: qbs-fix-in 160ms ease-out;
+}
+
+.qbs-act.is-fix svg { color: var(--qbs-accent); }
+.qbs-act.is-fix:hover:not(:disabled) { border-color: var(--qbs-accent); background: color-mix(in srgb, var(--qbs-accent) 10%, transparent); }
+
+@keyframes qbs-fix-in {
+  from { opacity: 0; transform: translateX(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+.qbs-coords-fixed { color: var(--accent-emerald); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  .qbs-act.is-fix { animation: none; }
+}

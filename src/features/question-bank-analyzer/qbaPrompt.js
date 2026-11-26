@@ -184,9 +184,13 @@ one or more regions. Write each region like this:
   - If the question refers to a figure or table that is on a different page
     (for example "Figure 1" printed at the end of the paper), add one more
     region for that figure after the text region(s).
-  - If you are sure of the page but cannot place the box, use the whole page
-    0,0,1,1. If you are not sure of the page, write <file name> :: ? . Never
-    invent a page or a box.
+  - NEVER give the whole page (0,0,1,1) or half a page as a box. The site
+    shows the box as "the original question", so a box that holds other
+    questions is wrong. A single part is usually a short strip of the page
+    (for example y from 0.31 to 0.39). If you are unsure of the exact edges,
+    still give your best tight box around this one question; the student
+    can nudge it on the site. If you are not sure of the page, write
+    <file name> :: ? . Never invent a page.
   - If the question comes from something with no fixed pages (a txt, docx or
     pasted text), write <file name> :: none
   - Write nothing else in the Source cell: no comments, no words.

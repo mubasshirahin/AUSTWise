@@ -39,7 +39,7 @@ describe('buildPrompt', () => {
     expect(prompt).toContain('RULE 9 — SOURCE LOCATION');
     expect(prompt).toMatch(/fractions of the page/i);
     expect(prompt).toMatch(/p1/);
-    expect(prompt).toContain('0,0,1,1');
+    expect(prompt).toContain('NEVER give the whole page (0,0,1,1)');
     expect(prompt).toContain(':: ?');
     expect(prompt).toContain(':: none');
   });

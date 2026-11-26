@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, Copy, ImageOff, Loader2 } from 'lucide-react';
-import { cropRegion, getOverrides, matchSourceFile, overrideKey } from './qbaOriginal';
+import { cropRegion, getOverrides, isWholePageRegion, matchSourceFile, resolveRegions } from './qbaOriginal';
 import { TREND_HINTS, TREND_LABELS } from './qbaInsights';
 import { copyText } from './qbaClipboard';
 
@@ -17,9 +17,26 @@ function loadOverrides() {
 
 /**
  * The original question, cut out of the student's own PDF/image in the
- * browser. Shows nothing when the file was never uploaded.
+ * browser. Shows nothing when the file was never uploaded. A region that is
+ * the whole page is never shown as "the question": the student is asked to
+ * fix it instead.
+ *
+ * `resolved` means the caller already applied the student's fixes.
  */
-export function CropImage({ regions = [], sourceFiles = [], semester = '', number = 0, alt = 'Original question', missingHint = true, refreshKey = 0, eager = false }) {
+export function CropImage({
+  regions = [],
+  sourceFiles = [],
+  semester = '',
+  number = 0,
+  part = '',
+  printedPart = '',
+  alt = 'Original question',
+  missingHint = true,
+  refreshKey = 0,
+  eager = false,
+  resolved = false,
+  onFix,
+}) {
   const [state, setState] = useState({ status: 'idle', urls: [], missing: '' });
   // Cut only what is on (or near) the screen: a closed topic or paper card
   // has no size, so its crops wait until the student opens it.
@@ -37,7 +54,7 @@ export function CropImage({ regions = [], sourceFiles = [], semester = '', numbe
     return () => observer.disconnect();
   }, [seen]);
   const boxRegions = regions.filter((region) => region && (region.kind === 'box' || region.kind === 'bare'));
-  const signature = JSON.stringify(boxRegions.map((region) => [region.file, region.page, region.box]))
+  const signature = JSON.stringify(boxRegions.map((region) => [region.file, region.page, region.box, region.kind, Boolean(region.fixed)]))
     + sourceFiles.map((file) => `${file.name}:${file.size}`).join(',');
 
   useEffect(() => {
@@ -48,22 +65,29 @@ export function CropImage({ regions = [], sourceFiles = [], semester = '', numbe
       setState({ status: 'none', urls: [], missing: '' });
       return undefined;
     }
-    const firstMissing = boxRegions.find((region) => !matchSourceFile(region.file, sourceFiles));
-    if (firstMissing && boxRegions.every((region) => !matchSourceFile(region.file, sourceFiles))) {
-      setState({ status: 'missing', urls: [], missing: firstMissing.file });
-      return undefined;
-    }
-    setState({ status: 'loading', urls: [], missing: '' });
     (async () => {
-      const overrides = await loadOverrides();
+      const overrides = resolved ? {} : await loadOverrides();
+      if (cancelled) return;
+      const effective = resolved
+        ? boxRegions
+        : resolveRegions(boxRegions, overrides, { semester, number, part, printedPart });
+      const tight = effective.filter((region) => region && region.kind === 'box' && !isWholePageRegion(region));
+      if (!tight.length) {
+        setState({ status: 'wholepage', urls: [], missing: '' });
+        return;
+      }
+      const firstMissing = tight.find((region) => !matchSourceFile(region.file, sourceFiles));
+      if (firstMissing && tight.every((region) => !matchSourceFile(region.file, sourceFiles))) {
+        setState({ status: 'missing', urls: [], missing: firstMissing.file });
+        return;
+      }
+      setState({ status: 'loading', urls: [], missing: '' });
       const urls = [];
-      for (let index = 0; index < boxRegions.length; index += 1) {
-        const region = boxRegions[index];
+      for (const region of tight) {
         const file = matchSourceFile(region.file, sourceFiles);
         if (!file) continue;
-        const override = overrides[overrideKey(semester, number, index)];
         try {
-          const url = await cropRegion(file, override ? { ...region, kind: 'box', box: override } : region);
+          const url = await cropRegion(file, region);
           created.push(url);
           urls.push(url);
         } catch {
@@ -77,10 +101,21 @@ export function CropImage({ regions = [], sourceFiles = [], semester = '', numbe
       created.forEach((url) => URL.revokeObjectURL(url));
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signature, semester, number, refreshKey, seen]);
+  }, [signature, semester, number, part, printedPart, refreshKey, seen, resolved]);
 
   if (state.status === 'idle') return <div ref={slotRef} className="qbi-crop-slot" aria-hidden="true" />;
   if (state.status === 'none') return null;
+  if (state.status === 'wholepage') {
+    return missingHint || onFix ? (
+      <p className="qbi-crop-hint">
+        <ImageOff size={13} aria-hidden="true" />
+        <span>Your AI marked the whole page, not this question.</span>
+        {onFix ? (
+          <button type="button" className="qbi-crop-fix" onClick={onFix}>Draw its box</button>
+        ) : null}
+      </p>
+    ) : null;
+  }
   if (state.status === 'missing') {
     return missingHint ? (
       <p className="qbi-crop-hint">
