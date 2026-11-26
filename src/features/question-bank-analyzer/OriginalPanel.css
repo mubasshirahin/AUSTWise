@@ -82,6 +82,36 @@
 .qba-source-status { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
 .qba-source-item.is-found .qba-source-status { color: var(--accent-emerald); }
 .qba-source-item.is-missing .qba-source-status { color: var(--accent-rose); }
+.qba-source-item.is-unused { opacity: 0.75; }
+.qba-source-unused { margin-top: var(--sp-3); }
+.qba-source-unused-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+.qba-source-unused .qba-source-list { margin-top: 6px; }
+.qba-source-remove {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--accent-rose);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+.qba-source-remove:hover { border-color: var(--accent-rose); }
+.qba-source-remove:focus-visible { outline: 2px solid var(--accent-rose); outline-offset: 2px; }
+.qba-source-remove.is-inline { min-height: 24px; padding: 0 8px; }
 .qba-source-error { margin: 8px 0 0; font-size: var(--fs-xs); color: var(--accent-rose); }
 .qba-source-note { margin: 8px 0 0; font-size: var(--fs-xs); color: var(--text-tertiary); }
 .qba-source-note code { font-family: 'JetBrains Mono', monospace; }

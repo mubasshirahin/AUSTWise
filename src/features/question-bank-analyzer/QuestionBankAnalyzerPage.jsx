@@ -50,7 +50,7 @@ import { useAuth } from '../../context/AuthContext';
 import SidebarPageAccessPanel, { SidebarPageAccessHeader } from '../admin/SidebarPageAccessPanel';
 import usePlanAccess from '../../hooks/usePlanAccess';
 import { SourceFilesPanel } from './OriginalPanel';
-import { matchSourceFile } from './qbaOriginal';
+import { matchSourceFile, neededFilesFrom } from './qbaOriginal';
 import ProGate from './ProGate';
 import TrendsPanel from './TrendsPanel';
 import CoveragePanel from './CoveragePanel';
@@ -95,21 +95,6 @@ function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   const kb = bytes / 1024;
   return `${kb < 10 ? kb.toFixed(1) : Math.round(kb)} KB`;
-}
-
-/** File names the AI answer says it used ("files: [a.pdf, b.pdf]"). */
-function neededFilesFrom(texts, data) {
-  const names = [];
-  const add = (name) => {
-    const clean = String(name || '').trim().replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').trim();
-    if (clean && !names.some((item) => item.toLowerCase() === clean.toLowerCase())) names.push(clean);
-  };
-  texts.forEach((text) => {
-    const match = String(text || '').match(/^\s*files\s*:\s*\[?([^\]\n]*)\]?\s*$/im);
-    if (match) match[1].split(/,|;/).forEach(add);
-  });
-  (data?.files || []).forEach(add);
-  return names;
 }
 
 /** Sections that live inside PreviewPanel; the rest have their own panels. */

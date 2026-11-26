@@ -5,6 +5,7 @@ import {
   collectQidRows,
   cropRegion,
   deleteOverride,
+  deleteSourceFile,
   getOverrides,
   listSourceFiles,
   matchSourceFile,
@@ -59,8 +60,25 @@ export function SourceFilesPanel({ files, onFiles }) {
     onFiles?.(next);
   };
 
+  /** Delete saved papers from this browser. */
+  const removeFiles = async (names) => {
+    const drop = new Set(names);
+    for (const name of drop) {
+      try {
+        await deleteSourceFile(name);
+      } catch { /* already gone */ }
+    }
+    const next = stored.filter((file) => !drop.has(file.name));
+    setStored(next);
+    onFiles?.(next);
+  };
+
   const needed = Array.isArray(files) ? files : [];
   const foundCount = needed.filter((name) => matchSourceFile(name, stored)).length;
+  // Papers saved for an earlier answer that the current one never mentions.
+  const unused = needed.length
+    ? stored.filter((file) => !needed.some((name) => matchSourceFile(name, [file])))
+    : [];
 
   return (
     <section className="qba-source-panel" aria-label="Original papers">
@@ -125,9 +143,42 @@ export function SourceFilesPanel({ files, onFiles }) {
           Add the AI answer first — every file it used is then listed here with its own upload button.
         </p>
       )}
+      {unused.length ? (
+        <div className="qba-source-unused">
+          <div className="qba-source-unused-head">
+            <span>Not used by this answer ({unused.length})</span>
+            <button type="button" className="qba-source-remove" onClick={() => removeFiles(unused.map((file) => file.name))}>
+              Remove all
+            </button>
+          </div>
+          <ul className="qba-source-list">
+            {unused.map((file) => (
+              <li key={file.name} className="qba-source-item is-unused">
+                <span className="qba-source-name" title={file.name}>{file.name}</span>
+                <button
+                  type="button"
+                  className="qba-source-remove"
+                  onClick={() => removeFiles([file.name])}
+                  aria-label={`Remove ${file.name}`}
+                >
+                  <X size={13} aria-hidden="true" /> Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {stored.length ? (
         <p className="qba-source-note">
           {stored.length} file{stored.length === 1 ? '' : 's'} saved in this browser. Your files stay in this browser and are never uploaded.
+          {!needed.length ? (
+            <>
+              {' '}
+              <button type="button" className="qba-source-remove is-inline" onClick={() => removeFiles(stored.map((file) => file.name))}>
+                Remove all
+              </button>
+            </>
+          ) : null}
         </p>
       ) : null}
     </section>

@@ -43,6 +43,30 @@ const DB_VERSION = 1;
 const STORE_FILES = 'files';
 const STORE_OVERRIDES = 'overrides';
 
+/**
+ * File names the current AI answer uses: its "files: [a.pdf, b.pdf]" line and
+ * every file a Source cell points at ("a.pdf :: p1 :: ..."). Only the
+ * Markdown that is in the page now counts, so replacing the answer replaces
+ * the list. A preview restored from History has no Markdown and falls back
+ * to the files saved with it.
+ */
+export function neededFilesFrom(texts, data) {
+  const names = [];
+  const add = (name) => {
+    const clean = String(name || '').trim().replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').trim();
+    if (clean && !names.some((item) => item.toLowerCase() === clean.toLowerCase())) names.push(clean);
+  };
+  const sources = (texts || []).filter((text) => String(text || '').trim());
+  sources.forEach((text) => {
+    const value = String(text);
+    const match = value.match(/^\s*files\s*:\s*\[?([^\]\n]*)\]?\s*$/im);
+    if (match) match[1].split(/,|;/).forEach(add);
+    for (const cell of value.matchAll(/([^\s|;][^|;\n]*?\.(?:pdf|png|jpe?g|webp))\s*::/gi)) add(cell[1]);
+  });
+  if (!sources.length) (data?.files || []).forEach(add);
+  return names;
+}
+
 function openDb() {
   return new Promise((resolve, reject) => {
     if (typeof indexedDB === 'undefined') {

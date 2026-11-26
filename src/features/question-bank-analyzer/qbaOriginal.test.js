@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { collectQidRows, matchSourceFile, overrideKey } from './qbaOriginal';
+import { collectQidRows, matchSourceFile, neededFilesFrom, overrideKey } from './qbaOriginal';
 
 describe('matchSourceFile', () => {
   const provided = [{ name: '6__Spring_22__4_.pdf' }, { name: 'Photo 02.jpeg' }];
@@ -60,5 +60,23 @@ describe('collectQidRows', () => {
 describe('overrideKey', () => {
   it('joins semester, number and region index', () => {
     expect(overrideKey('Spring 2022', 2, 1)).toBe('Spring 2022|2|1');
+  });
+});
+
+describe('neededFilesFrom', () => {
+  const answer = (files, source) => `---\ncourse: X\nfiles: [${files.join(', ')}]\n---\n| 1 | [QID: 001] | Final | 10 | ${source} :: p1 :: 0,0,1,1 |`;
+
+  it('lists the files of the current answer only, not the last preview', () => {
+    const names = neededFilesFrom([answer(['new.pdf'], 'new.pdf')], { files: ['old.pdf'] });
+    expect(names).toEqual(['new.pdf']);
+  });
+
+  it('adds files that only a Source cell names', () => {
+    const names = neededFilesFrom([answer(['a.pdf'], 'Fall 22 paper.pdf')], null);
+    expect(names).toEqual(['a.pdf', 'Fall 22 paper.pdf']);
+  });
+
+  it('falls back to the saved files when there is no Markdown (History)', () => {
+    expect(neededFilesFrom(['', '  '], { files: ['h.pdf'] })).toEqual(['h.pdf']);
   });
 });
