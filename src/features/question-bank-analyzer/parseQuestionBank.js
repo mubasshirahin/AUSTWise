@@ -323,6 +323,29 @@ function expandPaperQuestion(value, pool) {
   return [stem, ...rest].join('\n');
 }
 
+/**
+ * Blank out the "Topic: …" / "Semesters: …" / "Answer: …" lines that belong to
+ * a pool entry. Written without comment markers, "Topic: Normalization" looks
+ * exactly like a bare TOPIC heading and would open an empty topic block.
+ */
+function stripPoolFieldLines(body) {
+  let inEntry = false;
+  return String(body ?? '').split('\n').map((rawLine) => {
+    const line = stripCommentMarkers(rawLine);
+    if (!line) {
+      inEntry = false;
+      return rawLine;
+    }
+    if (QID_LINE.test(line)) {
+      inEntry = true;
+      return rawLine;
+    }
+    if (inEntry && POOL_FIELD.test(line)) return '';
+    if (/^#{1,6}\s/.test(line) || /^\s*\|/.test(rawLine)) inEntry = false;
+    return rawLine;
+  }).join('\n');
+}
+
 /** Where the MASTER QUESTION POOL ends: the first real section heading. */
 function masterPoolEnd(body) {
   const lines = String(body ?? '').split('\n');
@@ -387,6 +410,7 @@ function emptyData() {
     title: '',
     semesters: [],
     files: [],
+    inventory: [],
     topics: [],
     semesterPapers: [],
     vipMatrix: [],
@@ -600,6 +624,7 @@ function detectHeading(line) {
     return { type: 'topic', name: name || 'Untitled topic' };
   }
   if (/^VIP[\s_-]*MATRIX\b/i.test(withoutHashes)) return { type: 'vip' };
+  if (/^PAPER[\s_-]*INVENTORY\b/i.test(withoutHashes)) return { type: 'inventory' };
   if (/^STUDY[\s_-]*PLAN\b/i.test(withoutHashes)) return { type: 'study' };
   if (/^(?:SEMESTER|RAW)(?:[\s_-]*(?:WISE|QUESTION))*[\s_-]*(?:PAPERS?|WISE)\b/i.test(withoutHashes)) {
     return { type: 'papers' };
@@ -678,6 +703,11 @@ function looksLikeVipHeader(cells) {
   return keys.includes('topic') && (keys.some((key) => key.includes('priority')) || keys.some((key) => key.includes('time')));
 }
 
+function looksLikeInventoryHeader(cells) {
+  const keys = cells.map(normKey);
+  return keys.some((key) => key === 'semester' || key === 'sem' || key === 'term');
+}
+
 /**
  * Collect the first table in a block. Returns { header, rows } where header is
  * null when the AI omitted it. Separator rows are dropped.
@@ -693,9 +723,10 @@ function extractTable(lines, kind) {
   const parsed = tableLines.map(splitTableRow).filter((cells) => !isSeparatorRow(cells));
   if (!parsed.length) return { header: null, rows: [] };
 
-  const header = kind === 'vip'
-    ? looksLikeVipHeader(parsed[0])
-    : looksLikeTopicHeader(parsed[0]);
+  let header;
+  if (kind === 'vip') header = looksLikeVipHeader(parsed[0]);
+  else if (kind === 'inventory') header = looksLikeInventoryHeader(parsed[0]);
+  else header = looksLikeTopicHeader(parsed[0]);
   return header
     ? { header: parsed[0], rows: parsed.slice(1) }
     : { header: null, rows: parsed };
@@ -1038,6 +1069,69 @@ function parseSemesterPapers(lines, warn, note, masterPool = null) {
   return papers;
 }
 
+// ── paper inventory ──────────────────────────────────────────────────────────
+
+/** "1, 2, 3", "1-8", "Q1–Q6, 8" → [1, 2, 3, ...]. Empty when unreadable. */
+export function parseQuestionNumbers(value) {
+  const text = cleanInline(value).replace(/q(?:uestion)?\.?\s*/gi, '');
+  if (!text || text === '-') return [];
+  const numbers = new Set();
+  text.split(/\s*[,;/]\s*|\s+and\s+/i).forEach((part) => {
+    const range = part.match(/^(\d{1,3})\s*(?:[-–—]|to)\s*(\d{1,3})$/i);
+    if (range) {
+      const from = Number(range[1]);
+      const to = Number(range[2]);
+      if (to >= from && to - from <= 60) {
+        for (let n = from; n <= to; n += 1) numbers.add(n);
+      }
+      return;
+    }
+    const single = part.match(/^(\d{1,3})[a-z]?$/i);
+    if (single) numbers.add(Number(single[1]));
+  });
+  return [...numbers].sort((a, b) => a - b);
+}
+
+/**
+ * PAPER_INVENTORY: one row per exam paper the AI found, written BEFORE it
+ * extracted anything. The site compares it with SEMESTER_PAPERS to name the
+ * exact questions that went missing.
+ */
+function parseInventoryBlock(block) {
+  const { header, rows } = extractTable(block.lines, 'inventory');
+  let indices;
+  if (header) {
+    const keys = header.map(normKey);
+    indices = {
+      semester: findColumn(keys, ['semester', 'sem', 'term']),
+      exam: findColumn(keys, ['exam', 'exam type', 'type']),
+      file: findColumn(keys, ['file', 'file name', 'source']),
+      count: findColumn(keys, ['questions on paper', 'question count', 'questions', 'count', 'total']),
+      numbers: findColumn(keys, ['question numbers', 'numbers', 'printed numbers', 'printed']),
+    };
+  } else {
+    indices = { semester: 0, exam: 1, file: 2, count: 3, numbers: 4 };
+  }
+
+  const entries = [];
+  rows.forEach((row) => {
+    const semester = cleanInline(cellAt(row, indices.semester));
+    if (!semester || semester === '-' || looksLikeInventoryHeader(row)) return;
+    const numbers = parseQuestionNumbers(cellAt(row, indices.numbers));
+    const counted = parseCount(cellAt(row, indices.count)).value;
+    const count = counted !== null && counted > 0 ? counted : numbers.length;
+    if (!count) return;
+    entries.push({
+      semester,
+      exam: normalizeExam(cellAt(row, indices.exam)),
+      file: cleanInline(cellAt(row, indices.file)).replace(/^-$/, ''),
+      count,
+      numbers: numbers.length ? numbers : Array.from({ length: count }, (_, i) => i + 1),
+    });
+  });
+  return entries;
+}
+
 // ── VIP matrix ───────────────────────────────────────────────────────────────
 
 function parseVipBlock(block, warn) {
@@ -1213,7 +1307,7 @@ export function parseQuestionBank(rawText) {
     // Cut the raw semester papers out first: their "### Spring 2017"
     // sub-headings are not TOPIC sections and must not split anything.
     const papersSection = extractSemesterPapersSection(body);
-    body = papersSection.body;
+    body = stripPoolFieldLines(papersSection.body);
     const semesterPapers = parseSemesterPapers(papersSection.lines, warn, note, masterPool);
     if (!semesterPapers.length) {
       note('No SEMESTER_PAPERS section was found — the semester-wise view will group the merged questions. Use the updated master prompt to get the raw papers exactly as printed.');
@@ -1328,11 +1422,14 @@ export function parseQuestionBank(rawText) {
 
     // Front matter "files: [a.pdf, b.pdf]" — every file the Source cells may point at.
     const files = parseFileList(fields.files || '');
+    const inventoryBlock = blocks.find((block) => block.type === 'inventory');
+    const inventory = inventoryBlock ? parseInventoryBlock(inventoryBlock) : [];
     const data = {
       course: unquote(fields.course || ''),
       title: unquote(fields.title || ''),
       semesters: collectSemesters(parseSemesters(fields.semesters || ''), topics, semesterPapers),
       files,
+      inventory,
       topics,
       semesterPapers,
       vipMatrix,
@@ -1448,6 +1545,9 @@ export function mergeAnalyses(parsedList) {
   let duplicateRows = 0;
   const plan = [];
   const planSeen = new Set();
+  const files = [];
+  const inventory = [];
+  const inventorySeen = new Set();
 
   for (const part of good) {
     const data = part.data;
@@ -1463,6 +1563,17 @@ export function mergeAnalyses(parsedList) {
     (data.semesters || []).forEach((semester) => {
       const key = normName(semester);
       if (key && !semesterList.some((item) => normName(item) === key)) semesterList.push(semester);
+    });
+
+    (data.files || []).forEach((name) => {
+      if (name && !files.some((item) => normName(item) === normName(name))) files.push(name);
+    });
+
+    (data.inventory || []).forEach((entry) => {
+      const key = [normName(entry.semester), normName(entry.exam), normName(entry.file)].join('|');
+      if (inventorySeen.has(key)) return;
+      inventorySeen.add(key);
+      inventory.push({ ...entry, numbers: [...(entry.numbers || [])] });
     });
 
     for (const topic of data.topics) {
@@ -1521,9 +1632,23 @@ export function mergeAnalyses(parsedList) {
 
   // Recompute every topic count from the merged rows.
   for (const topic of topics) recomputeTopic(topic);
-  // Raw papers keep their printed order; only the numbering is made sequential.
+  // Raw papers keep the number printed on the paper. A recovery part adds a
+  // missed question with its own printed number, so put rows back in paper
+  // order — one exam at a time, in the order the exams first appear.
   for (const paper of semesterPapers) {
-    paper.questions.forEach((question, index) => { question.number = index + 1; });
+    const examOrder = [];
+    paper.questions.forEach((question) => {
+      const exam = normName(question.exam);
+      if (!examOrder.includes(exam)) examOrder.push(exam);
+    });
+    paper.questions = paper.questions
+      .map((question, index) => ({ question, index }))
+      .sort((a, b) => (
+        examOrder.indexOf(normName(a.question.exam)) - examOrder.indexOf(normName(b.question.exam))
+        || (a.question.number || 0) - (b.question.number || 0)
+        || a.index - b.index
+      ))
+      .map(({ question }) => question);
   }
 
   const vipMatrix = sortVipMatrix(buildMatrixFromTopics(topics));
@@ -1536,6 +1661,8 @@ export function mergeAnalyses(parsedList) {
     course,
     title,
     semesters: collectSemesters(semesterList, topics, semesterPapers),
+    files,
+    inventory,
     topics,
     semesterPapers,
     vipMatrix,

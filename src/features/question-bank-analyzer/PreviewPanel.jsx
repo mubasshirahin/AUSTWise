@@ -37,7 +37,7 @@ import {
   filterPreviewData,
   PRIORITIES,
 } from './previewAnalytics';
-import OriginalPanel, { SourceFilesPanel } from './OriginalPanel';
+import OriginalPanel from './OriginalPanel';
 import './OriginalPanel.css';
 import { questionImageKey, semesterImageKey } from './qbaImageStore';
 import { isQuestionSolved, questionCheckIds } from './qbaChecklist';
@@ -1539,7 +1539,6 @@ export default function PreviewPanel({
   onToggleChecklist,
   checklistEnabled = false,
   sourceFiles = [],
-  onSourceFiles,
 }) {
   const [selectedTopics, setSelectedTopics] = useState(() => new Set());
   const [mergeTopic, setMergeTopic] = useState('');
@@ -1793,6 +1792,14 @@ export default function PreviewPanel({
     setMergeSelection(new Set());
   };
 
+  // Original modal data: pool text + every paper row for the QID.
+  const originalData = useMemo(() => {
+    if (!originalTarget) return null;
+    const qid = String(originalTarget.qid || '').trim().toUpperCase();
+    const rows = qid ? (qidRows.get(qid) || []) : [];
+    return { qid, questionText: originalTarget.questionText, rows };
+  }, [originalTarget, qidRows]);
+
   if (!data || !analytics.topics.length) {
     return (
       <div className="qba-empty">
@@ -1824,17 +1831,9 @@ export default function PreviewPanel({
     { key: 'approx', label: 'Approximate', value: analytics.approxCount, tone: 'orange' },
   ];
 
-  // Original modal data: pool text + every paper row for the QID.
-  const originalData = useMemo(() => {
-    if (!originalTarget) return null;
-    const qid = String(originalTarget.qid || '').trim().toUpperCase();
-    const rows = qid ? (qidRows.get(qid) || []) : [];
-    return { qid, questionText: originalTarget.questionText, rows };
-  }, [originalTarget, qidRows]);
 
   return (
     <div className="qba-dash">
-      <SourceFilesPanel files={data.files || []} onFiles={onSourceFiles} />
       <TopicFilter
         topics={topics}
         selectedTopics={selectedTopics}

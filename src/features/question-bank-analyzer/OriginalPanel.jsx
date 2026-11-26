@@ -1,6 +1,6 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Camera, Crop, Download, RefreshCcw, Upload, X } from 'lucide-react';
+import { Camera, Crop, Upload, X } from 'lucide-react';
 import {
   collectQidRows,
   cropRegion,
@@ -60,14 +60,20 @@ export function SourceFilesPanel({ files, onFiles }) {
   };
 
   const needed = Array.isArray(files) ? files : [];
+  const foundCount = needed.filter((name) => matchSourceFile(name, stored)).length;
 
   return (
-    <section className="qba-source-panel" aria-label="Original source files">
+    <section className="qba-source-panel" aria-label="Original papers">
       <header className="qba-source-head">
         <div>
-          <h3>Original source files</h3>
-          <p>Drop the PDFs / images the AI used. They stay in this browser and are never uploaded.</p>
+          <h3>Original papers</h3>
+          <p>The same PDFs / photos you gave the AI. Questions and diagrams are cut from them; they never leave this browser.</p>
         </div>
+        {needed.length ? (
+          <span className={`qba-source-count${foundCount === needed.length ? ' is-done' : ''}`}>
+            {foundCount}/{needed.length}
+          </span>
+        ) : null}
       </header>
       <div
         className={`qba-source-drop${dragOver ? ' is-over' : ''}`}
@@ -97,8 +103,8 @@ export function SourceFilesPanel({ files, onFiles }) {
                 <span className="qba-source-name" title={name}>{name}</span>
                 <span className="qba-source-status">{found ? 'Found' : 'Missing'}</span>
                 {!found && (
-                  <label className="qba-source-pick qba-source-pick-sm">
-                    Select file for {name}
+                  <label className="qba-source-pick qba-source-pick-sm" aria-label={`Upload ${name}`}>
+                    Upload
                     <input
                       type="file"
                       accept=".pdf,.png,.jpg,.jpeg,.webp"
@@ -115,7 +121,9 @@ export function SourceFilesPanel({ files, onFiles }) {
           })}
         </ul>
       ) : (
-        <p className="qba-source-note">This Markdown has no <code>files:</code> line — Original shows text only.</p>
+        <p className="qba-source-note">
+          Add the AI answer first — every file it used is then listed here with its own upload button.
+        </p>
       )}
       {stored.length ? (
         <p className="qba-source-note">
@@ -189,7 +197,6 @@ function AdjustBox({ imageUrl, initialBox, onSave, onReset, onClose, title }) {
         onPointerUp={() => setDrag(null)}
         onPointerCancel={() => setDrag(null)}
       >
-        {/* eslint-disable-next-line jsx-a11y/alt-text */}
         <img src={imageUrl} className="qba-adjust-page" draggable={false} alt="" />
         <div
           className="qba-adjust-box"
@@ -316,7 +323,6 @@ function RegionView({ file, region, override, overrideKeyStr, onSaved }) {
 
   return (
     <figure className="qba-original-shot">
-      {/* eslint-disable-next-line jsx-a11y/alt-text */}
       <img src={url} alt="Original question screenshot" />
       <figcaption>
         <span>{region.file} · p{region.page || 1}</span>

@@ -27,7 +27,14 @@ mid questions, previous semester finals, and other instructions.
 
 STEP 1: List every file I uploaded and tell me what type each is
 (slide / syllabus / quiz / mid / final / other). For every PDF also tell
-me how many pages it has. Wait for my "OK". When I say "OK", go to Step 2.
+me how many pages it has.
+Then write the PAPER INVENTORY: one row for every exam paper you can see
+(every semester and every exam inside every file). For each paper look at
+every page and write the main question numbers PRINTED on it, for example
+1, 2, 3, 4, 5, 6, 7, 8. Count them one by one — this list is the checklist
+that proves nothing was skipped later. Use the PAPER_INVENTORY table shape
+from the FORMAT section below.
+Wait for my "OK". When I say "OK", go to Step 2.
 
 STEP 2: Read ALL files with ZERO omissions. Look at every page as a
 picture, not only at its text layer, because many pages are scanned
@@ -115,8 +122,10 @@ The TOPIC blocks are for study. The teacher's papers must ALSO be
 reproduced raw, exactly as they were printed, in the SEMESTER_PAPERS section
 at the end. For every semester:
   - one row per main question, in the order it appears on that paper;
-  - the "#" column runs 1, 2, 3 ... with NO gaps, NO repeats and NO skipped
-    numbers — every source question gets exactly one row;
+  - the "#" column is the main question number PRINTED on the paper
+    (1, 2, 3 ...). Every number in that paper's PAPER_INVENTORY row must
+    get exactly one row — no number skipped, none written twice. If a
+    paper prints no numbers, count 1, 2, 3 ... in reading order;
   - NEVER merge, deduplicate, relabel or drop anything here — if the same
     question appears twice on the paper, write it twice;
   - the Question cell contains ONE thing only: the reference [QID: nnn] of
@@ -167,6 +176,15 @@ one or more regions. Write each region like this:
 Example of a Source cell with two regions:
   5__Fall_22__5_.pdf :: p2 :: 0.04,0.60,0.96,0.97 ; 5__Fall_22__5_.pdf :: p3 :: 0.04,0.03,0.96,0.30
 
+RULE 10 — SELF-AUDIT BEFORE YOU FINISH:
+Go through the PAPER_INVENTORY one row at a time. For every printed
+question number in that row, find its row in SEMESTER_PAPERS (same
+semester, same exam, same #). If any number is missing, go back, read that
+page again as a picture and add the question — to the MASTER QUESTION
+POOL, to its TOPIC block and to SEMESTER_PAPERS. Only then write the
+PAPER_INVENTORY section at the very end. My website runs the same check and
+shows the student every number you missed.
+
 ═══════════════════
 OUTPUT RULES (STRICT)
 ═══════════════════
@@ -190,7 +208,8 @@ OUTPUT RULES (STRICT)
   In SEMESTER_PAPERS, repeat the current "### <semester>" heading and the
   table header before the resumed rows.
 - Output order: MASTER QUESTION POOL, then ALL topic blocks, then
-  VIP_MATRIX, then STUDY_PLAN, then SEMESTER_PAPERS.
+  VIP_MATRIX, then STUDY_PLAN, then SEMESTER_PAPERS, then PAPER_INVENTORY
+  (the same table you wrote in Step 1, corrected if you found more).
 
 ═══════
 FORMAT
@@ -245,7 +264,16 @@ QID reference; Times is how many past papers this exact question appeared in.)
 
 (Repeat one ### block for every semester, oldest semester first. Every row is
 one printed question with only its QID reference and its Source. Sub-parts stay
-inside the pool entry, so they are never written again here.)`;
+inside the pool entry, so they are never written again here.)
+
+## PAPER_INVENTORY
+
+| Semester | Exam | File | Questions on paper | Question numbers |
+|----------|------|------|--------------------|------------------|
+| Spring 2022 | Final | 6__Spring_22__4_.pdf | 8 | 1, 2, 3, 4, 5, 6, 7, 8 |
+
+(One row per exam paper. "Questions on paper" is how many main questions are
+printed; "Question numbers" lists every printed number.)`;
 }
 
 export default buildPrompt;

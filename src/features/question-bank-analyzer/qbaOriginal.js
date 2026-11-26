@@ -225,7 +225,10 @@ export async function cropRegion(file, region) {
       canvas.width = Math.round(cropW * scale);
       canvas.height = Math.round(cropH * scale);
     }
-    const transform = [scale, 0, 0, scale, -cropX * scale, -(pageH - cropY - cropH) * scale];
+    // The viewport already turns PDF space (y up) into canvas space (y down,
+    // origin top-left), so this extra transform only scales and shifts the
+    // crop's top-left corner to (0, 0).
+    const transform = [scale, 0, 0, scale, -cropX * scale, -cropY * scale];
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -258,6 +261,34 @@ export async function cropRegion(file, region) {
   }
 
   throw new Error('Only PDF and image files can be cropped.');
+}
+
+/** How many pages a stored source file has (images count as one page). */
+export async function getPageCount(file) {
+  const isPdf = /\.pdf$/i.test(file?.name || '') || file?.type === 'application/pdf';
+  if (!isPdf) return 1;
+  const { pdf } = await getPdfDocument(file);
+  return pdf.numPages;
+}
+
+/**
+ * Plain text of a PDF or text file the student picked (a syllabus), read in
+ * the browser. Scanned PDFs have no text layer and return ''.
+ */
+export async function extractFileText(rawFile, maxPages = 30) {
+  if (!rawFile) return '';
+  const isPdf = /\.pdf$/i.test(rawFile.name || '') || rawFile.type === 'application/pdf';
+  if (!isPdf) return rawFile.text();
+  const pdfjs = await getPdfjs();
+  const pdf = await pdfjs.getDocument({ data: await rawFile.arrayBuffer() }).promise;
+  const pages = [];
+  for (let number = 1; number <= Math.min(pdf.numPages, maxPages); number += 1) {
+    const page = await pdf.getPage(number);
+    const content = await page.getTextContent();
+    pages.push(content.items.map((item) => item.str || '').join(' '));
+    page.cleanup();
+  }
+  return pages.join('\n');
 }
 
 /** Render a whole page (for Adjust mode) at a readable scale. */

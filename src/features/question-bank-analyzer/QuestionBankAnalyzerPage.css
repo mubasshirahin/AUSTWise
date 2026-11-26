@@ -21,6 +21,16 @@
      · all motion collapses under prefers-reduced-motion
    ════════════════════════════════════════════════════════════════════════════ */
 
+.qba-widget,
+.qba-original-backdrop {
+  /* House style: the analyzer speaks in the active theme's accent. Every
+     older rule written against cyan follows it through this remap. */
+  --accent-cyan: var(--accent-amber);
+  --accent-cyan-glow: var(--accent-amber-glow);
+  --qba-micro: 0.75rem;
+  --qba-label: 0.8125rem;
+}
+
 .qba-widget {
   /* Component-local scale. Keeps the page on a strict 12px floor without
      reaching into the global token set used by every other feature. */
@@ -54,137 +64,6 @@
   flex-direction: column;
 }
 
-.qba-widget .schedule-dotted-divider {
-  height: 1px;
-  border: 0;
-  margin: var(--sp-4) 0 var(--sp-5);
-  background: linear-gradient(
-    90deg,
-    var(--border-primary) 0%,
-    var(--border-primary) 55%,
-    transparent 100%
-  );
-}
-
-/* ── study progress ---------------------------------------------------------
-   A single live bar above the tabs. It reflects the Topic-wise question list
-   (merged rows count once) and is mirrored to the server as each box is
-   ticked. */
-
-.qba-progress {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 0 0 var(--sp-4);
-  padding: 11px 14px;
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg);
-  background:
-    linear-gradient(120deg, var(--accent-emerald-glow, rgba(62, 207, 142, 0.1)), transparent 55%),
-    var(--bg-card);
-}
-
-.qba-progress-icon {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 34px;
-  height: 34px;
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md);
-  background: var(--bg-input);
-  color: var(--accent-emerald);
-}
-
-.qba-progress-main {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-
-.qba-progress-line {
-  display: flex;
-  align-items: baseline;
-  gap: 9px;
-  min-width: 0;
-  flex-wrap: wrap;
-}
-
-.qba-progress-count {
-  color: var(--text-primary);
-  font-size: 0.88rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.01em;
-}
-
-.qba-progress-pct {
-  color: var(--accent-emerald);
-  font-size: 0.82rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
-.qba-progress-pending {
-  color: var(--text-secondary);
-  font-size: 0.74rem;
-  font-weight: 600;
-}
-
-.qba-progress-track {
-  position: relative;
-  width: 100%;
-  height: 7px;
-  overflow: hidden;
-  border-radius: var(--radius-full);
-  background: var(--bg-input);
-  box-shadow: inset 0 0 0 1px var(--border-primary);
-}
-
-.qba-progress-fill {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--accent-emerald), var(--accent-cyan));
-  transition: width 0.35s var(--qba-ease, ease);
-}
-
-.qba-progress-side {
-  display: flex;
-  flex: none;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-}
-
-.qba-progress-sync {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--text-secondary);
-  font-size: 0.68rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.qba-progress-retry {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--accent-amber);
-  font-size: 0.68rem;
-  font-weight: 800;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-.qba-progress-retry:focus-visible {
-  outline: 2px solid var(--accent-amber);
-  outline-offset: 2px;
-}
-
 .qba-admin-access-page {
   display: grid;
   gap: 14px;
@@ -193,99 +72,24 @@
   padding: 24px;
 }
 
-@media (max-width: 640px) {
-  .qba-progress {
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .qba-progress-main {
-    flex-basis: calc(100% - 50px);
-  }
-
-  .qba-progress-side {
-    width: 100%;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    padding-left: 46px;
-  }
-}
-
-/* ── masthead ───────────────────────────────────────────────────────────────
-   A thin accent cap sits above the wordmark. It is the page's one loud
-   gesture; everything below stays quiet. */
-
-.qba-masthead {
-  grid-template-columns: 1fr auto;
-  position: relative;
-  padding-top: var(--sp-4);
-}
-
-.qba-masthead::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 2px;
-  background: var(--qba-cap-hair);
-  opacity: 0.55;
-}
-
-.qba-masthead .schedule-icon-tile {
-  background: var(--bg-tertiary);
-  color: var(--accent-cyan);
-  box-shadow:
-    inset 0 0 0 1px var(--border-primary),
-    0 0 0 4px var(--accent-cyan-glow);
-}
-
-.qba-masthead .schedule-subtitle {
-  max-width: min(62vw, 560px);
-  color: var(--text-secondary);
-}
-
 /* ── steps ──────────────────────────────────────────────────────────────────
-   Three cards on one vertical rhythm. Each carries a hairline cap that reads
-   as a measurement tick rather than a decoration. */
+   One card; the three steps are sections split by a hairline. */
 
 .qba-steps {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-4);
+  padding: 0;
+  overflow: hidden;
 }
 
 .qba-step {
   position: relative;
-  padding: var(--sp-5) var(--sp-5) var(--sp-6);
-  transition:
-    border-color var(--qba-ease),
-    box-shadow var(--qba-ease),
-    transform var(--qba-ease);
+  padding: var(--sp-5);
 }
 
-.qba-step::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 1px;
-  background: var(--qba-cap-hair);
-  opacity: 0.28;
-  transition: opacity var(--qba-ease);
-  pointer-events: none;
-}
-
-.qba-step:hover::before,
-.qba-step:focus-within::before {
-  opacity: 0.85;
-}
-
-.qba-step:hover {
-  border-color: var(--border-secondary);
-  transform: translateY(-1px);
-}
-
-.qba-step:focus-within {
-  border-color: var(--border-focus);
+.qba-step + .qba-step,
+.qba-step + .qbi-gate {
+  border-top: var(--qba-hair);
 }
 
 .qba-step-head {
@@ -295,33 +99,20 @@
   margin-bottom: var(--sp-4);
 }
 
-/* Sealed numeral: a ring with an inner surface, so it reads as a stamped
-   index rather than a plain circle. */
+/* The steps really are a sequence, so the numbers stay — small and plain. */
 .qba-step-num {
-  width: 30px;
-  height: 30px;
-  min-width: 30px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  border: 1px solid color-mix(in srgb, var(--accent-amber) 55%, transparent);
   border-radius: var(--radius-full);
-  border: 1px solid var(--border-primary);
-  background: var(--bg-tertiary);
-  color: var(--accent-cyan);
+  color: var(--accent-amber);
   font-size: var(--qba-micro);
-  font-weight: var(--fw-black);
+  font-weight: var(--fw-bold);
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  box-shadow: inset 0 0 0 3px var(--bg-card);
-  transition: border-color var(--qba-ease), box-shadow var(--qba-ease);
-}
-
-.qba-step:hover .qba-step-num,
-.qba-step:focus-within .qba-step-num {
-  border-color: var(--accent-cyan);
-  box-shadow:
-    inset 0 0 0 3px var(--bg-card),
-    0 0 0 3px var(--accent-cyan-glow);
 }
 
 .qba-step-title-block {
@@ -529,7 +320,7 @@
   justify-content: center;
   gap: var(--sp-2);
   width: 100%;
-  min-height: 140px;
+  min-height: 120px;
   padding: var(--sp-5) var(--sp-4);
   border: 1px dashed var(--border-primary);
   border-radius: var(--radius-md);
@@ -545,56 +336,12 @@
     box-shadow var(--qba-ease);
 }
 
-.qba-dropzone::before,
-.qba-dropzone::after {
-  content: '';
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  border: 1.5px solid transparent;
-  transition: border-color var(--qba-ease), transform var(--qba-ease);
-  pointer-events: none;
-}
-
-.qba-dropzone::before {
-  top: 8px;
-  left: 8px;
-  border-right: 0;
-  border-bottom: 0;
-  border-top-left-radius: var(--radius-sm);
-}
-
-.qba-dropzone::after {
-  right: 8px;
-  bottom: 8px;
-  border-left: 0;
-  border-top: 0;
-  border-bottom-right-radius: var(--radius-sm);
-}
-
 .qba-dropzone:hover,
 .qba-dropzone:focus-visible {
   border-color: var(--accent-cyan);
   background: var(--bg-card);
   color: var(--text-primary);
   outline: none;
-}
-
-.qba-dropzone:hover::before,
-.qba-dropzone:hover::after,
-.qba-dropzone:focus-visible::before,
-.qba-dropzone:focus-visible::after {
-  border-color: var(--accent-cyan);
-}
-
-.qba-dropzone:hover::before,
-.qba-dropzone:focus-visible::before {
-  transform: translate(-2px, -2px);
-}
-
-.qba-dropzone:hover::after,
-.qba-dropzone:focus-visible::after {
-  transform: translate(2px, 2px);
 }
 
 .qba-dropzone:focus-visible {
@@ -608,18 +355,8 @@
   color: var(--text-primary);
 }
 
-.qba-dropzone-active::before,
-.qba-dropzone-active::after {
-  border-color: var(--accent-cyan);
-}
-
 .qba-dropzone > svg {
   color: var(--accent-cyan);
-  transition: transform var(--qba-ease);
-}
-
-.qba-dropzone:hover > svg {
-  transform: translateY(-2px);
 }
 
 .qba-dropzone-title {
@@ -1481,13 +1218,6 @@
   --qba-hair: 1px solid var(--border-primary);
 }
 
-[data-theme="newsprint"] .qba-masthead::before {
-  height: 3px;
-  opacity: 1;
-  background: var(--text-primary);
-}
-
-[data-theme="newsprint"] .qba-step,
 [data-theme="newsprint"] .qba-stat,
 [data-theme="newsprint"] .qba-dropzone,
 [data-theme="newsprint"] .qba-table-wrap,
@@ -1499,15 +1229,8 @@
   border-radius: 0;
 }
 
-[data-theme="newsprint"] .qba-step:hover,
 [data-theme="newsprint"] .qba-stat:hover {
   transform: none;
-}
-
-[data-theme="newsprint"] .qba-step::before {
-  height: 2px;
-  opacity: 1;
-  background: var(--text-primary);
 }
 
 [data-theme="newsprint"] .qba-stat::before {
@@ -1526,13 +1249,11 @@
 }
 
 /* Cyberpunk — HUD schematic. Neon edges, chamfered corners, scan-reveal caps. */
-[data-theme="cyberpunk"] .qba-step,
 [data-theme="cyberpunk"] .qba-stat {
   border-color: var(--accent-cyan);
   box-shadow: inset 0 0 0 1px var(--accent-cyan-glow);
 }
 
-[data-theme="cyberpunk"] .qba-step::before,
 [data-theme="cyberpunk"] .qba-stat::before {
   opacity: 1;
   box-shadow: 0 0 10px var(--accent-cyan);
@@ -1557,10 +1278,6 @@
 }
 
 /* Sketchbook — hand-drawn. Irregular radii, marker underline, gentle tilt. */
-[data-theme="sketchbook"] .qba-step {
-  border-radius: 18px 6px 16px 8px / 8px 16px 6px 18px;
-}
-
 [data-theme="sketchbook"] .qba-stat {
   border-radius: 6px 14px 8px 12px / 12px 8px 14px 6px;
 }
@@ -1583,7 +1300,6 @@
 }
 
 /* Minimalist monochrome — sharpen everything, single black accent, no glow. */
-[data-theme="minimalist-monochrome"] .qba-step,
 [data-theme="minimalist-monochrome"] .qba-stat,
 [data-theme="minimalist-monochrome"] .qba-dropzone,
 [data-theme="minimalist-monochrome"] .qba-table-wrap,
@@ -1595,7 +1311,6 @@
   border-radius: 0;
 }
 
-[data-theme="minimalist-monochrome"] .qba-step::before,
 [data-theme="minimalist-monochrome"] .qba-stat::before {
   background: var(--text-primary);
   opacity: 1;
@@ -1609,7 +1324,6 @@
   border-color: var(--text-primary);
 }
 
-[data-theme="minimalist-monochrome"] .qba-step:hover,
 [data-theme="minimalist-monochrome"] .qba-stat:hover {
   transform: none;
 }
@@ -1620,81 +1334,17 @@
 }
 
 /* Midnight — deeper surface separation, softer caps than dark. */
-[data-theme="midnight"] .qba-step::before,
 [data-theme="midnight"] .qba-stat::before {
   opacity: 0.35;
 }
 
-[data-theme="midnight"] .qba-step:hover,
 [data-theme="midnight"] .qba-stat:hover {
   border-color: var(--accent-cyan);
-}
-
-/* ── masthead actions ────────────────────────────────────────────────────── */
-
-/* The masthead Clear. A quiet "instrument reset": a hairline ghost by default,
-   it rotates its icon back a quarter turn and warms toward the rose accent on
-   hover, so the destructive intent reads before the click lands. */
-.qba-clear-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
-  padding: 7px 14px;
-  background: transparent;
-  border: var(--qba-hair);
-  border-radius: var(--radius-sm);
-  color: var(--text-secondary);
-  font-family: inherit;
-  font-size: var(--qba-micro);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition:
-    color var(--qba-ease),
-    border-color var(--qba-ease),
-    background var(--qba-ease);
-}
-
-.qba-clear-btn > svg {
-  transition: transform 0.45s var(--qba-ease);
-}
-
-.qba-clear-btn:hover {
-  border-color: var(--accent-rose);
-  color: var(--accent-rose);
-  background: var(--accent-rose-glow);
-}
-
-.qba-clear-btn:hover > svg {
-  transform: rotate(-90deg);
-}
-
-.qba-clear-btn:active {
-  transform: translateY(1px);
-}
-
-.qba-clear-btn:focus-visible {
-  outline: 2px solid var(--accent-rose);
-  outline-offset: 2px;
 }
 
 /* ── responsive ────────────────────────────────────────────────────────────── */
 
 @media (max-width: 760px) {
-  .qba-masthead {
-    grid-template-columns: 1fr;
-  }
-
-  .qba-masthead .schedule-actions {
-    justify-content: flex-start;
-  }
-
-  .qba-masthead .schedule-subtitle {
-    max-width: 100%;
-    white-space: normal;
-  }
-
   .qba-step,
   .qba-preview,
   .qba-help {
@@ -1791,4 +1441,29 @@
   .qba-dropzone:hover > svg {
     transform: none;
   }
+}
+
+
+/* ── house layout: masthead, tabs card, alert notice ─────────────────────── */
+
+.qba-head { margin-bottom: var(--sp-4); }
+
+.qba-tabs-card {
+  margin-bottom: var(--sp-4);
+  padding: var(--sp-2);
+}
+
+.qba-tabs-card .glider-tabs-wrap { width: 100%; }
+
+.qba-notice-alert {
+  align-items: center;
+  border-left-color: var(--accent-rose);
+}
+
+.qba-notice-alert > svg { color: var(--accent-rose); }
+.qba-notice-alert > span { flex: 1; }
+
+@media (max-width: 640px) {
+  .qba-step { padding: var(--sp-4); }
+  .qba-tabs-card { padding: 4px; }
 }

@@ -16,10 +16,12 @@ import {
   History as HistoryIcon,
   Image as ImageIcon,
   Info,
-  ListChecks,
+  LineChart,
   Loader2,
   Printer,
   RotateCcw,
+  ScanSearch,
+  ScrollText,
   Sparkles,
   X,
 } from 'lucide-react';
@@ -41,10 +43,28 @@ import GliderTabs from '../../components/GliderTabs';
 import FeatureAccessGate from '../admin/FeatureAccessGate';
 import { useAuth } from '../../context/AuthContext';
 import SidebarPageAccessPanel, { SidebarPageAccessHeader } from '../admin/SidebarPageAccessPanel';
-import sampleMarkdown from '../../../samples/sample_analysis.md?raw';
+import usePlanAccess from '../../hooks/usePlanAccess';
+import { SourceFilesPanel } from './OriginalPanel';
+import ProGate from './ProGate';
+import TrendsPanel from './TrendsPanel';
+import CoveragePanel from './CoveragePanel';
+import PredictedPaperPanel from './PredictedPaperPanel';
+import useManualQuestions from './qbaManualStore';
+import { buildCoverage, manualQuestionsToMarkdown } from './qbaInsights';
+import { fallbackCopy } from './qbaClipboard';
+import sampleMarkdown from '../../../samples/sample_analysis_demo.md?raw';
+import '../daily-life/DailyMasthead.css';
+import './InsightsPanels.css';
 import './QuestionBankAnalyzerPage.css';
 
 const STORAGE_KEY = 'aust-qba-v1';
+
+/**
+ * Pro gate switch. While false the whole analyzer is open to everyone.
+ * Flip it to true to lock Step 3 and the report behind a paid plan — the
+ * gate (ProGate), the sample tour and the plan check are already wired.
+ */
+const REQUIRES_PRO = false;
 const MAX_FILE_BYTES = 1024 * 1024;
 const ALLOWED_EXTENSIONS = ['.md', '.markdown', '.txt'];
 
@@ -64,31 +84,34 @@ function readStored() {
   }
 }
 
-function fallbackCopy(text) {
-  try {
-    const area = document.createElement('textarea');
-    area.value = text;
-    area.setAttribute('readonly', '');
-    area.style.position = 'fixed';
-    area.style.top = '0';
-    area.style.left = '-9999px';
-    document.body.appendChild(area);
-    area.select();
-    area.setSelectionRange(0, area.value.length);
-    const ok = document.execCommand('copy');
-    document.body.removeChild(area);
-    return ok;
-  } catch {
-    return false;
-  }
-}
-
 function formatBytes(bytes) {
   if (!bytes) return '0 KB';
   if (bytes < 1024) return `${bytes} B`;
   const kb = bytes / 1024;
   return `${kb < 10 ? kb.toFixed(1) : Math.round(kb)} KB`;
 }
+
+/** File names the AI answer says it used ("files: [a.pdf, b.pdf]"). */
+function neededFilesFrom(texts, data) {
+  const names = [];
+  const add = (name) => {
+    const clean = String(name || '').trim().replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').trim();
+    if (clean && !names.some((item) => item.toLowerCase() === clean.toLowerCase())) names.push(clean);
+  };
+  texts.forEach((text) => {
+    const match = String(text || '').match(/^\s*files\s*:\s*\[?([^\]\n]*)\]?\s*$/im);
+    if (match) match[1].split(/,|;/).forEach(add);
+  });
+  (data?.files || []).forEach(add);
+  return names;
+}
+
+const VIEW_TABS = [
+  { id: 'report', label: 'Report', icon: BookOpenCheck },
+  { id: 'coverage', label: 'Coverage', icon: ScanSearch },
+  { id: 'trends', label: 'Trends', icon: LineChart },
+  { id: 'predict', label: 'Predicted paper', icon: ScrollText },
+];
 
 function safeReportData(data, code, title) {
   return {
@@ -140,73 +163,11 @@ function StepHeading({ number, title, hint, icon: Icon }) {
     <div className="qba-step-head">
       <span className="qba-step-num" aria-hidden="true">{number}</span>
       <div className="qba-step-title-block">
-        <h2 className="qba-step-title">
+        <h2 className="qba-step-title" id={`qba-step-${number}`}>
           {Icon ? <Icon size={17} aria-hidden="true" /> : null}
           {title}
         </h2>
         {hint ? <p className="qba-step-hint">{hint}</p> : null}
-      </div>
-    </div>
-  );
-}
-
-function StudyProgress({
-  solved,
-  total,
-  percent,
-  loading = false,
-  saving = false,
-  error = '',
-  onRetry,
-}) {
-  const pending = Math.max(0, total - solved);
-  const status = error
-    ? 'Not synced'
-    : saving
-      ? 'Saving…'
-      : loading
-        ? 'Loading…'
-        : total
-          ? 'Synced to your account'
-          : 'No preview yet';
-
-  return (
-    <div className="qba-progress" role="status" aria-live="polite">
-      <div className="qba-progress-icon" aria-hidden="true">
-        <ListChecks size={18} />
-      </div>
-      <div className="qba-progress-main">
-        <div className="qba-progress-line">
-          <strong className="qba-progress-count">
-            {solved} / {total} Solved
-          </strong>
-          <span className="qba-progress-pct">{percent}%</span>
-          <span className="qba-progress-pending">
-            {pending ? `${pending} pending` : total ? 'All done' : 'Build a preview to start tracking'}
-          </span>
-        </div>
-        <div className="qba-progress-track" aria-hidden="true">
-          <span
-            className="qba-progress-fill"
-            style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
-          />
-        </div>
-      </div>
-      <div className="qba-progress-side">
-        <span className="qba-progress-sync">
-          {saving ? <Loader2 size={12} className="qba-spin" aria-hidden="true" /> : null}
-          {status}
-        </span>
-        {error ? (
-          <button
-            type="button"
-            className="qba-progress-retry"
-            onClick={onRetry}
-            title="Retry saving your progress"
-          >
-            Retry
-          </button>
-        ) : null}
       </div>
     </div>
   );
@@ -254,6 +215,11 @@ function QuestionBankAnalyzer() {
   const [savedCount, setSavedCount] = useState(0);
   const [historyCount, setHistoryCount] = useState(0);
   const [savedEntryId, setSavedEntryId] = useState(null);
+  const { isPaid } = usePlanAccess();
+  const locked = REQUIRES_PRO && !isPaid;
+  // A free visitor can open the built-in sample to see what Pro gives.
+  const [demo, setDemo] = useState(false);
+  const [view, setView] = useState('report');
 
   // Pictures the student attaches to individual questions. They live in the
   // browser (IndexedDB) and are mirrored to the server on every change.
@@ -265,6 +231,14 @@ function QuestionBankAnalyzer() {
   // left the course-code field empty, fall back to the course parsed from the
   // report so the checkboxes still have a stable key.
   const checklist = useQbaChecklist(courseCode || result?.data?.course || '');
+
+  // Questions the student cut out of a page by hand (Coverage tab). They are
+  // fed to the parser as one more Markdown part.
+  const manual = useManualQuestions(courseCode || result?.data?.course || '');
+  const manualMarkdown = useMemo(
+    () => manualQuestionsToMarkdown(manual.entries, { course: courseCode, title: courseTitle }),
+    [manual.entries, courseCode, courseTitle],
+  );
 
   // Load saved count once on mount
   useEffect(() => {
@@ -279,8 +253,9 @@ function QuestionBankAnalyzer() {
 
   const reportData = useMemo(() => {
     if (!result || !result.data) return null;
+    if (demo) return result.data;
     return safeReportData(result.data, courseCode, courseTitle);
-  }, [result, courseCode, courseTitle]);
+  }, [result, courseCode, courseTitle, demo]);
 
   // `buildDisplayData` returns the whole report (topics included) — the preview
   // and the print report read `topics` from it.
@@ -373,13 +348,51 @@ function QuestionBankAnalyzer() {
     return parts;
   }, [files, pasted]);
 
+  /** Parse the AI parts plus the hand-added questions, hiding the noise the
+   *  extra part adds ("Part 3: no VIP matrix…"). */
+  const parseWithManual = useCallback((parts) => {
+    const source = parts.filter((part) => String(part || '').trim());
+    if (!manualMarkdown || !source.length) return parseQuestionBankParts(source.length ? source : parts);
+    const parsed = parseQuestionBankParts([...source, manualMarkdown]);
+    const tag = `Part ${source.length + 1}:`;
+    const keep = (message) => !message.startsWith(tag)
+      && !(source.length === 1 && /^(Parts were merged|Study suggestions were generated)/.test(message));
+    return {
+      ...parsed,
+      warnings: parsed.warnings.filter(keep),
+      notes: parsed.notes.filter(keep),
+    };
+  }, [manualMarkdown]);
+
   const ensureParsed = useCallback(() => {
-    const parsed = parseQuestionBankParts(collectParts());
+    const parsed = parseWithManual(collectParts());
     setResult(parsed);
     setPreviewReady(true);
     setOpenTopics(defaultOpenTopics(parsed.data));
     return parsed;
-  }, [collectParts]);
+  }, [collectParts, parseWithManual]);
+
+  // A question added or removed by hand updates the open report at once.
+  const lastManual = useRef(manualMarkdown);
+  useEffect(() => {
+    if (lastManual.current === manualMarkdown) return;
+    lastManual.current = manualMarkdown;
+    if (!previewReady || demo) return;
+    const parts = collectParts();
+    if (!parts.some((part) => String(part || '').trim())) return;
+    setResult(parseWithManual(parts));
+  }, [manualMarkdown, previewReady, demo, collectParts, parseWithManual]);
+
+  // Files the AI answer points at — the checklist beside the upload box.
+  const neededFiles = useMemo(
+    () => neededFilesFrom(collectParts(), result?.data),
+    [collectParts, result],
+  );
+
+  const coverageSummary = useMemo(
+    () => (displayData?.topics?.length ? buildCoverage(displayData) : null),
+    [displayData],
+  );
 
   /**
    * Record the preview in the server-side History automatically. This is
@@ -451,6 +464,35 @@ function QuestionBankAnalyzer() {
     copyTimer.current = setTimeout(() => setCopied(false), 2200);
   };
 
+  /** The AI's reply to the "missing questions" message becomes one more part. */
+  const handleAddPart = useCallback((text) => {
+    const clean = String(text || '').trim();
+    if (!clean) return;
+    const entry = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: `missing-questions-${files.length + 1}.md`,
+      size: new Blob([clean]).size,
+      text: clean,
+    };
+    const parts = [...files.map((file) => file.text), clean];
+    if (pasted.trim()) parts.push(pasted);
+    const parsed = parseWithManual(parts);
+    setFiles((current) => [...current, entry]);
+    setResult(parsed);
+    setPreviewReady(true);
+    setMergeGroups({});
+    setSavedEntryId(null);
+    setPreviewVersion((version) => version + 1);
+    const left = parsed.data.topics.length ? buildCoverage(parsed.data).missingCount : null;
+    showNotice(
+      left === null
+        ? 'That reply could not be read — paste the whole Markdown block the AI wrote.'
+        : left
+          ? `Added. ${left} printed question${left === 1 ? ' is' : 's are'} still missing.`
+          : 'Added. Every printed question is now in the report.',
+    );
+  }, [files, pasted, parseWithManual, showNotice]);
+
   const handleClear = () => {
     setCourseCode('');
     setCourseTitle('');
@@ -462,6 +504,8 @@ function QuestionBankAnalyzer() {
     setPreviewVersion((version) => version + 1);
     setOpenTopics(new Set());
     setSavedEntryId(null);
+    setDemo(false);
+    setView('report');
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch {
@@ -598,11 +642,27 @@ function QuestionBankAnalyzer() {
   };
 
   const handleLoadSample = () => {
+    const parsed = parseQuestionBankParts([sampleMarkdown]);
+    if (locked) {
+      // Free visitors get a read-only tour; their own fields stay untouched.
+      setDemo(true);
+      setResult(parsed);
+      setPreviewReady(true);
+      setMergeGroups({});
+      setPreviewVersion((version) => version + 1);
+      setOpenTopics(defaultOpenTopics(parsed.data));
+      setView('report');
+      requestAnimationFrame(() => {
+        previewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      return;
+    }
+    const sampleCode = parsed.data.course || 'CSE 3101';
+    const sampleTitle = parsed.data.title || 'Database Management Systems';
     setFiles([]);
     setPasted(sampleMarkdown);
-    setCourseCode('CSE 3101');
-    setCourseTitle('Database Management Systems');
-    const parsed = parseQuestionBankParts([sampleMarkdown]);
+    setCourseCode(sampleCode);
+    setCourseTitle(sampleTitle);
     setResult(parsed);
     setPreviewReady(true);
     setMergeGroups({});
@@ -610,11 +670,12 @@ function QuestionBankAnalyzer() {
     setOpenTopics(defaultOpenTopics(parsed.data));
     setSavedEntryId(null);
     rememberPreview(parsed, sampleMarkdown, {
-      courseCode: 'CSE 3101',
-      courseTitle: 'Database Management Systems',
+      courseCode: sampleCode,
+      courseTitle: sampleTitle,
       mergeGroups: {},
     });
-    showNotice('Sample loaded. Preview is ready — try Download PDF or Quick Download.');
+    setView('report');
+    showNotice('Sample loaded. Open Coverage, Trends and Predicted paper to see everything it does.');
   };
 
   /** Put a History entry back into the Analyzer, ready to view or edit. */
@@ -804,56 +865,66 @@ function QuestionBankAnalyzer() {
 
   return (
     <div className="qba-widget qba-page animate-fadeIn">
-      <div className="schedule-masthead qba-masthead">
-        <div className="schedule-title-block">
-          <div className="schedule-icon-tile">
-            <FileSearch size={22} aria-hidden="true" />
-          </div>
-          <div>
-            <span className="schedule-overline">Study toolkit</span>
-            <p className="schedule-title">Question Bank Analyzer</p>
-            <span className="schedule-subtitle">Past papers in, ranked study plan out — free, with your own AI</span>
+      <header className={`dl-head qba-head${!locked ? ' has-actions' : ''}`}>
+        <div className="dl-head-title">
+          <div className="dl-head-tile" aria-hidden="true"><FileSearch size={20} strokeWidth={2.1} /></div>
+          <div className="dl-head-text">
+            <span className="dl-head-overline">Study toolkit</span>
+            <h1 className="dl-head-name">Question Bank Analyzer</h1>
+            <span className="dl-head-subtitle">Past papers in — topics, trends and a predicted paper out.</span>
           </div>
         </div>
-        <div className="schedule-actions">
-          <button
-            type="button"
-            className="qba-clear-btn"
-            onClick={handleClear}
-            title="Clear saved fields, pasted Markdown and files"
-          >
-            <RotateCcw size={14} aria-hidden="true" />
-            Clear
-          </button>
+        <dl className="dl-head-stats">
+          <div className="dl-head-stat"><dt>Topics</dt><dd>{hasData ? displayData.topics.length : '—'}</dd></div>
+          <div className="dl-head-stat"><dt>Questions</dt><dd>{hasData ? displayData.summary?.totalQuestions ?? progress.total : '—'}</dd></div>
+          <div className="dl-head-stat"><dt>Papers</dt><dd>{hasData ? (displayData.semesterPapers?.length || displayData.semesters?.length || 0) : '—'}</dd></div>
+          <div className={`dl-head-stat${checklist.error ? ' is-alert' : ''}`}>
+            <dt>Solved</dt>
+            <dd>{progress.total && !locked ? `${progress.solved}/${progress.total}` : '—'}</dd>
+          </div>
+        </dl>
+        {!locked ? (
+          <div className="dl-head-actions">
+            <button
+              type="button"
+              className="dl-head-menu-btn"
+              onClick={handleClear}
+              title="Clear the course, the pasted answer and the files"
+              aria-label="Clear the analyzer"
+            >
+              <RotateCcw aria-hidden="true" />
+            </button>
+          </div>
+        ) : null}
+      </header>
+
+      {checklist.error && !locked ? (
+        <div className="qba-notice qba-notice-alert" role="alert">
+          <AlertTriangle size={15} aria-hidden="true" />
+          <span>Your solved ticks are saved on this device but not synced to your account yet.</span>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={checklist.syncNow}>Retry</button>
         </div>
-      </div>
+      ) : null}
 
-      <div className="schedule-dotted-divider" />
-
-      <StudyProgress
-        solved={progress.solved}
-        total={progress.total}
-        percent={progress.percent}
-        loading={checklist.loading}
-        saving={checklist.saving}
-        error={checklist.error}
-        onRetry={checklist.syncNow}
-      />
-
-      <GliderTabs
-        tabs={[
-          { id: 'analyzer', label: 'Analyzer', icon: FileSearch },
-          { id: 'saved', label: savedCount > 0 ? `Saved (${savedCount})` : 'Saved', icon: Bookmark },
-          {
-            id: 'history',
-            label: historyCount > 0 ? `History (${historyCount})` : 'History',
-            icon: HistoryIcon,
-          },
-        ]}
-        activeTab={activeTab}
-        onChange={setActiveTab}
-        compact
-      />
+      {!locked ? (
+        <div className="glass-card-static qba-tabs-card">
+          <GliderTabs
+            tabs={[
+              { id: 'analyzer', label: 'Analyzer', icon: FileSearch },
+              { id: 'saved', label: savedCount > 0 ? `Saved (${savedCount})` : 'Saved', icon: Bookmark },
+              {
+                id: 'history',
+                label: historyCount > 0 ? `History (${historyCount})` : 'History',
+                icon: HistoryIcon,
+              },
+            ]}
+            activeTab={activeTab}
+            onChange={setActiveTab}
+            variant="dashboard"
+            compact
+          />
+        </div>
+      ) : null}
 
       {notice ? (
         <div className="qba-notice" role="status" aria-live="polite">
@@ -878,9 +949,9 @@ function QuestionBankAnalyzer() {
 
       {activeTab === 'analyzer' ? (
       <>
-      <div className="qba-steps">
+      <div className="qba-steps glass-card-static">
         {/* ── Step 1 ─────────────────────────────────────────────────────── */}
-        <section className="qba-step glass-card-static" aria-labelledby="qba-step-1">
+        <section className="qba-step" aria-labelledby="qba-step-1">
           <StepHeading
             number="1"
             title="Course details and master prompt"
@@ -943,11 +1014,11 @@ function QuestionBankAnalyzer() {
         </section>
 
         {/* ── Step 2 ─────────────────────────────────────────────────────── */}
-        <section className="qba-step glass-card-static" aria-labelledby="qba-step-2">
+        <section className="qba-step" aria-labelledby="qba-step-2">
           <StepHeading
             number="2"
             title="What to do inside your AI"
-            hint="ChatGPT, Claude, Gemini or any assistant that can read files. No API key needed."
+            hint="Any AI assistant that can read files. No API key needed."
             icon={Sparkles}
           />
           <ol className="qba-instructions">
@@ -955,36 +1026,42 @@ function QuestionBankAnalyzer() {
               <strong>Paste the copied prompt</strong> into a fresh chat.
             </li>
             <li>
-              <strong>Upload your course files</strong> there: slides, syllabus, quiz questions, mids and previous finals.
+              <strong>Upload your course files</strong> there: every past final and mid, quizzes, and the syllabus.
             </li>
             <li>
-              The AI will list your files first. Reply <strong>OK</strong> so it starts the analysis.
+              The AI lists your files and makes a <strong>paper inventory</strong> — every question number printed on
+              every paper. Check it against your papers, then reply <strong>OK</strong>.
             </li>
             <li>
               If the answer stops in the middle of a table, reply <strong>continue</strong> and keep each part.
             </li>
             <li>
-              Bring the result back as <strong>.md or .txt</strong> — one file, or several parts in order.
+              Bring the result back as <strong>.md or .txt</strong>, and upload the same PDFs here — the site cuts every
+              original question and diagram out of them and checks nothing was skipped.
             </li>
           </ol>
           <div className="qba-callout">
             <Info size={15} aria-hidden="true" />
             <p>
-              Everything here is free and runs in your browser. Your course files go only to the AI you choose —
-              never to AUSTWise.
+              Best results: an AI that can read scanned pages, not just their text. With more than about
+              8 papers, split them over two chats and add both answers — they are merged. Your files go only to the AI
+              you choose and stay in this browser here.
             </p>
           </div>
         </section>
 
         {/* ── Step 3 ─────────────────────────────────────────────────────── */}
-        <section className="qba-step glass-card-static" aria-labelledby="qba-step-3">
+        {locked ? <ProGate onSample={handleLoadSample} /> : (
+        <section className="qba-step" aria-labelledby="qba-step-3">
           <StepHeading
             number="3"
-            title="Add the Markdown and build the report"
-            hint="Drop the AI output here, or paste it directly."
+            title="Upload the AI answer and your original papers"
+            hint="The answer builds the report; the papers give the original questions, diagrams and the coverage check."
             icon={FileUp}
           />
 
+          <div className="qbi-step3-grid">
+          <div className="qbi-step3-col">
           <div className="qba-field">
             <div className="qba-label-row">
               <label htmlFor="qba-file-input">Markdown files</label>
@@ -1099,6 +1176,12 @@ function QuestionBankAnalyzer() {
               Saved automatically in this browser. Keep it here and you can refresh without losing work.
             </p>
           </div>
+          </div>
+
+          <div className="qbi-step3-col">
+            <SourceFilesPanel files={neededFiles} onFiles={setSourceFiles} />
+          </div>
+          </div>
 
           <div className="qba-actions">
             <button type="button" className="btn btn-primary" onClick={handlePreview} disabled={Boolean(busy)}>
@@ -1141,48 +1224,104 @@ function QuestionBankAnalyzer() {
             <strong>Quick Download</strong> paints the report as an image, which is slower but more forgiving.
           </p>
         </section>
+        )}
       </div>
 
       {/* ── Preview ─────────────────────────────────────────────────────── */}
+      {!locked || demo ? (
       <section className="qba-preview glass-card-static" ref={previewRef} aria-labelledby="qba-preview-heading">
         <div className="qba-preview-bar">
-          <h2 id="qba-preview-heading">Preview</h2>
+          <h2 id="qba-preview-heading">{demo ? 'Sample report' : 'Your report'}</h2>
           {previewReady ? <span className="qba-pill">{hasData ? 'Report ready' : 'Needs attention'}</span> : <span className="qba-pill qba-pill-muted">Not built yet</span>}
         </div>
 
+        {demo ? (
+          <div className="qbi-demo-bar" role="status">
+            <Sparkles size={15} aria-hidden="true" />
+            <span>This is a sample course. With Pro you get the same report for your own papers.</span>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setDemo(false); setResult(null); setPreviewReady(false); }}>
+              <X size={14} aria-hidden="true" /> Close sample
+            </button>
+          </div>
+        ) : null}
+
+        {previewReady && result && hasData ? (
+          <div className="qbi-views" role="tablist" aria-label="Report views">
+            {VIEW_TABS.map(({ id, label, icon: Icon }) => {
+              const badge = id === 'coverage' && coverageSummary?.missingCount ? coverageSummary.missingCount : 0;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={view === id}
+                  className={`qbi-view${view === id ? ' is-active' : ''}`}
+                  onClick={() => setView(id)}
+                >
+                  <Icon size={15} aria-hidden="true" />
+                  <span>{label}</span>
+                  {badge ? <span className="qbi-view-badge" title={`${badge} missing`}>{badge}</span> : null}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+
         {previewReady && result ? (
           <>
-            <MessageList kind="error" items={errors} />
-            <MessageList kind="info" items={notes} />
-            <MessageList kind="warning" items={warnings} />
-            <PreviewPanel
-              key={previewVersion}
-              data={displayData}
-              openTopics={openTopics}
-              onToggleTopic={toggleTopic}
-              onFocusTopic={openTopicAndScroll}
-              onRevealTopics={revealTopics}
-              onMergeQuestions={mergeTopicQuestions}
-              onUnmergeQuestions={unmergeTopicQuestions}
-              courseKey={pictures.courseKey}
-              images={questionPictures}
-              onAttachImage={handleAttachPicture}
-              onRemoveImage={handleRemovePicture}
-              checklistItems={checklist.items}
-              checklistEnabled={hasData && checklist.enabled}
-              onToggleChecklist={checklist.toggle}
-              sourceFiles={sourceFiles}
-              onSourceFiles={setSourceFiles}
-            />
+            {view === 'report' || !hasData ? (
+              <>
+                <MessageList kind="error" items={errors} />
+                {!demo ? <MessageList kind="info" items={notes} /> : null}
+                {!demo ? <MessageList kind="warning" items={warnings} /> : null}
+                <PreviewPanel
+                  key={previewVersion}
+                  data={displayData}
+                  openTopics={openTopics}
+                  onToggleTopic={toggleTopic}
+                  onFocusTopic={openTopicAndScroll}
+                  onRevealTopics={revealTopics}
+                  onMergeQuestions={mergeTopicQuestions}
+                  onUnmergeQuestions={unmergeTopicQuestions}
+                  courseKey={pictures.courseKey}
+                  images={questionPictures}
+                  onAttachImage={demo ? undefined : handleAttachPicture}
+                  onRemoveImage={handleRemovePicture}
+                  checklistItems={checklist.items}
+                  checklistEnabled={hasData && checklist.enabled && !demo}
+                  onToggleChecklist={checklist.toggle}
+                  sourceFiles={sourceFiles}
+                />
+              </>
+            ) : null}
+            {view === 'coverage' && hasData ? (
+              <CoveragePanel
+                data={displayData}
+                sourceFiles={sourceFiles}
+                manual={demo ? null : manual}
+                onAddPart={demo ? undefined : handleAddPart}
+              />
+            ) : null}
+            {view === 'trends' && hasData ? <TrendsPanel key={previewVersion} data={displayData} /> : null}
+            {view === 'predict' && hasData ? (
+              <PredictedPaperPanel
+                key={previewVersion}
+                data={displayData}
+                sourceFiles={sourceFiles}
+                course={demo ? displayData.course : courseCode}
+                title={demo ? displayData.title : courseTitle}
+              />
+            ) : null}
           </>
         ) : (
           <div className="qba-empty">
             <FileSearch size={28} aria-hidden="true" />
             <h3>Your analysed question bank will appear here</h3>
-            <p>Add the AI Markdown above, then press <strong>Preview</strong>. Nothing is uploaded to a server.</p>
+            <p>Add the AI answer above, then press <strong>Preview</strong>. Nothing is uploaded to a server.</p>
           </div>
         )}
       </section>
+      ) : null}
 
       {/* ── Common problems ─────────────────────────────────────────────── */}
       <section className="qba-help glass-card-static" aria-labelledby="qba-help-heading">
@@ -1229,6 +1368,14 @@ function QuestionBankAnalyzer() {
               That is a warning, not an error. Missing Exam, Semester, Marks or Times cells are filled with <code>-</code>,
               and a missing Times cell is counted once. You can still download the report, but ask the AI to resend the
               table with every column for a cleaner result.
+            </p>
+          </details>
+          <details>
+            <summary>The AI skipped some questions</summary>
+            <p>
+              Open the <strong>Coverage</strong> tab. It compares the AI’s paper inventory with the questions it wrote
+              and names every missing number. Copy the message it gives you into the same chat and paste the reply back —
+              or open the page, draw a box around the question and add it yourself.
             </p>
           </details>
           <details>
