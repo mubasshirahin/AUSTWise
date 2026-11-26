@@ -545,9 +545,26 @@ function stripCodeFences(text) {
     ) || fenced.reduce((a, b) => (b[1].length > a[1].length ? b : a));
     return best[1];
   }
-  // Unterminated opening fence (truncated AI response).
-  const open = text.match(/(?:```|~~~)[^\n]*\n([\s\S]*)$/);
-  return open ? open[1] : text;
+  // A single fence: either an opening fence of a truncated answer, or a stray
+  // closing fence some chat apps print after the analysis ("```[cite: 1]").
+  // Keep whichever side actually holds the analysis.
+  const lone = text.match(/(?:```|~~~)[^\n]*(?:\n|$)/);
+  if (!lone) return text;
+  const before = text.slice(0, lone.index);
+  const after = text.slice(lone.index + lone[0].length);
+  const score = (part) => (looksLikeAnalysis(part) ? part.trim().length : 0);
+  return score(after) > score(before) ? after : before;
+}
+
+function looksLikeAnalysis(part) {
+  return /(^|\n)\s*#{1,6}\s*(TOPIC\b|VIP[\s_-]*MATRIX\b|SEMESTER[\s_-]*PAPERS\b)/i.test(part)
+    || /\[QID:\s*[A-Z]?\d+\]/i.test(part)
+    || /(^|\n)\s*---\s*\n[\s\S]*?\bcourse\s*:/i.test(part);
+}
+
+/** Citation markers some chat apps leave in copied answers: [cite: 1, 2], [cite_start]. */
+function stripCitationMarkers(text) {
+  return text.replace(/\[cite(?:_start|_end)?(?::[^\]\n]*)?\]/gi, '');
 }
 
 function unquote(value) {
@@ -817,6 +834,7 @@ function parseTopicBlock(block, warn, note, masterPool = null) {
   let shortRows = 0;
   rows.forEach((row, rowIndex) => {
     if (header && row.length < header.length) shortRows += 1;
+    const qid = extractQidRef(cellAt(row, indices.question));
     let rawQuestion = cleanQuestion(cellAt(row, indices.question));
     if (masterPool?.size) {
       rawQuestion = cleanQuestion(expandQidReferences(rawQuestion, masterPool));
@@ -853,6 +871,7 @@ function parseTopicBlock(block, warn, note, masterPool = null) {
 
     questions.push({
       number,
+      ...(qid ? { qid } : {}),
       question,
       exam: normalizeExam(cellAt(row, indices.exam)),
       semester: normalizeSemester(cellAt(row, indices.semester)),
@@ -1274,7 +1293,7 @@ export function parseQuestionBank(rawText) {
     }
 
     let text = rawText.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
-    text = stripCodeFences(text);
+    text = stripCodeFences(stripCitationMarkers(text));
 
     const frontMatter = extractFrontMatter(text);
     let body = frontMatter.body;

@@ -224,6 +224,24 @@ describe('parseQuestionBank — code fences', () => {
     expect(data.course).toBe('CSE 3101');
     expect(data.topics).toHaveLength(3);
   });
+
+  it('ignores a stray closing fence with citation markers after the analysis', () => {
+    const { data, errors } = parseQuestionBank(`${CLEAN}\n\`\`\`[cite: 1, 2, 3]\n`);
+    expect(errors).toEqual([]);
+    expect(data.course).toBe('CSE 3101');
+    expect(data.topics).toHaveLength(3);
+  });
+
+  it('still reads a truncated answer that only has an opening fence', () => {
+    const { data } = parseQuestionBank(`Here you go:\n\`\`\`markdown\n${CLEAN}`);
+    expect(data.course).toBe('CSE 3101');
+    expect(data.topics).toHaveLength(3);
+  });
+
+  it('drops inline citation markers', () => {
+    const { data } = parseQuestionBank(CLEAN.replace('CSE 3101', 'CSE 3101 [cite: 4]'));
+    expect(data.course).toBe('CSE 3101');
+  });
 });
 
 describe('parseQuestionBank — casing and whitespace', () => {

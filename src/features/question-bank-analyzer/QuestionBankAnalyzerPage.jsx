@@ -45,6 +45,7 @@ import { useAuth } from '../../context/AuthContext';
 import SidebarPageAccessPanel, { SidebarPageAccessHeader } from '../admin/SidebarPageAccessPanel';
 import usePlanAccess from '../../hooks/usePlanAccess';
 import { SourceFilesPanel } from './OriginalPanel';
+import { matchSourceFile } from './qbaOriginal';
 import ProGate from './ProGate';
 import TrendsPanel from './TrendsPanel';
 import CoveragePanel from './CoveragePanel';
@@ -133,7 +134,7 @@ function waitForPaint() {
   });
 }
 
-function MessageList({ kind, items }) {
+function MessageList({ kind, items, picturesReady = false }) {
   if (!items || !items.length) return null;
   const isError = kind === 'error';
   const isInfo = kind === 'info';
@@ -141,7 +142,7 @@ function MessageList({ kind, items }) {
   const title = isError
     ? 'This report could not be built'
     : isInfo
-      ? 'Pictures to add'
+      ? (picturesReady ? 'Diagrams' : 'Pictures to add')
       : 'Warnings — some things were fixed automatically';
   return (
     <div className={`qba-messages qba-messages-${kind}`} role={isError ? 'alert' : 'status'}>
@@ -861,7 +862,22 @@ function QuestionBankAnalyzer() {
   const hasData = Boolean(displayData && displayData.topics.length);
   const warnings = result?.warnings || [];
   const errors = result?.errors || [];
-  const notes = result?.notes || [];
+  // With every paper uploaded, the diagrams are cut from the papers, so the
+  // "attach a picture" notes become one line saying where to find them.
+  const papersReady = neededFiles.length > 0
+    && neededFiles.every((name) => matchSourceFile(name, sourceFiles));
+  const notes = (() => {
+    const all = result?.notes || [];
+    if (!papersReady) return all;
+    const figureNote = /had a picture in the source/i;
+    const total = (all.find((message) => /raw questions? in the semester papers/i.test(message)) || '').match(/\d+/);
+    const rest = all.filter((message) => !figureNote.test(message));
+    if (rest.length === all.length) return all;
+    return [
+      `${total ? total[0] : 'Some'} questions have a diagram or table. Each one is cut from your uploaded papers and shown under the question.`,
+      ...rest,
+    ];
+  })();
 
   return (
     <div className="qba-widget qba-page animate-fadeIn">
@@ -1272,7 +1288,7 @@ function QuestionBankAnalyzer() {
             {view === 'report' || !hasData ? (
               <>
                 <MessageList kind="error" items={errors} />
-                {!demo ? <MessageList kind="info" items={notes} /> : null}
+                {!demo ? <MessageList kind="info" items={notes} picturesReady={papersReady} /> : null}
                 {!demo ? <MessageList kind="warning" items={warnings} /> : null}
                 <PreviewPanel
                   key={previewVersion}

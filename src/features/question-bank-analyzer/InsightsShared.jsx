@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Check, Copy, ImageOff, Loader2 } from 'lucide-react';
 import { cropRegion, getOverrides, matchSourceFile, overrideKey } from './qbaOriginal';
 import { TREND_HINTS, TREND_LABELS } from './qbaInsights';
@@ -6,6 +6,10 @@ import { copyText } from './qbaClipboard';
 
 /* Adjust-mode box corrections, read once per page visit. */
 let overridesPromise = null;
+/** Forget the cached corrections, e.g. after the student fixed a crop. */
+export function resetCropOverrides() {
+  overridesPromise = null;
+}
 function loadOverrides() {
   if (!overridesPromise) overridesPromise = getOverrides().catch(() => ({}));
   return overridesPromise;
@@ -15,8 +19,23 @@ function loadOverrides() {
  * The original question, cut out of the student's own PDF/image in the
  * browser. Shows nothing when the file was never uploaded.
  */
-export function CropImage({ regions = [], sourceFiles = [], semester = '', number = 0, alt = 'Original question', missingHint = true }) {
+export function CropImage({ regions = [], sourceFiles = [], semester = '', number = 0, alt = 'Original question', missingHint = true, refreshKey = 0, eager = false }) {
   const [state, setState] = useState({ status: 'idle', urls: [], missing: '' });
+  // Cut only what is on (or near) the screen: a closed topic or paper card
+  // has no size, so its crops wait until the student opens it.
+  const slotRef = useRef(null);
+  const [seen, setSeen] = useState(() => eager || typeof IntersectionObserver === 'undefined');
+  useEffect(() => {
+    if (seen || !slotRef.current) return undefined;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        setSeen(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: '600px 0px' });
+    observer.observe(slotRef.current);
+    return () => observer.disconnect();
+  }, [seen]);
   const boxRegions = regions.filter((region) => region && (region.kind === 'box' || region.kind === 'bare'));
   const signature = JSON.stringify(boxRegions.map((region) => [region.file, region.page, region.box]))
     + sourceFiles.map((file) => `${file.name}:${file.size}`).join(',');
@@ -24,6 +43,7 @@ export function CropImage({ regions = [], sourceFiles = [], semester = '', numbe
   useEffect(() => {
     let cancelled = false;
     const created = [];
+    if (!seen) return undefined;
     if (!boxRegions.length) {
       setState({ status: 'none', urls: [], missing: '' });
       return undefined;
@@ -57,9 +77,10 @@ export function CropImage({ regions = [], sourceFiles = [], semester = '', numbe
       created.forEach((url) => URL.revokeObjectURL(url));
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signature, semester, number]);
+  }, [signature, semester, number, refreshKey, seen]);
 
-  if (state.status === 'none' || state.status === 'idle') return null;
+  if (state.status === 'idle') return <div ref={slotRef} className="qbi-crop-slot" aria-hidden="true" />;
+  if (state.status === 'none') return null;
   if (state.status === 'missing') {
     return missingHint ? (
       <p className="qbi-crop-hint">

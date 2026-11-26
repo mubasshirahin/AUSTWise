@@ -64,14 +64,6 @@ function openDb() {
   });
 }
 
-function tx(store, mode) {
-  return openDb().then((db) => new Promise((resolve, reject) => {
-    const request = db.transaction(store, mode).objectStore(store);
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  }));
-}
-
 /** Store a File/Blob under its file name. */
 export async function storeSourceFile(file) {
   if (!file || !file.name) throw new Error('No file given.');
@@ -188,11 +180,73 @@ function cropScale(cropWidthPx, targetWidth = 1400) {
   return Math.min(4, Math.max(1, scale));
 }
 
+// A report can ask for dozens of crops at once (topic view + paper view).
+// Render at most two at a time and keep recent results, so the same crop is
+// never cut twice and a phone is not asked to paint 40 pages at once.
+const MAX_PARALLEL_CROPS = 2;
+const MAX_CACHED_CROPS = 48;
+const cropCache = new Map(); // key -> Promise<Blob>
+const cropQueue = [];
+let activeCrops = 0;
+
+function pumpCropQueue() {
+  while (activeCrops < MAX_PARALLEL_CROPS && cropQueue.length) {
+    const { task, resolve, reject } = cropQueue.shift();
+    activeCrops += 1;
+    task().then(resolve, reject).finally(() => {
+      activeCrops -= 1;
+      pumpCropQueue();
+    });
+  }
+}
+
+function queueCrop(task) {
+  return new Promise((resolve, reject) => {
+    cropQueue.push({ task, resolve, reject });
+    pumpCropQueue();
+  });
+}
+
+function cropKey(file, region) {
+  const box = region.kind === 'box' && Array.isArray(region.box) ? region.box.join(',') : 'page';
+  return `${file.name}|${file.size}|${region.kind === 'box' ? region.page : 1}|${box}`;
+}
+
+/** The crop as an image Blob, shared between every view that asks for it. */
+export function cropRegionBlob(file, region) {
+  const key = cropKey(file, region);
+  const cached = cropCache.get(key);
+  if (cached) {
+    cropCache.delete(key);
+    cropCache.set(key, cached);
+    return cached;
+  }
+  const promise = queueCrop(() => renderCropBlob(file, region));
+  promise.catch(() => cropCache.delete(key));
+  cropCache.set(key, promise);
+  while (cropCache.size > MAX_CACHED_CROPS) {
+    cropCache.delete(cropCache.keys().next().value);
+  }
+  return promise;
+}
+
 /**
- * Render one region to a blob URL. Returns { url, page, box, notice } or
- * throws an Error with a user-facing message.
+ * Render one region to a blob URL (the caller revokes it), or throw an Error
+ * with a user-facing message.
  */
 export async function cropRegion(file, region) {
+  return URL.createObjectURL(await cropRegionBlob(file, region));
+}
+
+function canvasToBlob(canvas) {
+  // JPEG keeps a scanned page around a tenth of the PNG size.
+  return new Promise((resolve, reject) => canvas.toBlob((blob) => {
+    if (!blob) reject(new Error('Crop failed.'));
+    else resolve(blob);
+  }, 'image/jpeg', 0.9));
+}
+
+async function renderCropBlob(file, region) {
   const box = [0, 0, 1, 1];
   if (region.kind === 'box' && Array.isArray(region.box)) {
     box.splice(0, 4, ...region.box);
@@ -234,10 +288,7 @@ export async function cropRegion(file, region) {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     await pdfPage.render({ canvasContext: ctx, viewport, transform }).promise;
     pdfPage.cleanup();
-    return new Promise((resolve, reject) => canvas.toBlob((blob) => {
-      if (!blob) reject(new Error('Crop failed.'));
-      else resolve(URL.createObjectURL(blob));
-    }, 'image/png'));
+    return canvasToBlob(canvas);
   }
 
   if (isImage) {
@@ -254,10 +305,8 @@ export async function cropRegion(file, region) {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(bitmap, x1 * imgW, y1 * imgH, cropW, cropH, 0, 0, canvas.width, canvas.height);
-    return new Promise((resolve, reject) => canvas.toBlob((blob) => {
-      if (!blob) reject(new Error('Crop failed.'));
-      else resolve(URL.createObjectURL(blob));
-    }, 'image/png'));
+    bitmap.close?.();
+    return canvasToBlob(canvas);
   }
 
   throw new Error('Only PDF and image files can be cropped.');

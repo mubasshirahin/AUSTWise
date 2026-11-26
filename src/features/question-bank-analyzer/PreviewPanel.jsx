@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, Fragment, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Award,
@@ -38,6 +38,8 @@ import {
   PRIORITIES,
 } from './previewAnalytics';
 import OriginalPanel from './OriginalPanel';
+import { CropImage, resetCropOverrides } from './InsightsShared';
+import { matchSourceFile } from './qbaOriginal';
 import './OriginalPanel.css';
 import { questionImageKey, semesterImageKey } from './qbaImageStore';
 import { isQuestionSolved, questionCheckIds } from './qbaChecklist';
@@ -830,6 +832,72 @@ function QuestionTextBody({
   );
 }
 
+/* Source files + QID -> paper rows, shared by every question card. */
+const OriginalContext = createContext({ qidRows: null, sourceFiles: [], refreshKey: 0 });
+
+function hasCropRegion(row) {
+  return (row?.sourceRegions || []).some((region) => region && (region.kind === 'box' || region.kind === 'bare'));
+}
+
+/**
+ * The real exam question, cut out of the student's own paper. Questions
+ * with a figure open it by default; the rest show it on request.
+ */
+function QuestionOriginal({ question, qid, onOpenFull }) {
+  const { qidRows, sourceFiles, refreshKey } = useContext(OriginalContext);
+  const key = String(qid || '').trim().toUpperCase();
+  const rows = (key && qidRows?.get(key)) || [];
+  const ownRow = Array.isArray(question?.sourceRegions) && question.sourceRegions.length
+    ? { semester: question.semester || '', n: question.number, sourceRegions: question.sourceRegions }
+    : null;
+  const row = rows.find(hasCropRegion) || (hasCropRegion(ownRow) ? ownRow : null);
+  const [open, setOpen] = useState(Boolean(question?.needsFigure));
+
+  if (!row) {
+    return onOpenFull ? (
+      <div className="qba-q-original">
+        <div className="qba-q-original-bar">
+          <button type="button" className="qba-original-btn" onClick={onOpenFull}>
+            <Camera size={13} aria-hidden="true" /> Original
+          </button>
+        </div>
+      </div>
+    ) : null;
+  }
+
+  const fileReady = row.sourceRegions.some((region) => matchSourceFile(region.file, sourceFiles));
+  return (
+    <div className="qba-q-original">
+      <div className="qba-q-original-bar">
+        <button
+          type="button"
+          className={`qba-original-btn${open ? ' is-active' : ''}`}
+          aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}
+        >
+          <Camera size={13} aria-hidden="true" />
+          {open ? 'Hide original' : 'Show original'}
+        </button>
+        {open && fileReady && onOpenFull ? (
+          <button type="button" className="qba-q-original-fix" onClick={onOpenFull}>
+            <Maximize2 size={12} aria-hidden="true" /> Fix crop
+          </button>
+        ) : null}
+      </div>
+      {open ? (
+        <CropImage
+          regions={row.sourceRegions}
+          sourceFiles={sourceFiles}
+          semester={row.semester}
+          number={row.n}
+          refreshKey={refreshKey}
+          alt={`Original question${row.semester ? ` from ${row.semester}` : ''}`}
+        />
+      ) : null}
+    </div>
+  );
+}
+
 function QuestionCard({
   question,
   topic,
@@ -990,13 +1058,11 @@ function QuestionCard({
               showTopic={false}
               sourceRefs={sourceRefsOf(imageKey)}
             />
-            {onOpenOriginal ? (
-              <div style={{ marginTop: 8 }}>
-                <button type="button" className="qba-original-btn" onClick={() => onOpenOriginal(qidLabel, question.question)}>
-                  <Camera size={13} aria-hidden="true" /> Original
-                </button>
-              </div>
-            ) : null}
+            <QuestionOriginal
+              question={question}
+              qid={qidLabel}
+              onOpenFull={onOpenOriginal ? () => onOpenOriginal(qidLabel, question.question) : undefined}
+            />
           </>
         ) : (
           <>
@@ -1156,7 +1222,6 @@ function TopicAccordion({
   checklistEnabled = false,
   onToggleChecklist,
   highlightKey = '',
-  qidRows = null,
   onOpenOriginal,
 }) {
   return (
@@ -1172,7 +1237,11 @@ function TopicAccordion({
         const canMerge = selectedCount >= 2;
         // Newest questions first: the syllabus closest to the current term is
         // what the student is most likely to face again.
-        const orderedQuestions = [...topic.questions].sort(
+        // Pin each row's position in the topic BEFORE sorting: picture slots
+        // and paper references are keyed by it, not by the display order.
+        const orderedQuestions = topic.questions.map((question, position) => (
+          question.originalIndex === undefined ? { ...question, originalIndex: position } : question
+        )).sort(
           (first, second) => compareSemestersDesc(
             latestSemesterOf(first),
             latestSemesterOf(second),
@@ -1545,6 +1614,7 @@ export default function PreviewPanel({
   const [mergeSelection, setMergeSelection] = useState(() => new Set());
   const [lightbox, setLightbox] = useState(null);
   const [originalTarget, setOriginalTarget] = useState(null); // { qid, questionText }
+  const [cropRefresh, setCropRefresh] = useState(0);
   const [highlightKey, setHighlightKey] = useState('');
   const pictureInputRef = useRef(null);
   const pendingKeyRef = useRef({ imageKey: '', kind: 'question' });
@@ -1646,7 +1716,7 @@ export default function PreviewPanel({
         ...paper,
         questions: (Array.isArray(paper.questions) ? paper.questions : []).map((question, index) => {
           const legacyKey = semesterImageKey(courseKey, paper.semester, index);
-          const match = matchIndex.match(question.question);
+          const match = matchIndex.match(question.question, question.qid);
           if (match) {
             return {
               ...question,
@@ -1792,6 +1862,11 @@ export default function PreviewPanel({
     setMergeSelection(new Set());
   };
 
+  const originalContext = useMemo(
+    () => ({ qidRows, sourceFiles: sourceFiles || [], refreshKey: cropRefresh }),
+    [qidRows, sourceFiles, cropRefresh],
+  );
+
   // Original modal data: pool text + every paper row for the QID.
   const originalData = useMemo(() => {
     if (!originalTarget) return null;
@@ -1833,6 +1908,7 @@ export default function PreviewPanel({
 
 
   return (
+    <OriginalContext.Provider value={originalContext}>
     <div className="qba-dash">
       <TopicFilter
         topics={topics}
@@ -2126,7 +2202,6 @@ export default function PreviewPanel({
           checklistEnabled={checklistEnabled}
           onToggleChecklist={onToggleChecklist}
           highlightKey={highlightKey}
-          qidRows={qidRows}
           onOpenOriginal={(qid, text) => setOriginalTarget({ qid, questionText: text })}
         />
       </section>
@@ -2197,9 +2272,14 @@ export default function PreviewPanel({
           questionText={originalData.questionText}
           data={data}
           storedFiles={sourceFiles || []}
-          onClose={() => setOriginalTarget(null)}
+          onClose={() => {
+            setOriginalTarget(null);
+            resetCropOverrides();
+            setCropRefresh((value) => value + 1);
+          }}
         />
       ) : null}
     </div>
+    </OriginalContext.Provider>
   );
 }

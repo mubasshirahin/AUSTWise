@@ -275,6 +275,7 @@ export default function PredictedPaperPanel({ data, sourceFiles = [], course = '
                           number={slot.question.sourceNumber}
                           alt={`Original of question ${slot.number}`}
                           missingHint={false}
+                          eager
                         />
                       ) : null}
                       <p className="qbi-slot-why">

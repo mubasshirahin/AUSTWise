@@ -107,9 +107,12 @@ function diceCoefficient(first, second) {
 export function buildQuestionMatchIndex(report, courseKey) {
   const entries = [];
   const bySignature = new Map();
+  const byQid = new Map();
 
   const add = (entry) => {
     entries.push(entry);
+    const qid = String(entry.question?.qid || '').toUpperCase();
+    if (qid && !byQid.has(qid)) byQid.set(qid, entry);
     if (!entry.signature) return;
     const list = bySignature.get(entry.signature);
     if (list) list.push(entry);
@@ -155,7 +158,11 @@ export function buildQuestionMatchIndex(report, courseKey) {
     });
   });
 
-  const match = (text) => {
+  // The QID is the AI's own link between a paper row and its topic row, so
+  // it wins over comparing the wording.
+  const match = (text, qid = '') => {
+    const byId = qid ? byQid.get(String(qid).toUpperCase()) : null;
+    if (byId) return { ...byId, score: 1, method: 'qid' };
     const signature = questionSignature(text);
     if (!signature) return null;
 
@@ -228,7 +235,7 @@ export function buildPaperSourceReferences(report, courseKey, matchIndex = null)
         partLabels: parts.map((part) => String(part.label).toLowerCase()),
         text: question.question || '',
       };
-      const match = matcher.match(question.question);
+      const match = matcher.match(question.question, question.qid);
       if (match) add(match.key, ref);
       // Unmatched paper rows become "Other questions" and keep this key.
       add(semesterImageKey(courseKey, paper.semester, index), ref);
@@ -273,7 +280,7 @@ export function addUnmatchedPaperQuestions(report, courseKey) {
   report.semesterPapers.forEach((paper) => {
     const questions = Array.isArray(paper.questions) ? paper.questions : [];
     questions.forEach((question, index) => {
-      if (matchIndex.match(question.question)) return;
+      if (matchIndex.match(question.question, question.qid)) return;
 
       const signature = questionSignature(question.question);
       const existing = bySignature.get(signature);

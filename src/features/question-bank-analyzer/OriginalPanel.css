@@ -102,10 +102,44 @@
   cursor: pointer;
   transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
-.qba-original-btn:hover {
+.qba-original-btn:hover,
+.qba-original-btn.is-active {
   border-color: var(--accent-amber);
   color: var(--accent-amber);
   background: var(--accent-amber-glow);
+}
+.qba-original-btn:focus-visible,
+.qba-q-original-fix:focus-visible {
+  outline: 2px solid var(--accent-amber);
+  outline-offset: 2px;
+}
+
+/* Inline original inside a question card */
+.qba-q-original { margin-top: 8px; }
+.qba-q-original-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.qba-q-original-fix {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 6px;
+  border: 0;
+  background: none;
+  color: var(--text-tertiary);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+}
+.qba-q-original-fix:hover { color: var(--accent-amber); }
+.qba-q-original .qbi-crop img {
+  width: 100%;
+  max-height: none;
+  border: 1px solid var(--border-primary);
 }
 .qba-original-backdrop {
   position: fixed;

@@ -215,3 +215,54 @@ describe('sample question bank coverage', () => {
     expect(unmatched).toEqual([]);
   });
 });
+
+describe('QID links', () => {
+  const markdown = `---
+course: CSE 3109
+title: Digital System Design
+---
+
+[QID: 001] Design a 3-bit synchronous odd counter using T flip flops.
+Topic: Counters
+Semesters: Fall 2024
+
+[QID: 002] Design a 3-bit synchronous odd counter using D flip flops.
+Topic: Counters
+Semesters: Spring 2023
+
+## TOPIC: Counters
+priority: HIGH
+total_asked: 2
+
+| # | Question | Exam | Semester | Marks | Times |
+|---|----------|------|----------|-------|-------|
+| 1 | [QID: 001] | Final | Fall 2024 | 7 | 1 |
+| 2 | [QID: 002] | Final | Spring 2023 | 7 | 1 |
+
+## SEMESTER_PAPERS
+
+### Spring 2023
+| # | Question | Exam | Marks | Source |
+|---|----------|------|-------|--------|
+| 4 | [QID: 002] | Final | 7 | a.pdf :: p1 :: 0,0.1,1,0.4 |
+
+### Fall 2024
+| # | Question | Exam | Marks | Source |
+|---|----------|------|-------|--------|
+| 2 | [QID: 001] | Final | 7 | b.pdf :: p2 :: 0,0.5,1,0.9 |
+`;
+
+  it('keeps the QID on topic rows', () => {
+    const { data } = parseQuestionBank(markdown);
+    expect(data.topics[0].questions.map((question) => question.qid)).toEqual(['001', '002']);
+  });
+
+  it('links a paper row to its topic row by QID, even when the wording is close to another', () => {
+    const { data } = parseQuestionBank(markdown);
+    const refs = buildPaperSourceReferences(data, courseKey);
+    const first = refs.get(topicQuestionKey(courseKey, 'Counters', data.topics[0].questions[0], 0, null));
+    const second = refs.get(topicQuestionKey(courseKey, 'Counters', data.topics[0].questions[1], 1, null));
+    expect(first.map((ref) => ref.semester)).toEqual(['Fall 2024']);
+    expect(second.map((ref) => ref.semester)).toEqual(['Spring 2023']);
+  });
+});
