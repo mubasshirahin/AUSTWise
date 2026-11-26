@@ -1,7 +1,18 @@
 import { createPortal } from 'react-dom';
 import austwiseIcon from '../../assets/austwise-icon-final.svg';
-import { buildQuestionVersions, compareSemestersDesc } from './previewAnalytics';
-import { splitSemesterList, splitSubQuestions } from './parseQuestionBank';
+import { compareSemestersDesc } from './previewAnalytics';
+import { splitSemesterList } from './parseQuestionBank';
+import { buildQuestionMatchIndex } from './qbaQuestionMatch';
+import { questionCheckIds } from './qbaChecklist';
+import {
+  countSolvedSingles,
+  formatSingleNumber,
+  isSingleSolved,
+  orderTopicRows,
+  rowSingles,
+  singleCheckId,
+  splitIntoSingles,
+} from './qbaSingles';
 import './PrintReport.css';
 
 function PriorityBadge({ priority }) {
@@ -73,115 +84,113 @@ function FigureList({ images, label = '' }) {
   );
 }
 
+const NO_FIGURES = { question: [], answer: [] };
+
+function figuresFrom(entry) {
+  if (!entry) return NO_FIGURES;
+  return {
+    question: Array.isArray(entry.question) ? entry.question : [],
+    answer: Array.isArray(entry.answer) ? entry.answer : [],
+  };
+}
+
 /**
- * Question text with every (a), (b), (c) part in its own block, followed by
- * the pictures that belong to that part. The same component is used for the
- * semester papers and the topic-wise list, so printed pages match the screen.
+ * The attachments of one single question. A split part uses its own part
+ * slot; whole-row pictures from before the split go with the first part, so
+ * nothing attached earlier goes missing from the PDF.
  */
-function ReportQuestionText({ text, number, partImages = [] }) {
-  const { stem, parts } = splitSubQuestions(text || '');
-  if (!parts.length) {
-    return <span className="qba-report-question-text">{text || ''}</span>;
-  }
+function singleFigures(question, single, isFirst) {
+  const versionIndex = typeof single.versionIndex === 'number' ? single.versionIndex : -1;
+  const whole = versionIndex >= 0
+    ? { question: question.versionImages?.[versionIndex] || [], answer: question.versionAnswerImages?.[versionIndex] || [] }
+    : { question: question.images || [], answer: question.answerImages || [] };
+  if (!single.part) return figuresFrom(whole);
+  const pool = versionIndex >= 0 ? (question.versionPartImages?.[versionIndex] || []) : (question.partImages || []);
+  const own = figuresFrom(pool[single.index]);
+  if (!isFirst) return own;
+  return { question: [...whole.question, ...own.question], answer: [...whole.answer, ...own.answer] };
+}
 
+/** One single question: version label, shared stem, its own text, its files. */
+function SingleQuestion({ single, figures }) {
   return (
     <div className="qba-report-question-stack">
-      {stem ? <span className="qba-report-question-text">{stem}</span> : null}
-      <ol className="qba-report-subparts">
-        {parts.map((part, index) => {
-          const prefix = part.number
-            || (number !== null && number !== undefined ? String(number) : '');
-          const pictures = partImages[index]
-            && (Array.isArray(partImages[index].question) || Array.isArray(partImages[index].answer))
-            ? partImages[index]
-            : { question: [], answer: [] };
-          return (
-            <li className="qba-report-subpart" key={`${part.label}-${index}`}>
-              <div className="qba-report-subpart-head">
-                <span className="qba-report-subpart-num">
-                  {prefix ? `${prefix}.${part.label})` : `${part.label})`}
-                </span>
-                <span className="qba-report-subpart-text">{part.text}</span>
-              </div>
-              <FigureList images={pictures.question} label="Question" />
-              <FigureList images={pictures.answer} label="Answer" />
-            </li>
-          );
-        })}
-      </ol>
+      {single.version?.label ? <span className="qba-report-version-label">{single.version.label}</span> : null}
+      {single.stem ? <span className="qba-report-stem">{single.stem}</span> : null}
+      <span className="qba-report-question-text">{single.text || '—'}</span>
+      <FigureList images={figures.question} label="Question" />
+      <FigureList images={figures.answer} label="Answer" />
     </div>
   );
 }
 
-function ReportQuestion({ question }) {
-  const variants = Array.isArray(question?.variants) ? question.variants : [];
-  const versions = buildQuestionVersions(question);
-  const images = Array.isArray(question?.images) ? question.images : [];
-  const answerImages = Array.isArray(question?.answerImages) ? question.answerImages : [];
-  const versionImages = Array.isArray(question?.versionImages) ? question.versionImages : [];
-  const versionAnswerImages = Array.isArray(question?.versionAnswerImages)
-    ? question.versionAnswerImages
-    : [];
-  const partImages = Array.isArray(question?.partImages) ? question.partImages : [];
-  const versionPartImages = Array.isArray(question?.versionPartImages)
-    ? question.versionPartImages
-    : [];
-
-  const versionBlocks = versions.length ? (
-    <div className="qba-report-versions">
-      {versions.map((version, index) => (
-        <div className="qba-report-version" key={`${version.label}-${index}`}>
-          <span className="qba-report-version-label">{version.label}</span>
-          <ReportQuestionText
-            text={version.text}
-            number={question?.number}
-            partImages={versionPartImages[index] || []}
-          />
-          <FigureList images={versionImages[index]} label="Question" />
-          <FigureList images={versionAnswerImages[index]} label="Answer" />
-        </div>
-      ))}
-    </div>
-  ) : null;
-
-  const body = (
-    <ReportQuestionText
-      text={question?.question}
-      number={question?.number}
-      partImages={partImages}
-    />
-  );
-
-  if (!variants.length) {
-    return (
-      <>
-        {versionBlocks || body}
-        {versions.length ? null : <FigureList images={images} label="Question" />}
-        {versions.length ? null : <FigureList images={answerImages} label="Answer" />}
-      </>
-    );
-  }
-
+/** A box to tick on paper; already ticked when solved on the site. */
+function DoneBox({ solved }) {
   return (
-    <div className="qba-report-question-stack">
-      {versionBlocks}
-      {versions.length ? null : body}
-      {versions.length ? null : <FigureList images={images} label="Question" />}
-      {versions.length ? null : <FigureList images={answerImages} label="Answer" />}
-    </div>
+    <span className={`qba-done-box${solved ? ' is-on' : ''}`} aria-label={solved ? 'Solved' : 'Not solved'}>
+      {solved ? '✓' : ''}
+    </span>
   );
 }
 
-function groupBySemester(topics) {
+/** Every single question of a topic, numbered like the screen: 1, 2)a, 2)b. */
+function topicSingleRows(topic, items) {
+  const rows = [];
+  orderTopicRows(topic.questions).forEach((question, rowIndex) => {
+    let lastWording = null;
+    rowSingles(topic.name, question).forEach((single) => {
+      const isFirst = lastWording !== single.versionIndex;
+      lastWording = single.versionIndex;
+      rows.push({
+        key: `${question.originalIndex}-${single.versionIndex}-${single.index}`,
+        number: formatSingleNumber(rowIndex + 1, single.label),
+        question,
+        single,
+        figures: singleFigures(question, single, isFirst),
+        solved: isSingleSolved(items, single),
+      });
+    });
+  });
+  return rows;
+}
+
+/** Every single question of a printed paper, with its own topic. */
+function paperSingleRows(paper, matchIndex, items) {
+  const rows = [];
+  paper.questions.forEach((question, rowIndex) => {
+    const topic = matchIndex.match(question.question, question.qid)?.topic || 'Other questions';
+    const singles = splitIntoSingles(question.question, question.part);
+    singles.forEach((single, singleIndex) => {
+      const withIds = {
+        ...single,
+        id: singleCheckId(topic, single, question.question),
+        legacyIds: questionCheckIds(topic, { question: question.question }),
+      };
+      rows.push({
+        key: `${rowIndex}-${singleIndex}`,
+        number: formatSingleNumber(question.number ?? rowIndex + 1, single.label),
+        topic,
+        question,
+        single: withIds,
+        figures: singleFigures(question, single, singleIndex === 0),
+        solved: isSingleSolved(items, withIds),
+      });
+    });
+  });
+  return rows;
+}
+
+/** Older answers without raw papers: the topic rows grouped by semester. */
+function groupBySemester(topics, items) {
   const map = new Map();
   for (const topic of topics) {
-    for (const question of topic.questions) {
+    for (const row of topicSingleRows(topic, items)) {
       // A merged row can name several semesters — show it under each one.
-      const names = splitSemesterList(question.semester);
+      const names = splitSemesterList(row.question.semester);
       if (!names.length) names.push('Unknown semester');
       for (const semester of names) {
         if (!map.has(semester)) map.set(semester, []);
-        map.get(semester).push({ topic: topic.name, ...question });
+        map.get(semester).push({ ...row, topic: topic.name });
       }
     }
   }
@@ -189,7 +198,7 @@ function groupBySemester(topics) {
     .sort(([a], [b]) => compareSemestersDesc(a, b));
 }
 
-export default function PrintReport({ data, className = '', innerRef }) {
+export default function PrintReport({ data, className = '', innerRef, checklist = null }) {
   if (!data) return null;
 
   const generated = new Date().toLocaleDateString('en-GB', {
@@ -202,7 +211,11 @@ export default function PrintReport({ data, className = '', innerRef }) {
     ? data.semesters.join(' · ')
     : 'Semesters not listed';
 
-  const topicGroups = groupBySemester(data.topics || []);
+  const items = checklist || {};
+  const topicRows = new Map((data.topics || []).map((topic) => [topic.name, topicSingleRows(topic, items)]));
+  const topicGroups = groupBySemester(data.topics || [], items);
+  const matchIndex = buildQuestionMatchIndex(data, '');
+  const singleCount = countSolvedSingles(data.topics || [], {}).total;
   const semesterPapers = (data.semesterPapers || [])
     .filter((paper) => paper.questions?.length)
     // Newest paper first, same order as the preview.
@@ -257,7 +270,7 @@ export default function PrintReport({ data, className = '', innerRef }) {
         <div className="qba-summary-grid">
           {[
             ['Topics', summary.topicCount ?? (data.topics || []).length],
-            ['Questions', summary.totalQuestions ?? 0],
+            ['Questions', singleCount],
             ['Times asked', summary.totalAsked ?? 0],
             ['VIP topics', summary.vipCount ?? 0],
             ['HIGH', summary.highCount ?? 0],
@@ -311,13 +324,18 @@ export default function PrintReport({ data, className = '', innerRef }) {
 
       <section className="qba-report-section">
         <h2 className="qba-report-heading">Topic-wise questions</h2>
-        {(data.topics || []).map((topic, topicIndex) => (
+        <p className="qba-report-note">
+          Every sub-part is its own question (2)a, 2)b …), newest first. Tick the box when you have solved it.
+        </p>
+        {(data.topics || []).map((topic, topicIndex) => {
+          const rows = topicRows.get(topic.name) || [];
+          return (
           <div className="qba-report-topic" key={`${topic.name}-${topicIndex}`}>
             <div className="qba-report-topic-head">
               <h3>{topic.name}</h3>
               <PriorityBadge priority={topic.priority} />
               <span className="qba-report-topic-meta">
-                {topic.questions.length} question{topic.questions.length === 1 ? '' : 's'} · asked {display(topic.timesAsked, 0)} time{topic.timesAsked === 1 ? '' : 's'}
+                {rows.length} question{rows.length === 1 ? '' : 's'} · asked {display(topic.timesAsked, 0)} time{topic.timesAsked === 1 ? '' : 's'}
                 {topic.avgMarks !== null && topic.avgMarks !== undefined ? ` · average ${topic.avgMarks} marks` : ''}
                 {topic.lastAsked && topic.lastAsked !== '-' ? ` · last asked ${topic.lastAsked}` : ''}
               </span>
@@ -330,6 +348,7 @@ export default function PrintReport({ data, className = '', innerRef }) {
                 <col className="qba-col-semester" />
                 <col className="qba-col-marks" />
                 <col className="qba-col-times" />
+                <col className="qba-col-done" />
               </colgroup>
               <thead>
                 <tr>
@@ -339,64 +358,76 @@ export default function PrintReport({ data, className = '', innerRef }) {
                   <th scope="col">Semester</th>
                   <th scope="col" className="qba-num">Marks</th>
                   <th scope="col" className="qba-num">Times</th>
+                  <th scope="col" className="qba-done">Done</th>
                 </tr>
               </thead>
               <tbody>
-                {topic.questions.map((question) => (
-                  <tr key={`${topic.name}-${question.number}-${question.question}`}>
-                    <td className="qba-sno">{question.number}</td>
-                    <td className="qba-report-question"><ReportQuestion question={question} /></td>
-                    <td>{display(question.exam)}</td>
-                    <td>{display(question.semester)}</td>
-                    <td className="qba-num">{display(question.marks)}</td>
-                    <td className="qba-num">{display(question.times, 0)}</td>
+                {rows.map((row) => (
+                  <tr key={`${topic.name}-${row.key}`}>
+                    <td className="qba-sno">{row.number}</td>
+                    <td className="qba-report-question"><SingleQuestion single={row.single} figures={row.figures} /></td>
+                    <td>{display(row.question.exam)}</td>
+                    <td>{display(row.question.semester)}</td>
+                    <td className="qba-num">{display(row.question.marks)}</td>
+                    <td className="qba-num">{display(row.question.times, 0)}</td>
+                    <td className="qba-done"><DoneBox solved={row.solved} /></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        ))}
+          );
+        })}
       </section>
 
       <section className="qba-report-section">
         <h2 className="qba-report-heading">Semester-wise view</h2>
         {semesterPapers.length ? (
-          semesterPapers.map((paper) => (
+          semesterPapers.map((paper) => {
+            const rows = paperSingleRows(paper, matchIndex, items);
+            return (
             <div className="qba-report-topic" key={paper.semester}>
               <div className="qba-report-topic-head">
                 <h3>{paper.semester}</h3>
                 <span className="qba-report-topic-meta">
-                  {paper.questions.length} question{paper.questions.length === 1 ? '' : 's'} · as printed
+                  {rows.length} question{rows.length === 1 ? '' : 's'} · numbered as printed
                 </span>
               </div>
               <table className="qba-report-table">
                 <colgroup>
                   <col className="qba-col-paper-sno" />
+                  <col className="qba-col-paper-topic" />
                   <col className="qba-col-paper-question" />
                   <col className="qba-col-paper-exam" />
                   <col className="qba-col-paper-marks" />
+                  <col className="qba-col-done" />
                 </colgroup>
                 <thead>
                   <tr>
                     <th scope="col" className="qba-sno">#</th>
+                    <th scope="col">Topic</th>
                     <th scope="col">Question</th>
                     <th scope="col">Exam</th>
                     <th scope="col" className="qba-num">Marks</th>
+                    <th scope="col" className="qba-done">Done</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paper.questions.map((question, index) => (
-                    <tr key={`${paper.semester}-${index}`}>
-                      <td className="qba-sno">{question.number ?? index + 1}</td>
-                      <td className="qba-report-question"><ReportQuestion question={question} /></td>
-                      <td>{display(question.exam)}</td>
-                      <td className="qba-num">{display(question.marks)}</td>
+                  {rows.map((row) => (
+                    <tr key={`${paper.semester}-${row.key}`}>
+                      <td className="qba-sno">{row.number}</td>
+                      <td><strong>{row.topic}</strong></td>
+                      <td className="qba-report-question"><SingleQuestion single={row.single} figures={row.figures} /></td>
+                      <td>{display(row.question.exam)}</td>
+                      <td className="qba-num">{display(row.question.marks)}</td>
+                      <td className="qba-done"><DoneBox solved={row.solved} /></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          ))
+            );
+          })
         ) : topicGroups.length === 0 ? (
           <p className="qba-report-note">No semester information was found in the file.</p>
         ) : (
@@ -413,6 +444,7 @@ export default function PrintReport({ data, className = '', innerRef }) {
                   <col className="qba-col-sem-exam" />
                   <col className="qba-col-sem-marks" />
                   <col className="qba-col-sem-times" />
+                  <col className="qba-col-done" />
                 </colgroup>
                 <thead>
                   <tr>
@@ -421,16 +453,18 @@ export default function PrintReport({ data, className = '', innerRef }) {
                     <th scope="col">Exam</th>
                     <th scope="col" className="qba-num">Marks</th>
                     <th scope="col" className="qba-num">Times</th>
+                    <th scope="col" className="qba-done">Done</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((question, index) => (
-                    <tr key={`${semester}-${question.topic}-${index}`}>
-                      <td><strong>{question.topic}</strong></td>
-                      <td className="qba-report-question"><ReportQuestion question={question} /></td>
-                      <td>{display(question.exam)}</td>
-                      <td className="qba-num">{display(question.marks)}</td>
-                      <td className="qba-num">{display(question.times, 0)}</td>
+                  {rows.map((row) => (
+                    <tr key={`${semester}-${row.topic}-${row.key}`}>
+                      <td><strong>{row.topic}</strong> {row.number}</td>
+                      <td className="qba-report-question"><SingleQuestion single={row.single} figures={row.figures} /></td>
+                      <td>{display(row.question.exam)}</td>
+                      <td className="qba-num">{display(row.question.marks)}</td>
+                      <td className="qba-num">{display(row.question.times, 0)}</td>
+                      <td className="qba-done"><DoneBox solved={row.solved} /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -464,10 +498,10 @@ export default function PrintReport({ data, className = '', innerRef }) {
  * Portal the report straight into <body> so the print stylesheet can hide
  * the entire #root when the browser prints. Screen CSS keeps it hidden.
  */
-export function PrintPortal({ data }) {
+export function PrintPortal({ data, checklist = null }) {
   if (typeof document === 'undefined') return null;
   return createPortal(
-    <PrintReport data={data} className="qba-print-root" />,
+    <PrintReport data={data} checklist={checklist} className="qba-print-root" />,
     document.body,
   );
 }

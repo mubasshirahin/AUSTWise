@@ -9,12 +9,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  BarChart3,
   Bookmark,
   BookOpenCheck,
+  CalendarDays,
   ChevronDown,
   ChevronUp,
   Image as ImageIcon,
   Info,
+  Layers,
   ListChecks,
   Loader2,
   Printer,
@@ -25,7 +28,8 @@ import PreviewPanel from './PreviewPanel';
 import PrintReport, { PrintPortal } from './PrintReport';
 import { downloadReportImagePdf, reportBaseName } from './qbaPdf';
 import { attachImagesToReport } from './qbaImageStore';
-import { countSolvedQuestions } from './qbaChecklist';
+import { countSolvedSingles } from './qbaSingles';
+import { SectionNav } from './QuestionWorkspace';
 import useQbaChecklist from './useQbaChecklist';
 import useQbaImages from './useQbaImages';
 import {
@@ -50,7 +54,9 @@ function SavedCard({ entry, onDelete }) {
   const { id, savedAt, courseCode, courseTitle, displayData } = entry;
 
   const [expanded, setExpanded]     = useState(false);
-  const [openTopics, setOpenTopics] = useState(() => new Set());
+  const [mode, setMode]             = useState('topics');
+  const [activeTopic, setActiveTopic] = useState('');
+  const [activePaper, setActivePaper] = useState('');
   const [busy, setBusy]             = useState(''); // 'print' | 'image' | 'delete'
   const [notice, setNotice]         = useState('');
   const [printMount, setPrintMount] = useState(false);
@@ -67,22 +73,13 @@ function SavedCard({ entry, onDelete }) {
     [displayData, pictures.courseKey, pictures.byQuestion],
   );
   const solvedProgress = useMemo(
-    () => countSolvedQuestions(displayData?.topics, checklist.items),
+    () => countSolvedSingles(displayData?.topics, checklist.items),
     [displayData, checklist.items],
   );
 
   const topicCount    = displayData?.summary?.topicCount    ?? displayData?.topics?.length ?? 0;
   const questionCount = displayData?.summary?.totalQuestions ?? 0;
   const label         = courseCode || courseTitle || 'Unnamed course';
-
-  // Seed open topics on first expand
-  useEffect(() => {
-    if (!expanded || openTopics.size > 0) return;
-    const topics = displayData?.topics ?? [];
-    const vip    = topics.filter((t) => t.priority === 'VIP');
-    const seed   = vip.length ? vip : topics.slice(0, 1);
-    setOpenTopics(new Set(seed.map((t) => t.name)));
-  }, [expanded, displayData, openTopics.size]);
 
   const toggleExpand = () => {
     const opening = !expanded;
@@ -280,34 +277,31 @@ function SavedCard({ entry, onDelete }) {
       {expanded ? (
         <div className="qba-saved-card-body">
           <div className="qba-saved-divider" />
+          <SectionNav
+            sections={[
+              { id: 'topics', label: 'Topic-wise', icon: Layers },
+              { id: 'semesters', label: 'Semester-wise', icon: CalendarDays },
+              { id: 'overview', label: 'Overview', icon: BarChart3 },
+            ]}
+            active={mode}
+            onChange={setMode}
+            label="Saved report sections"
+          />
           <PreviewPanel
             data={displayData}
-            openTopics={openTopics}
-            onToggleTopic={(name) => setOpenTopics((prev) => {
-              const next = new Set(prev);
-              next.has(name) ? next.delete(name) : next.add(name);
-              return next;
-            })}
-            onFocusTopic={(name) => setOpenTopics((prev) => {
-              const next = new Set(prev); next.add(name); return next;
-            })}
-            onRevealTopics={(names) => {
-              if (!Array.isArray(names)) return;
-              setOpenTopics((prev) => {
-                const next = new Set(prev);
-                names.forEach((n) => next.add(n));
-                return next;
-              });
-            }}
-            onMergeQuestions={() => {}}
-            onUnmergeQuestions={() => {}}
+            mode={mode}
+            activeTopic={activeTopic}
+            onActiveTopicChange={setActiveTopic}
+            activePaper={activePaper}
+            onActivePaperChange={setActivePaper}
+            onFocusTopic={(name) => { setActiveTopic(name); setMode('topics'); }}
             courseKey={pictures.courseKey}
             images={pictures.byQuestion}
             onAttachImage={pictures.attach}
             onRemoveImage={pictures.remove}
             checklistItems={checklist.items}
             checklistEnabled={Boolean(displayData?.topics?.length) && checklist.enabled}
-            onToggleChecklist={checklist.toggle}
+            onSetChecklist={checklist.setMany}
           />
           {/* bottom download bar */}
           <div className="qba-saved-card-dl-bar">
@@ -326,10 +320,10 @@ function SavedCard({ entry, onDelete }) {
       {/* offscreen capture for image PDF */}
       {!printMount ? (
         <div className="qba-capture-host" aria-hidden="true">
-          <PrintReport data={printableData} innerRef={reportRef} />
+          <PrintReport data={printableData} innerRef={reportRef} checklist={checklist.items} />
         </div>
       ) : null}
-      {printMount && printData ? <PrintPortal data={printData} /> : null}
+      {printMount && printData ? <PrintPortal data={printData} checklist={checklist.items} /> : null}
     </div>
   );
 }

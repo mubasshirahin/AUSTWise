@@ -125,12 +125,13 @@
 }
 
 /* Column widths — the sums of each row are 100%. */
-.qba-report .qba-col-sno { width: 4%; }
-.qba-report .qba-col-question { width: 45%; }
-.qba-report .qba-col-exam { width: 11%; }
-.qba-report .qba-col-semester { width: 16%; }
-.qba-report .qba-col-marks { width: 12%; }
-.qba-report .qba-col-times { width: 12%; }
+.qba-report .qba-col-sno { width: 7%; }
+.qba-report .qba-col-question { width: 46%; }
+.qba-report .qba-col-exam { width: 10%; }
+.qba-report .qba-col-semester { width: 17%; }
+.qba-report .qba-col-marks { width: 8%; }
+.qba-report .qba-col-times { width: 6%; }
+.qba-report .qba-col-done { width: 6%; }
 
 .qba-report .qba-col-vip-topic { width: 32%; }
 .qba-report .qba-col-vip-asked { width: 18%; }
@@ -138,17 +139,18 @@
 .qba-report .qba-col-vip-last { width: 18%; }
 .qba-report .qba-col-vip-priority { width: 16%; }
 
-.qba-report .qba-col-sem-topic { width: 15%; }
-.qba-report .qba-col-sem-question { width: 49%; }
-.qba-report .qba-col-sem-exam { width: 12%; }
-.qba-report .qba-col-sem-marks { width: 12%; }
-.qba-report .qba-col-sem-times { width: 12%; }
+.qba-report .qba-col-sem-topic { width: 18%; }
+.qba-report .qba-col-sem-question { width: 48%; }
+.qba-report .qba-col-sem-exam { width: 10%; }
+.qba-report .qba-col-sem-marks { width: 9%; }
+.qba-report .qba-col-sem-times { width: 9%; }
 
-/* The raw semester paper: number, question, exam, marks. */
-.qba-report .qba-col-paper-sno { width: 5%; }
-.qba-report .qba-col-paper-question { width: 57%; }
-.qba-report .qba-col-paper-exam { width: 16%; }
-.qba-report .qba-col-paper-marks { width: 22%; }
+/* The raw semester paper: number, topic, question, exam, marks, done. */
+.qba-report .qba-col-paper-sno { width: 7%; }
+.qba-report .qba-col-paper-topic { width: 17%; }
+.qba-report .qba-col-paper-question { width: 50%; }
+.qba-report .qba-col-paper-exam { width: 10%; }
+.qba-report .qba-col-paper-marks { width: 10%; }
 
 .qba-report .qba-report-table thead {
   display: table-header-group;
@@ -356,9 +358,36 @@
 }
 
 .qba-report .qba-report-table .qba-sno {
-  width: 24px;
   text-align: center;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
+
+/* Shared opening text of a sub-part, printed lighter above the part. */
+.qba-report .qba-report-stem {
+  padding-left: 6px;
+  border-left: 1.5px solid var(--qba-line);
+  color: var(--qba-muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.qba-report .qba-report-table .qba-done { text-align: center; }
+
+.qba-report .qba-done-box {
+  display: inline-grid;
+  place-items: center;
+  width: 12px;
+  height: 12px;
+  border: 1.2px solid currentColor;
+  border-radius: 2px;
+  font-size: 9pt;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.qba-report .qba-done-box.is-on { color: #15803d; }
 
 /* Row tints — priority is also printed as text inside the badge. */
 .qba-report .qba-report-table tbody tr.qba-row-vip td { background: rgba(185, 28, 28, 0.12); }

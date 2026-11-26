@@ -14,6 +14,7 @@ import { courseSlug } from './qbaImageStore';
 import {
   mergeChecklistItems,
   toggleChecklistIds,
+  applyChecklistChanges,
 } from './qbaChecklist';
 import {
   getChecklistFromServer,
@@ -153,11 +154,7 @@ export default function useQbaChecklist(courseCode) {
     mountedRef.current = false;
   }, []);
 
-  const toggle = useCallback((ids) => {
-    if (!enabled) return;
-    const list = uniqueIds(ids);
-    if (!list.length) return;
-    const next = toggleChecklistIds(itemsRef.current, list);
+  const commit = useCallback((next) => {
     itemsRef.current = next;
     setItems(next);
     writeChecklistCache(courseKey, next);
@@ -167,7 +164,20 @@ export default function useQbaChecklist(courseCode) {
       }));
     }
     scheduleSave(next);
-  }, [courseKey, enabled, scheduleSave]);
+  }, [courseKey, scheduleSave]);
+
+  const toggle = useCallback((ids) => {
+    if (!enabled) return;
+    const list = uniqueIds(ids);
+    if (!list.length) return;
+    commit(toggleChecklistIds(itemsRef.current, list));
+  }, [enabled, commit]);
+
+  /** Set several ids at once — `{ id: true|false }`. */
+  const setMany = useCallback((changes) => {
+    if (!enabled || !changes || !Object.keys(changes).length) return;
+    commit(applyChecklistChanges(itemsRef.current, changes));
+  }, [enabled, commit]);
 
   const syncNow = useCallback(async () => {
     if (!enabled) return false;
@@ -182,6 +192,7 @@ export default function useQbaChecklist(courseCode) {
     courseKey,
     items,
     toggle,
+    setMany,
     syncNow,
     loading,
     saving,

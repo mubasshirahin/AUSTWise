@@ -109,6 +109,7 @@ describe('buildPaperSourceReferences', () => {
       {
         semester: 'Fall 2024',
         number: 2,
+        part: '',
         partLabels: ['a', 'b'],
         text,
       },

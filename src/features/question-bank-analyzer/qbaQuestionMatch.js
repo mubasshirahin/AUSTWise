@@ -213,6 +213,7 @@ export function buildPaperSourceReferences(report, courseKey, matchIndex = null)
     if (list.some((item) => (
       item.semester === ref.semester
       && String(item.number) === String(ref.number)
+      && String(item.part || '') === String(ref.part || '')
     ))) {
       return;
     }
@@ -229,10 +230,13 @@ export function buildPaperSourceReferences(report, courseKey, matchIndex = null)
     questions.forEach((question, index) => {
       const number = question.number ?? index + 1;
       const { parts } = splitSubQuestions(question.question || '');
+      const printedPart = String(question.part || '').toLowerCase();
+      const labels = parts.map((part) => String(part.label).toLowerCase());
       const ref = {
         semester: paper.semester,
         number,
-        partLabels: parts.map((part) => String(part.label).toLowerCase()),
+        part: printedPart,
+        partLabels: labels.length ? labels : (printedPart ? [printedPart] : []),
         text: question.question || '',
       };
       const match = matcher.match(question.question, question.qid);

@@ -90,6 +90,20 @@ export function toggleChecklistIds(items, ids, now = new Date().toISOString()) {
 }
 
 /**
+ * Set several ids at once: `{ id: true|false }`. Used when one click has to
+ * tick one part and keep its siblings ticked.
+ */
+export function applyChecklistChanges(items, changes, now = new Date().toISOString()) {
+  const entries = Object.entries(changes || {});
+  if (!entries.length) return items || {};
+  const next = { ...(items || {}) };
+  entries.forEach(([id, solved]) => {
+    if (id) next[id] = { solved: Boolean(solved), updatedAt: now };
+  });
+  return next;
+}
+
+/**
  * Merge two checklist maps (server + local cache) by per-item timestamp.
  * The newest edit wins, so a tick made offline is not lost.
  */

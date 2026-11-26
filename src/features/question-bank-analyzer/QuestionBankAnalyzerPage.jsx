@@ -3,10 +3,12 @@ import {
   AlertCircle,
   AlertTriangle,
   ArrowDown,
+  BarChart3,
   ArrowUp,
   Bookmark,
   BookmarkCheck,
   BookOpenCheck,
+  CalendarDays,
   Check,
   Copy,
   FileSearch,
@@ -16,12 +18,14 @@ import {
   History as HistoryIcon,
   Image as ImageIcon,
   Info,
+  Layers,
   LineChart,
   Loader2,
   Printer,
   RotateCcw,
   ScanSearch,
   ScrollText,
+  Settings2,
   Sparkles,
   X,
 } from 'lucide-react';
@@ -29,7 +33,8 @@ import { buildPrompt } from './qbaPrompt';
 import { parseQuestionBankParts } from './parseQuestionBank';
 import { applyManualMerges, buildDisplayData } from './previewAnalytics';
 import { attachImagesToReport } from './qbaImageStore';
-import { countSolvedQuestions } from './qbaChecklist';
+import { countSolvedSingles } from './qbaSingles';
+import { SectionNav } from './QuestionWorkspace';
 import useQbaChecklist from './useQbaChecklist';
 import useQbaImages from './useQbaImages';
 import PreviewPanel from './PreviewPanel';
@@ -107,12 +112,8 @@ function neededFilesFrom(texts, data) {
   return names;
 }
 
-const VIEW_TABS = [
-  { id: 'report', label: 'Report', icon: BookOpenCheck },
-  { id: 'coverage', label: 'Coverage', icon: ScanSearch },
-  { id: 'trends', label: 'Trends', icon: LineChart },
-  { id: 'predict', label: 'Predicted paper', icon: ScrollText },
-];
+/** Sections that live inside PreviewPanel; the rest have their own panels. */
+const PREVIEW_MODES = ['topics', 'semesters', 'overview'];
 
 function safeReportData(data, code, title) {
   return {
@@ -120,12 +121,6 @@ function safeReportData(data, code, title) {
     course: String(code || '').trim() || data.course || '',
     title: String(title || '').trim() || data.title || '',
   };
-}
-
-function defaultOpenTopics(data) {
-  const vip = data.topics.filter((topic) => topic.priority === 'VIP');
-  const chosen = vip.length ? vip : data.topics.slice(0, 1);
-  return new Set(chosen.map((topic) => topic.name));
 }
 
 function waitForPaint() {
@@ -208,7 +203,8 @@ function QuestionBankAnalyzer() {
   const [previewReady, setPreviewReady] = useState(false);
   const [previewVersion, setPreviewVersion] = useState(0);
   const [mergeGroups, setMergeGroups] = useState({});
-  const [openTopics, setOpenTopics] = useState(() => new Set());
+  const [activeTopic, setActiveTopic] = useState('');
+  const [activePaper, setActivePaper] = useState('');
   const [busy, setBusy] = useState('');
   const [printMount, setPrintMount] = useState(false);
   const [printData, setPrintData] = useState(null);
@@ -220,7 +216,8 @@ function QuestionBankAnalyzer() {
   const locked = REQUIRES_PRO && !isPaid;
   // A free visitor can open the built-in sample to see what Pro gives.
   const [demo, setDemo] = useState(false);
-  const [view, setView] = useState('report');
+  // One section at a time, picked from the section bar.
+  const [section, setSection] = useState('setup');
 
   // Pictures the student attaches to individual questions. They live in the
   // browser (IndexedDB) and are mirrored to the server on every change.
@@ -273,7 +270,7 @@ function QuestionBankAnalyzer() {
   );
 
   const progress = useMemo(
-    () => countSolvedQuestions(displayData?.topics, checklist.items),
+    () => countSolvedSingles(displayData?.topics, checklist.items),
     [displayData, checklist.items],
   );
 
@@ -319,6 +316,17 @@ function QuestionBankAnalyzer() {
   const noticeTimer = useRef(null);
   const reportRef = useRef(null);
   const previewRef = useRef(null);
+
+  /** Show one section and bring the section bar into view. */
+  const goTo = useCallback((next) => {
+    setSection(next);
+    requestAnimationFrame(() => {
+      // The bar is sticky, so measure the marker just above it: once the
+      // student has scrolled past it, bring the new section's top back.
+      const marker = previewRef.current;
+      if (marker && marker.getBoundingClientRect().top < 0) marker.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, []);
 
   const showNotice = useCallback((message) => {
     setNotice(message);
@@ -369,7 +377,6 @@ function QuestionBankAnalyzer() {
     const parsed = parseWithManual(collectParts());
     setResult(parsed);
     setPreviewReady(true);
-    setOpenTopics(defaultOpenTopics(parsed.data));
     return parsed;
   }, [collectParts, parseWithManual]);
 
@@ -431,9 +438,7 @@ function QuestionBankAnalyzer() {
     if (!hasSource && result?.data?.topics?.length) {
       setPreviewReady(true);
       showNotice('This preview came from History. Paste the Markdown again if you want to rebuild it.');
-      requestAnimationFrame(() => {
-        previewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
+      goTo('topics');
       return;
     }
 
@@ -441,11 +446,10 @@ function QuestionBankAnalyzer() {
     setPreviewVersion((version) => version + 1);
     rememberPreview(parsed, sourceParts.join('\n\n---\n\n'));
     if (parsed.data.topics.length) {
-      showNotice(`Preview ready — ${parsed.data.summary.topicCount} topics, ${parsed.data.summary.totalQuestions} question rows.`);
+      const singles = countSolvedSingles(parsed.data.topics, {}).total;
+      showNotice(`Ready — ${parsed.data.summary.topicCount} topics, ${singles} questions.`);
+      goTo('topics');
     }
-    requestAnimationFrame(() => {
-      previewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
   };
 
   const handleCopy = async () => {
@@ -503,10 +507,11 @@ function QuestionBankAnalyzer() {
     setPreviewReady(false);
     setMergeGroups({});
     setPreviewVersion((version) => version + 1);
-    setOpenTopics(new Set());
+    setActiveTopic('');
+    setActivePaper('');
     setSavedEntryId(null);
     setDemo(false);
-    setView('report');
+    setSection('setup');
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch {
@@ -651,11 +656,7 @@ function QuestionBankAnalyzer() {
       setPreviewReady(true);
       setMergeGroups({});
       setPreviewVersion((version) => version + 1);
-      setOpenTopics(defaultOpenTopics(parsed.data));
-      setView('report');
-      requestAnimationFrame(() => {
-        previewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
+      goTo('topics');
       return;
     }
     const sampleCode = parsed.data.course || 'CSE 3101';
@@ -668,15 +669,14 @@ function QuestionBankAnalyzer() {
     setPreviewReady(true);
     setMergeGroups({});
     setPreviewVersion((version) => version + 1);
-    setOpenTopics(defaultOpenTopics(parsed.data));
     setSavedEntryId(null);
     rememberPreview(parsed, sampleMarkdown, {
       courseCode: sampleCode,
       courseTitle: sampleTitle,
       mergeGroups: {},
     });
-    setView('report');
-    showNotice('Sample loaded. Open Coverage, Trends and Predicted paper to see everything it does.');
+    goTo('topics');
+    showNotice('Sample loaded. Try the sections in the bar above: topic-wise, semester-wise, coverage and more.');
   };
 
   /** Put a History entry back into the Analyzer, ready to view or edit. */
@@ -694,7 +694,6 @@ function QuestionBankAnalyzer() {
     setPreviewReady(true);
     setMergeGroups({});
     setPreviewVersion((version) => version + 1);
-    setOpenTopics(defaultOpenTopics(data));
     setSavedEntryId(null);
     setActiveTab('analyzer');
     showNotice(
@@ -702,9 +701,7 @@ function QuestionBankAnalyzer() {
         ? 'Preview restored from History. Press Preview to rebuild it from the Markdown.'
         : 'Preview restored from History. Add the Markdown again if you want to rebuild it.',
     );
-    requestAnimationFrame(() => {
-      previewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
+    goTo('topics');
   };
 
   const handleHistorySaved = useCallback(() => {
@@ -794,24 +791,6 @@ function QuestionBankAnalyzer() {
     }
   };
 
-  const toggleTopic = (name) => {
-    setOpenTopics((current) => {
-      const next = new Set(current);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
-      return next;
-    });
-  };
-
-  const revealTopics = useCallback((names) => {
-    if (!Array.isArray(names) || !names.length) return;
-    setOpenTopics((current) => {
-      const next = new Set(current);
-      names.forEach((name) => next.add(name));
-      return next;
-    });
-  }, []);
-
   const mergeTopicQuestions = useCallback((topicName, indices) => {
     if (!topicName || !Array.isArray(indices) || indices.length < 2) return;
     setMergeGroups((current) => {
@@ -839,24 +818,15 @@ function QuestionBankAnalyzer() {
     });
   }, []);
 
-  const openTopicAndScroll = (name) => {
+  /** Open one topic in the topic-wise section (VIP matrix, charts, paper chips). */
+  const openTopic = (name, options = {}) => {
     const topics = displayData?.topics || [];
-    const targetTopic = topics.find(
+    const target = topics.find(
       (topic) => String(topic.name).toLowerCase() === String(name).toLowerCase(),
     );
-    if (!targetTopic) return;
-    setOpenTopics((current) => {
-      const next = new Set(current);
-      next.add(targetTopic.name);
-      return next;
-    });
-    requestAnimationFrame(() => {
-      const target = Array.from(document.querySelectorAll('[data-qba-topic]')).find(
-        (element) => String(element.getAttribute('data-qba-topic')).toLowerCase()
-          === String(name).toLowerCase(),
-      );
-      target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
+    setActiveTopic(target ? target.name : name);
+    if (options.keepScroll) setSection('topics');
+    else goTo('topics');
   };
 
   const hasData = Boolean(displayData && displayData.topics.length);
@@ -879,6 +849,20 @@ function QuestionBankAnalyzer() {
     ];
   })();
 
+  // The report sections open once there is something to show.
+  const reportReady = Boolean(previewReady && result && hasData && (!locked || demo));
+  const shownSection = reportReady ? section : 'setup';
+  const paperCount = displayData?.semesterPapers?.length || 0;
+  const navSections = [
+    { id: 'setup', label: 'Setup', icon: Settings2 },
+    { id: 'topics', label: 'Topic-wise', icon: Layers, count: reportReady ? displayData.topics.length : null, disabled: !reportReady, sep: true },
+    { id: 'semesters', label: 'Semester-wise', icon: CalendarDays, count: reportReady && paperCount ? paperCount : null, disabled: !reportReady },
+    { id: 'overview', label: 'Overview', icon: BarChart3, disabled: !reportReady },
+    { id: 'coverage', label: 'Coverage', icon: ScanSearch, count: reportReady && coverageSummary?.missingCount ? coverageSummary.missingCount : null, alert: true, disabled: !reportReady, sep: true },
+    { id: 'trends', label: 'Trends', icon: LineChart, disabled: !reportReady },
+    { id: 'predict', label: 'Predicted paper', icon: ScrollText, disabled: !reportReady },
+  ];
+
   return (
     <div className="qba-widget qba-page animate-fadeIn">
       <header className={`dl-head qba-head${!locked ? ' has-actions' : ''}`}>
@@ -892,7 +876,7 @@ function QuestionBankAnalyzer() {
         </div>
         <dl className="dl-head-stats">
           <div className="dl-head-stat"><dt>Topics</dt><dd>{hasData ? displayData.topics.length : '—'}</dd></div>
-          <div className="dl-head-stat"><dt>Questions</dt><dd>{hasData ? displayData.summary?.totalQuestions ?? progress.total : '—'}</dd></div>
+          <div className="dl-head-stat"><dt>Questions</dt><dd>{hasData ? progress.total : '—'}</dd></div>
           <div className="dl-head-stat"><dt>Papers</dt><dd>{hasData ? (displayData.semesterPapers?.length || displayData.semesters?.length || 0) : '—'}</dd></div>
           <div className={`dl-head-stat${checklist.error ? ' is-alert' : ''}`}>
             <dt>Solved</dt>
@@ -965,6 +949,22 @@ function QuestionBankAnalyzer() {
 
       {activeTab === 'analyzer' ? (
       <>
+      <div ref={previewRef} className="qbs-nav-marker" aria-hidden="true" />
+      <SectionNav sections={navSections} active={shownSection} onChange={goTo} />
+
+      {demo ? (
+        <div className="qbi-demo-bar" role="status">
+          <Sparkles size={15} aria-hidden="true" />
+          <span>This is a sample course. With Pro you get the same for your own papers.</span>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setDemo(false); setResult(null); setPreviewReady(false); setSection('setup'); }}>
+            <X size={14} aria-hidden="true" /> Close sample
+          </button>
+        </div>
+      ) : null}
+
+      {shownSection === 'setup' ? (
+      <>
+      {previewReady ? <MessageList kind="error" items={errors} /> : null}
       <div className="qba-steps glass-card-static">
         {/* ── Step 1 ─────────────────────────────────────────────────────── */}
         <section className="qba-step" aria-labelledby="qba-step-1">
@@ -1243,102 +1243,6 @@ function QuestionBankAnalyzer() {
         )}
       </div>
 
-      {/* ── Preview ─────────────────────────────────────────────────────── */}
-      {!locked || demo ? (
-      <section className="qba-preview glass-card-static" ref={previewRef} aria-labelledby="qba-preview-heading">
-        <div className="qba-preview-bar">
-          <h2 id="qba-preview-heading">{demo ? 'Sample report' : 'Your report'}</h2>
-          {previewReady ? <span className="qba-pill">{hasData ? 'Report ready' : 'Needs attention'}</span> : <span className="qba-pill qba-pill-muted">Not built yet</span>}
-        </div>
-
-        {demo ? (
-          <div className="qbi-demo-bar" role="status">
-            <Sparkles size={15} aria-hidden="true" />
-            <span>This is a sample course. With Pro you get the same report for your own papers.</span>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setDemo(false); setResult(null); setPreviewReady(false); }}>
-              <X size={14} aria-hidden="true" /> Close sample
-            </button>
-          </div>
-        ) : null}
-
-        {previewReady && result && hasData ? (
-          <div className="qbi-views" role="tablist" aria-label="Report views">
-            {VIEW_TABS.map(({ id, label, icon: Icon }) => {
-              const badge = id === 'coverage' && coverageSummary?.missingCount ? coverageSummary.missingCount : 0;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  role="tab"
-                  aria-selected={view === id}
-                  className={`qbi-view${view === id ? ' is-active' : ''}`}
-                  onClick={() => setView(id)}
-                >
-                  <Icon size={15} aria-hidden="true" />
-                  <span>{label}</span>
-                  {badge ? <span className="qbi-view-badge" title={`${badge} missing`}>{badge}</span> : null}
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
-
-        {previewReady && result ? (
-          <>
-            {view === 'report' || !hasData ? (
-              <>
-                <MessageList kind="error" items={errors} />
-                {!demo ? <MessageList kind="info" items={notes} picturesReady={papersReady} /> : null}
-                {!demo ? <MessageList kind="warning" items={warnings} /> : null}
-                <PreviewPanel
-                  key={previewVersion}
-                  data={displayData}
-                  openTopics={openTopics}
-                  onToggleTopic={toggleTopic}
-                  onFocusTopic={openTopicAndScroll}
-                  onRevealTopics={revealTopics}
-                  onMergeQuestions={mergeTopicQuestions}
-                  onUnmergeQuestions={unmergeTopicQuestions}
-                  courseKey={pictures.courseKey}
-                  images={questionPictures}
-                  onAttachImage={demo ? undefined : handleAttachPicture}
-                  onRemoveImage={handleRemovePicture}
-                  checklistItems={checklist.items}
-                  checklistEnabled={hasData && checklist.enabled && !demo}
-                  onToggleChecklist={checklist.toggle}
-                  sourceFiles={sourceFiles}
-                />
-              </>
-            ) : null}
-            {view === 'coverage' && hasData ? (
-              <CoveragePanel
-                data={displayData}
-                sourceFiles={sourceFiles}
-                manual={demo ? null : manual}
-                onAddPart={demo ? undefined : handleAddPart}
-              />
-            ) : null}
-            {view === 'trends' && hasData ? <TrendsPanel key={previewVersion} data={displayData} /> : null}
-            {view === 'predict' && hasData ? (
-              <PredictedPaperPanel
-                key={previewVersion}
-                data={displayData}
-                sourceFiles={sourceFiles}
-                course={demo ? displayData.course : courseCode}
-                title={demo ? displayData.title : courseTitle}
-              />
-            ) : null}
-          </>
-        ) : (
-          <div className="qba-empty">
-            <FileSearch size={28} aria-hidden="true" />
-            <h3>Your analysed question bank will appear here</h3>
-            <p>Add the AI answer above, then press <strong>Preview</strong>. Nothing is uploaded to a server.</p>
-          </div>
-        )}
-      </section>
-      ) : null}
-
       {/* ── Common problems ─────────────────────────────────────────────── */}
       <section className="qba-help glass-card-static" aria-labelledby="qba-help-heading">
         <div className="qba-section-head">
@@ -1407,17 +1311,68 @@ function QuestionBankAnalyzer() {
         </div>
       </section>
       </>
+      ) : (
+      <section className="qbs-stage" aria-label="Question bank">
+        {PREVIEW_MODES.includes(shownSection) ? (
+          <PreviewPanel
+            key={previewVersion}
+            data={displayData}
+            mode={shownSection}
+            activeTopic={activeTopic}
+            onActiveTopicChange={setActiveTopic}
+            activePaper={activePaper}
+            onActivePaperChange={setActivePaper}
+            onFocusTopic={openTopic}
+            onMergeQuestions={mergeTopicQuestions}
+            onUnmergeQuestions={unmergeTopicQuestions}
+            courseKey={pictures.courseKey}
+            images={questionPictures}
+            onAttachImage={demo ? undefined : handleAttachPicture}
+            onRemoveImage={handleRemovePicture}
+            checklistItems={checklist.items}
+            checklistEnabled={hasData && checklist.enabled && !demo}
+            onSetChecklist={checklist.setMany}
+            sourceFiles={sourceFiles}
+            messages={demo ? null : (
+              <>
+                <MessageList kind="info" items={notes} picturesReady={papersReady} />
+                <MessageList kind="warning" items={warnings} />
+              </>
+            )}
+          />
+        ) : null}
+        {shownSection === 'coverage' ? (
+          <CoveragePanel
+            data={displayData}
+            sourceFiles={sourceFiles}
+            manual={demo ? null : manual}
+            onAddPart={demo ? undefined : handleAddPart}
+          />
+        ) : null}
+        {shownSection === 'trends' ? <TrendsPanel key={previewVersion} data={displayData} /> : null}
+        {shownSection === 'predict' ? (
+          <PredictedPaperPanel
+            key={previewVersion}
+            data={displayData}
+            sourceFiles={sourceFiles}
+            course={demo ? displayData.course : courseCode}
+            title={demo ? displayData.title : courseTitle}
+          />
+        ) : null}
+      </section>
+      )}
+      </>
       ) : null}
 
       {/* Offscreen copy of the report, used only by the image-PDF exporter. */}
       {displayData && !printMount ? (
         <div className="qba-capture-host" aria-hidden="true">
-          <PrintReport data={printableData} innerRef={reportRef} />
+          <PrintReport data={printableData} innerRef={reportRef} checklist={checklist.items} />
         </div>
       ) : null}
 
       {/* Print-only report mounted straight into <body>. */}
-      {printMount && printData ? <PrintPortal data={printData} /> : null}
+      {printMount && printData ? <PrintPortal data={printData} checklist={checklist.items} /> : null}
     </div>
   );
 }

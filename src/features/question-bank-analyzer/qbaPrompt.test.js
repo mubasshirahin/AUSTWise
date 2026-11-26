@@ -50,11 +50,12 @@ describe('buildPrompt', () => {
     expect(prompt).toContain('Wait for my "OK"');
   });
 
-  it('keeps one master pool and puts sub-parts inside it', () => {
+  it('keeps one master pool and gives every sub-part its own entry', () => {
     expect(prompt).toContain('[QID: 001]');
     expect(prompt).toContain('Topic:');
     expect(prompt).toContain('Semesters:');
-    expect(prompt).toMatch(/separated by\s*<br>/i);
+    expect(prompt).toMatch(/SUB-PARTS ARE SINGLE QUESTIONS/);
+    expect(prompt).toContain('| 2a | [QID: 002]');
     // Both other sections must reference the pool instead of repeating text.
     expect(prompt).toMatch(/contains ONLY\s+the \[QID: nnn\] reference/i);
     expect(prompt).toMatch(/Question cell contains ONE thing only/i);

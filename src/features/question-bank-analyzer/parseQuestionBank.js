@@ -1017,6 +1017,21 @@ export function extractQidRef(value) {
 }
 
 /**
+ * The "#" cell of a paper row: "2", "2a", "2(b)", "2.c)", "Q4ii" →
+ * { number: 2, part: 'a' }. `number` is null when no number is printed.
+ */
+export function parsePaperNumberCell(value) {
+  const text = cleanInline(value).replace(/^q(?:uestion)?\.?\s*/i, '');
+  const match = text.match(/^(\d{1,3})\s*[).:-]?\s*\(?\s*([a-z]|[ivx]{1,4}|[ক-হ])?\s*\)?\s*\.?$/i);
+  if (match) {
+    const number = Number(match[1]);
+    return { number: number > 0 ? number : null, part: (match[2] || '').toLowerCase() };
+  }
+  const number = parseInt(text, 10);
+  return { number: Number.isFinite(number) && number > 0 ? number : null, part: '' };
+}
+
+/**
  * Parse the raw paper of every semester. Nothing is merged, deduplicated or
  * reordered: each row is exactly one question as it was printed.
  */
@@ -1051,7 +1066,8 @@ function parseSemesterPapers(lines, warn, note, masterPool = null) {
       if (looksLikeTopicHeader(row)) return;
 
       const figure = extractFigureMarker(rawQuestion);
-      const numberValue = parseInt(cellAt(row, indices.number), 10);
+      const printed = parsePaperNumberCell(cellAt(row, indices.number));
+      const numberValue = printed.number ?? NaN;
       const marksParsed = parseCount(cellAt(row, indices.marks));
       const sourceRaw = cellAt(row, indices.source);
       const sourceRegions = parseSourceCell(sourceRaw);
@@ -1061,6 +1077,7 @@ function parseSemesterPapers(lines, warn, note, masterPool = null) {
 
       questions.push({
         number: Number.isFinite(numberValue) && numberValue > 0 ? numberValue : rowIndex + 1,
+        part: printed.part,
         qid: extractQidRef(rawCell),
         question: figure.text || '—',
         exam: normalizeExam(cellAt(row, indices.exam)),
@@ -1665,6 +1682,7 @@ export function mergeAnalyses(parsedList) {
       .sort((a, b) => (
         examOrder.indexOf(normName(a.question.exam)) - examOrder.indexOf(normName(b.question.exam))
         || (a.question.number || 0) - (b.question.number || 0)
+        || String(a.question.part || '').localeCompare(String(b.question.part || ''))
         || a.index - b.index
       ))
       .map(({ question }) => question);

@@ -6,7 +6,8 @@
  * file. Keep the output contract in sync with parseQuestionBank.js.
  *
  * Single source of truth: every question is written once in the MASTER
- * QUESTION POOL with a unique [QID: nnn], sub-parts included. The TOPIC
+ * QUESTION POOL with a unique [QID: nnn]. Every sub-part (2a, 2b) is its own
+ * entry with its own topic, paper row and Source box. The TOPIC
  * blocks and the raw SEMESTER_PAPERS contain only that QID, and every paper
  * row also carries its exact Source location (file, page, box) so the site
  * can cut a screenshot of the original question in the browser.
@@ -56,19 +57,30 @@ RULE 2 — EXACT WORDING:
 Copy every question WORD-FOR-WORD from the source. Do NOT shorten,
 summarise, paraphrase, translate, fix grammar, or remove examples.
 Keep the original language (including Bangla) and original wording.
-If a question has sub-parts (a), (b), (c), keep every part inside the same
-question entry, each part on its own line in the source order, separated by
-<br>. Never split one question into separate entries. Write the sub-part
-labels exactly as printed — (a), (b), (c) or (i), (ii), (iii) — with no main
-question number in front; my website adds the paper's own number itself.
-A question with no sub-parts stays on one line.
+SUB-PARTS ARE SINGLE QUESTIONS: if a printed question has sub-parts (a), (b),
+(c) or (i), (ii), (iii), EVERY sub-part becomes its own question — its own
+QID, its own Topic, its own row in SEMESTER_PAPERS and its own Source box.
+Question 2 with parts (a) and (b) gives two entries, 2a and 2b; they may
+belong to different topics. If the parts share an opening text (a stem, a
+relation, a table, a figure), copy that stem word for word in front of every
+part, then <br>, then the part with its label exactly as printed, for example
+(a) — with no main question number in front; my website adds the paper's
+own number itself. A question with no sub-parts stays one entry on one line.
 
 RULE 3 — MASTER QUESTION POOL (SINGLE SOURCE OF TRUTH):
 The full text of every question is written EXACTLY ONCE, in the MASTER
 QUESTION POOL at the top of the output, with a unique ID:
 
-  [QID: 001] Full question text word for word<br>(a) first sub-part<br>(b) second sub-part
+  [QID: 001] Full question text word for word
   Topic: <topic name>
+  Semesters: Spring 2022, Fall 2023
+
+  [QID: 002] Shared stem of question 2 word for word<br>(a) first sub-part
+  Topic: <topic of part a>
+  Semesters: Spring 2022
+
+  [QID: 003] Shared stem of question 2 word for word<br>(b) second sub-part
+  Topic: <topic of part b>
   Semesters: Spring 2022, Fall 2023
 
 Every other section — the TOPIC blocks AND SEMESTER_PAPERS — contains ONLY
@@ -87,7 +99,7 @@ Assign a clear TOPIC NAME to every question based on its core concept
 
 MERGE ONLY IDENTICAL TEXT:
 Use ONE QID for a question that appears in several semesters ONLY when the
-wording is character-for-character identical, sub-parts included. If the
+wording is character-for-character identical, stem included. If the
 wording differs in ANY way — even one word, one number or one sub-part —
 give it its own QID. Never paraphrase, never keep only the newest wording,
 never merge two questions just because they are about the same thing.
@@ -121,11 +133,14 @@ RULE 8 — RAW SEMESTER PAPERS (never merged):
 The TOPIC blocks are for study. The teacher's papers must ALSO be
 reproduced raw, exactly as they were printed, in the SEMESTER_PAPERS section
 at the end. For every semester:
-  - one row per main question, in the order it appears on that paper;
-  - the "#" column is the main question number PRINTED on the paper
-    (1, 2, 3 ...). Every number in that paper's PAPER_INVENTORY row must
-    get exactly one row — no number skipped, none written twice. If a
-    paper prints no numbers, count 1, 2, 3 ... in reading order;
+  - one row per single question, in the order it appears on that paper:
+    a question with no sub-parts is one row, a question with parts gives
+    one row per part;
+  - the "#" column is the question number PRINTED on the paper, plus the
+    part label when there is one: 1, 2a, 2b, 3, 4i, 4ii ... Every number in
+    that paper's PAPER_INVENTORY row must get its row(s) — no number or
+    part skipped, none written twice. If a paper prints no numbers, count
+    1, 2, 3 ... in reading order;
   - NEVER merge, deduplicate, relabel or drop anything here — if the same
     question appears twice on the paper, write it twice;
   - the Question cell contains ONE thing only: the reference [QID: nnn] of
@@ -156,11 +171,14 @@ one or more regions. Write each region like this:
     (0 = left edge, 1 = right edge), y is down (0 = top edge, 1 = bottom
     edge). (x1,y1) is the top-left corner, (x2,y2) the bottom-right corner.
     Use 2 decimals, for example 0.05,0.18,0.95,0.42.
-  - The box must contain the WHOLE question: its number/heading, its text,
-    ALL its sub-parts, the marks printed in the margin, and every figure,
-    circuit or table that belongs to it. Leave about 0.01 of margin on every
-    side. Do NOT include any other question. Look at the page as a picture
-    and place the edges carefully.
+  - The box must contain the WHOLE single question: its number/label, its
+    text, the marks printed in the margin, and every figure, circuit or
+    table that belongs to it. For a sub-part, box only that part (2a gets
+    its own box, 2b its own box); if the part needs the shared stem or a
+    shared figure, write a region for the stem/figure FIRST, then the
+    part's own region. Leave about 0.01 of margin on every side. Do NOT
+    include any other question or part. Look at the page as a picture and
+    place the edges carefully.
   - If one question continues on the next page, write one region for each
     page, in reading order, separated by " ; ".
   - If the question refers to a figure or table that is on a different page
@@ -179,7 +197,8 @@ Example of a Source cell with two regions:
 RULE 10 — SELF-AUDIT BEFORE YOU FINISH:
 Go through the PAPER_INVENTORY one row at a time. For every printed
 question number in that row, find its row in SEMESTER_PAPERS (same
-semester, same exam, same #). If any number is missing, go back, read that
+semester, same exam, same number — a number with parts needs one row per
+part). If any number or part is missing, go back, read that
 page again as a picture and add the question — to the MASTER QUESTION
 POOL, to its TOPIC block and to SEMESTER_PAPERS. Only then write the
 PAPER_INVENTORY section at the very end. My website runs the same check and
@@ -201,7 +220,7 @@ OUTPUT RULES (STRICT)
 - Count the two front-matter numbers carefully — my website checks them:
     total_questions_extracted = total rows in ALL SEMESTER_PAPERS tables
     total_rows_after_merge    = total entries in the MASTER QUESTION POOL
-  Sub-parts never get their own row; they live inside their question.
+  Every sub-part counts as one row and one pool entry.
 - DO NOT stop mid-output. If the response is getting long, continue in the
   same format without repeating headers. If output gets cut off, I will say
   "continue" — resume exactly from the last incomplete row.
@@ -226,7 +245,7 @@ total_rows_after_merge: <total entries in the MASTER QUESTION POOL>
 
 <!-- MASTER QUESTION POOL — SINGLE SOURCE OF TRUTH -->
 <!-- Example lines (DELETE them from your output, they are only a shape to copy): -->
-<!-- Example: [QID: 001] Full question text word for word<br>(a) first sub-part<br>(b) second sub-part -->
+<!-- Example: [QID: 001] Shared stem word for word<br>(a) first sub-part -->
 <!-- Example: Topic: SAP-1 Architecture -->
 <!-- Example: Semesters: Spring 2022, Fall 2023 -->
 <!-- Write one real entry per unique wording, IDs 001, 002, 003 ... with no gaps. -->
@@ -260,11 +279,12 @@ QID reference; Times is how many past papers this exact question appeared in.)
 | # | Question | Exam | Marks | Source |
 |---|----------|------|-------|--------|
 | 1 | [QID: 001] | Final | 15 | 6__Spring_22__4_.pdf :: p1 :: 0.05,0.18,0.95,0.42 |
-| 2 | [QID: 002] | Final | 14 | 6__Spring_22__4_.pdf :: p1 :: 0.05,0.42,0.95,0.80 ; 6__Spring_22__4_.pdf :: p2 :: 0.05,0.03,0.95,0.20 |
+| 2a | [QID: 002] | Final | 7 | 6__Spring_22__4_.pdf :: p1 :: 0.05,0.42,0.95,0.60 |
+| 2b | [QID: 003] | Final | 7 | 6__Spring_22__4_.pdf :: p1 :: 0.05,0.42,0.95,0.47 ; 6__Spring_22__4_.pdf :: p1 :: 0.05,0.60,0.95,0.80 |
 
 (Repeat one ### block for every semester, oldest semester first. Every row is
-one printed question with only its QID reference and its Source. Sub-parts stay
-inside the pool entry, so they are never written again here.)
+one single printed question or sub-part with only its QID reference and its
+own Source. In the example, 2b's first region is the shared stem of question 2.)
 
 ## PAPER_INVENTORY
 
@@ -273,7 +293,8 @@ inside the pool entry, so they are never written again here.)
 | Spring 2022 | Final | 6__Spring_22__4_.pdf | 8 | 1, 2, 3, 4, 5, 6, 7, 8 |
 
 (One row per exam paper. "Questions on paper" is how many main questions are
-printed; "Question numbers" lists every printed number.)`;
+printed, not counting parts; "Question numbers" lists every printed main
+number — 2a and 2b both count as 2.)`;
 }
 
 export default buildPrompt;
