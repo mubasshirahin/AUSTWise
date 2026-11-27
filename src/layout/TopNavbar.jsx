@@ -14,6 +14,7 @@ import { PRO_LAYOUTS } from '../context/themeConstants';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
 import { useInAppNotifications } from '../hooks/useInAppNotifications';
+import BottomSheetPortal from '../components/BottomSheetPortal';
 // import logoSilver from '../assets/logo-silver.png';
 // import logoRed from '../assets/logo-red.png';
 import brandMark from '../assets/austwise-icon-final.svg';
@@ -154,6 +155,12 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
   const themeSwitcherRef = useRef(null);
   const notifRef = useRef(null);
   const profileRef = useRef(null);
+  // The panels themselves: on phones an open panel is rendered into <body>
+  // (BottomSheetPortal), so it is no longer inside its wrapper above.
+  const themeMenuRef = useRef(null);
+  const layoutMenuRef = useRef(null);
+  const notifPanelRef = useRef(null);
+  const profilePanelRef = useRef(null);
 
   const { notifications, unread, markAsRead, markAllAsRead, clearAll } = useInAppNotifications(user);
 
@@ -200,16 +207,17 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
   // Click-outside closes the menus
   useEffect(() => {
     const handleClick = (e) => {
-      if (themeSwitcherRef.current && !themeSwitcherRef.current.contains(e.target)) {
+      const outside = (...refs) => !refs.some((r) => r.current && r.current.contains(e.target));
+      if (themeSwitcherRef.current && outside(themeSwitcherRef, themeMenuRef)) {
         setThemeMenuOpen(false);
       }
-      if (layoutSwitcherRef.current && !layoutSwitcherRef.current.contains(e.target)) {
+      if (layoutSwitcherRef.current && outside(layoutSwitcherRef, layoutMenuRef)) {
         setLayoutMenuOpen(false);
       }
-      if (notifRef.current && !notifRef.current.contains(e.target)) {
+      if (notifRef.current && outside(notifRef, notifPanelRef)) {
         setNotifOpen(false);
       }
-      if (profileRef.current && !profileRef.current.contains(e.target)) {
+      if (profileRef.current && outside(profileRef, profilePanelRef)) {
         setProfileMenuOpen(false);
       }
     };
@@ -301,7 +309,8 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
             </div>
           </button>
 
-          <div className="theme-menu" role="menu" aria-label="Select theme">
+          <BottomSheetPortal open={themeMenuOpen} onClose={() => setThemeMenuOpen(false)}>
+          <div className="theme-menu" role="menu" aria-label="Select theme" ref={themeMenuRef}>
             <span className="theme-menu-heading">Dark Mode</span>
             {darkThemeOptions.map(({ id, label, icon: Icon }) => {
               const isActive = theme === id;
@@ -342,6 +351,7 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
               );
             })}
           </div>
+          </BottomSheetPortal>
         </div>
         <div
           className={`theme-switcher layout-switcher ${layoutMenuOpen ? 'open' : ''}`}
@@ -361,7 +371,8 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
             <span className="layout-toggle-label">{activeLayout.label}</span>
           </button>
 
-          <div className="theme-menu layout-menu" role="menu" aria-label="Select layout">
+          <BottomSheetPortal open={layoutMenuOpen} onClose={() => setLayoutMenuOpen(false)}>
+          <div className="theme-menu layout-menu" role="menu" aria-label="Select layout" ref={layoutMenuRef}>
             {layoutOptions.map(({ id, label, desc, icon: Icon, group }, index) => {
               const isActive = layout === id;
               const startsGroup = index === 0 || layoutOptions[index - 1].group !== group;
@@ -390,6 +401,7 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
               );
             })}
           </div>
+          </BottomSheetPortal>
         </div>
       </div>
 
@@ -436,7 +448,8 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
               else groups.push({ label, items: [n] });
             });
             return (
-            <div className="notif-dropdown" role="menu" aria-label="Notifications">
+            <BottomSheetPortal open onClose={() => setNotifOpen(false)}>
+            <div className="notif-dropdown" role="menu" aria-label="Notifications" ref={notifPanelRef}>
               <div className="notif-header">
                 <div className="notif-header-title">
                   <span className="notif-header-tile" aria-hidden="true"><BellRing size={15} /></span>
@@ -540,6 +553,7 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
                 </div>
               )}
             </div>
+            </BottomSheetPortal>
             );
           })()}
         </div>
@@ -565,7 +579,8 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
             </button>
 
             {profileMenuOpen && (
-              <div className="profile-dropdown" role="menu" aria-label="User menu">
+              <BottomSheetPortal open onClose={() => setProfileMenuOpen(false)}>
+              <div className="profile-dropdown" role="menu" aria-label="User menu" ref={profilePanelRef}>
                 <div className="profile-dropdown-header">
                   <div className="avatar" style={{ width: 40, height: 40 }}>
                     {user?.avatar && !avatarError ? <img src={user.avatar} alt="" onError={handleAvatarError} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : user?.initials}
@@ -633,6 +648,7 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
                   </button>
                 </div>
               </div>
+              </BottomSheetPortal>
             )}
           </div>
         ) : (
@@ -657,7 +673,8 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
             </button>
 
             {profileMenuOpen && (
-              <div className="profile-dropdown" role="menu" aria-label="Guest menu">
+              <BottomSheetPortal open onClose={() => setProfileMenuOpen(false)}>
+              <div className="profile-dropdown" role="menu" aria-label="Guest menu" ref={profilePanelRef}>
                 <div className="profile-dropdown-header">
                   <div className="avatar" style={{ width: 40, height: 40 }}>
                     <User size={18} />
@@ -699,6 +716,7 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
                   </button>
                 </div>
               </div>
+              </BottomSheetPortal>
             )}
           </div>
         )}

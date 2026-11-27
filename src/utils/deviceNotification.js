@@ -58,7 +58,7 @@ export async function showDeviceNotification(title, opts = {}) {
     body: opts.body || '',
     tag: opts.tag || title,
     icon: '/icon-192x192.png',
-    badge: '/icon-192x192.png',
+    badge: '/notification-badge.png',
     renotify: Boolean(opts.tag) && vibrate,
     silent: !vibrate,
     vibrate: vibrate ? VIBRATE_PATTERN : [],

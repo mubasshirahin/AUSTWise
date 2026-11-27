@@ -27,6 +27,7 @@
      .profile-dropdown              Top bar avatar menu
      .notif-dropdown                Top bar notifications
      .theme-switcher.open .theme-menu   Top bar theme / layout pickers
+     .bsheet-layer > .theme-menu        Same pickers once moved into <body>
      .auth-theme-menu, .landing-theme-menu.open   Theme pickers (login, landing)
      .prereq-dept-menu              Prerequisite tree department picker
      .sr-bg-menu                    Stalk Road ride theme */
@@ -34,7 +35,7 @@
 @media (max-width: 640px) {
   :is(.export-dropdown .export-menu, .lp-menu-list, .pb-menu, .cpgen-menu-list,
       .ws-menu-list, .qa-menu, .cb-menu-list, .profile-dropdown, .notif-dropdown,
-      .theme-switcher.open .theme-menu, .auth-theme-menu, .landing-theme-menu.open,
+      .theme-switcher.open .theme-menu, .bsheet-layer > .theme-menu, .auth-theme-menu, .landing-theme-menu.open,
       .prereq-dept-menu, .sr-bg-menu):not(#_):not(#_) {
     position: fixed !important;
     inset: auto 0 0 0 !important;
@@ -74,6 +75,37 @@
     transition: none !important;
   }
 
+  /* Top bar panels (theme, layout, notifications, profile) are rendered into
+     <body> while open (src/components/BottomSheetPortal.jsx), so no ancestor
+     can trap them and this works without :has(). The layer's backdrop is the
+     scrim and takes the tap that closes the sheet. */
+  .bsheet-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+  }
+
+  .bsheet-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    animation: bsheet-fade 0.18s ease;
+  }
+
+  .bsheet-layer > :not(.bsheet-backdrop):not(#_):not(#_) {
+    /* The backdrop already dims the page. */
+    box-shadow: none !important;
+    /* .theme-menu is hidden by default and only shown under .theme-switcher. */
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+
+  /* Layout picker: names only on phones, as in the inline menu. */
+  .bsheet-layer .layout-menu-desc {
+    display: none;
+  }
+
   /* Header panels (notifications) keep their inner padding. */
   .notif-dropdown:not(#_):not(#_) {
     padding: 0 0 env(safe-area-inset-bottom, 0px) !important;
@@ -103,10 +135,28 @@
     z-index: 99999 !important;
   }
 
+  /* Same rescue for browsers without :has() (older Android WebView/Chrome,
+     Firefox < 121): src/utils/mobileMenuSheet.js puts .msheet-lift on the
+     open menu's ancestors. Kept as its own rule: in a selector list, an
+     unsupported :has() would void the whole rule. */
+  .msheet-lift:not(#_) {
+    transform: none !important;
+    animation: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    perspective: none !important;
+    contain: none !important;
+    container-type: normal !important;
+    will-change: auto !important;
+    isolation: auto !important;
+    z-index: 99999 !important;
+  }
+
   /* Grab handle (replaces any hover-bridge/arrow ::before the menu had) */
   :is(.export-dropdown .export-menu, .lp-menu-list, .pb-menu, .cpgen-menu-list,
       .ws-menu-list, .qa-menu, .cb-menu-list, .profile-dropdown, .notif-dropdown,
-      .theme-switcher.open .theme-menu, .auth-theme-menu, .landing-theme-menu.open,
+      .theme-switcher.open .theme-menu, .bsheet-layer > .theme-menu, .auth-theme-menu, .landing-theme-menu.open,
       .prereq-dept-menu, .sr-bg-menu):not(#_):not(#_)::before {
     content: '' !important;
     display: block !important;
@@ -301,6 +351,11 @@
   }
 }
 
+@keyframes bsheet-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 @keyframes sheet-up {
   from { translate: 0 100%; }
   to { translate: 0 0; }
@@ -309,12 +364,13 @@
 @media (prefers-reduced-motion: reduce) {
   :is(.export-dropdown .export-menu, .lp-menu-list, .pb-menu, .cpgen-menu-list,
       .ws-menu-list, .qa-menu, .cb-menu-list, .profile-dropdown, .notif-dropdown,
-      .theme-switcher.open .theme-menu, .auth-theme-menu, .landing-theme-menu.open,
+      .theme-switcher.open .theme-menu, .bsheet-layer > .theme-menu, .auth-theme-menu, .landing-theme-menu.open,
       .prereq-dept-menu, .sr-bg-menu):not(#_):not(#_),
   :is(.modal-overlay, .qb-add-modal-backdrop, .bhara-details-overlay,
       .telegram-unregister-overlay, .st-modal-overlay, .profile-linked-modal-overlay,
       .pro-overlay, .pm-modal, .bk-overlay, .ecf-schedule-backdrop, .mod-overlay,
-      .sheet-overlay):not(#_):not(#_) > * {
+      .sheet-overlay):not(#_):not(#_) > *,
+  .bsheet-backdrop {
     animation: none !important;
   }
 }

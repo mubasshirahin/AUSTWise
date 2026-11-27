@@ -98,13 +98,13 @@ const buildStudentGroups = (list) => {
               .filter(([lab]) => !(LABS_BY_SECTION[secKey] || []).includes(lab))
               .map(([lab, labMembers]) => ({ key: lab, members: labMembers }))
               .sort((a, b) => (a.key === 'Other' ? 1 : 0) - (b.key === 'Other' ? 1 : 0) || a.key.localeCompare(b.key, undefined, { numeric: true }));
-            return { key: secKey, count: secMembers.length, labs: [...canonical, ...extra], loose };
+            return { key: secKey, count: secMembers.length, members: secMembers, labs: [...canonical, ...extra], loose };
           });
           // Sections present in the data but outside the canonical list (e.g. 'Other').
           Object.entries(bySec).forEach(([secKey, secMembers]) => {
             if (ALL_SECTIONS.includes(secKey)) return;
             const { byLab, loose } = splitLabs(secMembers);
-            sections.push({ key: secKey, count: secMembers.length, labs: toGroups(byLab), loose });
+            sections.push({ key: secKey, count: secMembers.length, members: secMembers, labs: toGroups(byLab), loose });
           });
           sections.sort((a, b) => {
             const ia = ALL_SECTIONS.indexOf(a.key);
@@ -114,20 +114,21 @@ const buildStudentGroups = (list) => {
             if (ib !== -1) return 1;
             return (a.key === 'Other' ? 1 : 0) - (b.key === 'Other' ? 1 : 0) || a.key.localeCompare(b.key);
           });
-          return { sem, sections };
+          return { sem, sections, members: semMembers };
         });
-      return { dept, semesters, count: members.length };
+      return { dept, semesters, count: members.length, members };
     });
   const memberedSet = new Set(membered.map((g) => g.dept));
   const empty = ALL_DEPARTMENTS
     .filter((d) => !memberedSet.has(d))
-    .map((d) => ({ dept: d, semesters: [], count: 0 }));
-  return [...membered, ...empty].map(({ dept, semesters, count }) => ({
+    .map((d) => ({ dept: d, semesters: [], count: 0, members: [] }));
+  return [...membered, ...empty].map(({ dept, semesters, count, members }) => ({
     key: `dept-${dept}`,
     title: dept,
     icon: <BookOpen size={13} />,
     count,
     semesters,
+    members,
   }));
 };
 
@@ -150,7 +151,7 @@ const buildFacultyGroups = (list) => {
           return (a[0] === 'Other' ? 1 : 0) - (b[0] === 'Other' ? 1 : 0) || a[0].localeCompare(b[0]);
         })
         .map(([desig, desigMembers]) => ({ key: desig, members: desigMembers }));
-      return { dept, count: members.length, designations };
+      return { dept, count: members.length, members, designations };
     });
 };
 
@@ -174,7 +175,7 @@ const buildAlumniGroups = (list) => {
           return (a[0] === 'Other' ? 1 : 0) - (b[0] === 'Other' ? 1 : 0) || a[0].localeCompare(b[0]);
         })
         .map(([batch, batchMembers]) => ({ key: batch, members: batchMembers }));
-      return { dept, count: members.length, batches };
+      return { dept, count: members.length, members, batches };
     });
 };
 
@@ -242,7 +243,7 @@ function MemberRow({ member, onClick, isOffline, isAdmin, devSwitch, switching }
 }
 
 /* ─── Collapsible group section ─── */
-function MemberGroup({ title, icon, count, children, defaultOpen, forceOpen, expanded, onToggle, className }) {
+function MemberGroup({ title, icon, count, children, defaultOpen, forceOpen, expanded, onToggle, className, peek }) {
   // `expanded` is true when the user has opened this group. Groups default to
   // CLOSED: the tree nests dept → semester → section → lab and the directory
   // holds the entire student body, so default-open rendered ~35k DOM nodes on
@@ -250,15 +251,27 @@ function MemberGroup({ title, icon, count, children, defaultOpen, forceOpen, exp
   // biggest reason the app felt sluggish. Only the three top-level role
   // sections opt in via `defaultOpen`.
   const isOpen = forceOpen || (expanded !== undefined ? expanded : defaultOpen === true);
+  // `peek` = rows for the group's active members. A collapsed group still
+  // shows them under its header, so you can see WHO is active without
+  // opening anything; expanding swaps in the full list (offline included).
+  const peekCount = peek ? peek.length : 0;
   return (
     <div className={`am-group${isOpen ? ' open' : ''}${className ? ` ${className}` : ''}`}>
       <button type="button" className="am-group-head" onClick={onToggle}>
         {onToggle && (isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}
         {icon && <span className="am-group-icon">{icon}</span>}
         <span className="am-group-title">{title}</span>
+        {peekCount > 0 && (
+          <span className="am-group-active" title={`${peekCount} active now`}>
+            <span className="am-dot am-online" />
+            {peekCount}
+          </span>
+        )}
         <span className="am-group-count">{count}</span>
       </button>
-      {isOpen && <div className="am-group-body">{children}</div>}
+      {isOpen
+        ? <div className="am-group-body">{children}</div>
+        : peekCount > 0 && <div className="am-group-body am-group-peek">{peek}</div>}
     </div>
   );
 }
@@ -478,6 +491,32 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
     });
   }, []);
 
+  // Member rows inside the role tree. The signed-in user is always treated
+  // as active (their own presence can lag behind the poll).
+  const isSelf = useCallback((m) => isAuthenticated && !!user?.id && m.id === user.id, [isAuthenticated, user]);
+  const isActiveMember = useCallback(
+    (m) => m.status === 'online' || m.status === 'idle' || isSelf(m),
+    [isSelf]
+  );
+  const renderRow = (m, rowKey) => {
+    const member = isSelf(m) ? { ...m, isYou: true, status: m.status === 'idle' ? 'idle' : 'online' } : m;
+    return (
+      <span key={rowKey} ref={(el) => { rowRefs.current[rowKey] = el; }}>
+        <MemberRow
+          member={member}
+          devSwitch={devMode}
+          switching={switchingId === m.id}
+          onClick={devMode ? () => handleDevSwitch(member) : () => openPopover(member, rowKey)}
+        />
+      </span>
+    );
+  };
+  // Active members of a group, rendered for its collapsed "peek".
+  const peekRows = (list, prefix) => {
+    const active = (list || []).filter(isActiveMember);
+    return active.length ? active.map((m) => renderRow(m, `${prefix}-peek-${m.id}`)) : null;
+  };
+
   // Online = everyone currently active (online/idle), with the signed-in user
   // always pinned in so you can see yourself ("You" row).
   const onlineMembers = useMemo(() => {
@@ -530,6 +569,7 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
       else byRole.students.push(m); // students + student sub-roles + fallback
     });
     return {
+      all: byRole,
       students: buildStudentGroups(byRole.students),
       faculty: buildFacultyGroups(byRole.faculty),
       alumni: buildAlumniGroups(byRole.alumni),
@@ -693,6 +733,7 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
                 expanded={expandedGroups['role-students']}
                 onToggle={() => toggleGroup('role-students')}
                 className="am-role-group"
+                peek={peekRows(roleSections.all.students, 'role-students')}
               >
                 {roleSections.students.length === 0 ? (
                   <div className="am-group-empty">No members yet</div>
@@ -707,6 +748,7 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
                       count={g.count}
                       expanded={expanded}
                       onToggle={() => toggleGroup(key)}
+                      peek={peekRows(g.members, key)}
                     >
                       {g.count === 0 ? (
                         <div className="am-group-empty">No members yet</div>
@@ -721,6 +763,7 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
                             expanded={expandedGroups[semKey]}
                             onToggle={() => toggleGroup(semKey)}
                             className="am-sem-group"
+                            peek={peekRows(s.members, semKey)}
                           >
                             {s.sections.map((sec) => {
                               const secKey = `${semKey}-sec-${sec.key}`;
@@ -732,6 +775,7 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
                                   expanded={expandedGroups[secKey]}
                                   onToggle={() => toggleGroup(secKey)}
                                   className="am-sec-group"
+                                  peek={peekRows(sec.members, secKey)}
                                 >
                                   {sec.count === 0 ? (
                                     <div className="am-group-empty">No members yet</div>
@@ -747,38 +791,15 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
                                             expanded={expandedGroups[labKey]}
                                             onToggle={() => toggleGroup(labKey)}
                                             className="am-leaf-group"
+                                            peek={peekRows(lab.members, labKey)}
                                           >
                                             {lab.members.length === 0 ? (
                                               <div className="am-group-empty">No members yet</div>
-                                            ) : lab.members.map((m) => {
-                                              const rowKey = `${labKey}-${m.id}`;
-                                              return (
-                                                <span key={rowKey} ref={(el) => { rowRefs.current[rowKey] = el; }}>
-                                                  <MemberRow
-                                                    member={m}
-                                                    devSwitch={devMode}
-                                                    switching={switchingId === m.id}
-                                                    onClick={devMode ? () => handleDevSwitch(m) : () => openPopover(m, rowKey)}
-                                                  />
-                                                </span>
-                                              );
-                                            })}
+                                            ) : lab.members.map((m) => renderRow(m, `${labKey}-${m.id}`))}
                                           </MemberGroup>
                                         );
                                       })}
-                                      {sec.loose.map((m) => {
-                                        const rowKey = `${secKey}-loose-${m.id}`;
-                                        return (
-                                          <span key={rowKey} ref={(el) => { rowRefs.current[rowKey] = el; }}>
-                                            <MemberRow
-                                              member={m}
-                                              devSwitch={devMode}
-                                              switching={switchingId === m.id}
-                                              onClick={devMode ? () => handleDevSwitch(m) : () => openPopover(m, rowKey)}
-                                            />
-                                          </span>
-                                        );
-                                      })}
+                                      {sec.loose.map((m) => renderRow(m, `${secKey}-loose-${m.id}`))}
                                     </>
                                   )}
                                 </MemberGroup>
@@ -801,6 +822,7 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
                 expanded={expandedGroups['role-faculty']}
                 onToggle={() => toggleGroup('role-faculty')}
                 className="am-role-group"
+                peek={peekRows(roleSections.all.faculty, 'role-faculty')}
               >
                 {roleSections.faculty.length === 0 ? (
                   <div className="am-group-empty">No members yet</div>
@@ -813,6 +835,7 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
                       count={d.count}
                       expanded={expandedGroups[deptKey]}
                       onToggle={() => toggleGroup(deptKey)}
+                      peek={peekRows(d.members, deptKey)}
                     >
                       {d.designations.map((desig) => {
                         const desigKey = `${deptKey}-desig-${desig.key}`;
@@ -824,20 +847,9 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
                             expanded={expandedGroups[desigKey]}
                             onToggle={() => toggleGroup(desigKey)}
                             className="am-sec-group"
+                            peek={peekRows(desig.members, desigKey)}
                           >
-                            {desig.members.map((m) => {
-                              const rowKey = `${desigKey}-${m.id}`;
-                              return (
-                                <span key={rowKey} ref={(el) => { rowRefs.current[rowKey] = el; }}>
-                                  <MemberRow
-                                    member={m}
-                                    devSwitch={devMode}
-                                    switching={switchingId === m.id}
-                                    onClick={devMode ? () => handleDevSwitch(m) : () => openPopover(m, rowKey)}
-                                  />
-                                </span>
-                              );
-                            })}
+                            {desig.members.map((m) => renderRow(m, `${desigKey}-${m.id}`))}
                           </MemberGroup>
                         );
                       })}
@@ -855,6 +867,7 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
                 expanded={expandedGroups['role-alumni']}
                 onToggle={() => toggleGroup('role-alumni')}
                 className="am-role-group"
+                peek={peekRows(roleSections.all.alumni, 'role-alumni')}
               >
                 {roleSections.alumni.length === 0 ? (
                   <div className="am-group-empty">No members yet</div>
@@ -867,6 +880,7 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
                       count={d.count}
                       expanded={expandedGroups[deptKey]}
                       onToggle={() => toggleGroup(deptKey)}
+                      peek={peekRows(d.members, deptKey)}
                     >
                       {d.batches.map((batch) => {
                         const batchKey = `${deptKey}-batch-${batch.key}`;
@@ -878,20 +892,9 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
                             expanded={expandedGroups[batchKey]}
                             onToggle={() => toggleGroup(batchKey)}
                             className="am-sec-group"
+                            peek={peekRows(batch.members, batchKey)}
                           >
-                            {batch.members.map((m) => {
-                              const rowKey = `${batchKey}-${m.id}`;
-                              return (
-                                <span key={rowKey} ref={(el) => { rowRefs.current[rowKey] = el; }}>
-                                  <MemberRow
-                                    member={m}
-                                    devSwitch={devMode}
-                                    switching={switchingId === m.id}
-                                    onClick={devMode ? () => handleDevSwitch(m) : () => openPopover(m, rowKey)}
-                                  />
-                                </span>
-                              );
-                            })}
+                            {batch.members.map((m) => renderRow(m, `${batchKey}-${m.id}`))}
                           </MemberGroup>
                         );
                       })}

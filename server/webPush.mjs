@@ -165,7 +165,12 @@ export async function getSubscriptionStatus(userId) {
 
 async function deliver(userId, sub, payload) {
   try {
-    await sendNotification(sub, JSON.stringify(payload), { TTL: 120 });
+    // `urgency: high` lets the phone wake and pop the alert right away
+    // instead of batching it until the device is next awake.
+    await sendNotification(sub, JSON.stringify(payload), {
+      TTL: payload.category === 'messages' ? 120 : 6 * 60 * 60,
+      urgency: payload.silent ? 'normal' : 'high',
+    });
     return 'sent';
   } catch (err) {
     const status = err?.statusCode;
@@ -325,7 +330,7 @@ export async function sendMessageWebPush({ fromId, toId, text }) {
   try { sender = await getUserById(fromId); } catch { /* name falls back */ }
   const preview = String(text);
   await sendPushToUser(toId, {
-    title: `💬 ${sender?.name || 'New message'}`,
+    title: sender?.name || 'New message',
     body: preview.length > 140 ? `${preview.slice(0, 137)}...` : preview,
     tag: `msg-${fromId}`,
     url: `/messages?peer=${encodeURIComponent(fromId)}`,

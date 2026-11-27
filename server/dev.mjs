@@ -5055,15 +5055,22 @@ async function handleApiRequest(req, res) {
         sendJson(res, 403, { success: false, error: 'Only CR/SR or admin can update CR/SR notices.' });
         return;
       }
-      // Server-side rate limit for CR/SR notice bursts (30s per user)
-      if (key === 'aust-cr-sr-notices') {
-        const last = noticePostLastByUser.get(auth.id) || 0;
-        if (Date.now() - last < 30000 && !hasAnyRole(auth, 'admin', 'moderator')) {
-          const wait = Math.ceil((30000 - (Date.now() - last))/1000);
-          sendJson(res, 429, { success: false, error: `Rate limited — wait ${wait}s before next notice.` });
-          return;
+      // Server-side rate limit for CR/SR notice bursts (30s per user). Only a
+      // NEW notice counts — edits and deletes must never be throttled, or a
+      // delete right after posting is rejected and the notice comes back.
+      if (key === 'aust-cr-sr-notices' && !hasAnyRole(auth, 'admin', 'moderator') && Array.isArray(body.value)) {
+        const storedForRate = await getSharedStoreValue(key, []);
+        const knownIds = new Set((Array.isArray(storedForRate) ? storedForRate : []).map((n) => String(n?.id)));
+        const isNewPost = body.value.some((n) => n && n.id && !knownIds.has(String(n.id).slice(0, 100)));
+        if (isNewPost) {
+          const last = noticePostLastByUser.get(auth.id) || 0;
+          if (Date.now() - last < 30000) {
+            const wait = Math.ceil((30000 - (Date.now() - last))/1000);
+            sendJson(res, 429, { success: false, error: `Rate limited — wait ${wait}s before next notice.` });
+            return;
+          }
+          noticePostLastByUser.set(auth.id, Date.now());
         }
-        noticePostLastByUser.set(auth.id, Date.now());
       }
       // CR/SR notices: the client sends the whole list, but a CR/SR may only
       // create, edit or delete their OWN notices. Everyone else's notices are

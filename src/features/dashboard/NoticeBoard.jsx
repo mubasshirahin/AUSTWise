@@ -74,6 +74,13 @@ export default function NoticeBoard() {
     onNoticeNew: useCallback(() => {
       loadSharedAsync(CRSR_KEY, []).then(v => { if (Array.isArray(v)) setCrsrNotices(v); });
     }, []),
+    // Any post / edit / delete by anyone → server broadcasts store-change;
+    // re-fetch so every open board updates instantly.
+    onStoreChange: useCallback((p) => {
+      if (p?.scope !== 'shared') return;
+      if (p.key === CRSR_KEY) loadSharedAsync(CRSR_KEY, []).then(v => { if (Array.isArray(v)) setCrsrNotices(v); });
+      else if (p.key === 'aust-notices') loadSharedAsync('aust-notices', notices).then(v => { if (Array.isArray(v)) setAdminNotices(v); });
+    }, []),
   });
 
   const [adminNotices, setAdminNotices] = useState(() => loadSharedSync('aust-notices', notices));
@@ -119,8 +126,13 @@ export default function NoticeBoard() {
 
   const saveCrsr = (next) => {
     setCrsrNotices(next);
-    // Server-synced shared store (CR/SR only via ACL) + local fallback
-    saveShared(CRSR_KEY, next);
+    // Server-synced shared store (CR/SR only via ACL). Re-read afterwards so
+    // a rejected write doesn't leave a change that "comes back" on refresh.
+    Promise.resolve(saveShared(CRSR_KEY, next))
+      .catch(() => {})
+      .finally(() => {
+        loadSharedAsync(CRSR_KEY, []).then(v => { if (Array.isArray(v)) setCrsrNotices(v); });
+      });
   };
 
   const [formError, setFormError] = useState('');

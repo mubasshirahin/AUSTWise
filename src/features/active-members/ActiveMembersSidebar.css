@@ -326,6 +326,28 @@
   padding: 2px 0;
 }
 
+/* Active-now chip next to a group's total — green dot + count */
+.am-group-active {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  color: var(--status-online);
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+}
+
+.am-group-active .am-dot {
+  width: 6px;
+  height: 6px;
+}
+
+/* Collapsed group's peek: only its active members, shown under the header */
+.am-group-body.am-group-peek {
+  padding-top: 0;
+}
+
 /* Empty department group — keeps the full department structure visible */
 .am-group-empty {
   padding: 6px 10px 6px 16px;

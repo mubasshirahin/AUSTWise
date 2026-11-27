@@ -18,6 +18,7 @@ const SHEET_SELECTOR = [
   '.profile-dropdown',
   '.notif-dropdown',
   '.theme-switcher.open .theme-menu',
+  '.bsheet-layer > .theme-menu',
   '.auth-theme-menu',
   '.landing-theme-menu.open',
   '.prereq-dept-menu',
@@ -87,10 +88,52 @@ function onMove(e) {
   if (sheet && isOutside(e, sheet) && e.cancelable) e.preventDefault();
 }
 
+// Browsers without :has() skip the CSS rule that stops a menu's ancestors
+// from trapping the fixed sheet (a transform/filter/backdrop-filter makes the
+// ancestor its containing block, so the sheet sticks to that box, often far up
+// the page). There, mark the open sheet's ancestors with .msheet-lift instead.
+const LIFT = 'msheet-lift';
+let lifted = [];
+let liftQueued = false;
+
+function supportsHas() {
+  try { return CSS.supports('selector(:has(*))'); } catch { return false; }
+}
+
+function updateLift() {
+  liftQueued = false;
+  const sheet = openSheet();
+  const next = [];
+  for (let el = sheet?.parentElement; el; el = el.parentElement) next.push(el);
+  lifted.forEach((el) => { if (!next.includes(el)) el.classList.remove(LIFT); });
+  next.forEach((el) => { if (!el.classList.contains(LIFT)) el.classList.add(LIFT); });
+  lifted = next;
+}
+
+const withoutLift = (cls) => String(cls || '').split(/\s+/).filter((c) => c && c !== LIFT).join(' ');
+
+function queueLift(mutations) {
+  // Our own .msheet-lift changes must not re-trigger the check.
+  if (mutations && mutations.every((m) => m.type === 'attributes'
+    && withoutLift(m.oldValue) === withoutLift(m.target.getAttribute('class')))) return;
+  if (liftQueued) return;
+  liftQueued = true;
+  requestAnimationFrame(updateLift);
+}
+
+function installLiftFallback() {
+  if (supportsHas() || typeof MutationObserver === 'undefined') return;
+  new MutationObserver(queueLift).observe(document.body, {
+    subtree: true, childList: true, attributes: true, attributeOldValue: true, attributeFilter: ['class'],
+  });
+  window.matchMedia(MOBILE).addListener?.(() => queueLift());
+}
+
 let installed = false;
 export function installMobileMenuSheet() {
   if (installed || typeof window === 'undefined') return;
   installed = true;
+  installLiftFallback();
   const opts = { capture: true, passive: false };
   ['pointerdown', 'touchstart', 'mousedown'].forEach((t) => window.addEventListener(t, onDown, opts));
   ['pointerup', 'touchend', 'mouseup', 'click'].forEach((t) => window.addEventListener(t, onRest, opts));
