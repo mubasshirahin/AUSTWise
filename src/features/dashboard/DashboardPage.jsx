@@ -754,6 +754,21 @@ export default function DashboardPage() {
     };
   }, [focusMode]);
 
+  // A notice push links to #notice-board: scroll there once it has rendered.
+  useEffect(() => {
+    if (location.hash !== '#notice-board') return undefined;
+    let tries = 0;
+    const timer = setInterval(() => {
+      const el = document.getElementById('notice-board');
+      tries += 1;
+      if (el || tries > 20) {
+        clearInterval(timer);
+        el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 150);
+    return () => clearInterval(timer);
+  }, [location.hash, location.key]);
+
   const greeting = useMemo(() => getGreeting(), []);
   const greetingMeta = useMemo(() => getGreetingMeta(greeting.period), [greeting.period]);
 
@@ -900,7 +915,7 @@ export default function DashboardPage() {
         </div>
         {isVisible('notices') && (
           <MastheadAccessControl>
-            <section className="dash-section-group dashboard-notice-full-width" style={{ gridColumn: '1 / -1' }}>
+            <section id="notice-board" className="dash-section-group dashboard-notice-full-width" style={{ gridColumn: '1 / -1', scrollMarginTop: '72px' }}>
               <div className="dash-section">
                 <FeatureAccessGate featureKey="feature:dashboard:notices"><NoticeBoard /></FeatureAccessGate>
               </div>

@@ -96,13 +96,52 @@
 
   // Pages report whether they run as the installed app (standalone) or in a
   // browser tab, so a notification tap goes to the app window, not a tab.
+  // Persisted in Cache Storage: the worker is often stopped between the
+  // report and the tap, which would wipe an in-memory list.
   var standaloneClients = new Set();
+  var browserClients = new Set();
+  var MODE_CACHE = 'austwise-display-modes';
+  var MODE_KEY = '/__display-modes__';
+  var modesLoaded = null;
+  function loadModes() {
+    if (!modesLoaded) {
+      modesLoaded = caches.open(MODE_CACHE).then(function (c) { return c.match(MODE_KEY); }).then(function (res) {
+        return res ? res.json() : null;
+      }).then(function (saved) {
+        (saved && saved.app || []).forEach(function (id) { standaloneClients.add(id); });
+        (saved && saved.tab || []).forEach(function (id) { browserClients.add(id); });
+      }).catch(function () {});
+    }
+    return modesLoaded;
+  }
+  function saveModes() {
+    return caches.open(MODE_CACHE).then(function (c) {
+      return c.put(MODE_KEY, new Response(JSON.stringify({
+        app: Array.from(standaloneClients).slice(-20),
+        tab: Array.from(browserClients).slice(-20),
+      }), { headers: { 'Content-Type': 'application/json' } }));
+    }).catch(function () {});
+  }
   self.addEventListener('message', function (event) {
     var msg = event.data;
     if (!msg || msg.type !== 'austwise-display-mode' || !event.source) return;
-    if (msg.standalone) standaloneClients.add(event.source.id);
-    else standaloneClients.delete(event.source.id);
+    var id = event.source.id;
+    event.waitUntil(loadModes().then(function () {
+      if (msg.standalone) { standaloneClients.add(id); browserClients.delete(id); }
+      else { browserClients.add(id); standaloneClients.delete(id); }
+      return saveModes();
+    }));
   });
+
+  // Remember where a tap should land, for an app that is cold-started at its
+  // home page (the page reads and clears this on boot).
+  function rememberTarget(url) {
+    return caches.open('austwise-pending-nav').then(function (cache) {
+      return cache.put('/__pending-nav__', new Response(JSON.stringify({ url: url, at: Date.now() }), {
+        headers: { 'Content-Type': 'application/json' },
+      }));
+    }).catch(function () {});
+  }
 
   self.addEventListener('notificationclick', function (event) {
     event.notification.close();
@@ -110,27 +149,32 @@
     var url = (event.notification.data && event.notification.data.url) || '/';
     var target = new URL(url, self.location.origin).href;
     event.waitUntil(
-      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clients) {
-        var app = null;
-        for (var i = 0; i < clients.length; i += 1) {
-          if (standaloneClients.has(clients[i].id)) { app = clients[i]; break; }
+      loadModes().then(function () {
+        return self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      }).then(function (clients) {
+        var mine = clients.filter(function (c) { return c.url.indexOf(self.location.origin) === 0; });
+        // Prefer the installed-app window. If the app was never seen on this
+        // device (not installed), reuse an open browser tab. If it was seen
+        // but isn't open now, let the OS open the link, which on Android
+        // launches the installed app instead of a browser tab.
+        var win = null;
+        for (var i = 0; i < mine.length; i += 1) {
+          if (standaloneClients.has(mine[i].id)) { win = mine[i]; break; }
         }
-        if (app) {
-          if (app.url === target) return app.focus();
-          return app.focus().then(function (w) { return (w || app).navigate(target); }).catch(function () {
+        if (!win && standaloneClients.size === 0 && mine.length) win = mine[0];
+        if (win && 'focus' in win) {
+          // The page's router opens the target (client.navigate() is
+          // unreliable on Android and reloads the whole app).
+          win.postMessage({ type: 'austwise-navigate', url: target });
+          return rememberTarget(target).then(function () {
+            return win.focus();
+          }).catch(function () {
             return self.clients.openWindow(target);
           });
         }
-        // No known app window: let the OS open the link. On Android with the
-        // app installed this launches the installed app, not a browser tab.
-        // Only reuse a browser tab when no tab-vs-app info was ever reported
-        // and a tab already shows this exact page.
-        for (var j = 0; j < clients.length; j += 1) {
-          if (clients[j].url === target && 'focus' in clients[j] && standaloneClients.size === 0) {
-            return clients[j].focus();
-          }
-        }
-        return self.clients.openWindow ? self.clients.openWindow(target) : undefined;
+        return rememberTarget(target).then(function () {
+          return self.clients.openWindow ? self.clients.openWindow(target) : undefined;
+        });
       })
     );
   });

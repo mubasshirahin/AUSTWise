@@ -146,7 +146,7 @@ describe('webPush server module', () => {
     const payload = JSON.parse(mocks.store.sent[0].payload);
     expect(payload.title).toBe('Exam schedule');
     expect(payload.tag).toBe('notice-cr-1');
-    expect(payload.url).toBe('/');
+    expect(payload.url).toBe('/dashboard/quickstats#notice-board');
   });
 
   it('drops subscriptions that the push service reports as gone', async () => {

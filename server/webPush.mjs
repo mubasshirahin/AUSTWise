@@ -281,7 +281,7 @@ export async function sendNoticeWebPush(notice) {
     body: `${poster}: ${String(notice?.content || 'posted a new notice')}`.slice(0, 160),
     icon: await avatarIconFor(notice?.postedById),
     tag: notice?.noticeId ? `notice-${notice.noticeId}` : `notice-${Date.now()}`,
-    url: '/',
+    url: '/dashboard/quickstats#notice-board',
     category: 'notices',
   };
 

@@ -1,4 +1,5 @@
 ﻿import { lazy, Suspense, useState, useEffect, useRef } from 'react';
+import NotificationNavigator from './components/NotificationNavigator';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeProvider';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -538,6 +539,7 @@ function AppShell() {
 function App() {
   return (
     <BrowserRouter>
+      <NotificationNavigator />
       <ThemeProvider>
         <AuthProvider>
           <PomodoroProvider>
