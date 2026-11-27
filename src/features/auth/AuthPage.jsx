@@ -89,7 +89,10 @@ function formatMemberCount(count) {
 
 export default function AuthPage() {
   const { isAuthenticated, isLoading, login, loginDirect, loginGuest, signup } = useAuth();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, themes: visibleThemes } = useTheme();
+  // Only the themes an admin has made available.
+  const darkThemes = darkThemeOptions.filter((t) => visibleThemes.includes(t.id));
+  const lightThemes = lightThemeOptions.filter((t) => visibleThemes.includes(t.id));
   const navigate = useNavigate();
   const location = useLocation();
   const redirectPath = location.state?.from || '/';
@@ -633,8 +636,8 @@ export default function AuthPage() {
             </button>
             {themeMenuOpen && (
               <div className="auth-theme-menu" role="menu">
-                <span className="auth-theme-menu-heading">Dark Mode</span>
-                {darkThemeOptions.map(({ id, label, icon: Icon }) => {
+                {darkThemes.length > 0 && <span className="auth-theme-menu-heading">Dark Mode</span>}
+                {darkThemes.map(({ id, label, icon: Icon }) => {
                   const isActive = theme === id;
                   return (
                     <button
@@ -652,10 +655,10 @@ export default function AuthPage() {
                   );
                 })}
 
-                <div className="auth-theme-menu-divider" />
+                {darkThemes.length > 0 && lightThemes.length > 0 && <div className="auth-theme-menu-divider" />}
 
-                <span className="auth-theme-menu-heading">Light Mode</span>
-                {lightThemeOptions.map(({ id, label, icon: Icon }) => {
+                {lightThemes.length > 0 && <span className="auth-theme-menu-heading">Light Mode</span>}
+                {lightThemes.map(({ id, label, icon: Icon }) => {
                   const isActive = theme === id;
                   return (
                     <button

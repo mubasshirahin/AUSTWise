@@ -326,7 +326,7 @@ function DriveOrbitButton({ user }) {
 
 export default function SettingsPage() {
   const { isAdmin } = useAdminMode();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, themes: visibleThemes } = useTheme();
   const { user, isAuthenticated, updateUser, saveUserProfile, logout, refreshUserFromServer } = useAuth();
   const { stalk } = useStalk();
   const accountRoles = new Set([user?.role, ...(Array.isArray(user?.roles) ? user.roles : [])].filter(Boolean));
@@ -1878,7 +1878,7 @@ export default function SettingsPage() {
                 stats={[
                   { label: 'Theme', value: themeOptions.find((t) => t.id === theme)?.label || 'Dark', small: true },
                   { label: 'Mode', value: lightThemes.some((t) => t.id === theme) ? 'Light' : 'Dark', small: true },
-                  { label: 'Themes', value: themeOptions.length },
+                  { label: 'Themes', value: visibleThemes.length },
                 ]}
               />
 
@@ -1888,7 +1888,10 @@ export default function SettingsPage() {
                   <p className="st-card-desc">Current: {themeOptions.find((t) => t.id === theme)?.desc || 'Dark Mode standard'}</p>
                 </div>
 
-                {[['Dark Mode', 'Dark themes', darkThemes], ['Light Mode', 'Light themes', lightThemes]].map(([groupLabel, ariaLabel, list]) => (
+                {[['Dark Mode', 'Dark themes', darkThemes], ['Light Mode', 'Light themes', lightThemes]]
+                  .map(([groupLabel, ariaLabel, list]) => [groupLabel, ariaLabel, list.filter((t) => visibleThemes.includes(t.id))])
+                  .filter(([, , list]) => list.length > 0)
+                  .map(([groupLabel, ariaLabel, list]) => (
                   <div className="st-theme-group" key={groupLabel}>
                     <h4 className="st-overline">{groupLabel}</h4>
                     <div className="st-theme-grid" role="radiogroup" aria-label={ariaLabel}>

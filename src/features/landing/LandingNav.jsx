@@ -42,7 +42,10 @@ const allThemeOptions = [...darkThemeOptions, ...lightThemeOptions];
 
 export default function LandingNav() {
   const navigate = useNavigate();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, themes: visibleThemes } = useTheme();
+  // Only the themes an admin has made available.
+  const darkThemes = darkThemeOptions.filter((t) => visibleThemes.includes(t.id));
+  const lightThemes = lightThemeOptions.filter((t) => visibleThemes.includes(t.id));
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const themeSwitcherRef = useRef(null);
   const [logoClicked, setLogoClicked] = useState(false);
@@ -120,8 +123,8 @@ export default function LandingNav() {
             </button>
 
             <div className={`landing-theme-menu ${themeMenuOpen ? 'open' : ''}`} role="menu" aria-label="Select theme">
-              <span className="landing-theme-menu-heading">Dark Mode</span>
-              {darkThemeOptions.map(({ id, label, icon: Icon }) => {
+              {darkThemes.length > 0 && <span className="landing-theme-menu-heading">Dark Mode</span>}
+              {darkThemes.map(({ id, label, icon: Icon }) => {
                 const isActive = theme === id;
                 return (
                   <button
@@ -139,10 +142,10 @@ export default function LandingNav() {
                 );
               })}
 
-              <div className="landing-theme-menu-divider" />
+              {darkThemes.length > 0 && lightThemes.length > 0 && <div className="landing-theme-menu-divider" />}
 
-              <span className="landing-theme-menu-heading">Light Mode</span>
-              {lightThemeOptions.map(({ id, label, icon: Icon }) => {
+              {lightThemes.length > 0 && <span className="landing-theme-menu-heading">Light Mode</span>}
+              {lightThemes.map(({ id, label, icon: Icon }) => {
                 const isActive = theme === id;
                 return (
                   <button

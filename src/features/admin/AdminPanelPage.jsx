@@ -17,6 +17,7 @@ import AdminAttendancePanel from './AdminAttendancePanel';
 import TelegramConnectionsPanel from './TelegramConnectionsPanel';
 import AcademicManagementPanel from './AcademicManagementPanel';
 import PageAvailabilityPanel from './PageAvailabilityPanel';
+import ThemeVisibilityPanel from './ThemeVisibilityPanel';
 import FeatureAccessPanel from './FeatureAccessPanel';
 import QuestionBankPanel from './QuestionBankPanel';
 import ModerationStrikesPanel from './ModerationStrikesPanel';
@@ -167,6 +168,7 @@ export default function AdminPanelPage() {
       'usage': '/admin-panel/usage',
       'academic': '/admin-panel/academic',
       'availability': '/admin-panel/availability',
+      'appearance': '/admin-panel/appearance',
       'applications': '/admin-panel/applications',
       'representatives': '/admin-panel/representatives',
       'templates': '/admin-panel/templates',
@@ -807,6 +809,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
           <div className="admin-nav-items">
             <button className={activeTab === 'features' ? 'is-active' : ''} onClick={() => navigateToTab('features')}><span>Access rules</span><small>Set feature access by user role</small></button>
             <button className={activeTab === 'availability' ? 'is-active' : ''} onClick={() => navigateToTab('availability')}><span>Page availability</span><small>Enable or pause app pages</small></button>
+            <button className={activeTab === 'appearance' ? 'is-active' : ''} onClick={() => navigateToTab('appearance')}><span>Themes &amp; layouts</span><small>Choose which themes and layouts users see</small></button>
             <button className={activeTab === 'templates' ? 'is-active' : ''} onClick={() => navigateToTab('templates')}><span>Routine templates</span><small>Manage shared class schedules</small></button>
             <button className={activeTab === 'cheatsheets' ? 'is-active' : ''} onClick={() => navigateToTab('cheatsheets')}><span>Cheatsheets</span><small>Manage shared study resources</small></button>
             <button className={activeTab === 'question-bank' ? 'is-active' : ''} onClick={() => navigateToTab('question-bank')}><span>Question bank</span><small>Manage shared past papers</small></button>
@@ -891,6 +894,7 @@ if (!res.ok || !Array.isArray(data.applications)) return;
       {/* Overview Cards */}
       {activeTab === 'academic' && <AcademicManagementPanel />}
       {activeTab === 'availability' && <PageAvailabilityPanel />}
+      {activeTab === 'appearance' && <ThemeVisibilityPanel />}
       {activeTab === 'features' && <FeatureAccessPanel />}
       {/* Role Access Control — visible on every admin subpage, anchored under quick stats */}
       {activeTab === 'features' && <RoleAccessControlCard pageKey={location.pathname} />}

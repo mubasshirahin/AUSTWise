@@ -235,7 +235,7 @@ function NodeRow({ isCurrent }) {
 // Live theme preview: the stage carries data-theme, so every token inside it
 // (colours, radii, fonts) comes from that theme's own stylesheet.
 function ThemeStudio() {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, themes: visibleThemes } = useTheme();
   const paidIds = THEME_LIST.map(([id]) => id);
   const [sel, setSel] = useState(() => (paidIds.includes(theme) ? theme : 'newsprint'));
   const current = THEME_LIST.find(([id]) => id === sel) || THEME_LIST[0];
@@ -289,9 +289,9 @@ function ThemeStudio() {
             type="button"
             className="pro-btn pro-btn-quiet"
             onClick={() => setTheme(sel)}
-            disabled={theme === sel}
+            disabled={theme === sel || !visibleThemes.includes(sel)}
           >
-            {theme === sel ? 'In use' : 'Use this theme'}
+            {theme === sel ? 'In use' : visibleThemes.includes(sel) ? 'Use this theme' : 'Coming soon'}
           </button>
         </div>
       </div>

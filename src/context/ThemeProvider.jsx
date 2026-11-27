@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { onRealtimeMessage } from '../utils/liveStore';
 import { ThemeContext, THEMES } from './ThemeContext';
 import { THEME_ACCENTS, ACCENT_KEY, LAYOUT_KEY, LAYOUT_PICK_KEY, LAYOUTS, layoutForTheme, readLayoutPick, applyAccentOverrides, clearAccentOverrides, THEME_STYLES as themeStyles } from './themeConstants';
 
@@ -29,12 +30,38 @@ const layoutStyles = {
   neon: () => import('../layout/SignatureLayouts.css'),
 };
 
+// Which themes and layouts admins have made available (Admin → Themes &
+// layouts). Cached locally so the first frame already respects it.
+const VISIBILITY_CACHE_KEY = 'aust-appearance-visibility';
+const DEFAULT_VISIBILITY = { themes: ['dark'], layouts: ['classic'] };
+function readVisibility() {
+  try {
+    const v = JSON.parse(localStorage.getItem(VISIBILITY_CACHE_KEY) || 'null');
+    if (Array.isArray(v?.themes) && Array.isArray(v?.layouts)) return v;
+  } catch { /* storage unavailable */ }
+  return DEFAULT_VISIBILITY;
+}
+function visibleList(all, allowed, fallback) {
+  const list = all.filter((id) => allowed.includes(id));
+  return list.length ? list : [fallback];
+}
+
 const initialTheme = () => {
   try {
     const saved = localStorage.getItem('aust-theme');
-    if (saved && THEMES.includes(saved)) return saved;
+    const allowed = visibleList(THEMES, readVisibility().themes, 'dark');
+    if (saved && allowed.includes(saved)) return saved;
+    return allowed[0];
   } catch { /* storage unavailable */ }
   return 'dark';
+};
+
+const initialLayout = (theme) => {
+  const allowed = visibleList(LAYOUTS, readVisibility().layouts, 'classic');
+  const pick = readLayoutPick(theme);
+  if (pick && allowed.includes(pick)) return pick;
+  const own = layoutForTheme(theme);
+  return allowed.includes(own) ? own : allowed[0];
 };
 
 // Start fetching the saved appearance before React mounts so its stylesheet is
@@ -42,13 +69,40 @@ const initialTheme = () => {
 // cached module imports.
 try {
   const bootTheme = initialTheme();
-  const bootLayout = readLayoutPick(bootTheme) || layoutForTheme(bootTheme);
+  const bootLayout = initialLayout(bootTheme);
   themeStyles[bootTheme]?.();
   layoutStyles[bootLayout]?.();
 } catch { /* storage can be unavailable in private or sandboxed contexts */ }
 
 export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(initialTheme);
+
+  const [visibility, setVisibility] = useState(readVisibility);
+  useEffect(() => {
+    const apply = (v) => {
+      if (!Array.isArray(v?.themes) || !Array.isArray(v?.layouts)) return;
+      const next = { themes: v.themes, layouts: v.layouts };
+      try { localStorage.setItem(VISIBILITY_CACHE_KEY, JSON.stringify(next)); } catch { /* storage unavailable */ }
+      setVisibility(next);
+    };
+    const load = () => fetch('/api/appearance', { credentials: 'same-origin' })
+      .then((r) => (r.ok ? r.json() : null)).then((d) => { if (d?.success) apply(d); }).catch(() => {});
+    load();
+    const off = onRealtimeMessage('appearance', apply);
+    const onVisible = () => { if (document.visibilityState === 'visible') load(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { off(); document.removeEventListener('visibilitychange', onVisible); };
+  }, []);
+  const visibleThemes = useMemo(() => visibleList(THEMES, visibility.themes, 'dark'), [visibility]);
+  const visibleLayouts = useMemo(() => visibleList(LAYOUTS, visibility.layouts, 'classic'), [visibility]);
+  const visibleRef = useRef({ themes: visibleThemes, layouts: visibleLayouts });
+  visibleRef.current = { themes: visibleThemes, layouts: visibleLayouts };
+  // A theme's own layout, or the first available one if that layout is hidden.
+  const layoutFor = useCallback((id) => {
+    const own = layoutForTheme(id);
+    const { layouts } = visibleRef.current;
+    return layouts.includes(own) ? own : layouts[0];
+  }, []);
 
   // Per-theme custom accents: { theme: '#hex' }. Keys present = user override
   // for that theme; absent = theme's native color (from THEME_ACCENTS).
@@ -64,26 +118,38 @@ export function ThemeProvider({ children }) {
   // Every theme ships with one fixed layout (THEME_LAYOUT in themeConstants).
   // A manual pick from the navbar Layout menu sticks only while the theme it
   // was made under stays active; switching theme restores that theme's own.
-  const [layout, setLayoutState] = useState(() => readLayoutPick(theme) || layoutForTheme(theme));
+  const [layout, setLayoutState] = useState(() => initialLayout(theme));
 
   const themeRef = useRef(theme);
   themeRef.current = theme;
 
   const setTheme = useCallback((next) => {
     const id = typeof next === 'function' ? next(themeRef.current) : next;
-    if (!THEMES.includes(id) || id === themeRef.current) return;
+    if (!visibleRef.current.themes.includes(id) || id === themeRef.current) return;
     try { localStorage.removeItem(LAYOUT_PICK_KEY); } catch { /* storage unavailable */ }
     themeRef.current = id;
     setThemeState(id);
-    setLayoutState(layoutForTheme(id));
-  }, []);
+    setLayoutState(layoutFor(id));
+  }, [layoutFor]);
 
   const setLayout = useCallback((next) => {
     setLayoutState((prev) => {
       const id = typeof next === 'function' ? next(prev) : next;
-      return LAYOUTS.includes(id) ? id : prev;
+      return visibleRef.current.layouts.includes(id) ? id : prev;
     });
   }, []);
+
+  // An admin hid the active theme or layout: move to an available one.
+  useEffect(() => {
+    if (!visibleThemes.includes(theme)) {
+      const next = visibleThemes[0];
+      themeRef.current = next;
+      setThemeState(next);
+      setLayoutState(layoutFor(next));
+    } else if (!visibleLayouts.includes(layout)) {
+      setLayoutState(layoutFor(theme));
+    }
+  }, [visibleThemes, visibleLayouts, theme, layout, layoutFor]);
 
   // Remember a manual layout pick for the current theme only.
   useEffect(() => {
@@ -141,12 +207,12 @@ export function ThemeProvider({ children }) {
 
   // Advances through every available theme (Dark → Light → Newsprint → …).
   const cycleTheme = () => setTheme(prev => {
-    const idx = THEMES.indexOf(prev);
-    return THEMES[(idx + 1) % THEMES.length];
+    const idx = visibleThemes.indexOf(prev);
+    return visibleThemes[(idx + 1) % visibleThemes.length];
   });
 
   return (
-    <ThemeContext.Provider value={{ theme, themes: THEMES, setTheme, toggleTheme, cycleTheme, accent, accentOverridden, setAccent, layout, setLayout, toggleLayout }}>
+    <ThemeContext.Provider value={{ theme, themes: visibleThemes, layouts: visibleLayouts, setTheme, toggleTheme, cycleTheme, accent, accentOverridden, setAccent, layout, setLayout, toggleLayout }}>
       {children}
     </ThemeContext.Provider>
   );

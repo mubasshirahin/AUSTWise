@@ -65,7 +65,9 @@ const SHORTCUTS = [
 export default function AssistiveWidget() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, themes: visibleThemes } = useTheme();
+  // The Light / Dark switch only when an admin has made both available.
+  const canToggleTheme = visibleThemes.includes('light') && visibleThemes.includes('dark');
   const [, updateTgk] = useTakaGeloKoi();
 
   // App-only gate: web/desktop → no bubble at all.
@@ -283,6 +285,7 @@ export default function AssistiveWidget() {
 
             {/* Quick Actions Row */}
             <div className="assistive-actions-row">
+              {canToggleTheme && (
               <button
                 type="button"
                 className="assistive-action-btn"
@@ -292,6 +295,7 @@ export default function AssistiveWidget() {
                 {isDark ? <Sun size={15} /> : <Moon size={15} />}
                 <span>{isDark ? 'Light' : 'Dark'}</span>
               </button>
+              )}
 
               <button
                 type="button"

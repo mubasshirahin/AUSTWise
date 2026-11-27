@@ -132,7 +132,7 @@ const lightThemeOptions = [
 ];
 
 export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMembersToggle, drawerOpen = false }) {
-  const { theme, setTheme, layout, setLayout } = useTheme();
+  const { theme, setTheme, layout, setLayout, themes: visibleThemes, layouts: visibleLayouts } = useTheme();
   const [layoutMenuOpen, setLayoutMenuOpen] = useState(false);
   const layoutSwitcherRef = useRef(null);
   const { user, isAuthenticated, logout } = useAuth();
@@ -164,6 +164,10 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
 
   const { notifications, unread, markAsRead, markAllAsRead, clearAll, dismiss } = useInAppNotifications(user);
 
+  // Only the themes / layouts an admin has made available.
+  const darkThemes = darkThemeOptions.filter((t) => visibleThemes.includes(t.id));
+  const lightThemes = lightThemeOptions.filter((t) => visibleThemes.includes(t.id));
+  const layoutChoices = layoutOptions.filter((l) => visibleLayouts.includes(l.id));
   const allThemeOptions = [...darkThemeOptions, ...lightThemeOptions];
   const activeTheme = allThemeOptions.find((t) => t.id === theme) || allThemeOptions[0];
   const ThemeIcon = activeTheme.icon;
@@ -311,8 +315,8 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
 
           <BottomSheetPortal open={themeMenuOpen} onClose={() => setThemeMenuOpen(false)}>
           <div className="theme-menu" role="menu" aria-label="Select theme" ref={themeMenuRef}>
-            <span className="theme-menu-heading">Dark Mode</span>
-            {darkThemeOptions.map(({ id, label, icon: Icon }) => {
+            {darkThemes.length > 0 && <span className="theme-menu-heading">Dark Mode</span>}
+            {darkThemes.map(({ id, label, icon: Icon }) => {
               const isActive = theme === id;
               return (
                 <button
@@ -330,10 +334,10 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
               );
             })}
 
-            <div className="theme-menu-divider" />
+            {darkThemes.length > 0 && lightThemes.length > 0 && <div className="theme-menu-divider" />}
 
-            <span className="theme-menu-heading">Light Mode</span>
-            {lightThemeOptions.map(({ id, label, icon: Icon }) => {
+            {lightThemes.length > 0 && <span className="theme-menu-heading">Light Mode</span>}
+            {lightThemes.map(({ id, label, icon: Icon }) => {
               const isActive = theme === id;
               return (
                 <button
@@ -373,9 +377,9 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
 
           <BottomSheetPortal open={layoutMenuOpen} onClose={() => setLayoutMenuOpen(false)}>
           <div className="theme-menu layout-menu" role="menu" aria-label="Select layout" ref={layoutMenuRef}>
-            {layoutOptions.map(({ id, label, desc, icon: Icon, group }, index) => {
+            {layoutChoices.map(({ id, label, desc, icon: Icon, group }, index) => {
               const isActive = layout === id;
-              const startsGroup = index === 0 || layoutOptions[index - 1].group !== group;
+              const startsGroup = index === 0 || layoutChoices[index - 1].group !== group;
               return (
                 <Fragment key={id}>
                 {startsGroup && index > 0 && <div className="theme-menu-divider" />}

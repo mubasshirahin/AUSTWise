@@ -57,7 +57,7 @@ export function canAssignRoles(actor, nextRoles) {
  * Shared-store keys the server trusts for access decisions or stats. Only an
  * admin may write or delete them through the generic store endpoints.
  */
-const PROTECTED_SHARED_EXACT = new Set(['aust-usage-v1']);
+const PROTECTED_SHARED_EXACT = new Set(['aust-usage-v1', 'aust-appearance-visibility']);
 const PROTECTED_SHARED_PREFIXES = ['system:'];
 
 export function isProtectedSharedKey(key) {

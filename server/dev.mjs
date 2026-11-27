@@ -798,6 +798,22 @@ function recordStreak(userId) {
   }).catch(() => {});
 }
 
+// ── Theme / layout visibility (admin-controlled) ────────────────────
+const APPEARANCE_KEY = 'aust-appearance-visibility';
+const DEFAULT_APPEARANCE = { themes: ['dark'], layouts: ['classic'] };
+function normalizeAppearance(value) {
+  const clean = (list, fallback) => {
+    const out = Array.isArray(list)
+      ? [...new Set(list.map((x) => String(x || '').trim().slice(0, 40)).filter((x) => /^[a-z0-9-]+$/.test(x)))].slice(0, 100)
+      : [];
+    return out.length ? out : fallback;
+  };
+  return {
+    themes: clean(value?.themes, DEFAULT_APPEARANCE.themes),
+    layouts: clean(value?.layouts, DEFAULT_APPEARANCE.layouts),
+  };
+}
+
 function sendJson(res, status, payload) {
   res.writeHead(status, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(payload));
@@ -2673,6 +2689,38 @@ async function handleApiRequest(req, res) {
 
   // Public availability is separate from per-role access: admins can prepare
   // a feature privately, then publish it for everyone with one switch.
+  // Which themes and layouts users may pick. Public read (the landing and
+  // sign-in pages have pickers too); only admins and moderators change it.
+  // Missing value = only the Dark theme and its Classic layout.
+  if (req.url === '/api/appearance' && req.method === 'GET') {
+    try {
+      const value = await getSharedStoreValue(APPEARANCE_KEY, null);
+      res.setHeader('Cache-Control', 'no-store');
+      sendJson(res, 200, { success: true, ...normalizeAppearance(value) });
+    } catch (e) {
+      sendJson(res, 500, { success: false, error: e.message || 'Failed to load appearance settings' });
+    }
+    return;
+  }
+  if (req.url === '/api/admin/appearance' && req.method === 'POST') {
+    const auth = requireRole('admin', 'moderator')(req, res);
+    if (!auth) return;
+    try {
+      const body = await readJsonBody(req);
+      if (!Array.isArray(body?.themes) || !Array.isArray(body?.layouts)) {
+        sendJson(res, 400, { success: false, error: 'themes and layouts lists are required' });
+        return;
+      }
+      const value = normalizeAppearance(body);
+      await setSharedStoreValue(APPEARANCE_KEY, value);
+      try { broadcastToAll({ type: 'appearance', payload: value }); } catch {}
+      sendJson(res, 200, { success: true, ...value });
+    } catch (e) {
+      sendJson(res, 500, { success: false, error: e.message || 'Failed to save appearance settings' });
+    }
+    return;
+  }
+
   if (req.url.startsWith('/api/page-availability') && req.method === 'GET') {
     try {
       const url = new URL(req.url, `http://${req.headers.host}`);
@@ -5011,6 +5059,7 @@ async function handleApiRequest(req, res) {
     const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     const key = decodeURIComponent(req.url.slice('/api/store/shared/'.length));
+    if (key === APPEARANCE_KEY) { sendJson(res, 403, { success: false, error: 'This key is managed by the server.' }); return; }
     if (key === BATCH_DRIVE_LOCK_KEY) {
       sendJson(res, 403, { success: false, error: 'Use the Batch Drive lock API for this data.' });
       return;
@@ -5229,6 +5278,7 @@ async function handleApiRequest(req, res) {
     const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     const key = decodeURIComponent(req.url.slice('/api/store/shared/'.length));
+    if (key === APPEARANCE_KEY) { sendJson(res, 403, { success: false, error: 'This key is managed by the server.' }); return; }
     if (key === BATCH_DRIVE_LOCK_KEY) {
       sendJson(res, 403, { success: false, error: 'Use the Batch Drive lock API for this data.' });
       return;
