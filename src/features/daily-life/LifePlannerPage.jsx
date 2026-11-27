@@ -279,11 +279,11 @@ export default function LifePlannerPage() {
   const hasGoals = doc.goals.length > 0;
 
   // Switch to the mindmap and ask it to save a fully expanded PNG
-  const handleExportMindmap = () => {
+  const handleExportMindmap = (format = 'png') => {
     setShowMenu(false);
     setExporting(true);
     setView('mindmap');
-    setMindmapExportReq(Date.now());
+    setMindmapExportReq({ t: Date.now(), format });
   };
 
   const handleDeleteGoal = (g) => {
@@ -424,8 +424,11 @@ export default function LifePlannerPage() {
             </button>
             {showMenu && (
               <div className="lp-menu-list" role="menu">
-                <button type="button" className="lp-menu-item" role="menuitem" onClick={handleExportMindmap} disabled={exporting || !hasAnything}>
-                  <Workflow size={14} /> {exporting ? 'Rendering…' : 'Export mindmap'}
+                <button type="button" className="lp-menu-item" role="menuitem" onClick={() => handleExportMindmap('png')} disabled={exporting || !hasAnything}>
+                  <Workflow size={14} /> {exporting ? 'Rendering…' : 'Export mindmap (PNG)'}
+                </button>
+                <button type="button" className="lp-menu-item" role="menuitem" onClick={() => handleExportMindmap('jpg')} disabled={exporting || !hasAnything}>
+                  <Workflow size={14} /> {exporting ? 'Rendering…' : 'Export mindmap (JPG)'}
                 </button>
                 <div className="lp-menu-sep" />
                 <button type="button" className="lp-menu-item is-danger" role="menuitem" onClick={handleReset}>

@@ -498,10 +498,10 @@ function CoverPageGeneratorForm() {
         height: clone.scrollHeight,
       });
 
-      if (format === 'png') {
+      if (format === 'png' || format === 'jpg') {
         const link = document.createElement('a');
-        link.download = `Cover_Page_${courseCode || 'Assignment'}.png`;
-        link.href = canvas.toDataURL('image/png');
+        link.download = `Cover_Page_${courseCode || 'Assignment'}.${format}`;
+        link.href = format === 'jpg' ? canvas.toDataURL('image/jpeg', 0.95) : canvas.toDataURL('image/png');
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -520,7 +520,8 @@ function CoverPageGeneratorForm() {
       document.body.removeChild(clone);
       cloneRef.current = null;
 
-      trackExport(format).catch(()=>{});
+      // JPG counts with PNG in the image-export stats
+      trackExport(format === 'jpg' ? 'png' : format).catch(()=>{});
       setGenerated(true);
       setTimeout(() => setGenerated(false), 3000);
     } catch (err) {
@@ -654,6 +655,15 @@ function CoverPageGeneratorForm() {
                     role="menuitem"
                   >
                     <Image size={14} /> Download PNG
+                  </button>
+                  <button
+                    type="button"
+                    className="cpgen-menu-item"
+                    onClick={() => { setMenuOpen(false); generateCover('jpg'); }}
+                    disabled={!isFormValid || generating}
+                    role="menuitem"
+                  >
+                    <Image size={14} /> Download JPG
                   </button>
                   <div className="cpgen-menu-sep" />
                   <button

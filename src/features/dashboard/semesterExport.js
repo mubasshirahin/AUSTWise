@@ -478,11 +478,12 @@ async function prepare(opts) {
 }
 
 /** Phone-wallpaper JPG. On phones, opens the share sheet ("Save Image"). */
-export async function exportSemesterJPG(opts) {
+export async function exportSemesterJPG(opts, format = 'jpg') {
   const o = await prepare(opts);
-  const blob = await toBlob(renderWallpaper(o), 'image/jpeg', 0.95);
-  const filename = 'AUSTWise-Semester-View.jpg';
-  const file = typeof File === 'function' ? new File([blob], filename, { type: 'image/jpeg' }) : null;
+  const type = format === 'png' ? 'image/png' : 'image/jpeg';
+  const blob = await toBlob(renderWallpaper(o), type, 0.95);
+  const filename = `AUSTWise-Semester-View.${format === 'png' ? 'png' : 'jpg'}`;
+  const file = typeof File === 'function' ? new File([blob], filename, { type }) : null;
   const isTouch = window.matchMedia?.('(pointer: coarse)').matches;
   if (isTouch && file && navigator.canShare?.({ files: [file] })) {
     try {
@@ -496,6 +497,9 @@ export async function exportSemesterJPG(opts) {
 }
 
 /** A4 landscape PDF poster. */
+/** Same wallpaper as a lossless PNG. */
+export const exportSemesterPNG = (opts) => exportSemesterJPG(opts, 'png');
+
 export async function exportSemesterPDF(opts) {
   const [{ default: jsPDF }, o] = await Promise.all([import('jspdf'), prepare(opts)]);
   const canvas = renderSheet(o);

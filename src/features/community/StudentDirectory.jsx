@@ -6,7 +6,7 @@ import {
   BadgeCheck, Star, Download, FileDown, Loader2,
   Crown, Briefcase,
 } from 'lucide-react';
-import brandMark from '../../assets/austwise-icon-final.svg';
+import { frameCapture, saveFramedImage, saveFramedPDF } from '../../utils/brandedFrame';
 import { getAllAccounts, createAwid } from '../../utils/authStorage';
 import { getCachedMembers, refreshMemberDirectory } from '../../utils/memberDirectory';
 import { useAuth } from '../../context/AuthContext';
@@ -276,7 +276,6 @@ export default function StudentDirectory() {
     const root = document.documentElement;
     const cs = (n) => getComputedStyle(root).getPropertyValue(n).trim();
     const bg = cs('--bg-primary') || '#0A0A0C';
-    const logoUrl = brandMark;
     const card = cs('--bg-card') || '#1B1B1F';
     const input = cs('--bg-input') || '#1B1B1F';
     const border = cs('--border-primary') || '#2A2A35';
@@ -294,26 +293,6 @@ export default function StudentDirectory() {
       padding: 0 0 12px;
     `;
 
-    // ─── Brand header ───
-    const brand = document.createElement('div');
-    brand.style.cssText = `
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 16px 22px 12px; border-bottom: 1px solid ${border};
-    `;
-    brand.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <img src="${logoUrl}" alt="AUSTWise" style="width: 34px; height: 34px; object-fit: contain; flex-shrink: 0;" />
-        <div style="display: flex; flex-direction: column;">
-          <div style="font-size: 17px; font-weight: 800; color: ${textPri}; letter-spacing: -0.01em; line-height: 1.15;">AUSTWise</div>
-          <div style="font-size: 8px; color: ${textTer}; letter-spacing: 0.07em; text-transform: uppercase;">Your Academic Companion</div>
-        </div>
-      </div>
-      <div style="text-align: right;">
-        <div style="font-size: 8px; color: ${textTer}; text-transform: uppercase; letter-spacing: 0.07em;">Generated</div>
-        <div style="font-size: 11px; color: ${textPri}; font-weight: 700; margin-top: 2px;">${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</div>
-      </div>
-    `;
-    container.appendChild(brand);
 
     // ─── Title block ───
     const title = document.createElement('div');
@@ -375,18 +354,13 @@ export default function StudentDirectory() {
     wrap.appendChild(table);
     container.appendChild(wrap);
 
-    // ─── Footer ───
-    const footer = document.createElement('div');
-    footer.style.cssText = `padding: 10px 22px 0; font-size: 9px; color: ${textTer}; display: flex; justify-content: space-between;`;
-    footer.innerHTML = `<span>Department of ${dept} · Semester ${sem}</span><span>Exported from AUSTWise</span>`;
-    container.appendChild(footer);
 
     return container;
   };
 
   const handleExport = async (dept, sem, format) => {
-    const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
-      import('jspdf'), import('html2canvas-pro')
+    const [{ default: html2canvas }] = await Promise.all([
+      import('html2canvas-pro')
     ]);
     const key = `${dept}-${sem}`;
     setExportOpen(null);
@@ -405,34 +379,14 @@ export default function StudentDirectory() {
         logging: false, width: node.scrollWidth, height: node.scrollHeight,
       });
 
-      if (format === 'jpg') {
-        const link = document.createElement('a');
-        link.download = `${base}.jpg`;
-        link.href = canvas.toDataURL('image/jpeg', 0.95);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } else {
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pageW = 210, pageH = 297;
-        const margin = 10;
-        const imgW = pageW - margin * 2;
-        const imgH = (canvas.height * imgW) / canvas.width;
-        const usableH = pageH - margin * 2;
-        const pages = Math.max(1, Math.ceil(imgH / usableH));
-        // Fill each page with the theme background so dark documents tile cleanly.
-        const hex = bg.replace('#', '');
-        for (let i = 0; i < pages; i++) {
-          if (i > 0) pdf.addPage();
-          if (hex.length >= 6) {
-            pdf.setFillColor(parseInt(hex.substring(0, 2), 16), parseInt(hex.substring(2, 4), 16), parseInt(hex.substring(4, 6), 16));
-            pdf.rect(0, 0, pageW, pageH, 'F');
-          }
-          pdf.addImage(imgData, 'JPEG', margin, margin - i * usableH, imgW, imgH);
-        }
-        pdf.save(`${base}.pdf`);
-      }
+      const n = (grouped[dept][sem].regulars || []).length;
+      const { framed, brand } = await frameCapture(canvas, {
+        title: 'Student Directory',
+        stats: `${dept}  ·  Semester ${sem}  ·  ${n} student${n === 1 ? '' : 's'}`,
+        footerLabel: 'Student Directory',
+      });
+      if (format === 'pdf') await saveFramedPDF(framed, brand, base);
+      else await saveFramedImage(framed, brand, base, format);
     } catch (err) {
       console.error('Export failed:', err);
     } finally {
@@ -612,6 +566,13 @@ export default function StudentDirectory() {
                                   disabled={exporting === semKey}
                                 >
                                   <Download size={13} /> Save as JPG
+                                </button>
+                                <button
+                                  className="student-dir-export-item"
+                                  onClick={() => handleExport(dept, sem, 'png')}
+                                  disabled={exporting === semKey}
+                                >
+                                  <Download size={13} /> Save as PNG
                                 </button>
                                 <button
                                   className="student-dir-export-item"

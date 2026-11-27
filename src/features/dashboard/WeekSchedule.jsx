@@ -549,7 +549,7 @@ export default function WeekSchedule() {
         meta: { dept: user?.department || '', sem: user?.yearSemester || user?.semester || '' },
         logoUrl: brandMark,
       };
-      await (kind === 'pdf' ? exportSemesterPDF(opts) : exportSemesterJPG(opts));
+      await (kind === 'pdf' ? exportSemesterPDF(opts) : exportSemesterJPG(opts, kind));
     } catch (error) {
       console.error('Semester View export failed', error);
       window.alert('Export failed — please try again.');
@@ -685,6 +685,9 @@ export default function WeekSchedule() {
                 </button>
                 <button className="export-menu-item" disabled={!!exporting} onClick={() => { runExport('jpg'); setShowExportMenu(false); }}>
                   {exporting === 'jpg' ? <Loader2 size={14} className="spin" /> : <ImageIcon size={14} />} Export as JPG
+                </button>
+                <button className="export-menu-item" disabled={!!exporting} onClick={() => { runExport('png'); setShowExportMenu(false); }}>
+                  {exporting === 'png' ? <Loader2 size={14} className="spin" /> : <ImageIcon size={14} />} Export as PNG
                 </button>
               </div>
               </>,

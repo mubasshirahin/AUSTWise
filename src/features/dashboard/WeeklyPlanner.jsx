@@ -551,7 +551,7 @@ export default function WeeklyPlanner() {
         meta: { dept: user?.department || '', sem: user?.yearSemester || user?.semester || '' },
         logoUrl: brandMark,
       };
-      await (kind === 'pdf' ? exportRoutinePDF(opts) : exportRoutineJPG(opts));
+      await (kind === 'pdf' ? exportRoutinePDF(opts) : exportRoutineJPG(opts, kind));
     } catch (error) {
       console.error('Routine export failed', error);
       setShareMsg('Export failed — please try again.');
@@ -620,6 +620,9 @@ export default function WeeklyPlanner() {
                  </button>
                  <button className="export-menu-item" disabled={!!exporting} onClick={() => { runExport('jpg'); setShowMenu(false); }}>
                    {exporting === 'jpg' ? <Loader2 size={14} className="spin" /> : <ImageIcon size={14} />} Export as JPG
+                 </button>
+                 <button className="export-menu-item" disabled={!!exporting} onClick={() => { runExport('png'); setShowMenu(false); }}>
+                   {exporting === 'png' ? <Loader2 size={14} className="spin" /> : <ImageIcon size={14} />} Export as PNG
                  </button>
 
                  <div className="export-menu-sep" />

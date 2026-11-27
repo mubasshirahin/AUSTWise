@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef, useDeferredValue, memo } from 'react';
 import {
   DoorOpen, Search, X, Building2, Check, Hourglass, CalendarDays, Clock3,
   ChevronDown, ChevronRight, BookOpen,
@@ -84,6 +84,78 @@ function groupRoomsByBlock(rooms) {
   return out;
 }
 
+// ── Module-level caches: survive page re-visits so the page opens instantly ──
+const AVAIL_TTL = 60_000;
+const ROUTINES_TTL = 5 * 60_000;
+const availabilityCache = new Map(); // `${day}|${time}` -> { at, floors }
+let sharedRoutinesCache = null; // { at, promise }
+
+const normalizeRoomId = (value) => String(value || '').replace(/[^a-z0-9]/gi, '').toLowerCase();
+
+function invalidateRoomCaches() {
+  availabilityCache.clear();
+  sharedRoutinesCache = null;
+}
+
+// Fetch every shared routine once and index classes by room id, so opening
+// any room's schedule is a Map lookup instead of a new download + full scan.
+function loadRoomScheduleIndex() {
+  if (sharedRoutinesCache && Date.now() - sharedRoutinesCache.at < ROUTINES_TTL) {
+    return sharedRoutinesCache.promise;
+  }
+  const promise = fetch('/api/routines/shared')
+    .then((response) => {
+      if (!response.ok) throw new Error('Could not load shared routines.');
+      return response.json();
+    })
+    .then((payload) => {
+      if (!payload.success || !Array.isArray(payload.routines)) throw new Error('Routine data is unavailable.');
+      const index = new Map();
+      for (const record of payload.routines) {
+        let routine = record.routine;
+        if (typeof routine === 'string') {
+          try { routine = JSON.parse(routine); } catch { routine = {}; }
+        }
+        for (const [day, classes] of Object.entries(routine || {})) {
+          if (!Array.isArray(classes)) continue;
+          for (const item of classes) {
+            const key = normalizeRoomId(item.room || item.roomId);
+            if (!key) continue;
+            if (!index.has(key)) index.set(key, []);
+            index.get(key).push({
+              day,
+              time: item.time || '',
+              course: item.course || '',
+              courseName: item.name || item.courseName || '',
+              teacher: item.teacher || '',
+              department: record.department || '',
+              semester: record.yearSemester || '',
+              section: record.section || '',
+            });
+          }
+        }
+      }
+      return index;
+    })
+    .catch((error) => {
+      sharedRoutinesCache = null;
+      throw error;
+    });
+  sharedRoutinesCache = { at: Date.now(), promise };
+  return promise;
+}
+
+function roomSearchText(room) {
+  const d = room.details;
+  const evt = d?.event;
+  return [
+    room.id, room.name,
+    d?.venue, d?.hours, d?.dept, d?.semester, d?.section, d?.course,
+    d?.courseName, d?.teacher, d?.time,
+    evt?.title, evt?.speaker, evt?.date, evt?.time,
+  ].filter(Boolean).join(' ').toLowerCase();
+}
+
 export default function EmptyClassroomPage() {
   const [selectedDate, setSelectedDate] = useState(() => localDateValue());
   const [selectedTime, setSelectedTime] = useState(() => currentTimeString());
@@ -100,57 +172,57 @@ export default function EmptyClassroomPage() {
     () => new Set(roomCatalog.floors.map((f) => f.id))
   );
 
-  const toggleFloor = (floorId) => {
+  const toggleFloor = useCallback((floorId) => {
     setCollapsedFloors((prev) => {
       const next = new Set(prev);
       if (next.has(floorId)) next.delete(floorId);
       else next.add(floorId);
       return next;
     });
-  };
+  }, []);
 
-  const openRoomSchedule = async (room) => {
+  const scheduleRequestRef = useRef(0);
+  const openRoomSchedule = useCallback(async (room) => {
+    const requestId = ++scheduleRequestRef.current;
     setScheduleRoom(room);
     setRoomSchedule([]);
     setScheduleError('');
     setScheduleLoading(true);
     try {
-      const response = await fetch('/api/routines/shared');
-      if (!response.ok) throw new Error('Could not load shared routines.');
-      const payload = await response.json();
-      if (!payload.success || !Array.isArray(payload.routines)) throw new Error('Routine data is unavailable.');
-      const normalizeRoomId = (value) => String(value || '').replace(/[^a-z0-9]/gi, '').toLowerCase();
-      const targetRoomId = normalizeRoomId(room.id);
-      const entries = payload.routines.flatMap((record) => {
-        let routine = record.routine;
-        if (typeof routine === 'string') {
-          try { routine = JSON.parse(routine); } catch { routine = {}; }
-        }
-        return Object.entries(routine || {}).flatMap(([day, classes]) => (
-          Array.isArray(classes) ? classes
-            .filter((item) => normalizeRoomId(item.room || item.roomId) === targetRoomId)
-            .map((item) => ({
-              day,
-              time: item.time || '',
-              course: item.course || '',
-              courseName: item.name || item.courseName || '',
-              teacher: item.teacher || '',
-              department: record.department || '',
-              semester: record.yearSemester || '',
-              section: record.section || '',
-            })) : []
-        ));
-      });
-      const dayOrder = new Map(WEEKDAYS.map((day, index) => [day.toLowerCase(), index]));
+      const index = await loadRoomScheduleIndex();
+      if (requestId !== scheduleRequestRef.current) return;
+      const dayOrder = new Map(WEEKDAYS.map((day, i) => [day.toLowerCase(), i]));
+      const entries = [...(index.get(normalizeRoomId(room.id)) || [])];
       entries.sort((a, b) => (dayOrder.get(String(a.day).toLowerCase()) ?? 99) - (dayOrder.get(String(b.day).toLowerCase()) ?? 99)
         || String(a.time).localeCompare(String(b.time)));
       setRoomSchedule(entries);
     } catch (error) {
+      if (requestId !== scheduleRequestRef.current) return;
       setScheduleError(error.message || 'Could not load this room schedule.');
     } finally {
-      setScheduleLoading(false);
+      if (requestId === scheduleRequestRef.current) setScheduleLoading(false);
     }
-  };
+  }, []);
+
+  // Warm the routine index in the background so the first room tap is instant.
+  useEffect(() => {
+    const warm = () => { loadRoomScheduleIndex().catch(() => {}); };
+    if ('requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(warm, { timeout: 3000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = setTimeout(warm, 1500);
+    return () => clearTimeout(id);
+  }, []);
+
+  // Per-day grid rows for the open schedule, computed once per room.
+  const scheduleRows = useMemo(() => WEEKDAYS.map((day) => ({
+    day,
+    entries: roomSchedule
+      .filter((entry) => String(entry.day).toLowerCase() === day.toLowerCase())
+      .map((entry) => ({ ...entry, ...getRoomGridRange(entry.time) }))
+      .sort((a, b) => a.startIdx - b.startIdx),
+  })), [roomSchedule]);
 
   useEffect(() => {
     if (!scheduleRoom) return undefined;
@@ -170,9 +242,12 @@ export default function EmptyClassroomPage() {
   // Fetch availability for the selected weekday/time from CR-published
   // routines. Local events also trigger a refresh; offline mode uses the same
   // selected weekday/time against the locally cached routines.
-  const [liveFloors, setLiveFloors] = useState(() =>
-    computeRoomAvailability(weekdayForDate(localDateValue()), currentTimeString())
-  );
+  const [liveFloors, setLiveFloors] = useState(() => {
+    const day = weekdayForDate(localDateValue());
+    const time = currentTimeString();
+    const hit = availabilityCache.get(`${day}|${time}`);
+    return hit ? hit.floors : computeRoomAvailability(day, time);
+  });
   const [, setLiveSource] = useState('local');
   const selectedDay = weekdayForDate(selectedDate);
   const availabilityRequestRef = useRef(0);
@@ -180,6 +255,15 @@ export default function EmptyClassroomPage() {
   const fetchAvailability = useCallback(async () => {
     if (!selectedDate || !selectedTime) return;
     const requestId = ++availabilityRequestRef.current;
+    const cacheKey = `${selectedDay}|${selectedTime}`;
+    const hit = availabilityCache.get(cacheKey);
+    if (hit && Date.now() - hit.at < AVAIL_TTL) {
+      setLiveFloors(hit.floors);
+      setLiveSource('server');
+      return;
+    }
+    // Show the local estimate immediately while the server answers.
+    setLiveFloors(computeRoomAvailability(selectedDay, selectedTime));
     try {
       const params = new URLSearchParams({ day: selectedDay, time: selectedTime });
       const res = await fetch(`/api/rooms/availability?${params}`);
@@ -190,21 +274,27 @@ export default function EmptyClassroomPage() {
         // Always pass server floors through the local builder so the
         // ground-floor venue statuses (canteen open/closed + auditorium
         // event) are overlaid on top.
-        setLiveFloors(computeRoomAvailability(selectedDay, selectedTime, data.floors));
+        const floors = computeRoomAvailability(selectedDay, selectedTime, data.floors);
+        availabilityCache.set(cacheKey, { at: Date.now(), floors });
+        setLiveFloors(floors);
         setLiveSource('server');
         return;
       }
       throw new Error('bad payload');
     } catch {
       if (requestId !== availabilityRequestRef.current) return;
-      setLiveFloors(computeRoomAvailability(selectedDay, selectedTime));
       setLiveSource('local');
     }
   }, [selectedDate, selectedDay, selectedTime]);
 
+  // Debounce so scrubbing the time/date picker doesn't fire a request per tick.
   useEffect(() => {
-    fetchAvailability();
-    const handler = () => fetchAvailability();
+    const id = setTimeout(fetchAvailability, 200);
+    return () => clearTimeout(id);
+  }, [fetchAvailability]);
+
+  useEffect(() => {
+    const handler = () => { invalidateRoomCaches(); fetchAvailability(); };
     window.addEventListener('routine-updated', handler);
     window.addEventListener('auditorium-updated', handler);
     return () => {
@@ -213,43 +303,24 @@ export default function EmptyClassroomPage() {
     };
   }, [fetchAvailability]);
 
-  const { floors: allFloors } = { floors: liveFloors };
+  const allFloors = liveFloors;
+  const deferredSearch = useDeferredValue(searchTerm);
+
+  // Build each room's searchable text once per data load, not per keystroke.
+  const searchIndex = useMemo(() => {
+    const map = new Map();
+    allFloors.forEach((f) => f.rooms.forEach((room) => map.set(room, roomSearchText(room))));
+    return map;
+  }, [allFloors]);
 
   // 1) Search filter
   const searchFloors = useMemo(() => {
-    const q = searchTerm.trim().toLowerCase();
+    const q = deferredSearch.trim().toLowerCase();
     if (!q) return allFloors;
-
     return allFloors
-      .map((floor) => ({
-        ...floor,
-        rooms: floor.rooms.filter((room) => {
-          const d = room.details;
-          const evt = d?.event;
-          const searchable = [
-            d?.venue,
-            d?.hours,
-            d?.dept,
-            d?.semester,
-            d?.section,
-            d?.course,
-            d?.courseName,
-            d?.teacher,
-            d?.time,
-            evt?.title,
-            evt?.speaker,
-            evt?.date,
-            evt?.time,
-          ].filter(Boolean).join(' ').toLowerCase();
-          return (
-            room.id.toLowerCase().includes(q) ||
-            room.name.toLowerCase().includes(q) ||
-            searchable.includes(q)
-          );
-        }),
-      }))
+      .map((floor) => ({ ...floor, rooms: floor.rooms.filter((room) => searchIndex.get(room).includes(q)) }))
       .filter((floor) => floor.rooms.length > 0);
-  }, [allFloors, searchTerm]);
+  }, [allFloors, deferredSearch, searchIndex]);
 
   // 2) Totals across all floors (always full counts — not search-filtered)
   const totals = useMemo(() => {
@@ -274,6 +345,21 @@ export default function EmptyClassroomPage() {
             .filter((f) => f.rooms.length > 0),
     [searchFloors, statusFilter]
   );
+
+  // Block grouping + free counts per floor, computed once per filtered set.
+  const floorGroups = useMemo(() => {
+    const map = new Map();
+    displayFloors.forEach((floor) => {
+      map.set(floor.id, {
+        free: floor.rooms.filter((r) => r.status === 'free').length,
+        blocks: groupRoomsByBlock(floor.rooms).map((group) => ({
+          ...group,
+          free: group.rooms.filter((r) => r.status === 'free').length,
+        })),
+      });
+    });
+    return map;
+  }, [displayFloors]);
 
   // Auto-expand floors whenever a filter is active (search / status / floor)
   // so the matching rooms are visible. When the user clears the last filter,
@@ -454,13 +540,13 @@ export default function EmptyClassroomPage() {
                     {floor.label}
                   </span>
                   <span className="ecf-floor-badge">
-                    {floor.rooms.filter((r) => r.status === 'free').length} / {floor.rooms.length} free
+                    {floorGroups.get(floor.id).free} / {floor.rooms.length} free
                   </span>
                 </div>
                 {!isCollapsed && (
                   <div className="ecf-blocks">
-                    {groupRoomsByBlock(floor.rooms).map((group) => {
-                      const freeCount = group.rooms.filter((r) => r.status === 'free').length;
+                    {floorGroups.get(floor.id).blocks.map((group) => {
+                      const freeCount = group.free;
                       return (
                         <div className="ecf-block" key={group.key}>
                           <div className="ecf-block-head">
@@ -514,11 +600,7 @@ export default function EmptyClassroomPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {WEEKDAYS.map((day) => {
-                      const dayEntries = roomSchedule
-                        .filter((entry) => String(entry.day).toLowerCase() === day.toLowerCase())
-                        .map((entry) => ({ ...entry, ...getRoomGridRange(entry.time) }))
-                        .sort((a, b) => a.startIdx - b.startIdx);
+                    {scheduleRows.map(({ day, entries: dayEntries }) => {
                       return (
                         <tr key={day}>
                           <th className="ecf-room-grid-day">{day.slice(0, 3)}</th>
@@ -558,7 +640,7 @@ export default function EmptyClassroomPage() {
   );
 }
 
-function RoomCard({ room, onOpenSchedule }) {
+const RoomCard = memo(function RoomCard({ room, onOpenSchedule }) {
   const isFree = room.status === 'free';
   const d = room.details;
 
@@ -656,4 +738,4 @@ function RoomCard({ room, onOpenSchedule }) {
       )}
     </div>
   );
-}
+});

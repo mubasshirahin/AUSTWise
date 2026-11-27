@@ -1176,50 +1176,25 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
     pasteFlashTimer.current = setTimeout(() => setPasteFlash(null), 2000);
   };
 
-  const exportAsImage = async () => {
+  // Both image and PDF go through the shared AUSTWise export sheet so they
+  // match the routine export.
+  const exportNotebook = async (format) => {
     try {
       const canvas = await captureFullCanvas();
       if (!canvas) { flashExport('Nothing to export'); return; }
-      const link = document.createElement('a');
-      link.download = `notebook-${Date.now()}.png`;
-      link.href = canvas.toDataURL();
-      // The anchor must be in the DOM for the download attribute to fire
-      // in Chrome/Firefox — a detached anchor's click() silently no-ops.
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      flashExport('PNG downloaded ✓');
+      const { frameCapture, saveFramedImage, saveFramedPDF } = await import('../../utils/brandedFrame');
+      const { framed, brand } = await frameCapture(canvas, { title: 'Notebook', footerLabel: 'Notebook' });
+      const base = `AUSTWise-Notebook-${Date.now()}`;
+      if (format === 'pdf') await saveFramedPDF(framed, brand, base);
+      else await saveFramedImage(framed, brand, base, format);
+      flashExport(`${format.toUpperCase()} downloaded ✓`);
     } catch (e) {
       console.error('Export failed:', e);
       flashExport('Export failed — try again');
     }
   };
-
-  const exportAsPDF = async () => {
-    const { default: jsPDF } = await import('jspdf');
-    try {
-      const canvas = await captureFullCanvas();
-      if (!canvas) { flashExport('Nothing to export'); return; }
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfW = pdf.internal.pageSize.getWidth();
-      const pdfH = (canvas.height * pdfW) / canvas.width;
-      let heightLeft = pdfH;
-      let position = 0;
-      pdf.addImage(imgData, 'PNG', 0, position, pdfW, pdfH);
-      while (heightLeft > pdf.internal.pageSize.getHeight()) {
-        position -= pdf.internal.pageSize.getHeight();
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfW, pdfH);
-        heightLeft -= pdf.internal.pageSize.getHeight();
-      }
-      pdf.save(`notebook-${Date.now()}.pdf`);
-      flashExport('PDF downloaded ✓');
-    } catch (e) {
-      console.error('PDF export failed:', e);
-      flashExport('Export failed — try again');
-    }
-  };
+  const exportAsImage = (format = 'png') => exportNotebook(format);
+  const exportAsPDF = () => exportNotebook('pdf');
 
   // ─── Canvas image upload via click ───
   const canvasFileRef = useRef(null);
@@ -1301,8 +1276,11 @@ export default function Notebook({ vaultContext, batch, noteKey, title, path, on
                   {connectFrom ? <Link2Off size={14} /> : <Link2 size={14} />} Connect Items {connectFrom && <Check size={14} className="menu-check" />}
                 </button>
                 <div className="export-menu-sep" />
-                <button className="export-menu-item" onClick={() => { exportAsImage(); setMenuOpen(false); }}>
+                <button className="export-menu-item" onClick={() => { exportAsImage('png'); setMenuOpen(false); }}>
                   <Download size={14} /> Export as PNG
+                </button>
+                <button className="export-menu-item" onClick={() => { exportAsImage('jpg'); setMenuOpen(false); }}>
+                  <Download size={14} /> Export as JPG
                 </button>
                 <button className="export-menu-item" onClick={() => { exportAsPDF(); setMenuOpen(false); }}>
                   <Download size={14} /> Export as PDF

@@ -510,12 +510,13 @@ function saveBlob(blob, filename) {
 }
 
 /** Phone-wallpaper JPG. On phones, opens the share sheet ("Save Image"). */
-export async function exportRoutineJPG(opts) {
+export async function exportRoutineJPG(opts, format = 'jpg') {
   const ctx = await prepare(opts);
   const canvas = renderWallpaper(ctx);
-  const blob = await toBlob(canvas, 'image/jpeg', 0.95);
-  const filename = 'AUSTWise-Routine-Wallpaper.jpg';
-  const file = typeof File === 'function' ? new File([blob], filename, { type: 'image/jpeg' }) : null;
+  const type = format === 'png' ? 'image/png' : 'image/jpeg';
+  const blob = await toBlob(canvas, type, 0.95);
+  const filename = `AUSTWise-Routine-Wallpaper.${format === 'png' ? 'png' : 'jpg'}`;
+  const file = typeof File === 'function' ? new File([blob], filename, { type }) : null;
   const isTouch = window.matchMedia?.('(pointer: coarse)').matches;
   if (isTouch && file && navigator.canShare?.({ files: [file] })) {
     try {
@@ -530,6 +531,9 @@ export async function exportRoutineJPG(opts) {
 }
 
 /** A4 landscape PDF poster. */
+/** Same wallpaper as a lossless PNG. */
+export const exportRoutinePNG = (opts) => exportRoutineJPG(opts, 'png');
+
 export async function exportRoutinePDF(opts) {
   const [{ default: jsPDF }, ctx] = await Promise.all([import('jspdf'), prepare(opts)]);
   const canvas = renderSheet(ctx);

@@ -11,6 +11,7 @@ import {
 } from './lifePlannerStorage';
 import brandMark from '../../assets/austwise-icon-final.svg';
 import './MindmapView.css';
+import { drawBrandedFrame } from '../../utils/brandedFrame';
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 2.5;
@@ -20,6 +21,7 @@ const EXPORT_PAD = 40;
 // Export requests are Date.now() tokens from LifePlannerPage. Remembered at
 // module level so remounting the view (e.g. switching tabs) never re-exports.
 let lastHandledExport = 0;
+
 
 // rAF is paused in background tabs; the timeout keeps the export moving there
 const nextFrame = () => new Promise((r) => {
@@ -36,81 +38,6 @@ function solidBackground(el) {
   return '#ffffff';
 }
 
-/**
- * Wrap the mindmap capture in an AUSTWise-branded sheet: logo + wordmark +
- * "Life Planner · Mindmap" header with date and plan stats, the map in a
- * bordered card, and a "Made with AUSTWise" footer. Flat theme surfaces only
- * (house style: no gradients / glows). `brand` = routineExport's helpers.
- */
-function drawBrandedFrame(shot, brand, logo, stats) {
-  const { readPalette, setFont, drawBrand, roundRect } = brand;
-  const P = readPalette();
-  const S = 2; // the capture is rendered at 2x
-  const M = 40 * S;
-  const headerH = 64 * S;
-  const gap = 20 * S;
-  const footerH = 28 * S;
-  const W = Math.max(shot.width + M * 2, 760 * S);
-  const H = M + headerH + gap + shot.height + gap + footerH + M * 0.75;
-
-  const out = document.createElement('canvas');
-  out.width = W;
-  out.height = H;
-  const ctx = out.getContext('2d');
-  ctx.fillStyle = P.bg;
-  ctx.fillRect(0, 0, W, H);
-
-  // Header: brand left, date + stats right
-  drawBrand(ctx, P, logo, M, M, 44 * S, 'left', 'Life Planner · Mindmap');
-  const now = new Date();
-  ctx.textAlign = 'right';
-  ctx.textBaseline = 'middle';
-  setFont(ctx, P, 15 * S, 700);
-  ctx.fillStyle = P.text;
-  ctx.fillText(now.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), W - M, M + 14 * S);
-  setFont(ctx, P, 11.5 * S, 500);
-  ctx.fillStyle = P.text3;
-  ctx.fillText(stats, W - M, M + 36 * S);
-
-  // Divider under the header
-  const divY = M + headerH;
-  ctx.fillStyle = P.border;
-  ctx.fillRect(M, divY, W - M * 2, 1 * S);
-
-  // The map in a rounded, bordered card
-  const cardX = M;
-  const cardY = divY + gap;
-  const r = 16 * S;
-  ctx.save();
-  roundRect(ctx, cardX, cardY, shot.width, shot.height, r);
-  ctx.clip();
-  ctx.drawImage(shot, cardX, cardY);
-  ctx.restore();
-  roundRect(ctx, cardX + 0.5 * S, cardY + 0.5 * S, shot.width - S, shot.height - S, r);
-  ctx.lineWidth = 1 * S;
-  ctx.strokeStyle = P.border;
-  ctx.stroke();
-
-  // Footer: "Made with AUSTWise" left, export time right
-  const fy = cardY + shot.height + gap + footerH / 2;
-  ctx.textBaseline = 'middle';
-  ctx.textAlign = 'left';
-  setFont(ctx, P, 12 * S, 500);
-  ctx.fillStyle = P.text3;
-  const made = 'Made with ';
-  ctx.fillText(made, M, fy);
-  const madeW = ctx.measureText(made).width;
-  setFont(ctx, P, 12 * S, 800);
-  ctx.fillStyle = P.accent;
-  ctx.fillText('AUSTWise', M + madeW, fy);
-  const brandW = ctx.measureText('AUSTWise').width;
-  setFont(ctx, P, 12 * S, 500);
-  ctx.fillStyle = P.text3;
-  ctx.fillText('  ·  Life Planner', M + madeW + brandW, fy);
-  ctx.textAlign = 'right';
-  ctx.fillText(`Exported ${now.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}`, W - M, fy);
-  return out;
-}
 
 /**
  * Mindmap — open infinite canvas (same interaction as Prerequisite Tree):
@@ -494,11 +421,15 @@ export default function MindmapView({ doc, onOpenMilestone, onOpenGoal, onOpenTa
           `${d0.steps.length} step${d0.steps.length === 1 ? '' : 's'}`,
           `${overallProgress(d0)}% done`,
         ].join('  ·  ');
-        const framed = drawBrandedFrame(shot, brand, logo, stats);
+        const framed = drawBrandedFrame(shot, brand, logo, { title: 'Life Planner · Mindmap', stats, footerLabel: 'Life Planner' });
 
         const d = new Date();
         const stamp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        brand.saveBlob(await brand.toBlob(framed, 'image/png'), `AUSTWise-Life-Planner-Mindmap-${stamp}.png`);
+        const fmt = exportRequest?.format === 'jpg' ? 'jpg' : 'png';
+        brand.saveBlob(
+          await brand.toBlob(framed, fmt === 'jpg' ? 'image/jpeg' : 'image/png', 0.95),
+          `AUSTWise-Life-Planner-Mindmap-${stamp}.${fmt}`,
+        );
       } catch (err) {
         console.error('Mindmap export failed:', err);
       } finally {
