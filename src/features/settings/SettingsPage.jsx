@@ -390,11 +390,7 @@ export default function SettingsPage() {
     if (legacyKey) updateSetting(legacyKey, value);
   };
   const handleChannelToggle = async (channel, category) => {
-    const channelReady = channel === 'telegram'
-      ? telegramHealth === 'ready'
-      : channel === 'browser'
-        ? supported && permission === 'granted'
-        : true;
+    const channelReady = isDeliveryChannelReady(channel);
     const enabled = channelReady && Boolean(notifSettings.channels?.[channel]?.[category]);
     if (enabled) {
       updateChannelPreference(channel, category, false);
@@ -404,7 +400,7 @@ export default function SettingsPage() {
 
     const key = `${channel}:${category}`;
     setCheckingDelivery(key);
-    setDeliveryStatus(channel === 'telegram' ? 'Checking Telegram connection...' : 'Checking browser permission...');
+    setDeliveryStatus(channel === 'telegram' ? 'Checking Telegram connection...' : channel === 'push' ? 'Checking push subscription...' : 'Checking browser permission...');
     let activatedBrowser = false;
     try {
       if (channel === 'browser') {
@@ -429,6 +425,28 @@ export default function SettingsPage() {
         }
       }
 
+      if (channel === 'push') {
+        setDeliveryStatus('Checking push subscription...');
+        let state = { configured: push.configured, subscribed: push.subscribed };
+        if (push.statusFailed || push.configured !== true) state = (await push.refresh()) || state;
+        if (state.configured === false) {
+          setDeliveryStatus('Web push is not configured on the server yet. This update stays off.');
+          return;
+        }
+        if (!state.subscribed) {
+          const result = await push.enable();
+          if (result !== 'subscribed') {
+            setDeliveryStatus(result === 'auth_required' ? 'Sign in first to enable push notifications.'
+              : result === 'denied' ? 'Notifications are blocked — allow them in your browser site settings.'
+                : (push.error || 'Could not subscribe this device to push, so this update stays off.'));
+            return;
+          }
+        }
+        updateChannelPreference(channel, category, true);
+        setDeliveryStatus('Push is ready on this device. Update turned on.');
+        return;
+      }
+
       if (channel === 'telegram') {
         setTelegramEnabled(true);
         const health = await refreshTelegramHealth();
@@ -449,7 +467,9 @@ export default function SettingsPage() {
     } catch {
       setDeliveryStatus(channel === 'telegram'
         ? 'Could not verify Telegram right now. This update stays off.'
-        : 'Could not verify browser notifications. This update stays off.');
+        : channel === 'push'
+          ? 'Could not verify push on this device. This update stays off.'
+          : 'Could not verify browser notifications. This update stays off.');
     } finally {
       setCheckingDelivery('');
     }
@@ -458,7 +478,9 @@ export default function SettingsPage() {
     ? telegramHealth === 'ready'
     : channel === 'browser'
       ? supported && permission === 'granted'
-      : true;
+      : channel === 'push'
+        ? push.subscribed === true
+        : true;
 
   // Real-time: when another device edits this user's profile, refresh from server
   // TEMP DISABLED — blink debug: comment out to isolate loop
@@ -1987,26 +2009,26 @@ export default function SettingsPage() {
               <section className="cfg-section delivery-preferences">
                     <div className="cfg-section-head">
                       <h3 className="cfg-section-title">Notification delivery</h3>
-                      <p className="cfg-section-desc">Choose which updates arrive in Telegram, as browser alerts, or in the notification bell.</p>
+                      <p className="cfg-section-desc">Choose which updates arrive in Telegram, as browser alerts, in the notification bell, or as push notifications on your subscribed devices.</p>
                     </div>
                     <div className="delivery-matrix" role="group" aria-label="Notification delivery preferences">
-                      <div className="delivery-matrix-head"><span>Update</span><span><Send size={14} /> Telegram</span><span><BellRing size={14} /> Browser</span><span><Bell size={14} /> Bell</span></div>
+                      <div className="delivery-matrix-head"><span>Update</span><span><Send size={14} /> Telegram</span><span><BellRing size={14} /> Browser</span><span><Bell size={14} /> Bell</span><span><Smartphone size={14} /> Push</span></div>
                       {[
-                        { label: 'Notice Board', key: 'notices', channels: ['telegram', 'browser', 'bell'] },
+                        { label: 'Notice Board', key: 'notices', channels: ['telegram', 'browser', 'bell', 'push'] },
                         { label: "Tomorrow's class schedule at 12 AM", key: 'classSchedule', channels: ['telegram'] },
-                        { label: 'Class alert (30 min before)', key: 'classReminders', channels: ['telegram', 'browser'] },
+                        { label: 'Class alert (30 min before)', key: 'classReminders', channels: ['telegram', 'browser', 'push'] },
                         { label: 'Attendance prompts', key: 'attendance', channels: ['telegram'] },
-                        { label: 'Deadline alert (12 hours before)', key: 'deadline12h', preference: 'deadlines', channels: ['telegram', 'browser'] },
+                        { label: 'Deadline alert (12 hours before)', key: 'deadline12h', preference: 'deadlines', channels: ['telegram', 'browser', 'push'] },
                         { label: 'Upcoming deadlines in the bell', key: 'upcomingDeadlines', preference: 'deadlines', channels: ['bell'] },
                         { label: 'Study task reminders', key: 'tasks', channels: ['browser', 'bell'] },
-                        { label: 'New messages', key: 'messages', channels: ['browser', 'bell'] },
-                        { label: 'Role application updates', key: 'applications', channels: ['browser', 'bell'] },
-                        { label: 'Gaming Zone alerts', key: 'gaming', channels: ['browser', 'bell'] },
-                        { label: 'Workspace marks / result / grade posts', key: 'results', channels: ['browser', 'bell'] },
+                        { label: 'New messages', key: 'messages', channels: ['browser', 'bell', 'push'] },
+                        { label: 'Role application updates', key: 'applications', channels: ['browser', 'bell', 'push'] },
+                        { label: 'Gaming Zone alerts', key: 'gaming', channels: ['browser', 'bell', 'push'] },
+                        { label: 'Workspace marks / result / grade posts', key: 'results', channels: ['browser', 'bell', 'push'] },
                       ].map((row) => (
                         <div className="delivery-matrix-row" key={row.key}>
                           <span className="delivery-matrix-label">{row.label}</span>
-                          {['telegram', 'browser', 'bell'].map((channel) => row.channels.includes(channel) ? (
+                          {['telegram', 'browser', 'bell', 'push'].map((channel) => row.channels.includes(channel) ? (
                             <button key={channel} type="button" role="switch"
                               aria-label={`${row.label} via ${channel}`}
                               aria-checked={isDeliveryChannelReady(channel) && Boolean(notifSettings.channels?.[channel]?.[row.preference || row.key])}
@@ -2089,7 +2111,7 @@ export default function SettingsPage() {
                 <div className="cfg-section-head">
                   <h3 className="cfg-section-title">Mobile push notifications</h3>
                   <p className="cfg-section-desc">
-                    Get the same updates as the bell (notices, messages, Smart Reminders, role applications, Gaming Zone) on this device even when the app is closed. Pick which ones in the Browser column above.
+                    Get the same updates as the bell (notices, messages, Smart Reminders, role applications, Gaming Zone) on this device even when the app is closed. Pick which ones in the Push column above.
                   </p>
                   <p className="delivery-channel-status">
                     Device: <strong>

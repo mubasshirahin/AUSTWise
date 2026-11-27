@@ -19,10 +19,16 @@ const defaultSettings = {
     telegram: { notices: true, classSchedule: true, classReminders: true, attendance: true, deadlines: true },
     browser: { notices: true, classReminders: true, deadlines: true, tasks: true, messages: true, applications: true, gaming: true, results: true },
     bell: { notices: true, deadlines: true, tasks: true, messages: true, applications: true, gaming: true, results: true },
+    push: { notices: true, classReminders: true, deadlines: true, messages: true, applications: true, gaming: true, results: true },
   },
   // Sound + vibration on device notifications (off = silent popups).
   vibrate: true,
 };
+
+function pickKeys(obj, keys) {
+  if (!obj || typeof obj !== 'object') return {};
+  return Object.fromEntries(keys.filter((k) => typeof obj[k] === 'boolean').map((k) => [k, obj[k]]));
+}
 
 export function isNotificationSupported() {
   return typeof window !== 'undefined' && 'Notification' in window;
@@ -53,6 +59,8 @@ export function loadSettings() {
       telegram: { ...defaultSettings.channels.telegram, ...(raw.channels?.telegram || {}) },
       browser: { ...defaultSettings.channels.browser, ...(raw.channels?.browser || {}) },
       bell: { ...defaultSettings.channels.bell, ...(raw.channels?.bell || {}) },
+      // Accounts from before the Push column inherit their Browser choices.
+      push: { ...defaultSettings.channels.push, ...pickKeys(raw.channels?.browser, Object.keys(defaultSettings.channels.push)), ...(raw.channels?.push || {}) },
     };
     if (!raw.channels) {
       channels.telegram = { ...channels.telegram, classSchedule: raw.notifyDigest !== false, classReminders: raw.notifyClass !== false, attendance: raw.notifyAttendance !== false, deadlines: raw.notifyDeadline !== false };

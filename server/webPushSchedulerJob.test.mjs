@@ -52,6 +52,11 @@ vi.mock('./webPush.mjs', () => ({
   isWebPushConfigured: true,
   getAllSubscriberIds: vi.fn(async () => m.subscribers),
   sendPushToUser: vi.fn(async (id, payload) => { m.pushes.push({ id, payload }); }),
+  isPushCategoryEnabled: (prefs, category) => {
+    const push = prefs?.channels?.push;
+    if (push && typeof push[category] === 'boolean') return push[category];
+    return prefs?.channels?.browser?.[category] !== false;
+  },
 }));
 
 describe('webPushSchedulerJob', () => {

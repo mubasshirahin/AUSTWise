@@ -182,4 +182,12 @@ describe('webPush server module', () => {
     const payload = JSON.parse(mocks.store.sent[0].payload);
     expect(payload).toMatchObject({ title: 'Application approved', category: 'applications', vibrate: [200, 100, 200], silent: false });
   });
+
+  it('isPushCategoryEnabled prefers the Push column and falls back to Browser', async () => {
+    const { isPushCategoryEnabled } = await import('./webPush.mjs');
+    expect(isPushCategoryEnabled({ channels: { push: { notices: false }, browser: { notices: true } } }, 'notices')).toBe(false);
+    expect(isPushCategoryEnabled({ channels: { push: { notices: true }, browser: { notices: false } } }, 'notices')).toBe(true);
+    expect(isPushCategoryEnabled({ channels: { browser: { gaming: false } } }, 'gaming')).toBe(false);
+    expect(isPushCategoryEnabled({}, 'gaming')).toBe(true);
+  });
 });

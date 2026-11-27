@@ -2,6 +2,13 @@ import { showDeviceNotification, isServerPushedOnThisDevice } from './deviceNoti
 
 const NOTIFS_KEY = 'aust-inapp-notifs-v1';
 const NATIVE_SHOWN_KEY = 'aust-inapp-notifs-native-v1';
+// Ids the user deleted / already read. The seeders (notices, deadlines, tasks,
+// role applications) run every few seconds and would otherwise re-create a
+// deleted item, or bring back a trimmed one as unread.
+const DISMISSED_KEY = 'aust-inapp-notifs-dismissed-v1';
+const READ_IDS_KEY = 'aust-inapp-notifs-read-v1';
+const MAX_ITEMS = 200;
+const MAX_TOMBSTONES = 2000;
 const DEFAULT_CHANNELS = {
   telegram: { notices: true, classSchedule: true, classReminders: true, attendance: true, deadlines: true },
   browser: { notices: true, classReminders: true, deadlines: true, tasks: true, messages: true, applications: true, gaming: true, results: true },
@@ -69,20 +76,67 @@ export function noticeScopeMatchesUser(scope, user) {
 
 // ─── Storage helpers ───
 
-export function loadNotifications() {
+function loadIdSet(baseKey) {
+  try {
+    const raw = JSON.parse(localStorage.getItem(getUserScopedKey(baseKey)) || '[]');
+    return new Set(Array.isArray(raw) ? raw : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveIdSet(baseKey, set) {
+  try {
+    const list = [...set];
+    localStorage.setItem(getUserScopedKey(baseKey), JSON.stringify(list.slice(-MAX_TOMBSTONES)));
+  } catch { /* storage full – silently fail */ }
+}
+
+function addToIdSet(baseKey, ids) {
+  const set = loadIdSet(baseKey);
+  let changed = false;
+  for (const id of ids) {
+    if (id && !set.has(id)) { set.add(id); changed = true; }
+  }
+  if (changed) saveIdSet(baseKey, set);
+}
+
+function readStored() {
   try {
     const raw = localStorage.getItem(getUserScopedKey(NOTIFS_KEY));
-    return raw ? JSON.parse(raw) : [];
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list : [];
   } catch {
     return [];
   }
 }
 
+/** Stored items minus anything the user deleted, with remembered read state. */
+export function loadNotifications() {
+  const dismissed = loadIdSet(DISMISSED_KEY);
+  const readIds = loadIdSet(READ_IDS_KEY);
+  return readStored()
+    .filter((n) => n && !dismissed.has(n.id))
+    .map((n) => (!n.read && readIds.has(n.id) ? { ...n, read: true } : n));
+}
+
 export function saveNotifications(items) {
   try {
-    // Keep max 200 notifications
-    const sorted = items.slice(-200);
-    localStorage.setItem(getUserScopedKey(NOTIFS_KEY), JSON.stringify(sorted));
+    const dismissed = loadIdSet(DISMISSED_KEY);
+    const readIds = loadIdSet(READ_IDS_KEY);
+    const seen = new Set();
+    const clean = [];
+    for (const n of items) {
+      if (!n || dismissed.has(n.id) || seen.has(n.id)) continue;
+      seen.add(n.id);
+      clean.push(!n.read && readIds.has(n.id) ? { ...n, read: true } : n);
+    }
+    // Keep the newest MAX_ITEMS. Anything trimmed is tombstoned so a seeder
+    // can't bring it straight back as a fresh unread item.
+    clean.sort((a, b) => (Number(a.timestamp) || 0) - (Number(b.timestamp) || 0));
+    const dropped = clean.length > MAX_ITEMS ? clean.slice(0, clean.length - MAX_ITEMS) : [];
+    if (dropped.length) addToIdSet(DISMISSED_KEY, dropped.map((n) => n.id));
+    localStorage.setItem(getUserScopedKey(NOTIFS_KEY), JSON.stringify(clean.slice(-MAX_ITEMS)));
   } catch {
     // storage full – silently fail
   }
@@ -99,45 +153,50 @@ export function getUnreadNotifications() {
 }
 
 export function markAsRead(id) {
-  const items = loadNotifications();
+  if (!id) return;
+  addToIdSet(READ_IDS_KEY, [id]);
+  const items = readStored();
   const idx = items.findIndex((n) => n.id === id);
-  if (idx !== -1) {
+  if (idx !== -1 && !items[idx].read) {
     items[idx].read = true;
     saveNotifications(items);
   }
 }
 
 export function markAllAsRead() {
-  const items = loadNotifications();
-  let changed = false;
-  items.forEach((n) => {
-    if (!n.read) {
-      n.read = true;
-      changed = true;
-    }
-  });
-  if (changed) saveNotifications(items);
+  const items = readStored();
+  addToIdSet(READ_IDS_KEY, items.map((n) => n.id));
+  saveNotifications(items.map((n) => (n.read ? n : { ...n, read: true })));
 }
 
 export function addNotification(item) {
+  if (!item?.id) return;
   if (!getNotificationChannelEnabled('bell', categoryForNotification(item))) return;
-  const items = loadNotifications();
+  if (loadIdSet(DISMISSED_KEY).has(item.id)) return;
+  const items = readStored();
   // Avoid duplicates by checking id
   if (items.some((n) => n.id === item.id)) return;
   items.push(item);
   saveNotifications(items);
 }
 
+/** Delete one item from the bell for good (seeders won't re-add it). */
+export function dismissNotification(id) {
+  if (!id) return;
+  addToIdSet(DISMISSED_KEY, [id]);
+  saveNotifications(readStored());
+}
+
 export function removeNotificationById(id) {
   if (!id) return;
-  const items = loadNotifications();
+  const items = readStored();
   const filtered = items.filter((n) => n.id !== id);
   if (filtered.length !== items.length) saveNotifications(filtered);
 }
 
 export function removeNotificationsByTitle(title) {
   if (!title) return;
-  const items = loadNotifications();
+  const items = readStored();
   const filtered = items.filter((n) => !(n.type === 'notice' && n.body === title));
   if (filtered.length !== items.length) saveNotifications(filtered);
 }
@@ -202,8 +261,13 @@ export function showNativeNotification(item) {
   }
 }
 
+/** Clear the bell. Everything currently in it is tombstoned so the periodic
+ *  seeders don't immediately put it back. */
 export function clearAllNotifications() {
-  localStorage.removeItem(NOTIFS_KEY);
+  const items = readStored();
+  addToIdSet(DISMISSED_KEY, items.map((n) => n.id));
+  try { localStorage.setItem(getUserScopedKey(NOTIFS_KEY), '[]'); } catch { /* ignore */ }
+  try { localStorage.removeItem(NOTIFS_KEY); } catch { /* legacy unscoped key */ }
 }
 
 // ─── ID generator ───

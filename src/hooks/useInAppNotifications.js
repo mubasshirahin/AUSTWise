@@ -9,6 +9,7 @@ import {
   seedFromTasks,
   seedFromRoleApplications,
   clearAllNotifications,
+  dismissNotification,
   showNativeNotification,
   addNotification,
   makeNotifId,
@@ -309,6 +310,12 @@ export function useInAppNotifications(user) {
     setUnread(getUnreadCount());
   }, []);
 
+  const handleDismiss = useCallback((id) => {
+    dismissNotification(id);
+    setNotifications(loadNotifications());
+    setUnread(getUnreadCount());
+  }, []);
+
   const handleClearAll = useCallback(() => {
     clearAllNotifications();
     setNotifications([]);
@@ -326,6 +333,7 @@ export function useInAppNotifications(user) {
     markAsRead: handleMarkAsRead,
     markAllAsRead: handleMarkAllAsRead,
     clearAll: handleClearAll,
+    dismiss: handleDismiss,
     reseed,
   };
 }

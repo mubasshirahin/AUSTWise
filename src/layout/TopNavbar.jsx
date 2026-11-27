@@ -162,7 +162,7 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
   const notifPanelRef = useRef(null);
   const profilePanelRef = useRef(null);
 
-  const { notifications, unread, markAsRead, markAllAsRead, clearAll } = useInAppNotifications(user);
+  const { notifications, unread, markAsRead, markAllAsRead, clearAll, dismiss } = useInAppNotifications(user);
 
   const allThemeOptions = [...darkThemeOptions, ...lightThemeOptions];
   const activeTheme = allThemeOptions.find((t) => t.id === theme) || allThemeOptions[0];
@@ -540,6 +540,15 @@ export default function TopNavbar({ onMenuClick, onSearchOpen, membersOpen, onMe
                             )}
                           </div>
                           {!n.read && <span className="notif-unread-dot" aria-label="Unread" />}
+                          <button
+                            type="button"
+                            className="notif-item-dismiss"
+                            aria-label="Delete notification"
+                            title="Delete"
+                            onClick={(e) => { e.stopPropagation(); dismiss(n.id); }}
+                          >
+                            <X size={13} />
+                          </button>
                         </div>
                       );
                     })}

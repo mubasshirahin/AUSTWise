@@ -22,7 +22,7 @@ import { createDedicatedClient } from './db.mjs';
 import {
   dhakaNow, DAY_NAMES, parseRoutine, classStartMinutes, loadUserDeadlines,
 } from './telegramSchedulerJob.mjs';
-import { isWebPushConfigured, getAllSubscriberIds, sendPushToUser } from './webPush.mjs';
+import { isWebPushConfigured, getAllSubscriberIds, sendPushToUser, isPushCategoryEnabled } from './webPush.mjs';
 
 const LOG_FILE = '.wp_schedule_log.json';
 const CLASS_LEAD_MINUTES = 30;
@@ -55,12 +55,13 @@ async function processSubscriber(userId, now) {
   if (!account) return;
 
   const notifications = account.settings?.notifications || {};
-  // The "Enable smart reminders" switch stays authoritative — subscribing to
-  // push alone must not silently start sending class/deadline alerts.
-  if (notifications.enabled !== true) return;
-  const browser = notifications.channels?.browser || {};
-  const notifyClass = browser.classReminders !== false;
-  const notifyDeadline = browser.deadlines !== false;
+  const push = notifications.channels?.push;
+  const hasPushColumn = push && (typeof push.classReminders === 'boolean' || typeof push.deadlines === 'boolean');
+  // Legacy accounts (no Push column yet): the "Enable smart reminders" switch
+  // stays authoritative so subscribing alone doesn't start class alerts.
+  if (!hasPushColumn && notifications.enabled !== true) return;
+  const notifyClass = isPushCategoryEnabled(notifications, 'classReminders');
+  const notifyDeadline = isPushCategoryEnabled(notifications, 'deadlines');
   if (!notifyClass && !notifyDeadline) return;
 
   // ── Class reminders — 30 min before each class of today ──

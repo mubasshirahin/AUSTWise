@@ -2083,7 +2083,7 @@
 .delivery-matrix-head,
 .delivery-matrix-row {
   display: grid;
-  grid-template-columns: minmax(190px, 1fr) repeat(3, minmax(78px, 104px));
+  grid-template-columns: minmax(190px, 1fr) repeat(4, minmax(70px, 96px));
   align-items: center;
   gap: 8px;
   padding: 11px 14px;
@@ -2193,7 +2193,7 @@
 @media (max-width: 560px) {
   .delivery-matrix-head,
   .delivery-matrix-row {
-    grid-template-columns: minmax(125px, 1fr) repeat(3, minmax(48px, 60px));
+    grid-template-columns: minmax(105px, 1fr) repeat(4, minmax(42px, 54px));
     gap: 4px;
     padding: 10px 8px;
   }

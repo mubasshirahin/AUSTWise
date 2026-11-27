@@ -188,8 +188,20 @@ async function deliver(userId, sub, payload) {
 const VIBRATE_PATTERN = [200, 100, 200];
 
 /**
+ * Whether the user wants `category` as a push on their devices. The Settings
+ * → Push column is authoritative; accounts that never touched it fall back to
+ * the older Browser column (which used to double as the push switch).
+ */
+export function isPushCategoryEnabled(prefs, category) {
+  if (!category) return true;
+  const push = prefs?.channels?.push;
+  if (push && typeof push[category] === 'boolean') return push[category];
+  return prefs?.channels?.browser?.[category] !== false;
+}
+
+/**
  * Send one payload to every device of a user. Always resolves; never throws.
- * `payload.category` is matched against the user's Settings → Browser column,
+ * `payload.category` is matched against the user's Settings → Push column,
  * so a type switched off there never reaches their phone. The user's
  * "Sound & vibration" switch decides between a vibrating and a silent popup.
  */
@@ -200,7 +212,7 @@ export async function sendPushToUser(userId, payload) {
   if (!subs.length) return none;
   let prefs = {};
   try { prefs = (await getUserById(userId))?.settings?.notifications || {}; } catch { /* use defaults */ }
-  if (payload?.category && prefs.channels?.browser?.[payload.category] === false) return none;
+  if (!isPushCategoryEnabled(prefs, payload?.category)) return none;
   const vibrate = prefs.vibrate !== false;
   const body = { ...payload, vibrate: vibrate ? VIBRATE_PATTERN : [], silent: !vibrate };
   const results = await Promise.all(subs.map((sub) => deliver(userId, sub, body)));
@@ -232,7 +244,7 @@ export async function sendNoticeWebPush(notice) {
     try { account = await getUserById(id); } catch { continue; }
     if (!account) continue;
     const prefs = account.settings?.notifications || {};
-    if ((prefs.channels?.browser?.notices ?? true) !== true) continue;
+    if (!isPushCategoryEnabled(prefs, 'notices')) continue;
     if (scope?.department && String(scope.department) !== String(account.department || '')) continue;
     if (scope?.semester && String(scope.semester) !== String(account.semester || '')) continue;
     if (scope?.labSection && String(scope.labSection) !== String(account.labSection || '')) continue;
