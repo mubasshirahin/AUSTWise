@@ -243,7 +243,7 @@ function MemberRow({ member, onClick, isOffline, isAdmin, devSwitch, switching }
 }
 
 /* ─── Collapsible group section ─── */
-function MemberGroup({ title, icon, count, children, defaultOpen, forceOpen, expanded, onToggle, className, peek }) {
+function MemberGroup({ title, icon, count, children, defaultOpen, forceOpen, expanded, onToggle, className, peek, showCount = false }) {
   // `expanded` is true when the user has opened this group. Groups default to
   // CLOSED: the tree nests dept → semester → section → lab and the directory
   // holds the entire student body, so default-open rendered ~35k DOM nodes on
@@ -261,13 +261,13 @@ function MemberGroup({ title, icon, count, children, defaultOpen, forceOpen, exp
         {onToggle && (isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}
         {icon && <span className="am-group-icon">{icon}</span>}
         <span className="am-group-title">{title}</span>
-        {peekCount > 0 && (
+        {showCount && peekCount > 0 && (
           <span className="am-group-active" title={`${peekCount} active now`}>
             <span className="am-dot am-online" />
             {peekCount}
           </span>
         )}
-        <span className="am-group-count">{count}</span>
+        {showCount && <span className="am-group-count">{count}</span>}
       </button>
       {isOpen
         ? <div className="am-group-body">{children}</div>
@@ -733,6 +733,7 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
                 expanded={expandedGroups['role-students']}
                 onToggle={() => toggleGroup('role-students')}
                 className="am-role-group"
+                showCount
                 peek={peekRows(roleSections.all.students, 'role-students')}
               >
                 {roleSections.students.length === 0 ? (
@@ -822,6 +823,7 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
                 expanded={expandedGroups['role-faculty']}
                 onToggle={() => toggleGroup('role-faculty')}
                 className="am-role-group"
+                showCount
                 peek={peekRows(roleSections.all.faculty, 'role-faculty')}
               >
                 {roleSections.faculty.length === 0 ? (
@@ -867,6 +869,7 @@ export default function ActiveMembersSidebar({ open, onClose, onToggle, isDeskto
                 expanded={expandedGroups['role-alumni']}
                 onToggle={() => toggleGroup('role-alumni')}
                 className="am-role-group"
+                showCount
                 peek={peekRows(roleSections.all.alumni, 'role-alumni')}
               >
                 {roleSections.alumni.length === 0 ? (
