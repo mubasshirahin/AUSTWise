@@ -720,18 +720,22 @@ export default function DashboardPage() {
     if (!routineWidget || !deadlineWidget || typeof ResizeObserver === 'undefined') return undefined;
 
     const syncDeadlineHeight = () => {
-      deadlineWidget.style.setProperty('--daily-flow-height', `${routineWidget.getBoundingClientRect().height}px`);
-      // Never shorter than two full deadline rows; more than two scroll.
+      // Desktop: Daily Flow and Deadlines are one height. Daily Flow is never
+      // shorter than two full deadline rows; Deadlines follow Daily Flow as it
+      // grows, and extra deadlines scroll.
+      const desktop = window.matchMedia('(min-width: 641px)').matches;
       const list = deadlineWidget.querySelector('.deadline-list');
       const rows = list ? list.querySelectorAll(':scope > .deadline-row') : [];
-      if (list && rows.length) {
+      if (desktop && list && rows.length) {
         const chrome = deadlineWidget.getBoundingClientRect().height - list.getBoundingClientRect().height;
         const first = rows[0].getBoundingClientRect();
         const last = rows[Math.min(rows.length, 2) - 1].getBoundingClientRect();
-        deadlineWidget.style.setProperty('--deadline-min-height', `${Math.ceil(chrome + (last.bottom - first.top) + 4)}px`);
-      } else {
-        deadlineWidget.style.removeProperty('--deadline-min-height');
+        const need = `${Math.ceil(chrome + (last.bottom - first.top) + 4)}px`;
+        if (routineWidget.style.minHeight !== need) routineWidget.style.minHeight = need;
+      } else if (routineWidget.style.minHeight) {
+        routineWidget.style.minHeight = '';
       }
+      deadlineWidget.style.setProperty('--daily-flow-height', `${routineWidget.getBoundingClientRect().height}px`);
     };
     syncDeadlineHeight();
     const observer = new ResizeObserver(syncDeadlineHeight);
@@ -746,7 +750,7 @@ export default function DashboardPage() {
       mutations?.disconnect();
       window.removeEventListener('resize', syncDeadlineHeight);
       deadlineWidget.style.removeProperty('--daily-flow-height');
-      deadlineWidget.style.removeProperty('--deadline-min-height');
+      routineWidget.style.minHeight = '';
     };
   }, [focusMode]);
 
