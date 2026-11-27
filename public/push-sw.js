@@ -67,6 +67,16 @@
     );
   });
 
+  // Pages report whether they run as the installed app (standalone) or in a
+  // browser tab, so a notification tap goes to the app window, not a tab.
+  var standaloneClients = new Set();
+  self.addEventListener('message', function (event) {
+    var msg = event.data;
+    if (!msg || msg.type !== 'austwise-display-mode' || !event.source) return;
+    if (msg.standalone) standaloneClients.add(event.source.id);
+    else standaloneClients.delete(event.source.id);
+  });
+
   self.addEventListener('notificationclick', function (event) {
     event.notification.close();
     if (event.action === 'dismiss') return;
@@ -74,16 +84,23 @@
     var target = new URL(url, self.location.origin).href;
     event.waitUntil(
       self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clients) {
+        var app = null;
         for (var i = 0; i < clients.length; i += 1) {
-          var client = clients[i];
-          if (client.url === target && 'focus' in client) return client.focus();
+          if (standaloneClients.has(clients[i].id)) { app = clients[i]; break; }
         }
+        if (app) {
+          if (app.url === target) return app.focus();
+          return app.focus().then(function (w) { return (w || app).navigate(target); }).catch(function () {
+            return self.clients.openWindow(target);
+          });
+        }
+        // No known app window: let the OS open the link. On Android with the
+        // app installed this launches the installed app, not a browser tab.
+        // Only reuse a browser tab when no tab-vs-app info was ever reported
+        // and a tab already shows this exact page.
         for (var j = 0; j < clients.length; j += 1) {
-          var c = clients[j];
-          if (c.url.indexOf(self.location.origin) === 0 && 'focus' in c && 'navigate' in c) {
-            return c.focus().then(function (w) { return (w || c).navigate(target); }).catch(function () {
-              return self.clients.openWindow ? self.clients.openWindow(target) : undefined;
-            });
+          if (clients[j].url === target && 'focus' in clients[j] && standaloneClients.size === 0) {
+            return clients[j].focus();
           }
         }
         return self.clients.openWindow ? self.clients.openWindow(target) : undefined;

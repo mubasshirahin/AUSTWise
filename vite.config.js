@@ -22,28 +22,20 @@ export default defineConfig({
         description: 'Your campus companion for AUST students',
         theme_color: '#171717',
         background_color: '#0f0f0f',
+        // Stable app identity: Android ties the installed app (WebAPK) — and
+        // so which app shows and opens push notifications — to this id.
+        id: '/',
         display: 'standalone',
+        display_override: ['standalone'],
         scope: '/',
         start_url: '/',
+        // Notification taps / links reuse the open app window.
+        launch_handler: { client_mode: ['navigate-existing', 'auto'] },
         icons: [
-          {
-            src: 'austwise_icon_final.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
-            purpose: 'any maskable',
-          },
-          {
-            src: 'icon-192x192.png',
-            sizes: '192x192',
-            type: 'image/png',
-            purpose: 'any',
-          },
-          {
-            src: 'icon-512x512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any maskable',
-          },
+          { src: 'austwise_icon_final.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+          { src: 'icon-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: 'icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: 'icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       workbox: {

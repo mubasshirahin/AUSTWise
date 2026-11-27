@@ -30,6 +30,18 @@ if (import.meta.env.PROD) {
       });
     },
   });
+  // Tell the service worker whether this window is the installed app or a
+  // browser tab, so tapping a push notification opens the app window.
+  const reportDisplayMode = () => {
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+    navigator.serviceWorker?.ready.then((reg) => {
+      const sw = navigator.serviceWorker.controller || reg.active;
+      sw?.postMessage({ type: 'austwise-display-mode', standalone });
+    }).catch(() => {});
+  };
+  reportDisplayMode();
+  navigator.serviceWorker?.addEventListener('controllerchange', reportDisplayMode);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reportDisplayMode(); });
 } else if ('serviceWorker' in navigator) {
   // A previously installed production worker can serve stale role logic to
   // development preview iframes. Dev should always load the current Vite code.
