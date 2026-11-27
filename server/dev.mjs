@@ -5713,6 +5713,31 @@ async function handleApiRequest(req, res) {
   }
 
   // List every routine CRs have published, so anyone can load one.
+  // Profile photo as an image, for push-notification icons (the service
+  // worker can't use the data: URLs avatars are stored as).
+  if (req.method === 'GET' && req.url.startsWith('/api/avatar/')) {
+    const id = decodeURIComponent(req.url.slice('/api/avatar/'.length).split('?')[0] || '');
+    try {
+      const avatar = id ? (await getUserById(id))?.avatar : null;
+      const dataMatch = typeof avatar === 'string' ? /^data:(image\/(?:png|jpe?g|webp|gif));base64,(.+)$/i.exec(avatar) : null;
+      if (dataMatch) {
+        const buf = Buffer.from(dataMatch[2], 'base64');
+        res.writeHead(200, { 'Content-Type': dataMatch[1].toLowerCase(), 'Content-Length': buf.length, 'Cache-Control': 'public, max-age=86400', 'X-Content-Type-Options': 'nosniff' });
+        res.end(buf);
+      } else if (typeof avatar === 'string' && /^https:\/\//i.test(avatar)) {
+        res.writeHead(302, { Location: avatar, 'Cache-Control': 'public, max-age=3600' });
+        res.end();
+      } else {
+        res.writeHead(404, { 'Cache-Control': 'public, max-age=300' });
+        res.end();
+      }
+    } catch {
+      res.writeHead(404);
+      res.end();
+    }
+    return;
+  }
+
   if (req.url === '/api/routines/shared' && req.method === 'GET') {
     try {
       const items = await listSharedRoutines();
@@ -6720,6 +6745,7 @@ async function handleApiRequest(req, res) {
         type: 'role-application',
         payload: {
           id: application.id,
+          userId: user.id,
           title: `New ${appliedRole.toUpperCase()} application`,
           body: `${user.name} applied for ${{ cr: 'Class Representative', sr: 'Student Representative', vp: 'Vice President', gs: 'General Secretary' }[appliedRole]} (${user.department} · Sem ${user.semester || 1}).`,
           path: '/admin/applications',

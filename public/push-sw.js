@@ -33,6 +33,29 @@
     gaming:       { vibrate: [80, 50, 80, 50, 160],     sticky: false, open: 'Open' },
   };
 
+  // The sender's profile photo, fetched with this user's session (the avatar
+  // route needs sign-in) and handed to the notification as a data: URL.
+  // Any failure just drops the photo; the alert itself always shows.
+  function loadIcon(url) {
+    if (!url) return Promise.resolve(null);
+    var timeout = new Promise(function (resolve) { setTimeout(function () { resolve(null); }, 3000); });
+    var load = fetch(url, { credentials: 'same-origin' }).then(function (res) {
+      if (!res.ok) return null;
+      var type = res.headers.get('Content-Type') || 'image/png';
+      if (type.indexOf('image/') !== 0) return null;
+      return res.arrayBuffer().then(function (buf) {
+        if (buf.byteLength > 300000) return null;
+        var bytes = new Uint8Array(buf);
+        var bin = '';
+        for (var i = 0; i < bytes.length; i += 0x8000) {
+          bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+        }
+        return 'data:' + type + ';base64,' + btoa(bin);
+      });
+    }).catch(function () { return null; });
+    return Promise.race([load, timeout]);
+  }
+
   self.addEventListener('push', function (event) {
     var data = parsePayload(event);
     var style = STYLES[data.category] || { vibrate: [200, 100, 200], sticky: false, open: 'Open' };
@@ -40,7 +63,8 @@
     var silent = data.silent === true;
     var options = {
       body: data.body || '',
-      icon: data.icon || '/icon-192x192.png',
+      // No fallback icon: Android already shows the AUSTWise app icon, so
+      // the large icon is only the sender's photo (logo shown once).
       // Android draws the badge as a white silhouette in the status bar.
       badge: '/notification-badge.png',
       tag: data.tag || 'austwise',
@@ -62,7 +86,10 @@
       (data.skipIfVisible ? hasVisibleClient() : Promise.resolve(false)).then(function (visible) {
         // The open app already shows it (e.g. the chat you are reading).
         if (visible) return undefined;
-        return self.registration.showNotification(title, options);
+        return loadIcon(data.icon).then(function (icon) {
+          if (icon) options.icon = icon;
+          return self.registration.showNotification(title, options);
+        });
       })
     );
   });

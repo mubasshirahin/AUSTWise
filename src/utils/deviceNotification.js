@@ -57,7 +57,6 @@ export async function showDeviceNotification(title, opts = {}) {
   const options = {
     body: opts.body || '',
     tag: opts.tag || title,
-    icon: '/icon-192x192.png',
     badge: '/notification-badge.png',
     renotify: Boolean(opts.tag) && vibrate,
     silent: !vibrate,
@@ -66,6 +65,8 @@ export async function showDeviceNotification(title, opts = {}) {
     timestamp: Date.now(),
     data: { url: opts.url || '/' },
   };
+  // Large icon = who it's from. Without one, only the app icon shows (once).
+  if (opts.icon) options.icon = opts.icon;
 
   try {
     const registration = await getRegistration();

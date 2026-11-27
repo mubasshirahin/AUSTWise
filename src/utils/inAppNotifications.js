@@ -242,7 +242,8 @@ export function showNativeNotification(item) {
     next.add(item.id);
     saveNativeShownIds(next);
     showDeviceNotification(item.title || 'AUSTWise', {
-      body: item.body || '',
+      body: item.actorName && item.body && !String(item.body).startsWith(item.actorName) ? `${item.actorName}: ${item.body}` : (item.body || ''),
+      icon: item.avatar || undefined,
       tag: item.id,
       url: item.path || '/',
     }).catch(() => { /* native notifications unavailable */ });

@@ -187,6 +187,29 @@ async function deliver(userId, sub, payload) {
 
 const VIBRATE_PATTERN = [200, 100, 200];
 
+/** Small cache-busting hash so a changed profile photo isn't served stale. */
+function shortHash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i += 97) h = (h * 31 + str.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36) + str.length.toString(36);
+}
+
+/**
+ * URL of a user's profile photo for a notification's large icon (avatars are
+ * often data: URLs far bigger than a push payload, so we send a link to
+ * /api/avatar/<id> instead). Null when the user has no photo — the
+ * notification then shows only the app's own icon, once.
+ */
+export async function avatarIconFor(userId, known) {
+  if (!userId) return null;
+  let avatar = known;
+  if (avatar === undefined) {
+    try { avatar = (await getUserById(userId))?.avatar; } catch { avatar = null; }
+  }
+  if (typeof avatar !== 'string' || !avatar) return null;
+  return `/api/avatar/${encodeURIComponent(String(userId))}?v=${shortHash(avatar)}`;
+}
+
 /**
  * Whether the user wants `category` as a push on their devices. The Settings
  * → Push column is authoritative; accounts that never touched it fall back to
@@ -252,9 +275,11 @@ export async function sendNoticeWebPush(notice) {
     eligible.push(id);
   }
 
+  const poster = notice?.postedByName || 'CR/SR';
   const payload = {
     title: notice?.title || 'New notice',
-    body: String(notice?.content || `Posted by ${notice?.postedByName || 'CR/SR'}`).slice(0, 160),
+    body: `${poster}: ${String(notice?.content || 'posted a new notice')}`.slice(0, 160),
+    icon: await avatarIconFor(notice?.postedById),
     tag: notice?.noticeId ? `notice-${notice.noticeId}` : `notice-${Date.now()}`,
     url: '/',
     category: 'notices',
@@ -276,6 +301,7 @@ const REALTIME_PUSH = {
   'role-application': (p) => ({
     title: p.title || 'New role application',
     body: p.body || '',
+    actorId: p.userId,
     tag: `roleapp-${p.id || Date.now()}`,
     url: p.path || '/admin/applications',
     category: 'applications',
@@ -290,6 +316,7 @@ const REALTIME_PUSH = {
   'gz-lfg-ping': (p) => p?.roomId && ({
     title: `${p.game?.name || 'A squad'} needs ${p.missing} more`,
     body: `${p.from?.name || 'Someone'}: "${p.title || ''}"`.slice(0, 160),
+    actorId: p.from?.id,
     tag: `gz-ping-${p.roomId}`,
     url: `/gaming/room/${p.roomId}`,
     category: 'gaming',
@@ -332,7 +359,12 @@ export function pushRealtimeEvent(userIds, data) {
   try { payload = build(data.payload || {}); } catch { return; }
   if (!payload) return;
   const ids = [...new Set((Array.isArray(userIds) ? userIds : [userIds]).filter(Boolean).map(String))];
-  for (const id of ids) void sendPushToUser(id, payload).catch(() => {});
+  const { actorId, ...rest } = payload;
+  void (async () => {
+    const icon = actorId ? await avatarIconFor(actorId) : null;
+    const body = icon ? { ...rest, icon } : rest;
+    for (const id of ids) void sendPushToUser(id, body).catch(() => {});
+  })().catch(() => {});
 }
 
 /** Push a new direct message to the recipient's devices. */
@@ -344,6 +376,7 @@ export async function sendMessageWebPush({ fromId, toId, text }) {
   await sendPushToUser(toId, {
     title: sender?.name || 'New message',
     body: preview.length > 140 ? `${preview.slice(0, 137)}...` : preview,
+    icon: await avatarIconFor(fromId, sender ? (sender.avatar || null) : undefined),
     tag: `msg-${fromId}`,
     url: `/messages?peer=${encodeURIComponent(fromId)}`,
     category: 'messages',
