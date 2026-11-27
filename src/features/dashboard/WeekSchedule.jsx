@@ -1,6 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, FileDown, MoreVertical, Check, LayoutGrid, List, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Calendar, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, FileDown, MoreVertical, Check, LayoutGrid, List, Loader2, Image as ImageIcon, X } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useLiveValue } from '../../utils/liveStore';
@@ -65,6 +65,8 @@ export default function WeekSchedule() {
 
   // State for viewing task details
   const [selectedTask, setSelectedTask] = useState(null);
+  // Phone only: the day box the user tapped, shown as a bottom sheet.
+  const [sheetDay, setSheetDay] = useState(null);
 
   // Batch filter for calendar view
   const [batchFilter, setBatchFilter] = useState('all');
@@ -180,8 +182,7 @@ export default function WeekSchedule() {
   // Desktop cells keep their tasks.
   const openDayFromMonthOnPhone = (date) => {
     if (!window.matchMedia('(max-width: 640px)').matches) return;
-    setCurrentDate(new Date(date));
-    changeViewMode('daily');
+    setSheetDay(new Date(date));
   };
 
   // Forward scroll stops at the 17-week semester window, but never earlier
@@ -628,7 +629,10 @@ export default function WeekSchedule() {
               <MoreVertical size={18} />
             </button>
             {showExportMenu && createPortal(
-              <div ref={menuRef} className="export-menu routine-more-menu week-schedule-menu" style={{
+              <>
+              {/* Phone: the menu is a bottom sheet over a backdrop. */}
+              <div className="wk-menu-backdrop" aria-hidden="true" onClick={() => setShowExportMenu(false)} />
+              <div ref={menuRef} className="export-menu routine-more-menu week-schedule-menu wk-menu-sheet" style={{
                 position: 'fixed',
                 top: menuPos.top,
                 right: menuPos.right,
@@ -682,7 +686,8 @@ export default function WeekSchedule() {
                 <button className="export-menu-item" disabled={!!exporting} onClick={() => { runExport('jpg'); setShowExportMenu(false); }}>
                   {exporting === 'jpg' ? <Loader2 size={14} className="spin" /> : <ImageIcon size={14} />} Export as JPG
                 </button>
-              </div>,
+              </div>
+              </>,
               document.body
             )}
           </div>
@@ -782,7 +787,7 @@ export default function WeekSchedule() {
               ))}
             </div>
             <div className="schedule-grid">
-              {weekDates.map(date => renderDayCard(date))}
+              {weekDates.map(date => renderDayCard(date, { onOpen: openDayFromMonthOnPhone }))}
             </div>
           </div>
         </>
@@ -832,9 +837,49 @@ export default function WeekSchedule() {
       </div>{/* end schedule-footer */}
 
       {/* Task Details Modal */}
-      {selectedTask && (
-        <div className="modal-overlay" onClick={() => setSelectedTask(null)}>
-          <div className="modal glass-card-static task-detail-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px', width: '90%', padding: 'var(--sp-5)', margin: 0 }}>
+      {sheetDay && !selectedTask && createPortal(
+        <div className="modal-overlay wk-sheet-overlay" onClick={() => setSheetDay(null)}>
+          <div className="modal glass-card-static task-detail-modal wk-sheet" role="dialog" aria-modal="true" aria-label="Tasks for this day" onClick={(e) => e.stopPropagation()}>
+            <span className="wk-sheet-grip" aria-hidden="true" />
+            <div className="flex justify-between items-start" style={{ marginBottom: '10px' }}>
+              <div>
+                <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', margin: 0 }}>
+                  {sheetDay.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
+                </h3>
+                <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', margin: '2px 0 0' }}>
+                  {getTasksForDate(sheetDay).length} task{getTasksForDate(sheetDay).length === 1 ? '' : 's'}
+                </p>
+              </div>
+              <button className="btn btn-ghost btn-icon" aria-label="Close" onClick={() => setSheetDay(null)} style={{ flexShrink: 0 }}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="wk-sheet-list">
+              {getTasksForDate(sheetDay).map((task) => (
+                <button type="button" key={task.id} className="schedule-task-item wk-sheet-task" onClick={() => setSelectedTask(task)}
+                  style={{ background: `${getTypeColor(task.type)}15`, borderLeft: `3px solid ${getTypeColor(task.type)}` }}>
+                  {task.batchGroup && <span className="schedule-task-batch">{task.batchGroup}</span>}
+                  <div className="schedule-task-info">
+                    {task.courseCode && <span className="schedule-task-code">{task.courseCode}</span>}
+                    <span className="schedule-task-title">{task.title}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+            {canAddTask && (
+              <button className="schedule-add-btn" style={{ marginTop: '10px', width: '100%' }} onClick={() => { setSelectedDay(sheetDay); setNewTask({ ...newTask, date: formatDateKey(sheetDay) }); setSheetDay(null); setShowAddModal(true); }}>
+                + Add Task
+              </button>
+            )}
+          </div>
+        </div>,
+        document.body,
+      )}
+
+      {selectedTask && createPortal(
+        <div className="modal-overlay wk-sheet-overlay" onClick={() => setSelectedTask(null)}>
+          <div className="modal glass-card-static task-detail-modal wk-sheet" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px', width: '90%', padding: 'var(--sp-5)', margin: 0 }}>
+            <span className="wk-sheet-grip" aria-hidden="true" />
             <div className="flex justify-between items-start" style={{ marginBottom: '12px' }}>
               <div>
                 <h3 style={{ fontSize: 'var(--fs-md)', fontWeight: 'bold', margin: 0 }}>{selectedTask.title}</h3>
@@ -899,7 +944,8 @@ export default function WeekSchedule() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {/* Add Task Modal */}

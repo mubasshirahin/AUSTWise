@@ -193,16 +193,22 @@ export function useInAppNotifications(user) {
     let cancelled = false;
     const sync = async () => {
       try {
-        const list = await loadSharedAsync(CRSR_NOTICES_KEY, []);
-        if (cancelled) return;
-        seedFromNotices(withoutOwnNotices(list, user.id), user);
+        const list = await loadSharedAsync(CRSR_NOTICES_KEY, null);
+        // null = server unreachable: don't prune on a failed fetch.
+        if (cancelled || !Array.isArray(list)) return;
+        seedFromNotices(withoutOwnNotices(list, user.id), user, { pruneMissing: true });
         setNotifications(loadNotifications());
         setUnread(getUnreadCount());
       } catch { /* offline — try again next tick */ }
     };
     sync();
     const interval = setInterval(sync, 30000);
-    return () => { cancelled = true; clearInterval(interval); };
+    // A CR/SR posted, edited or deleted a notice: resync now so a deleted
+    // notice disappears from the bell right away.
+    const offStore = onRealtimeMessage('store-change', (p) => {
+      if (p?.scope === 'shared' && p?.key === CRSR_NOTICES_KEY) sync();
+    });
+    return () => { cancelled = true; clearInterval(interval); offStore(); };
   }, [user?.id, user?.isGuest, user?.department, user?.semester, user?.section, user?.labSection]);
 
   const runSeed = useCallback(() => {

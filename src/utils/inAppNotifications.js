@@ -297,14 +297,25 @@ function noticeTimestamp(notice) {
   return Number.isFinite(parsed) ? parsed : Date.now();
 }
 
-export function seedFromNotices(notices, user) {
-  if (!notices || !notices.length) return;
+const CRSR_NOTICE_ID = /^notice-cr-/;
+
+/**
+ * Seed the bell from a notice list. With `pruneMissing` (only for the
+ * authoritative CR/SR list fetched from the server), a CR/SR notice that is
+ * no longer in the list was deleted by its poster, so it leaves the bell too.
+ */
+export function seedFromNotices(notices, user, { pruneMissing = false } = {}) {
+  if (!Array.isArray(notices)) return;
+  if (!notices.length && !pruneMissing) return;
   const sourceIds = new Set(notices.map((notice) => `notice-${notice.id}`));
   const visibleNotices = notices.filter((notice) => noticeScopeMatchesUser(notice.scope, user));
   const visibleIds = new Set(visibleNotices.map((notice) => `notice-${notice.id}`));
-  const existing = loadNotifications().filter((item) =>
-    !(item.type === 'notice' && sourceIds.has(item.id) && !visibleIds.has(item.id))
-  );
+  const existing = loadNotifications().filter((item) => {
+    if (item.type !== 'notice') return true;
+    if (sourceIds.has(item.id) && !visibleIds.has(item.id)) return false;
+    if (pruneMissing && CRSR_NOTICE_ID.test(String(item.id)) && !sourceIds.has(item.id)) return false;
+    return true;
+  });
   const existingIds = new Set(existing.map((n) => n.id));
 
   visibleNotices.forEach((notice) => {
