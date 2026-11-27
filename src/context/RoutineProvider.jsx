@@ -5,6 +5,7 @@ import { getUserStorageItem, setUserStorageItem, getUserStorageKey } from '../ut
 import { userStore } from '../utils/storageService';
 import useWebSocket from '../hooks/useWebSocket';
 import { useAuth } from './AuthContext';
+import { useReminderChecks } from '../hooks/useReminderChecks';
 import { blockIfGuest } from '../guest/guestSandbox';
 
 const storageKeyTypes = {
@@ -38,6 +39,8 @@ export function RoutineProvider({ children }) {
     return saved || ocrImportedWeekDays;
   });
 
+  // No class reminders from the demo routine shown before the user sets one.
+  useReminderChecks(routine === defaultRoutine ? null : routine, weekDays);
   const routineRef = useRef(routine);
   routineRef.current = routine;
   const weekDaysRef = useRef(weekDays);

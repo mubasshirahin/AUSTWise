@@ -79,7 +79,7 @@ export const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'
 // "missed" and overwrote the student's Present with Absent.
 // Course codes are compared the same way the Telegram buttons encode them
 // (alphanumerics only, upper-case: "CSE 3101" → "CSE3101").
-function attendanceCourseKey(code) {
+export function attendanceCourseKey(code) {
   return String(code || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 24).toUpperCase();
 }
 function recordCourseKey(r) {
@@ -160,7 +160,7 @@ export function classStartMinutes(cls) {
   return timeToMinutes(String(cls.time || '').split('-')[0]);
 }
 
-function classEndMinutes(cls) {
+export function classEndMinutes(cls) {
   const parts = String(cls.time || '').split('-');
   if (parts.length < 2) return null;
   return timeToMinutes(parts[1]);

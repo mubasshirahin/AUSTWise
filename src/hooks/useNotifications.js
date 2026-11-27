@@ -8,10 +8,7 @@ import {
   saveSettingsToServer,
   hydrateSettingsFromServer,
   SETTINGS_STORAGE_KEY,
-  checkClassReminders,
-  checkDeadlineReminders,
 } from '../utils/notificationService';
-import { deadlines } from '../data/mockData';
 import { useAuth } from '../context/AuthContext';
 import {
   isPushSupported,
@@ -22,14 +19,12 @@ import {
   showTestPushNotification,
 } from '../utils/webPush';
 
-const POLL_INTERVAL_MS = 60 * 1000;
 const SYNC_INTERVAL_MS = 20 * 1000;
 
-export function useNotifications(routine, weekDays) {
+export function useNotifications() {
   const { isAuthenticated } = useAuth();
   const [permission, setPermission] = useState(() => getPermissionStatus());
   const [settings, setSettings] = useState(() => loadSettings());
-  const intervalRef = useRef(null);
   const syncIntervalRef = useRef(null);
 
   const [pushBusy, setPushBusy] = useState(false);
@@ -78,25 +73,7 @@ export function useNotifications(routine, weekDays) {
     };
   }, [syncFromServer]);
 
-  const runChecks = useCallback(() => {
-    const current = loadSettings();
-    if (!current.enabled || getPermissionStatus() !== 'granted') return;
-
-    if (current.notifyClass && routine) {
-      checkClassReminders(routine, weekDays || [], 30);
-    }
-    if (current.notifyDeadline) {
-      checkDeadlineReminders(deadlines, 12);
-    }
-  }, [routine, weekDays]);
-
-  useEffect(() => {
-    if (settings.enabled && permission === 'granted') {
-      runChecks();
-      intervalRef.current = setInterval(runChecks, POLL_INTERVAL_MS);
-    }
-    return () => clearInterval(intervalRef.current);
-  }, [settings.enabled, permission, runChecks]);
+  // Class and deadline reminders run app-wide from useReminderChecks.
 
   const enable = useCallback(async () => {
     if (!supported) return 'unsupported';

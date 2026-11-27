@@ -81,6 +81,14 @@
       ],
       data: { url: data.url || '/', category: data.category || '' },
     };
+    // Attendance prompt: answer right from the notification.
+    if (data.attendance && data.attendance.token) {
+      options.actions = [
+        { action: 'present', title: '✅ Present' },
+        { action: 'absent', title: '❌ Absent' },
+      ];
+      options.data.attendance = data.attendance;
+    }
     if (data.image) options.image = data.image;
     event.waitUntil(
       (data.skipIfVisible ? hasVisibleClient() : Promise.resolve(false)).then(function (visible) {
@@ -143,9 +151,42 @@
     }).catch(function () {});
   }
 
+  // Send a Present / Absent answer, then say how it went. If Telegram (or
+  // another device) answered first, the server refuses it as already marked.
+  function answerAttendance(att, attended) {
+    return fetch('/api/web-push/attendance', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: att.token, attended: attended }),
+    }).then(function (res) { return res.json().catch(function () { return {}; }); })
+      .catch(function () { return { status: 'offline' }; })
+      .then(function (r) {
+        var course = att.course || 'Class';
+        var text;
+        if (r.status === 'saved') text = course + ' marked ' + (attended ? 'Present' : 'Absent') + '.';
+        else if (r.status === 'already') text = course + ' was already marked ' + (r.attended ? 'Present' : 'Absent') + '.';
+        else if (r.status === 'expired') text = 'This attendance prompt has expired.';
+        else if (r.status === 'offline') text = 'Could not reach AUSTWise. Mark it from the app.';
+        else text = 'This attendance prompt is no longer valid.';
+        return self.registration.showNotification('Attendance', {
+          body: text,
+          badge: '/notification-badge.png',
+          tag: 'att-result',
+          silent: true,
+          data: { url: '/dashboard/attendance' },
+        });
+      });
+  }
+
   self.addEventListener('notificationclick', function (event) {
     event.notification.close();
     if (event.action === 'dismiss') return;
+    var att = event.notification.data && event.notification.data.attendance;
+    if (att && (event.action === 'present' || event.action === 'absent')) {
+      event.waitUntil(answerAttendance(att, event.action === 'present'));
+      return;
+    }
     var url = (event.notification.data && event.notification.data.url) || '/';
     var target = new URL(url, self.location.origin).href;
     event.waitUntil(

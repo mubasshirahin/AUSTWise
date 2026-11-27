@@ -6,7 +6,7 @@
  * the same two reminders through the service worker so they arrive on mobile
  * even with the app closed:
  *   - 30 minutes before each class of the day
- *   - 12 hours before a deadline
+ *   - 12 hours, 6 hours and 30 minutes before a deadline
  *
  * It reuses the Telegram scheduler's timezone/routine/deadline helpers so both
  * channels agree on what "today" and "12h before" mean. Delivery is keyed in
@@ -20,13 +20,15 @@ import { getUserStoreValue } from './storeDB.mjs';
 import { getUserById } from './userStore.mjs';
 import { createDedicatedClient } from './db.mjs';
 import {
-  dhakaNow, DAY_NAMES, parseRoutine, classStartMinutes, loadUserDeadlines,
+  dhakaNow, DAY_NAMES, parseRoutine, classStartMinutes, classEndMinutes, attendanceCourseKey, loadUserDeadlines,
 } from './telegramSchedulerJob.mjs';
+import { linkedChatId, attendanceToken, findAnswer } from './pushAttendance.mjs';
 import { isWebPushConfigured, getAllSubscriberIds, sendPushToUser, isPushCategoryEnabled } from './webPush.mjs';
 
 const LOG_FILE = '.wp_schedule_log.json';
 const CLASS_LEAD_MINUTES = 30;
-const DEADLINE_LEAD_MINUTES = 12 * 60;
+// Push reminders before each deadline: 12 h, 6 h and 30 min.
+const DEADLINE_LEADS_MINUTES = [12 * 60, 6 * 60, 30];
 
 // ── Idempotency log ──────────────────────────────────────────────────────────
 let firedLog = {};
@@ -62,7 +64,8 @@ async function processSubscriber(userId, now) {
   if (!hasPushColumn && notifications.enabled !== true) return;
   const notifyClass = isPushCategoryEnabled(notifications, 'classReminders');
   const notifyDeadline = isPushCategoryEnabled(notifications, 'deadlines');
-  if (!notifyClass && !notifyDeadline) return;
+  const notifyAttendance = isPushCategoryEnabled(notifications, 'attendance');
+  if (!notifyClass && !notifyDeadline && !notifyAttendance) return;
 
   // ── Class reminders — 30 min before each class of today ──
   if (notifyClass) {
@@ -92,20 +95,63 @@ async function processSubscriber(userId, now) {
     }
   }
 
-  // ── Deadline reminders — 12 h before ──
+  // ── Attendance — Present / Absent buttons when each class ends ──
+  // Works without Telegram. When Telegram is linked too, the first answer
+  // (push or Telegram) wins.
+  if (notifyAttendance) {
+    const weekDays = await getUserStoreValue(userId, 'aust-user-weekdays', []);
+    const todayName = DAY_NAMES[now.weekdayIndex];
+    if (Array.isArray(weekDays) && weekDays.includes(todayName)) {
+      const routine = parseRoutine(await getUserStoreValue(userId, 'aust-user-routine', {}));
+      const classes = Array.isArray(routine?.[todayName]) ? routine[todayName] : [];
+      let chatId;
+      for (let i = 0; i < classes.length; i += 1) {
+        const cls = classes[i];
+        const end = classEndMinutes(cls);
+        if (!Number.isFinite(end) || now.minutes < end || now.minutes >= end + 3) continue;
+        const key = `wp-att-${userId}-${now.key}-${i}`;
+        if (hasFired(key)) continue;
+        await markFired(key);
+        const course = attendanceCourseKey(cls.course);
+        if (!course) continue;
+        if (chatId === undefined) chatId = await linkedChatId(account);
+        if (await findAnswer({ userId, chatId, course, day: now.key })) continue;
+        await sendPushToUser(userId, {
+          title: `📋 Attendance — ${cls.course || 'Class'}`,
+          body: `Were you in ${cls.course || 'this class'}${cls.name ? ` (${cls.name})` : ''} today?`,
+          tag: `att-${now.key}-${course}`,
+          url: '/dashboard/attendance',
+          category: 'attendance',
+          requireInteraction: true,
+          attendance: { token: attendanceToken({ userId, course, day: now.key }), course: cls.course || course },
+        });
+      }
+    }
+  }
+
+  // ── Deadline reminders — 12 h, 6 h and 30 min before ──
   if (notifyDeadline) {
     const deadlines = await loadUserDeadlines(userId);
     for (const dl of deadlines) {
       const minsLeft = (dl.dueDate - Date.now()) / 60000;
-      if (!Number.isFinite(minsLeft) || minsLeft <= 0 || minsLeft > DEADLINE_LEAD_MINUTES) continue;
-      const key = `wp-deadline-${userId}-${dl.id}-12h`;
-      if (hasFired(key)) continue;
-      await markFired(key);
-      const hrs = Math.max(0, Math.round(minsLeft / 60));
+      if (!Number.isFinite(minsLeft) || minsLeft <= 0) continue;
+      // Only the closest reminder that is due fires; earlier ones that were
+      // missed (deadline added late, server down) are skipped, not sent in a burst.
+      const due = DEADLINE_LEADS_MINUTES.filter((lead) => minsLeft <= lead);
+      if (!due.length) continue;
+      const lead = due[due.length - 1];
+      const key = `wp-deadline-${userId}-${dl.id}-${lead}m`;
+      // `-12h` is the key used before the 6 h / 30 min reminders existed.
+      if (hasFired(key) || (lead === 12 * 60 && hasFired(`wp-deadline-${userId}-${dl.id}-12h`))) continue;
+      for (const l of due) await markFired(`wp-deadline-${userId}-${dl.id}-${l}m`);
+      const hrs = Math.round(minsLeft / 60);
+      const left = minsLeft < 60
+        ? `${Math.max(1, Math.round(minsLeft))} minute${Math.round(minsLeft) === 1 ? '' : 's'}`
+        : `${hrs} hour${hrs === 1 ? '' : 's'}`;
       await sendPushToUser(userId, {
         title: `⏰ Deadline Alert — ${dl.course}`,
-        body: `"${dl.title}" is due in ${hrs <= 1 ? 'less than 1 hour' : `${hrs} hour${hrs === 1 ? '' : 's'}`}!`,
-        tag: `deadline-${dl.id}-12h`,
+        body: `"${dl.title}" is due in ${left}!`,
+        tag: `deadline-${dl.id}-${lead}m`,
         url: '/dashboard/quickstats',
         category: 'deadlines',
       });

@@ -333,8 +333,8 @@ export default function SettingsPage() {
   const displayRoles = getDisplayRoles(user);
   const isAlumniMember = accountRoles.has('alumni') || accountRoles.has('alumni_with_carry');
   const isFacultyMember = accountRoles.has('faculty') || [...accountRoles].some(role => String(role).startsWith('faculty_'));
-  const { routine, weekDays } = useRoutine();
-  const { supported, permission, settings: notifSettings, enable: enableNotifs, prepareBrowserChannel, disable: disableNotifs, updateSetting, push } = useNotifications(routine, weekDays);
+  const { routine } = useRoutine();
+  const { supported, permission, settings: notifSettings, enable: enableNotifs, prepareBrowserChannel, disable: disableNotifs, updateSetting, push } = useNotifications();
   const [checkingDelivery, setCheckingDelivery] = useState('');
   const [deliveryStatus, setDeliveryStatus] = useState('');
   const [pushMsg, setPushMsg] = useState('');
@@ -2017,7 +2017,7 @@ export default function SettingsPage() {
                         { label: 'Notice Board', key: 'notices', channels: ['telegram', 'browser', 'bell', 'push'] },
                         { label: "Tomorrow's class schedule at 12 AM", key: 'classSchedule', channels: ['telegram'] },
                         { label: 'Class alert (30 min before)', key: 'classReminders', channels: ['telegram', 'browser', 'push'] },
-                        { label: 'Attendance prompts', key: 'attendance', channels: ['telegram'] },
+                        { label: 'Attendance prompts', key: 'attendance', channels: ['telegram', 'push'] },
                         { label: 'Deadline alert (12 hours before)', key: 'deadline12h', preference: 'deadlines', channels: ['telegram', 'browser', 'push'] },
                         { label: 'Upcoming deadlines in the bell', key: 'upcomingDeadlines', preference: 'deadlines', channels: ['bell'] },
                         { label: 'Study task reminders', key: 'tasks', channels: ['browser', 'bell'] },

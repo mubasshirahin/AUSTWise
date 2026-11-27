@@ -105,6 +105,7 @@ export default function RoutineAttendanceTracker() {
     return () => { cancelled = true; };
   }, []);
   const [telegramRecords,      setTelegramRecords]     = useState([]);
+  const [pushMarks] = useLiveValue('user', 'aust-push-attendance', null);
   const [expandedCourseKey,    setExpandedCourseKey]   = useState(null);
   const [editMode,             setEditMode]            = useState(false); // view by default
   const [inView,               setInView]              = useState(false);
@@ -220,8 +221,15 @@ export default function RoutineAttendanceTracker() {
   }, [routine, weekDays, sharedSemStart]);
 
   // Telegram bot records → session marks overlay, matched by course + date.
+  // Push-notification answers (no Telegram needed), shaped like bot records.
+  const pushRecords = useMemo(() => Object.entries(pushMarks && typeof pushMarks === 'object' ? pushMarks : {})
+    .map(([k, v]) => { const [course, date] = k.split('|'); return { CourseCode: course, RecordDate: date, Attended: Boolean(v?.attended) }; }),
+  [pushMarks]);
+
   const telegramMarks = useMemo(() => {
-    if (!telegramRecords.length) return {};
+    // Push answers first, so a Telegram record for the same class overrides it.
+    const allRecords = [...pushRecords, ...(isTelegramSync ? telegramRecords : [])];
+    if (!allRecords.length) return {};
     const idByDate = {};
     Object.values(courseStats).forEach(stat => {
       // Use base course (without part) for Telegram match — bot stores CSE101 not CSE101-A
@@ -233,7 +241,7 @@ export default function RoutineAttendanceTracker() {
       });
     });
     const marks = {};
-    telegramRecords.forEach(rec => {
+    allRecords.forEach(rec => {
       const courseKey = rec.CourseCode || rec.courseCode || rec.course;
       const dateStr   = String(rec.RecordDate || rec.recordDate || '').split('T')[0];
       const attended  = rec.Attended !== undefined ? rec.Attended : rec.attended;
@@ -243,7 +251,7 @@ export default function RoutineAttendanceTracker() {
       if (id) marks[id] = attended ? 'present' : 'absent';
     });
     return marks;
-  }, [telegramRecords, courseStats]);
+  }, [telegramRecords, pushRecords, isTelegramSync, courseStats]);
 
   // Effective mark for a session: manual mark wins, else the Telegram bot's.
   const markFor = (inst) => sessionMarks[inst.id] ?? telegramMarks[inst.id] ?? null;

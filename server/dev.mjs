@@ -165,7 +165,8 @@ import {
 } from './passwordVaultDB.mjs';
 import { encrypt as encryptPassword } from './passwordCrypto.mjs';
 import { createCharge, verifyPayment } from './payment.mjs';
-import { touchStreak, STREAK_KEY, currentStreak } from './streak.mjs';
+import { touchStreak, STREAK_KEY, currentStreak, dayKey as dhakaTodayKey } from './streak.mjs';
+import { recordPushAttendance, findAnswer, PUSH_ATTENDANCE_KEY } from './pushAttendance.mjs';
 import { createWSServer, closeWSServer, broadcastToAll, broadcastToUsers, broadcastToUser, getPresenceMap } from './wsServer.mjs';
 import {
   getUserStoreValue, setUserStoreValue, deleteUserStoreValue, listUserStoreKeys, isServerOnlyUserKey,
@@ -628,6 +629,7 @@ const DEFAULT_USER_SETTINGS = {
       telegram: { notices: true, classSchedule: true, classReminders: true, attendance: true, deadlines: true },
       browser: { notices: true, classReminders: true, deadlines: true, tasks: true, messages: true, applications: true, gaming: true, results: true },
       bell: { notices: true, deadlines: true, tasks: true, messages: true, applications: true, gaming: true, results: true },
+      push: { notices: true, classReminders: true, attendance: true, deadlines: true, messages: true, applications: true, gaming: true, results: true },
     },
     // Sound + vibration on device notifications (off = silent popups).
     vibrate: true,
@@ -2812,6 +2814,24 @@ async function handleApiRequest(req, res) {
 
   // Workspace marks/result/grade post spotted by the user's own browser (the
   // Classroom token never reaches us) — push it to that user's devices only.
+  // POST /api/web-push/attendance — Present / Absent tapped on a push.
+  // The signed token in the push stands in for the session (the service
+  // worker may have no cookie). The first answer, push or Telegram, wins.
+  if (req.url === '/api/web-push/attendance' && req.method === 'POST') {
+    try {
+      const body = await readJsonBody(req);
+      const r = await recordPushAttendance(body?.token, body?.attended === true, dhakaTodayKey());
+      if (r.status === 'saved' && r.userId) {
+        broadcastToUser(r.userId, { type: 'store-change', payload: { scope: 'user', key: PUSH_ATTENDANCE_KEY } });
+        broadcastToUser(r.userId, { type: 'attendance-sync', payload: { courseId: r.course, attended: r.attended, timestamp: new Date().toISOString() } });
+      }
+      sendJson(res, r.status === 'invalid' ? 400 : 200, { success: r.status === 'saved', ...r, userId: undefined, chatId: undefined });
+    } catch (err) {
+      sendJson(res, 500, { success: false, status: 'error', error: err.message });
+    }
+    return;
+  }
+
   if (req.url === '/api/web-push/workspace-results' && req.method === 'POST') {
     const auth = requireAuth(req, res);
     if (!auth) return;
@@ -3035,7 +3055,18 @@ async function handleApiRequest(req, res) {
 
             // Save attendance record
             const user = await getUser(chatId);
-            if (user) {
+            // First answer wins: if this class was already marked today (from
+            // a Web Push or an earlier tap), this button is no longer valid.
+            const linkedAccount = user && (user.Awid ?? user.awid)
+              ? await getUserByIdOrAwid(user.Awid ?? user.awid).catch(() => null) : null;
+            const prior = user ? await findAnswer({
+              userId: linkedAccount?.id, chatId, course: courseCode, day: dhakaTodayKey(),
+            }).catch(() => null) : null;
+            if (prior) {
+              const wasPresent = prior.attended;
+              await answerCallbackQueryFn(botToken, callbackQueryId, `Already marked ${wasPresent ? 'Present' : 'Absent'} for ${courseCode.replace(/_/g, ' ')}.`);
+              if (messageId && chatId) await updateMessageKeyboardFn(botToken, chatId, messageId, callbackData, wasPresent, courseCode);
+            } else if (user) {
               await saveAttendanceRecord(chatId, courseCode, isAttended);
               console.log(`✅ Attendance saved for user ${chatId}: ${courseCode} = ${isAttended ? 'Present' : 'Absent'}`);
               // Push the change to that student's open website tabs so the
@@ -3054,16 +3085,18 @@ async function handleApiRequest(req, res) {
               }
             }
 
-            // Answer the callback query with confirmation
-            const answerText = isAttended 
-              ? `✅ ${courseCode.replace(/_/g, ' ')} - Present marked!` 
-              : `❌ ${courseCode.replace(/_/g, ' ')} - Absent marked!`;
+            if (!prior) {
+              // Answer the callback query with confirmation
+              const answerText = isAttended 
+                ? `✅ ${courseCode.replace(/_/g, ' ')} - Present marked!` 
+                : `❌ ${courseCode.replace(/_/g, ' ')} - Absent marked!`;
             
-            await answerCallbackQueryFn(botToken, callbackQueryId, answerText);
+              await answerCallbackQueryFn(botToken, callbackQueryId, answerText);
 
-            // Update the message to remove the clicked button
-            if (messageId && chatId) {
-              await updateMessageKeyboardFn(botToken, chatId, messageId, callbackData, isAttended, courseCode);
+              // Update the message to remove the clicked button
+              if (messageId && chatId) {
+                await updateMessageKeyboardFn(botToken, chatId, messageId, callbackData, isAttended, courseCode);
+              }
             }
           }
         }
@@ -4865,7 +4898,7 @@ async function handleApiRequest(req, res) {
     const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     const key = decodeURIComponent(req.url.slice('/api/store/user/'.length));
-    if (isServerOnlyUserKey(key) || key === STREAK_KEY) { sendJson(res, 403, { success: false, error: 'This key is managed by the server.' }); return; }
+    if (isServerOnlyUserKey(key) || key === STREAK_KEY || key === PUSH_ATTENDANCE_KEY) { sendJson(res, 403, { success: false, error: 'This key is managed by the server.' }); return; }
     try {
       const bodyLimit = key.startsWith('aust-qba-images-v1:')
         ? qbaAttachmentBodyBytes
@@ -4925,7 +4958,7 @@ async function handleApiRequest(req, res) {
     const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     const key = decodeURIComponent(req.url.slice('/api/store/user/'.length));
-    if (isServerOnlyUserKey(key) || key === STREAK_KEY) { sendJson(res, 403, { success: false, error: 'This key is managed by the server.' }); return; }
+    if (isServerOnlyUserKey(key) || key === STREAK_KEY || key === PUSH_ATTENDANCE_KEY) { sendJson(res, 403, { success: false, error: 'This key is managed by the server.' }); return; }
     try {
       await deleteUserStoreValue(auth.id, key);
       // Notify other devices that this key was removed (not just changed) so
@@ -5251,7 +5284,7 @@ async function handleApiRequest(req, res) {
       // deleted (tombstones) and keys the server already has a value for, so
       // a device that missed a live delete/reset can never resurrect it.
       for (const [key, value] of Object.entries(userEntries)) {
-        if (isServerOnlyUserKey(key) || key === STREAK_KEY) continue;
+        if (isServerOnlyUserKey(key) || key === STREAK_KEY || key === PUSH_ATTENDANCE_KEY) continue;
         if (await isUserStoreDeleted(auth.id, key)) continue;
         const existing = await getUserStoreValue(auth.id, key, null);
         if (existing !== null) continue;

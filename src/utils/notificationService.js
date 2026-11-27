@@ -19,7 +19,7 @@ const defaultSettings = {
     telegram: { notices: true, classSchedule: true, classReminders: true, attendance: true, deadlines: true },
     browser: { notices: true, classReminders: true, deadlines: true, tasks: true, messages: true, applications: true, gaming: true, results: true },
     bell: { notices: true, deadlines: true, tasks: true, messages: true, applications: true, gaming: true, results: true },
-    push: { notices: true, classReminders: true, deadlines: true, messages: true, applications: true, gaming: true, results: true },
+    push: { notices: true, classReminders: true, attendance: true, deadlines: true, messages: true, applications: true, gaming: true, results: true },
   },
   // Sound + vibration on device notifications (off = silent popups).
   vibrate: true,
@@ -240,7 +240,7 @@ export function checkDeadlineReminders(deadlines, hoursBefore = 12) {
         const timeLabel = diffHrs <= 1 ? 'less than 1 hour' : `${diffHrs} hour${diffHrs === 1 ? '' : 's'}`;
         sendNotification(
           `⏰ Deadline Alert — ${dl.course}`,
-          `"${dl.title}" is due in ${timeLabel}!\nType: ${dl.type} • Priority: ${dl.priority}`,
+          `"${dl.title}" is due in ${timeLabel}!\n${dl.type ? `Type: ${dl.type} • ` : ''}Priority: ${dl.priority}`,
           { tag: key, requireInteraction: true, category: 'deadlines' }
         );
       }
