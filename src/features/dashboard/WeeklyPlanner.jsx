@@ -9,15 +9,13 @@ import TeacherAutocomplete from '../../components/TeacherAutocomplete';
 import { getAutoColorForCourse } from '../../utils/autoColorPalette';
 import brandMark from '../../assets/austwise-icon-final.svg';
 import { useAuth } from '../../context/AuthContext';
-import useWebSocket from '../../hooks/useWebSocket';
-import { userStore } from '../../utils/storageService';
 import { blockIfGuest } from '../../guest/guestSandbox';
 
 const isGeneratedRoutineFixture = (routine) => String(routine?.id || '').startsWith('dev-rt-');
 
 export default function WeeklyPlanner() {
   const { user } = useAuth();
-  const { routine, weekDays, isLoading, loadedSharedCrId, updateRoutineClass, addRoutineClass, deleteRoutineClass, replaceRoutine, markSharedRoutineLoaded, clearSharedRoutineSource } = useRoutine();
+  const { routine, weekDays, isLoading, loadedSharedCrId, updateRoutineClass, addRoutineClass, deleteRoutineClass, replaceRoutine, markSharedRoutineLoaded } = useRoutine();
   const [editing, setEditing] = useState(null);
   const [showLoadModal, setShowLoadModal] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -482,44 +480,17 @@ export default function WeeklyPlanner() {
     }
   };
 
-  const syncLoadedSharedRoutine = async ({ action, crId } = {}) => {
-    if (!user?.id || !crId) return;
-    const sourceKey = `aust-loaded-shared-routine:${user.id}`;
-    if (await userStore.get(sourceKey) !== crId) return;
-    if (action === 'delete') {
-      await clearSharedRoutineSource();
-      setLoadedSharedRoutine((current) => current?.crId === crId ? null : current);
-      return;
-    }
-    try {
-      const data = await sharedApi('/api/routines/shared');
-      const latest = (data.routines || []).find(item => item.crId === crId);
-      if (!latest) {
-        await clearSharedRoutineSource();
-        setLoadedSharedRoutine((current) => current?.crId === crId ? null : current);
-        return;
-      }
-      await replaceRoutine(latest.routine, latest.weekDays, { keepSharedSource: true });
-      setLoadedSharedRoutine(latest);
-      window.dispatchEvent(new Event('routine-updated'));
-    } catch (error) {
-      console.warn('Could not sync loaded shared routine:', error.message);
-    }
-  };
-
-  useWebSocket(user?.id || null, { onRoutineShared: syncLoadedSharedRoutine });
-
-  // Catch up after the user was offline while the CR published changes.
+  // RoutineProvider follows the CR's shared routine app-wide; this page only
+  // mirrors the result into its "loaded from" banner.
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      if (!user?.id) return;
-      const crId = await userStore.get(`aust-loaded-shared-routine:${user.id}`);
-      if (!cancelled && crId) syncLoadedSharedRoutine({ action: 'publish', crId });
-    })();
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+    const onSync = (event) => {
+      const { crId, removed, routine: latest } = event.detail || {};
+      if (removed) setLoadedSharedRoutine((current) => current?.crId === crId ? null : current);
+      else if (latest) setLoadedSharedRoutine(latest);
+    };
+    window.addEventListener('shared-routine-sync', onSync);
+    return () => window.removeEventListener('shared-routine-sync', onSync);
+  }, []);
 
   // Once a CR has published, persist every later grid edit automatically.
   // A short debounce combines rapid edits into one live update.

@@ -38,6 +38,11 @@ export function RoutineProvider({ children }) {
     return saved || ocrImportedWeekDays;
   });
 
+  const routineRef = useRef(routine);
+  routineRef.current = routine;
+  const weekDaysRef = useRef(weekDays);
+  weekDaysRef.current = weekDays;
+
   const [isLoading, setIsLoading] = useState(() => isAuthenticated);
   const [loadedSharedCrId, setLoadedSharedCrId] = useState(null);
   const loadGenerationRef = useRef(0);
@@ -183,6 +188,62 @@ export function RoutineProvider({ children }) {
     // live CR sync passes keepSharedSource so its own refresh does not unlink.
     if (!keepSharedSource) await clearSharedRoutineSource();
   };
+
+  // ── Follow the CR's shared routine, app-wide ──
+  // A student who loaded a CR's routine gets every later CR edit instantly on
+  // any page (Daily Flow included), not only while the Routine page is open.
+  const replaceRoutineRef = useRef(replaceRoutine);
+  replaceRoutineRef.current = replaceRoutine;
+  const loadedCrRef = useRef(loadedSharedCrId);
+  loadedCrRef.current = loadedSharedCrId;
+  const followSyncRef = useRef(0);
+
+  const syncFollowedRoutine = useCallback(async ({ action, crId } = {}) => {
+    const targetUserId = activeUserIdRef.current;
+    if (!targetUserId || !crId) return;
+    // Our own published routine: we're the source, nothing to pull.
+    if (crId === targetUserId) return;
+    const followed = loadedCrRef.current ?? await userStore.get(loadedSharedRoutineKey(targetUserId)).catch(() => null);
+    if (followed !== crId || activeUserIdRef.current !== targetUserId) return;
+    const run = ++followSyncRef.current;
+    if (action === 'delete') {
+      await clearSharedRoutineSource();
+      window.dispatchEvent(new CustomEvent('shared-routine-sync', { detail: { crId, removed: true } }));
+      return;
+    }
+    try {
+      const res = await fetch('/api/routines/shared', { credentials: 'same-origin' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) return;
+      if (run !== followSyncRef.current || activeUserIdRef.current !== targetUserId) return;
+      const latest = (data.routines || []).find((item) => item.crId === crId);
+      if (!latest) {
+        await clearSharedRoutineSource();
+        window.dispatchEvent(new CustomEvent('shared-routine-sync', { detail: { crId, removed: true } }));
+        return;
+      }
+      const same = JSON.stringify(latest.routine) === JSON.stringify(routineRef.current)
+        && JSON.stringify(latest.weekDays) === JSON.stringify(weekDaysRef.current);
+      if (!same) await replaceRoutineRef.current(latest.routine, latest.weekDays, { keepSharedSource: true });
+      window.dispatchEvent(new CustomEvent('shared-routine-sync', { detail: { crId, routine: latest } }));
+      if (!same) window.dispatchEvent(new Event('routine-updated'));
+    } catch { /* offline — the next event / focus retries */ }
+  }, [clearSharedRoutineSource]);
+
+  useWebSocket(isAuthenticated ? user?.id : null, { onRoutineShared: syncFollowedRoutine });
+
+  // Catch up after being offline / in the background while the CR edited.
+  useEffect(() => {
+    if (!isAuthenticated || !loadedSharedCrId) return undefined;
+    syncFollowedRoutine({ action: 'publish', crId: loadedSharedCrId });
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && loadedCrRef.current) {
+        syncFollowedRoutine({ action: 'publish', crId: loadedCrRef.current });
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [isAuthenticated, loadedSharedCrId, syncFollowedRoutine]);
 
   const updateRoutineClass = (originalDay, updatedClass) => {
     const nextRoutine = { ...routine };
