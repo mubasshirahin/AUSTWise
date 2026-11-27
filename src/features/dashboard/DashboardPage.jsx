@@ -62,54 +62,21 @@ function loadStreakBoard() {
 
 /* ─── Study Streak Widget ─── */
 function StudyStreak() {
-  const [streak, setStreak] = useState(0);
   const [displayStreak, setDisplayStreak] = useState(0);
-  const [justUpdated, setJustUpdated] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [streakData, setStreakData] = useLiveValue('user', 'aust-study-streak', null);
+  const [streakData] = useLiveValue('user', 'aust-study-streak', null);
 
-  useEffect(() => {
-    try {
-      const today = new Date().toDateString();
-
-      if (streakData === null) {
-        // No streak recorded anywhere yet — start a new one
-        setStreak(1);
-        setDisplayStreak(1);
-        setJustUpdated(true);
-        setStreakData({ count: 1, maxCount: 1, lastActive: today });
-        return;
-      }
-
-      const lastActive = streakData.lastActive;
-      const maxCount = Math.max(Number(streakData.maxCount) || 0, Number(streakData.count) || 0);
-
-      if (lastActive === today) {
-        setStreak(streakData.count || 0);
-        setDisplayStreak(streakData.count || 0);
-        if (streakData.maxCount !== maxCount) setStreakData({ ...streakData, maxCount });
-      } else {
-        const lastDate = new Date(lastActive);
-        const todayDate = new Date();
-        const diffDays = Math.floor((todayDate - lastDate) / (1000 * 60 * 60 * 24));
-
-        if (diffDays === 1) {
-          const newCount = (streakData.count || 0) + 1;
-          setStreak(newCount);
-          setDisplayStreak(streakData.count || 0);
-          setStreakData({ ...streakData, count: newCount, maxCount: Math.max(maxCount, newCount), lastActive: today });
-          setJustUpdated(true);
-        } else if (diffDays > 1) {
-          setStreak(1);
-          setDisplayStreak(1);
-          setStreakData({ ...streakData, count: 1, maxCount: Math.max(maxCount, 1), lastActive: today });
-          setJustUpdated(true);
-        }
-      }
-    } catch {}
-  }, [streakData, setStreakData]);
+  // The server counts the streak (one login per Bangladesh day, 12 AM–12 AM);
+  // this widget only shows it. A last day before yesterday means it broke.
+  const streak = useMemo(() => {
+    if (!streakData) return 0;
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Dhaka' }).format(new Date());
+    const last = /^\d{4}-\d{2}-\d{2}$/.test(streakData.lastActive || '') ? streakData.lastActive : null;
+    const gap = last ? Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${last}T00:00:00Z`)) / 86400000) : 99;
+    return gap <= 1 ? (Number(streakData.count) || 0) : 0;
+  }, [streakData]);
 
   /* Animate displayStreak → streak */
   useEffect(() => {
@@ -174,7 +141,7 @@ function StudyStreak() {
     <>
       <button
         type="button"
-        className={`study-streak-widget${justUpdated ? ' streak-updated' : ''}`}
+        className={`study-streak-widget${displayStreak !== streak ? ' streak-updated' : ''}`}
         onClick={() => setShowLeaderboard(true)}
         aria-label={`Open streak leaderboard. ${streak} day${streak === 1 ? '' : 's'} current streak.`}
         title="Open streak leaderboard"

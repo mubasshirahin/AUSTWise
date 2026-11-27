@@ -165,6 +165,7 @@ import {
 } from './passwordVaultDB.mjs';
 import { encrypt as encryptPassword } from './passwordCrypto.mjs';
 import { createCharge, verifyPayment } from './payment.mjs';
+import { touchStreak, STREAK_KEY, currentStreak } from './streak.mjs';
 import { createWSServer, closeWSServer, broadcastToAll, broadcastToUsers, broadcastToUser, getPresenceMap } from './wsServer.mjs';
 import {
   getUserStoreValue, setUserStoreValue, deleteUserStoreValue, listUserStoreKeys, isServerOnlyUserKey,
@@ -755,7 +756,7 @@ async function buildStreakLeaderboard() {
       name: u.name || u.fullName || 'Student',
       dept: u.department || '',
       streak: r.streak,
-      current: Number(r.value?.count) || 0,
+      current: currentStreak(r.value),
       joinedAt: u.createdAt || null,
       avatar: u.avatar || null,
       awid: u.awid || null,
@@ -784,6 +785,15 @@ async function getStreakLeaderboard() {
   }
   // Serve the stale list instantly while a refresh runs in the background.
   return c.entries || c.pending;
+}
+
+// Count today's login for the streak, and tell the user's open tabs if it moved.
+function recordStreak(userId) {
+  touchStreak(userId).then((v) => {
+    if (!v) return;
+    streakBoardCache.at = 0;
+    broadcastToUser(userId, { type: 'store-change', payload: { scope: 'user', key: STREAK_KEY } });
+  }).catch(() => {});
 }
 
 function sendJson(res, status, payload) {
@@ -4618,6 +4628,7 @@ async function handleApiRequest(req, res) {
   if (req.url === '/api/presence/heartbeat' && req.method === 'POST') {
     const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
+    recordStreak(auth.id);
     try {
       const body = await readJsonBody(req).catch(() => ({}));
       await loadUsageState();
@@ -4854,7 +4865,7 @@ async function handleApiRequest(req, res) {
     const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     const key = decodeURIComponent(req.url.slice('/api/store/user/'.length));
-    if (isServerOnlyUserKey(key)) { sendJson(res, 403, { success: false, error: 'This key is managed by the server.' }); return; }
+    if (isServerOnlyUserKey(key) || key === STREAK_KEY) { sendJson(res, 403, { success: false, error: 'This key is managed by the server.' }); return; }
     try {
       const bodyLimit = key.startsWith('aust-qba-images-v1:')
         ? qbaAttachmentBodyBytes
@@ -4914,7 +4925,7 @@ async function handleApiRequest(req, res) {
     const auth = requireRole('student', 'faculty', 'alumni', 'admin', 'moderator', 'cr', 'sr')(req, res);
     if (!auth) return;
     const key = decodeURIComponent(req.url.slice('/api/store/user/'.length));
-    if (isServerOnlyUserKey(key)) { sendJson(res, 403, { success: false, error: 'This key is managed by the server.' }); return; }
+    if (isServerOnlyUserKey(key) || key === STREAK_KEY) { sendJson(res, 403, { success: false, error: 'This key is managed by the server.' }); return; }
     try {
       await deleteUserStoreValue(auth.id, key);
       // Notify other devices that this key was removed (not just changed) so
@@ -5240,7 +5251,7 @@ async function handleApiRequest(req, res) {
       // deleted (tombstones) and keys the server already has a value for, so
       // a device that missed a live delete/reset can never resurrect it.
       for (const [key, value] of Object.entries(userEntries)) {
-        if (isServerOnlyUserKey(key)) continue;
+        if (isServerOnlyUserKey(key) || key === STREAK_KEY) continue;
         if (await isUserStoreDeleted(auth.id, key)) continue;
         const existing = await getUserStoreValue(auth.id, key, null);
         if (existing !== null) continue;

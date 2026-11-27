@@ -10,6 +10,7 @@ import {
 } from './userStore.mjs';
 import { authRateLimiter, loginRateLimiter } from './rateLimiter.mjs';
 import { rolesOf, isBannedAccount } from './roleGuards.mjs';
+import { touchStreak } from './streak.mjs';
 import { activeBanUntil, tempBanBody } from './strikes.mjs';
 
 export { handleDevSwitchUser, handleDevSeedUsers, handleDevUsers };
@@ -514,6 +515,7 @@ export async function handleMe(req, res) {
     return sendJson(res, 401, { success: false, banned: true, error: bannedMessage(user) });
   }
   setAuthCookie(res, signToken(user));
+  touchStreak(user.id).catch(() => {});
   return sendJson(res, 200, { success: true, user: sanitizeUser(user) });
 }
 
