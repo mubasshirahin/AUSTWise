@@ -1078,7 +1078,8 @@ body:has(.leaderboard-overlay) .alumni-profile-preview.is-floating { z-index: 10
 .deadline-widget {
   display: flex;
   flex-direction: column;
-  height: var(--daily-flow-height, 560px);
+  /* Match Daily Flow, but always tall enough for two full deadlines. */
+  height: max(var(--daily-flow-height, 560px), var(--deadline-min-height, 0px));
   overflow: hidden;
 }
 /* Mobile: stacked layout — size to content instead of matching Daily Flow,
