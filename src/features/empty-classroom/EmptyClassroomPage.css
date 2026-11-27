@@ -1226,3 +1226,102 @@
 @media (prefers-reduced-motion: reduce) {
   .ecf-schedule-backdrop { animation: none; }
 }
+
+/* ════════════════════════════════════════════════════════════
+   MOBILE: compact layout + room routine as a bottom sheet
+   ════════════════════════════════════════════════════════════ */
+.ecf-sheet-grab, .ecf-sheet-days, .ecf-sheet-sub { display: none; }
+
+@media (max-width: 640px) {
+  /* Page: stack blocks vertically, 2 cards per row, no sideways scroll */
+  .ecf-widget { overflow-x: hidden; }
+  .ecf-blocks { grid-template-columns: minmax(0, 1fr) !important; overflow-x: visible; }
+  .ecf-block .ecf-grid,
+  .ecf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .ecf-card { min-width: 0; }
+  .ecf-card-id { font-size: 12px; }
+  .ecf-detail-row, .ecf-detail-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ecf-search-kbd { display: none; }
+  .ecf-search-input { font-size: 16px; } /* stops iOS zoom on focus */
+  .ecf-date-time-field input { font-size: 15px; }
+  .ecf-status-tab { min-height: 38px; }
+  .ecf-floor-head { min-height: 40px; }
+
+  /* Bottom sheet */
+  .ecf-schedule-backdrop { place-items: end stretch; padding: 0 !important; }
+  .ecf-schedule-dialog {
+    width: 100% !important;
+    max-height: 86vh;
+    max-height: 86dvh;
+    padding: 0 14px calc(14px + env(safe-area-inset-bottom)) !important;
+    border-radius: 20px 20px 0 0 !important;
+    border-bottom: 0;
+    transition: transform .22s ease;
+    animation: ecf-sheet-up .26s cubic-bezier(.2,.8,.2,1) both;
+  }
+  .ecf-sheet-grab { display: flex; justify-content: center; padding: 9px 0 6px; touch-action: none; cursor: grab; }
+  .ecf-sheet-handle { width: 40px; height: 4px; border-radius: 999px; background: var(--border-focus, var(--text-tertiary)); opacity: .6; }
+  .ecf-schedule-dialog-head { touch-action: none; padding-bottom: 10px; border-bottom: 1px solid var(--border-primary); }
+  .ecf-sheet-sub { display: block; margin-top: 2px; color: var(--text-tertiary); font-size: 11px; }
+
+  .ecf-room-grid-scroll { display: none; }
+  .ecf-sheet-days {
+    display: flex; flex-direction: column; gap: 10px;
+    overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+    padding-top: 10px;
+  }
+  .ecf-sheet-day { border: 1px solid var(--border-primary); border-radius: 12px; background: var(--bg-secondary); overflow: hidden; }
+  .ecf-sheet-day.is-today { border-color: color-mix(in srgb, var(--accent-amber) 55%, var(--border-primary)); }
+  .ecf-sheet-day-head { display: flex; align-items: center; gap: 6px; padding: 8px 11px; font-size: 12px; font-weight: 800; color: var(--text-primary); }
+  .ecf-sheet-day-head em { font-style: normal; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 999px; color: var(--accent-amber); background: color-mix(in srgb, var(--accent-amber) 14%, transparent); }
+  .ecf-sheet-day-head small { margin-left: auto; color: var(--text-tertiary); font-weight: 700; }
+  .ecf-sheet-class { display: flex; gap: 11px; padding: 9px 11px; border-top: 1px solid var(--border-primary); background: var(--bg-card); }
+  .ecf-sheet-time { display: flex; flex-direction: column; min-width: 46px; font-size: 12px; font-weight: 800; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .ecf-sheet-time small { font-size: 10px; font-weight: 600; color: var(--text-tertiary); }
+  .ecf-sheet-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .ecf-sheet-info strong { font-size: 13px; color: var(--text-primary); }
+  .ecf-sheet-info span { font-size: 11px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ecf-sheet-info small { font-size: 10px; color: var(--text-tertiary); }
+}
+/* Very small phones (≈300–400px) */
+@media (max-width: 400px) {
+  .ecf-widget { padding: 6px !important; }
+  .ecf-masthead { grid-template-columns: minmax(0, 1fr) !important; gap: 8px; padding: 8px !important; }
+  .ecf-masthead .schedule-title-block { gap: 8px; }
+  .ecf-masthead .schedule-icon-tile { width: 30px; height: 30px; min-width: 30px; }
+  .ecf-masthead .schedule-title { font-size: 15px; white-space: nowrap; }
+  .ecf-masthead .schedule-subtitle { font-size: 10px; }
+  .ecf-stats { display: flex; width: 100%; justify-content: stretch !important; gap: 6px; }
+  .ecf-stats .schedule-stat { flex: 1; min-width: 0 !important; flex-direction: row; justify-content: center; align-items: baseline; gap: 5px; }
+  .ecf-stat-divider { display: none; }
+  .ecf-date-time-controls { flex-direction: column; gap: 5px; padding: 5px !important; }
+  .ecf-date-time-field { flex: 1 1 auto !important; width: 100%; }
+  .ecf-filterbar { padding: 6px !important; gap: 6px; }
+  .ecf-status-tabs { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; }
+  .ecf-status-tab { min-width: 0; padding: 0 4px !important; gap: 3px; font-size: 11px; }
+  .ecf-status-tab svg { display: none; }
+  .ecf-tab-count { padding: 0 4px; font-size: 9px; }
+  .ecf-floor { padding: 6px !important; }
+  .ecf-floor-head { gap: 6px; }
+  .ecf-floor-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+  .ecf-floor-badge { margin-left: auto; white-space: nowrap; font-size: 9px; }
+  .ecf-block { padding: 5px !important; }
+  .ecf-block .ecf-grid, .ecf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 5px !important; }
+  .ecf-card { padding: 7px 8px !important; }
+  .ecf-card-id { min-width: 0; font-size: 12px; }
+  .ecf-card-type { display: none; }
+
+  .ecf-schedule-dialog { padding: 0 10px calc(10px + env(safe-area-inset-bottom)) !important; }
+  .ecf-schedule-dialog-head { gap: 8px; }
+  .ecf-schedule-room-icon { display: none; }
+  .ecf-sheet-class { gap: 8px; padding: 8px 9px; }
+  .ecf-sheet-time { min-width: 40px; font-size: 11px; }
+  .ecf-sheet-info strong { font-size: 12px; }
+}
+@media (max-width: 260px) {
+  .ecf-block .ecf-grid, .ecf-grid { grid-template-columns: minmax(0, 1fr) !important; }
+}
+@keyframes ecf-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .ecf-schedule-dialog { animation: none !important; transition: none !important; }
+}

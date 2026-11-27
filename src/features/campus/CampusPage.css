@@ -1563,3 +1563,93 @@
   font-weight: var(--fw-semibold) !important;
 }
 
+
+/* ══ Floor Map — tablet & mobile responsiveness ══ */
+/* Tablet (769–1024px): shorter viewport so the plan fits without a tall empty box */
+@media (max-width: 1024px) {
+  .floor-plan-viewport {
+    min-height: 0;
+    max-height: min(72vh, 760px);
+    padding: var(--sp-3);
+  }
+  .floor-plan-viewport.floor-plan-zoom-fit {
+    max-height: none;
+  }
+  .floor-plan-workspace { gap: var(--sp-3); }
+}
+
+/* Mobile (≤768px): edge-to-edge plan, compact HUD, viewport sized to the image */
+@media (max-width: 768px) {
+  .interactive-map-root { gap: var(--sp-3); }
+  .floor-plan-viewport {
+    max-height: 68vh;
+    padding: var(--sp-2);
+    border-radius: var(--radius-lg);
+  }
+  .floor-plan-viewport.is-zoomed {
+    height: 60vh;
+  }
+  .floor-plan-zoom-hud {
+    gap: var(--sp-2);
+    align-items: center;
+  }
+  .floor-plan-zoom-hint {
+    max-width: 45%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .floor-plan-zoom-btns { gap: 6px; }
+  .floor-plan-hotspot-label {
+    font-size: 10px;
+    max-width: 40vw;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* Small phones (≤400px) */
+@media (max-width: 400px) {
+  .floor-plan-viewport { padding: 6px; }
+  .floor-plan-zoom-hint { display: none; }
+  .floor-plan-zoom-hud { justify-content: flex-end; }
+  .floor-plan-zoom-fab { width: 38px; height: 38px; }
+}
+
+/* Landscape phones: keep the map within the short screen */
+@media (max-height: 500px) and (orientation: landscape) {
+  .floor-plan-viewport,
+  .floor-plan-viewport.floor-plan-zoom-fit { max-height: 85vh; }
+  .floor-plan-viewport.is-zoomed { height: 80vh; }
+}
+
+/* Many floors on a narrow phone: scroll the floor row instead of squashing labels */
+@media (max-width: 480px) {
+  .floor-selector-box .glider-tabs-wrap { overflow-x: auto; }
+  .floor-selector-box .glider-tab { flex: 0 0 auto; min-width: 56px; padding-inline: 10px; }
+  .floor-selector-box .glider-tab-label { font-size: 11px; }
+}
+
+/* Very narrow phones (≤340px, e.g. 300–320px wide) */
+@media (max-width: 340px) {
+  .floor-map-widget .schedule-masthead { padding: var(--sp-2); gap: 6px; }
+  .floor-map-widget .schedule-icon-tile { width: 32px; height: 32px; min-width: 32px; }
+  .floor-map-widget .schedule-icon-tile svg { width: 16px; height: 16px; }
+  .floor-map-widget .schedule-title-block { gap: 8px; min-width: 0; }
+  .floor-map-widget .schedule-title { font-size: var(--fs-sm); }
+  .floor-map-widget .schedule-subtitle {
+    max-width: 44vw; font-size: 10px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;
+  }
+  .floor-map-widget .schedule-nav-btn { width: 30px; height: 30px; }
+  .floor-map-widget .export-menu { min-width: 150px; max-width: calc(100vw - 16px); }
+  .floor-selector-box { padding: 4px; margin-bottom: var(--sp-2); }
+  .floor-selector-box .glider-tab { min-width: 48px; min-height: 38px; padding-inline: 8px; }
+  .floor-selector-box .glider-tab-label { font-size: 10px; }
+  .floor-plan-viewport { padding: 4px; max-height: 60vh; border-radius: var(--radius-md); }
+  .floor-plan-viewport.is-zoomed { height: 55vh; }
+  .floor-plan-zoom-btns { gap: 4px; }
+  .floor-plan-zoom-fab { width: 34px; height: 34px; }
+  .floor-plan-zoom-fab svg { width: 15px; height: 15px; }
+  .floor-plan-hotspot-label { font-size: 9px; padding: 3px 8px; max-width: 50vw; }
+}

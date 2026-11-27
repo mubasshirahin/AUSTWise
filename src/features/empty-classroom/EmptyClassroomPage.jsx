@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef, useDeferredValue, memo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   DoorOpen, Search, X, Building2, Check, Hourglass, CalendarDays, Clock3,
   ChevronDown, ChevronRight, BookOpen,
@@ -166,6 +167,29 @@ export default function EmptyClassroomPage() {
   const [scheduleLoading, setScheduleLoading] = useState(false);
   const [scheduleError, setScheduleError] = useState('');
   const scheduleCloseRef = useRef(null);
+  const sheetRef = useRef(null);
+  const dragRef = useRef(null);
+
+  // Bottom sheet (phones): drag the handle/header down to dismiss.
+  const onSheetTouchStart = (event) => {
+    dragRef.current = { y: event.touches[0].clientY, dy: 0 };
+    if (sheetRef.current) sheetRef.current.style.transition = 'none';
+  };
+  const onSheetTouchMove = (event) => {
+    if (!dragRef.current || !sheetRef.current) return;
+    const dy = Math.max(0, event.touches[0].clientY - dragRef.current.y);
+    dragRef.current.dy = dy;
+    sheetRef.current.style.transform = `translateY(${dy}px)`;
+  };
+  const onSheetTouchEnd = () => {
+    const sheet = sheetRef.current;
+    const dy = dragRef.current?.dy || 0;
+    dragRef.current = null;
+    if (!sheet) return;
+    sheet.style.transition = '';
+    sheet.style.transform = '';
+    if (dy > 90) setScheduleRoom(null);
+  };
   // All floors start collapsed so the page is compact; tap a floor's arrow
   // (or its label) to expand/collapse it.
   const [collapsedFloors, setCollapsedFloors] = useState(
@@ -571,16 +595,33 @@ export default function EmptyClassroomPage() {
         </div>
       )}
 
-      {scheduleRoom && (
+      {scheduleRoom && createPortal(
         <div className="ecf-schedule-backdrop" onMouseDown={(event) => {
           if (event.target === event.currentTarget) setScheduleRoom(null);
         }}>
-          <section className="ecf-schedule-dialog" role="dialog" aria-modal="true" aria-labelledby="ecf-schedule-title">
-            <header className="ecf-schedule-dialog-head">
+          <section ref={sheetRef} className="ecf-schedule-dialog" role="dialog" aria-modal="true" aria-labelledby="ecf-schedule-title">
+            <div
+              className="ecf-sheet-grab"
+              onTouchStart={onSheetTouchStart}
+              onTouchMove={onSheetTouchMove}
+              onTouchEnd={onSheetTouchEnd}
+              aria-hidden="true"
+            >
+              <span className="ecf-sheet-handle" />
+            </div>
+            <header
+              className="ecf-schedule-dialog-head"
+              onTouchStart={onSheetTouchStart}
+              onTouchMove={onSheetTouchMove}
+              onTouchEnd={onSheetTouchEnd}
+            >
               <div className="ecf-schedule-room-icon"><BookOpen size={17} /></div>
               <div>
                 <span className="schedule-overline">Weekly Class Schedule</span>
                 <h3 id="ecf-schedule-title">{scheduleRoom.name}</h3>
+                {!scheduleLoading && !scheduleError && (
+                  <span className="ecf-sheet-sub">{roomSchedule.length} class{roomSchedule.length === 1 ? '' : 'es'} this week</span>
+                )}
               </div>
               <button ref={scheduleCloseRef} type="button" className="ecf-schedule-close" onClick={() => setScheduleRoom(null)} aria-label="Close weekly schedule"><X size={17} /></button>
             </header>
@@ -591,6 +632,33 @@ export default function EmptyClassroomPage() {
             ) : roomSchedule.length === 0 ? (
               <p className="ecf-schedule-message">No shared classes are scheduled in this room this week.</p>
             ) : (
+              <>
+              {/* Phones: compact day-by-day list */}
+              <div className="ecf-sheet-days">
+                {scheduleRows.filter((row) => row.entries.length).map(({ day, entries }) => (
+                  <div className={`ecf-sheet-day ${day === currentDayOfWeek() ? 'is-today' : ''}`} key={day}>
+                    <div className="ecf-sheet-day-head">
+                      <span>{day}</span>
+                      {day === currentDayOfWeek() && <em>Today</em>}
+                      <small>{entries.length}</small>
+                    </div>
+                    {entries.map((entry, index) => (
+                      <div className="ecf-sheet-class" key={`${entry.course}-${entry.time}-${index}`}>
+                        <span className="ecf-sheet-time">
+                          {ROOM_GRID_LABELS[entry.startIdx]?.split('-')[0]}
+                          <small>{ROOM_GRID_LABELS[entry.startIdx + entry.colSpan - 1]?.split('-')[1]}</small>
+                        </span>
+                        <div className="ecf-sheet-info">
+                          <strong>{entry.course || entry.courseName || 'Class'}</strong>
+                          {entry.courseName && entry.courseName !== entry.course && <span>{entry.courseName}</span>}
+                          <small>{[entry.department, entry.semester, entry.section && `Sec ${entry.section}`].filter(Boolean).join(' · ')}</small>
+                          {entry.teacher && <small>{entry.teacher}</small>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
               <div className="ecf-room-grid-scroll">
                 <table className="ecf-room-grid">
                   <thead>
@@ -631,9 +699,11 @@ export default function EmptyClassroomPage() {
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </section>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>
