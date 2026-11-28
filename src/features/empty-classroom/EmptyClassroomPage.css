@@ -1242,8 +1242,10 @@
   .ecf-card-id { font-size: 12px; }
   .ecf-detail-row, .ecf-detail-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ecf-search-kbd { display: none; }
-  .ecf-search-input { font-size: 16px; } /* stops iOS zoom on focus */
-  .ecf-date-time-field input { font-size: 15px; }
+  .ecf-search-input { font-size: 12px !important; height: 34px; }
+  .ecf-search-input::placeholder { font-size: 11px; }
+  .ecf-date-time-field { font-size: 11px !important; }
+  .ecf-date-time-field input { font-size: 12px !important; }
   .ecf-status-tab { min-height: 38px; }
   .ecf-floor-head { min-height: 40px; }
 
@@ -1296,12 +1298,15 @@
   .ecf-stat-divider { display: none; }
   .ecf-tools, .ecf-masthead .ecf-search { width: 100%; min-width: 0; }
   .ecf-search-input { padding: 0 34px 0 32px !important; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
-  .ecf-search-icon { left: 10px; }
+  .ecf-search-icon { left: 10px; width: 13px; height: 13px; }
+  .ecf-search-input::placeholder { font-size: 10.5px; }
+  .ecf-date-time-field { font-size: 10.5px !important; min-height: 30px !important; }
+  .ecf-date-time-field svg { width: 13px; height: 13px; }
   .ecf-date-time-controls { flex-direction: column; align-items: stretch !important; gap: 5px; padding: 5px !important; }
   .ecf-date-time-field { flex: 1 1 auto !important; width: 100%; min-width: 0; box-sizing: border-box; gap: 6px !important; padding: 0 8px !important; }
   .ecf-date-time-field svg { flex: 0 0 auto; }
   .ecf-date-time-field span { flex: 0 0 auto; white-space: nowrap; }
-  .ecf-date-time-field input { flex: 1 1 auto; min-width: 0 !important; width: 100%; text-align: right; font-size: 14px !important; }
+  .ecf-date-time-field input { flex: 1 1 auto; min-width: 0 !important; width: 100%; text-align: right; font-size: 11.5px !important; }
   .ecf-date-time-hint { margin-left: 0 !important; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ecf-filterbar { padding: 6px !important; gap: 6px; }
   .ecf-status-tabs { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; }
