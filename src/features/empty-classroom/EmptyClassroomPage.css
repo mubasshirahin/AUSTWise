@@ -1337,3 +1337,31 @@
 @media (prefers-reduced-motion: reduce) {
   .ecf-schedule-dialog { animation: none !important; transition: none !important; }
 }
+
+/* Phone: compact search + date/time. !important beats ResponsiveShell's
+   touch `font-size: max(16px, 1em)` on inputs. */
+@media (max-width: 640px) {
+  .ecf-widget .ecf-search-input { font-size: 12px !important; height: 32px; }
+  .ecf-widget .ecf-search-input::placeholder { font-size: 11px; }
+  .ecf-widget .ecf-date-time-field { min-width: 0; gap: 5px !important; padding: 0 7px !important; font-size: 10.5px !important; }
+  .ecf-widget .ecf-date-time-field input {
+    flex: 1 1 auto; min-width: 0 !important; width: 100%;
+    padding: 0; font-size: 11px !important; letter-spacing: -0.01em;
+  }
+  .ecf-widget .ecf-date-time-field input::-webkit-calendar-picker-indicator { margin: 0; padding: 0; width: 12px; height: 12px; }
+  .ecf-widget .ecf-date-time-field input::-webkit-datetime-edit { padding: 0; }
+  .ecf-widget .ecf-date-time-field input::-webkit-datetime-edit-fields-wrapper { padding: 0; }
+  .ecf-widget .ecf-date-time-controls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .ecf-widget .ecf-date-time-hint { grid-column: 1 / -1; margin-left: 0; }
+
+  /* Free / Busy counters: no boxes, a divider between them */
+  .ecf-widget .ecf-stats { gap: 0 !important; align-items: center; }
+  .ecf-widget .ecf-stats .schedule-stat { border: 0 !important; background: transparent !important; box-shadow: none !important; padding: 2px 12px !important; }
+  .ecf-widget .ecf-stats .schedule-stat + .schedule-stat,
+  .ecf-widget .ecf-stats .ecf-stat-divider + .schedule-stat { border-left: 1px solid var(--border-primary) !important; }
+  .ecf-widget .ecf-stats .ecf-stat-divider { display: none !important; }
+}
+@media (max-width: 400px) {
+  .ecf-widget .ecf-date-time-controls { grid-template-columns: minmax(0, 1fr); }
+  .ecf-widget .ecf-date-time-field input { text-align: right; }
+}
