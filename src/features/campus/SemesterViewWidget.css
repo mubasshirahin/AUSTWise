@@ -544,3 +544,25 @@
     height: 34px;
   }
 }
+
+/* ═══ Floor Map — Life-Planner style layer (shared dl-head + flat themed well) ═══ */
+.floor-map-widget .dl-head { margin-bottom: 12px; }
+.floor-map-widget .floor-selector-box {
+  padding: 4px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg, 14px);
+  background: var(--bg-tertiary);
+  box-shadow: none;
+}
+.floor-map-widget .floor-selector-box .glider-tabs-wrap,
+.floor-map-widget .floor-selector-box .glider-tabs-track {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.floor-map-widget .floor-plan-viewport {
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg, 14px);
+  background: var(--bg-tertiary);
+}

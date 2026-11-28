@@ -460,30 +460,29 @@ export default function EmptyClassroomPage() {
             <span className="ecf-search-kbd">⌘K</span>
           )}
         </div>
-      </div>
-
-      <div className="ecf-date-time-controls" aria-label="Choose date and time for room availability">
-        <label className="ecf-date-time-field">
-          <CalendarDays size={15} />
-          <span>Date</span>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(event) => setSelectedDate(event.target.value)}
-            aria-label="Select a date"
-          />
-        </label>
-        <label className="ecf-date-time-field">
-          <Clock3 size={15} />
-          <span>Time</span>
-          <input
-            type="time"
-            value={selectedTime}
-            onChange={(event) => setSelectedTime(event.target.value)}
-            aria-label="Select a time"
-          />
-        </label>
-        <span className="ecf-date-time-hint">Using the {selectedDay} routine</span>
+        <div className="ecf-date-time-controls" aria-label="Choose date and time for room availability">
+          <label className="ecf-date-time-field">
+            <CalendarDays size={15} />
+            <span>Date</span>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(event) => setSelectedDate(event.target.value)}
+              aria-label="Select a date"
+            />
+          </label>
+          <label className="ecf-date-time-field">
+            <Clock3 size={15} />
+            <span>Time</span>
+            <input
+              type="time"
+              value={selectedTime}
+              onChange={(event) => setSelectedTime(event.target.value)}
+              aria-label="Select a time"
+            />
+          </label>
+          <span className="ecf-date-time-hint">Using the {selectedDay} routine</span>
+        </div>
       </div>
 
       <div className="schedule-dotted-divider" />

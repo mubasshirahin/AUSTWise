@@ -6,6 +6,7 @@ import {
 import { campusFloors as staticCampusFloors } from '../../data/mockData';
 import GliderTabs from '../../components/GliderTabs';
 import './SemesterViewWidget.css';
+import '../daily-life/DailyMasthead.css';
 
 // Attempt to fetch campus locations from API — falls back to static data
 let _campusApiPromise = null;
@@ -341,25 +342,32 @@ function FloorShowcase({ floorData, selectedFloor, floorTabs, onFloorChange }) {
   return (
     <div className="glass-card-static schedule-widget sv-widget floor-map-widget animate-fadeInUp">
 
-      {/* ── Masthead ── */}
-      <div className="schedule-masthead">
-        <div className="schedule-title-block">
-          <div className="schedule-icon-tile">
+      <header className="dl-head has-actions fm-head">
+        <div className="dl-head-title">
+          <div className="dl-head-tile" aria-hidden="true">
             <Compass size={20} strokeWidth={2.2} />
           </div>
-          <div>
-            <span className="schedule-overline">Inside AUST</span>
-            <div className="schedule-title">Floor Map</div>
-            <span className="schedule-subtitle">
-              AUST {selectedFloor.toLowerCase()} floor
-            </span>
+          <div className="dl-head-text">
+            <span className="dl-head-overline">Inside AUST</span>
+            <h2 className="dl-head-name">Floor Map</h2>
+            <span className="dl-head-subtitle">AUST {selectedFloor.toLowerCase()} floor</span>
           </div>
         </div>
+        <dl className="dl-head-stats">
+          <div className="dl-head-stat">
+            <dt>Rooms</dt>
+            <dd>{floorData.rooms.length}</dd>
+          </div>
+          <div className="dl-head-stat">
+            <dt>Zoom</dt>
+            <dd className="is-small">{Math.round(scale * 100)}%</dd>
+          </div>
+        </dl>
 
-        <div className="schedule-actions">
+        <div className="dl-head-actions">
           <div className="export-dropdown" ref={menuRef}>
             <button
-              className="schedule-nav-btn"
+              className="dl-head-menu-btn"
               onClick={() => setMenuOpen((o) => !o)}
               title="Options"
               aria-haspopup="true"
@@ -392,9 +400,7 @@ function FloorShowcase({ floorData, selectedFloor, floorTabs, onFloorChange }) {
             )}
           </div>
         </div>
-      </div>
-
-      <div className="schedule-dotted-divider" />
+      </header>
 
       {/* ── Floor selector (boxed below the header divider) ── */}
       <div className="floor-selector-box">

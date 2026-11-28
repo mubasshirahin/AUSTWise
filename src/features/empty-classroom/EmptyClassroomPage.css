@@ -1439,3 +1439,15 @@
   .ecf-widget .ecf-date-time-field > span { font-size: 9px; letter-spacing: .06em; }
   .ecf-widget .ecf-status-tabs { width: 100%; }
 }
+
+/* Desktop: search · date · time on one row */
+.ecf-widget .ecf-toolbar { flex-wrap: wrap; }
+.ecf-widget .ecf-toolbar .ecf-search { flex: 1 1 220px; }
+.ecf-widget .ecf-toolbar .ecf-date-time-controls { flex: 0 1 auto; margin-top: 0; flex-wrap: nowrap; }
+.ecf-widget .ecf-toolbar .ecf-date-time-hint { display: none; }
+@media (max-width: 640px) {
+  .ecf-widget .ecf-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
+  .ecf-widget .ecf-toolbar .ecf-search { flex: none; width: 100%; }
+  .ecf-widget .ecf-toolbar .ecf-date-time-controls { display: grid; width: 100%; }
+  .ecf-widget .ecf-toolbar .ecf-date-time-hint { display: block; }
+}

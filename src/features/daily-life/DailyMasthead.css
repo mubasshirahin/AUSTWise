@@ -147,15 +147,15 @@
 }
 
 @media (max-width: 640px) {
-  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card, .al-widget, .sd-widget, .settings-page, .cb-widget, .cr, .sh-content-card, .vl-content-card, .qa-widget, .cz-content-card, .qba-widget, .ecf-widget) .dl-head {
+  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card, .al-widget, .sd-widget, .settings-page, .cb-widget, .cr, .sh-content-card, .vl-content-card, .qa-widget, .cz-content-card, .qba-widget, .ecf-widget, .floor-map-widget) .dl-head {
     gap: 8px;
     padding: 9px 10px;
     margin-bottom: 10px;
   }
-  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card, .al-widget, .sd-widget, .settings-page, .cb-widget, .cr, .sh-content-card, .vl-content-card, .qa-widget, .cz-content-card, .qba-widget, .ecf-widget) .dl-head-title { gap: 8px; }
-  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card, .al-widget, .sd-widget, .settings-page, .cb-widget, .cr, .sh-content-card, .vl-content-card, .qa-widget, .cz-content-card, .qba-widget, .ecf-widget) .dl-head-tile { width: 34px; height: 34px; }
-  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card, .al-widget, .sd-widget, .settings-page, .cb-widget, .cr, .sh-content-card, .vl-content-card, .qa-widget, .cz-content-card, .qba-widget, .ecf-widget) .dl-head-name { margin: 2px 0 0; font-size: 1rem; }
-  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card, .al-widget, .sd-widget, .settings-page, .cb-widget, .cr, .sh-content-card, .vl-content-card, .qa-widget, .cz-content-card, .qba-widget, .ecf-widget) .dl-head-stats {
+  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card, .al-widget, .sd-widget, .settings-page, .cb-widget, .cr, .sh-content-card, .vl-content-card, .qa-widget, .cz-content-card, .qba-widget, .ecf-widget, .floor-map-widget) .dl-head-title { gap: 8px; }
+  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card, .al-widget, .sd-widget, .settings-page, .cb-widget, .cr, .sh-content-card, .vl-content-card, .qa-widget, .cz-content-card, .qba-widget, .ecf-widget, .floor-map-widget) .dl-head-tile { width: 34px; height: 34px; }
+  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card, .al-widget, .sd-widget, .settings-page, .cb-widget, .cr, .sh-content-card, .vl-content-card, .qa-widget, .cz-content-card, .qba-widget, .ecf-widget, .floor-map-widget) .dl-head-name { margin: 2px 0 0; font-size: 1rem; }
+  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card, .al-widget, .sd-widget, .settings-page, .cb-widget, .cr, .sh-content-card, .vl-content-card, .qa-widget, .cz-content-card, .qba-widget, .ecf-widget, .floor-map-widget) .dl-head-stats {
     display: grid;
     /* one equal column per stat, so 2 stats sit centred, 3–4 share evenly */
     grid-template-columns: none;
@@ -165,15 +165,15 @@
     width: 100%;
     padding-top: 8px;
   }
-  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card, .al-widget, .sd-widget, .settings-page, .cb-widget, .cr, .sh-content-card, .vl-content-card, .qa-widget, .cz-content-card, .qba-widget, .ecf-widget) .dl-head-stat {
+  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card, .al-widget, .sd-widget, .settings-page, .cb-widget, .cr, .sh-content-card, .vl-content-card, .qa-widget, .cz-content-card, .qba-widget, .ecf-widget, .floor-map-widget) .dl-head-stat {
     position: relative;
     justify-content: center;
     gap: 3px;
     padding: 2px 4px;
     border-left: 0;
   }
-  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card, .al-widget, .sd-widget, .settings-page, .cb-widget, .cr, .sh-content-card, .vl-content-card, .qa-widget, .cz-content-card, .qba-widget, .ecf-widget) .dl-head-stat + .dl-head-stat { border-left: 0; }
-  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card, .al-widget, .sd-widget, .settings-page, .cb-widget, .cr, .sh-content-card, .vl-content-card, .qa-widget, .cz-content-card, .qba-widget, .ecf-widget) .dl-head-stat:not(:last-child)::after {
+  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card, .al-widget, .sd-widget, .settings-page, .cb-widget, .cr, .sh-content-card, .vl-content-card, .qa-widget, .cz-content-card, .qba-widget, .ecf-widget, .floor-map-widget) .dl-head-stat + .dl-head-stat { border-left: 0; }
+  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card, .al-widget, .sd-widget, .settings-page, .cb-widget, .cr, .sh-content-card, .vl-content-card, .qa-widget, .cz-content-card, .qba-widget, .ecf-widget, .floor-map-widget) .dl-head-stat:not(:last-child)::after {
     content: '';
     position: absolute;
     top: 50%;
@@ -183,9 +183,9 @@
     transform: translateY(-50%);
     background: var(--border-primary);
   }
-  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card, .al-widget, .sd-widget, .settings-page, .cb-widget, .cr, .sh-content-card, .vl-content-card, .qa-widget, .cz-content-card, .qba-widget, .ecf-widget) .dl-head-stat dd:not(.is-small) { font-size: 1rem; }
+  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card, .al-widget, .sd-widget, .settings-page, .cb-widget, .cr, .sh-content-card, .vl-content-card, .qa-widget, .cz-content-card, .qba-widget, .ecf-widget, .floor-map-widget) .dl-head-stat dd:not(.is-small) { font-size: 1rem; }
 }
 @media (max-width: 400px) {
-  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card, .al-widget, .sd-widget, .settings-page, .cb-widget, .cr, .sh-content-card, .vl-content-card, .qa-widget, .cz-content-card, .qba-widget, .ecf-widget) .dl-head { padding: 8px; gap: 7px; }
-  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card, .al-widget, .sd-widget, .settings-page, .cb-widget, .cr, .sh-content-card, .vl-content-card, .qa-widget, .cz-content-card, .qba-widget, .ecf-widget) .dl-head-tile { width: 32px; height: 32px; }
+  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card, .al-widget, .sd-widget, .settings-page, .cb-widget, .cr, .sh-content-card, .vl-content-card, .qa-widget, .cz-content-card, .qba-widget, .ecf-widget, .floor-map-widget) .dl-head { padding: 8px; gap: 7px; }
+  :is(.bk-widget, .tgk-widget, .lp-widget, .cpgen-widget, .pm-widget, .gl-content-card, .al-widget, .sd-widget, .settings-page, .cb-widget, .cr, .sh-content-card, .vl-content-card, .qa-widget, .cz-content-card, .qba-widget, .ecf-widget, .floor-map-widget) .dl-head-tile { width: 32px; height: 32px; }
 }
