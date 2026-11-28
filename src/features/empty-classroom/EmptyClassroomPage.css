@@ -1365,3 +1365,77 @@
   .ecf-widget .ecf-date-time-controls { grid-template-columns: minmax(0, 1fr); }
   .ecf-widget .ecf-date-time-field input { text-align: right; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   LIFE-PLANNER STYLE LAYER — shared dl-head masthead + flat themed
+   surfaces. Every colour/radius comes from the active [data-theme].
+   ═══════════════════════════════════════════════════════════════════ */
+.ecf-widget .dl-head { margin-bottom: 12px; }
+.ecf-widget .ecf-stat-free dd { color: var(--accent-emerald); }
+.ecf-widget .ecf-stat-busy dd { color: var(--accent-rose); }
+
+.ecf-widget .ecf-toolbar { display: flex; align-items: center; gap: 10px; }
+.ecf-widget .ecf-toolbar .ecf-search { flex: 1 1 auto; width: auto; min-width: 0; }
+.ecf-widget .ecf-search-input {
+  height: 38px;
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--border-primary);
+  background: var(--bg-tertiary);
+}
+
+.ecf-widget .ecf-date-time-controls {
+  margin-top: 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.ecf-widget .ecf-date-time-field {
+  min-height: 36px;
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--border-primary);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  transition: border-color .15s ease;
+}
+.ecf-widget .ecf-date-time-field:focus-within { border-color: var(--accent-amber); }
+.ecf-widget .ecf-date-time-field > span {
+  font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-tertiary);
+}
+.ecf-widget .ecf-date-time-hint { color: var(--text-tertiary); }
+
+/* Status tabs: segmented well, like the Life Planner sub-nav */
+.ecf-widget .ecf-filterbar {
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.ecf-widget .ecf-status-tabs {
+  padding: 4px;
+  gap: 2px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg, 14px);
+  background: var(--bg-tertiary);
+}
+.ecf-widget .ecf-status-tab {
+  border: 0;
+  border-radius: calc(var(--radius-lg, 14px) - 4px);
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 600;
+  box-shadow: none;
+}
+.ecf-widget .ecf-status-tab:hover { color: var(--text-primary); background: transparent; }
+.ecf-widget .ecf-status-tab.active {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  box-shadow: 0 0 0 1px var(--border-primary), 0 1px 2px rgba(0,0,0,.12);
+}
+
+@media (max-width: 640px) {
+  .ecf-widget .ecf-search-input { height: 34px; }
+  .ecf-widget .ecf-date-time-field { min-height: 32px; }
+  .ecf-widget .ecf-date-time-field > span { font-size: 9px; letter-spacing: .06em; }
+  .ecf-widget .ecf-status-tabs { width: 100%; }
+}

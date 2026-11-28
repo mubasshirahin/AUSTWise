@@ -9,6 +9,7 @@ import { roomCatalog,
   currentDayOfWeek, currentTimeString,
 } from '../../data/mockData';
 import '../campus/SemesterViewWidget.css';
+import '../daily-life/DailyMasthead.css';
 import './EmptyClassroomPage.css';
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -414,55 +415,50 @@ export default function EmptyClassroomPage() {
   return (
     <div className="glass-card-static schedule-widget sv-widget ecf-widget animate-fadeInUp">
 
-      {/* ── Masthead: title · centered counters · tools ── */}
-      <div className="ecf-masthead">
-        <div className="schedule-title-block">
-          <div className="schedule-icon-tile ecf-icon-tile">
+      <header className="dl-head ecf-head">
+        <div className="dl-head-title">
+          <div className="dl-head-tile" aria-hidden="true">
             <DoorOpen size={20} strokeWidth={2.2} />
           </div>
-          <div>
-            <span className="schedule-overline">Inside AUST</span>
-            <div className="schedule-title">Free Rooms</div>
-            <span className="schedule-subtitle">Availability for {selectedDay}, {selectedDate} at {selectedTime}</span>
+          <div className="dl-head-text">
+            <span className="dl-head-overline">Inside AUST</span>
+            <h2 className="dl-head-name">Free Rooms</h2>
+            <span className="dl-head-subtitle">Availability for {selectedDay}, {selectedDate} at {selectedTime}</span>
           </div>
         </div>
+        <dl className="dl-head-stats">
+          <div className="dl-head-stat ecf-stat-free">
+            <dt>Free</dt>
+            <dd>{totals.free}</dd>
+          </div>
+          <div className="dl-head-stat ecf-stat-busy">
+            <dt>Busy</dt>
+            <dd>{totals.busy}</dd>
+          </div>
+        </dl>
+      </header>
 
-        {/* Centered counters */}
-        <div className="schedule-stats ecf-stats">
-          <div className="schedule-stat">
-            <span className="schedule-stat-value ecf-free">{totals.free}</span>
-            <span className="schedule-stat-label">Free</span>
-          </div>
-          <span className="ecf-stat-divider" />
-          <div className="schedule-stat">
-            <span className="schedule-stat-value ecf-busy">{totals.busy}</span>
-            <span className="schedule-stat-label">Busy</span>
-          </div>
-        </div>
-
-        {/* Tools: search + share button */}
-        <div className="ecf-tools">
-          <div className="ecf-search">
-            <Search size={14} className="ecf-search-icon" />
-            <input
-              type="text"
-              placeholder="Search… (room, course, dept)"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="ecf-search-input"
-            />
-            {searchTerm ? (
-              <button
-                className="ecf-search-clear"
-                onClick={() => setSearchTerm('')}
-                title="Clear search"
-              >
-                <X size={13} />
-              </button>
-            ) : (
-              <span className="ecf-search-kbd">⌘K</span>
-            )}
-          </div>
+      <div className="ecf-toolbar">
+        <div className="ecf-search">
+          <Search size={14} className="ecf-search-icon" />
+          <input
+            type="text"
+            placeholder="Search… (room, course, dept)"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="ecf-search-input"
+          />
+          {searchTerm ? (
+            <button
+              className="ecf-search-clear"
+              onClick={() => setSearchTerm('')}
+              title="Clear search"
+            >
+              <X size={13} />
+            </button>
+          ) : (
+            <span className="ecf-search-kbd">⌘K</span>
+          )}
         </div>
       </div>
 
