@@ -1,23 +1,20 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo, useId, lazy, Suspense } from 'react';
 import {
-  ZoomIn, Maximize2, Minimize2,
-  Compass, MoreVertical, Check, Plus, Minus, RotateCcw,
+  ZoomIn, Maximize2, Minimize2, Compass, MoreVertical, Check, Plus, Minus,
+  RotateCcw, Search, X, MapPin, Clock, Navigation, ArrowUpDown, Box, Map as MapIcon,
+  CircleDot, Footprints, ArrowUp, ChevronDown,
 } from 'lucide-react';
-import { campusFloors as staticCampusFloors } from '../../data/mockData';
 import GliderTabs from '../../components/GliderTabs';
+import FloorPlanSvg, { MIN_SCALE, MAX_SCALE } from './floorplan/FloorPlanSvg';
+import { FLOORS, ROOM_TYPE_LABEL, searchRooms } from './floorplan/floors';
+import { findRoute, formatDuration } from './floorplan/routing';
+import useRoomStatus from './floorplan/useRoomStatus';
 import './SemesterViewWidget.css';
 import '../daily-life/DailyMasthead.css';
+import './floorplan/FloorPlan.css';
 
-// Attempt to fetch campus locations from API — falls back to static data
-let _campusApiPromise = null;
-function fetchCampusLocations() {
-  if (_campusApiPromise) return _campusApiPromise;
-  _campusApiPromise = fetch('/api/campus-locations')
-    .then(r => r.json())
-    .then(data => (data.success && Array.isArray(data.floors) ? data.floors : null))
-    .catch(() => null);
-  return _campusApiPromise;
-}
+// three.js is heavy: only download it when someone opens the 3D view.
+const FloorPlan3D = lazy(() => import('./floorplan/FloorPlan3D'));
 
 const zoomLevels = [
   { id: 'fit', label: 'Fit', scale: 1 },
@@ -26,569 +23,502 @@ const zoomLevels = [
   { id: '3', label: '3×', scale: 3 },
   { id: '4', label: '4×', scale: 4 },
 ];
-const MIN_SCALE = 1;
-const MAX_SCALE = 4;
 
-// Basic plan shown for floors without their own image (2nd–8th).
-const GROUND_FLOOR_IMAGE = '/campus/ground-floor.png';
+const PREFER_OPTIONS = [
+  { id: 'any', label: 'Fastest' },
+  { id: 'lift', label: 'Lift' },
+  { id: 'stair', label: 'Stairs' },
+];
 
-const RESIZE_DIRECTIONS = {
-  nw: { dl: 1, dt: 1, dw: -1, dh: -1 },
-  se: { dl: 0, dt: 0, dw: 1, dh: 1 },
-  sw: { dl: 1, dt: 0, dw: -1, dh: 1 },
-  ne: { dl: 0, dt: 1, dw: 1, dh: -1 },
-};
+const FLOOR_TABS = FLOORS.map((f) => ({ id: f.id, label: f.label, icon: null, desc: '' }));
+// Phones: all nine floors must fit in one row, so tabs use G, 1, 2 …
+const FLOOR_TABS_SHORT = FLOORS.map((f) => ({ id: f.id, label: f.id === 'Ground' ? 'G' : f.id.replace(/\D/g, ''), icon: null, desc: '' }));
+const NARROW_PX = 560;
+const floorName = (id) => (id === 'Ground' ? 'Ground floor' : `${id} floor`);
+const isRoomCode = (id) => /^\d[A-C]\d\d$/.test(id);
+const placeText = (place) => (place ? (isRoomCode(place.id) ? place.id : place.name) : '');
 
-const getRoomHotspots = (room) => room.hotspots || (room.hotspot ? [room.hotspot] : []);
-const getHotspotKey = (room, index) => `${room.id}-${index}`;
-
-/* Room-type hotspots all share the single primary accent so the map stays
-   consistent, not a rotating palette. Semantic colors (emerald/rose) are
-   reserved for status, not room categories. */
-const getRoomColor = (_type) => 'var(--accent-blue)';
-
-function FloorShowcase({ floorData, selectedFloor, floorTabs, onFloorChange }) {
-  const [zoom, setZoom] = useState('fit');
-  const [scale, setScale] = useState(1);
-  const [isPinching, setIsPinching] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [selectedRoomId, setSelectedRoomId] = useState(null);
-  const [selectedHotspotKey, setSelectedHotspotKey] = useState(null);
-  const [editMode] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef(null);
-  const [positions, setPositions] = useState(() => {
-    try {
-      const saved = localStorage.getItem('aust-campus-positions');
-      return saved ? JSON.parse(saved) : {};
-    } catch { return {}; }
-  });
-  const [rotations, setRotations] = useState(() => {
-    try {
-      const saved = localStorage.getItem('aust-campus-rotations');
-      return saved ? JSON.parse(saved) : {};
-    } catch { return {}; }
-  });
-  const viewportRef = useRef(null);
-  const hotspotRefs = useRef({});
-  const imageWrapRef = useRef(null);
-  const pointersRef = useRef(new Map());
-  const pinchRef = useRef(null);
-  const scaleRef = useRef(scale);
-  scaleRef.current = scale;
-
-  const clampScale = (s) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.round(s * 100) / 100));
-
-  const applyScaleAtPoint = useCallback((nextScale, focal) => {
-    const vp = viewportRef.current;
-    const prev = scaleRef.current;
-    const next = clampScale(nextScale);
-    if (next === prev) return;
-    const ratio = next / prev;
-    if (vp && focal) {
-      const rect = vp.getBoundingClientRect();
-      const fx = focal.x - rect.left + vp.scrollLeft;
-      const fy = focal.y - rect.top + vp.scrollTop;
-      vp.scrollLeft = fx * ratio - (focal.x - rect.left);
-      vp.scrollTop = fy * ratio - (focal.y - rect.top);
-    }
-    setScale(next);
-    setZoom(next === 1 ? 'fit' : String(next));
-  }, []);
-
-  const fitZoom = useCallback(() => {
-    const vp = viewportRef.current;
-    setScale(1);
-    setZoom('fit');
-    // scroll reset happens on next frame after width shrinks
-    requestAnimationFrame(() => {
-      if (vp) { vp.scrollLeft = 0; vp.scrollTop = 0; }
-    });
-  }, []);
-
-  const onPinchPointerDown = (e) => {
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pointersRef.current.size === 2) {
-      const [a, b] = [...pointersRef.current.values()];
-      pinchRef.current = {
-        dist: Math.hypot(b.x - a.x, b.y - a.y),
-        mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
-        scale: scaleRef.current,
-      };
-      setIsPinching(true);
-    }
-  };
-
-  const onPinchPointerMove = (e) => {
-    if (!pointersRef.current.has(e.pointerId)) return;
-    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pointersRef.current.size !== 2 || !pinchRef.current) return;
-    e.preventDefault();
-    const [a, b] = [...pointersRef.current.values()];
-    const dist = Math.hypot(b.x - a.x, b.y - a.y);
-    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-    if (pinchRef.current.dist > 0) {
-      applyScaleAtPoint(pinchRef.current.scale * (dist / pinchRef.current.dist), mid);
-    }
-    pinchRef.current.dist = dist;
-    pinchRef.current.mid = mid;
-    pinchRef.current.scale = scaleRef.current;
-  };
-
-  const onPinchPointerEnd = (e) => {
-    pointersRef.current.delete(e.pointerId);
-    if (pointersRef.current.size < 2) {
-      pinchRef.current = null;
-      setIsPinching(false);
-    }
-  };
-
-  const onWheelZoom = (e) => {
-    if (!e.ctrlKey && !e.metaKey) return;
-    e.preventDefault();
-    applyScaleAtPoint(scaleRef.current * (e.deltaY < 0 ? 1.1 : 0.9), { x: e.clientX, y: e.clientY });
-  };
-
-  const onDoubleTapZoom = () => {
-    const vp = viewportRef.current;
-    if (!vp) return;
-    const rect = vp.getBoundingClientRect();
-    if (scaleRef.current > 1) fitZoom();
-    else applyScaleAtPoint(2, { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
-  };
-
-  // Sync menu choice → scale (menu sets zoom string)
-  const handleZoomSelect = (level) => {
-    setZoom(level.id);
-    setMenuOpen(false);
-    const vp = viewportRef.current;
-    if (level.scale === 1) {
-      fitZoom();
-    } else if (vp) {
-      const rect = vp.getBoundingClientRect();
-      applyScaleAtPoint(level.scale, { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
-    } else {
-      setScale(level.scale);
-    }
-  };
+function RoomSearch({ onPick, value = '', placeholder, label, icon = 'search', autoFocus = false }) {
+  const [query, setQuery] = useState(value);
+  const [prevValue, setPrevValue] = useState(value);
+  if (value !== prevValue) { setPrevValue(value); setQuery(value); }
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const wrapRef = useRef(null);
+  const listId = `fp-list-${useId().replace(/:/g, '')}`;
+  const results = useMemo(() => (query === value ? [] : searchRooms(query)), [query, value]);
 
   useEffect(() => {
-    localStorage.setItem('aust-campus-positions', JSON.stringify(positions));
-    localStorage.setItem('aust-campus-rotations', JSON.stringify(rotations));
-  }, [positions, rotations]);
+    if (!open) return undefined;
+    const onDown = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open]);
 
-  const toggleFullscreen = useCallback(async () => {
-    const el = viewportRef.current;
-    if (!el) return;
-    if (!document.fullscreenElement) {
-      await el.requestFullscreen?.();
-    } else {
-      await document.exitFullscreen?.();
-    }
-  }, []);
-
-  useEffect(() => {
-    const onFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
-    document.addEventListener('fullscreenchange', onFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
-  }, []);
-
-  // Close ⋮ menu on outside click
-  useEffect(() => {
-    if (!menuOpen) return;
-    function handleOutside(e) {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
-    }
-    document.addEventListener('mousedown', handleOutside);
-    return () => document.removeEventListener('mousedown', handleOutside);
-  }, [menuOpen]);
-
-  const clearSelection = useCallback(() => {
-    setSelectedRoomId(null);
-    setSelectedHotspotKey(null);
-  }, []);
-
-  const handleHotspotPointerDown = (e, room, hotspot, hotspotKey) => {
-    if (!editMode) return;
-    e.preventDefault();
-    e.stopPropagation();
-    setSelectedRoomId(room.id);
-    setSelectedHotspotKey(hotspotKey);
-
-    const hotspotEl = hotspotRefs.current[hotspotKey];
-    const imageWrap = imageWrapRef.current;
-    if (!hotspotEl || !imageWrap) return;
-
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const currentPos = positions[hotspotKey] || hotspot;
-    const startLeft = currentPos.left;
-    const startTop = currentPos.top;
-    const wrapRect = imageWrap.getBoundingClientRect();
-
-    const handlePointerMove = (moveEvent) => {
-      const deltaXPercent = ((moveEvent.clientX - startX) / wrapRect.width) * 100;
-      const deltaYPercent = ((moveEvent.clientY - startY) / wrapRect.height) * 100;
-
-      setPositions((prev) => ({
-        ...prev,
-        [hotspotKey]: {
-          ...(prev[hotspotKey] || hotspot),
-          left: Math.round(Math.max(0, Math.min(100 - currentPos.width, startLeft + deltaXPercent)) * 10) / 10,
-          top: Math.round(Math.max(0, Math.min(100 - currentPos.height, startTop + deltaYPercent)) * 10) / 10,
-        },
-      }));
-    };
-
-    const handlePointerUp = () => {
-      document.removeEventListener('pointermove', handlePointerMove);
-      document.removeEventListener('pointerup', handlePointerUp);
-    };
-
-    document.addEventListener('pointermove', handlePointerMove);
-    document.addEventListener('pointerup', handlePointerUp);
+  const pick = (room) => {
+    onPick(room);
+    setQuery(placeText(room));
+    setOpen(false);
   };
 
-  const handleResizeStart = (e, room, hotspot, hotspotKey, corner) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setSelectedRoomId(room.id);
-    setSelectedHotspotKey(hotspotKey);
-
-    const imageWrap = imageWrapRef.current;
-    if (!imageWrap) return;
-
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const currentPos = positions[hotspotKey] || hotspot;
-    const startLeft = currentPos.left;
-    const startTop = currentPos.top;
-    const startWidth = currentPos.width;
-    const startHeight = currentPos.height;
-    const wrapRect = imageWrap.getBoundingClientRect();
-    const dir = RESIZE_DIRECTIONS[corner];
-
-    const handlePointerMove = (moveEvent) => {
-      const deltaXPercent = ((moveEvent.clientX - startX) / wrapRect.width) * 100;
-      const deltaYPercent = ((moveEvent.clientY - startY) / wrapRect.height) * 100;
-
-      const newLeft = Math.round(Math.max(0, startLeft + dir.dl * deltaXPercent) * 10) / 10;
-      const newTop = Math.round(Math.max(0, startTop + dir.dt * deltaYPercent) * 10) / 10;
-      const newWidth = Math.round(Math.max(4, startWidth + dir.dw * deltaXPercent) * 10) / 10;
-      const newHeight = Math.round(Math.max(4, startHeight + dir.dh * deltaYPercent) * 10) / 10;
-
-      setPositions((prev) => ({
-        ...prev,
-        [hotspotKey]: {
-          ...(prev[hotspotKey] || hotspot),
-          left: newLeft,
-          top: newTop,
-          width: Math.min(newWidth, 100 - newLeft),
-          height: Math.min(newHeight, 100 - newTop),
-        },
-      }));
-    };
-
-    const handlePointerUp = () => {
-      document.removeEventListener('pointermove', handlePointerMove);
-      document.removeEventListener('pointerup', handlePointerUp);
-    };
-
-    document.addEventListener('pointermove', handlePointerMove);
-    document.addEventListener('pointerup', handlePointerUp);
-  };
-
-  const handleRotateStart = (e, room, hotspot, hotspotKey) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setSelectedRoomId(room.id);
-    setSelectedHotspotKey(hotspotKey);
-
-    const imageWrap = imageWrapRef.current;
-    if (!imageWrap) return;
-
-    const currentPos = positions[hotspotKey] || hotspot;
-    const currentRotation = rotations[hotspotKey] || 0;
-    const wrapRect = imageWrap.getBoundingClientRect();
-
-    const getAngle = (clientX, clientY) => {
-      const centerX = wrapRect.left + ((currentPos.left + currentPos.width / 2) / 100) * wrapRect.width;
-      const centerY = wrapRect.top + ((currentPos.top + currentPos.height / 2) / 100) * wrapRect.height;
-      return Math.atan2(clientY - centerY, clientX - centerX) * 180 / Math.PI + 90;
-    };
-
-    const startMouseAngle = getAngle(e.clientX, e.clientY);
-
-    const handlePointerMove = (moveEvent) => {
-      const currentMouseAngle = getAngle(moveEvent.clientX, moveEvent.clientY);
-      const deltaAngle = currentMouseAngle - startMouseAngle;
-      const newRotation = Math.round((currentRotation + deltaAngle) * 10) / 10;
-      setRotations((prev) => ({
-        ...prev,
-        [hotspotKey]: newRotation,
-      }));
-    };
-
-    const handlePointerUp = () => {
-      document.removeEventListener('pointermove', handlePointerMove);
-      document.removeEventListener('pointerup', handlePointerUp);
-    };
-
-    document.addEventListener('pointermove', handlePointerMove);
-    document.addEventListener('pointerup', handlePointerUp);
-  };
+  const Icon = icon === 'from' ? CircleDot : icon === 'to' ? MapPin : Search;
 
   return (
-    <div className="glass-card-static schedule-widget sv-widget floor-map-widget animate-fadeInUp">
-
-      <header className="dl-head has-actions fm-head">
-        <div className="dl-head-title">
-          <div className="dl-head-tile" aria-hidden="true">
-            <Compass size={20} strokeWidth={2.2} />
-          </div>
-          <div className="dl-head-text">
-            <span className="dl-head-overline">Inside AUST</span>
-            <h2 className="dl-head-name">Floor Map</h2>
-            <span className="dl-head-subtitle">AUST {selectedFloor.toLowerCase()} floor</span>
-          </div>
-        </div>
-        <dl className="dl-head-stats">
-          <div className="dl-head-stat">
-            <dt>Rooms</dt>
-            <dd>{floorData.rooms.length}</dd>
-          </div>
-          <div className="dl-head-stat">
-            <dt>Zoom</dt>
-            <dd className="is-small">{Math.round(scale * 100)}%</dd>
-          </div>
-        </dl>
-
-        <div className="dl-head-actions">
-          <div className="export-dropdown" ref={menuRef}>
-            <button
-              className="dl-head-menu-btn"
-              onClick={() => setMenuOpen((o) => !o)}
-              title="Options"
-              aria-haspopup="true"
-              aria-expanded={menuOpen}
-            >
-              <MoreVertical size={18} />
-            </button>
-            {menuOpen && (
-              <div className="export-menu" role="menu">
-                {zoomLevels.map(level => (
-                  <button
-                    key={level.id}
-                    className={`export-menu-item${zoom === level.id ? ' menu-active' : ''}`}
-                    onClick={() => handleZoomSelect(level)}
-                    role="menuitem"
-                  >
-                    <ZoomIn size={14} /> Zoom {level.label}
-                    {zoom === level.id && <Check size={14} className="menu-check" />}
-                  </button>
-                ))}
-                <button
-                  className="export-menu-item"
-                  onClick={() => { toggleFullscreen(); setMenuOpen(false); }}
-                  role="menuitem"
-                >
-                  {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-                  {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* ── Floor selector (boxed below the header divider) ── */}
-      <div className="floor-selector-box">
-        <GliderTabs
-          tabs={floorTabs}
-          activeTab={selectedFloor}
-          onChange={onFloorChange}
-          variant="dashboard"
-          compact
-        />
-      </div>
-
-      <div className="floor-plan-workspace">
-        <div className="floor-plan-main">
-
-          <div
-            ref={viewportRef}
-            className={`floor-plan-viewport floor-plan-zoom-${zoom}${scale > 1 ? ' is-zoomed' : ''}${isPinching ? ' is-pinching' : ''}`}
-            onWheel={onWheelZoom}
-            onDoubleClick={onDoubleTapZoom}
-            aria-label={`Floor map — pinch to zoom (${Math.round(scale * 100)}%)`}
-          >
-            <div
-              className="floor-plan-image-frame"
-              style={{
-                width: `${scale * 100}%`,
-                minWidth: scale > 1 ? `${scale * 100}%` : undefined,
-                margin: '0 auto',
-                transition: isPinching ? 'none' : 'width .35s cubic-bezier(.4,0,.2,1)',
-              }}
-            >
-              <div
-                ref={imageWrapRef}
-                className="floor-plan-image-wrap"
-                onClick={clearSelection}
-                onKeyDown={(e) => { if (e.key === 'Escape') clearSelection(); }}
-                onPointerDown={onPinchPointerDown}
-                onPointerMove={onPinchPointerMove}
-                onPointerUp={onPinchPointerEnd}
-                onPointerCancel={onPinchPointerEnd}
-                onLostPointerCapture={onPinchPointerEnd}
-                role="presentation"
+    <div className={`fp-search fp-search--${icon}`} ref={wrapRef}>
+      <Icon size={15} className="fp-search-icon" aria-hidden="true" />
+      <input
+        type="search"
+        className="fp-search-input"
+        placeholder={placeholder}
+        value={query}
+        autoFocus={autoFocus}
+        onChange={(e) => { setQuery(e.target.value); setOpen(true); setActive(0); }}
+        onFocus={(e) => { setOpen(true); e.target.select(); }}
+        onKeyDown={(e) => {
+          if (!results.length) return;
+          if (e.key === 'ArrowDown') { e.preventDefault(); setActive((a) => (a + 1) % results.length); }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); setActive((a) => (a - 1 + results.length) % results.length); }
+          else if (e.key === 'Enter') { e.preventDefault(); pick(results[active]); }
+          else if (e.key === 'Escape') setOpen(false);
+        }}
+        aria-label={label}
+        aria-expanded={open && results.length > 0}
+        aria-controls={listId}
+        role="combobox"
+      />
+      {query && (
+        <button type="button" className="fp-search-clear" aria-label={`Clear ${label}`} onClick={() => { setQuery(''); setOpen(false); }}>
+          <X size={14} />
+        </button>
+      )}
+      {open && results.length > 0 && (
+        <ul className="fp-search-list" id={listId} role="listbox">
+          {results.map((room, i) => (
+            <li key={`${room.floorId}-${room.id}`} role="option" aria-selected={i === active}>
+              <button
+                type="button"
+                className={`fp-search-item${i === active ? ' is-active' : ''}`}
+                onMouseEnter={() => setActive(i)}
+                onClick={() => pick(room)}
               >
-                {(floorData.mapImage || GROUND_FLOOR_IMAGE) ? (
-                  <img
-                    src={floorData.mapImage || GROUND_FLOOR_IMAGE}
-                    alt={`AUST ${selectedFloor} Floor Plan`}
-                    className="floor-plan-image"
-                    draggable={false}
-                  />
-                ) : (
-                  <div className="floor-plan-no-image-fallback">
-                    <svg style={{ width: '100%', height: '420px' }}>
-                      <rect x="10%" y="20%" width="80%" height="60%" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="2" strokeDasharray="4 4" rx="8" />
-                      <rect x="25%" y="40%" width="50%" height="20%" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
-                      {floorData.rooms.map((room) => (
-                        <g key={room.id} style={{ cursor: 'pointer' }}>
-                          <circle cx={`${room.x}%`} cy={`${room.y}%`} r="14" fill={getRoomColor(room.type)} opacity="0.18" />
-                          <circle cx={`${room.x}%`} cy={`${room.y}%`} r="7" fill={getRoomColor(room.type)} />
-                          <text x={`${room.x}%`} y={`${room.y - 3.5}%`} textAnchor="middle" fill="var(--text-primary)" fontSize="11px" fontWeight="bold">
-                            {room.id}
-                          </text>
-                        </g>
-                      ))}
-                    </svg>
-                  </div>
-                )}
-                {floorData.rooms
-                  .filter((room) => getRoomHotspots(room).length > 0)
-                  .flatMap((room) => getRoomHotspots(room).map((hotspot, index) => {
-                    const isSelected = selectedRoomId === room.id;
-                    const hotspotKey = getHotspotKey(room, index);
-                    const isEditing = editMode && isSelected && selectedHotspotKey === hotspotKey;
-                    const pos = positions[hotspotKey] || hotspot;
-                    const rotation = rotations[hotspotKey] || 0;
-
-                    return (
-                      <div
-                        key={hotspotKey}
-                        ref={(el) => { hotspotRefs.current[hotspotKey] = el; }}
-                        className={`floor-plan-hotspot ${isSelected ? 'active' : ''} ${isEditing ? 'edit-active' : ''}`}
-                        style={{
-                          left: `${pos.left}%`,
-                          top: `${pos.top}%`,
-                          width: `${pos.width}%`,
-                          height: `${pos.height}%`,
-                          transform: `rotate(${rotation}deg)`,
-                          transformOrigin: 'center center',
-                        }}
-                        onPointerDown={(e) => handleHotspotPointerDown(e, room, hotspot, hotspotKey)}
-                        aria-hidden={!isSelected}
-                      >
-                        <span
-                          className={`floor-plan-hotspot-inner floor-plan-hotspot-${room.type} ${isSelected ? 'active' : ''}`}
-                        />
-                        {isSelected && index === 0 && (
-                          <span className="floor-plan-hotspot-label">{room.name}</span>
-                        )}
-                        {isEditing && (
-                          <>
-                            <span
-                              className="floor-plan-resize-handle floor-plan-resize-nw"
-                              onPointerDown={(e) => handleResizeStart(e, room, hotspot, hotspotKey, 'nw')}
-                            />
-                            <span
-                              className="floor-plan-resize-handle floor-plan-resize-se"
-                              onPointerDown={(e) => handleResizeStart(e, room, hotspot, hotspotKey, 'se')}
-                            />
-                            <span
-                              className="floor-plan-resize-handle floor-plan-resize-sw"
-                              onPointerDown={(e) => handleResizeStart(e, room, hotspot, hotspotKey, 'sw')}
-                            />
-                            <span
-                              className="floor-plan-resize-handle floor-plan-resize-ne"
-                              onPointerDown={(e) => handleResizeStart(e, room, hotspot, hotspotKey, 'ne')}
-                            />
-                            <span
-                              className="floor-plan-rotate-handle"
-                              onPointerDown={(e) => handleRotateStart(e, room, hotspot, hotspotKey)}
-                            >
-                              <svg width="10" height="10" viewBox="0 0 10 10" className="floor-plan-rotate-icon">
-                                <path d="M5 1a4 4 0 1 1 0 8 4 4 0 0 1 0-8z" fill="currentColor" opacity="0.35" />
-                                <path d="M5 2.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z" fill="currentColor" opacity="0.7" />
-                                <circle cx="5" cy="5" r="1.2" fill="currentColor" />
-                              </svg>
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    );
-                  }                ))}
-              </div>
-            </div>
-
-            {/* Pinch hint + zoom controls */}
-            <div className="floor-plan-zoom-hud">
-              <span className="floor-plan-zoom-hint">
-                {isPinching ? `${Math.round(scale * 100)}%` : scale > 1 ? `${Math.round(scale * 100)}% · pinch to zoom` : 'Pinch to zoom'}
-              </span>
-              <div className="floor-plan-zoom-btns">
-                <button type="button" className="floor-plan-zoom-fab" aria-label="Zoom out" disabled={scale <= MIN_SCALE}
-                  onClick={(e) => { e.stopPropagation(); const vp = viewportRef.current; const rect = vp?.getBoundingClientRect(); if (vp && rect) applyScaleAtPoint(scaleRef.current - 0.5, { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }); }}>
-                  <Minus size={18} />
-                </button>
-                <button type="button" className="floor-plan-zoom-fab" aria-label="Reset zoom" disabled={scale === 1}
-                  onClick={(e) => { e.stopPropagation(); fitZoom(); }}>
-                  <RotateCcw size={16} />
-                </button>
-                <button type="button" className="floor-plan-zoom-fab" aria-label="Zoom in" disabled={scale >= MAX_SCALE}
-                  onClick={(e) => { e.stopPropagation(); const vp = viewportRef.current; const rect = vp?.getBoundingClientRect(); if (vp && rect) applyScaleAtPoint(scaleRef.current + 0.5, { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }); }}>
-                  <Plus size={18} />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+                <span className={`fp-swatch fp-swatch--${room.type}`} aria-hidden="true" />
+                <span className="fp-search-name">{room.name}</span>
+                <span className="fp-search-floor">{room.floorId === 'Ground' ? 'Ground' : `${room.floorId} floor`}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
 
-export default function InteractiveMap() {
-  const [selectedFloor, setSelectedFloor] = useState('Ground');
-  const [campusFloors, setCampusFloors] = useState(null);
+function RoomSheet({ room, floor, status, onClose, onDirections }) {
+  if (!room) return null;
+  const busy = status?.status === 'busy';
+  const d = status?.details;
+  let statusLine = null;
+  if (status) {
+    if (d?.venue === 'canteen') statusLine = d.open ? `Open now · ${d.hours}` : `Closed · ${d.hours}`;
+    else if (d?.venue === 'auditorium') statusLine = busy ? `Event: ${d.event?.title}` : 'No event right now';
+    else if (busy) statusLine = [d?.course, d?.dept && `${d.dept}${d.semester ? ` ${d.semester}` : ''}${d.section ? ` (${d.section})` : ''}`, d?.time].filter(Boolean).join(' · ');
+    else statusLine = 'No class booked right now';
+  }
+  return (
+    <div className="fp-sheet" role="region" aria-label={`${room.name} details`}>
+      <span className={`fp-swatch fp-swatch--${room.type} fp-sheet-swatch`} aria-hidden="true" />
+      <div className="fp-sheet-body">
+        <div className="fp-sheet-title">
+          <strong>{room.name}</strong>
+          {status && (
+            <span className={`fp-chip is-${status.status}`}>
+              {d?.venue === 'canteen' ? (d.open ? 'Open' : 'Closed') : busy ? 'Busy' : 'Free'}
+            </span>
+          )}
+        </div>
+        <div className="fp-sheet-meta">
+          <span><MapPin size={12} /> {floorName(floor.id)}{isRoomCode(room.id) ? ` · ${room.id}` : ''}</span>
+          <span>{ROOM_TYPE_LABEL[room.type] || 'Room'}</span>
+        </div>
+        {statusLine && <div className="fp-sheet-status"><Clock size={12} /> {statusLine}</div>}
+        {floor.typical && <div className="fp-sheet-note">Room positions on this floor are approximate.</div>}
+        <div className="fp-sheet-actions">
+          <button type="button" className="fp-btn is-primary" onClick={() => onDirections('to')}>
+            <Navigation size={14} /> Directions here
+          </button>
+          <button type="button" className="fp-btn" onClick={() => onDirections('from')}>
+            <CircleDot size={14} /> Start from here
+          </button>
+        </div>
+      </div>
+      <button type="button" className="fp-sheet-close" aria-label="Close" onClick={onClose}><X size={16} /></button>
+    </div>
+  );
+}
 
+function DirectionsPanel({ from, to, prefer, route, activeFloorId, compact, onFrom, onTo, onSwap, onPrefer, onStep, onClose }) {
+  const crossFloor = from && to && from.floorId !== to.floorId;
+  // On phones the step list starts folded so the map stays in view.
+  const [stepsOpen, setStepsOpen] = useState(!compact);
+  return (
+    <section className="fp-dir" aria-label="Directions">
+      <div className="fp-dir-head">
+        <strong><Navigation size={15} /> Directions</strong>
+        <button type="button" className="fp-sheet-close" aria-label="Close directions" onClick={onClose}><X size={16} /></button>
+      </div>
+      <div className="fp-dir-fields">
+        <div className="fp-dir-inputs">
+          <RoomSearch icon="from" label="Start" placeholder="From — Canteen, 2A05…" value={placeText(from)} onPick={onFrom} autoFocus={!from} />
+          <RoomSearch icon="to" label="Destination" placeholder="To — 5B03, Library…" value={placeText(to)} onPick={onTo} autoFocus={Boolean(from) && !to} />
+        </div>
+        <button type="button" className="fp-dir-swap" aria-label="Swap start and destination" onClick={onSwap} disabled={!from && !to}>
+          <ArrowUpDown size={16} />
+        </button>
+      </div>
+
+      {crossFloor && (
+        <div className="fp-seg" role="radiogroup" aria-label="Go between floors by">
+          {PREFER_OPTIONS.map((o) => (
+            <button key={o.id} type="button" role="radio" aria-checked={prefer === o.id}
+              className={`fp-seg-btn${prefer === o.id ? ' is-active' : ''}`} onClick={() => onPrefer(o.id)}>
+              {o.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {route && (
+        <>
+          <div className="fp-dir-summary">
+            <span className="fp-dir-time">{formatDuration(route.seconds)}</span>
+            <span>{Math.round(route.metres)} m walk{route.via ? ` · via ${route.via.kind === 'lift' ? 'lift' : 'stairs'}` : ''}</span>
+            {compact && (
+              <button type="button" className="fp-steps-toggle" aria-expanded={stepsOpen} onClick={() => setStepsOpen((o) => !o)}>
+                {stepsOpen ? 'Hide steps' : `${route.steps.length} steps`}
+                <ChevronDown size={14} className={stepsOpen ? 'is-open' : ''} />
+              </button>
+            )}
+          </div>
+          {stepsOpen && (
+          <ol className="fp-steps">
+            {route.steps.map((step, i) => (
+              <li key={i}>
+                <button type="button" className={`fp-step${step.floorId === activeFloorId ? ' is-current' : ''}`} onClick={() => onStep(step.floorId)}>
+                  <span className="fp-step-n">{i + 1}</span>
+                  <span className="fp-step-text">{step.text}</span>
+                  <span className="fp-step-floor">{step.floorId}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+          )}
+          {stepsOpen && <p className="fp-dir-note"><Footprints size={12} /> Times and distances are estimates.</p>}
+        </>
+      )}
+      {from && to && !route && <p className="fp-dir-note">No way found between these two places.</p>}
+    </section>
+  );
+}
+
+export default function InteractiveMap() {
+  const [floorId, setFloorId] = useState('Ground');
+  const [selectedId, setSelectedId] = useState(null);
+  const [scale, setScale] = useState(1);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [pendingFocus, setPendingFocus] = useState(null);
+  const [view, setView] = useState('2d');
+  const [dirOpen, setDirOpen] = useState(false);
+  const [dirFrom, setDirFrom] = useState(null);
+  const [dirTo, setDirTo] = useState(null);
+  const [prefer, setPrefer] = useState('any');
+  const menuRef = useRef(null);
+  const viewportRef = useRef(null);
+  const mapRef = useRef(null);
+  const widgetRef = useRef(null);
+  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.innerWidth < NARROW_PX);
+
+  // Portrait layout follows the widget's own width, not the window's.
   useEffect(() => {
-    fetchCampusLocations().then((data) => {
-      if (data && data.length > 0) setCampusFloors(data);
-    });
+    const el = widgetRef.current;
+    if (!el) return undefined;
+    const ro = new ResizeObserver(([entry]) => setNarrow(entry.contentRect.width < NARROW_PX));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const getStatus = useRoomStatus();
+
+  const floor = FLOORS.find((f) => f.id === floorId) || FLOORS[0];
+  const selectedRoom = floor.rooms.find((r) => r.id === selectedId) || null;
+  const zoomId = zoomLevels.find((z) => Math.abs(z.scale - scale) < 0.05)?.id;
+
+  const route = useMemo(
+    () => (dirOpen && dirFrom && dirTo ? findRoute(dirFrom, dirTo, prefer) : null),
+    [dirOpen, dirFrom, dirTo, prefer],
+  );
+  const segIndex = route ? route.segments.findIndex((s) => s.floorId === floorId) : -1;
+  const floorRoute = segIndex >= 0 ? {
+    points: route.segments[segIndex].points,
+    isStart: segIndex === 0,
+    isEnd: segIndex === route.segments.length - 1,
+  } : null;
+
+  const changeFloor = (id) => { setFloorId(id); setSelectedId(null); };
+
+  // Focus a room / fit a route once its floor has rendered.
+  useEffect(() => {
+    if (!pendingFocus || pendingFocus.floorId !== floorId || view !== '2d') return undefined;
+    const t = setTimeout(() => {
+      if (pendingFocus.points) mapRef.current?.fitPoints(pendingFocus.points);
+      else mapRef.current?.focusRoom(pendingFocus.id);
+      setPendingFocus(null);
+    }, 60);
+    return () => clearTimeout(t);
+  }, [pendingFocus, floorId, view]);
+
+  const showSegment = useCallback((r, fid) => {
+    const seg = r.segments.find((s) => s.floorId === fid) || r.segments[0];
+    setFloorId(seg.floorId);
+    setSelectedId(null);
+    setPendingFocus({ floorId: seg.floorId, points: seg.points, n: Date.now() });
   }, []);
 
-  const allFloors = campusFloors || staticCampusFloors;
-  const floorTabs = allFloors.map((f) => ({
-    id: f.floor,
-    label: f.floor,
-    icon: null,
-    desc: '',
-  }));
-  const currentFloorData = allFloors.find((f) => f.floor === selectedFloor) || allFloors[0];
+  // A new route opens on its starting floor, framed to fit.
+  const [shownRoute, setShownRoute] = useState(null);
+  if (route !== shownRoute) {
+    setShownRoute(route);
+    if (route) showSegment(route, route.segments[0].floorId);
+  }
+
+  const handlePick = (room) => {
+    setFloorId(room.floorId);
+    setSelectedId(room.id);
+    setPendingFocus({ id: room.id, floorId: room.floorId, n: Date.now() });
+  };
+
+  const handleSelect = useCallback((id) => {
+    setSelectedId(id);
+    if (id) mapRef.current?.focusRoom(id);
+  }, []);
+
+  const handleSelect3D = useCallback((fid, id) => {
+    if (fid !== floorId) setFloorId(fid);
+    setSelectedId(id);
+  }, [floorId]);
+
+  const openDirections = (role) => {
+    const place = selectedRoom ? { floorId: floor.id, id: selectedRoom.id, name: selectedRoom.name } : null;
+    if (role === 'to') setDirTo(place); else setDirFrom(place);
+    setDirOpen(true);
+    setSelectedId(null);
+  };
+
+  const closeDirections = () => { setDirOpen(false); setDirFrom(null); setDirTo(null); };
+
+  const toggleFullscreen = useCallback(async () => {
+    const el = viewportRef.current;
+    if (!el) return;
+    if (!document.fullscreenElement) await el.requestFullscreen?.();
+    else await document.exitFullscreen?.();
+  }, []);
+
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const onDown = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (!selectedId) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') setSelectedId(null); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [selectedId]);
+
+  const toPlace = (room) => ({ floorId: room.floorId, id: room.id, name: room.name });
 
   return (
     <div className="interactive-map-root interactive-map-root-plan">
-      <FloorShowcase
-        floorData={currentFloorData}
-        selectedFloor={selectedFloor}
-        floorTabs={floorTabs}
-        onFloorChange={setSelectedFloor}
-      />
+      <div ref={widgetRef} className="glass-card-static schedule-widget sv-widget floor-map-widget animate-fadeInUp">
+        <header className="dl-head has-actions fm-head">
+          <div className="dl-head-title">
+            <div className="dl-head-tile" aria-hidden="true">
+              <Compass size={20} strokeWidth={2.2} />
+            </div>
+            <div className="dl-head-text">
+              <span className="dl-head-overline">Inside AUST</span>
+              <h2 className="dl-head-name">Floor Map</h2>
+              <span className="dl-head-subtitle">AUST {floor.id.toLowerCase()} floor</span>
+            </div>
+          </div>
+          <dl className="dl-head-stats">
+            <div className="dl-head-stat">
+              <dt>Rooms</dt>
+              <dd>{floor.rooms.length}</dd>
+            </div>
+            <div className="dl-head-stat">
+              <dt>{view === '3d' ? 'View' : 'Zoom'}</dt>
+              <dd className="is-small">{view === '3d' ? '3D' : `${Math.round(scale * 100)}%`}</dd>
+            </div>
+          </dl>
+
+          <div className="dl-head-actions">
+            <div className="export-dropdown" ref={menuRef}>
+              <button
+                className="dl-head-menu-btn"
+                onClick={() => setMenuOpen((o) => !o)}
+                title="Options"
+                aria-haspopup="true"
+                aria-expanded={menuOpen}
+              >
+                <MoreVertical size={18} />
+              </button>
+              {menuOpen && (
+                <div className="export-menu" role="menu">
+                  {view === '2d' && zoomLevels.map((level) => (
+                    <button
+                      key={level.id}
+                      className={`export-menu-item${zoomId === level.id ? ' menu-active' : ''}`}
+                      onClick={() => {
+                        setMenuOpen(false);
+                        if (level.scale === 1) mapRef.current?.reset();
+                        else mapRef.current?.zoomTo(level.scale);
+                      }}
+                      role="menuitem"
+                    >
+                      <ZoomIn size={14} /> Zoom {level.label}
+                      {zoomId === level.id && <Check size={14} className="menu-check" />}
+                    </button>
+                  ))}
+                  <button
+                    className="export-menu-item"
+                    onClick={() => { toggleFullscreen(); setMenuOpen(false); }}
+                    role="menuitem"
+                  >
+                    {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                    {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <div className="floor-selector-box">
+          <GliderTabs tabs={narrow ? FLOOR_TABS_SHORT : FLOOR_TABS} activeTab={floorId} onChange={changeFloor} variant="dashboard" compact />
+        </div>
+
+        {dirOpen ? (
+          <DirectionsPanel
+            from={dirFrom}
+            to={dirTo}
+            prefer={prefer}
+            route={route}
+            activeFloorId={floorId}
+            compact={narrow}
+            onFrom={(room) => setDirFrom(toPlace(room))}
+            onTo={(room) => setDirTo(toPlace(room))}
+            onSwap={() => { setDirFrom(dirTo); setDirTo(dirFrom); }}
+            onPrefer={setPrefer}
+            onStep={(fid) => route && showSegment(route, fid)}
+            onClose={closeDirections}
+          />
+        ) : (
+          <div className="fp-searchrow">
+            <RoomSearch label="Search rooms" placeholder={narrow ? 'Find a room or place' : 'Find a room — 5B03, Library, Canteen…'} onPick={handlePick} />
+            <button type="button" className="fp-btn is-primary fp-dir-open" onClick={() => setDirOpen(true)}>
+              <Navigation size={15} /> <span>Directions</span>
+            </button>
+          </div>
+        )}
+
+        <div ref={viewportRef} className={`fp-viewport${scale > 1.01 && view === '2d' ? ' is-zoomed' : ''}${view === '3d' ? ' is-3d' : ''}${narrow ? ' is-portrait' : ''}`}>
+          {view === '2d' ? (
+            <FloorPlanSvg
+              ref={mapRef}
+              floor={floor}
+              selectedId={selectedId}
+              onSelect={handleSelect}
+              getStatus={getStatus}
+              route={floorRoute}
+              portrait={narrow}
+              onScaleChange={setScale}
+              wheelAlwaysZooms={isFullscreen}
+            />
+          ) : (
+            <Suspense fallback={<div className="fp-3d-loading">Loading 3D view…</div>}>
+              <FloorPlan3D
+                key={narrow ? 'portrait' : 'landscape'}
+                activeFloorId={floorId}
+                selectedId={selectedId}
+                route={route}
+                onSelect={handleSelect3D}
+                portrait={narrow}
+              />
+            </Suspense>
+          )}
+          <span className={`fp-north${narrow ? ' is-portrait' : ''}`} aria-label={narrow ? 'North is to the right' : 'North is up'} role="img">
+            <ArrowUp size={12} strokeWidth={2.6} /> N
+          </span>
+        </div>
+
+        <div className="fp-toolbar">
+          <div className="fp-viewswitch" role="radiogroup" aria-label="Map view">
+            <button type="button" role="radio" aria-checked={view === '2d'} className={view === '2d' ? 'is-active' : ''} onClick={() => setView('2d')}>
+              <MapIcon size={14} /> 2D
+            </button>
+            <button type="button" role="radio" aria-checked={view === '3d'} className={view === '3d' ? 'is-active' : ''} onClick={() => setView('3d')}>
+              <Box size={14} /> 3D
+            </button>
+          </div>
+          <div className="fp-legend" aria-hidden="true">
+            {view === '2d' ? (
+              <>
+                <span><i className="fp-status-dot-key is-free" /> Free</span>
+                <span><i className="fp-status-dot-key is-busy" /> Busy</span>
+                <span className="fp-hint">
+                  {scale > 1.01 ? 'Drag to move · pinch or Ctrl + scroll to zoom' : 'Tap a room · pinch or Ctrl + scroll to zoom'}
+                </span>
+              </>
+            ) : (
+              <span className="fp-hint is-visible">
+                {narrow ? 'Drag to turn · pinch to zoom' : 'Drag to turn · scroll or pinch to zoom · floors above the selected one are hidden'}
+              </span>
+            )}
+          </div>
+          {view === '2d' && (
+            <div className="fp-zoom-btns">
+              <button type="button" className="floor-plan-zoom-fab" aria-label="Zoom out" disabled={scale <= MIN_SCALE + 0.01}
+                onClick={() => mapRef.current?.zoomBy(1 / 1.5)}>
+                <Minus size={18} />
+              </button>
+              <button type="button" className="floor-plan-zoom-fab" aria-label="Reset zoom" disabled={scale <= MIN_SCALE + 0.01}
+                onClick={() => mapRef.current?.reset()}>
+                <RotateCcw size={16} />
+              </button>
+              <button type="button" className="floor-plan-zoom-fab" aria-label="Zoom in" disabled={scale >= MAX_SCALE - 0.01}
+                onClick={() => mapRef.current?.zoomBy(1.5)}>
+                <Plus size={18} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        <RoomSheet
+          room={selectedRoom}
+          floor={floor}
+          status={selectedRoom ? getStatus(selectedRoom.id) : null}
+          onClose={() => setSelectedId(null)}
+          onDirections={openDirections}
+        />
+      </div>
     </div>
   );
 }
