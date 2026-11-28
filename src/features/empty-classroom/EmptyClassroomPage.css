@@ -1294,8 +1294,15 @@
   .ecf-stats { display: flex; width: 100%; justify-content: stretch !important; gap: 6px; }
   .ecf-stats .schedule-stat { flex: 1; min-width: 0 !important; flex-direction: row; justify-content: center; align-items: baseline; gap: 5px; }
   .ecf-stat-divider { display: none; }
-  .ecf-date-time-controls { flex-direction: column; gap: 5px; padding: 5px !important; }
-  .ecf-date-time-field { flex: 1 1 auto !important; width: 100%; }
+  .ecf-tools, .ecf-masthead .ecf-search { width: 100%; min-width: 0; }
+  .ecf-search-input { padding: 0 34px 0 32px !important; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
+  .ecf-search-icon { left: 10px; }
+  .ecf-date-time-controls { flex-direction: column; align-items: stretch !important; gap: 5px; padding: 5px !important; }
+  .ecf-date-time-field { flex: 1 1 auto !important; width: 100%; min-width: 0; box-sizing: border-box; gap: 6px !important; padding: 0 8px !important; }
+  .ecf-date-time-field svg { flex: 0 0 auto; }
+  .ecf-date-time-field span { flex: 0 0 auto; white-space: nowrap; }
+  .ecf-date-time-field input { flex: 1 1 auto; min-width: 0 !important; width: 100%; text-align: right; font-size: 14px !important; }
+  .ecf-date-time-hint { margin-left: 0 !important; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ecf-filterbar { padding: 6px !important; gap: 6px; }
   .ecf-status-tabs { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; }
   .ecf-status-tab { min-width: 0; padding: 0 4px !important; gap: 3px; font-size: 11px; }
